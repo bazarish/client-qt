@@ -11,6 +11,7 @@
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <set>
 #include <stdexcept>
 #include <thread>
 
@@ -20,13 +21,41 @@ namespace {
 
 namespace fs = std::filesystem;
 
-// Tokens minted per batch handed to a contact. A small fixed batch keeps the
-// demo simple; refill-on-low-stash is a future client concern.
-constexpr int kTokenBatchSize = 8;
+// Tokens minted per batch handed to a contact. When a peer's stash of our
+// tokens drops to kRefillThreshold, they signal it and we mint another batch
+// (see Contacts.md refill) — so a conversation never runs dry.
+constexpr int kTokenBatchSize = 64;
+constexpr std::size_t kRefillThreshold = 16;
+
+// Inner end-to-end payload format version (see docs Messages.md).
+constexpr int kMessageFormatVersion = 1;
 
 std::int64_t nowSeconds()
 {
     return static_cast<std::int64_t>(std::time(nullptr));
+}
+
+// Applies a bootstrap block (the peer's sealing key, serving server, server
+// card and a fresh token batch) carried by a contact request, a first reply
+// or a token refill. Orthogonal to the message's content type.
+void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap)
+{
+    if (bootstrap.contains("sealing")) {
+        contact.sealingPublicB64 = bootstrap.at("sealing").get<std::string>();
+    }
+    if (bootstrap.contains("server")) {
+        contact.server = bootstrap.at("server").get<std::string>();
+    }
+    if (bootstrap.contains("serverCard")) {
+        const ServerCard card
+            = ServerCard::verify(fromBase64(bootstrap.at("serverCard").get<std::string>()));
+        contact.serverSealingB64 = toBase64(card.sealingPublicKeyDer);
+    }
+    if (bootstrap.contains("replyTokens")) {
+        for (const nlohmann::json& token : bootstrap.at("replyTokens")) {
+            contact.sendTokens.push_back(token.get<std::string>());
+        }
+    }
 }
 
 std::string readFileText(const fs::path& path)
@@ -50,6 +79,56 @@ void writeFileText(const fs::path& path, const std::string& text)
     }
 }
 
+Bytes readFileBytes(const fs::path& path)
+{
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        throw std::runtime_error("failed to open " + path.string());
+    }
+    return Bytes(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+void writeFileBytes(const fs::path& path, const Bytes& data)
+{
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        throw std::runtime_error("failed to open " + path.string());
+    }
+    out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+    if (!out) {
+        throw std::runtime_error("failed to write " + path.string());
+    }
+}
+
+// A best-effort MIME guess from the extension. Content type rendering is a
+// client concern; the server never sees this.
+std::string guessMime(const fs::path& path)
+{
+    const std::string ext = path.extension().string();
+    if (ext == ".jpg" || ext == ".jpeg") {
+        return "image/jpeg";
+    }
+    if (ext == ".png") {
+        return "image/png";
+    }
+    if (ext == ".gif") {
+        return "image/gif";
+    }
+    if (ext == ".pdf") {
+        return "application/pdf";
+    }
+    if (ext == ".txt") {
+        return "text/plain";
+    }
+    if (ext == ".ogg" || ext == ".opus") {
+        return "audio/ogg";
+    }
+    if (ext == ".mp3") {
+        return "audio/mpeg";
+    }
+    return "application/octet-stream";
+}
+
 }  // namespace
 
 Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingKey,
@@ -61,8 +140,8 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
 {
 }
 
-Session Session::create(const fs::path& stateDir, const ServerEndpoint& endpoint,
-    const std::string& passphrase)
+Session Session::create(
+    const fs::path& stateDir, const std::string& passphrase, const std::string& name)
 {
     fs::create_directories(stateDir);
 
@@ -74,9 +153,17 @@ Session Session::create(const fs::path& stateDir, const ServerEndpoint& endpoint
 
     const std::string clientId = toHex(randomBytes(8));
     const bool encrypted = !passphrase.empty();
+    const std::string fingerprint = identity.fingerprint();
+
+    // A fresh profile has no server yet: an empty host marks "unconnected".
+    ServerEndpoint endpoint;
+    endpoint.host.clear();
+    endpoint.port = 0;
 
     const nlohmann::json meta = {
         {"clientId", clientId},
+        {"name", name},
+        {"fingerprint", fingerprint},
         {"endpoint",
             {
                 {"host", endpoint.host},
@@ -93,7 +180,36 @@ Session Session::create(const fs::path& stateDir, const ServerEndpoint& endpoint
     auto client = std::make_unique<Client>(std::move(identity), clientId, endpoint);
     Session session(stateDir, std::move(client), std::move(sealing), {});
     session.encrypted_ = encrypted;
+    session.name_ = name;
     return session;
+}
+
+Session Session::create(const fs::path& stateDir, const ServerEndpoint& endpoint,
+    const std::string& passphrase)
+{
+    Session session = create(stateDir, passphrase);
+    session.connectServer(endpoint);
+    return session;
+}
+
+void Session::connectServer(const ServerEndpoint& endpoint)
+{
+    // Rebind the transport to the new server, reusing the identity and client
+    // id. The in-memory identity PEM is unencrypted, so this is independent of
+    // the at-rest passphrase.
+    client_ = std::make_unique<Client>(
+        Identity::fromPrivatePem(client_->identity().privatePem()), client_->clientId(), endpoint);
+    persistMeta();
+}
+
+bool Session::isConnected() const
+{
+    return !client_->endpoint().host.empty();
+}
+
+const ServerEndpoint& Session::endpoint() const
+{
+    return client_->endpoint();
 }
 
 Session Session::open(const fs::path& stateDir, const std::string& passphrase)
@@ -137,12 +253,18 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
     session.serverCardB64_ = meta.at("serverCard").get<std::string>();
     session.subscriptionCertB64_ = meta.value("subscriptionCert", std::string{});
     session.encrypted_ = encrypted;
+    session.name_ = meta.value("name", std::string{});
     return session;
 }
 
 std::string Session::fingerprint() const
 {
     return client_->identity().fingerprint();
+}
+
+const std::string& Session::displayName() const
+{
+    return name_;
 }
 
 std::string Session::sealingPublicB64() const
@@ -187,6 +309,8 @@ void Session::persistMeta() const
 {
     const nlohmann::json meta = {
         {"clientId", client_->clientId()},
+        {"name", name_},
+        {"fingerprint", client_->identity().fingerprint()},
         {"endpoint",
             {
                 {"host", client_->endpoint().host},
@@ -251,7 +375,7 @@ std::vector<std::string> Session::issueTokenBatch()
 
 void Session::deliver(const std::string& toServer, const Key& serverSealingKey,
     const std::string& kind, const std::string& mailbox, const std::optional<Bytes>& token,
-    const Bytes& payload)
+    const Bytes& payload, const std::function<void()>& onAcceptedByOwnServer)
 {
     // The envelope is sealed to the destination server's sealing key, so the
     // routing metadata is readable only there. Our own server relays it to a
@@ -265,9 +389,18 @@ void Session::deliver(const std::string& toServer, const Key& serverSealingKey,
     // publishes; that is transient, so retry. Other failures are terminal.
     constexpr int kMaxRounds = 12;
     std::string lastError = "delivery not attempted";
+    bool acceptedByOwnServer = false;
     for (int round = 0; round < kMaxRounds; ++round) {
         try {
             const std::string attemptId = client_->submitSend(toServer, sealed, payload);
+            // Our own server accepted the envelope into its buffer: the "grey"
+            // delivery state. Fire once.
+            if (!acceptedByOwnServer) {
+                acceptedByOwnServer = true;
+                if (onAcceptedByOwnServer) {
+                    onAcceptedByOwnServer();
+                }
+            }
             for (int poll = 0; poll < 50; ++poll) {
                 const SendStatus status = client_->pollSend(attemptId);
                 if (status.status == "delivered") {
@@ -352,23 +485,30 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     const Key peerServerSealing = info.serverCard.sealingKey();
 
     // Mint a batch the peer will use to write back to us and hand it over,
-    // with our sealing key and server card, inside the request payload.
+    // with our sealing key and server card, inside the request's bootstrap.
     const std::vector<std::string> replyTokens = issueTokenBatch();
 
     const nlohmann::json payload = {
-        {"type", "contact-request"},
-        {"fromFp", fingerprint()},
-        {"fromSealing", sealingPublicB64()},
-        {"fromServer", client_->endpoint().serverFingerprint},
-        {"fromServerCard", serverCardB64_},
-        {"replyTokens", replyTokens},
+        {"v", kMessageFormatVersion},
+        {"type", "contact.request"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
         {"text", text},
+        {"bootstrap",
+            {
+                {"sealing", sealingPublicB64()},
+                {"server", client_->endpoint().serverFingerprint},
+                {"serverCard", serverCardB64_},
+                {"replyTokens", replyTokens},
+            }},
     };
     // E2E-encrypted to the peer's prekey: the first message is confidential.
+    // Delivered tokenless under the "contact" admission class.
     const std::string plain = payload.dump();
     const Bytes encrypted = cms::seal(Bytes(plain.begin(), plain.end()), peerPrekey);
-    deliver(info.subscriptionCert.server, peerServerSealing, "contact-request",
-        peerFingerprint, std::nullopt, encrypted);
+    deliver(info.subscriptionCert.server, peerServerSealing, "contact", peerFingerprint,
+        std::nullopt, encrypted);
 
     // We now know how to reach the peer; reciprocal tokens arrive with the
     // peer's reply.
@@ -380,7 +520,74 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     persistContacts();
 }
 
-void Session::sendMessage(const std::string& peerFingerprint, const std::string& text)
+void Session::sendMessage(const std::string& peerFingerprint, const std::string& text,
+    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer)
+{
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "text"},
+        {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"text", text},
+    };
+    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+}
+
+void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
+    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer)
+{
+    const Bytes data = readFileBytes(path);
+    // Encrypt the bytes with a fresh random content key (the key is the CMS
+    // password — standard primitives only). The store sees only ciphertext.
+    const Bytes key = randomBytes(32);
+    const std::string password(key.begin(), key.end());
+    const Bytes ciphertext = cms::sealWithPassword(data, password);
+    const std::string ref = client_->putContent(ciphertext);
+
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "file"},
+        {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"file",
+            {
+                {"ref", ref},
+                {"key", toBase64(key)},
+                {"size", data.size()},
+                {"mime", guessMime(path)},
+                {"name", path.filename().string()},
+            }},
+    };
+    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+}
+
+void Session::sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId)
+{
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "receipt"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"ref", refMessageId},
+    };
+    sendContent(peerFingerprint, std::move(inner));
+}
+
+void Session::saveAttachment(
+    const std::string& ref, const std::string& keyB64, const fs::path& dest)
+{
+    const Bytes ciphertext = client_->getContent(ref);
+    const Bytes key = fromBase64(keyB64);
+    const std::string password(key.begin(), key.end());
+    const Bytes plain = cms::unsealWithPassword(ciphertext, password);
+    writeFileBytes(dest, plain);
+}
+
+void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
+    const std::function<void()>& onAcceptedByOwnServer)
 {
     const auto found = contacts_.find(peerFingerprint);
     if (found == contacts_.end()) {
@@ -394,19 +601,22 @@ void Session::sendMessage(const std::string& peerFingerprint, const std::string&
         throw std::runtime_error("no delivery tokens left for contact: " + peerFingerprint);
     }
 
-    nlohmann::json inner = {
-        {"type", "message"},
-        {"fromFp", fingerprint()},
-        {"fromSealing", sealingPublicB64()},
-        {"fromServer", client_->endpoint().serverFingerprint},
-        {"fromServerCard", serverCardB64_},
-        {"text", text},
-    };
-    // First reply to a peer that wrote to us first: hand them a batch so the
-    // reverse direction is usable too.
+    // First reply to a peer that wrote to us first: hand them a bootstrap (our
+    // routing + a token batch) so the reverse direction is usable too.
     if (!contact.issuedToThem) {
-        inner["replyTokens"] = issueTokenBatch();
+        inner["bootstrap"] = {
+            {"sealing", sealingPublicB64()},
+            {"server", client_->endpoint().serverFingerprint},
+            {"serverCard", serverCardB64_},
+            {"replyTokens", issueTokenBatch()},
+        };
         contact.issuedToThem = true;
+    }
+
+    // After spending this token our stash for the peer would be this small;
+    // ask them to refill us before it hits zero (Contacts.md).
+    if (contact.sendTokens.size() - 1 <= kRefillThreshold) {
+        inner["lowStash"] = true;
     }
 
     const std::string innerText = inner.dump();
@@ -415,8 +625,8 @@ void Session::sendMessage(const std::string& peerFingerprint, const std::string&
     const Key peerServerSealing = Key::fromPublicDer(fromBase64(contact.serverSealingB64));
 
     const std::string token = contact.sendTokens.back();
-    deliver(contact.server, peerServerSealing, "message", peerFingerprint, fromBase64(token),
-        payload);
+    deliver(contact.server, peerServerSealing, "content", peerFingerprint, fromBase64(token),
+        payload, onAcceptedByOwnServer);
 
     // Spend the token only after a successful delivery.
     contact.sendTokens.pop_back();
@@ -426,59 +636,95 @@ void Session::sendMessage(const std::string& peerFingerprint, const std::string&
 std::vector<IncomingMessage> Session::sync()
 {
     std::vector<IncomingMessage> result;
+    // Peers whose stash of our tokens is running low and who asked for a
+    // refill; topped up after the fetch loop so we never write mid-iteration.
+    std::set<std::string> refillPeers;
     for (const PendingEntry& entry : client_->listPending()) {
         const Bytes blob = client_->fetchBlob(entry.id);
+        // Every item is sealed to our user sealing key the same way; the
+        // server-visible delivery class never changes how we decrypt.
+        const Bytes plain = cms::unseal(blob, sealingKey_);
+        const nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
 
         IncomingMessage message;
-        message.kind = entry.kind;
-        if (entry.kind == "contact-request") {
-            // E2E-encrypted to our prekey, like a message.
-            const Bytes plain = cms::unseal(blob, sealingKey_);
-            const nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
-            const std::string peerFp = body.at("fromFp").get<std::string>();
-            Contact& contact = contacts_[peerFp];
-            contact.sealingPublicB64 = body.at("fromSealing").get<std::string>();
-            contact.server = body.at("fromServer").get<std::string>();
-            const ServerCard card = ServerCard::verify(
-                fromBase64(body.at("fromServerCard").get<std::string>()));
-            contact.serverSealingB64 = toBase64(card.sealingPublicKeyDer);
-            for (const nlohmann::json& token : body.at("replyTokens")) {
-                contact.sendTokens.push_back(token.get<std::string>());
-            }
-            message.fromFingerprint = peerFp;
-            message.text = body.at("text").get<std::string>();
+        message.deliveryClass = entry.deliveryClass;
+        message.fromFingerprint = body.at("from").get<std::string>();
+        message.messageId = body.value("id", std::string());
+        const std::string type = body.value("type", std::string("text"));
+
+        // Bootstrap may ride with any content type; apply it before dispatch
+        // so a new or migrated contact is established regardless of type.
+        if (body.contains("bootstrap")) {
+            applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"));
             message.establishedContact = true;
+        }
+
+        // The peer is low on our tokens and asked to be refilled.
+        if (body.value("lowStash", false)) {
+            refillPeers.insert(message.fromFingerprint);
+        }
+
+        // Content dispatch. An unknown type is still acked and surfaced (not
+        // dropped) so a newer client could render it; see docs Messages.md.
+        if (type == "text" || type == "contact.request") {
+            message.contentType = type;
+            message.text = body.value("text", std::string());
+        } else if (type == "file" || type == "photo" || type == "audio" || type == "voice") {
+            message.contentType = type;
+            const nlohmann::json& file = body.at("file");
+            message.attachmentRef = file.at("ref").get<std::string>();
+            message.attachmentKeyB64 = file.at("key").get<std::string>();
+            message.attachmentName = file.value("name", std::string());
+            message.attachmentMime = file.value("mime", std::string());
+            message.attachmentSize = file.value("size", std::uint64_t{0});
+        } else if (type == "receipt") {
+            // A delivery receipt for one of our sent messages (the "green"
+            // state). Carries the acknowledged message id.
+            message.contentType = type;
+            message.refId = body.value("ref", std::string());
+        } else if (type == "token-refill") {
+            // The fresh tokens already arrived via the bootstrap block.
+            message.contentType = type;
         } else {
-            const Bytes plain = cms::unseal(blob, sealingKey_);
-            const nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
-            const std::string peerFp = body.at("fromFp").get<std::string>();
-            Contact& contact = contacts_[peerFp];
-            if (body.contains("fromSealing")) {
-                contact.sealingPublicB64 = body.at("fromSealing").get<std::string>();
-            }
-            if (body.contains("fromServer")) {
-                contact.server = body.at("fromServer").get<std::string>();
-            }
-            if (body.contains("fromServerCard")) {
-                const ServerCard card = ServerCard::verify(
-                    fromBase64(body.at("fromServerCard").get<std::string>()));
-                contact.serverSealingB64 = toBase64(card.sealingPublicKeyDer);
-            }
-            if (body.contains("replyTokens")) {
-                for (const nlohmann::json& token : body.at("replyTokens")) {
-                    contact.sendTokens.push_back(token.get<std::string>());
-                }
-                message.establishedContact = true;
-            }
-            message.fromFingerprint = peerFp;
-            message.text = body.at("text").get<std::string>();
+            message.contentType = "unsupported";
+            message.rawType = type;
         }
 
         client_->ack(entry.id);
         result.push_back(std::move(message));
     }
     persistContacts();
+
+    // Refill peers that ran low (a fresh token batch, sent as a token-refill).
+    // Done after the loop so the outbound send never races the fetch loop.
+    for (const std::string& peer : refillPeers) {
+        sendTokenRefill(peer);
+    }
     return result;
+}
+
+void Session::sendTokenRefill(const std::string& peerFingerprint)
+{
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end()) {
+        return;
+    }
+    const Contact& contact = found->second;
+    // We need a usable route and at least one of the peer's tokens to deliver
+    // the refill; otherwise the peer's own refill of us must arrive first.
+    if (contact.sealingPublicB64.empty() || contact.serverSealingB64.empty()
+        || contact.sendTokens.empty()) {
+        return;
+    }
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "token-refill"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"bootstrap", {{"replyTokens", issueTokenBatch()}}},
+    };
+    sendContent(peerFingerprint, std::move(inner));
 }
 
 std::string Session::inviteUri() const

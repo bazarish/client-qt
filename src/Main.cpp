@@ -60,6 +60,8 @@ void printUsage()
         "  bazarish-client add-invite <state> <invite-file> <text>\n"
         "  bazarish-client add-user <state> <alias> <text> [host port [base-path]]\n"
         "  bazarish-client send <state> <peer-fp> <text>\n"
+        "  bazarish-client send-file <state> <peer-fp> <file>\n"
+        "  bazarish-client get-file <state> <ref> <key-b64> <out>\n"
         "  bazarish-client sync <state>\n"
         "  bazarish-client export <state> <out-file>\n"
         "  bazarish-client import <in-file> <state>\n"
@@ -228,6 +230,32 @@ int runSend(const std::vector<std::string>& args)
     return 0;
 }
 
+int runSendFile(const std::vector<std::string>& args)
+{
+    // send-file <state> <peer-fp> <file>
+    if (args.size() != 4) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.sendFile(args[2], args[3]);
+    std::printf("file sent to %s\n", args[2].c_str());
+    return 0;
+}
+
+int runGetFile(const std::vector<std::string>& args)
+{
+    // get-file <state> <ref> <key-b64> <out>
+    if (args.size() != 5) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.saveAttachment(args[2], args[3], args[4]);
+    std::printf("saved attachment to %s\n", args[4].c_str());
+    return 0;
+}
+
 int runExport(const std::vector<std::string>& args)
 {
     // export <state> <out-file>
@@ -277,8 +305,19 @@ int runSync(const std::vector<std::string>& args)
         return 0;
     }
     for (const IncomingMessage& message : messages) {
-        std::printf("[%s] from %s: %s%s\n", message.kind.c_str(),
-            message.fromFingerprint.c_str(), message.text.c_str(),
+        std::string body;
+        if (message.contentType == "unsupported") {
+            body = std::string("(unsupported type '") + message.rawType
+                + "' — update your app)";
+        } else if (!message.attachmentRef.empty()) {
+            // Print the reference and key so `get-file` can download it.
+            body = message.attachmentName + " (" + std::to_string(message.attachmentSize)
+                + " bytes) ref=" + message.attachmentRef + " key=" + message.attachmentKeyB64;
+        } else {
+            body = message.text;
+        }
+        std::printf("[%s] from %s: %s%s\n", message.contentType.c_str(),
+            message.fromFingerprint.c_str(), body.c_str(),
             message.establishedContact ? "  (contact established)" : "");
     }
     return 0;
@@ -331,6 +370,12 @@ int main(const int argc, const char** argv)
         }
         if (command == "send") {
             return runSend(args);
+        }
+        if (command == "send-file") {
+            return runSendFile(args);
+        }
+        if (command == "get-file") {
+            return runGetFile(args);
         }
         if (command == "sync") {
             return runSync(args);

@@ -7,12 +7,12 @@
 
 namespace bazarish::client {
 
-Bytes sealDeliveryEnvelope(const std::string& kind, const std::string& mailbox,
+Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& mailbox,
     const std::string& messageId, const std::optional<Bytes>& token,
     const Key& recipientSealingKey)
 {
     nlohmann::json inner = {
-        {"kind", kind},
+        {"class", deliveryClass},
         {"mailbox", mailbox},
         {"messageId", messageId},
     };
@@ -164,7 +164,7 @@ std::vector<PendingEntry> Client::listPending()
     std::vector<PendingEntry> entries;
     for (const nlohmann::json& entry : body.at("pending")) {
         entries.push_back(
-            {entry.at("id").get<std::string>(), entry.at("kind").get<std::string>()});
+            {entry.at("id").get<std::string>(), entry.at("class").get<std::string>()});
     }
     return entries;
 }
@@ -205,6 +205,19 @@ SendStatus Client::pollSend(const std::string& attemptId)
         result.errorMessage = error.at("message").get<std::string>();
     }
     return result;
+}
+
+std::string Client::putContent(const Bytes& ciphertext)
+{
+    const ApiResponse response
+        = api_.postBytes("/v1/content", ciphertext, "application/octet-stream");
+    return response.json().at("id").get<std::string>();
+}
+
+Bytes Client::getContent(const std::string& contentId)
+{
+    const ApiResponse response = api_.get("/v1/content/" + contentId);
+    return response.body;
 }
 
 }  // namespace bazarish::client

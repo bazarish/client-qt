@@ -164,8 +164,8 @@ int main()
         [&](const httplib::Request& request, httplib::Response& response) {
             (void)requireCaller(request);
             respondJson(response,
-                {{"pending", nlohmann::json::array({{{"id", "blob1"}, {"kind", "message"}},
-                                {{"id", "blob2"}, {"kind", "contact-request"}}})}});
+                {{"pending", nlohmann::json::array({{{"id", "blob1"}, {"class", "content"}},
+                                {{"id", "blob2"}, {"class", "contact"}}})}});
         });
 
     server.Get("/v1/messaging/pending/blob1",
@@ -191,7 +191,7 @@ int main()
             const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
             const Bytes plain = cms::unseal(sealed, serverSealing);
             const nlohmann::json inner = nlohmann::json::parse(plain.begin(), plain.end());
-            CHECK(inner.at("kind") == "message");
+            CHECK(inner.at("class") == "content");
             CHECK(inner.at("mailbox") == bob.fingerprint());
             CHECK(inner.at("messageId") == "msg-1");
             CHECK(inner.contains("token"));
@@ -271,8 +271,8 @@ int main()
         const std::vector<PendingEntry> pending = client.listPending();
         CHECK(pending.size() == 2);
         CHECK(pending[0].id == "blob1");
-        CHECK(pending[0].kind == "message");
-        CHECK(pending[1].kind == "contact-request");
+        CHECK(pending[0].deliveryClass == "content");
+        CHECK(pending[1].deliveryClass == "contact");
 
         const Bytes blob = client.fetchBlob("blob1");
         CHECK(blob.size() == 9);
@@ -285,7 +285,7 @@ int main()
     {
         const Key recipientSealing = Key::fromPublicDer(serverSealing.publicDer());
         const Bytes sealed = sealDeliveryEnvelope(
-            "message", bob.fingerprint(), "msg-1", Bytes(32, 0x33), recipientSealing);
+            "content", bob.fingerprint(), "msg-1", Bytes(32, 0x33), recipientSealing);
         const Bytes payload = {0x10, 0x20, 0x30};
         const std::string attemptId = client.submitSend(serverFp, sealed, payload);
         CHECK(attemptId == "deadbeef");

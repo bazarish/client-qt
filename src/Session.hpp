@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -36,13 +37,33 @@ struct Contact {
 
 // A decrypted item pulled from the mailbox during sync.
 struct IncomingMessage {
-    // "contact-request" or "message".
-    std::string kind;
+    // End-to-end content type: "text", "contact.request", "token-refill",
+    // "file", ... or "unsupported" for a type this client cannot render.
+    std::string contentType;
     std::string fromFingerprint;
+    // Plain text for "text" and "contact.request"; empty for control types.
     std::string text;
-    // True when this item established or refreshed a contact (carried the
-    // peer's sealing key and a fresh token batch).
+    // Server-visible delivery class this arrived under ("content"/"contact").
+    std::string deliveryClass;
+    // True when this item carried bootstrap (the peer's sealing key, serving
+    // server and a fresh token batch) — a new or refreshed contact.
     bool establishedContact = false;
+    // The original type string when contentType == "unsupported".
+    std::string rawType;
+    // The sender's protocol message id (envelope "id"), used to send a
+    // delivery receipt back for it.
+    std::string messageId;
+    // For contentType == "receipt", the message id being acknowledged.
+    std::string refId;
+
+    // Attachment (content types "file"/"photo"/"audio"/"voice"): a
+    // content-store reference and the key to decrypt it. attachmentRef is
+    // empty when there is no attachment.
+    std::string attachmentRef;
+    std::string attachmentKeyB64;
+    std::string attachmentName;
+    std::string attachmentMime;
+    std::uint64_t attachmentSize = 0;
 };
 
 // The stateful client session: a user identity plus contact and token
@@ -56,13 +77,26 @@ struct IncomingMessage {
 // its reply.
 class Session {
 public:
-    // Creates a fresh identity and sealing key under stateDir. A non-empty
-    // passphrase encrypts the private key PEMs at rest (AES-256-CBC).
+    // Creates a fresh identity and sealing key under stateDir, with no server
+    // connection yet. A non-empty passphrase encrypts the private key PEMs at
+    // rest (AES-256-CBC); name is a human label stored in the clear for the
+    // profile picker. Use connectServer() + subscribe() to attach a server.
+    static Session create(const std::filesystem::path& stateDir,
+        const std::string& passphrase = {}, const std::string& name = {});
+    // Creates a profile already bound to a server (convenience for the CLI and
+    // tests): equivalent to create() followed by connectServer().
     static Session create(const std::filesystem::path& stateDir, const ServerEndpoint& endpoint,
-        const std::string& passphrase = {});
+        const std::string& passphrase);
     // Opens an existing session. The passphrase is required when the keys
     // were created encrypted; it is ignored for unencrypted keys.
     static Session open(const std::filesystem::path& stateDir, const std::string& passphrase = {});
+
+    // Binds the profile to a serving server (or changes it). Rebinds the
+    // transport to the new endpoint and persists it; subscribe() afterwards.
+    void connectServer(const ServerEndpoint& endpoint);
+    // Whether a serving server is configured (a non-empty host).
+    bool isConnected() const;
+    const ServerEndpoint& endpoint() const;
 
     // Exports the whole session (identity, sealing key, routing meta and
     // contacts) into a single password-encrypted file (CMS PWRI). The bundle
@@ -77,6 +111,8 @@ public:
 
     std::string fingerprint() const;
     std::string sealingPublicB64() const;
+    // The human label set at creation (may be empty).
+    const std::string& displayName() const;
 
     // Subscribes to the configured server for the given number of days and
     // registers this client ID. Stores the returned server card.
@@ -116,7 +152,30 @@ public:
     // of the peer's tokens. Throws if the contact is unknown or out of
     // tokens. When the contact has no reciprocal tokens from us yet (the
     // first reply), a fresh batch for the peer is registered and attached.
-    void sendMessage(const std::string& peerFingerprint, const std::string& text);
+    // messageId, when given, is used as the protocol message id (so a delivery
+    // receipt can be matched back). onAcceptedByOwnServer fires once when our
+    // own server has accepted the envelope into its buffer (the "grey" state),
+    // before the recipient server confirms storage (the "yellow" state, which
+    // is this call returning normally).
+    void sendMessage(const std::string& peerFingerprint, const std::string& text,
+        const std::string& messageId = {},
+        const std::function<void()>& onAcceptedByOwnServer = {});
+
+    // Sends a file as a "file" content message: the bytes are encrypted with a
+    // fresh key and uploaded to the content store; the message carries the
+    // reference and key end-to-end. The server never sees the content type.
+    void sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
+        const std::string& messageId = {},
+        const std::function<void()>& onAcceptedByOwnServer = {});
+
+    // Sends a delivery receipt (content type "receipt") acknowledging that we
+    // received the message with id refMessageId. Costs one delivery token.
+    void sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId);
+
+    // Downloads a content-store attachment (from a received message) and
+    // decrypts it to dest.
+    void saveAttachment(const std::string& ref, const std::string& keyB64,
+        const std::filesystem::path& dest);
 
     // Pulls, decrypts, applies (contacts/tokens) and acks all pending items.
     std::vector<IncomingMessage> sync();
@@ -145,11 +204,22 @@ private:
     void requestWithInfo(const std::string& peerFingerprint, const std::string& text,
         const ContactInfo& info);
 
+    // Sends a built inner content envelope to an established contact: handles
+    // the first-reply bootstrap, seals to the peer and spends one token.
+    void sendContent(const std::string& peerFingerprint, nlohmann::json inner,
+        const std::function<void()>& onAcceptedByOwnServer = {});
+
+    // Mints a fresh token batch for the peer and sends it as a token-refill,
+    // in response to the peer signalling a low stash (Contacts.md).
+    void sendTokenRefill(const std::string& peerFingerprint);
+
     // Seals a delivery envelope to the destination server's sealing key and
-    // submits it, polling to completion.
+    // submits it, polling to completion. onAcceptedByOwnServer fires once when
+    // our own server first accepts the envelope (the "grey" delivery state).
     void deliver(const std::string& toServer, const Key& serverSealingKey,
-        const std::string& kind, const std::string& mailbox,
-        const std::optional<Bytes>& token, const Bytes& payload);
+        const std::string& deliveryClass, const std::string& mailbox,
+        const std::optional<Bytes>& token, const Bytes& payload,
+        const std::function<void()>& onAcceptedByOwnServer = {});
     void persistContacts() const;
     void persistMeta() const;
 
@@ -161,6 +231,8 @@ private:
     // to contacts inside the E2E payload so they can seal replies to our
     // server.
     std::string serverCardB64_;
+    // Human label for the profile picker (stored in the clear in meta.json).
+    std::string name_;
     // Our own subscription certificate (DER, base64), retained on subscribe
     // so we can publish the full self-verifying chain in an invite.
     std::string subscriptionCertB64_;

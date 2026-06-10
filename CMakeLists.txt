@@ -28,6 +28,7 @@ add_library(bazarish_client_lib STATIC
     src/ApiClient.cpp
     src/Client.cpp
     src/Invite.cpp
+    src/ProfileManager.cpp
     src/Qr.cpp
     src/Session.cpp
 )
@@ -41,18 +42,61 @@ add_executable(bazarish-client src/Main.cpp)
 target_link_libraries(bazarish-client PRIVATE bazarish_client_lib)
 target_compile_options(bazarish-client PRIVATE -Wall -Wextra -Werror)
 
-# The Qt6 desktop GUI, built only when Qt6 Widgets is available. It is a thin
-# front-end over the same Session logic the CLI uses.
-find_package(Qt6 COMPONENTS Widgets QUIET)
+# The Qt6 Quick (QML) desktop app — the primary front-end over the same
+# Session logic the CLI uses. Built only when Qt6 Quick is available.
+find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql QUIET)
 if(Qt6_FOUND)
-    add_executable(bazarish-gui gui/GuiMain.cpp gui/MainWindow.cpp gui/MainWindow.hpp)
-    set_target_properties(bazarish-gui PROPERTIES AUTOMOC ON)
-    target_include_directories(bazarish-gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_link_libraries(bazarish-gui PRIVATE bazarish_client_lib Qt6::Widgets)
-    target_compile_options(bazarish-gui PRIVATE -Wall -Wextra)
-    message(STATUS "Qt6 found: building bazarish-gui")
+    qt_standard_project_setup(REQUIRES 6.5)
+
+    qt_add_executable(bazarish-app
+        app/main.cpp
+        app/AppController.cpp
+        app/AppController.hpp
+        app/SessionController.cpp
+        app/SessionController.hpp
+        app/Models.cpp
+        app/Models.hpp
+        app/TranscriptStore.cpp
+        app/TranscriptStore.hpp
+        app/Identicon.cpp
+        app/Identicon.hpp
+    )
+    target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(bazarish-app PRIVATE
+        bazarish_client_lib ${QRENCODE_LIBRARY}
+        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql)
+    target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR})
+    target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
+
+    set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+    qt_add_qml_module(bazarish-app
+        URI Bazarish
+        VERSION 1.0
+        QML_FILES
+            app/qml/Main.qml
+            app/qml/Theme.qml
+            app/qml/DeliveryStatus.qml
+            app/qml/ProfilePicker.qml
+            app/qml/CreateProfileWizard.qml
+            app/qml/ConnectServerPage.qml
+            app/qml/MainView.qml
+            app/qml/ChatList.qml
+            app/qml/ConversationView.qml
+            app/qml/MessageBubble.qml
+            app/qml/Composer.qml
+            app/qml/NewChatSheet.qml
+            app/qml/InviteSheet.qml
+            app/qml/ContactInfo.qml
+            app/qml/CallScreen.qml
+            app/qml/SettingsPage.qml
+            app/qml/components/Avatar.qml
+            app/qml/components/QrView.qml
+            app/qml/components/IconButton.qml
+            app/qml/components/FormField.qml
+    )
+    message(STATUS "Qt6 Quick found: building bazarish-app")
 else()
-    message(STATUS "Qt6 not found: skipping bazarish-gui")
+    message(STATUS "Qt6 Quick not found: skipping bazarish-app")
 endif()
 
 enable_testing()
@@ -67,3 +111,4 @@ endfunction()
 bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestInvite)
+bazarish_client_add_test(TestProfile)

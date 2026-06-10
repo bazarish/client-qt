@@ -52,7 +52,9 @@ struct ResolveResult {
 
 struct PendingEntry {
     std::string id;
-    std::string kind;
+    // Delivery class: "content" or "contact" (the server-visible admission
+    // selector, not the end-to-end content type).
+    std::string deliveryClass;
 };
 
 // Outcome of a send attempt. status is "pending", "delivered" or "failed";
@@ -63,11 +65,12 @@ struct SendStatus {
     std::string errorMessage;
 };
 
-// Seals a delivery envelope to a destination server. mailbox is the
+// Seals a delivery envelope to a destination server. deliveryClass is the
+// server-visible admission selector ("content" or "contact"); mailbox is the
 // recipient's fingerprint, messageId deduplicates retries, token is the
-// one-time delivery token for a "message" (absent for "contact-request").
-// The result is the opaque sealed blob the send endpoint expects.
-Bytes sealDeliveryEnvelope(const std::string& kind, const std::string& mailbox,
+// one-time delivery token for "content" (absent for "contact"). The result is
+// the opaque sealed blob the send endpoint expects.
+Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& mailbox,
     const std::string& messageId, const std::optional<Bytes>& token,
     const Key& recipientSealingKey);
 
@@ -116,6 +119,14 @@ public:
     std::string submitSend(
         const std::string& toServer, const Bytes& sealed, const Bytes& payload);
     SendStatus pollSend(const std::string& attemptId);
+
+    // --- Content store (type-blind bulk media) ---
+
+    // Uploads opaque ciphertext; returns the content id (sha256 hex) to embed
+    // in a message reference. Identical ciphertext dedups to the same id.
+    std::string putContent(const Bytes& ciphertext);
+    // Fetches the ciphertext for a content id.
+    Bytes getContent(const std::string& contentId);
 
 private:
     SubscribeResult submitSubscription(const std::string& path, std::int64_t issuedAt,
