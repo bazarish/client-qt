@@ -56,10 +56,24 @@ struct IncomingMessage {
 // its reply.
 class Session {
 public:
-    // Creates a fresh identity and sealing key under stateDir.
-    static Session create(const std::filesystem::path& stateDir, const ServerEndpoint& endpoint);
-    // Opens an existing session.
-    static Session open(const std::filesystem::path& stateDir);
+    // Creates a fresh identity and sealing key under stateDir. A non-empty
+    // passphrase encrypts the private key PEMs at rest (AES-256-CBC).
+    static Session create(const std::filesystem::path& stateDir, const ServerEndpoint& endpoint,
+        const std::string& passphrase = {});
+    // Opens an existing session. The passphrase is required when the keys
+    // were created encrypted; it is ignored for unencrypted keys.
+    static Session open(const std::filesystem::path& stateDir, const std::string& passphrase = {});
+
+    // Exports the whole session (identity, sealing key, routing meta and
+    // contacts) into a single password-encrypted file (CMS PWRI). The bundle
+    // holds the keys in plain PEM internally — the password protects the file.
+    void exportState(
+        const std::filesystem::path& outFile, const std::string& password) const;
+    // Imports an exported bundle into a fresh stateDir. A non-empty
+    // atRestPassphrase re-encrypts the imported keys on disk.
+    static void importState(const std::filesystem::path& bundleFile,
+        const std::filesystem::path& stateDir, const std::string& password,
+        const std::string& atRestPassphrase = {});
 
     std::string fingerprint() const;
     std::string sealingPublicB64() const;
@@ -67,6 +81,10 @@ public:
     // Subscribes to the configured server for the given number of days and
     // registers this client ID. Stores the returned server card.
     void subscribe(std::int64_t days);
+
+    // Registers a human-readable alias (username) for this identity at the
+    // serving server's service node, so contacts can add us by name.
+    void registerAlias(const std::string& alias);
 
     // Sends a contact request to a peer. The peer's prekey, serving server
     // and server card are looked up (on peerHost:peerPort when given — the
@@ -76,6 +94,23 @@ public:
     void sendContactRequest(const std::string& peerFingerprint, const std::string& text,
         const std::string& peerHost = {}, int peerPort = 0,
         const std::string& peerBasePath = {});
+
+    // A bazarish:// invite carrying our full self-verifying serving chain
+    // (subscription certificate + server card). A contact can verify it and
+    // reach us with no trust in any server. Requires an active subscription.
+    std::string inviteUri() const;
+
+    // Adds a contact from an invite URI: the embedded chain is verified
+    // offline (no lookup) and a contact request is sent to the peer.
+    void addByInvite(const std::string& inviteUri, const std::string& text);
+
+    // Adds a contact by username (alias). The resolver maps the alias to a
+    // fingerprint, which is the one trust compromise — a hostile resolver
+    // could return a wrong fingerprint; everything after the mapping is
+    // verified end-to-end. host/port target the resolver's facade (our own
+    // when host is empty).
+    void addByUsername(const std::string& alias, const std::string& text,
+        const std::string& host = {}, int port = 0, const std::string& basePath = {});
 
     // Sends an E2E-encrypted message to an established contact, spending one
     // of the peer's tokens. Throws if the contact is unknown or out of
@@ -104,6 +139,12 @@ private:
         const std::string& host, int port, const std::string& basePath,
         const std::string& peerFingerprint) const;
 
+    // Sends a contact request to a peer whose verified routing info is
+    // already known (from a lookup or an invite). Mints a reply token batch
+    // and records the contact.
+    void requestWithInfo(const std::string& peerFingerprint, const std::string& text,
+        const ContactInfo& info);
+
     // Seals a delivery envelope to the destination server's sealing key and
     // submits it, polling to completion.
     void deliver(const std::string& toServer, const Key& serverSealingKey,
@@ -120,6 +161,12 @@ private:
     // to contacts inside the E2E payload so they can seal replies to our
     // server.
     std::string serverCardB64_;
+    // Our own subscription certificate (DER, base64), retained on subscribe
+    // so we can publish the full self-verifying chain in an invite.
+    std::string subscriptionCertB64_;
+    // Whether the private key PEMs are encrypted at rest. Persisted in meta so
+    // open() knows to require a passphrase.
+    bool encrypted_ = false;
 };
 
 }  // namespace bazarish::client

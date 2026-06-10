@@ -53,6 +53,7 @@ SubscribeResult Client::submitSubscription(const std::string& path,
     const nlohmann::json body = response.json();
 
     SubscribeResult result;
+    result.subscriptionCertDer = cert;
     result.notAfter = body.at("notAfter").get<std::int64_t>();
     result.quotaBytes = body.at("quotaBytes").get<std::uint64_t>();
     result.maxTermSeconds = body.at("maxTermSeconds").get<std::int64_t>();

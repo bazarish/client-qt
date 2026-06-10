@@ -19,13 +19,22 @@ endif()
 
 find_package(Threads REQUIRED)
 
+# libqrencode renders contact invites as QR codes (multi-symbol structured
+# append for the full self-verifying chain).
+find_library(QRENCODE_LIBRARY NAMES qrencode REQUIRED)
+find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
+
 add_library(bazarish_client_lib STATIC
     src/ApiClient.cpp
     src/Client.cpp
+    src/Invite.cpp
+    src/Qr.cpp
     src/Session.cpp
 )
 target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
+target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY})
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 
 add_executable(bazarish-client src/Main.cpp)
@@ -57,3 +66,4 @@ endfunction()
 
 bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestClient)
+bazarish_client_add_test(TestInvite)

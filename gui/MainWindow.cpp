@@ -1,13 +1,25 @@
 // Bazarish project (c) 2026
 #include "MainWindow.hpp"
 
+#include "Qr.hpp"
+
+#include <QApplication>
+#include <QClipboard>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFileDialog>
 #include <QHBoxLayout>
+#include <QImage>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QPainter>
+#include <QPixmap>
+#include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QTimer>
 #include <QTextEdit>
 #include <QVBoxLayout>
@@ -28,6 +40,26 @@ QString shortFingerprint(const QString& fingerprint)
     return fingerprint.left(8) + "…" + fingerprint.right(4);
 }
 
+// Draws one QR symbol as a black-on-white pixmap: scale pixels per module
+// plus a quiet-zone border so a scanner can lock onto it.
+QPixmap qrToPixmap(const client::QrSymbol& symbol, int scale, int quiet)
+{
+    const int dim = (symbol.width + 2 * quiet) * scale;
+    QImage image(dim, dim, QImage::Format_RGB32);
+    image.fill(Qt::white);
+    QPainter painter(&image);
+    for (int y = 0; y < symbol.width; ++y) {
+        for (int x = 0; x < symbol.width; ++x) {
+            if (symbol.modules[y * symbol.width + x]) {
+                painter.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale,
+                    Qt::black);
+            }
+        }
+    }
+    painter.end();
+    return QPixmap::fromImage(image);
+}
+
 }  // namespace
 
 MainWindow::MainWindow(client::Session& session, QWidget* parent)
@@ -43,15 +75,23 @@ MainWindow::MainWindow(client::Session& session, QWidget* parent)
 
     transcript_->setReadOnly(true);
 
-    auto* addButton = new QPushButton("Add contact…", this);
+    auto* inviteButton = new QPushButton("My invite (link + QR)…", this);
+    auto* addInviteButton = new QPushButton("Add by invite…", this);
+    auto* addUserButton = new QPushButton("Add by username…", this);
+    auto* addButton = new QPushButton("Add by fingerprint…", this);
+    auto* exportButton = new QPushButton("Export backup…", this);
     auto* syncButton = new QPushButton("Sync", this);
     auto* sendButton = new QPushButton("Send", this);
 
-    // Left column: contacts plus the add button.
+    // Left column: contacts plus the add/share buttons.
     auto* left = new QVBoxLayout();
     left->addWidget(new QLabel("Contacts", this));
     left->addWidget(contacts_, 1);
+    left->addWidget(inviteButton);
+    left->addWidget(addInviteButton);
+    left->addWidget(addUserButton);
     left->addWidget(addButton);
+    left->addWidget(exportButton);
 
     // Right column: transcript, composer, sync.
     auto* composer = new QHBoxLayout();
@@ -71,7 +111,11 @@ MainWindow::MainWindow(client::Session& session, QWidget* parent)
     root->addLayout(columns, 1);
     root->addWidget(status_);
 
+    connect(inviteButton, &QPushButton::clicked, this, &MainWindow::onShowInvite);
+    connect(addInviteButton, &QPushButton::clicked, this, &MainWindow::onAddByInvite);
+    connect(addUserButton, &QPushButton::clicked, this, &MainWindow::onAddByUsername);
     connect(addButton, &QPushButton::clicked, this, &MainWindow::onAddContact);
+    connect(exportButton, &QPushButton::clicked, this, &MainWindow::onExport);
     connect(syncButton, &QPushButton::clicked, this, &MainWindow::onSync);
     connect(sendButton, &QPushButton::clicked, this, &MainWindow::onSend);
     connect(input_, &QLineEdit::returnPressed, this, &MainWindow::onSend);
@@ -152,6 +196,125 @@ void MainWindow::onAddContact()
         status_->setText("Contact request sent.");
     } catch (const std::exception& error) {
         QMessageBox::warning(this, "Contact request failed", error.what());
+    }
+}
+
+void MainWindow::onShowInvite()
+{
+    std::string uri;
+    try {
+        uri = session_.inviteUri();
+    } catch (const std::exception& error) {
+        QMessageBox::warning(this, "No invite",
+            QString("Subscribe first.\n") + error.what());
+        return;
+    }
+    const QString link = QString::fromStdString(uri);
+
+    QDialog dialog(this);
+    dialog.setWindowTitle("My invite");
+    dialog.resize(560, 640);
+    auto* layout = new QVBoxLayout(&dialog);
+
+    layout->addWidget(new QLabel(
+        "Share this link or the QR codes. It carries your full, self-verifying\n"
+        "trust chain — a contact needs no server trust to add you.", &dialog));
+
+    auto* linkEdit = new QTextEdit(&dialog);
+    linkEdit->setReadOnly(true);
+    linkEdit->setPlainText(link);
+    linkEdit->setMaximumHeight(110);
+    layout->addWidget(linkEdit);
+
+    auto* copyButton = new QPushButton("Copy link to clipboard", &dialog);
+    connect(copyButton, &QPushButton::clicked, &dialog,
+        [link]() { QApplication::clipboard()->setText(link); });
+    layout->addWidget(copyButton);
+
+    // The full post-quantum chain spans several QR symbols; show them stacked
+    // in a scroll area so a scanner can read each frame in turn.
+    const std::vector<client::QrSymbol> symbols = client::encodeQrSymbols(uri);
+    auto* frames = new QWidget(&dialog);
+    auto* framesLayout = new QVBoxLayout(frames);
+    for (std::size_t i = 0; i < symbols.size(); ++i) {
+        framesLayout->addWidget(new QLabel(
+            QString("QR %1 / %2").arg(i + 1).arg(symbols.size()), frames));
+        auto* qrLabel = new QLabel(frames);
+        qrLabel->setPixmap(qrToPixmap(symbols[i], 3, 2));
+        framesLayout->addWidget(qrLabel);
+    }
+    auto* scroll = new QScrollArea(&dialog);
+    scroll->setWidget(frames);
+    scroll->setWidgetResizable(true);
+    layout->addWidget(scroll, 1);
+
+    dialog.exec();
+}
+
+void MainWindow::onAddByInvite()
+{
+    bool ok = false;
+    const QString link = QInputDialog::getMultiLineText(this, "Add by invite",
+        "Paste the bazarish:// invite link:", QString(), &ok);
+    if (!ok || link.trimmed().isEmpty()) {
+        return;
+    }
+    const QString text = QInputDialog::getText(this, "Add by invite",
+        "Introduction message:", QLineEdit::Normal, "Hi, found your invite!", &ok);
+    if (!ok) {
+        return;
+    }
+    try {
+        session_.addByInvite(link.trimmed().toStdString(), text.toStdString());
+        refreshContactList();
+        status_->setText("Contact request sent from invite.");
+    } catch (const std::exception& error) {
+        QMessageBox::warning(this, "Add by invite failed", error.what());
+    }
+}
+
+void MainWindow::onAddByUsername()
+{
+    bool ok = false;
+    const QString alias = QInputDialog::getText(this, "Add by username",
+        "Username (resolved on this server; the resolver is trusted for the\n"
+        "name → fingerprint mapping):",
+        QLineEdit::Normal, QString(), &ok);
+    if (!ok || alias.trimmed().isEmpty()) {
+        return;
+    }
+    const QString text = QInputDialog::getText(this, "Add by username",
+        "Introduction message:", QLineEdit::Normal, "Hi, add me?", &ok);
+    if (!ok) {
+        return;
+    }
+    try {
+        session_.addByUsername(alias.trimmed().toStdString(), text.toStdString());
+        refreshContactList();
+        status_->setText("Contact request sent (resolver-trusted mapping).");
+    } catch (const std::exception& error) {
+        QMessageBox::warning(this, "Add by username failed", error.what());
+    }
+}
+
+void MainWindow::onExport()
+{
+    const QString path = QFileDialog::getSaveFileName(this, "Export encrypted backup",
+        "bazarish-backup.baz");
+    if (path.isEmpty()) {
+        return;
+    }
+    bool ok = false;
+    const QString password = QInputDialog::getText(this, "Export backup",
+        "Bundle password:", QLineEdit::Password, QString(), &ok);
+    if (!ok || password.isEmpty()) {
+        return;
+    }
+    try {
+        session_.exportState(path.toStdString(), password.toStdString());
+        status_->setText("Exported encrypted backup.");
+    } catch (const std::exception& error) {
+        QMessageBox::warning(this, "Export failed", error.what());
     }
 }
 

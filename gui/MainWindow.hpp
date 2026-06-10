@@ -28,6 +28,10 @@ private slots:
     void onSync();
     void onSend();
     void onAddContact();
+    void onAddByInvite();
+    void onAddByUsername();
+    void onShowInvite();
+    void onExport();
     void onContactSelected();
 
 private:

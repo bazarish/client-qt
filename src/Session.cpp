@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Session.hpp"
 
+#include "Invite.hpp"
+
 #include <bazarish/Cms.hpp>
 #include <bazarish/Tokens.hpp>
 
@@ -59,17 +61,19 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
 {
 }
 
-Session Session::create(const fs::path& stateDir, const ServerEndpoint& endpoint)
+Session Session::create(const fs::path& stateDir, const ServerEndpoint& endpoint,
+    const std::string& passphrase)
 {
     fs::create_directories(stateDir);
 
     Identity identity = Identity::generate();
-    writeFileText(stateDir / "identity.pem", identity.privatePem());
+    writeFileText(stateDir / "identity.pem", identity.privatePem(passphrase));
 
     Key sealing = Key::generateSealing();
-    writeFileText(stateDir / "sealing.pem", sealing.privatePem());
+    writeFileText(stateDir / "sealing.pem", sealing.privatePem(passphrase));
 
     const std::string clientId = toHex(randomBytes(8));
+    const bool encrypted = !passphrase.empty();
 
     const nlohmann::json meta = {
         {"clientId", clientId},
@@ -81,14 +85,18 @@ Session Session::create(const fs::path& stateDir, const ServerEndpoint& endpoint
                 {"serverFingerprint", endpoint.serverFingerprint},
             }},
         {"serverCard", ""},
+        {"subscriptionCert", ""},
+        {"encrypted", encrypted},
     };
     writeFileText(stateDir / "meta.json", meta.dump(2));
 
     auto client = std::make_unique<Client>(std::move(identity), clientId, endpoint);
-    return Session(stateDir, std::move(client), std::move(sealing), {});
+    Session session(stateDir, std::move(client), std::move(sealing), {});
+    session.encrypted_ = encrypted;
+    return session;
 }
 
-Session Session::open(const fs::path& stateDir)
+Session Session::open(const fs::path& stateDir, const std::string& passphrase)
 {
     const nlohmann::json meta = nlohmann::json::parse(readFileText(stateDir / "meta.json"));
     ServerEndpoint endpoint;
@@ -98,8 +106,15 @@ Session Session::open(const fs::path& stateDir)
     endpoint.serverFingerprint
         = meta.at("endpoint").at("serverFingerprint").get<std::string>();
 
-    Identity identity = Identity::fromPrivatePem(readFileText(stateDir / "identity.pem"));
-    Key sealing = Key::fromPrivatePem(readFileText(stateDir / "sealing.pem"));
+    const bool encrypted = meta.value("encrypted", false);
+    if (encrypted && passphrase.empty()) {
+        throw std::runtime_error(
+            "session keys are encrypted: set BAZARISH_PASSPHRASE");
+    }
+
+    Identity identity
+        = Identity::fromPrivatePem(readFileText(stateDir / "identity.pem"), passphrase);
+    Key sealing = Key::fromPrivatePem(readFileText(stateDir / "sealing.pem"), passphrase);
     const std::string clientId = meta.at("clientId").get<std::string>();
 
     std::map<std::string, Contact> contacts;
@@ -120,6 +135,8 @@ Session Session::open(const fs::path& stateDir)
     auto client = std::make_unique<Client>(std::move(identity), clientId, endpoint);
     Session session(stateDir, std::move(client), std::move(sealing), std::move(contacts));
     session.serverCardB64_ = meta.at("serverCard").get<std::string>();
+    session.subscriptionCertB64_ = meta.value("subscriptionCert", std::string{});
+    session.encrypted_ = encrypted;
     return session;
 }
 
@@ -178,6 +195,8 @@ void Session::persistMeta() const
                 {"serverFingerprint", client_->endpoint().serverFingerprint},
             }},
         {"serverCard", serverCardB64_},
+        {"subscriptionCert", subscriptionCertB64_},
+        {"encrypted", encrypted_},
     };
     writeFileText(stateDir_ / "meta.json", meta.dump(2));
 }
@@ -205,8 +224,14 @@ void Session::subscribe(const std::int64_t days)
     const SubscribeResult result
         = client_->subscribe(now, now + days * 24 * 3600, sealingKey_.publicDer());
     serverCardB64_ = toBase64(result.serverCardDer);
+    subscriptionCertB64_ = toBase64(result.subscriptionCertDer);
     persistMeta();
     client_->registerThisClient();
+}
+
+void Session::registerAlias(const std::string& alias)
+{
+    client_->registerAlias(alias, nowSeconds(), std::nullopt);
 }
 
 std::vector<std::string> Session::issueTokenBatch()
@@ -277,6 +302,46 @@ void Session::sendContactRequest(const std::string& peerFingerprint, const std::
     // the peer's server, so neither can be substituted by an intermediary.
     const ContactInfo info
         = lookupContactAt(peerHost, peerPort, peerBasePath, peerFingerprint);
+    requestWithInfo(peerFingerprint, text, info);
+}
+
+void Session::addByInvite(const std::string& inviteUri, const std::string& text)
+{
+    // The invite carries the full chain; verify it offline. SubscriptionCertificate
+    // and ServerCard verification bind every field to a signature, so a tampered
+    // invite is rejected with no server involved at all.
+    const Invite invite = decodeInvite(inviteUri);
+    ContactInfo info;
+    info.subscriptionCert = SubscriptionCertificate::verify(invite.subscriptionCertDer);
+    info.serverCard = ServerCard::verify(invite.serverCardDer);
+    requestWithInfo(info.subscriptionCert.user, text, info);
+}
+
+void Session::addByUsername(const std::string& alias, const std::string& text,
+    const std::string& host, const int port, const std::string& basePath)
+{
+    // Resolve the alias to a fingerprint. This mapping is the one trust
+    // compromise of the username path: a hostile resolver could return an
+    // attacker's fingerprint. Everything after the mapping — the contact
+    // lookup and its certificates — is verified end-to-end as usual.
+    std::string fingerprint;
+    if (host.empty()) {
+        fingerprint = client_->resolve(alias).user;
+    } else {
+        ServerEndpoint endpoint;
+        endpoint.host = host;
+        endpoint.port = port;
+        endpoint.basePath = basePath;
+        Client remote(Identity::fromPrivatePem(client_->identity().privatePem()),
+            client_->clientId(), endpoint);
+        fingerprint = remote.resolve(alias).user;
+    }
+    sendContactRequest(fingerprint, text, host, port, basePath);
+}
+
+void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,
+    const ContactInfo& info)
+{
     if (info.subscriptionCert.user != peerFingerprint) {
         throw std::runtime_error("contact lookup returned a different user");
     }
@@ -414,6 +479,64 @@ std::vector<IncomingMessage> Session::sync()
     }
     persistContacts();
     return result;
+}
+
+std::string Session::inviteUri() const
+{
+    if (subscriptionCertB64_.empty() || serverCardB64_.empty()) {
+        throw std::runtime_error("subscribe first: no serving chain to publish");
+    }
+    Invite invite;
+    invite.subscriptionCertDer = fromBase64(subscriptionCertB64_);
+    invite.serverCardDer = fromBase64(serverCardB64_);
+    return encodeInvite(invite);
+}
+
+void Session::exportState(const fs::path& outFile, const std::string& password) const
+{
+    const nlohmann::json meta = nlohmann::json::parse(readFileText(stateDir_ / "meta.json"));
+    nlohmann::json contacts = nlohmann::json::object();
+    const fs::path contactsPath = stateDir_ / "contacts.json";
+    if (fs::exists(contactsPath)) {
+        contacts = nlohmann::json::parse(readFileText(contactsPath));
+    }
+
+    // The keys are re-serialized unencrypted inside the bundle; the password
+    // protects the bundle as a whole, decoupling the export from whatever
+    // at-rest passphrase this state directory happens to use.
+    const nlohmann::json bundle = {
+        {"v", 1},
+        {"identityPem", client_->identity().privatePem()},
+        {"sealingPem", sealingKey_.privatePem()},
+        {"meta", meta},
+        {"contacts", contacts},
+    };
+    const std::string text = bundle.dump();
+    const Bytes sealed = cms::sealWithPassword(Bytes(text.begin(), text.end()), password);
+    writeFileText(outFile, std::string(sealed.begin(), sealed.end()));
+}
+
+void Session::importState(const fs::path& bundleFile, const fs::path& stateDir,
+    const std::string& password, const std::string& atRestPassphrase)
+{
+    const std::string sealedText = readFileText(bundleFile);
+    const Bytes plain
+        = cms::unsealWithPassword(Bytes(sealedText.begin(), sealedText.end()), password);
+    const nlohmann::json bundle = nlohmann::json::parse(plain.begin(), plain.end());
+
+    fs::create_directories(stateDir);
+
+    // Round-trip the keys through the crypto types so the imported PEMs adopt
+    // the chosen at-rest scheme (encrypted iff a passphrase is given).
+    const Identity identity = Identity::fromPrivatePem(bundle.at("identityPem").get<std::string>());
+    const Key sealing = Key::fromPrivatePem(bundle.at("sealingPem").get<std::string>());
+    writeFileText(stateDir / "identity.pem", identity.privatePem(atRestPassphrase));
+    writeFileText(stateDir / "sealing.pem", sealing.privatePem(atRestPassphrase));
+
+    nlohmann::json meta = bundle.at("meta");
+    meta["encrypted"] = !atRestPassphrase.empty();
+    writeFileText(stateDir / "meta.json", meta.dump(2));
+    writeFileText(stateDir / "contacts.json", bundle.at("contacts").dump(2));
 }
 
 }  // namespace bazarish::client

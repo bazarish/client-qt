@@ -23,6 +23,9 @@ struct SubscribeResult {
     ServerCard serverCard;
     // The server card as received (DER), for persistence and forwarding.
     Bytes serverCardDer;
+    // The subscription certificate we issued (DER): our serving statement,
+    // persisted so we can hand a contact the full self-verifying chain.
+    Bytes subscriptionCertDer;
 };
 
 // A contact looked up by fingerprint: the user's subscription certificate
