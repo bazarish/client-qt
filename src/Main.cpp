@@ -61,6 +61,8 @@ void printUsage()
         "  bazarish-client add-user <state> <alias> <text> [host port [base-path]]\n"
         "  bazarish-client send <state> <peer-fp> <text>\n"
         "  bazarish-client send-file <state> <peer-fp> <file>\n"
+        "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
+        "  bazarish-client send-callback <state> <peer-fp> <data> [ref]\n"
         "  bazarish-client get-file <state> <ref> <key-b64> <out>\n"
         "  bazarish-client sync <state>\n"
         "  bazarish-client export <state> <out-file>\n"
@@ -243,6 +245,34 @@ int runSendFile(const std::vector<std::string>& args)
     return 0;
 }
 
+int runSendCommand(const std::vector<std::string>& args)
+{
+    // send-command <state> <peer-fp> <command> [args]
+    if (args.size() < 4 || args.size() > 5) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    const std::string commandArgs = args.size() == 5 ? args[4] : std::string();
+    session.sendCommand(args[2], args[3], commandArgs);
+    std::printf("command /%s sent to %s\n", args[3].c_str(), args[2].c_str());
+    return 0;
+}
+
+int runSendCallback(const std::vector<std::string>& args)
+{
+    // send-callback <state> <peer-fp> <data> [ref]
+    if (args.size() < 4 || args.size() > 5) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    const std::string ref = args.size() == 5 ? args[4] : std::string();
+    session.sendCallback(args[2], args[3], ref);
+    std::printf("callback '%s' sent to %s\n", args[3].c_str(), args[2].c_str());
+    return 0;
+}
+
 int runGetFile(const std::vector<std::string>& args)
 {
     // get-file <state> <ref> <key-b64> <out>
@@ -313,8 +343,15 @@ int runSync(const std::vector<std::string>& args)
             // Print the reference and key so `get-file` can download it.
             body = message.attachmentName + " (" + std::to_string(message.attachmentSize)
                 + " bytes) ref=" + message.attachmentRef + " key=" + message.attachmentKeyB64;
+        } else if (message.contentType == "bot.callback") {
+            body = "data=" + message.callbackData + " ref=" + message.refId;
         } else {
             body = message.text;
+        }
+        // Show any inline keyboard so a button's data/command is visible to a
+        // human driving the CLI (then replied to with send-callback/-command).
+        if (!message.keyboardJson.empty()) {
+            body += "  keyboard=" + message.keyboardJson;
         }
         std::printf("[%s] from %s: %s%s\n", message.contentType.c_str(),
             message.fromFingerprint.c_str(), body.c_str(),
@@ -373,6 +410,12 @@ int main(const int argc, const char** argv)
         }
         if (command == "send-file") {
             return runSendFile(args);
+        }
+        if (command == "send-command") {
+            return runSendCommand(args);
+        }
+        if (command == "send-callback") {
+            return runSendCallback(args);
         }
         if (command == "get-file") {
             return runGetFile(args);

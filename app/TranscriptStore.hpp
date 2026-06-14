@@ -23,6 +23,7 @@ struct StoredMessage {
     qint64 attSize = 0;
     QString attRef;        // content-store id
     QString attKey;        // base64 content key
+    QString keyboard;      // inline-keyboard JSON (empty when none)
     qint64 ts = 0;         // unix seconds
     int status = 0;        // 0 sending, 1 sent, 2 failed, 3 received
 };

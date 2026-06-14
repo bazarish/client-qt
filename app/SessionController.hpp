@@ -37,6 +37,8 @@ public slots:
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId);
     void sendReceipt(const QString& peer, const QString& refId);
+    void sendCallback(const QString& peer, const QString& data, const QString& ref);
+    void sendCommand(const QString& peer, const QString& command, const QString& args);
     void addByInvite(const QString& uri, const QString& intro);
     void addByUsername(const QString& alias, const QString& intro);
     void addByFingerprint(const QString& fingerprint, const QString& intro);
@@ -98,6 +100,10 @@ public:
     Q_INVOKABLE void openConversation(const QString& peer);
     Q_INVOKABLE void sendText(const QString& text);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
+    // Inline-keyboard button presses in the active conversation: a callback
+    // (button data + the keyboard message's protocol id) or a command button.
+    Q_INVOKABLE void sendCallback(const QString& data, const QString& refMsgId);
+    Q_INVOKABLE void sendCommand(const QString& command, const QString& args);
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
     Q_INVOKABLE void addByFingerprint(const QString& fingerprint, const QString& intro);
@@ -125,6 +131,8 @@ signals:  // to worker
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId);
     void requestSendReceipt(const QString& peer, const QString& refId);
+    void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
+    void requestSendCommand(const QString& peer, const QString& command, const QString& args);
     void requestAddByInvite(const QString& uri, const QString& intro);
     void requestAddByUsername(const QString& alias, const QString& intro);
     void requestAddByFingerprint(const QString& fingerprint, const QString& intro);

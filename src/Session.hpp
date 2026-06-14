@@ -17,6 +17,23 @@
 
 namespace bazarish::client {
 
+// One button of an inline keyboard attached to a message. Carries a label and
+// exactly one action: a callback (sends a bot.callback when tapped) or a
+// command (sends a bot.command). When both are set, the callback wins.
+struct InlineButton {
+    std::string text;
+    std::string data;     // callback payload (bot.callback); empty if none
+    std::string command;  // command name (bot.command); empty if none
+};
+
+// An inline keyboard: rows of buttons rendered under a message. Tapping a
+// button sends a bot.callback or bot.command back to the message's sender.
+using InlineKeyboard = std::vector<std::vector<InlineButton>>;
+
+// Serializes an inline keyboard to its JSON wire form (the value of a message
+// "keyboard" field). Exposed for the bot framework, the CLI and tests.
+std::string inlineKeyboardJson(const InlineKeyboard& keyboard);
+
 // A known contact's routing and token state, persisted by the session.
 struct Contact {
     // The peer's user sealing public key (SubjectPublicKeyInfo DER, base64),
@@ -53,8 +70,18 @@ struct IncomingMessage {
     // The sender's protocol message id (envelope "id"), used to send a
     // delivery receipt back for it.
     std::string messageId;
-    // For contentType == "receipt", the message id being acknowledged.
+    // For contentType == "receipt", the message id being acknowledged; for
+    // contentType == "bot.callback", the keyboard message the button belongs to.
     std::string refId;
+
+    // Inline keyboard (content types may attach one), as its JSON wire form so
+    // a UI can render it without a C++ parser. Empty when there is no keyboard.
+    std::string keyboardJson;
+    // For contentType == "bot.command": the command name and its raw argument
+    // string. For contentType == "bot.callback": the button's callback data.
+    std::string commandName;
+    std::string commandArgs;
+    std::string callbackData;
 
     // Attachment (content types "file"/"photo"/"audio"/"voice"): a
     // content-store reference and the key to decrypt it. attachmentRef is
@@ -167,6 +194,24 @@ public:
     void sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {});
+
+    // Sends an interactive message: a "text" content message carrying an inline
+    // keyboard the recipient can tap to send a bot.callback / bot.command back.
+    void sendInteractive(const std::string& peerFingerprint, const std::string& text,
+        const InlineKeyboard& keyboard, const std::string& messageId = {},
+        const std::function<void()>& onAcceptedByOwnServer = {});
+
+    // Sends a command invocation (content type "bot.command") to a peer: a bot
+    // dispatches on the command name. args is the raw argument string.
+    void sendCommand(const std::string& peerFingerprint, const std::string& command,
+        const std::string& args = {}, const std::string& messageId = {},
+        const std::function<void()>& onAcceptedByOwnServer = {});
+
+    // Sends a button-press callback (content type "bot.callback") to a peer:
+    // data is the tapped button's payload, refMessageId the keyboard message it
+    // belongs to (so the bot can correlate the press to a prior message).
+    void sendCallback(const std::string& peerFingerprint, const std::string& data,
+        const std::string& refMessageId = {});
 
     // Sends a delivery receipt (content type "receipt") acknowledging that we
     // received the message with id refMessageId. Costs one delivery token.

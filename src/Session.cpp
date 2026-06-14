@@ -100,6 +100,28 @@ void writeFileBytes(const fs::path& path, const Bytes& data)
     }
 }
 
+// Builds the JSON wire form of an inline keyboard: an array of rows, each row
+// an array of buttons. A button carries its label plus a callback "data" or a
+// "command"; empty actions are omitted so the shape stays minimal.
+nlohmann::json keyboardToJson(const InlineKeyboard& keyboard)
+{
+    nlohmann::json rows = nlohmann::json::array();
+    for (const std::vector<InlineButton>& row : keyboard) {
+        nlohmann::json jsonRow = nlohmann::json::array();
+        for (const InlineButton& button : row) {
+            nlohmann::json jsonButton = {{"text", button.text}};
+            if (!button.data.empty()) {
+                jsonButton["data"] = button.data;
+            } else if (!button.command.empty()) {
+                jsonButton["command"] = button.command;
+            }
+            jsonRow.push_back(std::move(jsonButton));
+        }
+        rows.push_back(std::move(jsonRow));
+    }
+    return rows;
+}
+
 // A best-effort MIME guess from the extension. Content type rendering is a
 // client concern; the server never sees this.
 std::string guessMime(const fs::path& path)
@@ -130,6 +152,11 @@ std::string guessMime(const fs::path& path)
 }
 
 }  // namespace
+
+std::string inlineKeyboardJson(const InlineKeyboard& keyboard)
+{
+    return keyboardToJson(keyboard).dump();
+}
 
 Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingKey,
     std::map<std::string, Contact> contacts)
@@ -584,6 +611,56 @@ void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
 }
 
+void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
+    const InlineKeyboard& keyboard, const std::string& messageId,
+    const std::function<void()>& onAcceptedByOwnServer)
+{
+    // An interactive message is a "text" message that additionally carries an
+    // inline keyboard. A recipient that does not understand keyboards still
+    // renders the text; the registry stays forward-compatible.
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "text"},
+        {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"text", text},
+        {"keyboard", keyboardToJson(keyboard)},
+    };
+    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+}
+
+void Session::sendCommand(const std::string& peerFingerprint, const std::string& command,
+    const std::string& args, const std::string& messageId,
+    const std::function<void()>& onAcceptedByOwnServer)
+{
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "bot.command"},
+        {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"command", command},
+        {"args", args},
+    };
+    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+}
+
+void Session::sendCallback(
+    const std::string& peerFingerprint, const std::string& data, const std::string& refMessageId)
+{
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "bot.callback"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"data", data},
+        {"ref", refMessageId},
+    };
+    sendContent(peerFingerprint, std::move(inner));
+}
+
 void Session::sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId)
 {
     nlohmann::json inner = {
@@ -698,6 +775,20 @@ std::vector<IncomingMessage> Session::sync()
             message.attachmentName = file.value("name", std::string());
             message.attachmentMime = file.value("mime", std::string());
             message.attachmentSize = file.value("size", std::uint64_t{0});
+        } else if (type == "bot.command") {
+            // A command invocation aimed at a bot: the command name and its
+            // raw argument string. Surfaced as text too, for plain rendering.
+            message.contentType = type;
+            message.commandName = body.value("command", std::string());
+            message.commandArgs = body.value("args", std::string());
+            message.text = "/" + message.commandName
+                + (message.commandArgs.empty() ? std::string() : " " + message.commandArgs);
+        } else if (type == "bot.callback") {
+            // A button press: the tapped button's payload and the keyboard
+            // message it belongs to.
+            message.contentType = type;
+            message.callbackData = body.value("data", std::string());
+            message.refId = body.value("ref", std::string());
         } else if (type == "receipt") {
             // A delivery receipt for one of our sent messages (the "green"
             // state). Carries the acknowledged message id.
@@ -709,6 +800,12 @@ std::vector<IncomingMessage> Session::sync()
         } else {
             message.contentType = "unsupported";
             message.rawType = type;
+        }
+
+        // An inline keyboard may ride on any content message (typically text);
+        // preserve it as its wire form so a UI can render the buttons.
+        if (body.contains("keyboard")) {
+            message.keyboardJson = body.at("keyboard").dump();
         }
 
         client_->ack(entry.id);

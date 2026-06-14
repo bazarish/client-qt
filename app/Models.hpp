@@ -75,7 +75,8 @@ class ConversationModel : public QAbstractListModel {
 public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
-        AttSizeRole, AttRefRole, AttKeyRole, TimeRole, StatusRole, MsgIdRole
+        AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, TimeRole,
+        StatusRole, MsgIdRole
     };
     using QAbstractListModel::QAbstractListModel;
 

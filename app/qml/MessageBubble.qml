@@ -13,6 +13,15 @@ Item {
     readonly property bool isAttachment: model.attRef && model.attRef.length > 0
     readonly property bool isUnsupported: model.type === "unsupported"
 
+    // The inline keyboard attached to this message (rows of buttons), parsed
+    // from its JSON wire form; empty when there is none.
+    readonly property var keyboardButtons: {
+        if (!model.keyboard || model.keyboard.length === 0) return []
+        try { return JSON.parse(model.keyboard) } catch (e) { return [] }
+    }
+    // The keyboard message's protocol id, sent back as a callback's ref.
+    readonly property string msgProtocolId: model.protocolId
+
     // Single round indicator, coloured by delivery status (see DeliveryStatus).
     function statusColor(s) {
         if (s === DeliveryStatus.AtSenderServer) return Theme.textDim   // grey
@@ -75,11 +84,50 @@ Item {
 
             // Plain text.
             Label {
-                visible: !delegate.isAttachment && !delegate.isUnsupported
+                visible: !delegate.isAttachment && !delegate.isUnsupported && model.text.length > 0
                 text: model.text
                 color: Theme.text
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
+            }
+
+            // Inline keyboard (interactive message): rows of tappable buttons.
+            // Shown on incoming messages; a tap sends a bot.callback (data) or a
+            // bot.command (command) back to the sender.
+            ColumnLayout {
+                visible: !model.outgoing && delegate.keyboardButtons.length > 0
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                spacing: 4
+                Repeater {
+                    model: delegate.keyboardButtons
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Repeater {
+                            model: modelData
+                            Button {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 32
+                                text: modelData.text
+                                onClicked: {
+                                    if (modelData.data !== undefined)
+                                        delegate.session.sendCallback(modelData.data, delegate.msgProtocolId)
+                                    else if (modelData.command !== undefined)
+                                        delegate.session.sendCommand(modelData.command, "")
+                                }
+                                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                                contentItem: Label {
+                                    text: parent.text
+                                    color: Theme.accent
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // Footer: time + outgoing status.

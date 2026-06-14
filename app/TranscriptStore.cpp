@@ -104,7 +104,7 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
             "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, protocolId TEXT, text TEXT,"
             "attName TEXT, attMime TEXT, attSize INTEGER,"
-            "attRef TEXT, attKey TEXT, ts INTEGER, status INTEGER)")) {
+            "attRef TEXT, attKey TEXT, keyboard TEXT, ts INTEGER, status INTEGER)")) {
         return false;
     }
     ready_ = true;
@@ -132,7 +132,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, protocolId, text, attName, attMime,"
-        " attSize, attRef, attKey, ts, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+        " attSize, attRef, attKey, keyboard, ts, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -143,6 +143,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.attSize);
     query.addBindValue(message.attRef);
     query.addBindValue(message.attKey);
+    query.addBindValue(message.keyboard);
     query.addBindValue(message.ts);
     query.addBindValue(message.status);
     if (!query.exec()) {
@@ -169,7 +170,8 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
     QVector<StoredMessage> result;
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare("SELECT id, peer, outgoing, type, protocolId, text, attName, attMime,"
-                  " attSize, attRef, attKey, ts, status FROM messages WHERE peer = ? ORDER BY id");
+                  " attSize, attRef, attKey, keyboard, ts, status FROM messages"
+                  " WHERE peer = ? ORDER BY id");
     query.addBindValue(peer);
     if (!query.exec()) {
         return result;
@@ -187,8 +189,9 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
         m.attSize = query.value(8).toLongLong();
         m.attRef = query.value(9).toString();
         m.attKey = query.value(10).toString();
-        m.ts = query.value(11).toLongLong();
-        m.status = query.value(12).toInt();
+        m.keyboard = query.value(11).toString();
+        m.ts = query.value(12).toLongLong();
+        m.status = query.value(13).toInt();
         result.push_back(m);
     }
     return result;

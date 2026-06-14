@@ -26,6 +26,7 @@ find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
 
 add_library(bazarish_client_lib STATIC
     src/ApiClient.cpp
+    src/Bot.cpp
     src/Client.cpp
     src/Invite.cpp
     src/ProfileManager.cpp
@@ -41,6 +42,11 @@ target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 add_executable(bazarish-client src/Main.cpp)
 target_link_libraries(bazarish-client PRIVATE bazarish_client_lib)
 target_compile_options(bazarish-client PRIVATE -Wall -Wextra -Werror)
+
+# A demo chat bot over the same Session logic: commands and inline keyboards.
+add_executable(bazarish-bot src/BotMain.cpp)
+target_link_libraries(bazarish-bot PRIVATE bazarish_client_lib)
+target_compile_options(bazarish-bot PRIVATE -Wall -Wextra -Werror)
 
 # The Qt6 Quick (QML) desktop app — the primary front-end over the same
 # Session logic the CLI uses. Built only when Qt6 Quick is available.
@@ -114,6 +120,7 @@ function(bazarish_client_add_test name)
 endfunction()
 
 bazarish_client_add_test(TestApiClient)
+bazarish_client_add_test(TestBot)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestProfile)

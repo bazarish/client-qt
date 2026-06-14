@@ -157,6 +157,8 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case AttSizeRole: return m.attSize;
     case AttRefRole: return m.attRef;
     case AttKeyRole: return m.attKey;
+    case KeyboardRole: return m.keyboard;
+    case ProtocolIdRole: return m.protocolId;
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
@@ -168,8 +170,9 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
 {
     return {{OutgoingRole, "outgoing"}, {TypeRole, "type"}, {TextRole, "text"},
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
-        {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {TimeRole, "time"},
-        {StatusRole, "status"}, {MsgIdRole, "msgId"}};
+        {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
+        {ProtocolIdRole, "protocolId"}, {TimeRole, "time"}, {StatusRole, "status"},
+        {MsgIdRole, "msgId"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)

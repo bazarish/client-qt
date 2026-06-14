@@ -112,6 +112,7 @@ void SessionWorker::sync()
         map["attSize"] = static_cast<qint64>(m.attachmentSize);
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
+        map["keyboard"] = QString::fromStdString(m.keyboardJson);
         map["messageId"] = QString::fromStdString(m.messageId);
         map["ref"] = QString::fromStdString(m.refId);
         emit messageReceived(map);
@@ -153,6 +154,24 @@ void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
         session_->sendReceipt(peer.toStdString(), refId.toStdString());
     } catch (const std::exception&) {
         // A failed receipt is non-fatal; the sender simply stays at "yellow".
+    }
+}
+
+void SessionWorker::sendCallback(const QString& peer, const QString& data, const QString& ref)
+{
+    try {
+        session_->sendCallback(peer.toStdString(), data.toStdString(), ref.toStdString());
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::sendCommand(const QString& peer, const QString& command, const QString& args)
+{
+    try {
+        session_->sendCommand(peer.toStdString(), command.toStdString(), args.toStdString());
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
     }
 }
 
@@ -244,6 +263,8 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
+    connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
+    connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
     connect(this, &SessionController::requestAddByUsername, worker_, &SessionWorker::addByUsername);
     connect(this, &SessionController::requestAddByFingerprint, worker_,
@@ -356,6 +377,24 @@ void SessionController::sendFile(const QString& fileUrl)
     emit requestSendFile(activePeer_, localPath, m.id, m.protocolId);
 }
 
+void SessionController::sendCallback(const QString& data, const QString& refMsgId)
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    // A button press is silent in the transcript (inline-keyboard semantics):
+    // the bot's reply is what appears. We just relay the callback.
+    emit requestSendCallback(activePeer_, data, refMsgId);
+}
+
+void SessionController::sendCommand(const QString& command, const QString& args)
+{
+    if (activePeer_.isEmpty() || command.isEmpty()) {
+        return;
+    }
+    emit requestSendCommand(activePeer_, command, args);
+}
+
 void SessionController::addByInvite(const QString& uri, const QString& intro)
 {
     emit requestAddByInvite(uri, intro);
@@ -450,6 +489,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.attSize = message.value("attSize").toLongLong();
     m.attRef = message.value("attRef").toString();
     m.attKey = message.value("attKey").toString();
+    m.keyboard = message.value("keyboard").toString();
     m.ts = nowSeconds();
     m.status = DeliveryStatus::Received;  // incoming; no indicator rendered
     m.id = store_.append(m);
