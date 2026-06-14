@@ -213,6 +213,14 @@ public:
     void sendCallback(const std::string& peerFingerprint, const std::string& data,
         const std::string& refMessageId = {});
 
+    // Edits a previously sent message in place (content type "edit"): the peer
+    // replaces the message whose id is refMessageId with this text and keyboard
+    // (an empty keyboard removes any buttons). Both a bot updating its own
+    // keyboard message on a callback and a user revising their own line use
+    // this. A client applies it only to a message the sender actually sent.
+    void sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
+        const std::string& text, const InlineKeyboard& keyboard = {});
+
     // Sends a delivery receipt (content type "receipt") acknowledging that we
     // received the message with id refMessageId. Costs one delivery token.
     void sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId);

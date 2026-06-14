@@ -75,8 +75,8 @@ class ConversationModel : public QAbstractListModel {
 public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
-        AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, TimeRole,
-        StatusRole, MsgIdRole
+        AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
+        TimeRole, StatusRole, MsgIdRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -87,6 +87,8 @@ public:
     void setMessages(QVector<StoredMessage> messages);
     int appendMessage(const StoredMessage& message);  // returns row
     void setStatusForId(qint64 id, int status);
+    // Replaces a message's text and keyboard in place and marks it edited.
+    void editById(qint64 id, const QString& text, const QString& keyboard);
 
 private:
     QVector<StoredMessage> messages_;

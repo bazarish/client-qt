@@ -71,15 +71,23 @@ void registerHandlers(Bot& bot)
         bot.reply(peer, args.empty() ? "(nothing to echo)" : args);
     });
 
-    // Inline-keyboard button presses arrive as callbacks.
+    // Inline-keyboard button presses arrive as callbacks. The bot edits the
+    // same message in place (Telegram-style), keeping the menu so the user can
+    // tap again — and the in-place change is itself the visible feedback.
     bot.onCallback([](Bot& bot, const std::string& peer, const std::string& data,
-                       const std::string&) {
+                       const std::string& ref) {
+        std::string body;
         if (data == "ping") {
-            bot.reply(peer, "pong \xF0\x9F\x8F\x93");
+            body = "pong \xF0\x9F\x8F\x93  (updated " + serverTime() + ")";
         } else if (data == "time") {
-            bot.reply(peer, "Bot time: " + serverTime());
+            body = "\xF0\x9F\x95\x91 " + serverTime();
         } else {
-            bot.reply(peer, "Unknown button: " + data);
+            body = "Unknown button: " + data;
+        }
+        if (!ref.empty()) {
+            bot.editMessage(peer, ref, body + "\n\nTap a button to update this message:", mainMenu());
+        } else {
+            bot.reply(peer, body);
         }
     });
 

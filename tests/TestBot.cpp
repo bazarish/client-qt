@@ -161,11 +161,14 @@ void testDispatch()
     {
         const std::size_t commandsBefore = trace.commands.size();
         const std::size_t textsBefore = trace.texts.size();
+        const std::size_t callbacksBefore = trace.callbacks.size();
         bot.dispatch(make("receipt", "peer1"));
         bot.dispatch(make("token-refill", "peer1"));
         bot.dispatch(make("file", "peer1"));
+        bot.dispatch(make("edit", "peer1"));
         CHECK(trace.commands.size() == commandsBefore);
         CHECK(trace.texts.size() == textsBefore);
+        CHECK(trace.callbacks.size() == callbacksBefore);
     }
 
     fs::remove_all(stateDir);

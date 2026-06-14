@@ -104,7 +104,7 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
             "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, protocolId TEXT, text TEXT,"
             "attName TEXT, attMime TEXT, attSize INTEGER,"
-            "attRef TEXT, attKey TEXT, keyboard TEXT, ts INTEGER, status INTEGER)")) {
+            "attRef TEXT, attKey TEXT, keyboard TEXT, edited INTEGER, ts INTEGER, status INTEGER)")) {
         return false;
     }
     ready_ = true;
@@ -132,7 +132,8 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, protocolId, text, attName, attMime,"
-        " attSize, attRef, attKey, keyboard, ts, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " attSize, attRef, attKey, keyboard, edited, ts, status)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -144,6 +145,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.attRef);
     query.addBindValue(message.attKey);
     query.addBindValue(message.keyboard);
+    query.addBindValue(message.edited ? 1 : 0);
     query.addBindValue(message.ts);
     query.addBindValue(message.status);
     if (!query.exec()) {
@@ -170,7 +172,7 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
     QVector<StoredMessage> result;
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare("SELECT id, peer, outgoing, type, protocolId, text, attName, attMime,"
-                  " attSize, attRef, attKey, keyboard, ts, status FROM messages"
+                  " attSize, attRef, attKey, keyboard, edited, ts, status FROM messages"
                   " WHERE peer = ? ORDER BY id");
     query.addBindValue(peer);
     if (!query.exec()) {
@@ -190,8 +192,9 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
         m.attRef = query.value(9).toString();
         m.attKey = query.value(10).toString();
         m.keyboard = query.value(11).toString();
-        m.ts = query.value(12).toLongLong();
-        m.status = query.value(13).toInt();
+        m.edited = query.value(12).toInt() != 0;
+        m.ts = query.value(13).toLongLong();
+        m.status = query.value(14).toInt();
         result.push_back(m);
     }
     return result;
@@ -209,6 +212,34 @@ qint64 TranscriptStore::idForProtocol(const QString& protocolId) const
         return query.value(0).toLongLong();
     }
     return 0;
+}
+
+qint64 TranscriptStore::idForIncomingProtocol(const QString& protocolId, const QString& peer) const
+{
+    if (protocolId.isEmpty()) {
+        return 0;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare(
+        "SELECT id FROM messages WHERE protocolId = ? AND peer = ? AND outgoing = 0 LIMIT 1");
+    query.addBindValue(protocolId);
+    query.addBindValue(peer);
+    if (query.exec() && query.next()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
+void TranscriptStore::editContent(qint64 id, const QString& text, const QString& keyboard)
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("UPDATE messages SET text = ?, keyboard = ?, edited = 1 WHERE id = ?");
+    query.addBindValue(text);
+    query.addBindValue(keyboard);
+    query.addBindValue(id);
+    if (query.exec()) {
+        flush();
+    }
 }
 
 QString TranscriptStore::lastText(const QString& peer) const

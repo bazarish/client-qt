@@ -22,6 +22,19 @@ Item {
     // The keyboard message's protocol id, sent back as a callback's ref.
     readonly property string msgProtocolId: model.protocolId
 
+    // True for an own text message that can be edited (not an attachment or an
+    // unsupported placeholder).
+    readonly property bool canEdit: model.outgoing && model.type === "text"
+        && !delegate.isAttachment && !delegate.isUnsupported
+
+    // Transient "waiting for the bot" state set when a keyboard button is
+    // tapped; cleared when the message's content changes (the reply edited it)
+    // or after a short fallback timeout, so a tap always visibly registers.
+    property bool busy: false
+    readonly property string contentKey: (model.text || "") + "" + (model.keyboard || "")
+    onContentKeyChanged: delegate.busy = false
+    Timer { id: busyTimer; interval: 6000; onTriggered: delegate.busy = false }
+
     // Single round indicator, coloured by delivery status (see DeliveryStatus).
     function statusColor(s) {
         if (s === DeliveryStatus.AtSenderServer) return Theme.textDim   // grey
@@ -107,19 +120,34 @@ Item {
                         Repeater {
                             model: modelData
                             Button {
+                                id: kbButton
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 32
+                                Layout.preferredHeight: 34
                                 text: modelData.text
+                                hoverEnabled: true
+                                enabled: !delegate.busy
+                                opacity: delegate.busy ? 0.5 : 1.0
                                 onClicked: {
+                                    delegate.busy = true
+                                    busyTimer.restart()
                                     if (modelData.data !== undefined)
                                         delegate.session.sendCallback(modelData.data, delegate.msgProtocolId)
                                     else if (modelData.command !== undefined)
                                         delegate.session.sendCommand(modelData.command, "")
                                 }
-                                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                                // Pointing-hand cursor over the button.
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                background: Rectangle {
+                                    radius: 8
+                                    color: kbButton.down ? Theme.accent
+                                        : kbButton.hovered ? Theme.bg : Theme.surface
+                                    border.color: kbButton.hovered ? Theme.accent : Theme.border
+                                    Behavior on color { ColorAnimation { duration: 90 } }
+                                }
                                 contentItem: Label {
-                                    text: parent.text
-                                    color: Theme.accent
+                                    text: kbButton.text
+                                    color: kbButton.down ? Theme.bg : Theme.accent
+                                    font.weight: Font.Medium
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                     elide: Text.ElideRight
@@ -130,10 +158,26 @@ Item {
                 }
             }
 
-            // Footer: time + outgoing status.
+            // "Sending…" feedback while waiting for the bot's response to a tap.
+            RowLayout {
+                visible: delegate.busy
+                Layout.topMargin: 2
+                spacing: 6
+                BusyIndicator { running: delegate.busy; implicitWidth: 16; implicitHeight: 16 }
+                Label { text: "sending…"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+            }
+
+            // Footer: edited marker + time + outgoing status.
             RowLayout {
                 Layout.alignment: Qt.AlignRight
                 spacing: 4
+                Label {
+                    visible: model.edited === true
+                    text: "edited"
+                    color: Theme.textDim
+                    font.pixelSize: 10
+                    font.italic: true
+                }
                 Label {
                     text: model.time ? new Date(model.time * 1000).toLocaleTimeString(Qt.locale(), "hh:mm") : ""
                     color: Theme.textDim
@@ -152,6 +196,23 @@ Item {
                     ToolTip.visible: statusHover.hovered
                     ToolTip.text: delegate.statusText(model.status)
                 }
+            }
+        }
+
+        // Right-click or long-press one's own text message to edit it.
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: if (delegate.canEdit) editMenu.popup()
+        }
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onLongPressed: if (delegate.canEdit) editMenu.popup()
+        }
+        Menu {
+            id: editMenu
+            MenuItem {
+                text: "Edit"
+                onTriggered: delegate.session.beginEdit(model.msgId, model.protocolId, model.text)
             }
         }
     }

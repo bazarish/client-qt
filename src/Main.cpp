@@ -353,8 +353,10 @@ int runSync(const std::vector<std::string>& args)
         if (!message.keyboardJson.empty()) {
             body += "  keyboard=" + message.keyboardJson;
         }
-        std::printf("[%s] from %s: %s%s\n", message.contentType.c_str(),
-            message.fromFingerprint.c_str(), body.c_str(),
+        // The message id lets a caller reference this message (e.g. as the ref
+        // of a send-callback, so a bot can edit it in place).
+        std::printf("[%s] from %s: %s  id=%s%s\n", message.contentType.c_str(),
+            message.fromFingerprint.c_str(), body.c_str(), message.messageId.c_str(),
             message.establishedContact ? "  (contact established)" : "");
     }
     return 0;

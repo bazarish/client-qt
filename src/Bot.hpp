@@ -55,6 +55,11 @@ public:
     // Sends an interactive reply: text plus an inline keyboard.
     void replyWithKeyboard(
         const std::string& peer, const std::string& text, const InlineKeyboard& keyboard);
+    // Edits a message the bot previously sent in place (e.g. on a callback,
+    // refId is the callback's ref): replaces its text and keyboard. An empty
+    // keyboard removes the buttons.
+    void editMessage(const std::string& peer, const std::string& refId,
+        const std::string& text, const InlineKeyboard& keyboard = {});
 
     Session& session() { return session_; }
 

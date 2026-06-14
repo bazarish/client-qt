@@ -48,6 +48,12 @@ void Bot::replyWithKeyboard(
     session_.sendInteractive(peer, text, keyboard);
 }
 
+void Bot::editMessage(const std::string& peer, const std::string& refId, const std::string& text,
+    const InlineKeyboard& keyboard)
+{
+    session_.sendEdit(peer, refId, text, keyboard);
+}
+
 bool Bot::parseSlashCommand(const std::string& text, std::string& name, std::string& args)
 {
     if (text.empty() || text.front() != '/') {
@@ -117,11 +123,33 @@ void Bot::dispatch(const IncomingMessage& update)
     // and the session directly. Ignoring them keeps the common case simple.
 }
 
+namespace {
+
+// Whether an incoming type warrants a delivery receipt: user-visible lines the
+// sender shows a tick for. Control content (receipt, edit, token-refill,
+// callbacks/commands raised by silent button taps) does not.
+bool warrantsReceipt(const std::string& contentType)
+{
+    return contentType == "text" || contentType == "file" || contentType == "photo"
+        || contentType == "audio" || contentType == "voice";
+}
+
+}  // namespace
+
 std::size_t Bot::poll()
 {
     const std::vector<IncomingMessage> updates = session_.sync();
     for (const IncomingMessage& update : updates) {
         dispatch(update);
+        // Acknowledge receipt so the sender's tick advances to delivered (the
+        // "green" state). Best-effort: a failed receipt must not stop the bot.
+        if (warrantsReceipt(update.contentType) && !update.messageId.empty()) {
+            try {
+                session_.sendReceipt(update.fromFingerprint, update.messageId);
+            } catch (const std::exception&) {
+                // Non-fatal: the sender simply stays at the "yellow" state.
+            }
+        }
     }
     return updates.size();
 }

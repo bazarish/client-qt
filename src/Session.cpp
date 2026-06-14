@@ -661,6 +661,24 @@ void Session::sendCallback(
     sendContent(peerFingerprint, std::move(inner));
 }
 
+void Session::sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
+    const std::string& text, const InlineKeyboard& keyboard)
+{
+    // An edit fully replaces the target's text and keyboard; the keyboard is
+    // always carried (an empty array clears it) so the shape is unambiguous.
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "edit"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"ref", refMessageId},
+        {"text", text},
+        {"keyboard", keyboardToJson(keyboard)},
+    };
+    sendContent(peerFingerprint, std::move(inner));
+}
+
 void Session::sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId)
 {
     nlohmann::json inner = {
@@ -789,6 +807,13 @@ std::vector<IncomingMessage> Session::sync()
             message.contentType = type;
             message.callbackData = body.value("data", std::string());
             message.refId = body.value("ref", std::string());
+        } else if (type == "edit") {
+            // An in-place edit of a message the sender previously sent: the new
+            // text (and keyboard, via the generic block below). refId is the
+            // target message's id.
+            message.contentType = type;
+            message.refId = body.value("ref", std::string());
+            message.text = body.value("text", std::string());
         } else if (type == "receipt") {
             // A delivery receipt for one of our sent messages (the "green"
             // state). Carries the acknowledged message id.

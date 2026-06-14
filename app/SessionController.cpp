@@ -175,6 +175,17 @@ void SessionWorker::sendCommand(const QString& peer, const QString& command, con
     }
 }
 
+void SessionWorker::sendEdit(const QString& peer, const QString& refId, const QString& text)
+{
+    try {
+        // A user edit replaces text only; the (empty) keyboard clears none here
+        // because user messages carry no keyboard.
+        session_->sendEdit(peer.toStdString(), refId.toStdString(), text.toStdString());
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::addByInvite(const QString& uri, const QString& intro)
 {
     try {
@@ -265,6 +276,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
+    connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
     connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
     connect(this, &SessionController::requestAddByUsername, worker_, &SessionWorker::addByUsername);
     connect(this, &SessionController::requestAddByFingerprint, worker_,
@@ -395,6 +407,45 @@ void SessionController::sendCommand(const QString& command, const QString& args)
     emit requestSendCommand(activePeer_, command, args);
 }
 
+void SessionController::beginEdit(qint64 localId, const QString& protocolId, const QString& text)
+{
+    editing_ = true;
+    editingLocalId_ = localId;
+    editingProtocolId_ = protocolId;
+    editingText_ = text;
+    emit editingChanged();
+}
+
+void SessionController::commitEdit(const QString& newText)
+{
+    if (!editing_) {
+        return;
+    }
+    const QString trimmed = newText.trimmed();
+    // An empty edit, or no real change, just cancels.
+    if (!trimmed.isEmpty() && trimmed != editingText_) {
+        // Update our own copy in place (user messages carry no keyboard), then
+        // tell the peer to update theirs.
+        store_.editContent(editingLocalId_, trimmed, {});
+        conversation_.editById(editingLocalId_, trimmed, {});
+        contacts_.touch(activePeer_, {}, trimmed, nowSeconds(), false);
+        emit requestSendEdit(activePeer_, editingProtocolId_, trimmed);
+    }
+    cancelEdit();
+}
+
+void SessionController::cancelEdit()
+{
+    if (!editing_) {
+        return;
+    }
+    editing_ = false;
+    editingLocalId_ = 0;
+    editingProtocolId_.clear();
+    editingText_.clear();
+    emit editingChanged();
+}
+
 void SessionController::addByInvite(const QString& uri, const QString& intro)
 {
     emit requestAddByInvite(uri, intro);
@@ -474,6 +525,28 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         const qint64 localId = store_.idForProtocol(message.value("ref").toString());
         if (localId != 0) {
             bumpStatus(localId, DeliveryStatus::Delivered);
+        }
+        return;
+    }
+
+    // An in-place edit of a message this peer previously sent us: update it
+    // where it sits instead of adding a new bubble. Scoped to incoming-from-peer
+    // in the store, so a peer can only edit its own messages.
+    if (type == "edit") {
+        const qint64 localId
+            = store_.idForIncomingProtocol(message.value("ref").toString(), peer);
+        if (localId != 0) {
+            const QString newText = message.value("text").toString();
+            const QString newKeyboard = message.value("keyboard").toString();
+            store_.editContent(localId, newText, newKeyboard);
+            if (peer == activePeer_) {
+                conversation_.editById(localId, newText, newKeyboard);
+            }
+            QString preview = newText;
+            if (preview.isEmpty() && !newKeyboard.isEmpty()) {
+                preview = "[interactive]";
+            }
+            contacts_.touch(peer, peer, preview, nowSeconds(), peer != activePeer_);
         }
         return;
     }

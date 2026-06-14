@@ -159,6 +159,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case AttKeyRole: return m.attKey;
     case KeyboardRole: return m.keyboard;
     case ProtocolIdRole: return m.protocolId;
+    case EditedRole: return m.edited;
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
@@ -171,8 +172,8 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
     return {{OutgoingRole, "outgoing"}, {TypeRole, "type"}, {TextRole, "text"},
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
-        {ProtocolIdRole, "protocolId"}, {TimeRole, "time"}, {StatusRole, "status"},
-        {MsgIdRole, "msgId"}};
+        {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {TimeRole, "time"},
+        {StatusRole, "status"}, {MsgIdRole, "msgId"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
@@ -198,6 +199,20 @@ void ConversationModel::setStatusForId(qint64 id, int status)
             messages_[i].status = status;
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx, {StatusRole});
+            return;
+        }
+    }
+}
+
+void ConversationModel::editById(qint64 id, const QString& text, const QString& keyboard)
+{
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            messages_[i].text = text;
+            messages_[i].keyboard = keyboard;
+            messages_[i].edited = true;
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {TextRole, KeyboardRole, EditedRole});
             return;
         }
     }

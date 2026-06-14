@@ -39,6 +39,7 @@ public slots:
     void sendReceipt(const QString& peer, const QString& refId);
     void sendCallback(const QString& peer, const QString& data, const QString& ref);
     void sendCommand(const QString& peer, const QString& command, const QString& args);
+    void sendEdit(const QString& peer, const QString& refId, const QString& text);
     void addByInvite(const QString& uri, const QString& intro);
     void addByUsername(const QString& alias, const QString& intro);
     void addByFingerprint(const QString& fingerprint, const QString& intro);
@@ -78,6 +79,10 @@ class SessionController : public QObject {
     Q_PROPERTY(QObject* contacts READ contacts CONSTANT)
     Q_PROPERTY(QObject* conversation READ conversation CONSTANT)
     Q_PROPERTY(bool sendReceipts READ sendReceipts WRITE setSendReceipts NOTIFY sendReceiptsChanged)
+    // True while the composer is editing a previously sent message; editingText
+    // is its current text, so the composer can prefill the field.
+    Q_PROPERTY(bool editing READ editing NOTIFY editingChanged)
+    Q_PROPERTY(QString editingText READ editingText NOTIFY editingChanged)
 public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
@@ -91,6 +96,8 @@ public:
     QObject* conversation() { return &conversation_; }
     bool sendReceipts() const { return sendReceipts_; }
     void setSendReceipts(bool on) { if (sendReceipts_ != on) { sendReceipts_ = on; emit sendReceiptsChanged(); } }
+    bool editing() const { return editing_; }
+    QString editingText() const { return editingText_; }
 
     // Opens a profile on the worker thread (dir + id + passphrase).
     void open(const QString& dir, const QString& profileId, const QString& passphrase);
@@ -104,6 +111,11 @@ public:
     // (button data + the keyboard message's protocol id) or a command button.
     Q_INVOKABLE void sendCallback(const QString& data, const QString& refMsgId);
     Q_INVOKABLE void sendCommand(const QString& command, const QString& args);
+    // Editing one's own message: start (prefilling the composer), commit the new
+    // text (updates our copy and sends an edit to the peer), or cancel.
+    Q_INVOKABLE void beginEdit(qint64 localId, const QString& protocolId, const QString& text);
+    Q_INVOKABLE void commitEdit(const QString& newText);
+    Q_INVOKABLE void cancelEdit();
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
     Q_INVOKABLE void addByFingerprint(const QString& fingerprint, const QString& intro);
@@ -118,6 +130,7 @@ signals:
     void connectedChanged();
     void activePeerChanged();
     void sendReceiptsChanged();
+    void editingChanged();
     void openFailed(const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
@@ -133,6 +146,7 @@ signals:  // to worker
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
     void requestSendCommand(const QString& peer, const QString& command, const QString& args);
+    void requestSendEdit(const QString& peer, const QString& refId, const QString& text);
     void requestAddByInvite(const QString& uri, const QString& intro);
     void requestAddByUsername(const QString& alias, const QString& intro);
     void requestAddByFingerprint(const QString& fingerprint, const QString& intro);
@@ -164,6 +178,11 @@ private:
     QString subscriptionText_;
     QString activePeer_;
     bool sendReceipts_ = true;
+    // Edit-in-progress state for the composer (0 / empty when not editing).
+    bool editing_ = false;
+    qint64 editingLocalId_ = 0;
+    QString editingProtocolId_;
+    QString editingText_;
     // Current delivery status per outgoing local id, so a later/lower signal
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;

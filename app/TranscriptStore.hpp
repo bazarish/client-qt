@@ -24,6 +24,7 @@ struct StoredMessage {
     QString attRef;        // content-store id
     QString attKey;        // base64 content key
     QString keyboard;      // inline-keyboard JSON (empty when none)
+    bool edited = false;   // true once the message was edited in place
     qint64 ts = 0;         // unix seconds
     int status = 0;        // 0 sending, 1 sent, 2 failed, 3 received
 };
@@ -46,6 +47,12 @@ public:
     void updateStatus(qint64 id, int status);
     // The row id of an outgoing message with this protocol id (0 if none).
     qint64 idForProtocol(const QString& protocolId) const;
+    // The row id of an incoming message from peer with this protocol id, the
+    // target of an edit (0 if none). Scoping to incoming-from-peer is the
+    // security check: a peer can only edit a message it actually sent.
+    qint64 idForIncomingProtocol(const QString& protocolId, const QString& peer) const;
+    // Replaces a message's text and keyboard and marks it edited.
+    void editContent(qint64 id, const QString& text, const QString& keyboard);
     QVector<StoredMessage> messagesFor(const QString& peer) const;
     QString lastText(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
