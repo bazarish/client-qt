@@ -222,6 +222,8 @@ private:
         const std::function<void()>& onAcceptedByOwnServer = {});
     void persistContacts() const;
     void persistMeta() const;
+    // Serializes the in-memory contacts into the on-disk JSON shape.
+    nlohmann::json contactsToJson() const;
 
     std::filesystem::path stateDir_;
     std::unique_ptr<Client> client_;
@@ -239,6 +241,10 @@ private:
     // Whether the private key PEMs are encrypted at rest. Persisted in meta so
     // open() knows to require a passphrase.
     bool encrypted_ = false;
+    // The at-rest passphrase, retained for the session lifetime so contacts
+    // (delivery tokens) can be re-sealed on every change. Empty when the
+    // profile is unencrypted.
+    std::string passphrase_;
 };
 
 }  // namespace bazarish::client

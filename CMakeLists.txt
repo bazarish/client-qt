@@ -48,6 +48,11 @@ find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
 
+    # Direct SQLite calls (serialize/deserialize) seal the transcript at rest;
+    # this is the same libsqlite3 Qt's QSQLITE driver links.
+    find_library(SQLITE3_LIBRARY NAMES sqlite3 REQUIRED)
+    find_path(SQLITE3_INCLUDE_DIR NAMES sqlite3.h REQUIRED)
+
     qt_add_executable(bazarish-app
         app/main.cpp
         app/AppController.cpp
@@ -63,9 +68,9 @@ if(Qt6_FOUND)
     )
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(bazarish-app PRIVATE
-        bazarish_client_lib ${QRENCODE_LIBRARY}
+        bazarish_client_lib ${QRENCODE_LIBRARY} ${SQLITE3_LIBRARY}
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql)
-    target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR})
+    target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 
     set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -112,3 +117,14 @@ bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestProfile)
+
+# The transcript store needs Qt SQL and direct SQLite, so it has its own target.
+if(Qt6_FOUND)
+    add_executable(TestTranscript tests/TestTranscript.cpp app/TranscriptStore.cpp)
+    target_include_directories(TestTranscript PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLITE3_INCLUDE_DIR})
+    target_link_libraries(TestTranscript PRIVATE
+        bazarish_client_lib ${SQLITE3_LIBRARY} Qt6::Core Qt6::Sql)
+    target_compile_options(TestTranscript PRIVATE -Wall -Wextra)
+    add_test(NAME TestTranscript COMMAND TestTranscript)
+endif()

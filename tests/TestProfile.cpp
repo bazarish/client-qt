@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <stdexcept>
 #include <string>
 
@@ -93,6 +94,38 @@ int main()
     const Session reopened = manager.open("acetone", "secret");
     CHECK(reopened.isConnected());
     CHECK(reopened.endpoint().serverFingerprint == "serverfp");
+
+    // Export the encrypted profile, then re-import it twice — once with an
+    // at-rest passphrase, once without — to check the contacts file matches the
+    // chosen scheme (sealed CMS DER vs plaintext JSON) and still reopens.
+    const auto firstByte = [](const fs::path& path) -> unsigned char {
+        std::ifstream in(path, std::ios::binary);
+        CHECK(in.good());
+        char c = 0;
+        in.read(&c, 1);
+        return static_cast<unsigned char>(c);
+    };
+
+    // Kept outside the manager root so the imported profiles do not show up in
+    // manager.list().
+    const fs::path scratch
+        = fs::temp_directory_path() / ("bazarish-export-" + toHex(randomBytes(8)));
+    fs::create_directories(scratch);
+    const fs::path bundle = scratch / "acetone.bundle";
+    sa.exportState(bundle, "bundle-pw");
+
+    Session::importState(bundle, scratch / "imported-enc", "bundle-pw", "atrest-pw");
+    // CMS DER begins with the SEQUENCE tag 0x30, never the '{' of plaintext JSON.
+    CHECK(firstByte(scratch / "imported-enc" / "contacts.json") == 0x30);
+    const Session importedEnc = Session::open(scratch / "imported-enc", "atrest-pw");
+    CHECK(importedEnc.fingerprint() == a.fingerprint);
+    CHECK_THROWS(Session::open(scratch / "imported-enc"));
+
+    Session::importState(bundle, scratch / "imported-plain", "bundle-pw");
+    CHECK(firstByte(scratch / "imported-plain" / "contacts.json") == '{');
+    const Session importedPlain = Session::open(scratch / "imported-plain");
+    CHECK(importedPlain.fingerprint() == a.fingerprint);
+    fs::remove_all(scratch);
 
     // Removal drops the profile.
     manager.remove("work-alias");

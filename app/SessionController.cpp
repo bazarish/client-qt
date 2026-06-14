@@ -288,7 +288,8 @@ SessionController::~SessionController()
 void SessionController::open(const QString& dir, const QString& profileId, const QString& passphrase)
 {
     profileId_ = profileId;
-    store_.open(profileId, dir + "/transcript.db");
+    // The passphrase that unlocks the keys also seals the transcript at rest.
+    store_.open(profileId, dir + "/transcript.db", passphrase);
     emit requestOpen(dir, passphrase);
 }
 

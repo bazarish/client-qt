@@ -180,6 +180,7 @@ Session Session::create(
     auto client = std::make_unique<Client>(std::move(identity), clientId, endpoint);
     Session session(stateDir, std::move(client), std::move(sealing), {});
     session.encrypted_ = encrypted;
+    session.passphrase_ = passphrase;
     session.name_ = name;
     return session;
 }
@@ -236,7 +237,12 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
     std::map<std::string, Contact> contacts;
     const fs::path contactsPath = stateDir / "contacts.json";
     if (fs::exists(contactsPath)) {
-        const nlohmann::json stored = nlohmann::json::parse(readFileText(contactsPath));
+        const std::string raw = readFileText(contactsPath);
+        // When the profile is encrypted the file is a CMS PWRI blob holding
+        // the contacts JSON; otherwise it is the JSON itself.
+        const nlohmann::json stored = encrypted
+            ? nlohmann::json::parse(cms::unsealWithPassword(Bytes(raw.begin(), raw.end()), passphrase))
+            : nlohmann::json::parse(raw);
         for (const auto& [fingerprint, entry] : stored.items()) {
             Contact contact;
             contact.sealingPublicB64 = entry.at("sealingPublicB64").get<std::string>();
@@ -253,6 +259,7 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
     session.serverCardB64_ = meta.at("serverCard").get<std::string>();
     session.subscriptionCertB64_ = meta.value("subscriptionCert", std::string{});
     session.encrypted_ = encrypted;
+    session.passphrase_ = passphrase;
     session.name_ = meta.value("name", std::string{});
     return session;
 }
@@ -325,7 +332,7 @@ void Session::persistMeta() const
     writeFileText(stateDir_ / "meta.json", meta.dump(2));
 }
 
-void Session::persistContacts() const
+nlohmann::json Session::contactsToJson() const
 {
     nlohmann::json stored = nlohmann::json::object();
     for (const auto& [fingerprint, contact] : contacts_) {
@@ -336,6 +343,20 @@ void Session::persistContacts() const
             {"sendTokens", contact.sendTokens},
             {"issuedToThem", contact.issuedToThem},
         };
+    }
+    return stored;
+}
+
+void Session::persistContacts() const
+{
+    const nlohmann::json stored = contactsToJson();
+    if (encrypted_) {
+        // Delivery tokens are write capabilities into a peer's mailbox: seal
+        // the file at rest under the profile passphrase (CMS PWRI).
+        const std::string text = stored.dump();
+        const Bytes sealed = cms::sealWithPassword(Bytes(text.begin(), text.end()), passphrase_);
+        writeFileText(stateDir_ / "contacts.json", std::string(sealed.begin(), sealed.end()));
+        return;
     }
     writeFileText(stateDir_ / "contacts.json", stored.dump(2));
 }
@@ -741,11 +762,9 @@ std::string Session::inviteUri() const
 void Session::exportState(const fs::path& outFile, const std::string& password) const
 {
     const nlohmann::json meta = nlohmann::json::parse(readFileText(stateDir_ / "meta.json"));
-    nlohmann::json contacts = nlohmann::json::object();
-    const fs::path contactsPath = stateDir_ / "contacts.json";
-    if (fs::exists(contactsPath)) {
-        contacts = nlohmann::json::parse(readFileText(contactsPath));
-    }
+    // Use the in-memory contacts: the on-disk file may be sealed, and the
+    // bundle carries them in the clear (the bundle password is the protection).
+    const nlohmann::json contacts = contactsToJson();
 
     // The keys are re-serialized unencrypted inside the bundle; the password
     // protects the bundle as a whole, decoupling the export from whatever
@@ -782,7 +801,18 @@ void Session::importState(const fs::path& bundleFile, const fs::path& stateDir,
     nlohmann::json meta = bundle.at("meta");
     meta["encrypted"] = !atRestPassphrase.empty();
     writeFileText(stateDir / "meta.json", meta.dump(2));
-    writeFileText(stateDir / "contacts.json", bundle.at("contacts").dump(2));
+
+    // Match the contacts file to the chosen at-rest scheme (sealed iff a
+    // passphrase is given), mirroring the keys above.
+    const nlohmann::json contacts = bundle.at("contacts");
+    if (!atRestPassphrase.empty()) {
+        const std::string text = contacts.dump();
+        const Bytes sealed
+            = cms::sealWithPassword(Bytes(text.begin(), text.end()), atRestPassphrase);
+        writeFileText(stateDir / "contacts.json", std::string(sealed.begin(), sealed.end()));
+    } else {
+        writeFileText(stateDir / "contacts.json", contacts.dump(2));
+    }
 }
 
 }  // namespace bazarish::client

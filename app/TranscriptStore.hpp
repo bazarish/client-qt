@@ -5,6 +5,7 @@
 #include <QVector>
 
 #include <cstdint>
+#include <string>
 
 namespace bazarish::app {
 
@@ -26,16 +27,19 @@ struct StoredMessage {
     int status = 0;        // 0 sending, 1 sent, 2 failed, 3 received
 };
 
-// Persistent local message log for one profile. NOTE: stored in the clear in
-// the profile directory (like contacts.json); transcript at-rest encryption is
-// a follow-up.
+// Persistent local message log for one profile. When a passphrase is given the
+// database is never written to disk in the clear: it lives in an in-memory
+// SQLite connection and is persisted as a single CMS PWRI-sealed blob
+// (<dbPath>.enc), serialized/deserialized through the SQLite driver. With an
+// empty passphrase it falls back to a plaintext file (unencrypted profiles).
 class TranscriptStore {
 public:
     TranscriptStore();
     ~TranscriptStore();
 
-    // Opens (and creates) the database for this profile id.
-    bool open(const QString& profileId, const QString& dbPath);
+    // Opens (and creates) the database for this profile id. A non-empty
+    // passphrase enables the sealed in-memory mode described above.
+    bool open(const QString& profileId, const QString& dbPath, const QString& passphrase = {});
 
     qint64 append(const StoredMessage& message);
     void updateStatus(qint64 id, int status);
@@ -46,7 +50,18 @@ public:
     qint64 lastTime(const QString& peer) const;
 
 private:
+    // Serializes the in-memory database and writes the sealed blob. No-op when
+    // the store is not in encrypted mode.
+    void flush() const;
+
     QString connectionName_;
+    // Sealed-blob mode (non-empty passphrase): the at-rest file and the key.
+    bool encrypted_ = false;
+    QString blobPath_;
+    std::string passphrase_;
+    // True only after a fully successful open(), so a flush triggered while
+    // tearing down a failed open never overwrites a good blob.
+    bool ready_ = false;
 };
 
 }  // namespace bazarish::app

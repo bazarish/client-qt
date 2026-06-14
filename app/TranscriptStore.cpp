@@ -1,38 +1,130 @@
 // Bazarish project (c) 2026
 #include "TranscriptStore.hpp"
 
+#include <bazarish/Bytes.hpp>
+#include <bazarish/Cms.hpp>
+
 #include <QSqlDatabase>
+#include <QSqlDriver>
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QVariant>
 
+#include <sqlite3.h>
+
+#include <fstream>
+#include <stdexcept>
+
 namespace bazarish::app {
+
+namespace {
+
+// Returns the underlying SQLite C handle for an open Qt connection, so the
+// in-memory database can be serialized/deserialized. Throws if the driver does
+// not expose one (always the QSQLITE driver here).
+sqlite3* sqliteHandle(const QSqlDatabase& db)
+{
+    const QVariant handle = db.driver()->handle();
+    if (!handle.isValid() || qstrcmp(handle.typeName(), "sqlite3*") != 0) {
+        throw std::runtime_error("transcript: no SQLite handle on the connection");
+    }
+    sqlite3* const native = *static_cast<sqlite3* const*>(handle.constData());
+    if (native == nullptr) {
+        throw std::runtime_error("transcript: null SQLite handle");
+    }
+    return native;
+}
+
+Bytes readFileBytes(const QString& path)
+{
+    std::ifstream in(path.toStdString(), std::ios::binary);
+    return Bytes(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+void writeFileBytes(const QString& path, const Bytes& bytes)
+{
+    std::ofstream out(path.toStdString(), std::ios::binary | std::ios::trunc);
+    out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    if (!out) {
+        throw std::runtime_error("transcript: failed to write sealed database");
+    }
+}
+
+}  // namespace
 
 TranscriptStore::TranscriptStore() = default;
 
 TranscriptStore::~TranscriptStore()
 {
     if (!connectionName_.isEmpty()) {
+        flush();
         QSqlDatabase::database(connectionName_).close();
         QSqlDatabase::removeDatabase(connectionName_);
     }
 }
 
-bool TranscriptStore::open(const QString& profileId, const QString& dbPath)
+bool TranscriptStore::open(const QString& profileId, const QString& dbPath, const QString& passphrase)
 {
     connectionName_ = "transcript-" + profileId;
+    encrypted_ = !passphrase.isEmpty();
+    passphrase_ = passphrase.toStdString();
+    blobPath_ = dbPath + ".enc";
+
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connectionName_);
-    db.setDatabaseName(dbPath);
+    // Encrypted profiles keep the database off disk: an in-memory connection
+    // loaded from / saved to the sealed blob. Unencrypted profiles use a plain
+    // file as before.
+    db.setDatabaseName(encrypted_ ? QStringLiteral(":memory:") : dbPath);
     if (!db.open()) {
         return false;
     }
+
+    if (encrypted_ && std::ifstream(blobPath_.toStdString(), std::ios::binary).good()) {
+        const Bytes sealed = readFileBytes(blobPath_);
+        const Bytes plain = cms::unsealWithPassword(sealed, passphrase_);
+        // SQLite takes ownership of the buffer (FREEONCLOSE) and may grow it
+        // (RESIZEABLE), so it must be a sqlite3_malloc allocation.
+        unsigned char* const buffer
+            = static_cast<unsigned char*>(sqlite3_malloc64(plain.empty() ? 1 : plain.size()));
+        if (buffer == nullptr) {
+            throw std::runtime_error("transcript: sqlite3_malloc64 failed");
+        }
+        std::copy(plain.begin(), plain.end(), buffer);
+        if (sqlite3_deserialize(sqliteHandle(db), "main", buffer,
+                static_cast<sqlite3_int64>(plain.size()), static_cast<sqlite3_int64>(plain.size()),
+                SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE)
+            != SQLITE_OK) {
+            throw std::runtime_error("transcript: sqlite3_deserialize failed");
+        }
+    }
+
     QSqlQuery query(db);
-    return query.exec(
-        "CREATE TABLE IF NOT EXISTS messages ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, protocolId TEXT, text TEXT,"
-        "attName TEXT, attMime TEXT, attSize INTEGER,"
-        "attRef TEXT, attKey TEXT, ts INTEGER, status INTEGER)");
+    if (!query.exec(
+            "CREATE TABLE IF NOT EXISTS messages ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+            "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, protocolId TEXT, text TEXT,"
+            "attName TEXT, attMime TEXT, attSize INTEGER,"
+            "attRef TEXT, attKey TEXT, ts INTEGER, status INTEGER)")) {
+        return false;
+    }
+    ready_ = true;
+    return true;
+}
+
+void TranscriptStore::flush() const
+{
+    if (!encrypted_ || !ready_) {
+        return;
+    }
+    const QSqlDatabase db = QSqlDatabase::database(connectionName_);
+    sqlite3_int64 size = 0;
+    unsigned char* const data = sqlite3_serialize(sqliteHandle(db), "main", &size, 0);
+    if (data == nullptr) {
+        throw std::runtime_error("transcript: sqlite3_serialize failed");
+    }
+    const Bytes plain(data, data + size);
+    sqlite3_free(data);
+    writeFileBytes(blobPath_, cms::sealWithPassword(plain, passphrase_));
 }
 
 qint64 TranscriptStore::append(const StoredMessage& message)
@@ -56,7 +148,9 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     if (!query.exec()) {
         return 0;
     }
-    return query.lastInsertId().toLongLong();
+    const qint64 id = query.lastInsertId().toLongLong();
+    flush();
+    return id;
 }
 
 void TranscriptStore::updateStatus(qint64 id, int status)
@@ -65,7 +159,9 @@ void TranscriptStore::updateStatus(qint64 id, int status)
     query.prepare("UPDATE messages SET status = ? WHERE id = ?");
     query.addBindValue(status);
     query.addBindValue(id);
-    query.exec();
+    if (query.exec()) {
+        flush();
+    }
 }
 
 QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
