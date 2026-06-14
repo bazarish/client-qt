@@ -92,6 +92,7 @@ if(Qt6_FOUND)
             app/qml/ConnectServerPage.qml
             app/qml/MainView.qml
             app/qml/ChatList.qml
+            app/qml/AccountSwitcher.qml
             app/qml/ConversationView.qml
             app/qml/MessageBubble.qml
             app/qml/Composer.qml

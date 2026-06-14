@@ -8,6 +8,7 @@ Item {
     property var session: null
     signal newChatRequested()
     signal settingsRequested()
+    signal accountsRequested()
 
     function formatTime(ts) {
         if (!ts) return ""
@@ -28,13 +29,27 @@ Item {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 6
                 spacing: 10
-                Avatar { fingerprint: root.session ? root.session.fingerprint : ""; size: 36 }
-                Label {
+                // Tap the avatar or name to open the account switcher.
+                Avatar {
+                    fingerprint: root.session ? root.session.fingerprint : ""
+                    size: 36
+                    TapHandler { onTapped: root.accountsRequested() }
+                }
+                ColumnLayout {
                     Layout.fillWidth: true
-                    text: root.session ? root.session.displayName : ""
-                    color: Theme.text
-                    font.weight: Font.Medium
-                    elide: Text.ElideRight
+                    spacing: 0
+                    RowLayout {
+                        spacing: 4
+                        Label {
+                            text: root.session ? root.session.displayName : ""
+                            color: Theme.text
+                            font.weight: Font.Medium
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 180
+                        }
+                        Label { text: "⌄"; color: Theme.textDim }
+                    }
+                    TapHandler { onTapped: root.accountsRequested() }
                 }
                 IconButton { text: "✎"; onClicked: root.newChatRequested() }
                 IconButton { text: "⚙"; onClicked: root.settingsRequested() }

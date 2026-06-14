@@ -10,6 +10,8 @@ Item {
     Component { id: wizardComponent; CreateProfileWizard {} }
 
     property string pendingId: ""
+    property string pendingDeleteId: ""
+    property string pendingDeleteName: ""
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -24,7 +26,8 @@ Item {
             Layout.alignment: Qt.AlignHCenter
         }
         Label {
-            text: App.hasProfiles ? "Choose a profile" : "Create your first profile to begin"
+            text: App.hasOpenAccounts ? "Add or switch account"
+                : (App.hasProfiles ? "Choose a profile" : "Create your first profile to begin")
             color: Theme.textDim
             Layout.alignment: Qt.AlignHCenter
         }
@@ -65,6 +68,14 @@ Item {
                             }
                         }
                         Label { text: model.encrypted ? "🔒" : ""; color: Theme.textDim }
+                        IconButton {
+                            text: "🗑"
+                            onClicked: {
+                                root.pendingDeleteId = model.profileId
+                                root.pendingDeleteName = model.name
+                                deleteDialog.open()
+                            }
+                        }
                     }
                 }
             }
@@ -76,6 +87,17 @@ Item {
             onClicked: root.StackView.view.push(wizardComponent)
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.1) : Theme.accent }
             contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+        }
+
+        // When other accounts are already open, this picker was opened to add
+        // one; let the user return to the running session instead.
+        Button {
+            Layout.fillWidth: true
+            visible: App.hasOpenAccounts
+            text: "Back"
+            onClicked: root.StackView.view.pop()
+            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
+            contentItem: Label { text: parent.text; color: Theme.text; horizontalAlignment: Text.AlignHCenter }
         }
     }
 
@@ -91,6 +113,22 @@ Item {
             echoMode: TextInput.Password
             placeholderText: "Passphrase"
             implicitWidth: 280
+        }
+    }
+
+    Dialog {
+        id: deleteDialog
+        anchors.centerIn: parent
+        modal: true
+        width: 360
+        title: "Delete profile"
+        standardButtons: Dialog.Yes | Dialog.Cancel
+        onAccepted: App.deleteProfile(root.pendingDeleteId)
+        contentItem: Label {
+            text: "Permanently delete \"" + root.pendingDeleteName + "\" and all its "
+                + "messages from this device? This cannot be undone."
+            color: Theme.text
+            wrapMode: Text.Wrap
         }
     }
 }

@@ -21,7 +21,8 @@ ApplicationWindow {
     StackView {
         id: stack
         anchors.fill: parent
-        initialItem: pickerComponent
+        // Restored session(s) from last run → straight into the app, no dialog.
+        initialItem: App.session ? mainComponent : pickerComponent
     }
 
     Component { id: pickerComponent; ProfilePicker {} }
@@ -32,7 +33,14 @@ ApplicationWindow {
         function onProfileOpened() { stack.replace(null, mainComponent) }
         function onProfileOpenFailed(error) { window.showToast(error) }
         function onCreateFailed(error) { window.showToast(error) }
+        // "Add account": show the picker over the running session(s).
+        function onShowPicker() {
+            if (stack.currentItem && stack.currentItem.objectName !== "profilePicker") {
+                stack.push(pickerComponent)
+            }
+        }
         function onSessionChanged() {
+            // Last account signed out: back to the picker.
             if (!App.session && stack.depth > 0 && stack.currentItem
                     && stack.currentItem.objectName === "mainView") {
                 stack.replace(null, pickerComponent)

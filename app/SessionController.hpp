@@ -32,6 +32,8 @@ public slots:
     void connectAndSubscribe(const QString& host, int port, const QString& basePath,
         const QString& serverFp, int days);
     void sync();
+    // Starts or stops background syncing (the account going online/offline).
+    void setSyncEnabled(bool on);
     void sendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
@@ -60,6 +62,8 @@ signals:
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);
+    // Whether the last sync reached the facade (true) or failed (false).
+    void syncReachable(bool ok);
 
 private:
     void ensureSyncTimer();
@@ -75,7 +79,16 @@ class SessionController : public QObject {
     Q_PROPERTY(QString displayName READ displayName NOTIFY identityChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
     Q_PROPERTY(QString subscriptionText READ subscriptionText NOTIFY connectedChanged)
+    // online: this account is syncing in the background (receiving). reachable:
+    // the last sync actually reached the facade. Together they give the live
+    // connection status shown in the account list.
+    Q_PROPERTY(bool online READ online NOTIFY onlineChanged)
+    Q_PROPERTY(bool reachable READ reachable NOTIFY reachableChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
+    // The on-disk profile id this session was opened from (stable per account).
+    Q_PROPERTY(QString accountId READ accountId CONSTANT)
+    // Total unread across this account's conversations (for the switcher badge).
+    Q_PROPERTY(int unreadTotal READ unreadTotal NOTIFY unreadTotalChanged)
     Q_PROPERTY(QObject* contacts READ contacts CONSTANT)
     Q_PROPERTY(QObject* conversation READ conversation CONSTANT)
     Q_PROPERTY(bool sendReceipts READ sendReceipts WRITE setSendReceipts NOTIFY sendReceiptsChanged)
@@ -91,7 +104,11 @@ public:
     QString displayName() const { return displayName_; }
     bool connected() const { return connected_; }
     QString subscriptionText() const { return subscriptionText_; }
+    bool online() const { return online_; }
+    bool reachable() const { return reachable_; }
     QString activePeer() const { return activePeer_; }
+    QString accountId() const { return profileId_; }
+    int unreadTotal() const { return unreadTotal_; }
     QObject* contacts() { return &contacts_; }
     QObject* conversation() { return &conversation_; }
     bool sendReceipts() const { return sendReceipts_; }
@@ -104,6 +121,10 @@ public:
 
     Q_INVOKABLE void connectServer(
         const QString& host, int port, const QString& basePath, const QString& serverFp);
+    // Brings this account online (resume syncing) or offline (stop syncing
+    // without unloading it).
+    Q_INVOKABLE void goOnline();
+    Q_INVOKABLE void goOffline();
     Q_INVOKABLE void openConversation(const QString& peer);
     Q_INVOKABLE void sendText(const QString& text);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
@@ -131,6 +152,9 @@ signals:
     void activePeerChanged();
     void sendReceiptsChanged();
     void editingChanged();
+    void unreadTotalChanged();
+    void onlineChanged();
+    void reachableChanged();
     void openFailed(const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
@@ -155,6 +179,7 @@ signals:  // to worker
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath);
     void requestExport(const QString& path, const QString& password);
     void requestOpen(const QString& dir, const QString& passphrase);
+    void requestSetSync(bool on);
 
 private slots:
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected,
@@ -163,6 +188,7 @@ private slots:
     void onMessageReceived(const QVariantMap& message);
     void onSendProgress(qint64 localId, int state);
     void onSendResult(qint64 localId, bool ok, const QString& error);
+    void onSyncReachable(bool ok);
 
 private:
     QThread thread_;
@@ -175,6 +201,8 @@ private:
     QString fingerprint_;
     QString displayName_;
     bool connected_ = false;
+    bool online_ = false;
+    bool reachable_ = false;
     QString subscriptionText_;
     QString activePeer_;
     bool sendReceipts_ = true;
@@ -187,6 +215,9 @@ private:
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;
     void bumpStatus(qint64 localId, int status);
+    int unreadTotal_ = 0;
+    // Recomputes unreadTotal_ from the contacts model and notifies on change.
+    void refreshUnreadTotal();
 };
 
 }  // namespace bazarish::app

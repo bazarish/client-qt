@@ -135,6 +135,15 @@ void ContactListModel::clearUnread(const QString& fingerprint)
     }
 }
 
+int ContactListModel::totalUnread() const
+{
+    int total = 0;
+    for (const ContactRow& c : contacts_) {
+        total += c.unread;
+    }
+    return total;
+}
+
 // ---------------- ConversationModel ----------------
 
 int ConversationModel::rowCount(const QModelIndex&) const
@@ -216,6 +225,47 @@ void ConversationModel::editById(qint64 id, const QString& text, const QString& 
             return;
         }
     }
+}
+
+// ---------------- OpenAccountsModel ----------------
+
+int OpenAccountsModel::rowCount(const QModelIndex&) const
+{
+    return static_cast<int>(accounts_.size());
+}
+
+QVariant OpenAccountsModel::data(const QModelIndex& index, int role) const
+{
+    if (index.row() < 0 || index.row() >= accounts_.size()) {
+        return {};
+    }
+    const AccountRow& a = accounts_[index.row()];
+    switch (role) {
+    case IdRole: return a.id;
+    case NameRole: return a.name;
+    case FingerprintRole: return a.fingerprint;
+    case OpenRole: return a.open;
+    case ActiveRole: return a.active;
+    case OnlineRole: return a.online;
+    case ConnectedRole: return a.connected;
+    case EncryptedRole: return a.encrypted;
+    case UnreadRole: return a.unread;
+    default: return {};
+    }
+}
+
+QHash<int, QByteArray> OpenAccountsModel::roleNames() const
+{
+    return {{IdRole, "accountId"}, {NameRole, "name"}, {FingerprintRole, "fingerprint"},
+        {OpenRole, "open"}, {ActiveRole, "active"}, {OnlineRole, "online"},
+        {ConnectedRole, "connected"}, {EncryptedRole, "encrypted"}, {UnreadRole, "unread"}};
+}
+
+void OpenAccountsModel::setAccounts(QVector<AccountRow> accounts)
+{
+    beginResetModel();
+    accounts_ = std::move(accounts);
+    endResetModel();
 }
 
 }  // namespace bazarish::app

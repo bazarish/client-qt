@@ -114,11 +114,23 @@ Popup {
                             onToggled: if (root.session) root.session.sendReceipts = checked
                         }
                     }
-                    Button {
-                        text: "Sign out"
-                        onClicked: { root.close(); App.closeProfile() }
-                        background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
-                        contentItem: Label { text: parent.text; color: Theme.danger; horizontalAlignment: Text.AlignHCenter }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Button {
+                            Layout.fillWidth: true
+                            text: "Sign out"
+                            onClicked: { root.close(); App.closeProfile() }
+                            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
+                            contentItem: Label { text: parent.text; color: Theme.text; horizontalAlignment: Text.AlignHCenter }
+                        }
+                        Button {
+                            Layout.fillWidth: true
+                            text: "Delete account…"
+                            onClicked: deleteDialog.open()
+                            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.danger }
+                            contentItem: Label { text: parent.text; color: Theme.danger; horizontalAlignment: Text.AlignHCenter }
+                        }
                     }
                 }
             }
@@ -139,5 +151,28 @@ Popup {
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
         contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; implicitWidth: 260 }
+    }
+
+    Dialog {
+        id: deleteDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 360
+        title: "Delete account"
+        standardButtons: Dialog.Yes | Dialog.Cancel
+        onAccepted: {
+            const id = root.session ? root.session.accountId : ""
+            root.close()
+            if (id.length > 0) {
+                App.deleteProfile(id)
+            }
+        }
+        contentItem: Label {
+            text: "Permanently delete this account and all its messages from this "
+                + "device? Make sure you have a backup if you might need it again. "
+                + "This cannot be undone."
+            color: Theme.text
+            wrapMode: Text.Wrap
+        }
     }
 }

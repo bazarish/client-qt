@@ -89,6 +89,16 @@ void SessionWorker::connectAndSubscribe(const QString& host, int port, const QSt
     sync();
 }
 
+void SessionWorker::setSyncEnabled(bool on)
+{
+    if (on) {
+        ensureSyncTimer();
+        sync();
+    } else if (syncTimer_ != nullptr) {
+        syncTimer_->stop();
+    }
+}
+
 void SessionWorker::sync()
 {
     if (!session_ || !session_->isConnected()) {
@@ -97,7 +107,9 @@ void SessionWorker::sync()
     std::vector<IncomingMessage> messages;
     try {
         messages = session_->sync();
+        emit syncReachable(true);
     } catch (const std::exception&) {
+        emit syncReachable(false);
         return;  // transient (server momentarily unreachable); next tick retries
     }
     for (const IncomingMessage& m : messages) {
@@ -287,6 +299,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSaveAttachment, worker_,
         &SessionWorker::saveAttachment);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
+    connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
 
     // Results → controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
@@ -305,11 +318,30 @@ SessionController::SessionController(QObject* parent)
         });
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
+    connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, &SessionController::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
 
+    // Keep the account-wide unread total in sync with the contacts model, so the
+    // switcher badge updates even while this account is in the background.
+    connect(&contacts_, &QAbstractItemModel::dataChanged, this,
+        &SessionController::refreshUnreadTotal);
+    connect(&contacts_, &QAbstractItemModel::rowsInserted, this,
+        &SessionController::refreshUnreadTotal);
+    connect(&contacts_, &QAbstractItemModel::modelReset, this,
+        &SessionController::refreshUnreadTotal);
+
     thread_.start();
+}
+
+void SessionController::refreshUnreadTotal()
+{
+    const int total = contacts_.totalUnread();
+    if (total != unreadTotal_) {
+        unreadTotal_ = total;
+        emit unreadTotalChanged();
+    }
 }
 
 SessionController::~SessionController()
@@ -505,6 +537,11 @@ void SessionController::onOpened(const QString& fingerprint, const QString& disp
     subscriptionText_ = subscriptionText;
     emit identityChanged();
     emit connectedChanged();
+    // A connected profile starts syncing on open, so it comes up online.
+    if (online_ != connected) {
+        online_ = connected;
+        emit onlineChanged();
+    }
 }
 
 void SessionController::onConnectionChanged(bool connected, const QString& subscriptionText)
@@ -512,6 +549,40 @@ void SessionController::onConnectionChanged(bool connected, const QString& subsc
     connected_ = connected;
     subscriptionText_ = subscriptionText;
     emit connectedChanged();
+    if (online_ != connected) {
+        online_ = connected;
+        emit onlineChanged();
+    }
+}
+
+void SessionController::goOnline()
+{
+    if (!online_) {
+        online_ = true;
+        emit onlineChanged();
+    }
+    emit requestSetSync(true);
+}
+
+void SessionController::goOffline()
+{
+    if (online_) {
+        online_ = false;
+        emit onlineChanged();
+    }
+    if (reachable_) {
+        reachable_ = false;
+        emit reachableChanged();
+    }
+    emit requestSetSync(false);
+}
+
+void SessionController::onSyncReachable(bool ok)
+{
+    if (reachable_ != ok) {
+        reachable_ = ok;
+        emit reachableChanged();
+    }
 }
 
 void SessionController::onMessageReceived(const QVariantMap& message)

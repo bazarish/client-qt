@@ -39,6 +39,7 @@ Item {
                     Layout.fillHeight: true
                     onNewChatRequested: newChat.open()
                     onSettingsRequested: settings.open()
+                    onAccountsRequested: accountSwitcher.open()
                 }
                 Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
                 Item {
@@ -68,7 +69,33 @@ Item {
     InviteSheet { id: inviteSheet; session: root.session }
     ContactInfo { id: contactInfo; session: root.session }
     CallScreen { id: callScreen; session: root.session }
+    AccountSwitcher { id: accountSwitcher }
     SettingsPage { id: settings; session: root.session; onShowInvite: inviteSheet.open() }
+
+    // Unlock prompt for an encrypted account the user brings online/switches to.
+    property string unlockId: ""
+    Connections {
+        target: App
+        function onNeedPassphrase(id, name) {
+            root.unlockId = id
+            unlockField.text = ""
+            unlockDialog.title = "Unlock " + name
+            unlockDialog.open()
+        }
+    }
+    Dialog {
+        id: unlockDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: if (root.unlockId.length > 0) App.openProfile(root.unlockId, unlockField.text)
+        contentItem: TextField {
+            id: unlockField
+            echoMode: TextInput.Password
+            placeholderText: "Passphrase"
+            implicitWidth: 280
+        }
+    }
 
     Connections {
         target: newChat
