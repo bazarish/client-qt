@@ -99,7 +99,6 @@ void SessionWorker::connectAndSubscribe(
         if (endpoint.facades.empty()) {
             throw std::runtime_error("enter at least one facade URL");
         }
-        endpoint.selectFacade(0);
         session_->connectServer(endpoint);
         session_->subscribe(days);
     } catch (const std::exception& e) {
@@ -132,7 +131,6 @@ void SessionWorker::updateFacades(const QStringList& facadeUrls)
         if (endpoint.facades.empty()) {
             throw std::runtime_error("enter at least one facade URL");
         }
-        endpoint.selectFacade(0);
         session_->connectServer(endpoint);
         emit actionOk("Facades updated.");
         emitFacadeInfo();

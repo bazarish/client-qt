@@ -74,12 +74,11 @@ int main()
     // Connecting a profile to a server persists the endpoint and flips the
     // connected flag seen by the picker.
     ServerEndpoint endpoint;
-    endpoint.host = "127.0.0.1";
-    endpoint.port = 18000;
     endpoint.serverFingerprint = "serverfp";
+    endpoint.facades = {Facade{false, "127.0.0.1", 18000, {}}};
     sa.connectServer(endpoint);
     CHECK(sa.isConnected());
-    CHECK(sa.endpoint().port == 18000);
+    CHECK(sa.endpoint().facades.at(0).port == 18000);
 
     bool foundConnected = false;
     for (const ProfileInfo& info : manager.list()) {

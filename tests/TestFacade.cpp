@@ -97,21 +97,17 @@ void testInvalid()
     }
 }
 
-void testSelectFacade()
+void testEndpointFacades()
 {
     ServerEndpoint endpoint;
+    endpoint.serverFingerprint = "srvfp";
     endpoint.facades = {parseFacadeUrl("http://a:1"), parseFacadeUrl("https://b:2/x")};
-    endpoint.selectFacade(1);
-    CHECK(endpoint.tls);
-    CHECK(endpoint.host == "b");
-    CHECK(endpoint.port == 2);
-    CHECK(endpoint.basePath == "/x");
-    endpoint.selectFacade(0);
-    CHECK(!endpoint.tls);
-    CHECK(endpoint.host == "a");
-    // Out-of-range clamps to the last.
-    endpoint.selectFacade(99);
-    CHECK(endpoint.host == "b");
+    CHECK(endpoint.facades.size() == 2);
+    CHECK(!endpoint.facades[0].tls);
+    CHECK(endpoint.facades[0].host == "a");
+    CHECK(endpoint.facades[1].tls);
+    CHECK(endpoint.facades[1].basePath == "/x");
+    CHECK(facadeToUrl(endpoint.facades[1]) == "https://b:2/x");
 }
 
 void testServerLink()
@@ -145,7 +141,7 @@ int main()
     testParse();
     testFormatRoundTrip();
     testInvalid();
-    testSelectFacade();
+    testEndpointFacades();
     testServerLink();
     std::fprintf(stderr, "TestFacade passed\n");
     return 0;

@@ -96,21 +96,6 @@ std::string facadeToUrl(const Facade& facade)
     return url;
 }
 
-void ServerEndpoint::selectFacade(std::size_t index)
-{
-    if (facades.empty()) {
-        return;
-    }
-    if (index >= facades.size()) {
-        index = facades.size() - 1;
-    }
-    const Facade& facade = facades[index];
-    tls = facade.tls;
-    host = facade.host;
-    port = facade.port;
-    basePath = facade.basePath;
-}
-
 nlohmann::json ApiResponse::json() const
 {
     return nlohmann::json::parse(body.begin(), body.end());
@@ -141,19 +126,13 @@ const ServerEndpoint& ApiClient::endpoint() const
     return endpoint_;
 }
 
-std::vector<Facade> ApiClient::facadeList() const
-{
-    if (!endpoint_.facades.empty()) {
-        return endpoint_.facades;
-    }
-    return {Facade{endpoint_.tls, endpoint_.host, endpoint_.port, endpoint_.basePath}};
-}
-
 std::string ApiClient::activeFacadeUrl() const
 {
-    const std::vector<Facade> facades = facadeList();
-    const std::size_t index = activeFacade_ < facades.size() ? activeFacade_ : 0;
-    return facadeToUrl(facades[index]);
+    if (endpoint_.facades.empty()) {
+        return {};
+    }
+    const std::size_t index = activeFacade_ < endpoint_.facades.size() ? activeFacade_ : 0;
+    return facadeToUrl(endpoint_.facades[index]);
 }
 
 ApiResponse ApiClient::get(const std::string& path, const std::string& query)
@@ -252,7 +231,7 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
     // through all of them. A reachable facade that returns an error response is
     // final (no failover); only an unreachable facade advances to the next. The
     // caller's retry loop re-enters here, so failover continues without end.
-    const std::vector<Facade> facades = facadeList();
+    const std::vector<Facade>& facades = endpoint_.facades;
     std::string lastError = "no facade configured";
     for (std::size_t i = 0; i < facades.size(); ++i) {
         const std::size_t index = (activeFacade_ + i) % facades.size();

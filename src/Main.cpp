@@ -51,14 +51,14 @@ void printUsage()
         "A stateful command-line messenger client.\n"
         "\n"
         "Usage:\n"
-        "  bazarish-client init <state> <host> <port> <server-fp> [base-path]\n"
+        "  bazarish-client init <state> <facade-url> <server-fp>\n"
         "  bazarish-client subscribe <state> [days]\n"
         "  bazarish-client whoami <state>\n"
         "  bazarish-client alias <state> <name>\n"
         "  bazarish-client invite <state>\n"
-        "  bazarish-client request <state> <peer-fp> <text> [peer-host peer-port [base-path]]\n"
+        "  bazarish-client request <state> <peer-fp> <text> [peer-facade-url]\n"
         "  bazarish-client add-invite <state> <invite-file> <text>\n"
-        "  bazarish-client add-user <state> <alias> <text> [host port [base-path]]\n"
+        "  bazarish-client add-user <state> <alias> <text> [resolver-facade-url]\n"
         "  bazarish-client send <state> <peer-fp> <text>\n"
         "  bazarish-client send-file <state> <peer-fp> <file>\n"
         "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
@@ -90,17 +90,14 @@ void printUsage()
 
 int runInit(const std::vector<std::string>& args)
 {
-    if (args.size() < 5 || args.size() > 6) {
+    // init <state> <facade-url> <server-fp>
+    if (args.size() != 4) {
         printUsage();
         return 2;
     }
     ServerEndpoint endpoint;
-    endpoint.host = args[2];
-    endpoint.port = std::atoi(args[3].c_str());
-    endpoint.serverFingerprint = args[4];
-    if (args.size() == 6) {
-        endpoint.basePath = args[5];
-    }
+    endpoint.facades = {bazarish::client::parseFacadeUrl(args[2])};
+    endpoint.serverFingerprint = args[3];
     const Session session = Session::create(args[1], endpoint, keyPassphrase());
     std::printf("created client\nfingerprint: %s\n", session.fingerprint().c_str());
     return 0;
@@ -164,23 +161,14 @@ int runInvite(const std::vector<std::string>& args)
 
 int runRequest(const std::vector<std::string>& args)
 {
-    // request <state> <peer-fp> <text> [peer-host peer-port [base-path]]
-    if (args.size() == 5 || args.size() < 4 || args.size() > 7) {
+    // request <state> <peer-fp> <text> [peer-facade-url]
+    if (args.size() < 4 || args.size() > 5) {
         printUsage();
         return 2;
     }
-    std::string peerHost;
-    int peerPort = 0;
-    std::string peerBasePath;
-    if (args.size() >= 6) {
-        peerHost = args[4];
-        peerPort = std::atoi(args[5].c_str());
-    }
-    if (args.size() == 7) {
-        peerBasePath = args[6];
-    }
+    const std::string peerFacadeUrl = args.size() == 5 ? args[4] : std::string();
     Session session = Session::open(args[1], keyPassphrase());
-    session.sendContactRequest(args[2], args[3], peerHost, peerPort, peerBasePath);
+    session.sendContactRequest(args[2], args[3], peerFacadeUrl);
     std::printf("contact request sent to %s\n", args[2].c_str());
     return 0;
 }
@@ -207,23 +195,14 @@ int runAddInvite(const std::vector<std::string>& args)
 
 int runAddUser(const std::vector<std::string>& args)
 {
-    // add-user <state> <alias> <text> [host port [base-path]]
-    if (args.size() == 5 || args.size() < 4 || args.size() > 7) {
+    // add-user <state> <alias> <text> [resolver-facade-url]
+    if (args.size() < 4 || args.size() > 5) {
         printUsage();
         return 2;
     }
-    std::string host;
-    int port = 0;
-    std::string basePath;
-    if (args.size() >= 6) {
-        host = args[4];
-        port = std::atoi(args[5].c_str());
-    }
-    if (args.size() == 7) {
-        basePath = args[6];
-    }
+    const std::string resolverFacadeUrl = args.size() == 5 ? args[4] : std::string();
     Session session = Session::open(args[1], keyPassphrase());
-    session.addByUsername(args[2], args[3], host, port, basePath);
+    session.addByUsername(args[2], args[3], resolverFacadeUrl);
     std::printf("contact request sent to %s (resolver-trusted mapping)\n", args[2].c_str());
     return 0;
 }

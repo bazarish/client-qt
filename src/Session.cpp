@@ -182,10 +182,8 @@ Session Session::create(
     const bool encrypted = !passphrase.empty();
     const std::string fingerprint = identity.fingerprint();
 
-    // A fresh profile has no server yet: an empty host marks "unconnected".
-    ServerEndpoint endpoint;
-    endpoint.host.clear();
-    endpoint.port = 0;
+    // A fresh profile has no server yet: an empty facade list marks "unconnected".
+    const ServerEndpoint endpoint;
 
     const nlohmann::json meta = {
         {"clientId", clientId},
@@ -193,10 +191,6 @@ Session Session::create(
         {"fingerprint", fingerprint},
         {"endpoint",
             {
-                {"tls", endpoint.tls},
-                {"host", endpoint.host},
-                {"port", endpoint.port},
-                {"basePath", endpoint.basePath},
                 {"serverFingerprint", endpoint.serverFingerprint},
                 {"facades", nlohmann::json::array()},
             }},
@@ -234,7 +228,7 @@ void Session::connectServer(const ServerEndpoint& endpoint)
 
 bool Session::isConnected() const
 {
-    return !client_->endpoint().host.empty();
+    return !client_->endpoint().facades.empty();
 }
 
 const ServerEndpoint& Session::endpoint() const
@@ -249,17 +243,9 @@ std::string Session::activeFacadeUrl() const
 
 std::vector<std::string> Session::facadeUrls() const
 {
-    const ServerEndpoint& endpoint = client_->endpoint();
     std::vector<std::string> urls;
-    if (endpoint.facades.empty()) {
-        if (!endpoint.host.empty()) {
-            urls.push_back(
-                facadeToUrl(Facade{endpoint.tls, endpoint.host, endpoint.port, endpoint.basePath}));
-        }
-    } else {
-        for (const Facade& facade : endpoint.facades) {
-            urls.push_back(facadeToUrl(facade));
-        }
+    for (const Facade& facade : client_->endpoint().facades) {
+        urls.push_back(facadeToUrl(facade));
     }
     return urls;
 }
@@ -269,15 +255,9 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
     const nlohmann::json meta = nlohmann::json::parse(readFileText(stateDir / "meta.json"));
     ServerEndpoint endpoint;
     const nlohmann::json& endpointJson = meta.at("endpoint");
-    endpoint.tls = endpointJson.value("tls", false);
-    endpoint.host = endpointJson.at("host").get<std::string>();
-    endpoint.port = endpointJson.at("port").get<int>();
-    endpoint.basePath = endpointJson.at("basePath").get<std::string>();
     endpoint.serverFingerprint = endpointJson.at("serverFingerprint").get<std::string>();
-    if (endpointJson.contains("facades")) {
-        for (const nlohmann::json& url : endpointJson.at("facades")) {
-            endpoint.facades.push_back(parseFacadeUrl(url.get<std::string>()));
-        }
+    for (const nlohmann::json& url : endpointJson.at("facades")) {
+        endpoint.facades.push_back(parseFacadeUrl(url.get<std::string>()));
     }
 
     const bool encrypted = meta.value("encrypted", false);
@@ -380,18 +360,16 @@ std::vector<std::string> Session::contactFingerprints() const
     return fingerprints;
 }
 
-ContactInfo Session::lookupContactAt(const std::string& host, const int port,
-    const std::string& basePath, const std::string& peerFingerprint) const
+ContactInfo Session::lookupContactAt(
+    const std::string& peerFacadeUrl, const std::string& peerFingerprint) const
 {
-    // Default to our own facade; a non-empty host targets the peer's facade
+    // Default to our own facade; a non-empty URL targets the peer's facade
     // (cross-server first contact).
-    if (host.empty()) {
+    if (peerFacadeUrl.empty()) {
         return client_->lookupContact(peerFingerprint);
     }
     ServerEndpoint endpoint;
-    endpoint.host = host;
-    endpoint.port = port;
-    endpoint.basePath = basePath;
+    endpoint.facades = {parseFacadeUrl(peerFacadeUrl)};
     Client remote(Identity::fromPrivatePem(client_->identity().privatePem()),
         client_->clientId(), endpoint);
     return remote.lookupContact(peerFingerprint);
@@ -410,10 +388,6 @@ void Session::persistMeta() const
         {"fingerprint", client_->identity().fingerprint()},
         {"endpoint",
             {
-                {"tls", endpoint.tls},
-                {"host", endpoint.host},
-                {"port", endpoint.port},
-                {"basePath", endpoint.basePath},
                 {"serverFingerprint", endpoint.serverFingerprint},
                 {"facades", facades},
             }},
@@ -548,13 +522,12 @@ void Session::deliver(const std::string& toServer, const Key& serverSealingKey,
 }
 
 void Session::sendContactRequest(const std::string& peerFingerprint, const std::string& text,
-    const std::string& peerHost, const int peerPort, const std::string& peerBasePath)
+    const std::string& peerFacadeUrl)
 {
     // Resolve the peer's prekey, serving server and server card. The prekey
     // is signed by the peer (subscription certificate) and the server card by
     // the peer's server, so neither can be substituted by an intermediary.
-    const ContactInfo info
-        = lookupContactAt(peerHost, peerPort, peerBasePath, peerFingerprint);
+    const ContactInfo info = lookupContactAt(peerFacadeUrl, peerFingerprint);
     requestWithInfo(peerFingerprint, text, info);
 }
 
@@ -570,26 +543,24 @@ void Session::addByInvite(const std::string& inviteUri, const std::string& text)
     requestWithInfo(info.subscriptionCert.user, text, info);
 }
 
-void Session::addByUsername(const std::string& alias, const std::string& text,
-    const std::string& host, const int port, const std::string& basePath)
+void Session::addByUsername(
+    const std::string& alias, const std::string& text, const std::string& resolverFacadeUrl)
 {
     // Resolve the alias to a fingerprint. This mapping is the one trust
     // compromise of the username path: a hostile resolver could return an
     // attacker's fingerprint. Everything after the mapping — the contact
     // lookup and its certificates — is verified end-to-end as usual.
     std::string fingerprint;
-    if (host.empty()) {
+    if (resolverFacadeUrl.empty()) {
         fingerprint = client_->resolve(alias).user;
     } else {
         ServerEndpoint endpoint;
-        endpoint.host = host;
-        endpoint.port = port;
-        endpoint.basePath = basePath;
+        endpoint.facades = {parseFacadeUrl(resolverFacadeUrl)};
         Client remote(Identity::fromPrivatePem(client_->identity().privatePem()),
             client_->clientId(), endpoint);
         fingerprint = remote.resolve(alias).user;
     }
-    sendContactRequest(fingerprint, text, host, port, basePath);
+    sendContactRequest(fingerprint, text, resolverFacadeUrl);
 }
 
 void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,

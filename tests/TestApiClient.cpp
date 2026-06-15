@@ -115,9 +115,8 @@ int main()
     server.wait_until_ready();
 
     ServerEndpoint endpoint;
-    endpoint.host = "127.0.0.1";
-    endpoint.port = port;
     endpoint.serverFingerprint = "unused-here";
+    endpoint.facades = {Facade{false, "127.0.0.1", port, {}}};
 
     // A signed GET round-trips and the server derives alice's fingerprint
     // from the presented keys.
@@ -134,7 +133,7 @@ int main()
     // the signature is computed over the stripped path.
     {
         ServerEndpoint secret = endpoint;
-        secret.basePath = "/s/secret";
+        secret.facades[0].basePath = "/s/secret";
         ApiClient api(alice, "abc123", secret);
         const ApiResponse response = api.postJson("/v1/messaging/clients",
             {{"clientId", "abc123"}});
@@ -178,7 +177,7 @@ int main()
     // status and no typed code.
     {
         ServerEndpoint dead = endpoint;
-        dead.port = 1;  // Reserved; connection refused.
+        dead.facades[0].port = 1;  // Reserved; connection refused.
         ApiClient api(alice, "abc123", dead);
         bool threw = false;
         try {

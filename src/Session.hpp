@@ -183,14 +183,13 @@ public:
     // serving server's service node, so contacts can add us by name.
     void registerAlias(const std::string& alias);
 
-    // Sends a contact request to a peer. The peer's prekey, serving server
-    // and server card are looked up (on peerHost:peerPort when given — the
-    // peer's facade for a cross-server contact — otherwise on our own); the
-    // request payload is E2E-encrypted to the peer's prekey and carries a
-    // fresh token batch and our own server card so the peer can reply.
+    // Sends a contact request to a peer. The peer's prekey, serving server and
+    // server card are looked up on peerFacadeUrl when given (the peer's facade
+    // for a cross-server contact), otherwise on our own; the request payload is
+    // E2E-encrypted to the peer's prekey and carries a fresh token batch and our
+    // own server card so the peer can reply.
     void sendContactRequest(const std::string& peerFingerprint, const std::string& text,
-        const std::string& peerHost = {}, int peerPort = 0,
-        const std::string& peerBasePath = {});
+        const std::string& peerFacadeUrl = {});
 
     // A bazarish:// invite carrying our full self-verifying serving chain
     // (subscription certificate + server card). A contact can verify it and
@@ -204,10 +203,10 @@ public:
     // Adds a contact by username (alias). The resolver maps the alias to a
     // fingerprint, which is the one trust compromise — a hostile resolver
     // could return a wrong fingerprint; everything after the mapping is
-    // verified end-to-end. host/port target the resolver's facade (our own
-    // when host is empty).
+    // verified end-to-end. resolverFacadeUrl targets the resolver's facade (our
+    // own when empty).
     void addByUsername(const std::string& alias, const std::string& text,
-        const std::string& host = {}, int port = 0, const std::string& basePath = {});
+        const std::string& resolverFacadeUrl = {});
 
     // Sends an E2E-encrypted message to an established contact, spending one
     // of the peer's tokens. Throws if the contact is unknown or out of
@@ -312,11 +311,10 @@ private:
     // server and returns the raw tokens (base64) to hand to the peer.
     std::vector<std::string> issueTokenBatch();
 
-    // Looks up a contact on a given facade (defaults to our own when host is
+    // Looks up a contact on a given facade (our own when peerFacadeUrl is
     // empty), returning the verified prekey certificate and server card.
     ContactInfo lookupContactAt(
-        const std::string& host, int port, const std::string& basePath,
-        const std::string& peerFingerprint) const;
+        const std::string& peerFacadeUrl, const std::string& peerFingerprint) const;
 
     // Sends a contact request to a peer whose verified routing info is
     // already known (from a lookup or an invite). Mints a reply token batch

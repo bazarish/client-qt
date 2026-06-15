@@ -212,9 +212,8 @@ int main()
     server.wait_until_ready();
 
     ServerEndpoint endpoint;
-    endpoint.host = "127.0.0.1";
-    endpoint.port = port;
     endpoint.serverFingerprint = serverFp;
+    endpoint.facades = {Facade{false, "127.0.0.1", port, {}}};
 
     Client client(Identity::fromPrivatePem(alice.privatePem()), "client01", endpoint);
 

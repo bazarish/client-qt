@@ -104,9 +104,8 @@ int main()
     // --- Session: at-rest passphrase and export/import (all offline) ---
 
     ServerEndpoint endpoint;
-    endpoint.host = "127.0.0.1";
-    endpoint.port = 9;
     endpoint.serverFingerprint = serverFp;
+    endpoint.facades = {Facade{false, "127.0.0.1", 9, {}}};
 
     const fs::path dirA = uniqueTempDir("a");
     const std::string passphrase = "at-rest secret";

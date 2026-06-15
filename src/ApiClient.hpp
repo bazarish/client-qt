@@ -32,25 +32,17 @@ Facade parseFacadeUrl(const std::string& url);
 // Formats a Facade back into its canonical URL string.
 std::string facadeToUrl(const Facade& facade);
 
-// Where the client reaches the infrastructure. The active facade's connection
-// fields (tls/host/port/basePath) are kept here for the transport; `facades` is
-// the full ordered list to fail over across. The secret base path is prepended
-// to every request URL but excluded from the signed canonical path (the facade
-// strips it before forwarding, and the server verifies the stripped path).
+// Where the client reaches the infrastructure: the serving server's fingerprint
+// (the trust anchor) and an ordered list of facades the transport tries and
+// fails over across. A facade's secret base path is prepended to every request
+// URL but excluded from the signed canonical path (the facade strips it before
+// forwarding, and the server verifies the stripped path).
 struct ServerEndpoint {
-    bool tls = false;
-    std::string host = "127.0.0.1";
-    int port = 0;
-    std::string basePath;
-    // Fingerprint of the server root key (from the registration info). Used
-    // to name subscription certificates and as the local mailbox server.
+    // Fingerprint of the server root key (from the registration info). Used to
+    // name subscription certificates and as the local mailbox server.
     std::string serverFingerprint;
-    // The ordered facade list (when set, the transport fails over across it).
-    // The active fields above mirror the currently selected facade.
+    // The ordered facades; empty means "not connected to a server yet".
     std::vector<Facade> facades;
-
-    // Points the active fields at facades[index] (clamped). No-op when empty.
-    void selectFacade(std::size_t index);
 };
 
 // A server response. Non-2xx statuses are turned into ApiError by ApiClient,
@@ -105,8 +97,6 @@ private:
     ApiResponse send(const std::string& method, const std::string& path,
         const std::string& query, const Bytes& body, const std::string& contentType,
         bool authenticate);
-    // The ordered facades to try (the list, or the single active facade).
-    std::vector<Facade> facadeList() const;
 
     const Identity& identity_;
     const std::string clientId_;

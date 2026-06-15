@@ -69,7 +69,8 @@ ProfileInfo readInfo(const std::string& id, const fs::path& dir)
     }
     info.fingerprint = meta.value("fingerprint", std::string{});
     info.encrypted = meta.value("encrypted", false);
-    info.connected = !meta.at("endpoint").value("host", std::string{}).empty();
+    info.connected
+        = !meta.at("endpoint").value("facades", nlohmann::json::array()).empty();
     return info;
 }
 
