@@ -7,25 +7,50 @@
 
 #include <nlohmann/json.hpp>
 
+#include <cstddef>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace bazarish::client {
 
-// Where the client reaches the infrastructure: a single facade entry point.
-// The secret base path is part of the registration info and is prepended to
-// every request URL but excluded from the signed canonical path (the facade
-// strips it before forwarding, and the server verifies the stripped path).
-struct ServerEndpoint {
-    std::string host = "127.0.0.1";
-    int port = 0;
+// One facade entry point, parsed from a single URL. A server may expose several
+// facades; the client tries them in order and fails over (see ServerEndpoint).
+struct Facade {
+    bool tls = false;          // https vs http
+    std::string host;
+    int port = 0;              // defaults to 443 (https) / 80 (http) when omitted
     // Secret URI prefix the facade strips, e.g. "/s/9f3c". Empty when the
     // reverse proxy owns the secret.
+    std::string basePath;
+};
+
+// Parses "http[s]://host[:port][/base/path]" into a Facade. Throws on a malformed
+// URL. A bare "host:port" with no scheme is treated as http.
+Facade parseFacadeUrl(const std::string& url);
+// Formats a Facade back into its canonical URL string.
+std::string facadeToUrl(const Facade& facade);
+
+// Where the client reaches the infrastructure. The active facade's connection
+// fields (tls/host/port/basePath) are kept here for the transport; `facades` is
+// the full ordered list to fail over across. The secret base path is prepended
+// to every request URL but excluded from the signed canonical path (the facade
+// strips it before forwarding, and the server verifies the stripped path).
+struct ServerEndpoint {
+    bool tls = false;
+    std::string host = "127.0.0.1";
+    int port = 0;
     std::string basePath;
     // Fingerprint of the server root key (from the registration info). Used
     // to name subscription certificates and as the local mailbox server.
     std::string serverFingerprint;
+    // The ordered facade list (when set, the transport fails over across it).
+    // The active fields above mirror the currently selected facade.
+    std::vector<Facade> facades;
+
+    // Points the active fields at facades[index] (clamped). No-op when empty.
+    void selectFacade(std::size_t index);
 };
 
 // A server response. Non-2xx statuses are turned into ApiError by ApiClient,
@@ -72,15 +97,22 @@ public:
 
     const std::string& clientId() const;
     const ServerEndpoint& endpoint() const;
+    // The facade the transport is currently using (last one that worked), as a
+    // URL — for the GUI's "connected via" display.
+    std::string activeFacadeUrl() const;
 
 private:
     ApiResponse send(const std::string& method, const std::string& path,
         const std::string& query, const Bytes& body, const std::string& contentType,
         bool authenticate);
+    // The ordered facades to try (the list, or the single active facade).
+    std::vector<Facade> facadeList() const;
 
     const Identity& identity_;
     const std::string clientId_;
     const ServerEndpoint endpoint_;
+    // Index into facadeList() of the last facade that worked; failover starts here.
+    std::size_t activeFacade_ = 0;
 };
 
 }  // namespace bazarish::client

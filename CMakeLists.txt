@@ -38,6 +38,13 @@ target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
 target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY})
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
+# HTTPS facades: enable httplib's TLS client. Defined PUBLIC and OpenSSL::SSL
+# linked PUBLIC so every client-side target that includes httplib (CLI, bot,
+# app, tests) sees the same definition (no header-only ODR mismatch). The server
+# repositories are separate and unaffected.
+find_package(OpenSSL 3.0 REQUIRED)
+target_compile_definitions(bazarish_client_lib PUBLIC CPPHTTPLIB_OPENSSL_SUPPORT)
+target_link_libraries(bazarish_client_lib PUBLIC OpenSSL::SSL)
 
 add_executable(bazarish-client src/Main.cpp)
 target_link_libraries(bazarish-client PRIVATE bazarish_client_lib)
@@ -123,6 +130,7 @@ endfunction()
 
 bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestBot)
+bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestGroup)
 bazarish_client_add_test(TestInvite)

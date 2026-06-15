@@ -35,6 +35,82 @@ std::int64_t nowSeconds()
 
 }  // namespace
 
+Facade parseFacadeUrl(const std::string& url)
+{
+    Facade facade;
+    std::string rest = url;
+
+    const std::string::size_type schemeEnd = rest.find("://");
+    if (schemeEnd != std::string::npos) {
+        const std::string scheme = rest.substr(0, schemeEnd);
+        if (scheme == "https") {
+            facade.tls = true;
+        } else if (scheme != "http") {
+            throw std::runtime_error("unsupported facade scheme: " + scheme);
+        }
+        rest = rest.substr(schemeEnd + 3);
+    }
+    if (rest.empty()) {
+        throw std::runtime_error("empty facade URL");
+    }
+
+    const std::string::size_type slash = rest.find('/');
+    const std::string authority = slash == std::string::npos ? rest : rest.substr(0, slash);
+    facade.basePath = slash == std::string::npos ? std::string() : rest.substr(slash);
+    while (facade.basePath.size() > 1 && facade.basePath.back() == '/') {
+        facade.basePath.pop_back();
+    }
+    if (facade.basePath == "/") {
+        facade.basePath.clear();
+    }
+
+    const std::string::size_type colon = authority.find(':');
+    if (colon != std::string::npos) {
+        facade.host = authority.substr(0, colon);
+        try {
+            facade.port = std::stoi(authority.substr(colon + 1));
+        } catch (const std::exception&) {
+            throw std::runtime_error("invalid facade port in: " + url);
+        }
+        if (facade.port <= 0 || facade.port > 65535) {
+            throw std::runtime_error("invalid facade port in: " + url);
+        }
+    } else {
+        facade.host = authority;
+        facade.port = facade.tls ? 443 : 80;
+    }
+    if (facade.host.empty()) {
+        throw std::runtime_error("empty facade host in: " + url);
+    }
+    return facade;
+}
+
+std::string facadeToUrl(const Facade& facade)
+{
+    std::string url = (facade.tls ? "https://" : "http://") + facade.host;
+    const int defaultPort = facade.tls ? 443 : 80;
+    if (facade.port != 0 && facade.port != defaultPort) {
+        url += ":" + std::to_string(facade.port);
+    }
+    url += facade.basePath;
+    return url;
+}
+
+void ServerEndpoint::selectFacade(std::size_t index)
+{
+    if (facades.empty()) {
+        return;
+    }
+    if (index >= facades.size()) {
+        index = facades.size() - 1;
+    }
+    const Facade& facade = facades[index];
+    tls = facade.tls;
+    host = facade.host;
+    port = facade.port;
+    basePath = facade.basePath;
+}
+
 nlohmann::json ApiResponse::json() const
 {
     return nlohmann::json::parse(body.begin(), body.end());
@@ -63,6 +139,21 @@ const std::string& ApiClient::clientId() const
 const ServerEndpoint& ApiClient::endpoint() const
 {
     return endpoint_;
+}
+
+std::vector<Facade> ApiClient::facadeList() const
+{
+    if (!endpoint_.facades.empty()) {
+        return endpoint_.facades;
+    }
+    return {Facade{endpoint_.tls, endpoint_.host, endpoint_.port, endpoint_.basePath}};
+}
+
+std::string ApiClient::activeFacadeUrl() const
+{
+    const std::vector<Facade> facades = facadeList();
+    const std::size_t index = activeFacade_ < facades.size() ? activeFacade_ : 0;
+    return facadeToUrl(facades[index]);
 }
 
 ApiResponse ApiClient::get(const std::string& path, const std::string& query)
@@ -105,7 +196,8 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
 {
     // The signed canonical path is the server-visible path: no base path and
     // no query string (the facade strips the base path before forwarding and
-    // the server verifies the query-less path).
+    // the server verifies the query-less path). The signature is therefore the
+    // same across facades, so it is computed once.
     httplib::Headers headers;
     if (authenticate) {
         const auth::Headers signedHeaders
@@ -114,44 +206,73 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         headers.emplace("X-Bazarish-Client", clientId_);
     }
 
-    std::string url = endpoint_.basePath + path;
-    if (!query.empty()) {
-        url += "?" + query;
+    // Issues the request against one facade. A send may relay over I2P
+    // synchronously on the server side (tens of seconds), so the timeouts are
+    // generous. Returns the result; an empty result means the facade was
+    // unreachable.
+    const auto attempt = [&](const Facade& facade) -> httplib::Result {
+        std::string url = facade.basePath + path;
+        if (!query.empty()) {
+            url += "?" + query;
+        }
+        const auto run = [&](auto& http) -> httplib::Result {
+            http.set_keep_alive(false);
+            http.set_connection_timeout(30, 0);
+            http.set_read_timeout(240, 0);
+            http.set_write_timeout(240, 0);
+            if (method == "GET") {
+                return http.Get(url, headers);
+            }
+            if (method == "POST") {
+                return http.Post(url, headers, std::string(body.begin(), body.end()), contentType);
+            }
+            if (method == "DELETE") {
+                return http.Delete(
+                    url, headers, std::string(body.begin(), body.end()), contentType);
+            }
+            throw ApiError(std::nullopt, 0, "unsupported HTTP method: " + method);
+        };
+        if (facade.tls) {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+            httplib::SSLClient http(facade.host, facade.port);
+            // The facade is the untrusted last mile (security is end-to-end and
+            // anchored in the server fingerprint, not TLS PKI), so a self-signed
+            // or proxy certificate is accepted.
+            http.enable_server_certificate_verification(false);
+            return run(http);
+#else
+            throw ApiError(std::nullopt, 0, "https facade not supported in this build");
+#endif
+        }
+        httplib::Client http(facade.host, facade.port);
+        return run(http);
+    };
+
+    // Try facades in order, starting from the last that worked, and cycle once
+    // through all of them. A reachable facade that returns an error response is
+    // final (no failover); only an unreachable facade advances to the next. The
+    // caller's retry loop re-enters here, so failover continues without end.
+    const std::vector<Facade> facades = facadeList();
+    std::string lastError = "no facade configured";
+    for (std::size_t i = 0; i < facades.size(); ++i) {
+        const std::size_t index = (activeFacade_ + i) % facades.size();
+        const httplib::Result result = attempt(facades[index]);
+        if (!result) {
+            lastError = "transport failure: " + httplib::to_string(result.error());
+            continue;  // facade unreachable — try the next
+        }
+        activeFacade_ = index;  // remember the working facade for next time
+
+        ApiResponse response;
+        response.status = result->status;
+        response.body = Bytes(result->body.begin(), result->body.end());
+        response.contentType = result->get_header_value("Content-Type");
+        if (response.status < 200 || response.status >= 300) {
+            raiseFromResponse(response.status, response.body);
+        }
+        return response;
     }
-
-    httplib::Client http(endpoint_.host, endpoint_.port);
-    http.set_keep_alive(false);
-    // A send may relay over I2P synchronously on the server side, which can
-    // take tens of seconds (tunnel build, leaseset lookup); allow for it.
-    http.set_connection_timeout(30, 0);
-    http.set_read_timeout(240, 0);
-    http.set_write_timeout(240, 0);
-
-    httplib::Result result;
-    if (method == "GET") {
-        result = http.Get(url, headers);
-    } else if (method == "POST") {
-        result = http.Post(url, headers, std::string(body.begin(), body.end()), contentType);
-    } else if (method == "DELETE") {
-        result = http.Delete(url, headers, std::string(body.begin(), body.end()), contentType);
-    } else {
-        throw ApiError(std::nullopt, 0, "unsupported HTTP method: " + method);
-    }
-
-    if (!result) {
-        throw ApiError(std::nullopt, 0,
-            "transport failure: " + httplib::to_string(result.error()));
-    }
-
-    ApiResponse response;
-    response.status = result->status;
-    response.body = Bytes(result->body.begin(), result->body.end());
-    response.contentType = result->get_header_value("Content-Type");
-
-    if (response.status < 200 || response.status >= 300) {
-        raiseFromResponse(response.status, response.body);
-    }
-    return response;
+    throw ApiError(std::nullopt, 0, "all facades unreachable: " + lastError);
 }
 
 }  // namespace bazarish::client

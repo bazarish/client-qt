@@ -193,10 +193,12 @@ Session Session::create(
         {"fingerprint", fingerprint},
         {"endpoint",
             {
+                {"tls", endpoint.tls},
                 {"host", endpoint.host},
                 {"port", endpoint.port},
                 {"basePath", endpoint.basePath},
                 {"serverFingerprint", endpoint.serverFingerprint},
+                {"facades", nlohmann::json::array()},
             }},
         {"serverCard", ""},
         {"subscriptionCert", ""},
@@ -244,11 +246,17 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
 {
     const nlohmann::json meta = nlohmann::json::parse(readFileText(stateDir / "meta.json"));
     ServerEndpoint endpoint;
-    endpoint.host = meta.at("endpoint").at("host").get<std::string>();
-    endpoint.port = meta.at("endpoint").at("port").get<int>();
-    endpoint.basePath = meta.at("endpoint").at("basePath").get<std::string>();
-    endpoint.serverFingerprint
-        = meta.at("endpoint").at("serverFingerprint").get<std::string>();
+    const nlohmann::json& endpointJson = meta.at("endpoint");
+    endpoint.tls = endpointJson.value("tls", false);
+    endpoint.host = endpointJson.at("host").get<std::string>();
+    endpoint.port = endpointJson.at("port").get<int>();
+    endpoint.basePath = endpointJson.at("basePath").get<std::string>();
+    endpoint.serverFingerprint = endpointJson.at("serverFingerprint").get<std::string>();
+    if (endpointJson.contains("facades")) {
+        for (const nlohmann::json& url : endpointJson.at("facades")) {
+            endpoint.facades.push_back(parseFacadeUrl(url.get<std::string>()));
+        }
+    }
 
     const bool encrypted = meta.value("encrypted", false);
     if (encrypted && passphrase.empty()) {
@@ -369,16 +377,23 @@ ContactInfo Session::lookupContactAt(const std::string& host, const int port,
 
 void Session::persistMeta() const
 {
+    const ServerEndpoint& endpoint = client_->endpoint();
+    nlohmann::json facades = nlohmann::json::array();
+    for (const Facade& facade : endpoint.facades) {
+        facades.push_back(facadeToUrl(facade));
+    }
     const nlohmann::json meta = {
         {"clientId", client_->clientId()},
         {"name", name_},
         {"fingerprint", client_->identity().fingerprint()},
         {"endpoint",
             {
-                {"host", client_->endpoint().host},
-                {"port", client_->endpoint().port},
-                {"basePath", client_->endpoint().basePath},
-                {"serverFingerprint", client_->endpoint().serverFingerprint},
+                {"tls", endpoint.tls},
+                {"host", endpoint.host},
+                {"port", endpoint.port},
+                {"basePath", endpoint.basePath},
+                {"serverFingerprint", endpoint.serverFingerprint},
+                {"facades", facades},
             }},
         {"serverCard", serverCardB64_},
         {"subscriptionCert", subscriptionCertB64_},
