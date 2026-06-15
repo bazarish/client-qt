@@ -13,9 +13,10 @@ namespace bazarish::app {
 // a per-profile SQLite database under the profile directory.
 struct StoredMessage {
     qint64 id = 0;
-    QString peer;          // contact fingerprint
+    QString peer;          // contact fingerprint, or a group id for group messages
     bool outgoing = false;
     QString type;          // content type: text/file/photo/... or "system"
+    QString sender;        // author fingerprint for an incoming group message
     QString protocolId;    // envelope message id (to match delivery receipts)
     QString text;
     QString attName;

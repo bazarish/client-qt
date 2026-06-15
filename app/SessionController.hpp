@@ -42,6 +42,12 @@ public slots:
     void sendCallback(const QString& peer, const QString& data, const QString& ref);
     void sendCommand(const QString& peer, const QString& command, const QString& args);
     void sendEdit(const QString& peer, const QString& refId, const QString& text);
+    void createGroup(const QString& name, const QStringList& memberFps);
+    void sendGroupText(const QString& groupId, const QString& text, qint64 localId);
+    void addGroupMembers(const QString& groupId, const QStringList& fps);
+    void removeGroupMember(const QString& groupId, const QString& fp);
+    void leaveGroup(const QString& groupId);
+    void fetchGroupMembers(const QString& groupId);
     void addByInvite(const QString& uri, const QString& intro);
     void addByUsername(const QString& alias, const QString& intro);
     void addByFingerprint(const QString& fingerprint, const QString& intro);
@@ -64,9 +70,13 @@ signals:
     void inviteReady(const QString& uri);
     // Whether the last sync reached the facade (true) or failed (false).
     void syncReachable(bool ok);
+    void groupsRefreshed(const QStringList& ids, const QStringList& names);
+    void groupCreated(const QString& groupId, const QString& name);
+    void groupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
 
 private:
     void ensureSyncTimer();
+    void emitGroups();
     std::unique_ptr<bazarish::client::Session> session_;
     QTimer* syncTimer_ = nullptr;
 };
@@ -96,6 +106,10 @@ class SessionController : public QObject {
     // is its current text, so the composer can prefill the field.
     Q_PROPERTY(bool editing READ editing NOTIFY editingChanged)
     Q_PROPERTY(QString editingText READ editingText NOTIFY editingChanged)
+    // The active group's members and whether we administer it (empty/false for a
+    // one-to-one chat), for the group-info panel.
+    Q_PROPERTY(QStringList activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
+    Q_PROPERTY(bool activeGroupAdmin READ activeGroupAdmin NOTIFY activeGroupChanged)
 public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
@@ -115,6 +129,8 @@ public:
     void setSendReceipts(bool on) { if (sendReceipts_ != on) { sendReceipts_ = on; emit sendReceiptsChanged(); } }
     bool editing() const { return editing_; }
     QString editingText() const { return editingText_; }
+    QStringList activeGroupMembers() const { return activeGroupMembers_; }
+    bool activeGroupAdmin() const { return activeGroupAdmin_; }
 
     // Opens a profile on the worker thread (dir + id + passphrase).
     void open(const QString& dir, const QString& profileId, const QString& passphrase);
@@ -128,6 +144,15 @@ public:
     Q_INVOKABLE void openConversation(const QString& peer);
     Q_INVOKABLE void sendText(const QString& text);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
+    // Creates a group from selected contacts and opens it.
+    Q_INVOKABLE void createGroup(const QString& name, const QStringList& memberFps);
+    // Whether a chat-list id is a group, and a display name for any peer/group.
+    Q_INVOKABLE bool isGroup(const QString& id) const;
+    Q_INVOKABLE QString peerName(const QString& id) const;
+    // Group membership management (operate on the given group id).
+    Q_INVOKABLE void addGroupMembers(const QString& groupId, const QStringList& fps);
+    Q_INVOKABLE void removeGroupMember(const QString& groupId, const QString& fp);
+    Q_INVOKABLE void leaveGroup(const QString& groupId);
     // Inline-keyboard button presses in the active conversation: a callback
     // (button data + the keyboard message's protocol id) or a command button.
     Q_INVOKABLE void sendCallback(const QString& data, const QString& refMsgId);
@@ -150,6 +175,7 @@ signals:
     void identityChanged();
     void connectedChanged();
     void activePeerChanged();
+    void activeGroupChanged();
     void sendReceiptsChanged();
     void editingChanged();
     void unreadTotalChanged();
@@ -171,6 +197,12 @@ signals:  // to worker
     void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
     void requestSendCommand(const QString& peer, const QString& command, const QString& args);
     void requestSendEdit(const QString& peer, const QString& refId, const QString& text);
+    void requestCreateGroup(const QString& name, const QStringList& memberFps);
+    void requestSendGroupText(const QString& groupId, const QString& text, qint64 localId);
+    void requestAddGroupMembers(const QString& groupId, const QStringList& fps);
+    void requestRemoveGroupMember(const QString& groupId, const QString& fp);
+    void requestLeaveGroup(const QString& groupId);
+    void requestFetchGroupMembers(const QString& groupId);
     void requestAddByInvite(const QString& uri, const QString& intro);
     void requestAddByUsername(const QString& alias, const QString& intro);
     void requestAddByFingerprint(const QString& fingerprint, const QString& intro);
@@ -189,6 +221,9 @@ private slots:
     void onSendProgress(qint64 localId, int state);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSyncReachable(bool ok);
+    void onGroupsRefreshed(const QStringList& ids, const QStringList& names);
+    void onGroupCreated(const QString& groupId, const QString& name);
+    void onGroupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
 
 private:
     QThread thread_;
@@ -215,6 +250,14 @@ private:
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;
     void bumpStatus(qint64 localId, int status);
+    // Groups this account belongs to (id → name), merged into the chat list.
+    QStringList contactFps_;
+    QStringList groupIds_;
+    QHash<QString, QString> groupNames_;
+    QStringList activeGroupMembers_;
+    bool activeGroupAdmin_ = false;
+    // Rebuilds the chat list from the cached contacts + groups.
+    void rebuildChatList();
     int unreadTotal_ = 0;
     // Recomputes unreadTotal_ from the contacts model and notifies on change.
     void refreshUnreadTotal();

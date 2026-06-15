@@ -50,7 +50,12 @@ Item {
                         active: root.session && root.session.activePeer.length > 0
                         sourceComponent: ConversationView {
                             session: root.session
-                            onContactInfoRequested: contactInfo.open()
+                            onContactInfoRequested: {
+                                if (root.session && root.session.isGroup(root.session.activePeer))
+                                    groupInfo.open()
+                                else
+                                    contactInfo.open()
+                            }
                             onCallRequested: callScreen.open()
                         }
                     }
@@ -68,6 +73,7 @@ Item {
     NewChatSheet { id: newChat; session: root.session }
     InviteSheet { id: inviteSheet; session: root.session }
     ContactInfo { id: contactInfo; session: root.session }
+    GroupInfo { id: groupInfo; session: root.session }
     CallScreen { id: callScreen; session: root.session }
     AccountSwitcher { id: accountSwitcher }
     SettingsPage { id: settings; session: root.session; onShowInvite: inviteSheet.open() }

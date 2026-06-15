@@ -37,18 +37,20 @@ private:
 
 // The chat list: one row per contact, with a last-message preview.
 struct ContactRow {
-    QString fingerprint;
+    QString fingerprint;   // contact fingerprint, or a group id when isGroup
     QString name;
     QString lastText;
     qint64 lastTime = 0;
     int unread = 0;
+    bool isGroup = false;
 };
 
 class ContactListModel : public QAbstractListModel {
     Q_OBJECT
 public:
     enum Roles {
-        FingerprintRole = Qt::UserRole + 1, NameRole, LastTextRole, LastTimeRole, UnreadRole
+        FingerprintRole = Qt::UserRole + 1, NameRole, LastTextRole, LastTimeRole, UnreadRole,
+        IsGroupRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -60,7 +62,7 @@ public:
     // Bumps a contact's preview/unread, inserting it if new, and keeps the
     // list sorted by most-recent.
     void touch(const QString& fingerprint, const QString& name, const QString& lastText,
-        qint64 lastTime, bool incrementUnread);
+        qint64 lastTime, bool incrementUnread, bool isGroup = false);
     void clearUnread(const QString& fingerprint);
     // Sum of unread counts across all contacts (the account's unread total).
     int totalUnread() const;
@@ -78,7 +80,7 @@ public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
-        TimeRole, StatusRole, MsgIdRole
+        SenderRole, TimeRole, StatusRole, MsgIdRole
     };
     using QAbstractListModel::QAbstractListModel;
 

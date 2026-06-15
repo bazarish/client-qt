@@ -99,6 +99,7 @@ if(Qt6_FOUND)
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
             app/qml/ContactInfo.qml
+            app/qml/GroupInfo.qml
             app/qml/CallScreen.qml
             app/qml/SettingsPage.qml
             app/qml/components/Avatar.qml
@@ -123,6 +124,7 @@ endfunction()
 bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestBot)
 bazarish_client_add_test(TestClient)
+bazarish_client_add_test(TestGroup)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestProfile)
 

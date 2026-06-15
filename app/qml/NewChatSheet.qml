@@ -15,6 +15,7 @@ Popup {
     property string mode: "menu"
     property bool busy: false
     property string errorText: ""
+    property var selectedFps: []
     closePolicy: busy ? Popup.NoAutoClose : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
     onOpened: { mode = "menu"; busy = false; errorText = "" }
 
@@ -74,6 +75,7 @@ Popup {
                     { t: "🔗  Add by invite link", m: "invite" },
                     { t: "@  Add by username", m: "username" },
                     { t: "#  Add by fingerprint", m: "fingerprint" },
+                    { t: "👥  New group", m: "group" },
                     { t: "▣  Show my invite / QR", m: "showinvite" }
                 ]
                 ItemDelegate {
@@ -81,6 +83,7 @@ Popup {
                     text: modelData.t
                     onClicked: {
                         if (modelData.m === "showinvite") { root.close(); root.showInvite() }
+                        else if (modelData.m === "group") { root.selectedFps = []; root.mode = "group" }
                         else root.mode = modelData.m
                     }
                 }
@@ -152,6 +155,53 @@ Popup {
                     enabled: fpField.text.trim().length > 0
                     onClicked: root.startRequest(function() {
                         root.session.addByFingerprint(fpField.text.trim(), fpIntro.text)
+                    })
+                }
+            }
+        }
+
+        // --- New group ---
+        ColumnLayout {
+            visible: !root.busy && root.mode === "group"
+            Layout.fillWidth: true
+            spacing: 8
+            FormField { id: groupNameField; label: "Group name" }
+            Label { text: "Pick members (existing contacts):"; color: Theme.textDim }
+            Frame {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 200
+                background: Rectangle { color: Theme.surface; radius: 8; border.color: Theme.border }
+                ListView {
+                    id: memberList
+                    anchors.fill: parent
+                    clip: true
+                    model: root.session ? root.session.contacts : null
+                    delegate: CheckDelegate {
+                        width: ListView.view.width
+                        visible: !model.isGroup
+                        height: model.isGroup ? 0 : 46
+                        text: root.session ? root.session.shortFingerprint(model.fingerprint) : model.fingerprint
+                        checked: root.selectedFps.indexOf(model.fingerprint) >= 0
+                        onToggled: {
+                            var arr = root.selectedFps.slice()
+                            var i = arr.indexOf(model.fingerprint)
+                            if (checked && i < 0) arr.push(model.fingerprint)
+                            else if (!checked && i >= 0) arr.splice(i, 1)
+                            root.selectedFps = arr
+                        }
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Button { text: "Back"; onClicked: root.mode = "menu" }
+                Item { Layout.fillWidth: true }
+                Label { text: root.selectedFps.length + " selected"; color: Theme.textDim }
+                Button {
+                    text: "Create"
+                    enabled: groupNameField.text.trim().length > 0 && root.selectedFps.length > 0
+                    onClicked: root.startRequest(function() {
+                        root.session.createGroup(groupNameField.text.trim(), root.selectedFps)
                     })
                 }
             }

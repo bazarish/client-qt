@@ -58,6 +58,7 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
         fps << QString::fromStdString(fp);
     }
     emit contactsRefreshed(fps);
+    emitGroups();
     if (connected) {
         ensureSyncTimer();
         sync();
@@ -125,6 +126,9 @@ void SessionWorker::sync()
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
+        map["groupId"] = QString::fromStdString(m.groupId);
+        map["groupName"] = QString::fromStdString(m.groupName);
+        map["sender"] = QString::fromStdString(m.fromFingerprint);
         map["messageId"] = QString::fromStdString(m.messageId);
         map["ref"] = QString::fromStdString(m.refId);
         emit messageReceived(map);
@@ -134,6 +138,7 @@ void SessionWorker::sync()
         fps << QString::fromStdString(fp);
     }
     emit contactsRefreshed(fps);
+    emitGroups();
 }
 
 void SessionWorker::sendText(
@@ -193,6 +198,97 @@ void SessionWorker::sendEdit(const QString& peer, const QString& refId, const QS
         // A user edit replaces text only; the (empty) keyboard clears none here
         // because user messages carry no keyboard.
         session_->sendEdit(peer.toStdString(), refId.toStdString(), text.toStdString());
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::emitGroups()
+{
+    if (!session_) {
+        return;
+    }
+    QStringList ids;
+    QStringList names;
+    for (const std::string& id : session_->groupIds()) {
+        ids << QString::fromStdString(id);
+        names << QString::fromStdString(session_->groupName(id));
+    }
+    emit groupsRefreshed(ids, names);
+}
+
+void SessionWorker::createGroup(const QString& name, const QStringList& memberFps)
+{
+    try {
+        std::vector<std::string> members;
+        members.reserve(memberFps.size());
+        for (const QString& fp : memberFps) {
+            members.push_back(fp.toStdString());
+        }
+        const std::string groupId = session_->createGroup(name.toStdString(), members);
+        emit groupCreated(QString::fromStdString(groupId), name);
+        emitGroups();
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::sendGroupText(const QString& groupId, const QString& text, qint64 localId)
+{
+    try {
+        session_->sendGroupMessage(groupId.toStdString(), text.toStdString());
+        emit sendResult(localId, true, {});
+    } catch (const std::exception& e) {
+        emit sendResult(localId, false, QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::fetchGroupMembers(const QString& groupId)
+{
+    if (!session_) {
+        return;
+    }
+    QStringList members;
+    for (const std::string& fp : session_->groupMemberFingerprints(groupId.toStdString())) {
+        members << QString::fromStdString(fp);
+    }
+    emit groupMembersReady(groupId, members, session_->isGroupAdmin(groupId.toStdString()));
+}
+
+void SessionWorker::addGroupMembers(const QString& groupId, const QStringList& fps)
+{
+    try {
+        std::vector<std::string> members;
+        for (const QString& fp : fps) {
+            members.push_back(fp.toStdString());
+        }
+        session_->addGroupMembers(groupId.toStdString(), members);
+        emit actionOk("Members added.");
+        emitGroups();
+        fetchGroupMembers(groupId);
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::removeGroupMember(const QString& groupId, const QString& fp)
+{
+    try {
+        session_->removeGroupMember(groupId.toStdString(), fp.toStdString());
+        emit actionOk("Member removed.");
+        emitGroups();
+        fetchGroupMembers(groupId);
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::leaveGroup(const QString& groupId)
+{
+    try {
+        session_->leaveGroup(groupId.toStdString());
+        emit actionOk("Left the group.");
+        emitGroups();
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -289,6 +385,15 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
+    connect(this, &SessionController::requestCreateGroup, worker_, &SessionWorker::createGroup);
+    connect(this, &SessionController::requestSendGroupText, worker_, &SessionWorker::sendGroupText);
+    connect(this, &SessionController::requestAddGroupMembers, worker_,
+        &SessionWorker::addGroupMembers);
+    connect(this, &SessionController::requestRemoveGroupMember, worker_,
+        &SessionWorker::removeGroupMember);
+    connect(this, &SessionController::requestLeaveGroup, worker_, &SessionWorker::leaveGroup);
+    connect(this, &SessionController::requestFetchGroupMembers, worker_,
+        &SessionWorker::fetchGroupMembers);
     connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
     connect(this, &SessionController::requestAddByUsername, worker_, &SessionWorker::addByUsername);
     connect(this, &SessionController::requestAddByFingerprint, worker_,
@@ -310,12 +415,13 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onMessageReceived);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
         [this](const QStringList& fps) {
-            QVector<ContactRow> rows;
-            for (const QString& fp : fps) {
-                rows.push_back(ContactRow{fp, fp, store_.lastText(fp), store_.lastTime(fp), 0});
-            }
-            contacts_.setContacts(std::move(rows));
+            contactFps_ = fps;
+            rebuildChatList();
         });
+    connect(worker_, &SessionWorker::groupsRefreshed, this, &SessionController::onGroupsRefreshed);
+    connect(worker_, &SessionWorker::groupCreated, this, &SessionController::onGroupCreated);
+    connect(worker_, &SessionWorker::groupMembersReady, this,
+        &SessionController::onGroupMembersReady);
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
@@ -370,6 +476,103 @@ void SessionController::openConversation(const QString& peer)
     emit activePeerChanged();
     conversation_.setMessages(store_.messagesFor(peer));
     contacts_.clearUnread(peer);
+    // Load the member list for a group conversation (cleared for a 1:1 chat).
+    activeGroupMembers_.clear();
+    activeGroupAdmin_ = false;
+    emit activeGroupChanged();
+    if (groupIds_.contains(peer)) {
+        emit requestFetchGroupMembers(peer);
+    }
+}
+
+void SessionController::rebuildChatList()
+{
+    QVector<ContactRow> rows;
+    for (const QString& fp : contactFps_) {
+        rows.push_back(ContactRow{fp, fp, store_.lastText(fp), store_.lastTime(fp), 0, false});
+    }
+    for (const QString& gid : groupIds_) {
+        rows.push_back(ContactRow{gid, groupNames_.value(gid, gid), store_.lastText(gid),
+            store_.lastTime(gid), 0, true});
+    }
+    contacts_.setContacts(std::move(rows));
+}
+
+void SessionController::onGroupsRefreshed(const QStringList& ids, const QStringList& names)
+{
+    groupIds_ = ids;
+    groupNames_.clear();
+    for (int i = 0; i < ids.size() && i < names.size(); ++i) {
+        groupNames_.insert(ids[i], names[i]);
+    }
+    rebuildChatList();
+    // If the open group went away (we left it), close the conversation; otherwise
+    // refresh its member list (membership may have changed).
+    if (!activePeer_.isEmpty() && !groupIds_.contains(activePeer_)
+        && !activeGroupMembers_.isEmpty()) {
+        openConversation({});
+    } else if (groupIds_.contains(activePeer_)) {
+        emit requestFetchGroupMembers(activePeer_);
+    }
+}
+
+void SessionController::onGroupCreated(const QString& groupId, const QString& name)
+{
+    if (!groupIds_.contains(groupId)) {
+        groupIds_ << groupId;
+    }
+    groupNames_.insert(groupId, name);
+    rebuildChatList();
+    openConversation(groupId);
+    emit actionOk("Group created.");
+}
+
+void SessionController::createGroup(const QString& name, const QStringList& memberFps)
+{
+    if (name.trimmed().isEmpty() || memberFps.isEmpty()) {
+        return;
+    }
+    emit requestCreateGroup(name.trimmed(), memberFps);
+}
+
+bool SessionController::isGroup(const QString& id) const
+{
+    return groupIds_.contains(id);
+}
+
+QString SessionController::peerName(const QString& id) const
+{
+    if (groupIds_.contains(id)) {
+        return groupNames_.value(id, id);
+    }
+    return shortFingerprint(id);
+}
+
+void SessionController::addGroupMembers(const QString& groupId, const QStringList& fps)
+{
+    if (!fps.isEmpty()) {
+        emit requestAddGroupMembers(groupId, fps);
+    }
+}
+
+void SessionController::removeGroupMember(const QString& groupId, const QString& fp)
+{
+    emit requestRemoveGroupMember(groupId, fp);
+}
+
+void SessionController::leaveGroup(const QString& groupId)
+{
+    emit requestLeaveGroup(groupId);
+}
+
+void SessionController::onGroupMembersReady(
+    const QString& groupId, const QStringList& members, bool iAmAdmin)
+{
+    if (groupId == activePeer_) {
+        activeGroupMembers_ = members;
+        activeGroupAdmin_ = iAmAdmin;
+        emit activeGroupChanged();
+    }
 }
 
 QString SessionController_genProtocolId()
@@ -380,6 +583,24 @@ QString SessionController_genProtocolId()
 void SessionController::sendText(const QString& text)
 {
     if (activePeer_.isEmpty() || text.isEmpty()) {
+        return;
+    }
+    // Group conversation: fan out to all members via the group path.
+    if (groupIds_.contains(activePeer_)) {
+        StoredMessage gm;
+        gm.peer = activePeer_;
+        gm.outgoing = true;
+        gm.type = "text";
+        gm.sender = fingerprint_;
+        gm.protocolId = SessionController_genProtocolId();
+        gm.text = text;
+        gm.ts = nowSeconds();
+        gm.status = DeliveryStatus::Sending;
+        gm.id = store_.append(gm);
+        statusById_[gm.id] = DeliveryStatus::Sending;
+        conversation_.appendMessage(gm);
+        contacts_.touch(activePeer_, groupNames_.value(activePeer_), text, gm.ts, false, true);
+        emit requestSendGroupText(activePeer_, text, gm.id);
         return;
     }
     StoredMessage m;
@@ -622,10 +843,38 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
+    // Added to a group: surface a friendly system line; the group itself is
+    // added to the chat list by the group-list refresh.
+    if (type == "group.invite") {
+        const QString gid = message.value("groupId").toString();
+        const QString gname = message.value("groupName").toString();
+        StoredMessage sys;
+        sys.peer = gid;
+        sys.type = "system";
+        sys.text = "You were added to \"" + gname + "\"";
+        sys.ts = nowSeconds();
+        sys.status = DeliveryStatus::Received;
+        sys.id = store_.append(sys);
+        if (gid == activePeer_) {
+            conversation_.appendMessage(sys);
+        }
+        contacts_.touch(gid, gname, sys.text, sys.ts, gid != activePeer_, true);
+        return;
+    }
+    if (type == "group.tokens" || type == "group.roster" || type == "group.leave") {
+        return;  // group control; the chat list reflects the change
+    }
+
+    // A group content message is filed under the group, with its author recorded.
+    const QString groupId = message.value("groupId").toString();
+    const bool isGroupMsg = !groupId.isEmpty();
+    const QString convKey = isGroupMsg ? groupId : peer;
+
     StoredMessage m;
-    m.peer = peer;
+    m.peer = convKey;
     m.outgoing = false;
     m.type = type;
+    m.sender = isGroupMsg ? message.value("sender").toString() : QString();
     m.protocolId = message.value("messageId").toString();
     m.text = message.value("text").toString();
     m.attName = message.value("attName").toString();
@@ -638,18 +887,24 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.status = DeliveryStatus::Received;  // incoming; no indicator rendered
     m.id = store_.append(m);
 
-    if (peer == activePeer_) {
+    if (convKey == activePeer_) {
         conversation_.appendMessage(m);
     }
     QString preview = m.text;
     if (preview.isEmpty() && !m.attName.isEmpty()) {
         preview = "[" + type + "] " + m.attName;
     }
-    contacts_.touch(peer, peer, preview, m.ts, peer != activePeer_);
+    if (isGroupMsg) {
+        contacts_.touch(convKey, groupNames_.value(convKey), preview, m.ts,
+            convKey != activePeer_, true);
+    } else {
+        contacts_.touch(peer, peer, preview, m.ts, peer != activePeer_);
+    }
 
     // Send a delivery receipt back (the "green" signal) when enabled, for
-    // user-visible content only — never for control messages.
-    if (sendReceipts_ && !m.protocolId.isEmpty()
+    // user-visible content only — never for control or group messages (a group
+    // receipt would have no single recipient mailbox to confirm to).
+    if (sendReceipts_ && !isGroupMsg && !m.protocolId.isEmpty()
         && (type == "text" || type == "file" || type == "photo" || type == "audio"
             || type == "voice")) {
         emit requestSendReceipt(peer, m.protocolId);

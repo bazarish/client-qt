@@ -60,6 +60,7 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
     case LastTextRole: return c.lastText;
     case LastTimeRole: return c.lastTime;
     case UnreadRole: return c.unread;
+    case IsGroupRole: return c.isGroup;
     default: return {};
     }
 }
@@ -67,7 +68,7 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
 QHash<int, QByteArray> ContactListModel::roleNames() const
 {
     return {{FingerprintRole, "fingerprint"}, {NameRole, "name"}, {LastTextRole, "lastText"},
-        {LastTimeRole, "lastTime"}, {UnreadRole, "unread"}};
+        {LastTimeRole, "lastTime"}, {UnreadRole, "unread"}, {IsGroupRole, "isGroup"}};
 }
 
 void ContactListModel::setContacts(QVector<ContactRow> contacts)
@@ -98,18 +99,19 @@ void ContactListModel::resort()
 }
 
 void ContactListModel::touch(const QString& fingerprint, const QString& name,
-    const QString& lastText, qint64 lastTime, bool incrementUnread)
+    const QString& lastText, qint64 lastTime, bool incrementUnread, bool isGroup)
 {
     const int i = indexOf(fingerprint);
     if (i < 0) {
         beginInsertRows({}, 0, 0);
         contacts_.prepend(ContactRow{fingerprint, name.isEmpty() ? fingerprint : name, lastText,
-            lastTime, incrementUnread ? 1 : 0});
+            lastTime, incrementUnread ? 1 : 0, isGroup});
         endInsertRows();
         resort();
         return;
     }
     ContactRow& c = contacts_[i];
+    c.isGroup = isGroup;
     if (!name.isEmpty()) {
         c.name = name;
     }
@@ -169,6 +171,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case KeyboardRole: return m.keyboard;
     case ProtocolIdRole: return m.protocolId;
     case EditedRole: return m.edited;
+    case SenderRole: return m.sender;
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
@@ -181,8 +184,8 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
     return {{OutgoingRole, "outgoing"}, {TypeRole, "type"}, {TextRole, "text"},
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
-        {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {TimeRole, "time"},
-        {StatusRole, "status"}, {MsgIdRole, "msgId"}};
+        {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {SenderRole, "sender"},
+        {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)

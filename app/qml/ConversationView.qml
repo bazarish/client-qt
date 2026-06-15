@@ -23,18 +23,25 @@ Item {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 6
                 spacing: 10
+                readonly property bool isGroup: root.session && root.session.isGroup(root.session.activePeer)
                 Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38 }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
                     Label {
-                        text: root.session ? root.session.shortFingerprint(root.session.activePeer) : ""
+                        text: root.session ? root.session.peerName(root.session.activePeer) : ""
                         color: Theme.text
                         font.weight: Font.Medium
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
                     }
-                    Label { text: "end-to-end encrypted"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        text: parent.parent.isGroup ? "group · end-to-end encrypted" : "end-to-end encrypted"
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                    }
                 }
-                IconButton { text: "📞"; onClicked: root.callRequested() }
+                IconButton { text: "📞"; visible: !parent.isGroup; onClicked: root.callRequested() }
                 IconButton { text: "ⓘ"; onClicked: root.contactInfoRequested() }
             }
         }

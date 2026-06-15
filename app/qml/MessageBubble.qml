@@ -8,10 +8,28 @@ Item {
     id: delegate
     property var session: null
     width: ListView.view ? ListView.view.width : 0
-    height: bubble.height + 4
+    height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
     readonly property bool isAttachment: model.attRef && model.attRef.length > 0
     readonly property bool isUnsupported: model.type === "unsupported"
+    readonly property bool isSystem: model.type === "system"
+    // The author of an incoming group message (empty for one-to-one chats).
+    readonly property string senderName: (model.sender && model.sender.length > 0 && !model.outgoing && delegate.session)
+        ? delegate.session.shortFingerprint(model.sender) : ""
+
+    // Centered system notice (e.g. "added to a group").
+    Label {
+        id: sysLabel
+        visible: delegate.isSystem
+        anchors.centerIn: parent
+        width: parent.width - 80
+        text: model.text
+        color: Theme.textDim
+        font.pixelSize: Theme.fontSmall
+        font.italic: true
+        horizontalAlignment: Text.AlignHCenter
+        wrapMode: Text.Wrap
+    }
 
     // The inline keyboard attached to this message (rows of buttons), parsed
     // from its JSON wire form; empty when there is none.
@@ -53,6 +71,7 @@ Item {
 
     Rectangle {
         id: bubble
+        visible: !delegate.isSystem
         anchors.left: model.outgoing ? undefined : parent.left
         anchors.right: model.outgoing ? parent.right : undefined
         anchors.leftMargin: 12
@@ -68,6 +87,17 @@ Item {
             y: 7
             width: parent.width - 20
             spacing: 4
+
+            // Author of an incoming group message.
+            Label {
+                visible: delegate.senderName.length > 0
+                text: delegate.senderName
+                color: Theme.accent
+                font.pixelSize: Theme.fontSmall
+                font.weight: Font.Medium
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
 
             // Attachment card.
             ColumnLayout {

@@ -78,7 +78,8 @@ Item {
                             Layout.fillWidth: true
                             Label {
                                 Layout.fillWidth: true
-                                text: model.name.length > 14 ? model.name.substring(0, 12) + "…" : model.name
+                                text: (model.isGroup ? "👥 " : "")
+                                    + (model.name.length > 14 ? model.name.substring(0, 12) + "…" : model.name)
                                 color: Theme.text
                                 font.weight: Font.Medium
                                 elide: Text.ElideRight

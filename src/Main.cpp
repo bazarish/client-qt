@@ -64,6 +64,14 @@ void printUsage()
         "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
         "  bazarish-client send-callback <state> <peer-fp> <data> [ref]\n"
         "  bazarish-client get-file <state> <ref> <key-b64> <out>\n"
+        "  bazarish-client group-create <state> <name> <peer-fp> [peer-fp ...]\n"
+        "  bazarish-client group-send <state> <group-id> <text>\n"
+        "  bazarish-client group-list <state>\n"
+        "  bazarish-client group-members <state> <group-id>\n"
+        "  bazarish-client group-add <state> <group-id> <peer-fp> [peer-fp ...]\n"
+        "  bazarish-client group-remove <state> <group-id> <peer-fp>\n"
+        "  bazarish-client group-admin <state> <group-id> <peer-fp> <on|off>\n"
+        "  bazarish-client group-leave <state> <group-id>\n"
         "  bazarish-client sync <state>\n"
         "  bazarish-client export <state> <out-file>\n"
         "  bazarish-client import <in-file> <state>\n"
@@ -322,6 +330,123 @@ int runImport(const std::vector<std::string>& args)
     return 0;
 }
 
+int runGroupCreate(const std::vector<std::string>& args)
+{
+    // group-create <state> <name> <peer-fp> [peer-fp ...]
+    if (args.size() < 4) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    const std::vector<std::string> members(args.begin() + 3, args.end());
+    const std::string groupId = session.createGroup(args[2], members);
+    std::printf("created group '%s'\ngroup id: %s\nmembers: %zu\n", args[2].c_str(),
+        groupId.c_str(), members.size());
+    return 0;
+}
+
+int runGroupSend(const std::vector<std::string>& args)
+{
+    // group-send <state> <group-id> <text>
+    if (args.size() != 4) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.sendGroupMessage(args[2], args[3]);
+    std::printf("group message sent to %s\n", args[2].c_str());
+    return 0;
+}
+
+int runGroupList(const std::vector<std::string>& args)
+{
+    // group-list <state>
+    if (args.size() != 2) {
+        printUsage();
+        return 2;
+    }
+    const Session session = Session::open(args[1], keyPassphrase());
+    const std::vector<std::string> ids = session.groupIds();
+    if (ids.empty()) {
+        std::printf("(no groups)\n");
+        return 0;
+    }
+    for (const std::string& id : ids) {
+        std::printf("%s  %s  (%zu members)\n", id.c_str(), session.groupName(id).c_str(),
+            session.groupMemberFingerprints(id).size());
+    }
+    return 0;
+}
+
+int runGroupMembers(const std::vector<std::string>& args)
+{
+    // group-members <state> <group-id>
+    if (args.size() != 3) {
+        printUsage();
+        return 2;
+    }
+    const Session session = Session::open(args[1], keyPassphrase());
+    for (const std::string& fp : session.groupMemberFingerprints(args[2])) {
+        std::printf("%s\n", fp.c_str());
+    }
+    return 0;
+}
+
+int runGroupAdd(const std::vector<std::string>& args)
+{
+    // group-add <state> <group-id> <peer-fp> [peer-fp ...]
+    if (args.size() < 4) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    const std::vector<std::string> members(args.begin() + 3, args.end());
+    session.addGroupMembers(args[2], members);
+    std::printf("added %zu member(s) to group %s\n", members.size(), args[2].c_str());
+    return 0;
+}
+
+int runGroupRemove(const std::vector<std::string>& args)
+{
+    // group-remove <state> <group-id> <peer-fp>
+    if (args.size() != 4) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.removeGroupMember(args[2], args[3]);
+    std::printf("removed %s from group %s (pool rotated)\n", args[3].c_str(), args[2].c_str());
+    return 0;
+}
+
+int runGroupAdmin(const std::vector<std::string>& args)
+{
+    // group-admin <state> <group-id> <peer-fp> <on|off>
+    if (args.size() != 5) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    const bool on = args[4] == "on";
+    session.setGroupAdmin(args[2], args[3], on);
+    std::printf("%s admin for %s in group %s\n", on ? "granted" : "revoked", args[3].c_str(),
+        args[2].c_str());
+    return 0;
+}
+
+int runGroupLeave(const std::vector<std::string>& args)
+{
+    // group-leave <state> <group-id>
+    if (args.size() != 3) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.leaveGroup(args[2]);
+    std::printf("left group %s\n", args[2].c_str());
+    return 0;
+}
+
 int runSync(const std::vector<std::string>& args)
 {
     if (args.size() != 2) {
@@ -353,10 +478,15 @@ int runSync(const std::vector<std::string>& args)
         if (!message.keyboardJson.empty()) {
             body += "  keyboard=" + message.keyboardJson;
         }
+        // Group messages are filed under a group rather than the 1:1 thread.
+        const std::string groupTag = message.groupId.empty()
+            ? std::string()
+            : "[group " + message.groupId.substr(0, 8) + "] ";
         // The message id lets a caller reference this message (e.g. as the ref
         // of a send-callback, so a bot can edit it in place).
-        std::printf("[%s] from %s: %s  id=%s%s\n", message.contentType.c_str(),
-            message.fromFingerprint.c_str(), body.c_str(), message.messageId.c_str(),
+        std::printf("%s[%s] from %s: %s  id=%s%s\n", groupTag.c_str(),
+            message.contentType.c_str(), message.fromFingerprint.c_str(), body.c_str(),
+            message.messageId.c_str(),
             message.establishedContact ? "  (contact established)" : "");
     }
     return 0;
@@ -421,6 +551,30 @@ int main(const int argc, const char** argv)
         }
         if (command == "get-file") {
             return runGetFile(args);
+        }
+        if (command == "group-create") {
+            return runGroupCreate(args);
+        }
+        if (command == "group-send") {
+            return runGroupSend(args);
+        }
+        if (command == "group-list") {
+            return runGroupList(args);
+        }
+        if (command == "group-members") {
+            return runGroupMembers(args);
+        }
+        if (command == "group-add") {
+            return runGroupAdd(args);
+        }
+        if (command == "group-remove") {
+            return runGroupRemove(args);
+        }
+        if (command == "group-admin") {
+            return runGroupAdmin(args);
+        }
+        if (command == "group-leave") {
+            return runGroupLeave(args);
         }
         if (command == "sync") {
             return runSync(args);

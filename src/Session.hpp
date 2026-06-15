@@ -52,6 +52,30 @@ struct Contact {
     bool issuedToThem = false;
 };
 
+// A member of a group: routing plus the one-time token pool that member issued
+// to the group (we spend these to deliver to them). Mirrors the reachable half
+// of a Contact, but scoped to a single group.
+struct GroupMember {
+    std::string sealingPublicB64;
+    std::string server;
+    std::string serverSealingB64;
+    std::vector<std::string> sendTokens;
+    bool admin = false;
+};
+
+// A group as this client knows it: the roster (other members + their routing and
+// pools), the admin set (implied by member admin flags), and the roster epoch.
+// Purely client-side — the server never sees a group (see docs Groups.md).
+struct Group {
+    std::string name;
+    std::int64_t epoch = 0;
+    std::map<std::string, GroupMember> members;  // other members, by fingerprint
+    bool iAmAdmin = false;
+    // Base64 hashes of the token pool we last issued to this group, so we can
+    // revoke it (cut off a removed member) and issue a fresh one.
+    std::vector<std::string> myPoolHashes;
+};
+
 // A decrypted item pulled from the mailbox during sync.
 struct IncomingMessage {
     // End-to-end content type: "text", "contact.request", "token-refill",
@@ -82,6 +106,12 @@ struct IncomingMessage {
     std::string commandName;
     std::string commandArgs;
     std::string callbackData;
+
+    // When non-empty, this message belongs to a group and should be filed under
+    // it instead of the one-to-one thread with the sender. For
+    // contentType "group.invite" it is the new group's id (and groupName its name).
+    std::string groupId;
+    std::string groupName;
 
     // Attachment (content types "file"/"photo"/"audio"/"voice"): a
     // content-store reference and the key to decrypt it. attachmentRef is
@@ -237,6 +267,39 @@ public:
     // Fingerprints of all known contacts, for UI listing.
     std::vector<std::string> contactFingerprints() const;
 
+    // --- Groups (client-side fan-out; the server never sees a group) ---
+
+    // Creates a group from existing contacts (their routing is reused). Signs
+    // the roster, invites each member and broadcasts our token pool. Returns the
+    // new group id. Throws if a listed member is not an established contact.
+    std::string createGroup(
+        const std::string& name, const std::vector<std::string>& memberFingerprints);
+
+    // Sends a text message to a group: one content delivery per member (client
+    // fan-out), each spending one of that member's pool tokens. Members we have
+    // no pool token for yet are skipped (their pool has not arrived).
+    void sendGroupMessage(const std::string& groupId, const std::string& text);
+
+    // Group listing and membership, for the UI / CLI.
+    std::vector<std::string> groupIds() const;
+    std::string groupName(const std::string& groupId) const;
+    std::vector<std::string> groupMemberFingerprints(const std::string& groupId) const;
+    bool isGroupAdmin(const std::string& groupId) const;
+
+    // Adds existing contacts to a group (admin only): bumps the roster epoch,
+    // invites the new members, and tells the existing members. Throws if we are
+    // not an admin or a listed member is not an established contact.
+    void addGroupMembers(
+        const std::string& groupId, const std::vector<std::string>& memberFingerprints);
+    // Removes a member from a group (admin only): bumps the epoch, broadcasts the
+    // new roster, and rotates the token pool so the removed member's tokens stop
+    // working (revoke our old pool, issue and distribute a fresh one).
+    void removeGroupMember(const std::string& groupId, const std::string& memberFingerprint);
+    // Grants or revokes a member's admin flag (admin only); broadcasts the roster.
+    void setGroupAdmin(const std::string& groupId, const std::string& memberFingerprint, bool admin);
+    // Leaves a group: notifies the members and drops local state.
+    void leaveGroup(const std::string& groupId);
+
 private:
     Session(std::filesystem::path stateDir, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);
@@ -269,19 +332,64 @@ private:
     // Seals a delivery envelope to the destination server's sealing key and
     // submits it, polling to completion. onAcceptedByOwnServer fires once when
     // our own server first accepts the envelope (the "grey" delivery state).
+    // When tokenRejected is non-null, a token-rejected failure (the token was
+    // already spent — e.g. a concurrent group sender took it) does not throw;
+    // it sets *tokenRejected and returns, so the caller can retry with another
+    // token (group fan-out's optimistic retry).
     void deliver(const std::string& toServer, const Key& serverSealingKey,
         const std::string& deliveryClass, const std::string& mailbox,
         const std::optional<Bytes>& token, const Bytes& payload,
-        const std::function<void()>& onAcceptedByOwnServer = {});
+        const std::function<void()>& onAcceptedByOwnServer = {}, bool* tokenRejected = nullptr);
     void persistContacts() const;
     void persistMeta() const;
     // Serializes the in-memory contacts into the on-disk JSON shape.
     nlohmann::json contactsToJson() const;
 
+    // --- Group helpers ---
+
+    // Our own server's sealing key (SPKI DER, base64), derived from our server
+    // card — what other members seal delivery envelopes to us with.
+    std::string ownServerSealingB64() const;
+    // Builds and hybrid-signs the current roster of a group (we must be an
+    // admin) and returns it base64-encoded.
+    std::string signedRosterB64(const std::string& groupId) const;
+    // Verifies a signed roster (admin signature, group id) and applies it
+    // (members/routing/admins/epoch), preserving any pool tokens we already hold.
+    // Sets *membershipShrank when a member disappeared (a removal, so the caller
+    // rotates its pool to cut off the removed member).
+    void applyRoster(
+        const std::string& groupId, const Bytes& rosterDer, bool* membershipShrank = nullptr);
+    // Registers a fresh token pool for a group (recording its hashes so it can
+    // be revoked later) and returns the raw tokens.
+    std::vector<std::string> issueGroupPool(Group& group);
+    // Revokes the pool we last issued to a group (deletes its hashes at our
+    // server), so its tokens stop working.
+    void revokeGroupPool(Group& group);
+    // Issues our token pool for a group and sends it (group.tokens, tokenless
+    // contact class) to every other member.
+    void broadcastGroupPool(const std::string& groupId);
+    // Revokes our old pool and broadcasts a fresh one — used after a removal so a
+    // removed member's stash of our tokens is invalidated.
+    void rotateGroupPool(const std::string& groupId);
+    // Re-signs the current roster and broadcasts it (group.roster) to all members.
+    void broadcastRoster(const std::string& groupId);
+    // Delivers a built inner payload to one group member over the contact class
+    // (tokenless): used for pool distribution.
+    void sendToMemberContact(const std::string& memberFp, const GroupMember& member,
+        const nlohmann::json& inner);
+    // Delivers a built inner payload to one group member over the content class,
+    // spending one of that member's pool tokens.
+    void sendToMemberContent(
+        const std::string& groupId, const std::string& memberFp, const nlohmann::json& inner);
+    void persistGroups() const;
+    nlohmann::json groupsToJson() const;
+
     std::filesystem::path stateDir_;
     std::unique_ptr<Client> client_;
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;
+    // Groups this client belongs to, by group id (client-side only).
+    std::map<std::string, Group> groups_;
     // Our own server card (DER, base64), learned on subscribe and forwarded
     // to contacts inside the E2E payload so they can seal replies to our
     // server.
