@@ -24,10 +24,51 @@ find_package(Threads REQUIRED)
 find_library(QRENCODE_LIBRARY NAMES qrencode REQUIRED)
 find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
 
+# --- I2P key material (user-owned destinations + offline/transient keys) ---
+# Only the CLIENT manufactures I2P key material in-process: it owns the
+# permanent destination key and issues short-lived offline (transient) keys for
+# its serving server. Servers do their I2P key work via the router (SAM), so
+# libi2pd lives here only — and as a trimmed static lib of just the identity and
+# crypto translation units (no router code), pinned via the i2pd submodule.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/i2pd/libi2pd/Identity.cpp")
+    set(_bazarish_i2pd_default "${CMAKE_CURRENT_SOURCE_DIR}/third_party/i2pd")
+else()
+    set(_bazarish_i2pd_default "${CMAKE_CURRENT_SOURCE_DIR}/../i2pd")
+endif()
+set(BAZARISH_I2PD_DIR "${_bazarish_i2pd_default}" CACHE PATH
+    "Path to the i2pd source tree (for libi2pd key material)")
+
+find_package(OpenSSL 3.0 REQUIRED)
+find_package(ZLIB REQUIRED)
+
+set(_libi2pd_keys_tus
+    Identity Crypto CryptoKey Signature Base Log
+    Ed25519 Gost Elligator PostQuantum I2PEndian)
+set(_libi2pd_keys_srcs "")
+foreach(_tu ${_libi2pd_keys_tus})
+    list(APPEND _libi2pd_keys_srcs "${BAZARISH_I2PD_DIR}/libi2pd/${_tu}.cpp")
+endforeach()
+
+add_library(libi2pd_keys STATIC ${_libi2pd_keys_srcs} src/I2pUtilStubs.cpp)
+# SYSTEM so upstream i2pd warnings don't trip our -Werror in consumers.
+target_include_directories(libi2pd_keys SYSTEM PUBLIC ${BAZARISH_I2PD_DIR}/libi2pd)
+target_compile_definitions(libi2pd_keys PUBLIC OPENSSL_SUPPRESS_DEPRECATED)
+target_link_libraries(libi2pd_keys
+    PUBLIC OpenSSL::SSL OpenSSL::Crypto ZLIB::ZLIB Threads::Threads)
+# Upstream code: build to its own C++17, without our strict flags. We never
+# debug into i2pd, so mirror its own non-debug build (i2pd's Makefile DEBUG=no
+# uses -Os and strips): compile the trimmed TUs -Os with no debug info (the
+# flags come after the build-type flags and win), so a Debug client build
+# doesn't carry i2pd debug symbols.
+set_target_properties(libi2pd_keys PROPERTIES
+    CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_EXTENSIONS OFF)
+target_compile_options(libi2pd_keys PRIVATE -w -Os -g0)
+
 add_library(bazarish_client_lib STATIC
     src/ApiClient.cpp
     src/Bot.cpp
     src/Client.cpp
+    src/I2pKeys.cpp
     src/Invite.cpp
     src/ProfileManager.cpp
     src/Qr.cpp
@@ -36,7 +77,9 @@ add_library(bazarish_client_lib STATIC
 target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR})
 target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
-target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY})
+# libi2pd_keys is an implementation detail behind the I2pKeys wrapper; keep it
+# PRIVATE so i2pd headers/types never leak into the rest of the client.
+target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} libi2pd_keys)
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 # HTTPS facades: enable httplib's TLS client. Defined PUBLIC and OpenSSL::SSL
 # linked PUBLIC so every client-side target that includes httplib (CLI, bot,
@@ -133,6 +176,7 @@ bazarish_client_add_test(TestBot)
 bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestGroup)
+bazarish_client_add_test(TestI2pKeys)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestProfile)
 

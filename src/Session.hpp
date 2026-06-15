@@ -179,6 +179,24 @@ public:
     // registers this client ID. Stores the returned server card.
     void subscribe(std::int64_t days);
 
+    // User-owned I2P destination (the per-user / "paid" path). Free profiles
+    // route through the server's address pool and never call these.
+    // ensureI2pDestination mints the permanent ("master") key the first time
+    // and persists it sealed at rest, returning the stable base32 address;
+    // subsequent calls are idempotent. The master never leaves the client.
+    std::string ensureI2pDestination();
+    bool hasI2pDestination() const;
+    // The stable base32 address (without the ".b32.i2p" suffix), or empty.
+    std::string i2pAddress() const;
+    // Issues a fresh time-boxed transient (offline keys) from the master, valid
+    // until expiresUnix — the delegation handed to the serving server to operate
+    // the destination for the subscription window. Throws if the profile has no
+    // user-owned destination. subscribe() calls this automatically when one
+    // exists, for the subscription period.
+    void renewI2pTransient(std::int64_t expiresUnix);
+    // The active transient blob to hand to the serving server (empty if none).
+    Bytes i2pTransient() const;
+
     // Registers a human-readable alias (username) for this identity at the
     // serving server's service node, so contacts can add us by name.
     void registerAlias(const std::string& alias);
@@ -404,6 +422,18 @@ private:
     // (delivery tokens) can be re-sealed on every change. Empty when the
     // profile is unencrypted.
     std::string passphrase_;
+    // User-owned I2P destination (per-user / portable address path). Empty when
+    // the profile uses the server's address pool instead. The master private
+    // key (i2p-master.dat) is the user's long-term routing identity; the active
+    // transient (i2p-transient.dat) is the time-boxed delegation for the
+    // current serving server. Both are sealed at rest when the profile is
+    // encrypted.
+    Bytes i2pMaster_;
+    std::string i2pAddress_;
+    Bytes i2pTransient_;
+
+    // Writes an I2P key blob, sealed under the passphrase when encrypted.
+    void persistI2pBlob(const std::string& filename, const Bytes& blob) const;
 };
 
 }  // namespace bazarish::client

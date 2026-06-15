@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "Session.hpp"
 
+#include "I2pKeys.hpp"
 #include "Invite.hpp"
 
 #include <bazarish/Cms.hpp>
@@ -326,6 +327,24 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
             session.groups_.emplace(groupId, std::move(group));
         }
     }
+
+    // Load the user-owned I2P destination, if this profile has one (per-user
+    // path). Both blobs are sealed at rest when the profile is encrypted.
+    const auto loadI2pBlob = [&](const char* filename) -> Bytes {
+        const fs::path path = stateDir / filename;
+        if (!fs::exists(path)) {
+            return {};
+        }
+        const std::string raw = readFileText(path);
+        const Bytes blob(raw.begin(), raw.end());
+        return encrypted ? cms::unsealWithPassword(blob, passphrase) : blob;
+    };
+    session.i2pMaster_ = loadI2pBlob("i2p-master.dat");
+    if (!session.i2pMaster_.empty()) {
+        session.i2pAddress_ = i2pBase32(session.i2pMaster_);
+    }
+    session.i2pTransient_ = loadI2pBlob("i2p-transient.dat");
+
     return session;
 }
 
@@ -423,6 +442,58 @@ void Session::subscribe(const std::int64_t days)
     subscriptionCertB64_ = toBase64(result.subscriptionCertDer);
     persistMeta();
     client_->registerThisClient();
+
+    // For a user-owned destination, refresh the transient delegation handed to
+    // the serving server so it can operate the destination for this period.
+    // The transient expiry tracks the subscription window (kept short — the
+    // server only ever holds a time-boxed capability, never the master).
+    if (hasI2pDestination()) {
+        renewI2pTransient(now + days * 24 * 3600);
+    }
+}
+
+void Session::persistI2pBlob(const std::string& filename, const Bytes& blob) const
+{
+    // The master is the user's long-term routing identity and the transient is
+    // a live delegation key: both are sealed at rest under the profile
+    // passphrase, like the private-key PEMs.
+    const Bytes onDisk = encrypted_ ? cms::sealWithPassword(blob, passphrase_) : blob;
+    writeFileText(stateDir_ / filename, std::string(onDisk.begin(), onDisk.end()));
+}
+
+std::string Session::ensureI2pDestination()
+{
+    if (i2pMaster_.empty()) {
+        const I2pMasterKey master = generateI2pMaster();
+        i2pMaster_ = master.privateKeys;
+        i2pAddress_ = master.base32;
+        persistI2pBlob("i2p-master.dat", i2pMaster_);
+    }
+    return i2pAddress_;
+}
+
+bool Session::hasI2pDestination() const
+{
+    return !i2pMaster_.empty();
+}
+
+std::string Session::i2pAddress() const
+{
+    return i2pAddress_;
+}
+
+void Session::renewI2pTransient(const std::int64_t expiresUnix)
+{
+    if (i2pMaster_.empty()) {
+        throw std::runtime_error("no user-owned I2P destination to delegate");
+    }
+    i2pTransient_ = issueI2pOfflineKeys(i2pMaster_, expiresUnix);
+    persistI2pBlob("i2p-transient.dat", i2pTransient_);
+}
+
+Bytes Session::i2pTransient() const
+{
+    return i2pTransient_;
 }
 
 void Session::registerAlias(const std::string& alias)

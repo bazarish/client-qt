@@ -54,6 +54,7 @@ void printUsage()
         "  bazarish-client init <state> <facade-url> <server-fp>\n"
         "  bazarish-client subscribe <state> [days]\n"
         "  bazarish-client whoami <state>\n"
+        "  bazarish-client i2p-enable <state>\n"
         "  bazarish-client alias <state> <name>\n"
         "  bazarish-client invite <state>\n"
         "  bazarish-client request <state> <peer-fp> <text>\n"
@@ -114,6 +115,10 @@ int runSubscribe(const std::vector<std::string>& args)
     session.subscribe(days);
     std::printf("subscribed for %lld day(s); client registered\n",
         static_cast<long long>(days));
+    if (session.hasI2pDestination()) {
+        std::printf("issued I2P transient delegation (%zu bytes) for %s.b32.i2p\n",
+            session.i2pTransient().size(), session.i2pAddress().c_str());
+    }
     return 0;
 }
 
@@ -126,6 +131,23 @@ int runWhoami(const std::vector<std::string>& args)
     const Session session = Session::open(args[1], keyPassphrase());
     std::printf("fingerprint: %s\nsealing-key: %s\n", session.fingerprint().c_str(),
         session.sealingPublicB64().c_str());
+    if (session.hasI2pDestination()) {
+        std::printf("i2p-address: %s.b32.i2p\n", session.i2pAddress().c_str());
+    }
+    return 0;
+}
+
+int runI2pEnable(const std::vector<std::string>& args)
+{
+    // i2p-enable <state>: mint a user-owned I2P destination (the per-user
+    // portable address). Idempotent; the master key never leaves the client.
+    if (args.size() != 2) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    const std::string address = session.ensureI2pDestination();
+    std::printf("user-owned I2P destination: %s.b32.i2p\n", address.c_str());
     return 0;
 }
 
@@ -500,6 +522,9 @@ int main(const int argc, const char** argv)
         }
         if (command == "whoami") {
             return runWhoami(args);
+        }
+        if (command == "i2p-enable") {
+            return runI2pEnable(args);
         }
         if (command == "alias") {
             return runAlias(args);
