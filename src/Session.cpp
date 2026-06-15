@@ -4,6 +4,7 @@
 #include "I2pKeys.hpp"
 #include "Invite.hpp"
 
+#include <bazarish/Auth.hpp>
 #include <bazarish/Cms.hpp>
 #include <bazarish/Tokens.hpp>
 
@@ -494,6 +495,34 @@ void Session::renewI2pTransient(const std::int64_t expiresUnix)
 Bytes Session::i2pTransient() const
 {
     return i2pTransient_;
+}
+
+std::string Session::signLogin(const std::string& challenge) const
+{
+    const auth::Headers headers = auth::signRequest(client_->identity(), nowSeconds(), kLoginMethod,
+        kLoginPath, Bytes(challenge.begin(), challenge.end()));
+    const nlohmann::json blob = {
+        {"k", headers.at(auth::kHeaderKeys)},
+        {"t", headers.at(auth::kHeaderTimestamp)},
+        {"c", headers.at(auth::kHeaderSignatureClassical)},
+        {"p", headers.at(auth::kHeaderSignaturePq)},
+    };
+    const std::string text = blob.dump();
+    return toBase64(Bytes(text.begin(), text.end()));
+}
+
+std::string verifyLoginBlob(
+    const std::string& blob, const std::int64_t now, const std::string& challenge)
+{
+    const Bytes raw = fromBase64(blob);
+    const nlohmann::json parsed = nlohmann::json::parse(raw.begin(), raw.end());
+    auth::Headers headers;
+    headers[auth::kHeaderKeys] = parsed.at("k").get<std::string>();
+    headers[auth::kHeaderTimestamp] = parsed.at("t").get<std::string>();
+    headers[auth::kHeaderSignatureClassical] = parsed.at("c").get<std::string>();
+    headers[auth::kHeaderSignaturePq] = parsed.at("p").get<std::string>();
+    return auth::verifyRequest(
+        headers, now, kLoginMethod, kLoginPath, Bytes(challenge.begin(), challenge.end()));
 }
 
 void Session::registerAlias(const std::string& alias)

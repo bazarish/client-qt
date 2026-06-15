@@ -197,6 +197,12 @@ public:
     // The active transient blob to hand to the serving server (empty if none).
     Bytes i2pTransient() const;
 
+    // Sign-in-with-key: signs an opaque challenge issued by a service portal,
+    // proving ownership of this identity's key without the key ever reaching
+    // the browser. Returns a base64 token the user pastes back into the portal,
+    // which verifies it (see verifyLoginBlob) and recovers this fingerprint.
+    std::string signLogin(const std::string& challenge) const;
+
     // Registers a human-readable alias (username) for this identity at the
     // serving server's service node, so contacts can add us by name.
     void registerAlias(const std::string& alias);
@@ -435,5 +441,19 @@ private:
     // Writes an I2P key blob, sealed under the passphrase when encrypted.
     void persistI2pBlob(const std::string& filename, const Bytes& blob) const;
 };
+
+// The sign-in-with-key wire contract, shared with the service node's portal
+// verifier: the challenge is signed as the body of a canonical request under
+// this fixed method/path (so a login blob can never be replayed as a real API
+// call), and the four hybrid-auth headers are packed into base64(JSON).
+inline constexpr const char* kLoginMethod = "BZ-LOGIN";
+inline constexpr const char* kLoginPath = "/portal/login";
+
+// Verifies a login blob against the challenge it was issued for (freshness
+// window enforced by the underlying request auth) and returns the signer's
+// fingerprint. Throws on any failure. The verifier of record is the service
+// node; this mirror lets the client round-trip and test its own blobs.
+std::string verifyLoginBlob(
+    const std::string& blob, std::int64_t now, const std::string& challenge);
 
 }  // namespace bazarish::client

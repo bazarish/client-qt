@@ -178,6 +178,7 @@ bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestGroup)
 bazarish_client_add_test(TestI2pKeys)
 bazarish_client_add_test(TestInvite)
+bazarish_client_add_test(TestLogin)
 bazarish_client_add_test(TestProfile)
 
 # The transcript store needs Qt SQL and direct SQLite, so it has its own target.

@@ -55,6 +55,7 @@ void printUsage()
         "  bazarish-client subscribe <state> [days]\n"
         "  bazarish-client whoami <state>\n"
         "  bazarish-client i2p-enable <state>\n"
+        "  bazarish-client sign-login <state> <challenge>\n"
         "  bazarish-client alias <state> <name>\n"
         "  bazarish-client invite <state>\n"
         "  bazarish-client request <state> <peer-fp> <text>\n"
@@ -148,6 +149,19 @@ int runI2pEnable(const std::vector<std::string>& args)
     Session session = Session::open(args[1], keyPassphrase());
     const std::string address = session.ensureI2pDestination();
     std::printf("user-owned I2P destination: %s.b32.i2p\n", address.c_str());
+    return 0;
+}
+
+int runSignLogin(const std::vector<std::string>& args)
+{
+    // sign-login <state> <challenge>: prove key ownership to a service portal by
+    // signing its challenge; print the blob to paste back into the site.
+    if (args.size() != 3) {
+        printUsage();
+        return 2;
+    }
+    const Session session = Session::open(args[1], keyPassphrase());
+    std::printf("%s\n", session.signLogin(args[2]).c_str());
     return 0;
 }
 
@@ -525,6 +539,9 @@ int main(const int argc, const char** argv)
         }
         if (command == "i2p-enable") {
             return runI2pEnable(args);
+        }
+        if (command == "sign-login") {
+            return runSignLogin(args);
         }
         if (command == "alias") {
             return runAlias(args);
