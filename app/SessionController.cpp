@@ -2,6 +2,7 @@
 #include "SessionController.hpp"
 
 #include "DeliveryStatus.hpp"
+#include "Invite.hpp"
 #include "Session.hpp"
 
 #include <QRandomGenerator>
@@ -59,24 +60,46 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     }
     emit contactsRefreshed(fps);
     emitGroups();
+    emitFacadeInfo();
     if (connected) {
         ensureSyncTimer();
         sync();
     }
 }
 
-void SessionWorker::connectAndSubscribe(const QString& host, int port, const QString& basePath,
-    const QString& serverFp, int days)
+void SessionWorker::emitFacadeInfo()
+{
+    if (!session_ || !session_->isConnected()) {
+        return;
+    }
+    QStringList configured;
+    for (const std::string& url : session_->facadeUrls()) {
+        configured << QString::fromStdString(url);
+    }
+    emit facadeInfo(QString::fromStdString(session_->activeFacadeUrl()), configured,
+        QString::fromStdString(session_->endpoint().serverFingerprint));
+}
+
+void SessionWorker::connectAndSubscribe(
+    const QStringList& facadeUrls, const QString& serverFp, int days)
 {
     if (!session_) {
         return;
     }
     try {
         ServerEndpoint endpoint;
-        endpoint.host = host.toStdString();
-        endpoint.port = port;
-        endpoint.basePath = basePath.toStdString();
         endpoint.serverFingerprint = serverFp.toStdString();
+        for (const QString& url : facadeUrls) {
+            const QString trimmed = url.trimmed();
+            if (!trimmed.isEmpty()) {
+                endpoint.facades.push_back(
+                    bazarish::client::parseFacadeUrl(trimmed.toStdString()));
+            }
+        }
+        if (endpoint.facades.empty()) {
+            throw std::runtime_error("enter at least one facade URL");
+        }
+        endpoint.selectFacade(0);
         session_->connectServer(endpoint);
         session_->subscribe(days);
     } catch (const std::exception& e) {
@@ -86,8 +109,37 @@ void SessionWorker::connectAndSubscribe(const QString& host, int port, const QSt
     }
     emit connectionChanged(true, "active");
     emit actionOk("Connected and subscribed.");
+    emitFacadeInfo();
     ensureSyncTimer();
     sync();
+}
+
+void SessionWorker::updateFacades(const QStringList& facadeUrls)
+{
+    if (!session_ || !session_->isConnected()) {
+        return;
+    }
+    try {
+        ServerEndpoint endpoint;
+        endpoint.serverFingerprint = session_->endpoint().serverFingerprint;
+        for (const QString& url : facadeUrls) {
+            const QString trimmed = url.trimmed();
+            if (!trimmed.isEmpty()) {
+                endpoint.facades.push_back(
+                    bazarish::client::parseFacadeUrl(trimmed.toStdString()));
+            }
+        }
+        if (endpoint.facades.empty()) {
+            throw std::runtime_error("enter at least one facade URL");
+        }
+        endpoint.selectFacade(0);
+        session_->connectServer(endpoint);
+        emit actionOk("Facades updated.");
+        emitFacadeInfo();
+        sync();
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
 }
 
 void SessionWorker::setSyncEnabled(bool on)
@@ -139,6 +191,7 @@ void SessionWorker::sync()
     }
     emit contactsRefreshed(fps);
     emitGroups();
+    emitFacadeInfo();
 }
 
 void SessionWorker::sendText(
@@ -379,6 +432,7 @@ SessionController::SessionController(QObject* parent)
     // Commands → worker (queued across threads).
     connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openProfile);
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
+    connect(this, &SessionController::requestUpdateFacades, worker_, &SessionWorker::updateFacades);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
@@ -425,6 +479,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
+    connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, &SessionController::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
@@ -464,10 +519,54 @@ void SessionController::open(const QString& dir, const QString& profileId, const
     emit requestOpen(dir, passphrase);
 }
 
-void SessionController::connectServer(
-    const QString& host, int port, const QString& basePath, const QString& serverFp)
+void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp)
 {
-    emit requestConnect(host, port, basePath, serverFp, 14);
+    emit requestConnect(facadeUrls, serverFp, 14);
+}
+
+void SessionController::updateFacades(const QStringList& facadeUrls)
+{
+    emit requestUpdateFacades(facadeUrls);
+}
+
+void SessionController::onFacadeInfo(
+    const QString& activeUrl, const QStringList& configured, const QString& serverFp)
+{
+    activeFacade_ = activeUrl;
+    configuredFacades_ = configured;
+    serverFp_ = serverFp;
+    emit facadeInfoChanged();
+}
+
+QVariantMap SessionController::parseServerLink(const QString& uri) const
+{
+    QVariantMap result;
+    try {
+        const bazarish::client::ServerLink link
+            = bazarish::client::decodeServerLink(uri.trimmed().toStdString());
+        result["serverFp"] = QString::fromStdString(link.serverFingerprint);
+        QStringList facades;
+        for (const std::string& url : link.facadeUrls) {
+            facades << QString::fromStdString(url);
+        }
+        result["facades"] = facades;
+    } catch (const std::exception&) {
+        // Malformed link: return an empty map (the caller checks).
+    }
+    return result;
+}
+
+QString SessionController::myServerLink() const
+{
+    if (serverFp_.isEmpty() || configuredFacades_.isEmpty()) {
+        return {};
+    }
+    bazarish::client::ServerLink link;
+    link.serverFingerprint = serverFp_.toStdString();
+    for (const QString& url : configuredFacades_) {
+        link.facadeUrls.push_back(url.toStdString());
+    }
+    return QString::fromStdString(bazarish::client::encodeServerLink(link));
 }
 
 void SessionController::openConversation(const QString& peer)

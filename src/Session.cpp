@@ -242,6 +242,28 @@ const ServerEndpoint& Session::endpoint() const
     return client_->endpoint();
 }
 
+std::string Session::activeFacadeUrl() const
+{
+    return client_->activeFacadeUrl();
+}
+
+std::vector<std::string> Session::facadeUrls() const
+{
+    const ServerEndpoint& endpoint = client_->endpoint();
+    std::vector<std::string> urls;
+    if (endpoint.facades.empty()) {
+        if (!endpoint.host.empty()) {
+            urls.push_back(
+                facadeToUrl(Facade{endpoint.tls, endpoint.host, endpoint.port, endpoint.basePath}));
+        }
+    } else {
+        for (const Facade& facade : endpoint.facades) {
+            urls.push_back(facadeToUrl(facade));
+        }
+    }
+    return urls;
+}
+
 Session Session::open(const fs::path& stateDir, const std::string& passphrase)
 {
     const nlohmann::json meta = nlohmann::json::parse(readFileText(stateDir / "meta.json"));

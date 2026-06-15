@@ -88,6 +88,8 @@ public:
     const Identity& identity() const;
     const std::string& clientId() const;
     const ServerEndpoint& endpoint() const;
+    // The facade the transport is currently using (last that worked), as a URL.
+    std::string activeFacadeUrl() const;
 
     // --- Account (service node) ---
 

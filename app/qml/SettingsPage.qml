@@ -76,9 +76,54 @@ Popup {
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
-                    spacing: 4
-                    Label { text: "Connection"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    Label { text: root.session && root.session.connected ? ("Connected · " + root.session.subscriptionText) : "Not connected"; color: Theme.text }
+                    spacing: 6
+                    Label { text: "Connection (HTTP facade)"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        text: root.session && root.session.connected ? ("Connected · " + root.session.subscriptionText) : "Not connected"
+                        color: Theme.text
+                    }
+                    RowLayout {
+                        visible: root.session && root.session.connected
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Rectangle {
+                            Layout.alignment: Qt.AlignVCenter
+                            implicitWidth: 8; implicitHeight: 8; radius: 4
+                            color: (root.session && root.session.reachable) ? Theme.success : "#d4a017"
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.session && root.session.activeFacade.length > 0
+                                ? ((root.session.reachable ? "via " : "connecting via ") + root.session.activeFacade)
+                                : ""
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle
+                        }
+                    }
+                    Label {
+                        visible: root.session && root.session.configuredFacades.length > 1
+                        text: root.session ? (root.session.configuredFacades.length + " facades configured (failover)") : ""
+                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Button {
+                            visible: root.session && root.session.connected
+                            text: "Edit facades…"
+                            onClicked: {
+                                facadeModel.clear()
+                                var cfg = root.session.configuredFacades
+                                for (var i = 0; i < cfg.length; ++i) facadeModel.append({ url: cfg[i] })
+                                if (facadeModel.count === 0) facadeModel.append({ url: "" })
+                                facadeDialog.open()
+                            }
+                        }
+                        Button {
+                            visible: root.session && root.session.connected
+                            text: "Share server link / QR"
+                            onClicked: serverLinkDialog.open()
+                        }
+                    }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -151,6 +196,80 @@ Popup {
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
         contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; implicitWidth: 260 }
+    }
+
+    Dialog {
+        id: serverLinkDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 360
+        title: "Share this server"
+        standardButtons: Dialog.Close
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                Layout.fillWidth: true
+                text: "Anyone can add this server — fingerprint and facades — from this link or QR, with no manual entry."
+                color: Theme.textDim; wrapMode: Text.Wrap
+            }
+            QrView { Layout.alignment: Qt.AlignHCenter; text: root.session ? root.session.myServerLink() : "" }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 70
+                TextArea {
+                    readOnly: true
+                    wrapMode: TextArea.WrapAnywhere
+                    color: Theme.text
+                    selectByMouse: true
+                    text: root.session ? root.session.myServerLink() : ""
+                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                }
+            }
+        }
+    }
+
+    ListModel { id: facadeModel }
+    Dialog {
+        id: facadeDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 440
+        title: "Facades (tried in order, with failover)"
+        standardButtons: Dialog.Save | Dialog.Cancel
+        onAccepted: {
+            var urls = []
+            for (var i = 0; i < facadeModel.count; ++i) {
+                var u = facadeModel.get(i).url.trim()
+                if (u.length > 0) urls.push(u)
+            }
+            if (urls.length > 0) root.session.updateFacades(urls)
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            Repeater {
+                model: facadeModel
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    TextField {
+                        Layout.fillWidth: true
+                        text: model.url
+                        placeholderText: "http[s]://host:port/secret-path"
+                        color: Theme.text
+                        selectByMouse: true
+                        onTextChanged: facadeModel.setProperty(index, "url", text)
+                        background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                    }
+                    IconButton { text: "✕"; visible: facadeModel.count > 1; onClicked: facadeModel.remove(index) }
+                }
+            }
+            Button {
+                text: "＋ Add facade"
+                onClicked: facadeModel.append({ url: "" })
+                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                contentItem: Label { text: parent.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
+            }
+        }
     }
 
     Dialog {

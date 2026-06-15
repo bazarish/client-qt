@@ -29,8 +29,9 @@ public:
 
 public slots:
     void openProfile(const QString& dir, const QString& passphrase);
-    void connectAndSubscribe(const QString& host, int port, const QString& basePath,
-        const QString& serverFp, int days);
+    void connectAndSubscribe(const QStringList& facadeUrls, const QString& serverFp, int days);
+    // Re-points the existing server connection at a new facade list (same server).
+    void updateFacades(const QStringList& facadeUrls);
     void sync();
     // Starts or stops background syncing (the account going online/offline).
     void setSyncEnabled(bool on);
@@ -70,6 +71,10 @@ signals:
     void inviteReady(const QString& uri);
     // Whether the last sync reached the facade (true) or failed (false).
     void syncReachable(bool ok);
+    // The facade currently in use, the configured facade list, and the server
+    // fingerprint, for the GUI.
+    void facadeInfo(
+        const QString& activeUrl, const QStringList& configured, const QString& serverFp);
     void groupsRefreshed(const QStringList& ids, const QStringList& names);
     void groupCreated(const QString& groupId, const QString& name);
     void groupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
@@ -77,6 +82,7 @@ signals:
 private:
     void ensureSyncTimer();
     void emitGroups();
+    void emitFacadeInfo();
     std::unique_ptr<bazarish::client::Session> session_;
     QTimer* syncTimer_ = nullptr;
 };
@@ -94,6 +100,10 @@ class SessionController : public QObject {
     // connection status shown in the account list.
     Q_PROPERTY(bool online READ online NOTIFY onlineChanged)
     Q_PROPERTY(bool reachable READ reachable NOTIFY reachableChanged)
+    // The facade the transport is connected/connecting through, and the full
+    // configured facade list (for the connection editor and status display).
+    Q_PROPERTY(QString activeFacade READ activeFacade NOTIFY facadeInfoChanged)
+    Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     // The on-disk profile id this session was opened from (stable per account).
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
@@ -120,6 +130,8 @@ public:
     QString subscriptionText() const { return subscriptionText_; }
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
+    QString activeFacade() const { return activeFacade_; }
+    QStringList configuredFacades() const { return configuredFacades_; }
     QString activePeer() const { return activePeer_; }
     QString accountId() const { return profileId_; }
     int unreadTotal() const { return unreadTotal_; }
@@ -135,8 +147,16 @@ public:
     // Opens a profile on the worker thread (dir + id + passphrase).
     void open(const QString& dir, const QString& profileId, const QString& passphrase);
 
-    Q_INVOKABLE void connectServer(
-        const QString& host, int port, const QString& basePath, const QString& serverFp);
+    // Connects (and subscribes) through an ordered list of facade URLs
+    // (http[s]://host[:port][/secret]). The client fails over across them.
+    Q_INVOKABLE void connectServer(const QStringList& facadeUrls, const QString& serverFp);
+    // Edits the facade list of an already-connected server.
+    Q_INVOKABLE void updateFacades(const QStringList& facadeUrls);
+    // Decodes a bazarish://server/... link into { serverFp, facades } for the
+    // connect form to prefill; returns an empty map on a malformed link.
+    Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
+    // A shareable bazarish://server/... link for this account's server config.
+    Q_INVOKABLE QString myServerLink() const;
     // Brings this account online (resume syncing) or offline (stop syncing
     // without unloading it).
     Q_INVOKABLE void goOnline();
@@ -176,6 +196,7 @@ signals:
     void connectedChanged();
     void activePeerChanged();
     void activeGroupChanged();
+    void facadeInfoChanged();
     void sendReceiptsChanged();
     void editingChanged();
     void unreadTotalChanged();
@@ -187,8 +208,8 @@ signals:
     void inviteReady(const QString& uri);
 
 signals:  // to worker
-    void requestConnect(const QString& host, int port, const QString& basePath,
-        const QString& serverFp, int days);
+    void requestConnect(const QStringList& facadeUrls, const QString& serverFp, int days);
+    void requestUpdateFacades(const QStringList& facadeUrls);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
@@ -221,6 +242,8 @@ private slots:
     void onSendProgress(qint64 localId, int state);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSyncReachable(bool ok);
+    void onFacadeInfo(
+        const QString& activeUrl, const QStringList& configured, const QString& serverFp);
     void onGroupsRefreshed(const QStringList& ids, const QStringList& names);
     void onGroupCreated(const QString& groupId, const QString& name);
     void onGroupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
@@ -240,6 +263,9 @@ private:
     bool reachable_ = false;
     QString subscriptionText_;
     QString activePeer_;
+    QString activeFacade_;
+    QStringList configuredFacades_;
+    QString serverFp_;
     bool sendReceipts_ = true;
     // Edit-in-progress state for the composer (0 / empty when not editing).
     bool editing_ = false;

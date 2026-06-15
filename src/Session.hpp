@@ -154,6 +154,10 @@ public:
     // Whether a serving server is configured (a non-empty host).
     bool isConnected() const;
     const ServerEndpoint& endpoint() const;
+    // The facade the transport is currently using, as a URL (for the GUI status).
+    std::string activeFacadeUrl() const;
+    // The configured facade URLs (the failover list, or the single facade).
+    std::vector<std::string> facadeUrls() const;
 
     // Exports the whole session (identity, sealing key, routing meta and
     // contacts) into a single password-encrypted file (CMS PWRI). The bundle

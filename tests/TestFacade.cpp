@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "ApiClient.hpp"
+#include "Invite.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -113,6 +114,30 @@ void testSelectFacade()
     CHECK(endpoint.host == "b");
 }
 
+void testServerLink()
+{
+    ServerLink link;
+    link.serverFingerprint = "abcdef0123456789";
+    link.facadeUrls = {"https://relay.example.org:8443/s/9f3c", "http://127.0.0.1:18482"};
+    const std::string uri = encodeServerLink(link);
+    CHECK(uri.rfind("bazarish://server/", 0) == 0);
+
+    const ServerLink back = decodeServerLink(uri);
+    CHECK(back.serverFingerprint == link.serverFingerprint);
+    CHECK(back.facadeUrls.size() == 2);
+    CHECK(back.facadeUrls[0] == link.facadeUrls[0]);
+    CHECK(back.facadeUrls[1] == link.facadeUrls[1]);
+
+    // A contact invite URI is not a server link.
+    bool threw = false;
+    try {
+        decodeServerLink("bazarish://invite/abc");
+    } catch (const std::exception&) {
+        threw = true;
+    }
+    CHECK(threw);
+}
+
 }  // namespace
 
 int main()
@@ -121,6 +146,7 @@ int main()
     testFormatRoundTrip();
     testInvalid();
     testSelectFacade();
+    testServerLink();
     std::fprintf(stderr, "TestFacade passed\n");
     return 0;
 }

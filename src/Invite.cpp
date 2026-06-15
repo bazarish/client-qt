@@ -10,6 +10,7 @@ namespace bazarish::client {
 namespace {
 
 constexpr const char* kInvitePrefix = "bazarish://invite/";
+constexpr const char* kServerPrefix = "bazarish://server/";
 constexpr int kInviteFormatVersion = 1;
 
 // base64url (RFC 4648 §5) is base64 with a URL-safe alphabet and no padding,
@@ -74,6 +75,34 @@ Invite decodeInvite(const std::string& uri)
     invite.subscriptionCertDer = fromBase64(payload.at("sub").get<std::string>());
     invite.serverCardDer = fromBase64(payload.at("card").get<std::string>());
     return invite;
+}
+
+std::string encodeServerLink(const ServerLink& link)
+{
+    const nlohmann::json payload = {
+        {"v", kInviteFormatVersion},
+        {"fp", link.serverFingerprint},
+        {"facades", link.facadeUrls},
+    };
+    const std::string json = payload.dump();
+    return std::string(kServerPrefix) + toBase64Url(Bytes(json.begin(), json.end()));
+}
+
+ServerLink decodeServerLink(const std::string& uri)
+{
+    const std::string prefix = kServerPrefix;
+    if (uri.compare(0, prefix.size(), prefix) != 0) {
+        throw std::runtime_error("not a bazarish server URI");
+    }
+    const Bytes jsonBytes = fromBase64Url(uri.substr(prefix.size()));
+    const nlohmann::json payload = nlohmann::json::parse(jsonBytes.begin(), jsonBytes.end());
+    if (payload.at("v").get<int>() != kInviteFormatVersion) {
+        throw std::runtime_error("unsupported server link format version");
+    }
+    ServerLink link;
+    link.serverFingerprint = payload.at("fp").get<std::string>();
+    link.facadeUrls = payload.at("facades").get<std::vector<std::string>>();
+    return link;
 }
 
 }  // namespace bazarish::client

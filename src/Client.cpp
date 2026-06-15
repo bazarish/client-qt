@@ -44,6 +44,11 @@ const ServerEndpoint& Client::endpoint() const
     return api_.endpoint();
 }
 
+std::string Client::activeFacadeUrl() const
+{
+    return api_.activeFacadeUrl();
+}
+
 SubscribeResult Client::submitSubscription(const std::string& path,
     const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer)
 {
