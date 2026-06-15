@@ -183,13 +183,14 @@ public:
     // serving server's service node, so contacts can add us by name.
     void registerAlias(const std::string& alias);
 
-    // Sends a contact request to a peer. The peer's prekey, serving server and
-    // server card are looked up on peerFacadeUrl when given (the peer's facade
-    // for a cross-server contact), otherwise on our own; the request payload is
-    // E2E-encrypted to the peer's prekey and carries a fresh token batch and our
-    // own server card so the peer can reply.
-    void sendContactRequest(const std::string& peerFingerprint, const std::string& text,
-        const std::string& peerFacadeUrl = {});
+    // Sends a contact request to a peer subscribed to our own server. The
+    // peer's prekey, serving server and server card are looked up on our own
+    // facade; the request payload is E2E-encrypted to the peer's prekey and
+    // carries a fresh token batch and our own server card so the peer can
+    // reply. A client never reaches another server's facade (facade locality):
+    // cross-server first contact goes through an invite (self-verifying, no
+    // lookup) or, in future, a sealed federated resolve over the server link.
+    void sendContactRequest(const std::string& peerFingerprint, const std::string& text);
 
     // A bazarish:// invite carrying our full self-verifying serving chain
     // (subscription certificate + server card). A contact can verify it and
@@ -200,13 +201,13 @@ public:
     // offline (no lookup) and a contact request is sent to the peer.
     void addByInvite(const std::string& inviteUri, const std::string& text);
 
-    // Adds a contact by username (alias). The resolver maps the alias to a
-    // fingerprint, which is the one trust compromise — a hostile resolver
-    // could return a wrong fingerprint; everything after the mapping is
-    // verified end-to-end. resolverFacadeUrl targets the resolver's facade (our
-    // own when empty).
-    void addByUsername(const std::string& alias, const std::string& text,
-        const std::string& resolverFacadeUrl = {});
+    // Adds a contact by username (alias) registered on our own server. The
+    // resolver maps the alias to a fingerprint, which is the one trust
+    // compromise — a hostile resolver could return a wrong fingerprint;
+    // everything after the mapping is verified end-to-end. The resolver is our
+    // own server's service node (facade locality — we never query a foreign
+    // facade); a cross-server @alias awaits the sealed federated resolve.
+    void addByUsername(const std::string& alias, const std::string& text);
 
     // Sends an E2E-encrypted message to an established contact, spending one
     // of the peer's tokens. Throws if the contact is unknown or out of
@@ -310,11 +311,6 @@ private:
     // Generates a token batch for ourselves: registers the hashes with our
     // server and returns the raw tokens (base64) to hand to the peer.
     std::vector<std::string> issueTokenBatch();
-
-    // Looks up a contact on a given facade (our own when peerFacadeUrl is
-    // empty), returning the verified prekey certificate and server card.
-    ContactInfo lookupContactAt(
-        const std::string& peerFacadeUrl, const std::string& peerFingerprint) const;
 
     // Sends a contact request to a peer whose verified routing info is
     // already known (from a lookup or an invite). Mints a reply token batch

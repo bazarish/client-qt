@@ -56,9 +56,9 @@ void printUsage()
         "  bazarish-client whoami <state>\n"
         "  bazarish-client alias <state> <name>\n"
         "  bazarish-client invite <state>\n"
-        "  bazarish-client request <state> <peer-fp> <text> [peer-facade-url]\n"
+        "  bazarish-client request <state> <peer-fp> <text>\n"
         "  bazarish-client add-invite <state> <invite-file> <text>\n"
-        "  bazarish-client add-user <state> <alias> <text> [resolver-facade-url]\n"
+        "  bazarish-client add-user <state> <alias> <text>\n"
         "  bazarish-client send <state> <peer-fp> <text>\n"
         "  bazarish-client send-file <state> <peer-fp> <file>\n"
         "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
@@ -161,14 +161,14 @@ int runInvite(const std::vector<std::string>& args)
 
 int runRequest(const std::vector<std::string>& args)
 {
-    // request <state> <peer-fp> <text> [peer-facade-url]
-    if (args.size() < 4 || args.size() > 5) {
+    // request <state> <peer-fp> <text>  (peer must be on our own server;
+    // cross-server first contact uses add-invite — facade locality)
+    if (args.size() != 4) {
         printUsage();
         return 2;
     }
-    const std::string peerFacadeUrl = args.size() == 5 ? args[4] : std::string();
     Session session = Session::open(args[1], keyPassphrase());
-    session.sendContactRequest(args[2], args[3], peerFacadeUrl);
+    session.sendContactRequest(args[2], args[3]);
     std::printf("contact request sent to %s\n", args[2].c_str());
     return 0;
 }
@@ -195,14 +195,14 @@ int runAddInvite(const std::vector<std::string>& args)
 
 int runAddUser(const std::vector<std::string>& args)
 {
-    // add-user <state> <alias> <text> [resolver-facade-url]
-    if (args.size() < 4 || args.size() > 5) {
+    // add-user <state> <alias> <text>  (alias resolves on our own server;
+    // facade locality — no foreign resolver)
+    if (args.size() != 4) {
         printUsage();
         return 2;
     }
-    const std::string resolverFacadeUrl = args.size() == 5 ? args[4] : std::string();
     Session session = Session::open(args[1], keyPassphrase());
-    session.addByUsername(args[2], args[3], resolverFacadeUrl);
+    session.addByUsername(args[2], args[3]);
     std::printf("contact request sent to %s (resolver-trusted mapping)\n", args[2].c_str());
     return 0;
 }

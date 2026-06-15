@@ -360,21 +360,6 @@ std::vector<std::string> Session::contactFingerprints() const
     return fingerprints;
 }
 
-ContactInfo Session::lookupContactAt(
-    const std::string& peerFacadeUrl, const std::string& peerFingerprint) const
-{
-    // Default to our own facade; a non-empty URL targets the peer's facade
-    // (cross-server first contact).
-    if (peerFacadeUrl.empty()) {
-        return client_->lookupContact(peerFingerprint);
-    }
-    ServerEndpoint endpoint;
-    endpoint.facades = {parseFacadeUrl(peerFacadeUrl)};
-    Client remote(Identity::fromPrivatePem(client_->identity().privatePem()),
-        client_->clientId(), endpoint);
-    return remote.lookupContact(peerFingerprint);
-}
-
 void Session::persistMeta() const
 {
     const ServerEndpoint& endpoint = client_->endpoint();
@@ -521,13 +506,13 @@ void Session::deliver(const std::string& toServer, const Key& serverSealingKey,
     throw std::runtime_error("delivery did not complete after retries: " + lastError);
 }
 
-void Session::sendContactRequest(const std::string& peerFingerprint, const std::string& text,
-    const std::string& peerFacadeUrl)
+void Session::sendContactRequest(const std::string& peerFingerprint, const std::string& text)
 {
-    // Resolve the peer's prekey, serving server and server card. The prekey
+    // Resolve the peer's prekey, serving server and server card on our own
+    // server (facade locality — we never reach a foreign facade). The prekey
     // is signed by the peer (subscription certificate) and the server card by
     // the peer's server, so neither can be substituted by an intermediary.
-    const ContactInfo info = lookupContactAt(peerFacadeUrl, peerFingerprint);
+    const ContactInfo info = client_->lookupContact(peerFingerprint);
     requestWithInfo(peerFingerprint, text, info);
 }
 
@@ -543,24 +528,15 @@ void Session::addByInvite(const std::string& inviteUri, const std::string& text)
     requestWithInfo(info.subscriptionCert.user, text, info);
 }
 
-void Session::addByUsername(
-    const std::string& alias, const std::string& text, const std::string& resolverFacadeUrl)
+void Session::addByUsername(const std::string& alias, const std::string& text)
 {
-    // Resolve the alias to a fingerprint. This mapping is the one trust
-    // compromise of the username path: a hostile resolver could return an
-    // attacker's fingerprint. Everything after the mapping — the contact
-    // lookup and its certificates — is verified end-to-end as usual.
-    std::string fingerprint;
-    if (resolverFacadeUrl.empty()) {
-        fingerprint = client_->resolve(alias).user;
-    } else {
-        ServerEndpoint endpoint;
-        endpoint.facades = {parseFacadeUrl(resolverFacadeUrl)};
-        Client remote(Identity::fromPrivatePem(client_->identity().privatePem()),
-            client_->clientId(), endpoint);
-        fingerprint = remote.resolve(alias).user;
-    }
-    sendContactRequest(fingerprint, text, resolverFacadeUrl);
+    // Resolve the alias to a fingerprint on our own server's service node
+    // (facade locality — we never query a foreign facade). This mapping is the
+    // one trust compromise of the username path: a hostile resolver could
+    // return an attacker's fingerprint. Everything after the mapping — the
+    // contact lookup and its certificates — is verified end-to-end as usual.
+    const std::string fingerprint = client_->resolve(alias).user;
+    sendContactRequest(fingerprint, text);
 }
 
 void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,
