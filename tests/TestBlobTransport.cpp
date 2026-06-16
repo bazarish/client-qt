@@ -8,9 +8,11 @@
 #include <httplib/httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <stdexcept>
 #include <string>
 #include <thread>
 
@@ -88,6 +90,78 @@ int main()
         CHECK(gotTtl.empty());
         CHECK(gotCount.empty());
         CHECK(gotSha == packed.sha256);
+    }
+
+    // --- Resume driver: reassembles a download across truncated transfers ---
+
+    Bytes full;
+    for (int i = 0; i < 100000; ++i) {
+        full.push_back(static_cast<unsigned char>(i * 7 + 1));
+    }
+    const std::uint64_t total = full.size();
+
+    // A clean single-shot 200 returns the whole ciphertext unchanged.
+    {
+        const RangedGetFn whole = [&](const std::uint64_t offset) -> RangedGet {
+            RangedGet out;
+            out.status = 200;
+            out.total = total;
+            out.body = Bytes(full.begin() + static_cast<std::ptrdiff_t>(offset), full.end());
+            return out;
+        };
+        CHECK(downloadWithResume(whole) == full);
+    }
+
+    // A store that drops the stream after at most 9000 bytes per attempt (the
+    // first attempt is a truncated 200, the rest are ranged 206s) is resumed to a
+    // byte-exact whole.
+    {
+        int calls = 0;
+        const RangedGetFn flaky = [&](const std::uint64_t offset) -> RangedGet {
+            ++calls;
+            RangedGet out;
+            out.status = (offset == 0) ? 200 : 206;
+            out.total = total;
+            const std::size_t chunk
+                = std::min<std::size_t>(9000, full.size() - static_cast<std::size_t>(offset));
+            out.body = Bytes(full.begin() + static_cast<std::ptrdiff_t>(offset),
+                full.begin() + static_cast<std::ptrdiff_t>(offset) + static_cast<std::ptrdiff_t>(chunk));
+            return out;
+        };
+        const Bytes assembled = downloadWithResume(flaky);
+        CHECK(assembled == full);
+        CHECK(calls > 1);  // it actually resumed rather than fetching in one shot
+    }
+
+    // A transport that never makes progress gives up instead of looping forever.
+    {
+        const RangedGetFn dead
+            = [](std::uint64_t) -> RangedGet { throw std::runtime_error("tunnel build failed"); };
+        bool threw = false;
+        try {
+            (void)downloadWithResume(dead);
+        } catch (const std::exception&) {
+            threw = true;
+        }
+        CHECK(threw);
+    }
+
+    // A 206 without a parseable total is a protocol error, not silent truncation.
+    {
+        const RangedGetFn bogus = [&](const std::uint64_t offset) -> RangedGet {
+            RangedGet out;
+            out.status = 206;
+            out.total = 0;  // missing Content-Range total
+            out.body = Bytes(full.begin() + static_cast<std::ptrdiff_t>(offset), full.end());
+            return out;
+        };
+        bool threw = false;
+        try {
+            (void)downloadWithResume(bogus);
+        } catch (const std::exception&) {
+            threw = true;
+        }
+        CHECK(threw);
     }
 
     store.stop();

@@ -8,6 +8,7 @@
 #include <bazarish/Sam.hpp>
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -41,6 +42,7 @@ BlobUploadResult uploadBlob(
 struct I2pHttpResponse {
     int status = 0;
     Bytes body;
+    std::map<std::string, std::string> headers;  // response header names, lowercased
 };
 
 // Performs one HTTP/1.1 request to a .b32.i2p host over a FRESH transient SAM
@@ -54,9 +56,30 @@ I2pHttpResponse i2pRequest(const std::string& samHost, std::uint16_t samPort,
     const std::map<std::string, std::string>& headers = {}, const Bytes& body = {},
     I2pPrivacy privacy = I2pPrivacy::kMax);
 
-// Downloads the ciphertext named by a pointer over I2P, verifies its digest and
-// decrypts it, then confirms receipt (anonymous, blobId only). Returns the
-// original message blob. Throws on a fetch error or an integrity failure.
+// One ranged GET attempt against the blob store, as seen by the resume driver.
+// total is the full ciphertext length the store declares (Content-Length for a
+// 200, the size after '/' in Content-Range for a 206); body is the bytes for
+// this attempt (from the requested offset for a 206, or from zero for a 200).
+struct RangedGet {
+    int status = 0;
+    std::uint64_t total = 0;
+    Bytes body;
+};
+
+// Performs one ranged GET starting at the given byte offset. Throws on transport
+// failure so the driver can count it as a stalled attempt and retry.
+using RangedGetFn = std::function<RangedGet(std::uint64_t offset)>;
+
+// Assembles the full ciphertext by driving get(), resuming from the last received
+// byte after a truncated transfer (an I2P stream drop) rather than restarting.
+// Bounded by consecutive no-progress attempts. Throws if it cannot make progress
+// or on a non-2xx status.
+Bytes downloadWithResume(const RangedGetFn& get);
+
+// Downloads the ciphertext named by a pointer over I2P (with Range/resume),
+// verifies its digest and decrypts it, then confirms receipt (anonymous, blobId
+// only). Returns the original message blob. Throws on a fetch error or an
+// integrity failure.
 Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
     I2pPrivacy privacy = I2pPrivacy::kMax);
 

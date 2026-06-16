@@ -4,7 +4,10 @@
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Sam.hpp>
 
+#include <algorithm>
 #include <array>
+#include <cctype>
+#include <cstdint>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -23,6 +26,39 @@ int parseStatus(const std::string& head)
         throw std::runtime_error("malformed i2p http status line");
     }
     return std::stoi(head.substr(firstSpace + 1, 3));
+}
+
+std::uint64_t headerUint64(const std::map<std::string, std::string>& headers,
+    const std::string& key, const std::uint64_t fallback)
+{
+    const auto it = headers.find(key);
+    if (it == headers.end()) {
+        return fallback;
+    }
+    try {
+        return static_cast<std::uint64_t>(std::stoull(it->second));
+    } catch (const std::exception&) {
+        return fallback;
+    }
+}
+
+// Total length from a Content-Range value ("bytes <start>-<end>/<total>"); 0 if
+// it is absent or unparseable.
+std::uint64_t contentRangeTotal(const std::map<std::string, std::string>& headers)
+{
+    const auto it = headers.find("content-range");
+    if (it == headers.end()) {
+        return 0;
+    }
+    const std::size_t slash = it->second.rfind('/');
+    if (slash == std::string::npos) {
+        return 0;
+    }
+    try {
+        return static_cast<std::uint64_t>(std::stoull(it->second.substr(slash + 1)));
+    } catch (const std::exception&) {
+        return 0;
+    }
 }
 
 }  // namespace
@@ -87,10 +123,82 @@ I2pHttpResponse i2pRequest(const std::string& samHost, const std::uint16_t samPo
         throw std::runtime_error("malformed i2p http response");
     }
     I2pHttpResponse response;
-    response.status = parseStatus(raw.substr(0, raw.find("\r\n")));
+    const std::string head = raw.substr(0, headerEnd);
+    const std::size_t firstLineEnd = head.find("\r\n");
+    response.status = parseStatus(head.substr(0, firstLineEnd));
+    // Parse the header lines (after the status line) into a lowercased map so the
+    // resume driver can read Content-Length / Content-Range.
+    std::size_t lineStart = (firstLineEnd == std::string::npos) ? head.size() : firstLineEnd + 2;
+    while (lineStart < head.size()) {
+        const std::size_t lineEnd = head.find("\r\n", lineStart);
+        const std::size_t stop = (lineEnd == std::string::npos) ? head.size() : lineEnd;
+        const std::string line = head.substr(lineStart, stop - lineStart);
+        lineStart = (lineEnd == std::string::npos) ? head.size() : lineEnd + 2;
+        const std::size_t colon = line.find(':');
+        if (colon == std::string::npos) {
+            continue;
+        }
+        std::string key = line.substr(0, colon);
+        std::transform(key.begin(), key.end(), key.begin(),
+            [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        std::size_t valueStart = colon + 1;
+        while (valueStart < line.size() && (line[valueStart] == ' ' || line[valueStart] == '\t')) {
+            ++valueStart;
+        }
+        response.headers[key] = line.substr(valueStart);
+    }
     const std::string payload = raw.substr(headerEnd + 4);
     response.body = Bytes(payload.begin(), payload.end());
     return response;
+}
+
+Bytes downloadWithResume(const RangedGetFn& get)
+{
+    // A truncated transfer (an I2P stream drop) leaves a short body with no
+    // exception; the driver resumes from the byte it stopped at. Bounded by
+    // consecutive attempts that make no forward progress.
+    constexpr int kMaxStalledAttempts = 5;
+    Bytes cipher;
+    bool haveTotal = false;
+    std::uint64_t total = 0;
+    int stalled = 0;
+    while (!haveTotal || cipher.size() < total) {
+        const std::size_t before = cipher.size();
+        RangedGet attempt;
+        try {
+            attempt = get(cipher.size());
+        } catch (const std::exception&) {
+            if (++stalled >= kMaxStalledAttempts) {
+                throw;
+            }
+            continue;
+        }
+        if (attempt.status == 200) {
+            // The store served the whole object (e.g. it ignored the Range
+            // header); take it as the authoritative full ciphertext.
+            cipher = std::move(attempt.body);
+            total = attempt.total > 0 ? attempt.total : cipher.size();
+            haveTotal = true;
+        } else if (attempt.status == 206) {
+            if (attempt.total == 0) {
+                throw std::runtime_error("blob store returned 206 without a total length");
+            }
+            cipher.insert(cipher.end(), attempt.body.begin(), attempt.body.end());
+            total = attempt.total;
+            haveTotal = true;
+        } else {
+            throw std::runtime_error(
+                "blob download failed: status " + std::to_string(attempt.status));
+        }
+        if (cipher.size() <= before) {
+            if (++stalled >= kMaxStalledAttempts) {
+                throw std::runtime_error("blob download stalled with no progress");
+            }
+        } else {
+            stalled = 0;
+        }
+    }
+    return cipher;
 }
 
 Bytes fetchBlob(const std::string& samHost, const std::uint16_t samPort,
@@ -100,11 +208,27 @@ Bytes fetchBlob(const std::string& samHost, const std::uint16_t samPort,
     std::string path;
     splitBlobUrl(pointer.blobUrl, host, path);
 
-    const I2pHttpResponse download = i2pRequest(samHost, samPort, host, "GET", path, {}, {}, privacy);
-    if (download.status != 200) {
-        throw std::runtime_error("blob download failed: status " + std::to_string(download.status));
-    }
-    Bytes blob = unpackLargeBlob(download.body, pointer.fileKey, pointer.sha256);
+    // Each attempt opens a fresh transient session and (after the first) asks for
+    // the remaining byte range, so a dropped stream resumes instead of restarting.
+    const RangedGetFn get = [&](const std::uint64_t offset) -> RangedGet {
+        std::map<std::string, std::string> headers;
+        if (offset > 0) {
+            headers["Range"] = "bytes=" + std::to_string(offset) + "-";
+        }
+        const I2pHttpResponse resp
+            = i2pRequest(samHost, samPort, host, "GET", path, headers, {}, privacy);
+        RangedGet ranged;
+        ranged.status = resp.status;
+        ranged.body = resp.body;
+        if (resp.status == 200) {
+            ranged.total = headerUint64(resp.headers, "content-length", resp.body.size());
+        } else if (resp.status == 206) {
+            ranged.total = contentRangeTotal(resp.headers);
+        }
+        return ranged;
+    };
+    const Bytes ciphertext = downloadWithResume(get);
+    Bytes blob = unpackLargeBlob(ciphertext, pointer.fileKey, pointer.sha256);
 
     // Confirm receipt (anonymous, blobId only) so the store can reclaim it. Best
     // effort: the blob is already in hand; a failed confirm just leaves TTL to it.
