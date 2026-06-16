@@ -707,12 +707,19 @@ void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer)
 {
     const Bytes data = readFileBytes(path);
-    // Encrypt the bytes with a fresh random content key (the key is the CMS
-    // password — standard primitives only). The store sees only ciphertext.
-    const Bytes key = randomBytes(32);
-    const std::string password(key.begin(), key.end());
-    const Bytes ciphertext = cms::sealWithPassword(data, password);
-    const std::string ref = client_->putContent(ciphertext);
+    // Encrypt the file under a fresh key and upload the ciphertext to blob
+    // storage (rotating encrypted-LeaseSet destinations, served only over I2P).
+    // The message carries only a small sealed pointer, so the recipient's
+    // mailbox quota is never a factor for large files.
+    const PackedBlob packed = packLargeBlob(data);
+    const BlobUploadResult uploaded = client_->uploadBlob(packed, BlobRetention{});
+    BlobPointer pointer;
+    pointer.blobUrl = uploaded.blobUrl;
+    pointer.blobId = uploaded.blobId;
+    pointer.fileKey = packed.fileKey;
+    pointer.sha256 = packed.sha256;
+    pointer.size = packed.size;
+    const std::string pointerJson = blobPointerToJson(pointer).dump();
 
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -722,8 +729,7 @@ void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
         {"sentAt", nowSeconds()},
         {"file",
             {
-                {"ref", ref},
-                {"key", toBase64(key)},
+                {"ptr", toBase64(Bytes(pointerJson.begin(), pointerJson.end()))},
                 {"size", data.size()},
                 {"mime", guessMime(path)},
                 {"name", path.filename().string()},
@@ -816,10 +822,13 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
 void Session::saveAttachment(
     const std::string& ref, const std::string& keyB64, const fs::path& dest)
 {
-    const Bytes ciphertext = client_->getContent(ref);
-    const Bytes key = fromBase64(keyB64);
-    const std::string password(key.begin(), key.end());
-    const Bytes plain = cms::unsealWithPassword(ciphertext, password);
+    (void)keyB64;  // the decryption key now travels inside the pointer
+    // ref is the base64 sealed blob pointer; fetch the ciphertext over I2P,
+    // verify its digest and decrypt it.
+    const Bytes pointerBytes = fromBase64(ref);
+    const BlobPointer pointer
+        = blobPointerFromJson(nlohmann::json::parse(pointerBytes.begin(), pointerBytes.end()));
+    const Bytes plain = fetchBlob("127.0.0.1", 7656, pointer, blobFetchPrivacy_);
     writeFileBytes(dest, plain);
 }
 
@@ -991,8 +1000,8 @@ std::vector<IncomingMessage> Session::sync()
         } else if (type == "file" || type == "photo" || type == "audio" || type == "voice") {
             message.contentType = type;
             const nlohmann::json& file = body.at("file");
-            message.attachmentRef = file.at("ref").get<std::string>();
-            message.attachmentKeyB64 = file.at("key").get<std::string>();
+            // The base64 sealed blob pointer; the decryption key rides inside it.
+            message.attachmentRef = file.at("ptr").get<std::string>();
             message.attachmentName = file.value("name", std::string());
             message.attachmentMime = file.value("mime", std::string());
             message.attachmentSize = file.value("size", std::uint64_t{0});
