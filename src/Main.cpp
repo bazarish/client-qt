@@ -74,6 +74,7 @@ void printUsage()
         "  bazarish-client group-remove <state> <group-id> <peer-fp>\n"
         "  bazarish-client group-admin <state> <group-id> <peer-fp> <on|off>\n"
         "  bazarish-client group-leave <state> <group-id>\n"
+        "  bazarish-client unsend <state> <message-id>\n"
         "  bazarish-client sync <state> [--privacy <minimal|middle|max>]\n"
         "  bazarish-client export <state> <out-file>\n"
         "  bazarish-client import <in-file> <state>\n"
@@ -306,6 +307,19 @@ int runGetFile(const std::vector<std::string>& args)
     Session session = Session::open(args[1], keyPassphrase());
     session.saveAttachment(args[2], args[3], args[4]);
     std::printf("saved attachment to %s\n", args[4].c_str());
+    return 0;
+}
+
+int runUnsend(const std::vector<std::string>& args)
+{
+    // unsend <state> <message-id>
+    if (args.size() != 3) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.unsend(args[2]);
+    std::printf("unsent the blob for message %s\n", args[2].c_str());
     return 0;
 }
 
@@ -580,6 +594,9 @@ int main(const int argc, const char** argv)
         }
         if (command == "get-file") {
             return runGetFile(args);
+        }
+        if (command == "unsend") {
+            return runUnsend(args);
         }
         if (command == "group-create") {
             return runGroupCreate(args);

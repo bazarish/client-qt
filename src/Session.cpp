@@ -302,6 +302,7 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
     session.name_ = meta.value("name", std::string{});
+    session.loadSentBlobs();
 
     // Load groups (mirrors contacts: a sealed blob when the profile is encrypted).
     const fs::path groupsPath = stateDir / "groups.json";
@@ -735,6 +736,8 @@ void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
                 {"name", path.filename().string()},
             }},
     };
+    // Remember the blob so the sender can unsend it later.
+    recordSentBlob(inner.at("id").get<std::string>(), uploaded.blobUrl, uploaded.deleteToken);
     sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
 }
 
@@ -859,6 +862,9 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
             const PackedBlob packed
                 = packLargeBlob(Bytes(contentText.begin(), contentText.end()));
             const BlobUploadResult uploaded = client_->uploadBlob(packed, BlobRetention{});
+            // Remember the blob so the sender can unsend it later.
+            recordSentBlob(
+                inner.value("id", std::string()), uploaded.blobUrl, uploaded.deleteToken);
             BlobPointer pointer;
             pointer.blobUrl = uploaded.blobUrl;
             pointer.blobId = uploaded.blobId;
@@ -923,6 +929,70 @@ Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
         // server proxying the fetch over I2P.
         return client_->fetchBlobViaProxy(pointer);
     }
+}
+
+void Session::deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken)
+{
+    try {
+        deleteBlob("127.0.0.1", 7656, blobUrl, deleteToken, blobFetchPrivacy_);  // direct
+    } catch (const std::exception&) {
+        client_->deleteBlobViaProxy(blobUrl, deleteToken);  // own-server proxy fallback
+    }
+}
+
+void Session::unsend(const std::string& messageId)
+{
+    const auto found = sentBlobs_.find(messageId);
+    if (found == sentBlobs_.end()) {
+        throw std::runtime_error("no externalized blob recorded for message: " + messageId);
+    }
+    try {
+        deleteLargeBlob(found->second.blobUrl, found->second.deleteToken);
+    } catch (const std::exception&) {
+        // Best effort: the blob also reclaims via its TTL.
+    }
+    sentBlobs_.erase(found);
+    persistSentBlobs();
+}
+
+void Session::recordSentBlob(
+    const std::string& messageId, const std::string& blobUrl, const std::string& deleteToken)
+{
+    sentBlobs_[messageId] = SentBlob{blobUrl, deleteToken};
+    persistSentBlobs();
+}
+
+void Session::loadSentBlobs()
+{
+    const fs::path path = stateDir_ / "sent-blobs.json";
+    if (!fs::exists(path)) {
+        return;
+    }
+    const std::string raw = readFileText(path);
+    const nlohmann::json stored = encrypted_
+        ? nlohmann::json::parse(cms::unsealWithPassword(Bytes(raw.begin(), raw.end()), passphrase_))
+        : nlohmann::json::parse(raw);
+    for (const auto& [id, entry] : stored.items()) {
+        sentBlobs_[id] = SentBlob{
+            entry.at("url").get<std::string>(), entry.at("token").get<std::string>()};
+    }
+}
+
+void Session::persistSentBlobs() const
+{
+    nlohmann::json stored = nlohmann::json::object();
+    for (const auto& [id, blob] : sentBlobs_) {
+        stored[id] = {{"url", blob.blobUrl}, {"token", blob.deleteToken}};
+    }
+    if (encrypted_) {
+        // Delete-tokens are capabilities over our own blobs: seal at rest under
+        // the profile passphrase (CMS PWRI), like contacts.
+        const std::string text = stored.dump();
+        const Bytes sealed = cms::sealWithPassword(Bytes(text.begin(), text.end()), passphrase_);
+        writeFileText(stateDir_ / "sent-blobs.json", std::string(sealed.begin(), sealed.end()));
+        return;
+    }
+    writeFileText(stateDir_ / "sent-blobs.json", stored.dump(2));
 }
 
 std::vector<IncomingMessage> Session::sync()

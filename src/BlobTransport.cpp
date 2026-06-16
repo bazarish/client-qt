@@ -127,6 +127,25 @@ Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer)
     return unpackLargeBlob(response.body, pointer.fileKey, pointer.sha256);
 }
 
+void deleteBlob(const std::string& samHost, const std::uint16_t samPort, const std::string& blobUrl,
+    const std::string& deleteToken, const I2pPrivacy privacy)
+{
+    std::string host;
+    std::string path;
+    splitBlobUrl(blobUrl, host, path);
+    (void)i2pRequest(
+        samHost, samPort, host, "DELETE", path, {{"X-Delete-Token", deleteToken}}, {}, privacy);
+}
+
+void deleteBlobViaProxy(ApiClient& api, const std::string& blobUrl, const std::string& deleteToken)
+{
+    std::string host;
+    std::string path;
+    splitBlobUrl(blobUrl, host, path);
+    (void)api.get("/v1/messaging/blob-proxy",
+        "method=DELETE&host=" + host + "&path=" + path + "&token=" + deleteToken);
+}
+
 BlobUploadResult uploadBlob(
     ApiClient& api, const PackedBlob& packed, const BlobRetention& retention)
 {

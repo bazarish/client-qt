@@ -222,4 +222,9 @@ Bytes Client::fetchBlobViaProxy(const BlobPointer& pointer)
     return bazarish::client::fetchBlobViaProxy(api_, pointer);
 }
 
+void Client::deleteBlobViaProxy(const std::string& blobUrl, const std::string& deleteToken)
+{
+    bazarish::client::deleteBlobViaProxy(api_, blobUrl, deleteToken);
+}
+
 }  // namespace bazarish::client

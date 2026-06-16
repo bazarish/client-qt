@@ -125,6 +125,13 @@ struct IncomingMessage {
 };
 
 // The stateful client session: a user identity plus contact and token
+// A blob this client externalized for a message it sent, kept so the sender can
+// unsend it (delete it from blob storage with the delete-token).
+struct SentBlob {
+    std::string blobUrl;
+    std::string deleteToken;
+};
+
 // bookkeeping persisted under a state directory, layered over the stateless
 // Client API wrappers. This is the logic a GUI or CLI front-end drives.
 //
@@ -284,10 +291,16 @@ public:
     // received the message with id refMessageId. Costs one delivery token.
     void sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId);
 
-    // Downloads a content-store attachment (from a received message) and
-    // decrypts it to dest.
+    // Downloads a blob attachment (from a received message) over I2P, verifies
+    // and decrypts it to dest. ref is the message's base64 sealed blob pointer
+    // (keyB64 is unused — the key rides inside the pointer).
     void saveAttachment(const std::string& ref, const std::string& keyB64,
         const std::filesystem::path& dest);
+
+    // Sender unsend: deletes the blob this client externalized for a message it
+    // sent (gated by the stored delete-token), over I2P. Best effort — the blob
+    // also reclaims via its TTL. Throws if no blob was recorded for messageId.
+    void unsend(const std::string& messageId);
 
     // Selects the I2P tunnel privacy profile used when fetching externalized
     // large blobs over a transient SAM session. Defaults to the most private.
@@ -415,9 +428,19 @@ private:
     // Fetches an externalized blob: direct over a transient SAM session, falling
     // back to the own-server I2P proxy when this client has no local SAM bridge.
     Bytes fetchLargeBlob(const BlobPointer& pointer);
+    // Deletes an externalized blob (unsend): direct over a transient SAM session,
+    // falling back to the own-server I2P proxy.
+    void deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken);
+    // Records / persists the blob externalized for a sent message, so it can be
+    // unsent later.
+    void recordSentBlob(
+        const std::string& messageId, const std::string& blobUrl, const std::string& deleteToken);
+    void loadSentBlobs();
+    void persistSentBlobs() const;
 
     std::unique_ptr<Client> client_;
     I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::kMax;
+    std::map<std::string, SentBlob> sentBlobs_;
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;
     // Groups this client belongs to, by group id (client-side only).

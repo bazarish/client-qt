@@ -134,6 +134,9 @@ public:
     // client has no local SAM bridge), verifying and decrypting it.
     Bytes fetchBlobViaProxy(const BlobPointer& pointer);
 
+    // Deletes a blob (sender unsend) through our own server's I2P proxy.
+    void deleteBlobViaProxy(const std::string& blobUrl, const std::string& deleteToken);
+
 private:
     SubscribeResult submitSubscription(const std::string& path, std::int64_t issuedAt,
         std::int64_t notAfter, const Bytes& sealingPrekeyDer);

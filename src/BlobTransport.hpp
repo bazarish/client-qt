@@ -66,6 +66,15 @@ Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPoi
 // Throws (ApiError) on a fetch error. No receipt confirm (TTL reclaims).
 Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer);
 
+// Sender unsend: deletes the blob over a fresh transient SAM session, gated by
+// the delete-token. Throws on transport failure.
+void deleteBlob(const std::string& samHost, std::uint16_t samPort, const std::string& blobUrl,
+    const std::string& deleteToken, I2pPrivacy privacy = I2pPrivacy::kMax);
+
+// Sender unsend through the own-server I2P proxy (no-SAM fallback). Throws on a
+// proxy error.
+void deleteBlobViaProxy(ApiClient& api, const std::string& blobUrl, const std::string& deleteToken);
+
 // Splits a blob download URL ("http://<b33>.b32.i2p/b/<id>") into its host and
 // path. Throws if it is not a well-formed .b32.i2p URL.
 void splitBlobUrl(const std::string& blobUrl, std::string& host, std::string& path);
