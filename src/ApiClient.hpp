@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -82,6 +83,10 @@ public:
     ApiResponse postJson(const std::string& path, const nlohmann::json& body);
     ApiResponse postBytes(
         const std::string& path, const Bytes& body, const std::string& contentType);
+    // Authenticated PUT with extra request headers (e.g. blob retention).
+    ApiResponse putBytes(const std::string& path, const Bytes& body,
+        const std::string& contentType,
+        const std::map<std::string, std::string>& extraHeaders = {});
     ApiResponse del(const std::string& path, const nlohmann::json& body = nlohmann::json());
 
     // Unauthenticated GET (alias resolution is findable by design).
@@ -96,7 +101,7 @@ public:
 private:
     ApiResponse send(const std::string& method, const std::string& path,
         const std::string& query, const Bytes& body, const std::string& contentType,
-        bool authenticate);
+        bool authenticate, const std::map<std::string, std::string>& extraHeaders = {});
 
     const Identity& identity_;
     const std::string clientId_;

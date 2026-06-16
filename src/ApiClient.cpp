@@ -152,6 +152,12 @@ ApiResponse ApiClient::postBytes(
     return send("POST", path, {}, body, contentType, true);
 }
 
+ApiResponse ApiClient::putBytes(const std::string& path, const Bytes& body,
+    const std::string& contentType, const std::map<std::string, std::string>& extraHeaders)
+{
+    return send("PUT", path, {}, body, contentType, true, extraHeaders);
+}
+
 ApiResponse ApiClient::del(const std::string& path, const nlohmann::json& body)
 {
     Bytes encoded;
@@ -171,7 +177,7 @@ ApiResponse ApiClient::getPublic(const std::string& path, const std::string& que
 
 ApiResponse ApiClient::send(const std::string& method, const std::string& path,
     const std::string& query, const Bytes& body, const std::string& contentType,
-    const bool authenticate)
+    const bool authenticate, const std::map<std::string, std::string>& extraHeaders)
 {
     // The signed canonical path is the server-visible path: no base path and
     // no query string (the facade strips the base path before forwarding and
@@ -183,6 +189,12 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
             = auth::signRequest(identity_, nowSeconds(), method, path, body);
         headers = httplib::Headers(signedHeaders.begin(), signedHeaders.end());
         headers.emplace("X-Bazarish-Client", clientId_);
+    }
+    // Extra headers ride outside the signature (e.g. blob retention, which is
+    // not integrity-critical — end-to-end integrity is the sealed pointer's
+    // sha256).
+    for (const auto& [key, value] : extraHeaders) {
+        headers.emplace(key, value);
     }
 
     // Issues the request against one facade. A send may relay over I2P
@@ -208,6 +220,9 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
             if (method == "DELETE") {
                 return http.Delete(
                     url, headers, std::string(body.begin(), body.end()), contentType);
+            }
+            if (method == "PUT") {
+                return http.Put(url, headers, std::string(body.begin(), body.end()), contentType);
             }
             throw ApiError(std::nullopt, 0, "unsupported HTTP method: " + method);
         };
