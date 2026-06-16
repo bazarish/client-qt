@@ -47,6 +47,23 @@ int main()
         };
         response.set_content(out.dump(), "application/json");
     });
+    // Stand-in for the own-server proxy: serves at most 9000 bytes of proxyCipher
+    // per call (forcing resume), with X-Blob-Total carrying the full length and a
+    // Range param ("bytes=N-") continuing from an offset.
+    std::string proxyCipher;
+    store.Get("/v1/messaging/blob-proxy",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            std::size_t offset = 0;
+            if (request.has_param("range")) {
+                const std::string range = request.get_param_value("range");
+                const std::size_t eq = range.find('=');
+                const std::size_t dash = range.find('-');
+                offset = static_cast<std::size_t>(std::stoull(range.substr(eq + 1, dash - eq - 1)));
+            }
+            response.set_header("X-Blob-Total", std::to_string(proxyCipher.size()));
+            const std::size_t chunk = std::min<std::size_t>(9000, proxyCipher.size() - offset);
+            response.set_content(proxyCipher.substr(offset, chunk), "application/octet-stream");
+        });
     const int port = store.bind_to_any_port("127.0.0.1");
     CHECK(port > 0);
     std::thread storeThread([&store]() { (void)store.listen_after_bind(); });
@@ -162,6 +179,28 @@ int main()
             threw = true;
         }
         CHECK(threw);
+    }
+
+    // Proxy resume: the own server streams the ciphertext back in truncated
+    // windows; fetchBlobViaProxy resumes through it and reassembles, then decrypts.
+    {
+        Bytes bigBlob;
+        for (int i = 0; i < 50000; ++i) {
+            bigBlob.push_back(static_cast<unsigned char>(i * 3 + 7));
+        }
+        const PackedBlob bigPacked = packLargeBlob(bigBlob);
+        proxyCipher.assign(bigPacked.ciphertext.begin(), bigPacked.ciphertext.end());
+        CHECK(proxyCipher.size() > 9000);  // spans several windows, so resume is exercised
+
+        BlobPointer pointer;
+        pointer.blobUrl = "http://yhfjbu7hkuqyqwp3pvpuf6vk63bdlwtryjcueunavz52ai5y3yuvwdkh.b32.i2p/b/cap1";
+        pointer.blobId = "cap1";
+        pointer.fileKey = bigPacked.fileKey;
+        pointer.sha256 = bigPacked.sha256;
+        pointer.size = bigBlob.size();
+
+        const Bytes recovered = fetchBlobViaProxy(api, pointer);
+        CHECK(recovered == bigBlob);
     }
 
     store.stop();

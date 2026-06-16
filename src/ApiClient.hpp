@@ -52,6 +52,8 @@ struct ApiResponse {
     int status = 0;
     Bytes body;
     std::string contentType;
+    // Response header names lowercased (e.g. the blob proxy's "x-blob-total").
+    std::map<std::string, std::string> headers;
 
     nlohmann::json json() const;
 };

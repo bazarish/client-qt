@@ -245,10 +245,26 @@ Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer)
     std::string host;
     std::string path;
     splitBlobUrl(pointer.blobUrl, host, path);
-    // The server validates the host, fetches the ciphertext over I2P and relays
-    // it back; get() throws on any non-success status.
-    const ApiResponse response = api.get("/v1/messaging/blob-proxy", "host=" + host + "&path=" + path);
-    return unpackLargeBlob(response.body, pointer.fileKey, pointer.sha256);
+
+    // Resume through the own server: each attempt asks it for the remaining byte
+    // range, which it streams back (X-Blob-Total carries the full ciphertext
+    // length, so a transfer the I2P leg truncated can be continued). The first
+    // attempt is full-body (200 semantics); a resumed one continues (206 — appends
+    // from the offset). The same driver as the direct path, over the proxy.
+    const RangedGetFn get = [&](const std::uint64_t offset) -> RangedGet {
+        std::string query = "host=" + host + "&path=" + path;
+        if (offset > 0) {
+            query += "&range=bytes=" + std::to_string(offset) + "-";
+        }
+        const ApiResponse response = api.get("/v1/messaging/blob-proxy", query);
+        RangedGet ranged;
+        ranged.status = (offset > 0) ? 206 : 200;
+        ranged.total = headerUint64(response.headers, "x-blob-total", response.body.size());
+        ranged.body = response.body;
+        return ranged;
+    };
+    const Bytes ciphertext = downloadWithResume(get);
+    return unpackLargeBlob(ciphertext, pointer.fileKey, pointer.sha256);
 }
 
 void deleteBlob(const std::string& samHost, const std::uint16_t samPort, const std::string& blobUrl,

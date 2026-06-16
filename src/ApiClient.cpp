@@ -5,6 +5,8 @@
 
 #include <httplib/httplib.h>
 
+#include <algorithm>
+#include <cctype>
 #include <ctime>
 
 namespace bazarish::client {
@@ -261,6 +263,12 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         response.status = result->status;
         response.body = Bytes(result->body.begin(), result->body.end());
         response.contentType = result->get_header_value("Content-Type");
+        for (const auto& [name, value] : result->headers) {
+            std::string key = name;
+            std::transform(key.begin(), key.end(), key.begin(),
+                [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            response.headers[key] = value;
+        }
         if (response.status < 200 || response.status >= 300) {
             raiseFromResponse(response.status, response.body);
         }
