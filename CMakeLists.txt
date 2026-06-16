@@ -100,6 +100,11 @@ add_executable(bazarish-bot src/BotMain.cpp)
 target_link_libraries(bazarish-bot PRIVATE bazarish_client_lib)
 target_compile_options(bazarish-bot PRIVATE -Wall -Wextra -Werror)
 
+# Manual I2P blob-fetch smoke (live router; not part of ctest).
+add_executable(blob-fetch-smoke tools/BlobFetchSmoke.cpp)
+target_link_libraries(blob-fetch-smoke PRIVATE bazarish_client_lib)
+target_compile_options(blob-fetch-smoke PRIVATE -Wall -Wextra -Werror)
+
 # The Qt6 Quick (QML) desktop app — the primary front-end over the same
 # Session logic the CLI uses. Built only when Qt6 Quick is available.
 find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql QUIET)
