@@ -105,6 +105,20 @@ add_executable(blob-fetch-smoke tools/BlobFetchSmoke.cpp)
 target_link_libraries(blob-fetch-smoke PRIVATE bazarish_client_lib)
 target_compile_options(blob-fetch-smoke PRIVATE -Wall -Wextra -Werror)
 
+# Manual SAM spike (live router; not part of ctest): proves an offline-key
+# destination can only be served as a standard LeaseSet2 (plain b32), not an
+# encrypted LeaseSet2 (b33). Reuses the blob-storage b33 derivation, so it is
+# only built in a multi-repo workspace where blob-storage sits alongside.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../blob-storage/src/I2pAddress.cpp")
+    add_executable(offline-enc-ls2-spike
+        tools/OfflineEncLs2Spike.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../blob-storage/src/I2pAddress.cpp)
+    target_include_directories(offline-enc-ls2-spike PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/../blob-storage/src)
+    target_link_libraries(offline-enc-ls2-spike PRIVATE bazarish_client_lib libi2pd_keys ZLIB::ZLIB)
+endif()
+
 # The Qt6 Quick (QML) desktop app — the primary front-end over the same
 # Session logic the CLI uses. Built only when Qt6 Quick is available.
 find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql QUIET)
