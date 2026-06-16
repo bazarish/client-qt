@@ -212,13 +212,6 @@ SendStatus Client::pollSend(const std::string& attemptId)
     return result;
 }
 
-std::string Client::putContent(const Bytes& ciphertext)
-{
-    const ApiResponse response
-        = api_.postBytes("/v1/content", ciphertext, "application/octet-stream");
-    return response.json().at("id").get<std::string>();
-}
-
 BlobUploadResult Client::uploadBlob(const PackedBlob& packed, const BlobRetention& retention)
 {
     return bazarish::client::uploadBlob(api_, packed, retention);
@@ -227,12 +220,6 @@ BlobUploadResult Client::uploadBlob(const PackedBlob& packed, const BlobRetentio
 Bytes Client::fetchBlobViaProxy(const BlobPointer& pointer)
 {
     return bazarish::client::fetchBlobViaProxy(api_, pointer);
-}
-
-Bytes Client::getContent(const std::string& contentId)
-{
-    const ApiResponse response = api_.get("/v1/content/" + contentId);
-    return response.body;
 }
 
 }  // namespace bazarish::client

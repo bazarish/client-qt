@@ -123,13 +123,7 @@ public:
         const std::string& toServer, const Bytes& sealed, const Bytes& payload);
     SendStatus pollSend(const std::string& attemptId);
 
-    // --- Content store (type-blind bulk media) ---
-
-    // Uploads opaque ciphertext; returns the content id (sha256 hex) to embed
-    // in a message reference. Identical ciphertext dedups to the same id.
-    std::string putContent(const Bytes& ciphertext);
-    // Fetches the ciphertext for a content id.
-    Bytes getContent(const std::string& contentId);
+    // --- Large media: blob storage (rotating encrypted-LeaseSet, I2P) ---
 
     // Uploads a packed large blob's ciphertext to blob storage (PUT
     // /v1/storage/blob via the facade) with the given retention; returns the
