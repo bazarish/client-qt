@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstddef>
+#include <filesystem>
 #include <map>
 #include <optional>
 #include <stdexcept>
@@ -88,6 +89,13 @@ public:
     // Authenticated PUT with extra request headers (e.g. blob retention).
     ApiResponse putBytes(const std::string& path, const Bytes& body,
         const std::string& contentType,
+        const std::map<std::string, std::string>& extraHeaders = {});
+    // Authenticated PUT that streams a file as the body without reading it into
+    // memory: the request is signed over the precomputed body digest
+    // (bodySha256Hex) and the file is fed to the connection through a content
+    // provider. Used for large blob upload.
+    ApiResponse putFile(const std::string& path, const std::filesystem::path& filePath,
+        const std::string& bodySha256Hex, const std::string& contentType,
         const std::map<std::string, std::string>& extraHeaders = {});
     ApiResponse del(const std::string& path, const nlohmann::json& body = nlohmann::json());
 

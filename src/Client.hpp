@@ -129,6 +129,10 @@ public:
     // /v1/storage/blob via the facade) with the given retention; returns the
     // capability fields for the sealed pointer.
     BlobUploadResult uploadBlob(const PackedBlob& packed, const BlobRetention& retention);
+    // Streamed counterpart: uploads the ciphertext from a temp file without
+    // holding it in memory (the large-file path).
+    BlobUploadResult uploadBlobFromFile(
+        const PackedBlobFile& packed, const BlobRetention& retention);
 
     // Fetches a blob through our own server's I2P proxy (the fallback when this
     // client has no local SAM bridge), verifying and decrypting it.

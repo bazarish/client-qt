@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 
 namespace bazarish::client {
@@ -26,6 +27,22 @@ struct PackedBlob {
 
 // Encrypts blob with a fresh random key for upload to blob storage.
 PackedBlob packLargeBlob(const Bytes& blob);
+
+// The streamed counterpart of PackedBlob for the large-file upload path: the
+// ciphertext lives in a temp file instead of memory, so a multi-gigabyte file is
+// encrypted (and later uploaded) without ever being held whole in RAM.
+struct PackedBlobFile {
+    std::filesystem::path ciphertextPath;  // temp file holding the CMS envelope
+    std::string fileKey;  // high-entropy key; travels only in the sealed pointer
+    std::string sha256;   // hex digest of the ciphertext file, binding the pointer
+    std::uint64_t size = 0;  // ciphertext byte length
+};
+
+// Encrypts inPath to ciphertextPath with a fresh random key, streaming so neither
+// the plaintext nor the ciphertext is held whole in memory. The caller owns the
+// temp ciphertextPath and must remove it after the upload.
+PackedBlobFile packLargeBlobToFile(
+    const std::filesystem::path& inPath, const std::filesystem::path& ciphertextPath);
 
 // Verifies the ciphertext digest, then decrypts it with fileKey. Throws on a
 // digest mismatch (tampered/corrupt transfer) or a decryption failure.

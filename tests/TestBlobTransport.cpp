@@ -112,6 +112,43 @@ int main()
         CHECK(gotSha == packed.sha256);
     }
 
+    // Streamed upload (the large-file path): pack a file to a temp ciphertext and
+    // upload it via the file-streaming PUT. The store must receive exactly the
+    // ciphertext bytes and the binding digest, and it must round-trip back to the
+    // original plaintext.
+    {
+        Bytes plain;
+        for (int i = 0; i < 40000; ++i) {
+            plain.push_back(static_cast<unsigned char>(i * 9 + 2));
+        }
+        const std::filesystem::path plainPath
+            = std::filesystem::temp_directory_path() / "bz-test-upload.in";
+        const std::filesystem::path cipherPath
+            = std::filesystem::temp_directory_path() / "bz-test-upload.der";
+        {
+            std::ofstream out(plainPath, std::ios::binary);
+            out.write(reinterpret_cast<const char*>(plain.data()),
+                static_cast<std::streamsize>(plain.size()));
+        }
+        const PackedBlobFile packedFile = packLargeBlobToFile(plainPath, cipherPath);
+
+        BlobRetention retention;
+        retention.ttlSeconds = 1800;
+        const BlobUploadResult result = uploadBlobFromFile(api, packedFile, retention);
+        CHECK(result.blobId == "cap1");
+        CHECK(result.deleteToken == "tok1");
+        CHECK(gotTtl == "1800");
+        CHECK(gotSha == packedFile.sha256);
+        // The streamed body is exactly the ciphertext file, and its digest binds it.
+        const Bytes received(gotBody.begin(), gotBody.end());
+        CHECK(toHex(sha256(received)) == packedFile.sha256);
+        // And it round-trips: the received ciphertext decrypts to the plaintext.
+        CHECK(unpackLargeBlob(received, packedFile.fileKey, packedFile.sha256) == plain);
+
+        std::filesystem::remove(plainPath);
+        std::filesystem::remove(cipherPath);
+    }
+
     // --- Resume driver: reassembles a download across truncated transfers ---
 
     Bytes full;

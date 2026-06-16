@@ -6,8 +6,13 @@
 #include <httplib/httplib.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
+#include <cstddef>
 #include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <memory>
 
 namespace bazarish::client {
 
@@ -258,6 +263,101 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
             continue;  // facade unreachable — try the next
         }
         activeFacade_ = index;  // remember the working facade for next time
+
+        ApiResponse response;
+        response.status = result->status;
+        response.body = Bytes(result->body.begin(), result->body.end());
+        response.contentType = result->get_header_value("Content-Type");
+        for (const auto& [name, value] : result->headers) {
+            std::string key = name;
+            std::transform(key.begin(), key.end(), key.begin(),
+                [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            response.headers[key] = value;
+        }
+        if (response.status < 200 || response.status >= 300) {
+            raiseFromResponse(response.status, response.body);
+        }
+        return response;
+    }
+    throw ApiError(std::nullopt, 0, "all facades unreachable: " + lastError);
+}
+
+ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::path& filePath,
+    const std::string& bodySha256Hex, const std::string& contentType,
+    const std::map<std::string, std::string>& extraHeaders)
+{
+    const std::uintmax_t length = std::filesystem::file_size(filePath);
+
+    // The body is signed only through its digest, so a multi-gigabyte file is
+    // never materialized to sign or send it.
+    const auth::Headers signedHeaders
+        = auth::signRequestDigest(identity_, nowSeconds(), "PUT", path, bodySha256Hex);
+    httplib::Headers headers(signedHeaders.begin(), signedHeaders.end());
+    headers.emplace("X-Bazarish-Client", clientId_);
+    for (const auto& [key, value] : extraHeaders) {
+        headers.emplace(key, value);
+    }
+
+    const auto attempt = [&](const Facade& facade) -> httplib::Result {
+        const std::string url = facade.basePath + path;
+        // A fresh stream per attempt so a facade failover restarts cleanly from
+        // the beginning of the file (the content provider seeks within it).
+        const auto file = std::make_shared<std::ifstream>(filePath, std::ios::binary);
+        if (!*file) {
+            throw ApiError(std::nullopt, 0, "cannot open blob file: " + filePath.string());
+        }
+        const httplib::ContentProvider provider
+            = [file](const std::size_t offset, const std::size_t want,
+                  httplib::DataSink& sink) -> bool {
+            file->clear();
+            file->seekg(static_cast<std::streamoff>(offset));
+            std::array<char, 64 * 1024> buffer;
+            std::size_t remaining = want;
+            while (remaining > 0) {
+                const std::streamsize chunk = static_cast<std::streamsize>(
+                    std::min<std::size_t>(remaining, buffer.size()));
+                file->read(buffer.data(), chunk);
+                const std::streamsize got = file->gcount();
+                if (got <= 0) {
+                    break;
+                }
+                if (!sink.write(buffer.data(), static_cast<std::size_t>(got))) {
+                    return false;
+                }
+                remaining -= static_cast<std::size_t>(got);
+            }
+            return true;
+        };
+        const auto run = [&](auto& http) -> httplib::Result {
+            http.set_keep_alive(false);
+            http.set_connection_timeout(30, 0);
+            http.set_read_timeout(240, 0);
+            http.set_write_timeout(240, 0);
+            return http.Put(url, headers, static_cast<std::size_t>(length), provider, contentType);
+        };
+        if (facade.tls) {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+            httplib::SSLClient http(facade.host, facade.port);
+            http.enable_server_certificate_verification(false);
+            return run(http);
+#else
+            throw ApiError(std::nullopt, 0, "https facade not supported in this build");
+#endif
+        }
+        httplib::Client http(facade.host, facade.port);
+        return run(http);
+    };
+
+    const std::vector<Facade>& facades = endpoint_.facades;
+    std::string lastError = "no facade configured";
+    for (std::size_t i = 0; i < facades.size(); ++i) {
+        const std::size_t index = (activeFacade_ + i) % facades.size();
+        const httplib::Result result = attempt(facades[index]);
+        if (!result) {
+            lastError = "transport failure: " + httplib::to_string(result.error());
+            continue;  // facade unreachable — try the next
+        }
+        activeFacade_ = index;
 
         ApiResponse response;
         response.status = result->status;

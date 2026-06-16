@@ -83,15 +83,6 @@ void writeFileText(const fs::path& path, const std::string& text)
     }
 }
 
-Bytes readFileBytes(const fs::path& path)
-{
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        throw std::runtime_error("failed to open " + path.string());
-    }
-    return Bytes(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-}
-
 void writeFileBytes(const fs::path& path, const Bytes& data)
 {
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
@@ -707,19 +698,33 @@ void Session::sendMessage(const std::string& peerFingerprint, const std::string&
 void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer)
 {
-    const Bytes data = readFileBytes(path);
-    // Encrypt the file under a fresh key and upload the ciphertext to blob
-    // storage (rotating encrypted-LeaseSet destinations, served only over I2P).
-    // The message carries only a small sealed pointer, so the recipient's
-    // mailbox quota is never a factor for large files.
-    const PackedBlob packed = packLargeBlob(data);
-    const BlobUploadResult uploaded = client_->uploadBlob(packed, BlobRetention{});
+    // Encrypt the file under a fresh key straight to a temp ciphertext file and
+    // upload it streaming, so a large file is never held whole in memory. The
+    // message carries only a small sealed pointer, so the recipient's mailbox
+    // quota is never a factor for large files. (Blob storage hosts rotating
+    // encrypted-LeaseSet destinations, served only over I2P.)
+    const std::uint64_t plainSize = fs::file_size(path);
+    const fs::path ciphertextPath
+        = stateDir_ / ("blob-upload-" + toHex(randomBytes(8)) + ".tmp");
+
     BlobPointer pointer;
+    BlobUploadResult uploaded;
+    try {
+        const PackedBlobFile packed = packLargeBlobToFile(path, ciphertextPath);
+        uploaded = client_->uploadBlobFromFile(packed, BlobRetention{});
+        pointer.fileKey = packed.fileKey;
+        pointer.sha256 = packed.sha256;
+        pointer.size = packed.size;
+    } catch (...) {
+        std::error_code ec;
+        fs::remove(ciphertextPath, ec);
+        throw;
+    }
+    std::error_code ec;
+    fs::remove(ciphertextPath, ec);
+
     pointer.blobUrl = uploaded.blobUrl;
     pointer.blobId = uploaded.blobId;
-    pointer.fileKey = packed.fileKey;
-    pointer.sha256 = packed.sha256;
-    pointer.size = packed.size;
     const std::string pointerJson = blobPointerToJson(pointer).dump();
 
     nlohmann::json inner = {
@@ -731,7 +736,7 @@ void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
         {"file",
             {
                 {"ptr", toBase64(Bytes(pointerJson.begin(), pointerJson.end()))},
-                {"size", data.size()},
+                {"size", plainSize},
                 {"mime", guessMime(path)},
                 {"name", path.filename().string()},
             }},

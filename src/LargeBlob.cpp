@@ -4,6 +4,7 @@
 #include <bazarish/Cms.hpp>
 #include <bazarish/Crypto.hpp>
 
+#include <filesystem>
 #include <stdexcept>
 
 namespace bazarish::client {
@@ -17,6 +18,20 @@ PackedBlob packLargeBlob(const Bytes& blob)
     packed.ciphertext = cms::sealWithPassword(blob, packed.fileKey);
     packed.sha256 = toHex(sha256(packed.ciphertext));
     packed.size = packed.ciphertext.size();
+    return packed;
+}
+
+PackedBlobFile packLargeBlobToFile(
+    const std::filesystem::path& inPath, const std::filesystem::path& ciphertextPath)
+{
+    PackedBlobFile packed;
+    // A fresh 256-bit key, carried only in the sealed pointer; blob storage sees
+    // ciphertext alone. Encrypt streams file-to-file so nothing is held in RAM.
+    packed.fileKey = toHex(randomBytes(32));
+    cms::sealWithPasswordToFile(inPath, ciphertextPath, packed.fileKey);
+    packed.ciphertextPath = ciphertextPath;
+    packed.sha256 = toHex(sha256File(ciphertextPath));
+    packed.size = std::filesystem::file_size(ciphertextPath);
     return packed;
 }
 
