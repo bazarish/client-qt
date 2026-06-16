@@ -60,6 +60,12 @@ std::string i2pBase32(const Bytes& privateKeys)
     return keys.GetPublic()->GetIdentHash().ToBase32();
 }
 
+std::string i2pPrivateKeysBase64(const Bytes& privateKeys)
+{
+    const i2p::data::PrivateKeys keys = parsePrivateKeys(privateKeys);
+    return keys.ToBase64();
+}
+
 Bytes issueI2pOfflineKeys(const Bytes& masterPrivateKeys, std::int64_t expiresUnix)
 {
     i2p::data::PrivateKeys master = parsePrivateKeys(masterPrivateKeys);

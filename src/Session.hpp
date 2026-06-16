@@ -204,6 +204,8 @@ public:
     void renewI2pTransient(std::int64_t expiresUnix);
     // The active transient blob to hand to the serving server (empty if none).
     Bytes i2pTransient() const;
+    // The active transient as I2P-base64 (the form the server feeds SAM).
+    std::string i2pTransientBase64() const;
 
     // Sign-in-with-key: signs an opaque challenge issued by a service portal,
     // proving ownership of this identity's key without the key ever reaching

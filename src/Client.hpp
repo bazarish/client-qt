@@ -102,6 +102,10 @@ public:
         std::int64_t issuedAt, std::int64_t notAfter, const Bytes& sealingPrekeyDer = {});
     Subscription subscriptionStatus();
     void unsubscribe();
+    // Hands the serving server a fresh offline transient (I2P-base64) so it can
+    // operate the user's personal destination for the subscription window.
+    // Requires an active i2pDest entitlement server-side; returns acceptance.
+    bool sendI2pTransient(const std::string& transientB64, std::int64_t expiresUnix);
     void registerAlias(
         const std::string& alias, std::int64_t issuedAt, std::optional<std::int64_t> notAfter);
     void releaseAlias(const std::string& alias);

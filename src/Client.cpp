@@ -94,6 +94,13 @@ void Client::unsubscribe()
     api_.del("/v1/account/subscription");
 }
 
+bool Client::sendI2pTransient(const std::string& transientB64, const std::int64_t expiresUnix)
+{
+    const ApiResponse response = api_.postJson(
+        "/v1/account/i2p-dest", {{"transient", transientB64}, {"expiresUnix", expiresUnix}});
+    return response.status == 200;
+}
+
 void Client::registerAlias(const std::string& alias, const std::int64_t issuedAt,
     const std::optional<std::int64_t> notAfter)
 {

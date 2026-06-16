@@ -443,7 +443,16 @@ void Session::subscribe(const std::int64_t days)
     // The transient expiry tracks the subscription window (kept short — the
     // server only ever holds a time-boxed capability, never the master).
     if (hasI2pDestination()) {
-        renewI2pTransient(now + days * 24 * 3600);
+        const std::int64_t expiresUnix = now + days * 24 * 3600;
+        renewI2pTransient(expiresUnix);
+        // Best effort: hand the serving server the transient so it can operate
+        // the personal destination for this window. Requires a paid i2pDest
+        // entitlement; a failure (no entitlement, server down) must not fail the
+        // subscription itself.
+        try {
+            client_->sendI2pTransient(i2pTransientBase64(), expiresUnix);
+        } catch (const std::exception&) {
+        }
     }
 }
 
@@ -489,6 +498,11 @@ void Session::renewI2pTransient(const std::int64_t expiresUnix)
 Bytes Session::i2pTransient() const
 {
     return i2pTransient_;
+}
+
+std::string Session::i2pTransientBase64() const
+{
+    return i2pPrivateKeysBase64(i2pTransient_);
 }
 
 std::string Session::signLogin(const std::string& challenge) const
