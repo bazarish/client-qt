@@ -5,6 +5,7 @@
 #include "LargeBlob.hpp"
 
 #include <bazarish/Bytes.hpp>
+#include <bazarish/Sam.hpp>
 
 #include <cstdint>
 #include <map>
@@ -50,12 +51,14 @@ struct I2pHttpResponse {
 // tunnel build, so each call carries I2P latency. Throws on transport failure.
 I2pHttpResponse i2pRequest(const std::string& samHost, std::uint16_t samPort,
     const std::string& b33Host, const std::string& method, const std::string& path,
-    const std::map<std::string, std::string>& headers = {}, const Bytes& body = {});
+    const std::map<std::string, std::string>& headers = {}, const Bytes& body = {},
+    I2pPrivacy privacy = I2pPrivacy::kMax);
 
 // Downloads the ciphertext named by a pointer over I2P, verifies its digest and
 // decrypts it, then confirms receipt (anonymous, blobId only). Returns the
 // original message blob. Throws on a fetch error or an integrity failure.
-Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer);
+Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
+    I2pPrivacy privacy = I2pPrivacy::kMax);
 
 // Splits a blob download URL ("http://<b33>.b32.i2p/b/<id>") into its host and
 // path. Throws if it is not a well-formed .b32.i2p URL.

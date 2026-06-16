@@ -898,6 +898,11 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     persistContacts();
 }
 
+void Session::setBlobFetchPrivacy(const I2pPrivacy privacy)
+{
+    blobFetchPrivacy_ = privacy;
+}
+
 std::vector<IncomingMessage> Session::sync()
 {
     std::vector<IncomingMessage> result;
@@ -969,7 +974,7 @@ std::vector<IncomingMessage> Session::sync()
         if (type == "blob.pointer") {
             try {
                 const BlobPointer pointer = blobPointerFromJson(body.at("pointer"));
-                const Bytes content = fetchBlob("127.0.0.1", 7656, pointer);
+                const Bytes content = fetchBlob("127.0.0.1", 7656, pointer, blobFetchPrivacy_);
                 body = nlohmann::json::parse(content.begin(), content.end());
                 type = body.value("type", std::string("text"));
             } catch (const std::exception&) {

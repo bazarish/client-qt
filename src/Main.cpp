@@ -74,7 +74,7 @@ void printUsage()
         "  bazarish-client group-remove <state> <group-id> <peer-fp>\n"
         "  bazarish-client group-admin <state> <group-id> <peer-fp> <on|off>\n"
         "  bazarish-client group-leave <state> <group-id>\n"
-        "  bazarish-client sync <state>\n"
+        "  bazarish-client sync <state> [--privacy <minimal|middle|max>]\n"
         "  bazarish-client export <state> <out-file>\n"
         "  bazarish-client import <in-file> <state>\n"
         "\n"
@@ -464,11 +464,19 @@ int runGroupLeave(const std::vector<std::string>& args)
 
 int runSync(const std::vector<std::string>& args)
 {
-    if (args.size() != 2) {
+    if (args.size() != 2 && !(args.size() == 4 && args[2] == "--privacy")) {
         printUsage();
         return 2;
     }
     Session session = Session::open(args[1], keyPassphrase());
+    if (args.size() == 4) {
+        const std::optional<bazarish::I2pPrivacy> parsed = bazarish::i2pPrivacyFromString(args[3]);
+        if (!parsed.has_value()) {
+            printUsage();
+            return 2;
+        }
+        session.setBlobFetchPrivacy(parsed.value());
+    }
     const std::vector<IncomingMessage> messages = session.sync();
     if (messages.empty()) {
         std::printf("(nothing pending)\n");

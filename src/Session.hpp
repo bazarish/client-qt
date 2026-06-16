@@ -5,6 +5,7 @@
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
+#include <bazarish/Sam.hpp>
 
 #include <cstdint>
 #include <filesystem>
@@ -288,6 +289,10 @@ public:
     void saveAttachment(const std::string& ref, const std::string& keyB64,
         const std::filesystem::path& dest);
 
+    // Selects the I2P tunnel privacy profile used when fetching externalized
+    // large blobs over a transient SAM session. Defaults to the most private.
+    void setBlobFetchPrivacy(I2pPrivacy privacy);
+
     // Pulls, decrypts, applies (contacts/tokens) and acks all pending items.
     std::vector<IncomingMessage> sync();
 
@@ -408,6 +413,7 @@ private:
 
     std::filesystem::path stateDir_;
     std::unique_ptr<Client> client_;
+    I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::kMax;
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;
     // Groups this client belongs to, by group id (client-side only).

@@ -49,11 +49,13 @@ void splitBlobUrl(const std::string& blobUrl, std::string& host, std::string& pa
 
 I2pHttpResponse i2pRequest(const std::string& samHost, const std::uint16_t samPort,
     const std::string& b33Host, const std::string& method, const std::string& path,
-    const std::map<std::string, std::string>& headers, const Bytes& body)
+    const std::map<std::string, std::string>& headers, const Bytes& body,
+    const I2pPrivacy privacy)
 {
     // A fresh throwaway destination per call (unlinkability). Construction blocks
     // on tunnel build.
-    SamSession session(samHost, samPort, "blobfetch-" + toHex(randomBytes(6)));
+    SamSession session(samHost, samPort, "blobfetch-" + toHex(randomBytes(6)),
+        "TRANSIENT", kEncryptedLeaseSetType, privacy);
     SamStream stream = session.connect(b33Host);
 
     std::string request = method + " " + path + " HTTP/1.1\r\n";
@@ -91,14 +93,14 @@ I2pHttpResponse i2pRequest(const std::string& samHost, const std::uint16_t samPo
     return response;
 }
 
-Bytes fetchBlob(
-    const std::string& samHost, const std::uint16_t samPort, const BlobPointer& pointer)
+Bytes fetchBlob(const std::string& samHost, const std::uint16_t samPort,
+    const BlobPointer& pointer, const I2pPrivacy privacy)
 {
     std::string host;
     std::string path;
     splitBlobUrl(pointer.blobUrl, host, path);
 
-    const I2pHttpResponse download = i2pRequest(samHost, samPort, host, "GET", path);
+    const I2pHttpResponse download = i2pRequest(samHost, samPort, host, "GET", path, {}, {}, privacy);
     if (download.status != 200) {
         throw std::runtime_error("blob download failed: status " + std::to_string(download.status));
     }
@@ -107,7 +109,7 @@ Bytes fetchBlob(
     // Confirm receipt (anonymous, blobId only) so the store can reclaim it. Best
     // effort: the blob is already in hand; a failed confirm just leaves TTL to it.
     try {
-        (void)i2pRequest(samHost, samPort, host, "POST", path + "/confirm");
+        (void)i2pRequest(samHost, samPort, host, "POST", path + "/confirm", {}, {}, privacy);
     } catch (const std::exception&) {
         // ignore — reclamation falls back to TTL
     }
