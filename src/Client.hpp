@@ -2,6 +2,7 @@
 #pragma once
 
 #include "ApiClient.hpp"
+#include "BlobTransport.hpp"
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Certificates.hpp>
@@ -129,6 +130,11 @@ public:
     std::string putContent(const Bytes& ciphertext);
     // Fetches the ciphertext for a content id.
     Bytes getContent(const std::string& contentId);
+
+    // Uploads a packed large blob's ciphertext to blob storage (PUT
+    // /v1/storage/blob via the facade) with the given retention; returns the
+    // capability fields for the sealed pointer.
+    BlobUploadResult uploadBlob(const PackedBlob& packed, const BlobRetention& retention);
 
 private:
     SubscribeResult submitSubscription(const std::string& path, std::int64_t issuedAt,

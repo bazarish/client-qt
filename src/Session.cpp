@@ -1,8 +1,10 @@
 // Bazarish project (c) 2026
 #include "Session.hpp"
 
+#include "BlobTransport.hpp"
 #include "I2pKeys.hpp"
 #include "Invite.hpp"
+#include "LargeBlob.hpp"
 
 #include <bazarish/Auth.hpp>
 #include <bazarish/Cms.hpp>
@@ -836,6 +838,34 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
         throw std::runtime_error("no delivery tokens left for contact: " + peerFingerprint);
     }
 
+    // Externalize content larger than the threshold: encrypt it under a fresh
+    // key, upload the ciphertext to blob storage, and replace the body with a
+    // small sealed pointer. The messaging server only ever sees the pointer, so
+    // a quota-constrained recipient can receive arbitrarily large content. The
+    // routing fields (id/from) and the bootstrap/lowStash control blocks stay in
+    // the small outer envelope.
+    {
+        const std::string contentText = inner.dump();
+        if (contentText.size() > kLargeBlobThresholdBytes) {
+            const PackedBlob packed
+                = packLargeBlob(Bytes(contentText.begin(), contentText.end()));
+            const BlobUploadResult uploaded = client_->uploadBlob(packed, BlobRetention{});
+            BlobPointer pointer;
+            pointer.blobUrl = uploaded.blobUrl;
+            pointer.blobId = uploaded.blobId;
+            pointer.fileKey = packed.fileKey;
+            pointer.sha256 = packed.sha256;
+            pointer.size = packed.size;
+            inner = {
+                {"v", kMessageFormatVersion},
+                {"type", "blob.pointer"},
+                {"id", inner.value("id", std::string())},
+                {"from", inner.value("from", fingerprint())},
+                {"pointer", blobPointerToJson(pointer)},
+            };
+        }
+    }
+
     // First reply to a peer that wrote to us first: hand them a bootstrap (our
     // routing + a token batch) so the reverse direction is usable too.
     if (!contact.issuedToThem) {
@@ -911,13 +941,13 @@ std::vector<IncomingMessage> Session::sync()
         // Every item is sealed to our user sealing key the same way; the
         // server-visible delivery class never changes how we decrypt.
         const Bytes plain = cms::unseal(blob, sealingKey_);
-        const nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
+        nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
 
         IncomingMessage message;
         message.deliveryClass = entry.deliveryClass;
         message.fromFingerprint = body.at("from").get<std::string>();
         message.messageId = body.value("id", std::string());
-        const std::string type = body.value("type", std::string("text"));
+        std::string type = body.value("type", std::string("text"));
 
         // Bootstrap may ride with any content type; apply it before dispatch
         // so a new or migrated contact is established regardless of type.
@@ -929,6 +959,23 @@ std::vector<IncomingMessage> Session::sync()
         // The peer is low on our tokens and asked to be refilled.
         if (body.value("lowStash", false)) {
             refillPeers.insert(message.fromFingerprint);
+        }
+
+        // A blob pointer: the real content was externalized to blob storage.
+        // Fetch it over I2P (a fresh transient destination), verify and decrypt
+        // it, then dispatch on the recovered content's real type. Best effort —
+        // a failed fetch surfaces the pointer (the blob persists until its TTL,
+        // so a later sync can retry).
+        if (type == "blob.pointer") {
+            try {
+                const BlobPointer pointer = blobPointerFromJson(body.at("pointer"));
+                const Bytes content = fetchBlob("127.0.0.1", 7656, pointer);
+                body = nlohmann::json::parse(content.begin(), content.end());
+                type = body.value("type", std::string("text"));
+            } catch (const std::exception&) {
+                message.contentType = "blob.pointer";
+                message.text = "[large message — fetch failed; retry later]";
+            }
         }
 
         // Content dispatch. An unknown type is still acked and surfaced (not

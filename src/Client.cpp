@@ -219,6 +219,11 @@ std::string Client::putContent(const Bytes& ciphertext)
     return response.json().at("id").get<std::string>();
 }
 
+BlobUploadResult Client::uploadBlob(const PackedBlob& packed, const BlobRetention& retention)
+{
+    return bazarish::client::uploadBlob(api_, packed, retention);
+}
+
 Bytes Client::getContent(const std::string& contentId)
 {
     const ApiResponse response = api_.get("/v1/content/" + contentId);
