@@ -54,7 +54,6 @@ std::string encodeInvite(const Invite& invite)
     const nlohmann::json payload = {
         {"v", kInviteFormatVersion},
         {"sub", toBase64(invite.subscriptionCertDer)},
-        {"card", toBase64(invite.serverCardDer)},
     };
     const std::string json = payload.dump();
     return std::string(kInvitePrefix) + toBase64Url(Bytes(json.begin(), json.end()));
@@ -73,7 +72,6 @@ Invite decodeInvite(const std::string& uri)
     }
     Invite invite;
     invite.subscriptionCertDer = fromBase64(payload.at("sub").get<std::string>());
-    invite.serverCardDer = fromBase64(payload.at("card").get<std::string>());
     return invite;
 }
 

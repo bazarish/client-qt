@@ -15,27 +15,34 @@
 
 namespace bazarish::client {
 
-// Server reply to subscribe/renew: the granted lifecycle plus the server
-// card the client needs to seal deliveries back to this server.
+// This user's assigned serving destination + the public serving sealing key
+// for it (from GET /v1/messaging/destination). Folded into the user-signed
+// subscription certificate so contacts route and seal to it.
+struct DestinationInfo {
+    std::string dest;
+    Bytes servingSealingKeyDer;
+};
+
+// Server reply to subscribe/renew: the granted lifecycle plus the serving
+// destination + serving sealing key the certificate now carries.
 struct SubscribeResult {
     std::int64_t notAfter = 0;
     std::uint64_t quotaBytes = 0;
     std::int64_t maxTermSeconds = 0;
-    ServerCard serverCard;
-    // The server card as received (DER), for persistence and forwarding.
-    Bytes serverCardDer;
-    // The subscription certificate we issued (DER): our serving statement,
-    // persisted so we can hand a contact the full self-verifying chain.
+    // The user's assigned serving destination and its serving sealing key.
+    std::string dest;
+    Bytes servingSealingKeyDer;
+    // The subscription certificate we issued (DER): our self-signed contact
+    // card (prekey + dest + serving sealing key), persisted so we can hand a
+    // contact the full self-verifying card.
     Bytes subscriptionCertDer;
 };
 
-// A contact looked up by fingerprint: the user's subscription certificate
-// (serving server + sealing prekey) and the serving server's card (its
-// sealing key, used to seal delivery envelopes to that server). Both are
-// verified before being returned.
+// A contact looked up by fingerprint: the user's subscription certificate,
+// which carries the sealing prekey plus the routing (dest + serving sealing
+// key). Verified before being returned.
 struct ContactInfo {
     SubscriptionCertificate subscriptionCert;
-    ServerCard serverCard;
 };
 
 struct Subscription {
@@ -110,9 +117,12 @@ public:
         const std::string& alias, std::int64_t issuedAt, std::optional<std::int64_t> notAfter);
     void releaseAlias(const std::string& alias);
     ResolveResult resolve(const std::string& alias);
-    // Looks up a user by fingerprint: subscription certificate (serving
-    // server + sealing prekey) and the serving server's card. Verified.
+    // Looks up a user by fingerprint: their subscription certificate (sealing
+    // prekey + routing). Verified.
     ContactInfo lookupContact(const std::string& peerFingerprint);
+    // This user's assigned serving destination + serving sealing key, from the
+    // messaging server (GET /v1/messaging/destination).
+    DestinationInfo myDestination();
 
     // --- Messaging (server) ---
 
@@ -124,7 +134,7 @@ public:
     Bytes fetchBlob(const std::string& blobId);
     void ack(const std::string& blobId);
     std::string submitSend(
-        const std::string& toServer, const Bytes& sealed, const Bytes& payload);
+        const std::string& toDest, const Bytes& sealed, const Bytes& payload);
     SendStatus pollSend(const std::string& attemptId);
 
     // --- Large media: blob storage (rotating encrypted-LeaseSet, I2P) ---

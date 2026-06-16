@@ -60,34 +60,32 @@ int main()
 
     const Identity serverIdentity = Identity::generate();
     const std::string serverFp = serverIdentity.fingerprint();
-    const Key serverSealing = Key::generateSealing();
-    const Bytes serverCardDer = ServerCard::issue(
-        serverIdentity, {"i2p:exampledest"}, Key::fromPublicDer(serverSealing.publicDer()), now);
+    const Key servingKey = Key::generateSealing();
+    const std::string userDest = "userdest.b32.i2p";
 
     const Identity user = Identity::generate();
     const Key userSealing = Key::generateSealing();
-    const Bytes subCertDer
-        = SubscriptionCertificate::issue(user, serverFp, now, now + 3600, userSealing.publicDer());
+    // The invite is a single user-signed card carrying the prekey + routing.
+    const Bytes subCertDer = SubscriptionCertificate::issue(
+        user, serverFp, now, now + 3600, userSealing.publicDer(), userDest, servingKey.publicDer());
 
     Invite invite;
     invite.subscriptionCertDer = subCertDer;
-    invite.serverCardDer = serverCardDer;
 
     const std::string uri = encodeInvite(invite);
     CHECK(uri.rfind("bazarish://invite/", 0) == 0);
 
     const Invite decoded = decodeInvite(uri);
     CHECK(decoded.subscriptionCertDer == subCertDer);
-    CHECK(decoded.serverCardDer == serverCardDer);
 
-    // The decoded chain verifies and binds to the user's identity with no
-    // server involved — this is what makes add-by-invite trustless.
+    // The decoded card verifies and binds to the user's identity with one
+    // signature carrying the routing — this is what makes add-by-invite
+    // trustless with no server card.
     const SubscriptionCertificate verifiedSub
         = SubscriptionCertificate::verify(decoded.subscriptionCertDer);
     CHECK(verifiedSub.user == user.fingerprint());
-    CHECK(verifiedSub.server == serverFp);
-    const ServerCard verifiedCard = ServerCard::verify(decoded.serverCardDer);
-    CHECK(verifiedCard.server == serverFp);
+    CHECK(verifiedSub.dest == userDest);
+    CHECK(verifiedSub.servingSealingKey().publicDer() == servingKey.publicDer());
 
     // Malformed URIs are rejected.
     CHECK_THROWS(decodeInvite("http://example/x"));

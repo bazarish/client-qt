@@ -70,8 +70,11 @@ int main()
     const Identity serverIdentity = Identity::generate();
     const std::string serverFp = serverIdentity.fingerprint();
     const Key serverSealing = Key::generateSealing();
-    const Bytes serverCardDer = ServerCard::issue(serverIdentity, {"i2p:exampledest"},
-        Key::fromPublicDer(serverSealing.publicDer()), now);
+    // Destination-routed model: the server assigns each user a serving
+    // destination + serving sealing key (here serverSealing stands in as that
+    // key). Routing is by destination string, not by server fingerprint.
+    const std::string aliceDest = "alicedest.b32.i2p";
+    const std::string bobDest = "bobdest.b32.i2p";
 
     const Identity alice = Identity::generate();
     const Identity bob = Identity::generate();
@@ -88,14 +91,16 @@ int main()
               const SubscriptionCertificate cert = SubscriptionCertificate::verify(der);
               CHECK(cert.user == user);
               CHECK(cert.server == serverFp);
-              // The client publishes its sealing prekey in the certificate.
+              // The client publishes its sealing prekey and the routing it
+              // fetched from the messaging server in the certificate.
               CHECK(!cert.sealingPublicKeyDer.empty());
+              CHECK(cert.dest == aliceDest);
+              CHECK(cert.servingSealingKeyDer == serverSealing.publicDer());
               respondJson(response,
                   {
                       {"notAfter", cert.notAfter},
                       {"quotaBytes", 10 * 1024 * 1024},
                       {"maxTermSeconds", 14 * 24 * 3600},
-                      {"serverCard", toBase64(serverCardDer)},
                   });
           };
     server.Post("/v1/account/subscribe", handleSubscribe);
@@ -136,11 +141,17 @@ int main()
         [&](const httplib::Request& request, httplib::Response& response) {
             CHECK(request.get_param_value("user") == bob.fingerprint());
             const Key bobSealing = Key::generateSealing();
-            const Bytes subCert = SubscriptionCertificate::issue(
-                bob, serverFp, now, now + 3600, bobSealing.publicDer());
-            respondJson(response, {{"user", bob.fingerprint()},
-                                      {"subscriptionCert", toBase64(subCert)},
-                                      {"serverCard", toBase64(serverCardDer)}});
+            const Bytes subCert = SubscriptionCertificate::issue(bob, serverFp, now, now + 3600,
+                bobSealing.publicDer(), bobDest, serverSealing.publicDer());
+            respondJson(response,
+                {{"user", bob.fingerprint()}, {"subscriptionCert", toBase64(subCert)}});
+        });
+
+    server.Get("/v1/messaging/destination",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            (void)requireCaller(request);
+            respondJson(response,
+                {{"dest", aliceDest}, {"servingKey", toBase64(serverSealing.publicDer())}});
         });
 
     // --- Messaging stub ---
@@ -186,7 +197,7 @@ int main()
         [&](const httplib::Request& request, httplib::Response& response) {
             (void)requireCaller(request);
             const nlohmann::json body = nlohmann::json::parse(request.body);
-            CHECK(body.at("toServer") == serverFp);
+            CHECK(body.at("toDest") == serverFp);
             // The sealed envelope must unseal and carry the expected fields.
             const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
             const Bytes plain = cms::unseal(sealed, serverSealing);
@@ -225,18 +236,19 @@ int main()
             = client.subscribe(now, now + 7 * 24 * 3600, aliceSealing.publicDer());
         CHECK(result.notAfter == now + 7 * 24 * 3600);
         CHECK(result.quotaBytes == 10u * 1024 * 1024);
-        CHECK(result.serverCard.server == serverFp);
-        CHECK(result.serverCard.sealingPublicKeyDer == serverSealing.publicDer());
+        CHECK(result.dest == aliceDest);
+        CHECK(result.servingSealingKeyDer == serverSealing.publicDer());
     }
 
-    // Contact lookup by fingerprint returns the verified prekey certificate
-    // and the serving server's card.
+    // Contact lookup by fingerprint returns the verified certificate carrying
+    // the prekey and the routing (dest + serving sealing key).
     {
         const ContactInfo looked = client.lookupContact(bob.fingerprint());
         CHECK(looked.subscriptionCert.user == bob.fingerprint());
         CHECK(looked.subscriptionCert.server == serverFp);
         CHECK(!looked.subscriptionCert.sealingPublicKeyDer.empty());
-        CHECK(looked.serverCard.server == serverFp);
+        CHECK(looked.subscriptionCert.dest == bobDest);
+        CHECK(looked.subscriptionCert.servingSealingKey().publicDer() == serverSealing.publicDer());
     }
 
     // Subscription status.

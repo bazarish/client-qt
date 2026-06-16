@@ -39,21 +39,19 @@ std::int64_t nowSeconds()
     return static_cast<std::int64_t>(std::time(nullptr));
 }
 
-// Applies a bootstrap block (the peer's sealing key, serving server, server
-// card and a fresh token batch) carried by a contact request, a first reply
-// or a token refill. Orthogonal to the message's content type.
+// Applies a bootstrap block (the peer's sealing prekey, serving destination +
+// serving sealing key, and a fresh token batch) carried by a contact request, a
+// first reply or a token refill. Orthogonal to the message's content type.
 void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap)
 {
     if (bootstrap.contains("sealing")) {
         contact.sealingPublicB64 = bootstrap.at("sealing").get<std::string>();
     }
-    if (bootstrap.contains("server")) {
-        contact.server = bootstrap.at("server").get<std::string>();
+    if (bootstrap.contains("dest")) {
+        contact.dest = bootstrap.at("dest").get<std::string>();
     }
-    if (bootstrap.contains("serverCard")) {
-        const ServerCard card
-            = ServerCard::verify(fromBase64(bootstrap.at("serverCard").get<std::string>()));
-        contact.serverSealingB64 = toBase64(card.sealingPublicKeyDer);
+    if (bootstrap.contains("servingKey")) {
+        contact.servingSealingB64 = bootstrap.at("servingKey").get<std::string>();
     }
     if (bootstrap.contains("replyTokens")) {
         for (const nlohmann::json& token : bootstrap.at("replyTokens")) {
@@ -189,7 +187,6 @@ Session Session::create(
                 {"serverFingerprint", endpoint.serverFingerprint},
                 {"facades", nlohmann::json::array()},
             }},
-        {"serverCard", ""},
         {"subscriptionCert", ""},
         {"encrypted", encrypted},
     };
@@ -278,8 +275,8 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
         for (const auto& [fingerprint, entry] : stored.items()) {
             Contact contact;
             contact.sealingPublicB64 = entry.at("sealingPublicB64").get<std::string>();
-            contact.server = entry.at("server").get<std::string>();
-            contact.serverSealingB64 = entry.at("serverSealingB64").get<std::string>();
+            contact.dest = entry.at("dest").get<std::string>();
+            contact.servingSealingB64 = entry.at("servingSealingB64").get<std::string>();
             contact.sendTokens = entry.at("sendTokens").get<std::vector<std::string>>();
             contact.issuedToThem = entry.at("issuedToThem").get<bool>();
             contacts.emplace(fingerprint, std::move(contact));
@@ -288,8 +285,17 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
 
     auto client = std::make_unique<Client>(std::move(identity), clientId, endpoint);
     Session session(stateDir, std::move(client), std::move(sealing), std::move(contacts));
-    session.serverCardB64_ = meta.at("serverCard").get<std::string>();
     session.subscriptionCertB64_ = meta.value("subscriptionCert", std::string{});
+    // Our own routing (dest + serving sealing key) lives in our self-signed
+    // subscription certificate; recover it for invites and contact bootstraps.
+    if (!session.subscriptionCertB64_.empty()) {
+        const SubscriptionCertificate cert
+            = SubscriptionCertificate::verify(fromBase64(session.subscriptionCertB64_));
+        session.myDest_ = cert.dest;
+        if (!cert.servingSealingKeyDer.empty()) {
+            session.myServingKeyB64_ = toBase64(cert.servingSealingKeyDer);
+        }
+    }
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
     session.name_ = meta.value("name", std::string{});
@@ -313,8 +319,8 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
             for (const auto& [fp, jm] : entry.at("members").items()) {
                 GroupMember member;
                 member.sealingPublicB64 = jm.at("sealing").get<std::string>();
-                member.server = jm.at("server").get<std::string>();
-                member.serverSealingB64 = jm.at("serverSealing").get<std::string>();
+                member.dest = jm.at("dest").get<std::string>();
+                member.servingSealingB64 = jm.at("servingKey").get<std::string>();
                 member.sendTokens = jm.at("sendTokens").get<std::vector<std::string>>();
                 member.admin = jm.value("admin", false);
                 group.members.emplace(fp, std::move(member));
@@ -390,7 +396,6 @@ void Session::persistMeta() const
                 {"serverFingerprint", endpoint.serverFingerprint},
                 {"facades", facades},
             }},
-        {"serverCard", serverCardB64_},
         {"subscriptionCert", subscriptionCertB64_},
         {"encrypted", encrypted_},
     };
@@ -403,8 +408,8 @@ nlohmann::json Session::contactsToJson() const
     for (const auto& [fingerprint, contact] : contacts_) {
         stored[fingerprint] = {
             {"sealingPublicB64", contact.sealingPublicB64},
-            {"server", contact.server},
-            {"serverSealingB64", contact.serverSealingB64},
+            {"dest", contact.dest},
+            {"servingSealingB64", contact.servingSealingB64},
             {"sendTokens", contact.sendTokens},
             {"issuedToThem", contact.issuedToThem},
         };
@@ -433,8 +438,10 @@ void Session::subscribe(const std::int64_t days)
     // first message to us before any token exchange.
     const SubscribeResult result
         = client_->subscribe(now, now + days * 24 * 3600, sealingKey_.publicDer());
-    serverCardB64_ = toBase64(result.serverCardDer);
     subscriptionCertB64_ = toBase64(result.subscriptionCertDer);
+    myDest_ = result.dest;
+    myServingKeyB64_
+        = result.servingSealingKeyDer.empty() ? std::string() : toBase64(result.servingSealingKeyDer);
     persistMeta();
     client_->registerThisClient();
 
@@ -553,17 +560,18 @@ std::vector<std::string> Session::issueTokenBatch()
     return tokens;
 }
 
-void Session::deliver(const std::string& toServer, const Key& serverSealingKey,
+void Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     const std::string& kind, const std::string& mailbox, const std::optional<Bytes>& token,
     const Bytes& payload, const std::function<void()>& onAcceptedByOwnServer, bool* tokenRejected)
 {
-    // The envelope is sealed to the destination server's sealing key, so the
-    // routing metadata is readable only there. Our own server relays it to a
-    // foreign destination over federation. messageId stays fixed across
-    // retries: the recipient server dedups, so resubmits are idempotent and
-    // never consume a second token.
+    // The envelope is sealed to the recipient destination's serving sealing key,
+    // so the routing metadata is readable only by the server operating that
+    // destination. Our own server relays it to toDest over federation (or
+    // delivers locally when toDest is our own destination). messageId stays
+    // fixed across retries: the recipient server dedups, so resubmits are
+    // idempotent and never consume a second token.
     const std::string messageId = toHex(randomBytes(16));
-    const Bytes sealed = sealDeliveryEnvelope(kind, mailbox, messageId, token, serverSealingKey);
+    const Bytes sealed = sealDeliveryEnvelope(kind, mailbox, messageId, token, servingSealingKey);
 
     // A foreign server may be momentarily unreachable while its I2P leaseset
     // publishes; that is transient, so retry. Other failures are terminal.
@@ -572,7 +580,7 @@ void Session::deliver(const std::string& toServer, const Key& serverSealingKey,
     bool acceptedByOwnServer = false;
     for (int round = 0; round < kMaxRounds; ++round) {
         try {
-            const std::string attemptId = client_->submitSend(toServer, sealed, payload);
+            const std::string attemptId = client_->submitSend(toDest, sealed, payload);
             // Our own server accepted the envelope into its buffer: the "grey"
             // delivery state. Fire once.
             if (!acceptedByOwnServer) {
@@ -626,13 +634,12 @@ void Session::sendContactRequest(const std::string& peerFingerprint, const std::
 
 void Session::addByInvite(const std::string& inviteUri, const std::string& text)
 {
-    // The invite carries the full chain; verify it offline. SubscriptionCertificate
-    // and ServerCard verification bind every field to a signature, so a tampered
-    // invite is rejected with no server involved at all.
+    // The invite is a single user-signed contact card; verify it offline. The
+    // signature binds the prekey and the routing (dest + serving sealing key),
+    // so a tampered invite is rejected with no server involved at all.
     const Invite invite = decodeInvite(inviteUri);
     ContactInfo info;
     info.subscriptionCert = SubscriptionCertificate::verify(invite.subscriptionCertDer);
-    info.serverCard = ServerCard::verify(invite.serverCardDer);
     requestWithInfo(info.subscriptionCert.user, text, info);
 }
 
@@ -653,14 +660,12 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     if (info.subscriptionCert.user != peerFingerprint) {
         throw std::runtime_error("contact lookup returned a different user");
     }
-    if (info.subscriptionCert.server != info.serverCard.server) {
-        throw std::runtime_error("subscription and server card disagree on the server");
-    }
     const Key peerPrekey = info.subscriptionCert.sealingKey();
-    const Key peerServerSealing = info.serverCard.sealingKey();
+    const Key peerServingKey = info.subscriptionCert.servingSealingKey();
+    const std::string peerDest = info.subscriptionCert.dest;
 
-    // Mint a batch the peer will use to write back to us and hand it over,
-    // with our sealing key and server card, inside the request's bootstrap.
+    // Mint a batch the peer will use to write back to us and hand it over, with
+    // our prekey and our routing (dest + serving sealing key), in the bootstrap.
     const std::vector<std::string> replyTokens = issueTokenBatch();
 
     const nlohmann::json payload = {
@@ -673,8 +678,8 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
         {"bootstrap",
             {
                 {"sealing", sealingPublicB64()},
-                {"server", client_->endpoint().serverFingerprint},
-                {"serverCard", serverCardB64_},
+                {"dest", myDest_},
+                {"servingKey", myServingKeyB64_},
                 {"replyTokens", replyTokens},
             }},
     };
@@ -682,15 +687,14 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     // Delivered tokenless under the "contact" admission class.
     const std::string plain = payload.dump();
     const Bytes encrypted = cms::seal(Bytes(plain.begin(), plain.end()), peerPrekey);
-    deliver(info.subscriptionCert.server, peerServerSealing, "contact", peerFingerprint,
-        std::nullopt, encrypted);
+    deliver(peerDest, peerServingKey, "contact", peerFingerprint, std::nullopt, encrypted);
 
     // We now know how to reach the peer; reciprocal tokens arrive with the
     // peer's reply.
     Contact& contact = contacts_[peerFingerprint];
-    contact.server = info.subscriptionCert.server;
+    contact.dest = peerDest;
     contact.sealingPublicB64 = toBase64(peerPrekey.publicDer());
-    contact.serverSealingB64 = toBase64(peerServerSealing.publicDer());
+    contact.servingSealingB64 = toBase64(peerServingKey.publicDer());
     contact.issuedToThem = true;
     persistContacts();
 }
@@ -861,7 +865,7 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
         throw std::runtime_error("unknown contact: " + peerFingerprint);
     }
     Contact& contact = found->second;
-    if (contact.sealingPublicB64.empty() || contact.serverSealingB64.empty()) {
+    if (contact.sealingPublicB64.empty() || contact.servingSealingB64.empty()) {
         throw std::runtime_error("contact not established yet: " + peerFingerprint);
     }
     if (contact.sendTokens.empty()) {
@@ -904,8 +908,8 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     if (!contact.issuedToThem) {
         inner["bootstrap"] = {
             {"sealing", sealingPublicB64()},
-            {"server", client_->endpoint().serverFingerprint},
-            {"serverCard", serverCardB64_},
+            {"dest", myDest_},
+            {"servingKey", myServingKeyB64_},
             {"replyTokens", issueTokenBatch()},
         };
         contact.issuedToThem = true;
@@ -920,11 +924,11 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     const std::string innerText = inner.dump();
     const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
     const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), peerSealing);
-    const Key peerServerSealing = Key::fromPublicDer(fromBase64(contact.serverSealingB64));
+    const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
 
     const std::string token = contact.sendTokens.back();
-    deliver(contact.server, peerServerSealing, "content", peerFingerprint, fromBase64(token),
-        payload, onAcceptedByOwnServer);
+    deliver(contact.dest, peerServingKey, "content", peerFingerprint, fromBase64(token), payload,
+        onAcceptedByOwnServer);
 
     // Spend the token only after a successful delivery.
     contact.sendTokens.pop_back();
@@ -1255,7 +1259,7 @@ void Session::sendTokenRefill(const std::string& peerFingerprint)
     const Contact& contact = found->second;
     // We need a usable route and at least one of the peer's tokens to deliver
     // the refill; otherwise the peer's own refill of us must arrive first.
-    if (contact.sealingPublicB64.empty() || contact.serverSealingB64.empty()
+    if (contact.sealingPublicB64.empty() || contact.servingSealingB64.empty()
         || contact.sendTokens.empty()) {
         return;
     }
@@ -1272,13 +1276,12 @@ void Session::sendTokenRefill(const std::string& peerFingerprint)
 
 // ============================ Groups ============================
 
-std::string Session::ownServerSealingB64() const
+std::string Session::ownServingKeyB64() const
 {
-    if (serverCardB64_.empty()) {
-        throw std::runtime_error("no server card: subscribe first");
+    if (myServingKeyB64_.empty()) {
+        throw std::runtime_error("no serving key: subscribe first");
     }
-    const ServerCard card = ServerCard::verify(fromBase64(serverCardB64_));
-    return toBase64(card.sealingPublicKeyDer);
+    return myServingKeyB64_;
 }
 
 std::string Session::signedRosterB64(const std::string& groupId) const
@@ -1291,8 +1294,8 @@ std::string Session::signedRosterB64(const std::string& groupId) const
     members.push_back({
         {"fp", fingerprint()},
         {"sealing", sealingPublicB64()},
-        {"server", client_->endpoint().serverFingerprint},
-        {"serverSealing", ownServerSealingB64()},
+        {"dest", myDest_},
+        {"servingKey", ownServingKeyB64()},
         {"admin", group.iAmAdmin},
     });
     if (group.iAmAdmin) {
@@ -1302,8 +1305,8 @@ std::string Session::signedRosterB64(const std::string& groupId) const
         members.push_back({
             {"fp", fp},
             {"sealing", member.sealingPublicB64},
-            {"server", member.server},
-            {"serverSealing", member.serverSealingB64},
+            {"dest", member.dest},
+            {"servingKey", member.servingSealingB64},
             {"admin", member.admin},
         });
         if (member.admin) {
@@ -1367,8 +1370,8 @@ void Session::applyRoster(const std::string& groupId, const Bytes& rosterDer, bo
         }
         GroupMember member;
         member.sealingPublicB64 = jm.at("sealing").get<std::string>();
-        member.server = jm.at("server").get<std::string>();
-        member.serverSealingB64 = jm.at("serverSealing").get<std::string>();
+        member.dest = jm.at("dest").get<std::string>();
+        member.servingSealingB64 = jm.at("servingKey").get<std::string>();
         member.admin = admin;
         const auto kept = keptTokens.find(fp);
         if (kept != keptTokens.end()) {
@@ -1396,9 +1399,9 @@ void Session::sendToMemberContact(
     const std::string text = inner.dump();
     const Key memberSealing = Key::fromPublicDer(fromBase64(member.sealingPublicB64));
     const Bytes payload = cms::seal(Bytes(text.begin(), text.end()), memberSealing);
-    const Key memberServerSealing = Key::fromPublicDer(fromBase64(member.serverSealingB64));
+    const Key memberServingKey = Key::fromPublicDer(fromBase64(member.servingSealingB64));
     // Tokenless contact-class delivery — the standing path into any mailbox.
-    deliver(member.server, memberServerSealing, "contact", memberFp, std::nullopt, payload);
+    deliver(member.dest, memberServingKey, "contact", memberFp, std::nullopt, payload);
 }
 
 void Session::sendToMemberContent(
@@ -1409,7 +1412,7 @@ void Session::sendToMemberContent(
     const std::string text = inner.dump();
     const Key memberSealing = Key::fromPublicDer(fromBase64(member.sealingPublicB64));
     const Bytes payload = cms::seal(Bytes(text.begin(), text.end()), memberSealing);
-    const Key memberServerSealing = Key::fromPublicDer(fromBase64(member.serverSealingB64));
+    const Key memberServingKey = Key::fromPublicDer(fromBase64(member.servingSealingB64));
 
     // Optimistic retry: the pool is shared, so a token may have been spent by a
     // concurrent sender. Drop a rejected token and try the next until one is
@@ -1418,7 +1421,7 @@ void Session::sendToMemberContent(
         const std::string token = member.sendTokens.back();
         member.sendTokens.pop_back();
         bool rejected = false;
-        deliver(member.server, memberServerSealing, "content", memberFp, fromBase64(token), payload,
+        deliver(member.dest, memberServingKey, "content", memberFp, fromBase64(token), payload,
             {}, &rejected);
         if (!rejected) {
             return;
@@ -1484,7 +1487,7 @@ void Session::broadcastGroupPool(const std::string& groupId)
 std::string Session::createGroup(
     const std::string& name, const std::vector<std::string>& memberFingerprints)
 {
-    if (serverCardB64_.empty()) {
+    if (myServingKeyB64_.empty()) {
         throw std::runtime_error("subscribe first: a group needs our serving chain");
     }
     const std::string groupId = toHex(randomBytes(16));
@@ -1495,13 +1498,13 @@ std::string Session::createGroup(
     for (const std::string& fp : memberFingerprints) {
         const auto found = contacts_.find(fp);
         if (found == contacts_.end() || found->second.sealingPublicB64.empty()
-            || found->second.serverSealingB64.empty()) {
+            || found->second.servingSealingB64.empty()) {
             throw std::runtime_error("group member is not an established contact: " + fp);
         }
         GroupMember member;
         member.sealingPublicB64 = found->second.sealingPublicB64;
-        member.server = found->second.server;
-        member.serverSealingB64 = found->second.serverSealingB64;
+        member.dest = found->second.dest;
+        member.servingSealingB64 = found->second.servingSealingB64;
         group.members.emplace(fp, std::move(member));
     }
     persistGroups();
@@ -1610,13 +1613,13 @@ void Session::addGroupMembers(
         }
         const auto contact = contacts_.find(fp);
         if (contact == contacts_.end() || contact->second.sealingPublicB64.empty()
-            || contact->second.serverSealingB64.empty()) {
+            || contact->second.servingSealingB64.empty()) {
             throw std::runtime_error("new group member is not an established contact: " + fp);
         }
         GroupMember member;
         member.sealingPublicB64 = contact->second.sealingPublicB64;
-        member.server = contact->second.server;
-        member.serverSealingB64 = contact->second.serverSealingB64;
+        member.dest = contact->second.dest;
+        member.servingSealingB64 = contact->second.servingSealingB64;
         group.members.emplace(fp, std::move(member));
         added.push_back(fp);
     }
@@ -1744,8 +1747,8 @@ nlohmann::json Session::groupsToJson() const
         for (const auto& [fp, member] : group.members) {
             members[fp] = {
                 {"sealing", member.sealingPublicB64},
-                {"server", member.server},
-                {"serverSealing", member.serverSealingB64},
+                {"dest", member.dest},
+                {"servingKey", member.servingSealingB64},
                 {"sendTokens", member.sendTokens},
                 {"admin", member.admin},
             };
@@ -1775,12 +1778,11 @@ void Session::persistGroups() const
 
 std::string Session::inviteUri() const
 {
-    if (subscriptionCertB64_.empty() || serverCardB64_.empty()) {
-        throw std::runtime_error("subscribe first: no serving chain to publish");
+    if (subscriptionCertB64_.empty()) {
+        throw std::runtime_error("subscribe first: no contact card to publish");
     }
     Invite invite;
     invite.subscriptionCertDer = fromBase64(subscriptionCertB64_);
-    invite.serverCardDer = fromBase64(serverCardB64_);
     return encodeInvite(invite);
 }
 

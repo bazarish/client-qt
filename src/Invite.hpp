@@ -8,14 +8,13 @@
 
 namespace bazarish::client {
 
-// A self-verifying contact invite: the user's subscription certificate
-// (serving server + sealing prekey, signed by the user) and the serving
-// server's card (transport endpoints + sealing key, signed by the server).
-// Together they let a contact verify and reach the user with no trust in any
-// server — every field is covered by a signature the recipient checks.
+// A self-verifying contact invite: the user's subscription certificate, signed
+// by the user, carrying the sealing prekey plus the routing (I2P destination +
+// serving sealing key). One signature covers every field the recipient needs to
+// reach the user — no server card, no server-identifying fields (see docs-main
+// api/InviteAnonymity.md).
 struct Invite {
     Bytes subscriptionCertDer;
-    Bytes serverCardDer;
 };
 
 // Encodes an invite as a bazarish://invite/<base64url(JSON)> URI.

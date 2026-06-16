@@ -52,8 +52,14 @@ std::string Client::activeFacadeUrl() const
 SubscribeResult Client::submitSubscription(const std::string& path,
     const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer)
 {
-    const Bytes cert = SubscriptionCertificate::issue(
-        identity_, api_.endpoint().serverFingerprint, issuedAt, notAfter, sealingPrekeyDer);
+    // Ask the messaging server which destination + serving sealing key it has
+    // assigned us, then fold them into the user-signed certificate (our contact
+    // card) alongside the sealing prekey. The server fingerprint is kept as the
+    // lifecycle anchor the service node checks, but routing is by destination.
+    const DestinationInfo destination = myDestination();
+    const Bytes cert
+        = SubscriptionCertificate::issue(identity_, api_.endpoint().serverFingerprint, issuedAt,
+            notAfter, sealingPrekeyDer, destination.dest, destination.servingSealingKeyDer);
     const ApiResponse response = api_.postJson(path, {{"cert", toBase64(cert)}});
     const nlohmann::json body = response.json();
 
@@ -62,8 +68,8 @@ SubscribeResult Client::submitSubscription(const std::string& path,
     result.notAfter = body.at("notAfter").get<std::int64_t>();
     result.quotaBytes = body.at("quotaBytes").get<std::uint64_t>();
     result.maxTermSeconds = body.at("maxTermSeconds").get<std::int64_t>();
-    result.serverCardDer = fromBase64(body.at("serverCard").get<std::string>());
-    result.serverCard = ServerCard::verify(result.serverCardDer);
+    result.dest = destination.dest;
+    result.servingSealingKeyDer = destination.servingSealingKeyDer;
     return result;
 }
 
@@ -135,8 +141,19 @@ ContactInfo Client::lookupContact(const std::string& peerFingerprint)
     ContactInfo info;
     info.subscriptionCert = SubscriptionCertificate::verify(
         fromBase64(body.at("subscriptionCert").get<std::string>()));
-    info.serverCard
-        = ServerCard::verify(fromBase64(body.at("serverCard").get<std::string>()));
+    return info;
+}
+
+DestinationInfo Client::myDestination()
+{
+    const ApiResponse response = api_.get("/v1/messaging/destination");
+    const nlohmann::json body = response.json();
+    DestinationInfo info;
+    info.dest = body.at("dest").get<std::string>();
+    const std::string servingKey = body.value("servingKey", std::string());
+    if (!servingKey.empty()) {
+        info.servingSealingKeyDer = fromBase64(servingKey);
+    }
     return info;
 }
 
@@ -193,11 +210,11 @@ void Client::ack(const std::string& blobId)
 }
 
 std::string Client::submitSend(
-    const std::string& toServer, const Bytes& sealed, const Bytes& payload)
+    const std::string& toDest, const Bytes& sealed, const Bytes& payload)
 {
     const ApiResponse response = api_.postJson("/v1/messaging/send",
         {
-            {"toServer", toServer},
+            {"toDest", toDest},
             {"sealed", toBase64(sealed)},
             {"payload", toBase64(payload)},
         });

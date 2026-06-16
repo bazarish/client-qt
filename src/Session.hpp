@@ -40,11 +40,11 @@ struct Contact {
     // The peer's user sealing public key (SubjectPublicKeyInfo DER, base64),
     // used to E2E-encrypt message payloads to this contact.
     std::string sealingPublicB64;
-    // Fingerprint of the server currently serving the peer.
-    std::string server;
-    // The peer's serving server's sealing public key (SPKI DER, base64):
-    // delivery envelopes to this contact are sealed to it.
-    std::string serverSealingB64;
+    // The peer's I2P serving destination — where delivery envelopes are routed.
+    std::string dest;
+    // The peer's serving sealing public key (SPKI DER, base64): delivery
+    // envelopes to this contact are sealed to it (held by the peer's server).
+    std::string servingSealingB64;
     // Unused one-time delivery tokens (base64) issued by the peer to us:
     // each authorizes one message into the peer's mailbox.
     std::vector<std::string> sendTokens;
@@ -58,8 +58,8 @@ struct Contact {
 // of a Contact, but scoped to a single group.
 struct GroupMember {
     std::string sealingPublicB64;
-    std::string server;
-    std::string serverSealingB64;
+    std::string dest;
+    std::string servingSealingB64;
     std::vector<std::string> sendTokens;
     bool admin = false;
 };
@@ -378,7 +378,7 @@ private:
     // already spent — e.g. a concurrent group sender took it) does not throw;
     // it sets *tokenRejected and returns, so the caller can retry with another
     // token (group fan-out's optimistic retry).
-    void deliver(const std::string& toServer, const Key& serverSealingKey,
+    void deliver(const std::string& toDest, const Key& servingSealingKey,
         const std::string& deliveryClass, const std::string& mailbox,
         const std::optional<Bytes>& token, const Bytes& payload,
         const std::function<void()>& onAcceptedByOwnServer = {}, bool* tokenRejected = nullptr);
@@ -389,9 +389,9 @@ private:
 
     // --- Group helpers ---
 
-    // Our own server's sealing key (SPKI DER, base64), derived from our server
-    // card — what other members seal delivery envelopes to us with.
-    std::string ownServerSealingB64() const;
+    // Our own serving sealing key (SPKI DER, base64) — what contacts and group
+    // members seal delivery envelopes to us with.
+    std::string ownServingKeyB64() const;
     // Builds and hybrid-signs the current roster of a group (we must be an
     // admin) and returns it base64-encoded.
     std::string signedRosterB64(const std::string& groupId) const;
@@ -451,10 +451,11 @@ private:
     std::map<std::string, Contact> contacts_;
     // Groups this client belongs to, by group id (client-side only).
     std::map<std::string, Group> groups_;
-    // Our own server card (DER, base64), learned on subscribe and forwarded
-    // to contacts inside the E2E payload so they can seal replies to our
-    // server.
-    std::string serverCardB64_;
+    // Our own serving destination + serving sealing key (SPKI DER, base64),
+    // learned on subscribe (GET /v1/messaging/destination) and forwarded to
+    // contacts in the E2E bootstrap so they route and seal replies to us.
+    std::string myDest_;
+    std::string myServingKeyB64_;
     // Human label for the profile picker (stored in the clear in meta.json).
     std::string name_;
     // Our own subscription certificate (DER, base64), retained on subscribe
