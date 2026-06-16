@@ -827,12 +827,11 @@ void Session::saveAttachment(
 {
     (void)keyB64;  // the decryption key now travels inside the pointer
     // ref is the base64 sealed blob pointer; fetch the ciphertext over I2P,
-    // verify its digest and decrypt it.
+    // verify its digest and decrypt it straight to dest (never whole in RAM).
     const Bytes pointerBytes = fromBase64(ref);
     const BlobPointer pointer
         = blobPointerFromJson(nlohmann::json::parse(pointerBytes.begin(), pointerBytes.end()));
-    const Bytes plain = fetchLargeBlob(pointer);
-    writeFileBytes(dest, plain);
+    fetchLargeBlobToFile(pointer, dest);
 }
 
 void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
@@ -928,6 +927,20 @@ Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
         // No local SAM bridge (or the direct fetch failed): fall back to our own
         // server proxying the fetch over I2P.
         return client_->fetchBlobViaProxy(pointer);
+    }
+}
+
+void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& dest)
+{
+    try {
+        // Direct over a fresh transient SAM session, streamed to disk (preferred
+        // — our server is never involved and the file never sits whole in RAM).
+        fetchBlobToFile("127.0.0.1", 7656, pointer, dest, blobFetchPrivacy_);
+    } catch (const std::exception&) {
+        // No local SAM bridge (or the direct fetch failed): the own-server proxy
+        // relays the whole ciphertext through the facade (buffered fallback).
+        const Bytes plain = client_->fetchBlobViaProxy(pointer);
+        writeFileBytes(dest, plain);
     }
 }
 

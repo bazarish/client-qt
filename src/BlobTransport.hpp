@@ -8,6 +8,7 @@
 #include <bazarish/Sam.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <map>
 #include <optional>
@@ -76,12 +77,29 @@ using RangedGetFn = std::function<RangedGet(std::uint64_t offset)>;
 // or on a non-2xx status.
 Bytes downloadWithResume(const RangedGetFn& get);
 
+// Streams the ciphertext from get() to a temporary file beside destPath,
+// verifies its digest against the pointer, then decrypts it file-to-file into
+// destPath — so neither the ciphertext nor the cleartext is ever held whole in
+// memory. The temp file is removed on every exit path. The transport seam (get)
+// is injected so the assembly/verify/decrypt logic is testable without a router.
+// Throws on a fetch error or an integrity failure.
+void assembleBlobToFile(
+    const RangedGetFn& get, const BlobPointer& pointer, const std::filesystem::path& destPath);
+
 // Downloads the ciphertext named by a pointer over I2P (with Range/resume),
 // verifies its digest and decrypts it, then confirms receipt (anonymous, blobId
 // only). Returns the original message blob. Throws on a fetch error or an
 // integrity failure.
 Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
     I2pPrivacy privacy = I2pPrivacy::kMax);
+
+// Like fetchBlob, but streams the ciphertext straight to a temporary file and
+// decrypts it file-to-file into destPath, so a multi-gigabyte attachment is
+// never held whole in memory on the recipient. Verifies the digest before
+// decrypting (a tampered or truncated transfer is rejected) and confirms
+// receipt. Throws on a fetch error or an integrity failure.
+void fetchBlobToFile(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
+    const std::filesystem::path& destPath, I2pPrivacy privacy = I2pPrivacy::kMax);
 
 // Fetches a blob through the user's own server (the proxy-fetch fallback for
 // clients with no local SAM bridge): the server fetches the b33 ciphertext over

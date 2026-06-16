@@ -428,6 +428,10 @@ private:
     // Fetches an externalized blob: direct over a transient SAM session, falling
     // back to the own-server I2P proxy when this client has no local SAM bridge.
     Bytes fetchLargeBlob(const BlobPointer& pointer);
+    // Same, but streams the blob straight to dest so a large attachment never
+    // sits whole in memory. The direct path is streamed; the proxy fallback
+    // (no-SAM clients) still buffers the ciphertext through the facade.
+    void fetchLargeBlobToFile(const BlobPointer& pointer, const std::filesystem::path& dest);
     // Deletes an externalized blob (unsend): direct over a transient SAM session,
     // falling back to the own-server I2P proxy.
     void deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken);

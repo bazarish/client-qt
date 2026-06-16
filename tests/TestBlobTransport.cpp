@@ -12,6 +12,9 @@
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -201,6 +204,67 @@ int main()
 
         const Bytes recovered = fetchBlobViaProxy(api, pointer);
         CHECK(recovered == bigBlob);
+    }
+
+    // Streamed-to-file assembly (the direct-path recipient core): an injected
+    // transport serves the ciphertext in truncated windows; assembleBlobToFile
+    // resumes, reassembles to a temp file, verifies the digest and decrypts it
+    // file-to-file. The blob is never held whole in memory by the code under test.
+    {
+        Bytes bigBlob;
+        for (int i = 0; i < 50000; ++i) {
+            bigBlob.push_back(static_cast<unsigned char>(i * 5 + 1));
+        }
+        const PackedBlob bigPacked = packLargeBlob(bigBlob);
+        const std::string cipher(bigPacked.ciphertext.begin(), bigPacked.ciphertext.end());
+        CHECK(cipher.size() > 8000);  // spans several windows, so resume is exercised
+
+        int calls = 0;
+        const RangedGetFn windowed = [&](const std::uint64_t offset) -> RangedGet {
+            ++calls;
+            constexpr std::size_t window = 8000;
+            RangedGet out;
+            out.total = cipher.size();
+            out.status = (offset > 0) ? 206 : 200;
+            const std::size_t start = static_cast<std::size_t>(offset);
+            const std::size_t len = std::min<std::size_t>(window, cipher.size() - start);
+            out.body = Bytes(cipher.begin() + static_cast<std::ptrdiff_t>(start),
+                cipher.begin() + static_cast<std::ptrdiff_t>(start + len));
+            return out;
+        };
+
+        BlobPointer pointer;
+        pointer.blobUrl = "http://yhfjbu7hkuqyqwp3pvpuf6vk63bdlwtryjcueunavz52ai5y3yuvwdkh.b32.i2p/b/cap1";
+        pointer.blobId = "cap1";
+        pointer.fileKey = bigPacked.fileKey;
+        pointer.sha256 = bigPacked.sha256;
+        pointer.size = bigBlob.size();
+
+        const std::filesystem::path dest
+            = std::filesystem::temp_directory_path() / "bz-test-assemble.out";
+        assembleBlobToFile(windowed, pointer, dest);
+        CHECK(calls > 1);  // actually resumed across windows rather than one shot
+
+        std::ifstream in(dest, std::ios::binary);
+        const Bytes got((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        in.close();
+        CHECK(got == bigBlob);
+        CHECK(!std::filesystem::exists(dest.string() + ".part"));  // temp cleaned on success
+        std::filesystem::remove(dest);
+
+        // A digest mismatch (a tampered or corrupt transfer) is rejected before
+        // any cleartext is produced, and the temp file is cleaned up.
+        BlobPointer tampered = pointer;
+        tampered.sha256 = std::string(64, '0');
+        bool threw = false;
+        try {
+            assembleBlobToFile(windowed, tampered, dest);
+        } catch (const std::exception&) {
+            threw = true;
+        }
+        CHECK(threw);
+        CHECK(!std::filesystem::exists(dest.string() + ".part"));
+        std::filesystem::remove(dest);
     }
 
     store.stop();
