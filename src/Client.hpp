@@ -136,6 +136,10 @@ public:
     // capability fields for the sealed pointer.
     BlobUploadResult uploadBlob(const PackedBlob& packed, const BlobRetention& retention);
 
+    // Fetches a blob through our own server's I2P proxy (the fallback when this
+    // client has no local SAM bridge), verifying and decrypting it.
+    Bytes fetchBlobViaProxy(const BlobPointer& pointer);
+
 private:
     SubscribeResult submitSubscription(const std::string& path, std::int64_t issuedAt,
         std::int64_t notAfter, const Bytes& sealingPrekeyDer);

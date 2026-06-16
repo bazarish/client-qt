@@ -60,6 +60,12 @@ I2pHttpResponse i2pRequest(const std::string& samHost, std::uint16_t samPort,
 Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
     I2pPrivacy privacy = I2pPrivacy::kMax);
 
+// Fetches a blob through the user's own server (the proxy-fetch fallback for
+// clients with no local SAM bridge): the server fetches the b33 ciphertext over
+// I2P and relays it back over the facade. Verifies the digest and decrypts.
+// Throws (ApiError) on a fetch error. No receipt confirm (TTL reclaims).
+Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer);
+
 // Splits a blob download URL ("http://<b33>.b32.i2p/b/<id>") into its host and
 // path. Throws if it is not a well-formed .b32.i2p URL.
 void splitBlobUrl(const std::string& blobUrl, std::string& host, std::string& path);

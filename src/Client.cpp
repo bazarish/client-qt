@@ -224,6 +224,11 @@ BlobUploadResult Client::uploadBlob(const PackedBlob& packed, const BlobRetentio
     return bazarish::client::uploadBlob(api_, packed, retention);
 }
 
+Bytes Client::fetchBlobViaProxy(const BlobPointer& pointer)
+{
+    return bazarish::client::fetchBlobViaProxy(api_, pointer);
+}
+
 Bytes Client::getContent(const std::string& contentId)
 {
     const ApiResponse response = api_.get("/v1/content/" + contentId);

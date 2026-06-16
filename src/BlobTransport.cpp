@@ -116,6 +116,17 @@ Bytes fetchBlob(const std::string& samHost, const std::uint16_t samPort,
     return blob;
 }
 
+Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer)
+{
+    std::string host;
+    std::string path;
+    splitBlobUrl(pointer.blobUrl, host, path);
+    // The server validates the host, fetches the ciphertext over I2P and relays
+    // it back; get() throws on any non-success status.
+    const ApiResponse response = api.get("/v1/messaging/blob-proxy", "host=" + host + "&path=" + path);
+    return unpackLargeBlob(response.body, pointer.fileKey, pointer.sha256);
+}
+
 BlobUploadResult uploadBlob(
     ApiClient& api, const PackedBlob& packed, const BlobRetention& retention)
 {

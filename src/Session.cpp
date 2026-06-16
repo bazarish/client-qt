@@ -828,7 +828,7 @@ void Session::saveAttachment(
     const Bytes pointerBytes = fromBase64(ref);
     const BlobPointer pointer
         = blobPointerFromJson(nlohmann::json::parse(pointerBytes.begin(), pointerBytes.end()));
-    const Bytes plain = fetchBlob("127.0.0.1", 7656, pointer, blobFetchPrivacy_);
+    const Bytes plain = fetchLargeBlob(pointer);
     writeFileBytes(dest, plain);
 }
 
@@ -912,6 +912,19 @@ void Session::setBlobFetchPrivacy(const I2pPrivacy privacy)
     blobFetchPrivacy_ = privacy;
 }
 
+Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
+{
+    try {
+        // Direct over a fresh transient SAM session (preferred — our server is
+        // never involved).
+        return fetchBlob("127.0.0.1", 7656, pointer, blobFetchPrivacy_);
+    } catch (const std::exception&) {
+        // No local SAM bridge (or the direct fetch failed): fall back to our own
+        // server proxying the fetch over I2P.
+        return client_->fetchBlobViaProxy(pointer);
+    }
+}
+
 std::vector<IncomingMessage> Session::sync()
 {
     std::vector<IncomingMessage> result;
@@ -983,7 +996,7 @@ std::vector<IncomingMessage> Session::sync()
         if (type == "blob.pointer") {
             try {
                 const BlobPointer pointer = blobPointerFromJson(body.at("pointer"));
-                const Bytes content = fetchBlob("127.0.0.1", 7656, pointer, blobFetchPrivacy_);
+                const Bytes content = fetchLargeBlob(pointer);
                 body = nlohmann::json::parse(content.begin(), content.end());
                 type = body.value("type", std::string("text"));
             } catch (const std::exception&) {

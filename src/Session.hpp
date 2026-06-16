@@ -412,6 +412,10 @@ private:
     nlohmann::json groupsToJson() const;
 
     std::filesystem::path stateDir_;
+    // Fetches an externalized blob: direct over a transient SAM session, falling
+    // back to the own-server I2P proxy when this client has no local SAM bridge.
+    Bytes fetchLargeBlob(const BlobPointer& pointer);
+
     std::unique_ptr<Client> client_;
     I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::kMax;
     Key sealingKey_;
