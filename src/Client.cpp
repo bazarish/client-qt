@@ -146,30 +146,42 @@ ContactInfo Client::lookupContact(const std::string& peerFingerprint)
     return info;
 }
 
-ContactInfo Client::fetchCard(const Descriptor& descriptor)
+FetchOutcome Client::relayFetch(
+    const std::string& toDest, const std::string& op, const Bytes& sealed)
+{
+    const ApiResponse response = api_.postJson("/v1/messaging/fetch",
+        {
+            {"toDest", toDest},
+            {"op", op},
+            {"sealed", toBase64(sealed)},
+        });
+    const nlohmann::json body = response.json();
+    FetchOutcome outcome;
+    outcome.ok = body.at("ok").get<bool>();
+    if (body.contains("sealed")) {
+        outcome.sealed = fromBase64(body.at("sealed").get<std::string>());
+    }
+    outcome.errorCode = body.value("errorCode", std::string());
+    return outcome;
+}
+
+ContactInfo Client::fetchCard(const Descriptor& descriptor, const FetchTransport& transport)
 {
     // Seal the query (which fingerprint) to the serving server's serving sealing
-    // key so our own server (the relay) cannot read it; the response comes back
-    // sealed to a fresh ephemeral key only we hold.
+    // key so a relay cannot read it; the response comes back sealed to a fresh
+    // ephemeral key only we hold.
     const Key ephemeral = Key::generateSealing();
     const CardFetchQuery query{descriptor.fingerprint, ephemeral.publicDer()};
     const std::string queryJson = toJson(query).dump();
     const Bytes sealedQuery = cms::seal(
         Bytes(queryJson.begin(), queryJson.end()), Key::fromPublicDer(descriptor.srvKeyDer));
 
-    const ApiResponse response = api_.postJson("/v1/messaging/fetch",
-        {
-            {"toDest", descriptor.srv},
-            {"op", "card"},
-            {"sealed", toBase64(sealedQuery)},
-        });
-    const nlohmann::json body = response.json();
-    if (!body.at("ok").get<bool>()) {
-        throw std::runtime_error(
-            "card fetch failed: " + body.value("errorCode", std::string("CARD_UNKNOWN")));
+    const FetchOutcome outcome = transport(descriptor.srv, "card", sealedQuery);
+    if (!outcome.ok) {
+        throw std::runtime_error("card fetch failed: "
+            + (outcome.errorCode.empty() ? std::string("CARD_UNKNOWN") : outcome.errorCode));
     }
-    const Bytes responseBytes
-        = cms::unseal(fromBase64(body.at("sealed").get<std::string>()), ephemeral);
+    const Bytes responseBytes = cms::unseal(outcome.sealed, ephemeral);
     const CardFetchResponse fetched
         = cardFetchResponseFromJson(nlohmann::json::parse(responseBytes));
 
@@ -182,6 +194,38 @@ ContactInfo Client::fetchCard(const Descriptor& descriptor)
     }
     validateB32I2pHost(info.subscriptionCert.dest);
     return info;
+}
+
+Descriptor Client::resolveAlias(const std::string& alias, const ResolverCoordinate& resolver,
+    const std::int64_t now, const FetchTransport& transport)
+{
+    // Seal the query (which alias) to the resolver's serving key so a relay on
+    // the proxy path cannot read it; the response is sealed to a fresh ephemeral
+    // key only we hold.
+    const Key ephemeral = Key::generateSealing();
+    const ResolveQuery query{alias, ephemeral.publicDer()};
+    const std::string queryJson = toJson(query).dump();
+    const Bytes sealedQuery = cms::seal(
+        Bytes(queryJson.begin(), queryJson.end()), Key::fromPublicDer(resolver.sealingKeyDer));
+
+    const FetchOutcome outcome = transport(resolver.dest, "resolve", sealedQuery);
+    if (!outcome.ok) {
+        throw std::runtime_error("alias resolve failed: "
+            + (outcome.errorCode.empty() ? std::string("ALIAS_UNKNOWN") : outcome.errorCode));
+    }
+    const Bytes responseBytes = cms::unseal(outcome.sealed, ephemeral);
+    const ResolveResponse fetched
+        = resolveResponseFromJson(nlohmann::json::parse(responseBytes));
+
+    // Verify the signature chain (record -> delegated key -> hardcoded root) and
+    // that the record is for the alias we asked for. This is the integrity
+    // anchor: even a malicious relay can only withhold, never forge a binding.
+    const ResolveRecord record = verifyResolveRecord(
+        fetched.recordDer, fetched.delegationDer, resolver.rootFingerprint, now);
+    if (record.alias != alias) {
+        throw std::runtime_error("resolver returned a record for a different alias");
+    }
+    return record.descriptor;
 }
 
 DestinationInfo Client::myDestination()

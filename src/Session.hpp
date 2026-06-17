@@ -231,17 +231,26 @@ public:
     // reach us with no trust in any server. Requires an active subscription.
     std::string inviteUri() const;
 
-    // Adds a contact from an invite URI: the embedded chain is verified
-    // offline (no lookup) and a contact request is sent to the peer.
-    void addByInvite(const std::string& inviteUri, const std::string& text);
+    // Adds a contact from an invite descriptor (bazarish://invite?fp&srv&srv_key):
+    // the user-signed contact card is fetched for the descriptor's fingerprint
+    // and verified against it, then a contact request is sent. Returns the added
+    // contact's fingerprint so the UI can surface it for out-of-band verification.
+    std::string addByInvite(const std::string& inviteUri, const std::string& text);
 
-    // Adds a contact by username (alias) registered on our own server. The
-    // resolver maps the alias to a fingerprint, which is the one trust
-    // compromise — a hostile resolver could return a wrong fingerprint;
-    // everything after the mapping is verified end-to-end. The resolver is our
-    // own server's service node (facade locality — we never query a foreign
-    // facade); a cross-server @alias awaits the sealed federated resolve.
-    void addByUsername(const std::string& alias, const std::string& text);
+    // Adds a contact by username (alias) on the central resolver. The resolver
+    // maps the alias to a descriptor over a signed, self-verifying record (chain:
+    // record -> delegated key -> hardcoded resolver root); the alias->fingerprint
+    // binding is the one residual trust of the name path. Everything after it —
+    // the card fetch and its certificates — is verified end-to-end. Returns the
+    // resolved fingerprint so the UI can surface it for out-of-band verification
+    // (the only defense against a hostile resolver). Throws if no resolver is
+    // configured in this build.
+    std::string addByUsername(const std::string& alias, const std::string& text);
+
+    // Overrides the central resolver coordinate (root fingerprint + destination +
+    // serving key). The shipped client bakes one in (defaultResolverCoordinate);
+    // this exists for deployments that point at a different resolver and for tests.
+    void setResolverCoordinate(ResolverCoordinate coordinate);
 
     // Sends an E2E-encrypted message to an established contact, spending one
     // of the peer's tokens. Throws if the contact is unknown or out of
@@ -362,6 +371,13 @@ private:
     void requestWithInfo(const std::string& peerFingerprint, const std::string& text,
         const ContactInfo& info);
 
+    // The fetch transport for card / alias-resolve frames: a fresh transient-SAM
+    // dial preferred (our own server uninvolved), falling back to the own-server
+    // I2P proxy when there is no local SAM bridge or the direct dial fails. A
+    // served negative (CARD_UNKNOWN / ALIAS_UNKNOWN) is authoritative and does
+    // not trigger the fallback — only a transport failure does.
+    FetchTransport fetchTransport() const;
+
     // Sends a built inner content envelope to an established contact: handles
     // the first-reply bootstrap, seals to the peer and spends one token.
     void sendContent(const std::string& peerFingerprint, nlohmann::json inner,
@@ -445,6 +461,8 @@ private:
     void persistSentBlobs() const;
 
     std::unique_ptr<Client> client_;
+    // The central alias resolver this profile resolves usernames against.
+    ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
     I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::kMax;
     std::map<std::string, SentBlob> sentBlobs_;
     Key sealingKey_;

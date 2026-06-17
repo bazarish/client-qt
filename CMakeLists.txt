@@ -69,6 +69,7 @@ add_library(bazarish_client_lib STATIC
     src/Bot.cpp
     src/Client.cpp
     src/BlobTransport.cpp
+    src/FederationFetch.cpp
     src/I2pKeys.cpp
     src/Invite.cpp
     src/LargeBlob.cpp

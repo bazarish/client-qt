@@ -225,22 +225,27 @@ int runAddInvite(const std::vector<std::string>& args)
                                    || trimmed.back() == ' ')) {
         trimmed.pop_back();
     }
-    session.addByInvite(trimmed, args[3]);
-    std::printf("contact request sent from invite\n");
+    const std::string fingerprint = session.addByInvite(trimmed, args[3]);
+    // Surface the fingerprint for out-of-band verification (the descriptor is the
+    // integrity anchor; the card was verified against it).
+    std::printf("contact request sent from invite (verify fingerprint: %s)\n", fingerprint.c_str());
     return 0;
 }
 
 int runAddUser(const std::vector<std::string>& args)
 {
-    // add-user <state> <alias> <text>  (alias resolves on our own server;
-    // facade locality — no foreign resolver)
+    // add-user <state> <alias> <text>  (alias resolves on the central resolver
+    // over a signed, self-verifying record)
     if (args.size() != 4) {
         printUsage();
         return 2;
     }
     Session session = Session::open(args[1], keyPassphrase());
-    session.addByUsername(args[2], args[3]);
-    std::printf("contact request sent to %s (resolver-trusted mapping)\n", args[2].c_str());
+    const std::string fingerprint = session.addByUsername(args[2], args[3]);
+    // The alias->fingerprint binding is the one residual trust of the name path;
+    // print the resolved fingerprint so the user can verify it out of band.
+    std::printf("contact request sent to %s (verify fingerprint: %s)\n", args[2].c_str(),
+        fingerprint.c_str());
     return 0;
 }
 

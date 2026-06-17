@@ -2,6 +2,7 @@
 #include "Session.hpp"
 
 #include "BlobTransport.hpp"
+#include "FederationFetch.hpp"
 #include "I2pKeys.hpp"
 #include "LargeBlob.hpp"
 
@@ -38,6 +39,30 @@ constexpr int kMessageFormatVersion = 1;
 std::int64_t nowSeconds()
 {
     return static_cast<std::int64_t>(std::time(nullptr));
+}
+
+// Normalizes an alias to the resolver's canonical form: case-insensitive, 1-32
+// characters of a-z and 0-9 (api/AliasResolver.md). Throws on an invalid name so
+// a malformed query never reaches the resolver.
+std::string normalizeAlias(const std::string& alias)
+{
+    if (alias.empty() || alias.size() > 32) {
+        throw std::runtime_error("alias must be 1-32 characters");
+    }
+    std::string normalized;
+    normalized.reserve(alias.size());
+    for (const char c : alias) {
+        char lower = c;
+        if (c >= 'A' && c <= 'Z') {
+            lower = static_cast<char>(c - 'A' + 'a');
+        }
+        const bool valid = (lower >= 'a' && lower <= 'z') || (lower >= '0' && lower <= '9');
+        if (!valid) {
+            throw std::runtime_error("alias may contain only a-z and 0-9");
+        }
+        normalized.push_back(lower);
+    }
+    return normalized;
 }
 
 // Applies a bootstrap block (the peer's sealing prekey, serving destination +
@@ -634,26 +659,57 @@ void Session::sendContactRequest(const std::string& peerFingerprint, const std::
     requestWithInfo(peerFingerprint, text, info);
 }
 
-void Session::addByInvite(const std::string& inviteUri, const std::string& text)
+FetchTransport Session::fetchTransport() const
+{
+    return [this](const std::string& toDest, const std::string& op, const Bytes& sealed) {
+        try {
+            // Direct over a fresh transient SAM session (preferred — our own
+            // server is never involved, and a b33 dial authenticates the target).
+            return federationFetchOverSam(
+                "127.0.0.1", 7656, toDest, op, sealed, blobFetchPrivacy_);
+        } catch (const std::exception&) {
+            // No local SAM bridge (or the direct dial failed): relay the opaque
+            // sealed bytes through our own server's I2P proxy.
+            return client_->relayFetch(toDest, op, sealed);
+        }
+    };
+}
+
+std::string Session::addByInvite(const std::string& inviteUri, const std::string& text)
 {
     // The invite is a descriptor (fingerprint + serving destination + serving
     // sealing key). Fetch the user-signed contact card for that fingerprint and
     // verify it against the fingerprint (api/FederatedResolve.md): a wrong server
     // can only withhold, never forge a card for someone else's fingerprint.
     const Descriptor descriptor = parseDescriptor(inviteUri);
-    const ContactInfo info = client_->fetchCard(descriptor);
+    const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
     requestWithInfo(descriptor.fingerprint, text, info);
+    return descriptor.fingerprint;
 }
 
-void Session::addByUsername(const std::string& alias, const std::string& text)
+void Session::setResolverCoordinate(ResolverCoordinate coordinate)
 {
-    // Resolve the alias to a fingerprint on our own server's service node
-    // (facade locality — we never query a foreign facade). This mapping is the
-    // one trust compromise of the username path: a hostile resolver could
-    // return an attacker's fingerprint. Everything after the mapping — the
-    // contact lookup and its certificates — is verified end-to-end as usual.
-    const std::string fingerprint = client_->resolve(alias).user;
-    sendContactRequest(fingerprint, text);
+    resolverCoordinate_ = std::move(coordinate);
+}
+
+std::string Session::addByUsername(const std::string& alias, const std::string& text)
+{
+    if (!resolverCoordinate_.configured()) {
+        throw std::runtime_error("no alias resolver is configured in this build");
+    }
+    // Resolve the alias to a descriptor on the central resolver. The resolver's
+    // record is self-verifying (signed, chained to the hardcoded root), so even a
+    // malicious relay can only withhold, never forge the binding. The
+    // alias->fingerprint mapping is the one residual trust of the name path: the
+    // resolved fingerprint is returned so the UI can surface it for out-of-band
+    // verification. Everything after the mapping — the card fetch and its
+    // certificates — is verified end-to-end as usual.
+    const std::string normalized = normalizeAlias(alias);
+    const Descriptor descriptor
+        = client_->resolveAlias(normalized, resolverCoordinate_, nowSeconds(), fetchTransport());
+    const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
+    requestWithInfo(descriptor.fingerprint, text, info);
+    return descriptor.fingerprint;
 }
 
 void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,

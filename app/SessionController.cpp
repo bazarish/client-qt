@@ -348,8 +348,9 @@ void SessionWorker::leaveGroup(const QString& groupId)
 void SessionWorker::addByInvite(const QString& uri, const QString& intro)
 {
     try {
-        session_->addByInvite(uri.toStdString(), intro.toStdString());
-        emit actionOk("Contact request sent.");
+        const std::string fingerprint = session_->addByInvite(uri.toStdString(), intro.toStdString());
+        // Surface the fingerprint for out-of-band verification (safety-number style).
+        emit actionOk(QString::fromStdString("Contact request sent. Verify fingerprint: " + fingerprint));
         sync();
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -359,8 +360,10 @@ void SessionWorker::addByInvite(const QString& uri, const QString& intro)
 void SessionWorker::addByUsername(const QString& alias, const QString& intro)
 {
     try {
-        session_->addByUsername(alias.toStdString(), intro.toStdString());
-        emit actionOk("Contact request sent.");
+        const std::string fingerprint = session_->addByUsername(alias.toStdString(), intro.toStdString());
+        // The alias->fingerprint binding is the one residual trust of the name
+        // path; surface the resolved fingerprint for out-of-band verification.
+        emit actionOk(QString::fromStdString("Contact request sent. Verify fingerprint: " + fingerprint));
         sync();
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));

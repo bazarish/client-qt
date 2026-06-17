@@ -77,6 +77,17 @@ int main()
     const std::string aliceDest = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
     const std::string bobDest = "elkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
 
+    // The central alias resolver: a root identity (the hardcoded trust anchor), a
+    // short-lived delegated identity it signs records with, and its serving
+    // sealing key + .b32.i2p destination.
+    const Identity resolverRoot = Identity::generate();
+    const Identity resolverDelegated = Identity::generate();
+    const Key resolverSealing = Key::generateSealing();
+    const std::string resolverDest = "flkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
+    const std::int64_t resolverWeek = 7 * 24 * 3600;
+    const Bytes resolverDelegationDer
+        = DelegationCertificate::issue(resolverRoot, resolverDelegated, now, now + resolverWeek);
+
     const Identity alice = Identity::generate();
     const Identity bob = Identity::generate();
 
@@ -161,16 +172,46 @@ int main()
         [&](const httplib::Request& request, httplib::Response& response) {
             (void)requireCaller(request);
             const nlohmann::json req = nlohmann::json::parse(request.body);
-            CHECK(req.at("op") == "card");
-            CHECK(req.at("toDest") == bobDest);
-            const Bytes queryBytes = cms::unseal(fromBase64(req.at("sealed").get<std::string>()),
-                Key::fromPrivatePem(serverSealing.privatePem()));
-            const CardFetchQuery query = cardFetchQueryFromJson(nlohmann::json::parse(queryBytes));
-            CHECK(query.fingerprint == bob.fingerprint());
-            const Key bobSealing = Key::generateSealing();
-            const Bytes subCert = SubscriptionCertificate::issue(bob, serverFp, now, now + 3600,
-                bobSealing.publicDer(), bobDest, serverSealing.publicDer());
-            const std::string respJson = toJson(CardFetchResponse{subCert}).dump();
+            const std::string op = req.at("op").get<std::string>();
+            const Bytes sealed = fromBase64(req.at("sealed").get<std::string>());
+
+            if (op == "card") {
+                CHECK(req.at("toDest") == bobDest);
+                const Bytes queryBytes
+                    = cms::unseal(sealed, Key::fromPrivatePem(serverSealing.privatePem()));
+                const CardFetchQuery query
+                    = cardFetchQueryFromJson(nlohmann::json::parse(queryBytes));
+                CHECK(query.fingerprint == bob.fingerprint());
+                const Key bobSealing = Key::generateSealing();
+                const Bytes subCert = SubscriptionCertificate::issue(bob, serverFp, now, now + 3600,
+                    bobSealing.publicDer(), bobDest, serverSealing.publicDer());
+                const std::string respJson = toJson(CardFetchResponse{subCert}).dump();
+                const Bytes sealedResp = cms::seal(Bytes(respJson.begin(), respJson.end()),
+                    Key::fromPublicDer(query.responseKeyDer));
+                respondJson(response, {{"ok", true}, {"sealed", toBase64(sealedResp)}});
+                return;
+            }
+
+            // op == "resolve": the central resolver unseals the query with its
+            // serving key, signs a self-verifying record (delegated key) and seals
+            // it to the response key. An unknown alias answers ALIAS_UNKNOWN.
+            CHECK(op == "resolve");
+            CHECK(req.at("toDest") == resolverDest);
+            const Bytes queryBytes
+                = cms::unseal(sealed, Key::fromPrivatePem(resolverSealing.privatePem()));
+            const ResolveQuery query = resolveQueryFromJson(nlohmann::json::parse(queryBytes));
+            if (query.alias == "ghost") {
+                respondJson(response, {{"ok", false}, {"errorCode", "ALIAS_UNKNOWN"}});
+                return;
+            }
+            // "swap" exercises the client-side guard: the resolver answers a
+            // record bound to a different alias than the one queried.
+            const std::string recordAlias = query.alias == "swap" ? "other" : query.alias;
+            const Descriptor descriptor{bob.fingerprint(), bobDest, serverSealing.publicDer()};
+            const ResolveRecord record{recordAlias, descriptor, now, now + resolverWeek};
+            const ResolveResponse resp{
+                signResolveRecord(record, resolverDelegated), resolverDelegationDer};
+            const std::string respJson = toJson(resp).dump();
             const Bytes sealedResp = cms::seal(Bytes(respJson.begin(), respJson.end()),
                 Key::fromPublicDer(query.responseKeyDer));
             respondJson(response, {{"ok", true}, {"sealed", toBase64(sealedResp)}});
@@ -250,6 +291,13 @@ int main()
 
     Client client(Identity::fromPrivatePem(alice.privatePem()), "client01", endpoint);
 
+    // The own-server proxy fetch transport (the no-SAM-bridge path): card and
+    // resolve frames ride through POST /v1/messaging/fetch (relayFetch).
+    const FetchTransport proxy
+        = [&client](const std::string& toDest, const std::string& op, const Bytes& sealed) {
+              return client.relayFetch(toDest, op, sealed);
+          };
+
     // Subscribe (publishing a sealing prekey) returns the granted lifecycle
     // and a verifiable server card.
     {
@@ -278,7 +326,7 @@ int main()
     // back and must be for the descriptor's fingerprint.
     {
         const Descriptor descriptor{bob.fingerprint(), bobDest, serverSealing.publicDer()};
-        const ContactInfo info = client.fetchCard(descriptor);
+        const ContactInfo info = client.fetchCard(descriptor, proxy);
         CHECK(info.subscriptionCert.user == bob.fingerprint());
         CHECK(info.subscriptionCert.dest == bobDest);
         CHECK(info.subscriptionCert.servingSealingKey().publicDer() == serverSealing.publicDer());
@@ -296,12 +344,44 @@ int main()
         client.registerAlias("alice", now, std::nullopt);
     }
 
-    // Resolve returns a verified trust chain.
+    // Resolve returns a verified trust chain (legacy own-server resolve, kept
+    // until the alias registry moves out to the central resolver).
     {
         const ResolveResult resolved = client.resolve("bob");
         CHECK(resolved.user == bob.fingerprint());
         CHECK(resolved.aliasCert.alias == "bob");
         CHECK(resolved.subscriptionCert.server == serverFp);
+    }
+
+    // Central alias resolve: the signed, self-verifying record maps the alias to a
+    // descriptor; the chain is verified against the resolver root fingerprint.
+    const ResolverCoordinate resolver{
+        resolverRoot.fingerprint(), resolverDest, resolverSealing.publicDer()};
+    const auto rejects = [&](const auto& fn) {
+        try {
+            fn();
+        } catch (const std::exception&) {
+            return true;
+        }
+        return false;
+    };
+    {
+        const Descriptor descriptor = client.resolveAlias("bob", resolver, now, proxy);
+        CHECK(descriptor.fingerprint == bob.fingerprint());
+        CHECK(descriptor.srv == bobDest);
+        CHECK(descriptor.srvKeyDer == serverSealing.publicDer());
+
+        // An unknown alias surfaces as a thrown ALIAS_UNKNOWN.
+        CHECK(rejects([&]() { (void)client.resolveAlias("ghost", resolver, now, proxy); }));
+
+        // A record anchored to a different root is rejected (anti-MITM): even a
+        // correctly-formed reply fails the chain check against our root.
+        const ResolverCoordinate wrongRoot{
+            Identity::generate().fingerprint(), resolverDest, resolverSealing.publicDer()};
+        CHECK(rejects([&]() { (void)client.resolveAlias("bob", wrongRoot, now, proxy); }));
+
+        // A record whose alias differs from the one queried is rejected.
+        CHECK(rejects([&]() { (void)client.resolveAlias("swap", resolver, now, proxy); }));
     }
 
     // Client registry and token registration.
