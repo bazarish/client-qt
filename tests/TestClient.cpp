@@ -73,8 +73,8 @@ int main()
     // Destination-routed model: the server assigns each user a serving
     // destination + serving sealing key (here serverSealing stands in as that
     // key). Routing is by destination string, not by server fingerprint.
-    const std::string aliceDest = "alicedest.b32.i2p";
-    const std::string bobDest = "bobdest.b32.i2p";
+    const std::string aliceDest = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
+    const std::string bobDest = "elkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
 
     const Identity alice = Identity::generate();
     const Identity bob = Identity::generate();

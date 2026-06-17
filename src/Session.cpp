@@ -8,6 +8,7 @@
 
 #include <bazarish/Auth.hpp>
 #include <bazarish/Cms.hpp>
+#include <bazarish/I2pAddress.hpp>
 #include <bazarish/Tokens.hpp>
 
 #include <nlohmann/json.hpp>
@@ -49,6 +50,7 @@ void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap)
     }
     if (bootstrap.contains("dest")) {
         contact.dest = bootstrap.at("dest").get<std::string>();
+        validateB32I2pHost(contact.dest);
     }
     if (bootstrap.contains("servingKey")) {
         contact.servingSealingB64 = bootstrap.at("servingKey").get<std::string>();
@@ -663,6 +665,7 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     const Key peerPrekey = info.subscriptionCert.sealingKey();
     const Key peerServingKey = info.subscriptionCert.servingSealingKey();
     const std::string peerDest = info.subscriptionCert.dest;
+    validateB32I2pHost(peerDest);
 
     // Mint a batch the peer will use to write back to us and hand it over, with
     // our prekey and our routing (dest + serving sealing key), in the bootstrap.
@@ -1371,6 +1374,7 @@ void Session::applyRoster(const std::string& groupId, const Bytes& rosterDer, bo
         GroupMember member;
         member.sealingPublicB64 = jm.at("sealing").get<std::string>();
         member.dest = jm.at("dest").get<std::string>();
+        validateB32I2pHost(member.dest);
         member.servingSealingB64 = jm.at("servingKey").get<std::string>();
         member.admin = admin;
         const auto kept = keptTokens.find(fp);

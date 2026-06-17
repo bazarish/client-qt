@@ -2,6 +2,7 @@
 #include "Client.hpp"
 
 #include <bazarish/Cms.hpp>
+#include <bazarish/I2pAddress.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -150,6 +151,7 @@ DestinationInfo Client::myDestination()
     const nlohmann::json body = response.json();
     DestinationInfo info;
     info.dest = body.at("dest").get<std::string>();
+    validateB32I2pHost(info.dest);
     const std::string servingKey = body.value("servingKey", std::string());
     if (!servingKey.empty()) {
         info.servingSealingKeyDer = fromBase64(servingKey);
