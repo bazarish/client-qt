@@ -36,6 +36,11 @@ constexpr std::size_t kRefillThreshold = 16;
 // Inner end-to-end payload format version (see docs Messages.md).
 constexpr int kMessageFormatVersion = 1;
 
+// How long an offline transient delegated to the serving server stays valid.
+// Kept short so the operator only ever holds a time-boxed capability; the client
+// re-issues a fresh one well before it lapses (see refreshI2pTransientIfDue).
+constexpr std::int64_t kI2pTransientValiditySeconds = 7 * 24 * 3600;
+
 std::int64_t nowSeconds()
 {
     return static_cast<std::int64_t>(std::time(nullptr));
@@ -537,6 +542,94 @@ Bytes Session::i2pTransient() const
 std::string Session::i2pTransientBase64() const
 {
     return i2pPrivateKeysBase64(i2pTransient_);
+}
+
+std::string Session::loadI2pDestination(const Bytes& privateKeysDat)
+{
+    if (!i2pMaster_.empty()) {
+        throw std::runtime_error("a user-owned I2P destination is already configured");
+    }
+    const I2pMasterKey master = loadI2pMaster(privateKeysDat);
+    i2pMaster_ = master.privateKeys;
+    i2pAddress_ = master.base32;
+    persistI2pBlob("i2p-master.dat", i2pMaster_);
+    return i2pAddress_;
+}
+
+bool Session::enableI2pDest(const std::int64_t now)
+{
+    if (i2pMaster_.empty()) {
+        throw std::runtime_error("no user-owned I2P destination — generate or load one first");
+    }
+    if (!client_->setI2pDestEnabled(true)) {
+        return false;  // server refused (e.g. insufficient balance to charge a term)
+    }
+    const std::int64_t expiresUnix = now + kI2pTransientValiditySeconds;
+    renewI2pTransient(expiresUnix);
+    if (!client_->sendI2pTransient(i2pTransientBase64(), expiresUnix)) {
+        return false;
+    }
+    // Back the master up to the account's other devices so they keep the same
+    // address. Best effort — failure must not fail enabling.
+    try {
+        syncI2pMasterToSelf();
+    } catch (const std::exception&) {
+    }
+    return true;
+}
+
+void Session::disableI2pDest()
+{
+    client_->setI2pDestEnabled(false);
+}
+
+void Session::syncI2pMasterToSelf()
+{
+    if (i2pMaster_.empty() || myDest_.empty() || myServingKeyB64_.empty()) {
+        return;  // nothing to sync, or our own routing is not known yet
+    }
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.i2p-master"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+        {"i2pMaster", toBase64(i2pMaster_)},
+    };
+    const std::string innerText = inner.dump();
+    // Sealed to our own sealing key: only this account's devices, which share
+    // the key, can read it.
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
+    // Tokenless contact-class delivery to our own destination: it lands in our
+    // own mailbox, which every device of this account polls.
+    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+}
+
+I2pDestStatus Session::i2pDestStatus()
+{
+    return client_->i2pStatus();
+}
+
+bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_t leadSeconds)
+{
+    if (!hasI2pDestination()) {
+        return false;
+    }
+    const I2pDestStatus status = client_->i2pStatus();
+    if (!status.enabled || !status.active) {
+        return false;  // off or unpaid → the personal destination is offline; do not issue
+    }
+    // Poll-before-issue: the status read above is the check. If the server still
+    // holds a transient comfortably in date, another of the user's devices has
+    // already renewed it, so this device stands down.
+    if (status.transientExpires != 0 && status.transientExpires - now > leadSeconds) {
+        return false;
+    }
+    const std::int64_t expiresUnix = now + kI2pTransientValiditySeconds;
+    renewI2pTransient(expiresUnix);
+    return client_->sendI2pTransient(i2pTransientBase64(), expiresUnix);
 }
 
 std::string Session::signLogin(const std::string& challenge) const
@@ -1212,6 +1305,19 @@ std::vector<IncomingMessage> Session::sync()
         } else if (type == "token-refill") {
             // The fresh tokens already arrived via the bootstrap block.
             message.contentType = type;
+        } else if (type == "device.i2p-master") {
+            // A self-sync from another of our devices: adopt the I2P master if we
+            // do not already hold one, so this device keeps the same address.
+            // Idempotent (a device that already has it ignores it) and handled
+            // silently — not a user-visible message.
+            message.contentType = type;
+            if (message.fromFingerprint == fingerprint() && i2pMaster_.empty()) {
+                try {
+                    loadI2pDestination(fromBase64(body.at("i2pMaster").get<std::string>()));
+                } catch (const std::exception&) {
+                    // Malformed, wrong key type, or already configured: ignore.
+                }
+            }
         } else if (type == "group.invite") {
             // Added to a group: verify and store the signed roster, then bootstrap
             // our token pool to its members after the loop.

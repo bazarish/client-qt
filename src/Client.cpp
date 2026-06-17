@@ -109,6 +109,31 @@ bool Client::sendI2pTransient(const std::string& transientB64, const std::int64_
     return response.status == 200;
 }
 
+I2pDestStatus Client::i2pStatus()
+{
+    const ApiResponse response = api_.get("/v1/account/i2p-status");
+    const nlohmann::json body = response.json();
+    I2pDestStatus status;
+    status.enabled = body.value("enabled", false);
+    status.active = body.value("active", false);
+    status.paidThrough = body.value("paidThrough", std::int64_t{0});
+    status.projectedShutoff = body.value("projectedShutoff", std::int64_t{0});
+    status.transientExpires = body.value("transientExpires", std::int64_t{0});
+    status.transientUpdatedAt = body.value("transientUpdatedAt", std::int64_t{0});
+    status.storageQuotaBytes = body.value("storageQuotaBytes", std::uint64_t{0});
+    status.storageActive = body.value("storageActive", false);
+    status.storageProjectedShutoff = body.value("storageProjectedShutoff", std::int64_t{0});
+    status.balanceAtomic = body.value("balanceAtomic", std::string());
+    status.currency = body.value("currency", std::string());
+    return status;
+}
+
+bool Client::setI2pDestEnabled(const bool enabled)
+{
+    const ApiResponse response = api_.postJson("/v1/account/i2p-dest/setting", {{"enabled", enabled}});
+    return response.status == 200;
+}
+
 void Client::registerAlias(const std::string& alias, const std::int64_t issuedAt,
     const std::optional<std::int64_t> notAfter)
 {
@@ -234,7 +259,12 @@ DestinationInfo Client::myDestination()
     const nlohmann::json body = response.json();
     DestinationInfo info;
     info.dest = body.at("dest").get<std::string>();
-    validateB32I2pHost(info.dest);
+    info.state = body.value("state", std::string());
+    // The dest is empty while a personal destination is still building or has
+    // gone offline; only validate (and later publish) a present address.
+    if (!info.dest.empty()) {
+        validateB32I2pHost(info.dest);
+    }
     const std::string servingKey = body.value("servingKey", std::string());
     if (!servingKey.empty()) {
         info.servingSealingKeyDer = fromBase64(servingKey);

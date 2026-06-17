@@ -56,6 +56,13 @@ public slots:
     void requestInvite();
     void saveAttachment(const QString& ref, const QString& key, const QString& destPath);
     void exportProfile(const QString& path, const QString& password);
+    // Per-user I2P destination: set up the master (generate or load a .dat),
+    // turn the paid option on/off, and report the current status.
+    void generatePersonalKey();
+    void loadPersonalKey(const QString& path);
+    void enablePersonalDest();
+    void disablePersonalDest();
+    void refreshI2pStatus();
 
 signals:
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
@@ -78,6 +85,11 @@ signals:
     void groupsRefreshed(const QStringList& ids, const QStringList& names);
     void groupCreated(const QString& groupId, const QString& name);
     void groupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
+    // hasKey: a master is set up in the profile. enabled/active: the paid option
+    // is on / currently paid-active. address: the personal b32 (empty if none).
+    // summary: a one-line human status for the settings page.
+    void i2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
+        const QString& summary);
 
 private:
     void ensureSyncTimer();
@@ -120,6 +132,12 @@ class SessionController : public QObject {
     // one-to-one chat), for the group-info panel.
     Q_PROPERTY(QStringList activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
     Q_PROPERTY(bool activeGroupAdmin READ activeGroupAdmin NOTIFY activeGroupChanged)
+    // Per-user I2P destination status for the settings page.
+    Q_PROPERTY(bool i2pHasKey READ i2pHasKey NOTIFY i2pStatusChanged)
+    Q_PROPERTY(bool i2pEnabled READ i2pEnabled NOTIFY i2pStatusChanged)
+    Q_PROPERTY(bool i2pActive READ i2pActive NOTIFY i2pStatusChanged)
+    Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
+    Q_PROPERTY(QString i2pStatusText READ i2pStatusText NOTIFY i2pStatusChanged)
 public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
@@ -143,6 +161,11 @@ public:
     QString editingText() const { return editingText_; }
     QStringList activeGroupMembers() const { return activeGroupMembers_; }
     bool activeGroupAdmin() const { return activeGroupAdmin_; }
+    bool i2pHasKey() const { return i2pHasKey_; }
+    bool i2pEnabled() const { return i2pEnabled_; }
+    bool i2pActive() const { return i2pActive_; }
+    QString i2pAddress() const { return i2pAddress_; }
+    QString i2pStatusText() const { return i2pStatusText_; }
 
     // Opens a profile on the worker thread (dir + id + passphrase).
     void open(const QString& dir, const QString& profileId, const QString& passphrase);
@@ -190,6 +213,12 @@ public:
     Q_INVOKABLE void saveAttachment(const QString& ref, const QString& key, const QString& fileUrl);
     Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
+    // Per-user I2P destination controls (drive the worker thread).
+    Q_INVOKABLE void generatePersonalKey();
+    Q_INVOKABLE void loadPersonalKey(const QString& fileUrl);
+    Q_INVOKABLE void enablePersonalDest();
+    Q_INVOKABLE void disablePersonalDest();
+    Q_INVOKABLE void refreshI2pStatus();
 
 signals:
     void identityChanged();
@@ -202,6 +231,7 @@ signals:
     void unreadTotalChanged();
     void onlineChanged();
     void reachableChanged();
+    void i2pStatusChanged();
     void openFailed(const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
@@ -233,6 +263,11 @@ signals:  // to worker
     void requestExport(const QString& path, const QString& password);
     void requestOpen(const QString& dir, const QString& passphrase);
     void requestSetSync(bool on);
+    void requestGeneratePersonalKey();
+    void requestLoadPersonalKey(const QString& path);
+    void requestEnablePersonalDest();
+    void requestDisablePersonalDest();
+    void requestRefreshI2pStatus();
 
 private slots:
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected,
@@ -247,6 +282,8 @@ private slots:
     void onGroupsRefreshed(const QStringList& ids, const QStringList& names);
     void onGroupCreated(const QString& groupId, const QString& name);
     void onGroupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
+    void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
+        const QString& summary);
 
 private:
     QThread thread_;
@@ -282,6 +319,11 @@ private:
     QHash<QString, QString> groupNames_;
     QStringList activeGroupMembers_;
     bool activeGroupAdmin_ = false;
+    bool i2pHasKey_ = false;
+    bool i2pEnabled_ = false;
+    bool i2pActive_ = false;
+    QString i2pAddress_;
+    QString i2pStatusText_;
     // Rebuilds the chat list from the cached contacts + groups.
     void rebuildChatList();
     int unreadTotal_ = 0;

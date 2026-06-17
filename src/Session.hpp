@@ -193,9 +193,33 @@ public:
     // and persists it sealed at rest, returning the stable base32 address;
     // subsequent calls are idempotent. The master never leaves the client.
     std::string ensureI2pDestination();
+    // Adopts an existing user-owned master from a .dat the user already holds
+    // (validated as an unencrypted Ed25519 destination), persisting it sealed at
+    // rest and returning its base32. Throws if the profile already has a master
+    // (a different key would change the user's address) or the blob is invalid.
+    std::string loadI2pDestination(const Bytes& privateKeysDat);
     bool hasI2pDestination() const;
     // The stable base32 address (without the ".b32.i2p" suffix), or empty.
     std::string i2pAddress() const;
+
+    // Turns the per-user i2p-dest option on: requires a master in the profile
+    // (generate or load one first), enables it server-side (charging a term),
+    // then issues and uploads a fresh transient so the personal destination
+    // comes up. Returns false if the server refused (e.g. insufficient balance).
+    bool enableI2pDest(std::int64_t now);
+    // Turns it off server-side: the personal destination is revoked and the user
+    // falls back to their fixed pool address. The master stays in the profile so
+    // re-enabling later restores the same address.
+    void disableI2pDest();
+    // The per-user i2p-dest status from the server (for display and decisions).
+    I2pDestStatus i2pDestStatus();
+    // Keeps the personal destination's transient fresh: polls the server status,
+    // and if the option is active and the current transient is within
+    // leadSeconds of expiry (or absent), issues a fresh transient and uploads it
+    // — but only after the poll, so when another of the user's devices has
+    // already renewed, this one stands down (the multi-device race). Returns
+    // true if it uploaded a new transient. A no-op without a personal dest.
+    bool refreshI2pTransientIfDue(std::int64_t now, std::int64_t leadSeconds);
     // Issues a fresh time-boxed transient (offline keys) from the master, valid
     // until expiresUnix — the delegation handed to the serving server to operate
     // the destination for the subscription window. Throws if the profile has no
@@ -382,6 +406,14 @@ private:
     // the first-reply bootstrap, seals to the peer and spends one token.
     void sendContent(const std::string& peerFingerprint, nlohmann::json inner,
         const std::function<void()>& onAcceptedByOwnServer = {});
+
+    // Sends the user-owned I2P master to the account's other devices: a
+    // service content message ("device.i2p-master") sealed to our own sealing
+    // key and delivered tokenlessly to our own destination, so it lands in our
+    // own mailbox and every device of this account picks it up on sync and
+    // persists the same master (preserving the b32 across devices). Best effort;
+    // a no-op when there is no master or our routing is not known yet.
+    void syncI2pMasterToSelf();
 
     // Mints a fresh token batch for the peer and sends it as a token-refill,
     // in response to the peer signalling a low stash (Contacts.md).

@@ -11,6 +11,8 @@
 
 #include <ctime>
 #include <exception>
+#include <fstream>
+#include <iterator>
 
 namespace bazarish::app {
 
@@ -400,6 +402,104 @@ void SessionWorker::requestInvite()
     }
 }
 
+void SessionWorker::refreshI2pStatus()
+{
+    if (!session_) {
+        return;
+    }
+    const bool hasKey = session_->hasI2pDestination();
+    const QString address
+        = hasKey ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p") : QString();
+    bool enabled = false;
+    bool active = false;
+    QString summary;
+    try {
+        const bazarish::client::I2pDestStatus s = session_->i2pDestStatus();
+        enabled = s.enabled;
+        active = s.active;
+        if (enabled && active) {
+            summary = QStringLiteral("On — your personal destination is live.");
+        } else if (enabled) {
+            summary = QStringLiteral(
+                "On but offline — top up to restore it, or turn it off to use the pool.");
+        } else if (hasKey) {
+            summary = QStringLiteral("Off — using the shared pool address (personal key ready).");
+        } else {
+            summary = QStringLiteral("Off — using the shared pool address.");
+        }
+    } catch (const std::exception&) {
+        // Not connected (or the node lacks the endpoint): show what we know.
+        summary = hasKey ? QStringLiteral("Personal key ready; connect to manage it.")
+                         : QStringLiteral("Using the shared pool address.");
+    }
+    emit i2pStatus(hasKey, enabled, active, address, summary);
+}
+
+void SessionWorker::generatePersonalKey()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->ensureI2pDestination();
+        emit actionOk("Personal I2P key created.");
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+    refreshI2pStatus();
+}
+
+void SessionWorker::loadPersonalKey(const QString& path)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        std::ifstream in(path.toStdString(), std::ios::binary);
+        if (!in) {
+            throw std::runtime_error("cannot open key file");
+        }
+        const bazarish::Bytes dat(
+            (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        session_->loadI2pDestination(dat);
+        emit actionOk("Personal I2P key loaded.");
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+    refreshI2pStatus();
+}
+
+void SessionWorker::enablePersonalDest()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        if (session_->enableI2pDest(static_cast<std::int64_t>(std::time(nullptr)))) {
+            emit actionOk("Personal I2P destination enabled.");
+        } else {
+            emit actionFailed("Insufficient balance — top up on the portal first.");
+        }
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+    refreshI2pStatus();
+}
+
+void SessionWorker::disablePersonalDest()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->disableI2pDest();
+        emit actionOk("Personal I2P destination disabled.");
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+    refreshI2pStatus();
+}
+
 void SessionWorker::saveAttachment(
     const QString& ref, const QString& key, const QString& destPath)
 {
@@ -460,6 +560,16 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::saveAttachment);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
+    connect(this, &SessionController::requestGeneratePersonalKey, worker_,
+        &SessionWorker::generatePersonalKey);
+    connect(this, &SessionController::requestLoadPersonalKey, worker_,
+        &SessionWorker::loadPersonalKey);
+    connect(this, &SessionController::requestEnablePersonalDest, worker_,
+        &SessionWorker::enablePersonalDest);
+    connect(this, &SessionController::requestDisablePersonalDest, worker_,
+        &SessionWorker::disablePersonalDest);
+    connect(this, &SessionController::requestRefreshI2pStatus, worker_,
+        &SessionWorker::refreshI2pStatus);
 
     // Results → controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
@@ -484,6 +594,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, &SessionController::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
+    connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
 
     // Keep the account-wide unread total in sync with the contacts model, so the
     // switcher badge updates even while this account is in the background.
@@ -847,6 +958,45 @@ QString SessionController::shortFingerprint(const QString& fp) const
         return fp;
     }
     return fp.left(8) + "…" + fp.right(4);
+}
+
+void SessionController::generatePersonalKey()
+{
+    emit requestGeneratePersonalKey();
+}
+
+void SessionController::loadPersonalKey(const QString& fileUrl)
+{
+    const QString localPath = QUrl(fileUrl).toLocalFile();
+    if (!localPath.isEmpty()) {
+        emit requestLoadPersonalKey(localPath);
+    }
+}
+
+void SessionController::enablePersonalDest()
+{
+    emit requestEnablePersonalDest();
+}
+
+void SessionController::disablePersonalDest()
+{
+    emit requestDisablePersonalDest();
+}
+
+void SessionController::refreshI2pStatus()
+{
+    emit requestRefreshI2pStatus();
+}
+
+void SessionController::onI2pStatus(const bool hasKey, const bool enabled, const bool active,
+    const QString& address, const QString& summary)
+{
+    i2pHasKey_ = hasKey;
+    i2pEnabled_ = enabled;
+    i2pActive_ = active;
+    i2pAddress_ = address;
+    i2pStatusText_ = summary;
+    emit i2pStatusChanged();
 }
 
 void SessionController::onOpened(const QString& fingerprint, const QString& displayName,

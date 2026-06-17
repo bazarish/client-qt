@@ -2,11 +2,13 @@
 #include "Qr.hpp"
 #include "Session.hpp"
 
+#include <bazarish/Crypto.hpp>
 #include <bazarish/Log.hpp>
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <exception>
 #include <fstream>
 #include <string>
@@ -56,7 +58,10 @@ void printUsage()
         "  bazarish-client init <state> <facade-url> <server-fp>\n"
         "  bazarish-client subscribe <state> [days]\n"
         "  bazarish-client whoami <state>\n"
-        "  bazarish-client i2p-enable <state>\n"
+        "  bazarish-client i2p-enable <state> [keyfile.dat]\n"
+        "  bazarish-client i2p-buy <state>\n"
+        "  bazarish-client i2p-cancel <state>\n"
+        "  bazarish-client i2p-status <state>\n"
         "  bazarish-client sign-login <state> <challenge>\n"
         "  bazarish-client alias <state> <name>\n"
         "  bazarish-client invite <state>\n"
@@ -143,15 +148,81 @@ int runWhoami(const std::vector<std::string>& args)
 
 int runI2pEnable(const std::vector<std::string>& args)
 {
-    // i2p-enable <state>: mint a user-owned I2P destination (the per-user
-    // portable address). Idempotent; the master key never leaves the client.
+    // i2p-enable <state> [keyfile.dat]: set up a user-owned I2P destination.
+    // With no file it mints a fresh random master; with a .dat it adopts an
+    // existing unencrypted Ed25519 destination key. The master never leaves the
+    // client.
+    if (args.size() < 2 || args.size() > 3) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    std::string address;
+    if (args.size() == 3) {
+        std::ifstream in(args[2], std::ios::binary);
+        if (!in) {
+            std::fprintf(stderr, "cannot open key file: %s\n", args[2].c_str());
+            return 1;
+        }
+        const bazarish::Bytes dat(
+            (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        address = session.loadI2pDestination(dat);
+    } else {
+        address = session.ensureI2pDestination();
+    }
+    std::printf("user-owned I2P destination: %s.b32.i2p\n", address.c_str());
+    return 0;
+}
+
+int runI2pBuy(const std::vector<std::string>& args)
+{
+    // i2p-buy <state>: turn on the paid per-user destination (charges a term,
+    // issues and uploads a transient, and backs the master up to other devices).
     if (args.size() != 2) {
         printUsage();
         return 2;
     }
     Session session = Session::open(args[1], keyPassphrase());
-    const std::string address = session.ensureI2pDestination();
-    std::printf("user-owned I2P destination: %s.b32.i2p\n", address.c_str());
+    if (!session.enableI2pDest(static_cast<std::int64_t>(std::time(nullptr)))) {
+        std::fprintf(stderr, "could not enable: insufficient balance (top up on the portal)\n");
+        return 1;
+    }
+    std::printf("personal I2P destination enabled: %s.b32.i2p\n", session.i2pAddress().c_str());
+    return 0;
+}
+
+int runI2pCancel(const std::vector<std::string>& args)
+{
+    // i2p-cancel <state>: turn the paid per-user destination off (falls back to
+    // the fixed pool address). The master stays in the profile.
+    if (args.size() != 2) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.disableI2pDest();
+    std::printf("personal I2P destination disabled; back on the shared pool address\n");
+    return 0;
+}
+
+int runI2pStatus(const std::vector<std::string>& args)
+{
+    // i2p-status <state>: print the per-user i2p-dest status from the server.
+    if (args.size() != 2) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    const bazarish::client::I2pDestStatus s = session.i2pDestStatus();
+    std::printf("enabled: %s\nactive: %s\npaidThrough: %lld\nprojectedShutoff: %lld\n"
+                "transientExpires: %lld\nstorageQuotaBytes: %llu\nstorageActive: %s\n"
+                "storageProjectedShutoff: %lld\nbalance: %s %s\n",
+        s.enabled ? "yes" : "no", s.active ? "yes" : "no",
+        static_cast<long long>(s.paidThrough), static_cast<long long>(s.projectedShutoff),
+        static_cast<long long>(s.transientExpires),
+        static_cast<unsigned long long>(s.storageQuotaBytes), s.storageActive ? "yes" : "no",
+        static_cast<long long>(s.storageProjectedShutoff), s.balanceAtomic.c_str(),
+        s.currency.c_str());
     return 0;
 }
 
@@ -499,11 +570,27 @@ int runSync(const std::vector<std::string>& args)
         session.setBlobFetchPrivacy(parsed.value());
     }
     const std::vector<IncomingMessage> messages = session.sync();
+    // Keep a personal destination's transient fresh (a no-op for free profiles).
+    // Re-issue ~2 days before the 7-day transient lapses, with a few hours of
+    // per-device jitter so concurrent devices do not all issue at once; the
+    // poll-before-issue inside stands the losers down.
+    try {
+        const std::int64_t now = static_cast<std::int64_t>(std::time(nullptr));
+        const std::int64_t jitter
+            = static_cast<std::int64_t>(bazarish::randomBytes(1)[0]) * 6 * 3600 / 255;
+        session.refreshI2pTransientIfDue(now, 5 * 24 * 3600 - jitter);
+    } catch (const std::exception&) {
+    }
     if (messages.empty()) {
         std::printf("(nothing pending)\n");
         return 0;
     }
     for (const IncomingMessage& message : messages) {
+        // A device self-sync (the I2P master backup) is applied silently inside
+        // sync(); do not print it as a chat message.
+        if (message.contentType == "device.i2p-master") {
+            continue;
+        }
         std::string body;
         if (message.contentType == "unsupported") {
             body = std::string("(unsupported type '") + message.rawType
@@ -569,6 +656,15 @@ int main(const int argc, const char** argv)
         }
         if (command == "i2p-enable") {
             return runI2pEnable(args);
+        }
+        if (command == "i2p-buy") {
+            return runI2pBuy(args);
+        }
+        if (command == "i2p-cancel") {
+            return runI2pCancel(args);
+        }
+        if (command == "i2p-status") {
+            return runI2pStatus(args);
         }
         if (command == "sign-login") {
             return runSignLogin(args);

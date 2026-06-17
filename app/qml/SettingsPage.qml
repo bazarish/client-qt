@@ -15,6 +15,9 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
 
+    // Refresh the per-user I2P destination status whenever Settings opens.
+    onOpened: if (session) session.refreshI2pStatus()
+
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
     property string pendingExportFile: ""
@@ -127,6 +130,52 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
+                // Personal I2P destination
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label { text: "Personal I2P destination"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        text: "Off by default, you share a fixed address from the server pool. Turn this on to be served on your own stable destination — portable across servers, kept even if you move. Trade-off: a unique, lasting address across all your contacts (less crowd-blending than the shared pool). Billed per term, renewed from your balance."
+                        color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                    Label {
+                        text: root.session ? root.session.i2pStatusText : ""
+                        color: (root.session && root.session.i2pActive) ? Theme.success : Theme.text
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                    Label {
+                        visible: root.session && root.session.i2pAddress.length > 0
+                        text: root.session ? root.session.i2pAddress : ""
+                        color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle; Layout.fillWidth: true
+                    }
+                    // Set up a master key first (generate or load a .dat), then turn it on.
+                    RowLayout {
+                        visible: root.session && !root.session.i2pHasKey
+                        Layout.fillWidth: true; spacing: 8
+                        Button { text: "Generate key"; onClicked: root.session.generatePersonalKey() }
+                        Button { text: "Load .dat…"; onClicked: i2pKeyDialog.open() }
+                    }
+                    RowLayout {
+                        visible: root.session && root.session.i2pHasKey
+                        Layout.fillWidth: true; spacing: 8
+                        Button {
+                            visible: root.session && !root.session.i2pEnabled
+                            text: "Turn on"
+                            enabled: root.session && root.session.connected
+                            onClicked: root.session.enablePersonalDest()
+                        }
+                        Button {
+                            visible: root.session && root.session.i2pEnabled
+                            text: "Turn off"
+                            onClicked: root.session.disablePersonalDest()
+                        }
+                        Button { text: "Refresh"; onClicked: root.session.refreshI2pStatus() }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
                 // Backup
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -187,6 +236,12 @@ Popup {
         fileMode: FileDialog.SaveFile
         currentFile: "file:///bazarish-backup.baz"
         onAccepted: { root.pendingExportFile = selectedFile; exportPassDialog.open() }
+    }
+    FileDialog {
+        id: i2pKeyDialog
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["I2P destination key (*.dat)", "All files (*)"]
+        onAccepted: if (root.session) root.session.loadPersonalKey(selectedFile)
     }
     Dialog {
         id: exportPassDialog

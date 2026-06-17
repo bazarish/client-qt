@@ -24,6 +24,28 @@ namespace bazarish::client {
 struct DestinationInfo {
     std::string dest;
     Bytes servingSealingKeyDer;
+    // Serving mode/state: "home", "pool", or for a personal destination
+    // "building" / "active" / "expired" (see server-core PerUserDestinations).
+    // The client only publishes a personal address while it is "active".
+    std::string state;
+};
+
+// The per-user i2p-dest status the client polls (GET /v1/account/i2p-status):
+// whether the option is on and paid-active, the recorded transient validity (so
+// any of the user's devices knows when to re-issue), the effective storage
+// quota, and honest projected shutoff dates from the prepaid balance.
+struct I2pDestStatus {
+    bool enabled = false;
+    bool active = false;
+    std::int64_t paidThrough = 0;
+    std::int64_t projectedShutoff = 0;
+    std::int64_t transientExpires = 0;
+    std::int64_t transientUpdatedAt = 0;
+    std::uint64_t storageQuotaBytes = 0;
+    bool storageActive = false;
+    std::int64_t storageProjectedShutoff = 0;
+    std::string balanceAtomic;  // signed, as a string
+    std::string currency;
 };
 
 // Server reply to subscribe/renew: the granted lifecycle plus the serving
@@ -133,6 +155,13 @@ public:
     // operate the user's personal destination for the subscription window.
     // Requires an active i2pDest entitlement server-side; returns acceptance.
     bool sendI2pTransient(const std::string& transientB64, std::int64_t expiresUnix);
+    // The per-user i2p-dest status (GET /v1/account/i2p-status).
+    I2pDestStatus i2pStatus();
+    // Turns the per-user i2p-dest option on or off (POST
+    // /v1/account/i2p-dest/setting). Enabling charges a term server-side (or
+    // resumes if still paid); returns whether the request was accepted (false
+    // when enabling failed for an insufficient balance).
+    bool setI2pDestEnabled(bool enabled);
     void registerAlias(
         const std::string& alias, std::int64_t issuedAt, std::optional<std::int64_t> notAfter);
     void releaseAlias(const std::string& alias);

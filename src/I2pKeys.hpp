@@ -24,6 +24,13 @@ struct I2pMasterKey {
 // Generates a fresh user-owned master I2P destination (Ed25519).
 I2pMasterKey generateI2pMaster();
 
+// Loads an existing user-owned master from an i2pd-native destination private
+// key blob (the contents of a ".dat" the user already holds). It must be an
+// unencrypted Ed25519 (signing type 7) destination — the only kind this project
+// serves. Returns the master re-serialized into canonical form, with its stable
+// base32. Throws if the blob is malformed, password-protected, or not Ed25519.
+I2pMasterKey loadI2pMaster(const Bytes& privateKeysDat);
+
 // The base32 address (without ".b32.i2p") of a serialized destination's
 // private keys — master or offline. Throws on a malformed blob.
 std::string i2pBase32(const Bytes& privateKeys);

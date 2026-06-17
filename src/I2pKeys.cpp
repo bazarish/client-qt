@@ -54,6 +54,18 @@ I2pMasterKey generateI2pMaster()
     return master;
 }
 
+I2pMasterKey loadI2pMaster(const Bytes& privateKeysDat)
+{
+    const i2p::data::PrivateKeys keys = parsePrivateKeys(privateKeysDat);
+    if (keys.GetPublic()->GetSigningKeyType() != i2p::data::SIGNING_KEY_TYPE_EDDSA_SHA512_ED25519) {
+        throw std::runtime_error("I2P key is not an Ed25519 (signing type 7) destination");
+    }
+    I2pMasterKey master;
+    master.privateKeys = serialize(keys);
+    master.base32 = keys.GetPublic()->GetIdentHash().ToBase32();
+    return master;
+}
+
 std::string i2pBase32(const Bytes& privateKeys)
 {
     const i2p::data::PrivateKeys keys = parsePrivateKeys(privateKeys);

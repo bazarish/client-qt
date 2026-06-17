@@ -79,6 +79,55 @@ void testMalformedRejected()
     CHECK(threw);
 }
 
+// An existing master blob (a user's ".dat") loads back to the same identity,
+// and a malformed blob is rejected.
+void testLoadMaster()
+{
+    const I2pMasterKey master = generateI2pMaster();
+    const I2pMasterKey loaded = loadI2pMaster(master.privateKeys);
+    CHECK(loaded.base32 == master.base32);
+    CHECK(i2pBase32(loaded.privateKeys) == master.base32);
+
+    bool threw = false;
+    try {
+        (void)loadI2pMaster(Bytes{0x00, 0x01, 0x02, 0x03});
+    } catch (const std::exception&) {
+        threw = true;
+    }
+    CHECK(threw);
+}
+
+// A profile with no destination adopts an existing master from a .dat blob; the
+// address persists across reopen, and a second load is refused (a different key
+// would change the user's address).
+void testSessionLoadsDat()
+{
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / ("bazarish-i2pload-" + toHex(randomBytes(8)));
+    const I2pMasterKey existing = generateI2pMaster();
+
+    {
+        Session session = Session::create(dir, "pw", "carol");
+        CHECK(!session.hasI2pDestination());
+        const std::string address = session.loadI2pDestination(existing.privateKeys);
+        CHECK(address == existing.base32);
+        CHECK(session.hasI2pDestination());
+
+        bool threw = false;
+        try {
+            (void)session.loadI2pDestination(generateI2pMaster().privateKeys);
+        } catch (const std::exception&) {
+            threw = true;
+        }
+        CHECK(threw);  // already configured
+    }
+    {
+        const Session session = Session::open(dir, "pw");
+        CHECK(session.i2pAddress() == existing.base32);  // adopted key persisted
+    }
+    fs::remove_all(dir);
+}
+
 // A session opts into a user-owned destination, the master persists sealed at
 // rest across reopen, and the transient delegation tracks the same address.
 void testSessionPersistsAndDelegates()
@@ -115,6 +164,8 @@ int main()
     testMastersDiffer();
     testOfflineKeepsAddress();
     testMalformedRejected();
+    testLoadMaster();
+    testSessionLoadsDat();
     testSessionPersistsAndDelegates();
     std::printf("TestI2pKeys: all checks passed\n");
     return 0;
