@@ -98,7 +98,7 @@ int main()
         [&](const httplib::Request&, httplib::Response& response) {
             response.status = 404;
             response.set_content(
-                makeErrorEnvelope(ErrorCode::kAliasUnknown, "no such alias").dump(),
+                makeErrorEnvelope(ErrorCode::eAliasUnknown, "no such alias").dump(),
                 "application/json");
         });
 
@@ -151,7 +151,7 @@ int main()
             threw = true;
             CHECK(error.httpStatus == 404);
             CHECK(error.code.has_value());
-            CHECK(error.code.value() == ErrorCode::kAliasUnknown);
+            CHECK(error.code.value() == ErrorCode::eAliasUnknown);
         }
         CHECK(threw);
     }

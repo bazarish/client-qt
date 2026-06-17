@@ -622,7 +622,7 @@ void Session::deliver(const std::string& toDest, const Key& servingSealingKey,
                     return;
                 }
                 if (status.status == "failed") {
-                    if (status.errorCode == ErrorCode::kRecipientServerUnreachable) {
+                    if (status.errorCode == ErrorCode::eRecipientServerUnreachable) {
                         lastError = status.errorMessage.empty() ? "recipient unreachable"
                                                                 : status.errorMessage;
                         break;  // transient: retry this round
@@ -630,7 +630,7 @@ void Session::deliver(const std::string& toDest, const Key& servingSealingKey,
                     // A spent token (e.g. a concurrent group sender took it): let
                     // the caller retry with another token instead of failing.
                     if (tokenRejected != nullptr
-                        && status.errorCode == ErrorCode::kDeliveryRejected) {
+                        && status.errorCode == ErrorCode::eDeliveryRejected) {
                         *tokenRejected = true;
                         return;
                     }

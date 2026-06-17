@@ -61,7 +61,7 @@ struct I2pHttpResponse {
 I2pHttpResponse i2pRequest(const std::string& samHost, std::uint16_t samPort,
     const std::string& b33Host, const std::string& method, const std::string& path,
     const std::map<std::string, std::string>& headers = {}, const Bytes& body = {},
-    I2pPrivacy privacy = I2pPrivacy::kMax);
+    I2pPrivacy privacy = I2pPrivacy::eMax);
 
 // One ranged GET attempt against the blob store, as seen by the resume driver.
 // total is the full ciphertext length the store declares (Content-Length for a
@@ -97,7 +97,7 @@ void assembleBlobToFile(
 // only). Returns the original message blob. Throws on a fetch error or an
 // integrity failure.
 Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
-    I2pPrivacy privacy = I2pPrivacy::kMax);
+    I2pPrivacy privacy = I2pPrivacy::eMax);
 
 // Like fetchBlob, but streams the ciphertext straight to a temporary file and
 // decrypts it file-to-file into destPath, so a multi-gigabyte attachment is
@@ -105,7 +105,7 @@ Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPoi
 // decrypting (a tampered or truncated transfer is rejected) and confirms
 // receipt. Throws on a fetch error or an integrity failure.
 void fetchBlobToFile(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
-    const std::filesystem::path& destPath, I2pPrivacy privacy = I2pPrivacy::kMax);
+    const std::filesystem::path& destPath, I2pPrivacy privacy = I2pPrivacy::eMax);
 
 // Fetches a blob through the user's own server (the proxy-fetch fallback for
 // clients with no local SAM bridge): the server fetches the b33 ciphertext over
@@ -116,7 +116,7 @@ Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer);
 // Sender unsend: deletes the blob over a fresh transient SAM session, gated by
 // the delete-token. Throws on transport failure.
 void deleteBlob(const std::string& samHost, std::uint16_t samPort, const std::string& blobUrl,
-    const std::string& deleteToken, I2pPrivacy privacy = I2pPrivacy::kMax);
+    const std::string& deleteToken, I2pPrivacy privacy = I2pPrivacy::eMax);
 
 // Sender unsend through the own-server I2P proxy (no-SAM fallback). Throws on a
 // proxy error.

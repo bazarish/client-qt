@@ -463,7 +463,7 @@ private:
     std::unique_ptr<Client> client_;
     // The central alias resolver this profile resolves usernames against.
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
-    I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::kMax;
+    I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::eMax;
     std::map<std::string, SentBlob> sentBlobs_;
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;

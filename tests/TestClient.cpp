@@ -417,7 +417,7 @@ int main()
         const SendStatus status = client.pollSend(attemptId);
         CHECK(status.status == "failed");
         CHECK(status.errorCode.has_value());
-        CHECK(status.errorCode.value() == ErrorCode::kStorageFull);
+        CHECK(status.errorCode.value() == ErrorCode::eStorageFull);
     }
 
     server.stop();

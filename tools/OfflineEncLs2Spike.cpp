@@ -68,7 +68,7 @@ int main(const int argc, const char** argv)
         std::fflush(stdout);
         std::printf("mode: %s (leaseSetType=%d)\n", mode.c_str(), leaseSetType);
         bazarish::SamSession server(host, port, "bz-offline-enc",
-            offlineB64, leaseSetType, bazarish::I2pPrivacy::kMax);
+            offlineB64, leaseSetType, bazarish::I2pPrivacy::eMax);
 
         const std::string destination = server.publicDestination();
         const std::string b33 = bazarish::blob::encryptedLeaseSetHost(destination);
@@ -111,7 +111,7 @@ int main(const int argc, const char** argv)
         std::printf("probe: resolving b33 and connecting (fresh dest, up to ~10 min)...\n");
         std::fflush(stdout);
         bazarish::SamSession probe(host, port, "bz-offline-probe",
-            "TRANSIENT", bazarish::kEncryptedLeaseSetType, bazarish::I2pPrivacy::kMax);
+            "TRANSIENT", bazarish::kEncryptedLeaseSetType, bazarish::I2pPrivacy::eMax);
 
         // A fresh destination's encrypted LeaseSet takes a while to land in the
         // netdb; retry the resolve/connect without throwing.
