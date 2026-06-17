@@ -8,21 +8,9 @@
 
 namespace bazarish::client {
 
-// A self-verifying contact invite: the user's subscription certificate, signed
-// by the user, carrying the sealing prekey plus the routing (I2P destination +
-// serving sealing key). One signature covers every field the recipient needs to
-// reach the user — no server card, no server-identifying fields (see docs-main
-// api/InviteAnonymity.md).
-struct Invite {
-    Bytes subscriptionCertDer;
-};
-
-// Encodes an invite as a bazarish://invite/<base64url(JSON)> URI.
-std::string encodeInvite(const Invite& invite);
-
-// Decodes such a URI. Throws on a malformed URI or payload. Does NOT verify
-// the certificates: the caller verifies them against the expected identity.
-Invite decodeInvite(const std::string& uri);
+// The contact invite is a small descriptor (bazarish://invite?fp&srv&srv_key) —
+// see common bazarish/Descriptor.hpp (encodeDescriptor/parseDescriptor). This
+// header now carries only the server-configuration link.
 
 // A server-configuration link: a server fingerprint plus its facade URLs, so a
 // client can add the server with all its settings from one link / QR — no manual

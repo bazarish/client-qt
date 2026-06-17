@@ -9,9 +9,8 @@ namespace bazarish::client {
 
 namespace {
 
-constexpr const char* kInvitePrefix = "bazarish://invite/";
 constexpr const char* kServerPrefix = "bazarish://server/";
-constexpr int kInviteFormatVersion = 1;
+constexpr int kServerLinkFormatVersion = 1;
 
 // base64url (RFC 4648 §5) is base64 with a URL-safe alphabet and no padding,
 // so the blob can ride inside a URI path with no percent-encoding.
@@ -49,36 +48,10 @@ Bytes fromBase64Url(const std::string& text)
 
 }  // namespace
 
-std::string encodeInvite(const Invite& invite)
-{
-    const nlohmann::json payload = {
-        {"v", kInviteFormatVersion},
-        {"sub", toBase64(invite.subscriptionCertDer)},
-    };
-    const std::string json = payload.dump();
-    return std::string(kInvitePrefix) + toBase64Url(Bytes(json.begin(), json.end()));
-}
-
-Invite decodeInvite(const std::string& uri)
-{
-    const std::string prefix = kInvitePrefix;
-    if (uri.compare(0, prefix.size(), prefix) != 0) {
-        throw std::runtime_error("not a bazarish invite URI");
-    }
-    const Bytes jsonBytes = fromBase64Url(uri.substr(prefix.size()));
-    const nlohmann::json payload = nlohmann::json::parse(jsonBytes.begin(), jsonBytes.end());
-    if (payload.at("v").get<int>() != kInviteFormatVersion) {
-        throw std::runtime_error("unsupported invite format version");
-    }
-    Invite invite;
-    invite.subscriptionCertDer = fromBase64(payload.at("sub").get<std::string>());
-    return invite;
-}
-
 std::string encodeServerLink(const ServerLink& link)
 {
     const nlohmann::json payload = {
-        {"v", kInviteFormatVersion},
+        {"v", kServerLinkFormatVersion},
         {"fp", link.serverFingerprint},
         {"facades", link.facadeUrls},
     };
@@ -94,7 +67,7 @@ ServerLink decodeServerLink(const std::string& uri)
     }
     const Bytes jsonBytes = fromBase64Url(uri.substr(prefix.size()));
     const nlohmann::json payload = nlohmann::json::parse(jsonBytes.begin(), jsonBytes.end());
-    if (payload.at("v").get<int>() != kInviteFormatVersion) {
+    if (payload.at("v").get<int>() != kServerLinkFormatVersion) {
         throw std::runtime_error("unsupported server link format version");
     }
     ServerLink link;

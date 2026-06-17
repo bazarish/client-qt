@@ -3,11 +3,11 @@
 
 #include "BlobTransport.hpp"
 #include "I2pKeys.hpp"
-#include "Invite.hpp"
 #include "LargeBlob.hpp"
 
 #include <bazarish/Auth.hpp>
 #include <bazarish/Cms.hpp>
+#include <bazarish/Descriptor.hpp>
 #include <bazarish/I2pAddress.hpp>
 #include <bazarish/Tokens.hpp>
 
@@ -636,13 +636,13 @@ void Session::sendContactRequest(const std::string& peerFingerprint, const std::
 
 void Session::addByInvite(const std::string& inviteUri, const std::string& text)
 {
-    // The invite is a single user-signed contact card; verify it offline. The
-    // signature binds the prekey and the routing (dest + serving sealing key),
-    // so a tampered invite is rejected with no server involved at all.
-    const Invite invite = decodeInvite(inviteUri);
-    ContactInfo info;
-    info.subscriptionCert = SubscriptionCertificate::verify(invite.subscriptionCertDer);
-    requestWithInfo(info.subscriptionCert.user, text, info);
+    // The invite is a descriptor (fingerprint + serving destination + serving
+    // sealing key). Fetch the user-signed contact card for that fingerprint and
+    // verify it against the fingerprint (api/FederatedResolve.md): a wrong server
+    // can only withhold, never forge a card for someone else's fingerprint.
+    const Descriptor descriptor = parseDescriptor(inviteUri);
+    const ContactInfo info = client_->fetchCard(descriptor);
+    requestWithInfo(descriptor.fingerprint, text, info);
 }
 
 void Session::addByUsername(const std::string& alias, const std::string& text)
@@ -1782,12 +1782,16 @@ void Session::persistGroups() const
 
 std::string Session::inviteUri() const
 {
-    if (subscriptionCertB64_.empty()) {
-        throw std::runtime_error("subscribe first: no contact card to publish");
+    if (myDest_.empty() || myServingKeyB64_.empty()) {
+        throw std::runtime_error("subscribe first: no serving destination to publish");
     }
-    Invite invite;
-    invite.subscriptionCertDer = fromBase64(subscriptionCertB64_);
-    return encodeInvite(invite);
+    // The invite is a small descriptor: fingerprint + serving destination +
+    // serving sealing key. The contact fetches and verifies the full card.
+    Descriptor descriptor;
+    descriptor.fingerprint = fingerprint();
+    descriptor.srv = myDest_;
+    descriptor.srvKeyDer = fromBase64(myServingKeyB64_);
+    return encodeDescriptor(descriptor);
 }
 
 void Session::exportState(const fs::path& outFile, const std::string& password) const

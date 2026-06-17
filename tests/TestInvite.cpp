@@ -1,11 +1,11 @@
 // Bazarish project (c) 2026
-#include "Invite.hpp"
 #include "Qr.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Certificates.hpp>
 #include <bazarish/Crypto.hpp>
+#include <bazarish/Descriptor.hpp>
 
 #include <cstdio>
 #include <cstdlib>
@@ -54,47 +54,34 @@ fs::path uniqueTempDir(const std::string& tag)
 
 int main()
 {
-    const std::int64_t now = static_cast<std::int64_t>(std::time(nullptr));
-
-    // --- Invite: encode/decode and offline verification ---
+    // --- Invite (descriptor): encode/parse and QR rendering ---
 
     const Identity serverIdentity = Identity::generate();
     const std::string serverFp = serverIdentity.fingerprint();
     const Key servingKey = Key::generateSealing();
-    const std::string userDest = "userdest.b32.i2p";
-
+    const std::string userDest = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
     const Identity user = Identity::generate();
-    const Key userSealing = Key::generateSealing();
-    // The invite is a single user-signed card carrying the prekey + routing.
-    const Bytes subCertDer = SubscriptionCertificate::issue(
-        user, serverFp, now, now + 3600, userSealing.publicDer(), userDest, servingKey.publicDer());
 
-    Invite invite;
-    invite.subscriptionCertDer = subCertDer;
+    // The invite is a small descriptor (fingerprint + serving destination +
+    // serving sealing key); the contact card is fetched and verified separately
+    // (TestClient). The descriptor codec itself is covered by common TestDescriptor.
+    const Descriptor descriptor{user.fingerprint(), userDest, servingKey.publicDer()};
+    const std::string uri = encodeDescriptor(descriptor);
+    CHECK(uri.rfind("bazarish://invite?", 0) == 0);
 
-    const std::string uri = encodeInvite(invite);
-    CHECK(uri.rfind("bazarish://invite/", 0) == 0);
-
-    const Invite decoded = decodeInvite(uri);
-    CHECK(decoded.subscriptionCertDer == subCertDer);
-
-    // The decoded card verifies and binds to the user's identity with one
-    // signature carrying the routing — this is what makes add-by-invite
-    // trustless with no server card.
-    const SubscriptionCertificate verifiedSub
-        = SubscriptionCertificate::verify(decoded.subscriptionCertDer);
-    CHECK(verifiedSub.user == user.fingerprint());
-    CHECK(verifiedSub.dest == userDest);
-    CHECK(verifiedSub.servingSealingKey().publicDer() == servingKey.publicDer());
+    const Descriptor decoded = parseDescriptor(uri);
+    CHECK(decoded.fingerprint == user.fingerprint());
+    CHECK(decoded.srv == userDest);
+    CHECK(decoded.srvKeyDer == servingKey.publicDer());
 
     // Malformed URIs are rejected.
-    CHECK_THROWS(decodeInvite("http://example/x"));
-    CHECK_THROWS(decodeInvite("bazarish://invite/!!!not-base64!!!"));
+    CHECK_THROWS(parseDescriptor("http://example/x"));
+    CHECK_THROWS(parseDescriptor("bazarish://invite?v=1&fp=short"));
 
-    // The full hybrid-signed chain exceeds one QR symbol, so rendering it
-    // produces a multi-frame structured-append sequence; each frame is drawn.
+    // The small descriptor renders as QR (one or a few frames — far smaller than
+    // the retired full-card invite, which needed a multi-frame sequence).
     const std::vector<std::string> codes = renderQrCodes(uri);
-    CHECK(codes.size() > 1);
+    CHECK(!codes.empty());
     for (const std::string& code : codes) {
         CHECK(!code.empty());
     }
