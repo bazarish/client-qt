@@ -2,6 +2,8 @@
 #include "Qr.hpp"
 #include "Session.hpp"
 
+#include <bazarish/Log.hpp>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -337,7 +339,7 @@ int runExport(const std::vector<std::string>& args)
     }
     const std::string password = exportPassword();
     if (password.empty()) {
-        std::fprintf(stderr, "error: set BAZARISH_EXPORT_PASSWORD\n");
+        bazarish::log::error("set BAZARISH_EXPORT_PASSWORD");
         return 1;
     }
     const Session session = Session::open(args[1], keyPassphrase());
@@ -355,7 +357,7 @@ int runImport(const std::vector<std::string>& args)
     }
     const std::string password = exportPassword();
     if (password.empty()) {
-        std::fprintf(stderr, "error: set BAZARISH_EXPORT_PASSWORD\n");
+        bazarish::log::error("set BAZARISH_EXPORT_PASSWORD");
         return 1;
     }
     // The imported keys adopt the at-rest passphrase (if any) of this host.
@@ -538,6 +540,7 @@ int runSync(const std::vector<std::string>& args)
 
 int main(const int argc, const char** argv)
 {
+    bazarish::log::setComponent("client");
     if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
         std::printf("bazarish-client %s\n", kVersion);
         return 0;
@@ -637,7 +640,7 @@ int main(const int argc, const char** argv)
             return runImport(args);
         }
     } catch (const std::exception& error) {
-        std::fprintf(stderr, "error: %s\n", error.what());
+        bazarish::log::error("{}", error.what());
         return 1;
     }
 

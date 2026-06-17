@@ -2,6 +2,8 @@
 #include "Bot.hpp"
 #include "Session.hpp"
 
+#include <bazarish/Log.hpp>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -124,6 +126,7 @@ void printUsage()
 
 int main(const int argc, const char** argv)
 {
+    bazarish::log::setComponent("bot");
     if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
         std::printf("bazarish-bot %s\n", kVersion);
         return 0;
@@ -144,23 +147,22 @@ int main(const int argc, const char** argv)
     try {
         Session session = Session::open(state, keyPassphrase());
         if (!session.isConnected()) {
-            std::fprintf(stderr, "error: profile is not connected to a server; subscribe first\n");
+            bazarish::log::error("profile is not connected to a server; subscribe first");
             return 1;
         }
         Bot bot(session);
         registerHandlers(bot);
         if (once) {
             const std::size_t handled = bot.poll();
-            std::printf("polled once as %s: %zu update(s) handled\n",
-                session.fingerprint().c_str(), handled);
+            bazarish::log::info(
+                "polled once as {}: {} update(s) handled", session.fingerprint(), handled);
             return 0;
         }
-        std::printf("bot running as %s\npolling for updates (Ctrl-C to stop)...\n",
-            session.fingerprint().c_str());
-        std::fflush(stdout);
+        bazarish::log::info(
+            "bot running as {}; polling for updates (Ctrl-C to stop)...", session.fingerprint());
         bot.run(2000);
     } catch (const std::exception& error) {
-        std::fprintf(stderr, "error: %s\n", error.what());
+        bazarish::log::error("{}", error.what());
         return 1;
     }
 }
