@@ -3,6 +3,7 @@
 
 #include <bazarish/Cms.hpp>
 #include <bazarish/I2pAddress.hpp>
+#include <bazarish/Resolve.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -142,6 +143,44 @@ ContactInfo Client::lookupContact(const std::string& peerFingerprint)
     ContactInfo info;
     info.subscriptionCert = SubscriptionCertificate::verify(
         fromBase64(body.at("subscriptionCert").get<std::string>()));
+    return info;
+}
+
+ContactInfo Client::fetchCard(const Descriptor& descriptor)
+{
+    // Seal the query (which fingerprint) to the serving server's serving sealing
+    // key so our own server (the relay) cannot read it; the response comes back
+    // sealed to a fresh ephemeral key only we hold.
+    const Key ephemeral = Key::generateSealing();
+    const CardFetchQuery query{descriptor.fingerprint, ephemeral.publicDer()};
+    const std::string queryJson = toJson(query).dump();
+    const Bytes sealedQuery = cms::seal(
+        Bytes(queryJson.begin(), queryJson.end()), Key::fromPublicDer(descriptor.srvKeyDer));
+
+    const ApiResponse response = api_.postJson("/v1/messaging/fetch",
+        {
+            {"toDest", descriptor.srv},
+            {"op", "card"},
+            {"sealed", toBase64(sealedQuery)},
+        });
+    const nlohmann::json body = response.json();
+    if (!body.at("ok").get<bool>()) {
+        throw std::runtime_error(
+            "card fetch failed: " + body.value("errorCode", std::string("CARD_UNKNOWN")));
+    }
+    const Bytes responseBytes
+        = cms::unseal(fromBase64(body.at("sealed").get<std::string>()), ephemeral);
+    const CardFetchResponse fetched
+        = cardFetchResponseFromJson(nlohmann::json::parse(responseBytes));
+
+    ContactInfo info;
+    info.subscriptionCert = SubscriptionCertificate::verify(fetched.subscriptionCertDer);
+    // The fingerprint is the trust anchor: the card is user-signed, so a wrong
+    // server can only withhold, never forge a card for someone else's fingerprint.
+    if (info.subscriptionCert.user != descriptor.fingerprint) {
+        throw std::runtime_error("fetched card is for a different fingerprint");
+    }
+    validateB32I2pHost(info.subscriptionCert.dest);
     return info;
 }
 

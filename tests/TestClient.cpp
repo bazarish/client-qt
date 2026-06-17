@@ -6,6 +6,7 @@
 #include <bazarish/Cms.hpp>
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Errors.hpp>
+#include <bazarish/Resolve.hpp>
 
 #include <httplib/httplib.h>
 #include <nlohmann/json.hpp>
@@ -154,6 +155,27 @@ int main()
                 {{"dest", aliceDest}, {"servingKey", toBase64(serverSealing.publicDer())}});
         });
 
+    // First-contact card-fetch relay: unseal the query with our serving key,
+    // build bob's contact card, seal the response to the query's response key.
+    server.Post("/v1/messaging/fetch",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            (void)requireCaller(request);
+            const nlohmann::json req = nlohmann::json::parse(request.body);
+            CHECK(req.at("op") == "card");
+            CHECK(req.at("toDest") == bobDest);
+            const Bytes queryBytes = cms::unseal(fromBase64(req.at("sealed").get<std::string>()),
+                Key::fromPrivatePem(serverSealing.privatePem()));
+            const CardFetchQuery query = cardFetchQueryFromJson(nlohmann::json::parse(queryBytes));
+            CHECK(query.fingerprint == bob.fingerprint());
+            const Key bobSealing = Key::generateSealing();
+            const Bytes subCert = SubscriptionCertificate::issue(bob, serverFp, now, now + 3600,
+                bobSealing.publicDer(), bobDest, serverSealing.publicDer());
+            const std::string respJson = toJson(CardFetchResponse{subCert}).dump();
+            const Bytes sealedResp = cms::seal(Bytes(respJson.begin(), respJson.end()),
+                Key::fromPublicDer(query.responseKeyDer));
+            respondJson(response, {{"ok", true}, {"sealed", toBase64(sealedResp)}});
+        });
+
     // --- Messaging stub ---
 
     server.Post("/v1/messaging/clients",
@@ -249,6 +271,17 @@ int main()
         CHECK(!looked.subscriptionCert.sealingPublicKeyDer.empty());
         CHECK(looked.subscriptionCert.dest == bobDest);
         CHECK(looked.subscriptionCert.servingSealingKey().publicDer() == serverSealing.publicDer());
+    }
+
+    // First-contact card fetch from a descriptor (via the own-server proxy): the
+    // query fingerprint is sealed to the serving key, the verified card comes
+    // back and must be for the descriptor's fingerprint.
+    {
+        const Descriptor descriptor{bob.fingerprint(), bobDest, serverSealing.publicDer()};
+        const ContactInfo info = client.fetchCard(descriptor);
+        CHECK(info.subscriptionCert.user == bob.fingerprint());
+        CHECK(info.subscriptionCert.dest == bobDest);
+        CHECK(info.subscriptionCert.servingSealingKey().publicDer() == serverSealing.publicDer());
     }
 
     // Subscription status.

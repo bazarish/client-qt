@@ -7,6 +7,7 @@
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Certificates.hpp>
 #include <bazarish/Crypto.hpp>
+#include <bazarish/Descriptor.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -120,6 +121,13 @@ public:
     // Looks up a user by fingerprint: their subscription certificate (sealing
     // prekey + routing). Verified.
     ContactInfo lookupContact(const std::string& peerFingerprint);
+    // First-contact card fetch from a descriptor (fp + serving destination +
+    // serving sealing key), via our own server's I2P proxy (POST
+    // /v1/messaging/fetch op "card"). The query (which fingerprint) is sealed to
+    // the serving server's key so our own server cannot read it; the response is
+    // sealed to a fresh ephemeral key. Verifies the card and that it is for the
+    // descriptor's fingerprint (see docs-main api/FederatedResolve.md).
+    ContactInfo fetchCard(const Descriptor& descriptor);
     // This user's assigned serving destination + serving sealing key, from the
     // messaging server (GET /v1/messaging/destination).
     DestinationInfo myDestination();
