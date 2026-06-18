@@ -134,32 +134,6 @@ bool Client::setI2pDestEnabled(const bool enabled)
     return response.status == 200;
 }
 
-void Client::registerAlias(const std::string& alias, const std::int64_t issuedAt,
-    const std::optional<std::int64_t> notAfter)
-{
-    const Bytes cert = AliasCertificate::issue(identity_, alias, issuedAt, notAfter);
-    api_.postJson("/v1/account/alias", {{"cert", toBase64(cert)}});
-}
-
-void Client::releaseAlias(const std::string& alias)
-{
-    api_.del("/v1/account/alias", {{"alias", alias}});
-}
-
-ResolveResult Client::resolve(const std::string& alias)
-{
-    const ApiResponse response = api_.getPublic("/v1/account/resolve", "alias=" + alias);
-    const nlohmann::json body = response.json();
-
-    ResolveResult result;
-    result.user = body.at("user").get<std::string>();
-    result.aliasCert
-        = AliasCertificate::verify(fromBase64(body.at("aliasCert").get<std::string>()));
-    result.subscriptionCert = SubscriptionCertificate::verify(
-        fromBase64(body.at("subscriptionCert").get<std::string>()));
-    return result;
-}
-
 ContactInfo Client::lookupContact(const std::string& peerFingerprint)
 {
     const ApiResponse response

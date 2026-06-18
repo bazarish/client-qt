@@ -114,8 +114,7 @@ void printUsage()
         "  bazarish-bot --once <state>   process one batch of updates and exit\n"
         "\n"
         "<state> is an existing, subscribed client profile (create it with\n"
-        "bazarish-client init/subscribe; register a username with `alias` so\n"
-        "people can add the bot by name). --once suits a cron-driven bot.\n"
+        "bazarish-client init/subscribe). --once suits a cron-driven bot.\n"
         "\n"
         "Environment:\n"
         "  BAZARISH_PASSPHRASE  decrypts the key PEMs at rest (if encrypted)\n",

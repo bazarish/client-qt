@@ -383,16 +383,6 @@ void SessionWorker::addByFingerprint(const QString& fingerprint, const QString& 
     }
 }
 
-void SessionWorker::registerAlias(const QString& alias)
-{
-    try {
-        session_->registerAlias(alias.toStdString());
-        emit actionOk("Username registered.");
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
 void SessionWorker::requestInvite()
 {
     try {
@@ -553,8 +543,6 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAddByUsername, worker_, &SessionWorker::addByUsername);
     connect(this, &SessionController::requestAddByFingerprint, worker_,
         &SessionWorker::addByFingerprint);
-    connect(this, &SessionController::requestRegisterAlias, worker_,
-        &SessionWorker::registerAlias);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSaveAttachment, worker_,
         &SessionWorker::saveAttachment);
@@ -923,11 +911,6 @@ void SessionController::addByUsername(const QString& alias, const QString& intro
 void SessionController::addByFingerprint(const QString& fingerprint, const QString& intro)
 {
     emit requestAddByFingerprint(fingerprint, intro);
-}
-
-void SessionController::registerAlias(const QString& alias)
-{
-    emit requestRegisterAlias(alias);
 }
 
 void SessionController::requestInvite()

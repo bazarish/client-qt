@@ -63,7 +63,6 @@ void printUsage()
         "  bazarish-client i2p-cancel <state>\n"
         "  bazarish-client i2p-status <state>\n"
         "  bazarish-client sign-login <state> <challenge>\n"
-        "  bazarish-client alias <state> <name>\n"
         "  bazarish-client invite <state>\n"
         "  bazarish-client request <state> <peer-fp> <text>\n"
         "  bazarish-client add-invite <state> <invite-file> <text>\n"
@@ -236,19 +235,6 @@ int runSignLogin(const std::vector<std::string>& args)
     }
     const Session session = Session::open(args[1], keyPassphrase());
     std::printf("%s\n", session.signLogin(args[2]).c_str());
-    return 0;
-}
-
-int runAlias(const std::vector<std::string>& args)
-{
-    // alias <state> <name>
-    if (args.size() != 3) {
-        printUsage();
-        return 2;
-    }
-    Session session = Session::open(args[1], keyPassphrase());
-    session.registerAlias(args[2]);
-    std::printf("registered alias %s\n", args[2].c_str());
     return 0;
 }
 
@@ -668,9 +654,6 @@ int main(const int argc, const char** argv)
         }
         if (command == "sign-login") {
             return runSignLogin(args);
-        }
-        if (command == "alias") {
-            return runAlias(args);
         }
         if (command == "invite") {
             return runInvite(args);

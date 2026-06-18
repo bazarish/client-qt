@@ -94,11 +94,11 @@ int main()
         });
 
     // Returns a typed error envelope.
-    server.Get("/v1/account/resolve",
+    server.Get("/v1/account/contact",
         [&](const httplib::Request&, httplib::Response& response) {
             response.status = 404;
             response.set_content(
-                makeErrorEnvelope(ErrorCode::eAliasUnknown, "no such alias").dump(),
+                makeErrorEnvelope(ErrorCode::eSubscriptionExpired, "no active subscription").dump(),
                 "application/json");
         });
 
@@ -146,12 +146,12 @@ int main()
         ApiClient api(alice, "abc123", endpoint);
         bool threw = false;
         try {
-            api.get("/v1/account/resolve", "alias=ghost");
+            api.get("/v1/account/contact", "user=ghost");
         } catch (const ApiError& error) {
             threw = true;
             CHECK(error.httpStatus == 404);
             CHECK(error.code.has_value());
-            CHECK(error.code.value() == ErrorCode::eAliasUnknown);
+            CHECK(error.code.value() == ErrorCode::eSubscriptionExpired);
         }
         CHECK(threw);
     }

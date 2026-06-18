@@ -60,21 +60,6 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                // Username
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    Label { text: "Username"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    Label { text: "Register a memorable name others can add you by."; color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        FormField { id: aliasField; label: ""; placeholder: "username" }
-                        Button { text: "Register"; enabled: aliasField.text.trim().length > 0; onClicked: root.session.registerAlias(aliasField.text.trim()) }
-                    }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
                 // Connection
                 ColumnLayout {
                     Layout.fillWidth: true

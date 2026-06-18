@@ -124,31 +124,6 @@ int main()
             respondJson(response, {{"notAfter", now + 3600}, {"quotaBytes", 42}});
         });
 
-    server.Post("/v1/account/alias",
-        [&](const httplib::Request& request, httplib::Response& response) {
-            const std::string user = requireCaller(request);
-            const Bytes der
-                = fromBase64(nlohmann::json::parse(request.body).at("cert").get<std::string>());
-            const AliasCertificate cert = AliasCertificate::verify(der);
-            CHECK(cert.user == user);
-            CHECK(cert.alias == "alice");
-            respondJson(response, {{"ok", true}, {"alias", cert.alias}});
-        });
-
-    server.Get("/v1/account/resolve",
-        [&](const httplib::Request& request, httplib::Response& response) {
-            CHECK(request.get_param_value("alias") == "bob");
-            const Bytes aliasCert = AliasCertificate::issue(bob, "bob", now, std::nullopt);
-            const Bytes subCert
-                = SubscriptionCertificate::issue(bob, serverFp, now, now + 3600);
-            respondJson(response,
-                {
-                    {"user", bob.fingerprint()},
-                    {"aliasCert", toBase64(aliasCert)},
-                    {"subscriptionCert", toBase64(subCert)},
-                });
-        });
-
     server.Get("/v1/account/contact",
         [&](const httplib::Request& request, httplib::Response& response) {
             CHECK(request.get_param_value("user") == bob.fingerprint());
@@ -337,20 +312,6 @@ int main()
         const Subscription status = client.subscriptionStatus();
         CHECK(status.notAfter == now + 3600);
         CHECK(status.quotaBytes == 42u);
-    }
-
-    // Alias registration signs an alias certificate for the caller.
-    {
-        client.registerAlias("alice", now, std::nullopt);
-    }
-
-    // Resolve returns a verified trust chain (legacy own-server resolve, kept
-    // until the alias registry moves out to the central resolver).
-    {
-        const ResolveResult resolved = client.resolve("bob");
-        CHECK(resolved.user == bob.fingerprint());
-        CHECK(resolved.aliasCert.alias == "bob");
-        CHECK(resolved.subscriptionCert.server == serverFp);
     }
 
     // Central alias resolve: the signed, self-verifying record maps the alias to a

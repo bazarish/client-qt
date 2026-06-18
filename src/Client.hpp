@@ -75,14 +75,6 @@ struct Subscription {
     std::uint64_t quotaBytes = 0;
 };
 
-// A resolved alias: the self-verifying trust chain. The certificates are
-// verified before being returned; user is the resolved fingerprint.
-struct ResolveResult {
-    std::string user;
-    AliasCertificate aliasCert;
-    SubscriptionCertificate subscriptionCert;
-};
-
 struct PendingEntry {
     std::string id;
     // Delivery class: "content" or "contact" (the server-visible admission
@@ -162,10 +154,6 @@ public:
     // resumes if still paid); returns whether the request was accepted (false
     // when enabling failed for an insufficient balance).
     bool setI2pDestEnabled(bool enabled);
-    void registerAlias(
-        const std::string& alias, std::int64_t issuedAt, std::optional<std::int64_t> notAfter);
-    void releaseAlias(const std::string& alias);
-    ResolveResult resolve(const std::string& alias);
     // Looks up a user by fingerprint: their subscription certificate (sealing
     // prekey + routing). Verified.
     ContactInfo lookupContact(const std::string& peerFingerprint);

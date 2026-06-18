@@ -660,11 +660,6 @@ std::string verifyLoginBlob(
         headers, now, kLoginMethod, kLoginPath, Bytes(challenge.begin(), challenge.end()));
 }
 
-void Session::registerAlias(const std::string& alias)
-{
-    client_->registerAlias(alias, nowSeconds(), std::nullopt);
-}
-
 std::vector<std::string> Session::issueTokenBatch()
 {
     std::vector<std::string> tokens;

@@ -52,7 +52,6 @@ public slots:
     void addByInvite(const QString& uri, const QString& intro);
     void addByUsername(const QString& alias, const QString& intro);
     void addByFingerprint(const QString& fingerprint, const QString& intro);
-    void registerAlias(const QString& alias);
     void requestInvite();
     void saveAttachment(const QString& ref, const QString& key, const QString& destPath);
     void exportProfile(const QString& path, const QString& password);
@@ -208,7 +207,6 @@ public:
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
     Q_INVOKABLE void addByFingerprint(const QString& fingerprint, const QString& intro);
-    Q_INVOKABLE void registerAlias(const QString& alias);
     Q_INVOKABLE void requestInvite();
     Q_INVOKABLE void saveAttachment(const QString& ref, const QString& key, const QString& fileUrl);
     Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
@@ -257,7 +255,6 @@ signals:  // to worker
     void requestAddByInvite(const QString& uri, const QString& intro);
     void requestAddByUsername(const QString& alias, const QString& intro);
     void requestAddByFingerprint(const QString& fingerprint, const QString& intro);
-    void requestRegisterAlias(const QString& alias);
     void requestInviteSig();
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath);
     void requestExport(const QString& path, const QString& password);

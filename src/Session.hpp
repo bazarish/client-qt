@@ -237,10 +237,6 @@ public:
     // which verifies it (see verifyLoginBlob) and recovers this fingerprint.
     std::string signLogin(const std::string& challenge) const;
 
-    // Registers a human-readable alias (username) for this identity at the
-    // serving server's service node, so contacts can add us by name.
-    void registerAlias(const std::string& alias);
-
     // Sends a contact request to a peer subscribed to our own server. The
     // peer's prekey, serving server and server card are looked up on our own
     // facade; the request payload is E2E-encrypted to the peer's prekey and
