@@ -4,10 +4,8 @@
 #include <bazarish/Cms.hpp>
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Sam.hpp>
+#include <bazarish/SamHttp.hpp>
 
-#include <algorithm>
-#include <array>
-#include <cctype>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -22,16 +20,6 @@ namespace bazarish::client {
 namespace {
 
 constexpr const char* kB32Suffix = ".b32.i2p";
-
-// Parses the status code from an HTTP status line ("HTTP/1.1 404 Not Found").
-int parseStatus(const std::string& head)
-{
-    const std::size_t firstSpace = head.find(' ');
-    if (firstSpace == std::string::npos) {
-        throw std::runtime_error("malformed i2p http status line");
-    }
-    return std::stoi(head.substr(firstSpace + 1, 3));
-}
 
 std::uint64_t headerUint64(const std::map<std::string, std::string>& headers,
     const std::string& key, const std::uint64_t fallback)
@@ -235,61 +223,21 @@ I2pHttpResponse i2pRequest(const std::string& samHost, const std::uint16_t samPo
         "TRANSIENT", kEncryptedLeaseSetType, privacy);
     SamStream stream = session.connect(b33Host);
 
-    std::string request = method + " " + path + " HTTP/1.1\r\n";
-    request += "Host: " + b33Host + "\r\n";
-    for (const auto& [key, value] : headers) {
-        request += key + ": " + value + "\r\n";
-    }
-    request += "Content-Length: " + std::to_string(body.size()) + "\r\n";
-    request += "Connection: close\r\n\r\n";
+    const std::string request = buildSamHttpRequest(method, b33Host, path, headers, body.size());
     stream.writeAll(request.data(), request.size());
     if (!body.empty()) {
         stream.writeAll(body.data(), body.size());
     }
     // No half-close: SAM propagates a SHUT_WR as a full stream teardown, so the
     // request carries Content-Length and the server closes after responding
-    // (Connection: close); reading to EOF then yields the whole response.
-    std::string raw;
-    std::array<char, 65536> buffer{};
-    for (;;) {
-        const std::size_t got = stream.readSome(buffer.data(), buffer.size());
-        if (got == 0) {
-            break;
-        }
-        raw.append(buffer.data(), got);
-    }
-
-    const std::size_t headerEnd = raw.find("\r\n\r\n");
-    if (headerEnd == std::string::npos) {
-        throw std::runtime_error("malformed i2p http response");
-    }
+    // (Connection: close); reading to EOF then yields the whole response. The
+    // status + lowercased header map let the resume driver read
+    // Content-Length / Content-Range.
+    const SamHttpResponse parsed = readSamHttpResponse(stream);
     I2pHttpResponse response;
-    const std::string head = raw.substr(0, headerEnd);
-    const std::size_t firstLineEnd = head.find("\r\n");
-    response.status = parseStatus(head.substr(0, firstLineEnd));
-    // Parse the header lines (after the status line) into a lowercased map so the
-    // resume driver can read Content-Length / Content-Range.
-    std::size_t lineStart = (firstLineEnd == std::string::npos) ? head.size() : firstLineEnd + 2;
-    while (lineStart < head.size()) {
-        const std::size_t lineEnd = head.find("\r\n", lineStart);
-        const std::size_t stop = (lineEnd == std::string::npos) ? head.size() : lineEnd;
-        const std::string line = head.substr(lineStart, stop - lineStart);
-        lineStart = (lineEnd == std::string::npos) ? head.size() : lineEnd + 2;
-        const std::size_t colon = line.find(':');
-        if (colon == std::string::npos) {
-            continue;
-        }
-        std::string key = line.substr(0, colon);
-        std::transform(key.begin(), key.end(), key.begin(),
-            [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        std::size_t valueStart = colon + 1;
-        while (valueStart < line.size() && (line[valueStart] == ' ' || line[valueStart] == '\t')) {
-            ++valueStart;
-        }
-        response.headers[key] = line.substr(valueStart);
-    }
-    const std::string payload = raw.substr(headerEnd + 4);
-    response.body = Bytes(payload.begin(), payload.end());
+    response.status = parsed.status;
+    response.headers = parsed.headers;
+    response.body = Bytes(parsed.body.begin(), parsed.body.end());
     return response;
 }
 
