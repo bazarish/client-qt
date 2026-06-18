@@ -337,6 +337,12 @@ public:
     // large blobs over a transient SAM session. Defaults to the most private.
     void setBlobFetchPrivacy(I2pPrivacy privacy);
 
+    // Sets the local SAM API port the client connects to for transient-SAM blob
+    // and federation fetches. The host is always loopback (127.0.0.1), never
+    // configurable. Defaults to 7656, overridable via the BAZARISH_SAM_PORT
+    // environment variable at construction.
+    void setSamPort(std::uint16_t port);
+
     // Pulls, decrypts, applies (contacts/tokens) and acks all pending items.
     std::vector<IncomingMessage> sync();
 
@@ -492,6 +498,7 @@ private:
     // The central alias resolver this profile resolves usernames against.
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
     I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::eMax;
+    std::uint16_t samPort_ = 7656;
     std::map<std::string, SentBlob> sentBlobs_;
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;

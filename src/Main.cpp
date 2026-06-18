@@ -93,7 +93,8 @@ void printUsage()
         "\n"
         "Environment:\n"
         "  BAZARISH_PASSPHRASE       encrypts/decrypts the key PEMs at rest\n"
-        "  BAZARISH_EXPORT_PASSWORD  protects the export/import bundle (required)\n",
+        "  BAZARISH_EXPORT_PASSWORD  protects the export/import bundle (required)\n"
+        "  BAZARISH_SAM_PORT         local SAM API port (loopback host; default 7656)\n",
         kVersion);
 }
 

@@ -15,6 +15,7 @@
 #include <nlohmann/json.hpp>
 
 #include <chrono>
+#include <cstdlib>
 #include <ctime>
 #include <fstream>
 #include <set>
@@ -190,6 +191,12 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
     , sealingKey_(std::move(sealingKey))
     , contacts_(std::move(contacts))
 {
+    // The local SAM bridge port defaults to 7656 but can be overridden per
+    // environment (the SAM host stays loopback-only, never configurable).
+    if (const char* const env = std::getenv("BAZARISH_SAM_PORT");
+        env != nullptr && env[0] != '\0') {
+        samPort_ = static_cast<std::uint16_t>(std::strtoul(env, nullptr, 10));
+    }
 }
 
 Session Session::create(
@@ -754,7 +761,7 @@ FetchTransport Session::fetchTransport() const
             // Direct over a fresh transient SAM session (preferred — our own
             // server is never involved, and a b33 dial authenticates the target).
             return federationFetchOverSam(
-                "127.0.0.1", 7656, toDest, op, sealed, blobFetchPrivacy_);
+                "127.0.0.1", samPort_, toDest, op, sealed, blobFetchPrivacy_);
         } catch (const std::exception&) {
             // No local SAM bridge (or the direct dial failed): relay the opaque
             // sealed bytes through our own server's I2P proxy.
@@ -1087,12 +1094,17 @@ void Session::setBlobFetchPrivacy(const I2pPrivacy privacy)
     blobFetchPrivacy_ = privacy;
 }
 
+void Session::setSamPort(const std::uint16_t port)
+{
+    samPort_ = port;
+}
+
 Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
 {
     try {
         // Direct over a fresh transient SAM session (preferred — our server is
         // never involved).
-        return fetchBlob("127.0.0.1", 7656, pointer, blobFetchPrivacy_);
+        return fetchBlob("127.0.0.1", samPort_, pointer, blobFetchPrivacy_);
     } catch (const std::exception&) {
         // No local SAM bridge (or the direct fetch failed): fall back to our own
         // server proxying the fetch over I2P.
@@ -1105,7 +1117,7 @@ void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& d
     try {
         // Direct over a fresh transient SAM session, streamed to disk (preferred
         // — our server is never involved and the file never sits whole in RAM).
-        fetchBlobToFile("127.0.0.1", 7656, pointer, dest, blobFetchPrivacy_);
+        fetchBlobToFile("127.0.0.1", samPort_, pointer, dest, blobFetchPrivacy_);
     } catch (const std::exception&) {
         // No local SAM bridge (or the direct fetch failed): the own-server proxy
         // relays the whole ciphertext through the facade (buffered fallback).
@@ -1117,7 +1129,7 @@ void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& d
 void Session::deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken)
 {
     try {
-        deleteBlob("127.0.0.1", 7656, blobUrl, deleteToken, blobFetchPrivacy_);  // direct
+        deleteBlob("127.0.0.1", samPort_, blobUrl, deleteToken, blobFetchPrivacy_);  // direct
     } catch (const std::exception&) {
         client_->deleteBlobViaProxy(blobUrl, deleteToken);  // own-server proxy fallback
     }
