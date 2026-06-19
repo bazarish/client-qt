@@ -9,7 +9,8 @@
 //
 //   ./offline-enc-ls2-spike [host] [port]
 #include "I2pKeys.hpp"
-#include "I2pAddress.hpp"
+
+#include <bazarish/I2pAddress.hpp>
 
 #include <bazarish/Sam.hpp>
 
@@ -71,7 +72,7 @@ int main(const int argc, const char** argv)
             offlineB64, leaseSetType, bazarish::I2pPrivacy::eMax);
 
         const std::string destination = server.publicDestination();
-        const std::string b33 = bazarish::blob::encryptedLeaseSetHost(destination);
+        const std::string b33 = bazarish::encryptedLeaseSetHost(destination);
         // In "std" mode reach the destination by its plain IdentHash b32; in
         // "enc" mode by the blinded b33.
         const std::string connectTarget = standard ? (master.base32 + ".b32.i2p") : b33;
