@@ -5,7 +5,7 @@ namespace bazarish::app {
 
 // Delivery status of a message, stored as StoredMessage.status. The values
 // mirror the QML `DeliveryStatus` enum (app/qml/DeliveryStatus.qml) one-to-one
-// — keep them in sync.
+// - keep them in sync.
 namespace DeliveryStatus {
 enum Value {
     Sending = 0,            // in flight to our own server (hollow ring)

@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import Bazarish
 
 // Group panel: member list, admin add/remove, and leave. Opened from the
-// conversation header's ⓘ for a group.
+// conversation header's i for a group.
 Popup {
     id: root
     property var session: null

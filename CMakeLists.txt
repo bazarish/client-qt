@@ -28,7 +28,7 @@ find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
 # Only the CLIENT manufactures I2P key material in-process: it owns the
 # permanent destination key and issues short-lived offline (transient) keys for
 # its serving server. Servers do their I2P key work via the router (SAM), so
-# libi2pd lives here only — and as a trimmed static lib of just the identity and
+# libi2pd lives here only - and as a trimmed static lib of just the identity and
 # crypto translation units (no router code), pinned via the i2pd submodule.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/i2pd/libi2pd/Identity.cpp")
     set(_bazarish_i2pd_default "${CMAKE_CURRENT_SOURCE_DIR}/third_party/i2pd")
@@ -114,7 +114,7 @@ add_executable(offline-enc-ls2-spike tools/OfflineEncLs2Spike.cpp)
 target_include_directories(offline-enc-ls2-spike PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(offline-enc-ls2-spike PRIVATE bazarish_client_lib libi2pd_keys ZLIB::ZLIB)
 
-# The Qt6 Quick (QML) desktop app — the primary front-end over the same
+# The Qt6 Quick (QML) desktop app - the primary front-end over the same
 # Session logic the CLI uses. Built only when Qt6 Quick is available.
 find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql QUIET)
 if(Qt6_FOUND)

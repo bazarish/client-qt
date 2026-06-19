@@ -124,7 +124,7 @@ void testGroupMessageSenderAuth()
             {"sentAt", sentAt}, {"text", t}, {"group", {{"id", groupId}}}, {"gsig", toBase64(gsig)}};
     };
 
-    // 1. Honest: alice signs her own message — authenticated as alice.
+    // 1. Honest: alice signs her own message - authenticated as alice.
     {
         const Bytes gsig = cms::signJsonHybrid(signedBody(alice.fingerprint(), text), alice);
         const auto from
@@ -133,7 +133,7 @@ void testGroupMessageSenderAuth()
         CHECK(from.has_value() && *from == alice.fingerprint());
     }
 
-    // 2a. Forge: mallory signs a body that lies `from`=victim — signer != signed-from → rejected.
+    // 2a. Forge: mallory signs a body that lies `from`=victim - signer != signed-from -> rejected.
     {
         const Bytes gsig = cms::signJsonHybrid(signedBody(victim.fingerprint(), text), mallory);
         CHECK(!Session::authenticateGroupSender(inner(victim.fingerprint(), text, gsig), "text", id,
@@ -141,8 +141,8 @@ void testGroupMessageSenderAuth()
                    .has_value());
     }
 
-    // 2b. Forge: mallory signs honestly (from=mallory) but sets the OUTER from=victim — the
-    //     outer claim must match the signed one → rejected.
+    // 2b. Forge: mallory signs honestly (from=mallory) but sets the OUTER from=victim - the
+    //     outer claim must match the signed one -> rejected.
     {
         const Bytes gsig = cms::signJsonHybrid(signedBody(mallory.fingerprint(), text), mallory);
         CHECK(!Session::authenticateGroupSender(inner(victim.fingerprint(), text, gsig), "text", id,
@@ -150,7 +150,7 @@ void testGroupMessageSenderAuth()
                    .has_value());
     }
 
-    // 3. Tamper: a valid signature over the original text, but the outer text was changed → rejected.
+    // 3. Tamper: a valid signature over the original text, but the outer text was changed -> rejected.
     {
         const Bytes gsig = cms::signJsonHybrid(signedBody(alice.fingerprint(), text), alice);
         CHECK(!Session::authenticateGroupSender(inner(alice.fingerprint(), "tampered", gsig), "text",
@@ -158,7 +158,7 @@ void testGroupMessageSenderAuth()
                    .has_value());
     }
 
-    // 4. Non-member: a correctly self-signed message from someone not in the group → rejected.
+    // 4. Non-member: a correctly self-signed message from someone not in the group -> rejected.
     {
         std::map<std::string, GroupMember> withoutAlice;
         withoutAlice[mallory.fingerprint()] = {};
@@ -168,7 +168,7 @@ void testGroupMessageSenderAuth()
                    .has_value());
     }
 
-    // 5. Unsigned: no `gsig` at all → rejected.
+    // 5. Unsigned: no `gsig` at all -> rejected.
     {
         const nlohmann::json m = {{"v", 1}, {"type", "text"}, {"id", id},
             {"from", alice.fingerprint()}, {"sentAt", sentAt}, {"text", text},

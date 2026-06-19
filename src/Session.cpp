@@ -31,7 +31,7 @@ namespace fs = std::filesystem;
 
 // Tokens minted per batch handed to a contact. When a peer's stash of our
 // tokens drops to kRefillThreshold, they signal it and we mint another batch
-// (see Contacts.md refill) — so a conversation never runs dry.
+// (see Contacts.md refill) - so a conversation never runs dry.
 constexpr int kTokenBatchSize = 64;
 constexpr std::size_t kRefillThreshold = 16;
 
@@ -499,7 +499,7 @@ void Session::subscribe(const std::int64_t days)
 
     // For a user-owned destination, refresh the transient delegation handed to
     // the serving server so it can operate the destination for this period.
-    // The transient expiry tracks the subscription window (kept short — the
+    // The transient expiry tracks the subscription window (kept short - the
     // server only ever holds a time-boxed capability, never the master).
     if (hasI2pDestination()) {
         const std::int64_t expiresUnix = now + days * 24 * 3600;
@@ -590,7 +590,7 @@ bool Session::enableI2pDest(const std::int64_t now)
         return false;
     }
     // Back the master up to the account's other devices so they keep the same
-    // address. Best effort — failure must not fail enabling.
+    // address. Best effort - failure must not fail enabling.
     try {
         syncI2pMasterToSelf();
     } catch (const std::exception&) {
@@ -639,7 +639,7 @@ bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_
     }
     const I2pDestStatus status = client_->i2pStatus();
     if (!status.enabled || !status.active) {
-        return false;  // off or unpaid → the personal destination is offline; do not issue
+        return false;  // off or unpaid -> the personal destination is offline; do not issue
     }
     // Poll-before-issue: the status read above is the check. If the server still
     // holds a transient comfortably in date, another of the user's devices has
@@ -760,7 +760,7 @@ void Session::deliver(const std::string& toDest, const Key& servingSealingKey,
 void Session::sendContactRequest(const std::string& peerFingerprint, const std::string& text)
 {
     // Resolve the peer's prekey, serving server and server card on our own
-    // server (facade locality — we never reach a foreign facade). The prekey
+    // server (facade locality - we never reach a foreign facade). The prekey
     // is signed by the peer (subscription certificate) and the server card by
     // the peer's server, so neither can be substituted by an intermediary.
     const ContactInfo info = client_->lookupContact(peerFingerprint);
@@ -771,7 +771,7 @@ FetchTransport Session::fetchTransport() const
 {
     return [this](const std::string& toDest, const std::string& op, const Bytes& sealed) {
         try {
-            // Direct over a fresh transient SAM session (preferred — our own
+            // Direct over a fresh transient SAM session (preferred - our own
             // server is never involved, and a b33 dial authenticates the target).
             return federationFetchOverSam(
                 "127.0.0.1", samPort_, toDest, op, sealed, blobFetchPrivacy_);
@@ -806,7 +806,7 @@ std::string Session::aliasBuyArtifacts(const std::string& alias) const
     // identity: the normalized name, this user's serving destination + sealing
     // key (its descriptor, mirroring inviteUri), and a user-signed alias
     // certificate binding the name to the identity. The portal buy is driven by
-    // POSTing this JSON to /portal/buy — the signing key never leaves the client,
+    // POSTing this JSON to /portal/buy - the signing key never leaves the client,
     // the resolver only verifies the signature against the descriptor fingerprint.
     if (myDest_.empty() || myServingKeyB64_.empty()) {
         throw std::runtime_error("subscribe first: no serving destination to publish");
@@ -833,8 +833,8 @@ std::string Session::addByUsername(const std::string& alias, const std::string& 
     // malicious relay can only withhold, never forge the binding. The
     // alias->fingerprint mapping is the one residual trust of the name path: the
     // resolved fingerprint is returned so the UI can surface it for out-of-band
-    // verification. Everything after the mapping — the card fetch and its
-    // certificates — is verified end-to-end as usual.
+    // verification. Everything after the mapping - the card fetch and its
+    // certificates - is verified end-to-end as usual.
     const std::string normalized = normalizeAlias(alias);
     const Descriptor descriptor
         = client_->resolveAlias(normalized, resolverCoordinate_, nowSeconds(), fetchTransport());
@@ -1138,7 +1138,7 @@ void Session::setSamPort(const std::uint16_t port)
 Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
 {
     try {
-        // Direct over a fresh transient SAM session (preferred — our server is
+        // Direct over a fresh transient SAM session (preferred - our server is
         // never involved).
         return fetchBlob("127.0.0.1", samPort_, pointer, blobFetchPrivacy_);
     } catch (const std::exception&) {
@@ -1152,7 +1152,7 @@ void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& d
 {
     try {
         // Direct over a fresh transient SAM session, streamed to disk (preferred
-        // — our server is never involved and the file never sits whole in RAM).
+        // - our server is never involved and the file never sits whole in RAM).
         fetchBlobToFile("127.0.0.1", samPort_, pointer, dest, blobFetchPrivacy_);
     } catch (const std::exception&) {
         // No local SAM bridge (or the direct fetch failed): the own-server proxy
@@ -1291,7 +1291,7 @@ std::vector<IncomingMessage> Session::sync()
 
         // A blob pointer: the real content was externalized to blob storage.
         // Fetch it over I2P (a fresh transient destination), verify and decrypt
-        // it, then dispatch on the recovered content's real type. Best effort —
+        // it, then dispatch on the recovered content's real type. Best effort -
         // a failed fetch surfaces the pointer (the blob persists until its TTL,
         // so a later sync can retry).
         if (type == "blob.pointer") {
@@ -1352,7 +1352,7 @@ std::vector<IncomingMessage> Session::sync()
             // A self-sync from another of our devices: adopt the I2P master if we
             // do not already hold one, so this device keeps the same address.
             // Idempotent (a device that already has it ignores it) and handled
-            // silently — not a user-visible message.
+            // silently - not a user-visible message.
             message.contentType = type;
             if (message.fromFingerprint == fingerprint() && i2pMaster_.empty()) {
                 try {
@@ -1422,7 +1422,7 @@ std::vector<IncomingMessage> Session::sync()
             // (`gsig`): the roster attests who is a member, but only this binds
             // the message's `from` and content to a signing identity. Drop
             // anything unsigned, malformed, field-mismatched, or (for a group we
-            // already know) from a non-member — otherwise a member could forge
+            // already know) from a non-member - otherwise a member could forge
             // another member's `from`. The verified signer is the authoritative
             // sender. See docs Groups.md.
             const auto group = groups_.find(message.groupId);
@@ -1625,7 +1625,7 @@ void Session::sendToMemberContact(
     const Key memberSealing = Key::fromPublicDer(fromBase64(member.sealingPublicB64));
     const Bytes payload = cms::seal(Bytes(text.begin(), text.end()), memberSealing);
     const Key memberServingKey = Key::fromPublicDer(fromBase64(member.servingSealingB64));
-    // Tokenless contact-class delivery — the standing path into any mailbox.
+    // Tokenless contact-class delivery - the standing path into any mailbox.
     deliver(member.dest, memberServingKey, "contact", memberFp, std::nullopt, payload);
 }
 

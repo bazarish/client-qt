@@ -267,7 +267,7 @@ Bytes fetchBlob(const std::string& samHost, const std::uint16_t samPort,
     try {
         (void)i2pRequest(samHost, samPort, host, "POST", path + "/confirm", {}, {}, privacy);
     } catch (const std::exception&) {
-        // ignore — reclamation falls back to TTL
+        // ignore - reclamation falls back to TTL
     }
     return blob;
 }
@@ -316,7 +316,7 @@ void fetchBlobToFile(const std::string& samHost, const std::uint16_t samPort,
     try {
         (void)i2pRequest(samHost, samPort, host, "POST", path + "/confirm", {}, {}, privacy);
     } catch (const std::exception&) {
-        // ignore — reclamation falls back to TTL
+        // ignore - reclamation falls back to TTL
     }
 }
 
@@ -329,7 +329,7 @@ Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer)
     // Resume through the own server: each attempt asks it for the remaining byte
     // range, which it streams back (X-Blob-Total carries the full ciphertext
     // length, so a transfer the I2P leg truncated can be continued). The first
-    // attempt is full-body (200 semantics); a resumed one continues (206 — appends
+    // attempt is full-body (200 semantics); a resumed one continues (206 - appends
     // from the offset). The same driver as the direct path, over the proxy.
     const RangedGetFn get = [&](const std::uint64_t offset) -> RangedGet {
         std::string query = "host=" + host + "&path=" + path;

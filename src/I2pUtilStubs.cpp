@@ -2,7 +2,7 @@
 //
 // Minimal leaf-function definitions for the trimmed libi2pd "keys" build.
 // The identity/crypto translation units reference a few i2p::util time and
-// thread helpers that otherwise live in Timestamp.cpp — which transitively
+// thread helpers that otherwise live in Timestamp.cpp - which transitively
 // pulls in the whole router (RouterContext, transports, net stack). The
 // client only manufactures key material, so we supply these leaves directly
 // and keep the router out of the build entirely.

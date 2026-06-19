@@ -105,7 +105,7 @@ public:
     const std::string& clientId() const;
     const ServerEndpoint& endpoint() const;
     // The facade the transport is currently using (last one that worked), as a
-    // URL — for the GUI's "connected via" display.
+    // URL - for the GUI's "connected via" display.
     std::string activeFacadeUrl() const;
 
 private:

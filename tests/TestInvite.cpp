@@ -78,7 +78,7 @@ int main()
     CHECK_THROWS(parseDescriptor("http://example/x"));
     CHECK_THROWS(parseDescriptor("bazarish://invite?v=1&fp=short"));
 
-    // The small descriptor renders as QR (one or a few frames — far smaller than
+    // The small descriptor renders as QR (one or a few frames - far smaller than
     // the retired full-card invite, which needed a multi-frame sequence).
     const std::vector<std::string> codes = renderQrCodes(uri);
     CHECK(!codes.empty());

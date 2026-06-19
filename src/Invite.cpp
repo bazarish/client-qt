@@ -12,7 +12,7 @@ namespace {
 constexpr const char* kServerPrefix = "bazarish://server/";
 constexpr int kServerLinkFormatVersion = 1;
 
-// base64url (RFC 4648 §5) is base64 with a URL-safe alphabet and no padding,
+// base64url (RFC 4648 section 5) is base64 with a URL-safe alphabet and no padding,
 // so the blob can ride inside a URI path with no percent-encoding.
 std::string toBase64Url(const Bytes& data)
 {

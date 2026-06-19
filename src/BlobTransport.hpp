@@ -19,8 +19,8 @@ namespace bazarish::client {
 // Retention requested at upload; mirrors blob storage's policy. Only the sender
 // sets a download count; with none, reclamation is by TTL alone.
 struct BlobRetention {
-    std::int64_t ttlSeconds = 0;         // 0 → the store's default TTL
-    std::optional<std::uint32_t> count;  // sender-set download count (none → TTL only)
+    std::int64_t ttlSeconds = 0;         // 0 -> the store's default TTL
+    std::optional<std::uint32_t> count;  // sender-set download count (none -> TTL only)
 };
 
 // The capability fields blob storage returns on upload.
@@ -32,7 +32,7 @@ struct BlobUploadResult {
 
 // Uploads a packed blob's ciphertext to blob storage through the user's own
 // server facade (PUT /v1/storage/blob, authenticated; the facade forwards it to
-// the blob backend). Retention rides in headers (not signature-covered —
+// the blob backend). Retention rides in headers (not signature-covered -
 // end-to-end integrity is the sealed pointer's sha256). Throws (ApiError) on a
 // non-success response, e.g. quota exceeded.
 BlobUploadResult uploadBlob(
@@ -44,7 +44,7 @@ BlobUploadResult uploadBlob(
 BlobUploadResult uploadBlobFromFile(
     ApiClient& api, const PackedBlobFile& packed, const BlobRetention& retention);
 
-// --- Download / confirm: over I2P only (never clearnet — no IP leak) ---
+// --- Download / confirm: over I2P only (never clearnet - no IP leak) ---
 
 struct I2pHttpResponse {
     int status = 0;
@@ -85,7 +85,7 @@ Bytes downloadWithResume(const RangedGetFn& get);
 
 // Streams the ciphertext from get() to a temporary file beside destPath,
 // verifies its digest against the pointer, then decrypts it file-to-file into
-// destPath — so neither the ciphertext nor the cleartext is ever held whole in
+// destPath - so neither the ciphertext nor the cleartext is ever held whole in
 // memory. The temp file is removed on every exit path. The transport seam (get)
 // is injected so the assembly/verify/decrypt logic is testable without a router.
 // Throws on a fetch error or an integrity failure.

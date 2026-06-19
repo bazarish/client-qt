@@ -2,7 +2,7 @@ import QtQuick
 
 // Delivery status values for the message indicator, referenced as
 // DeliveryStatus.AtSenderServer etc. Mirrors the C++ enum in
-// app/DeliveryStatus.hpp one-to-one (auto-numbered 0..5) — keep in sync.
+// app/DeliveryStatus.hpp one-to-one (auto-numbered 0..5) - keep in sync.
 QtObject {
     enum Value {
         Sending,            // in flight to our own server (hollow ring)

@@ -14,8 +14,8 @@
 namespace bazarish::app {
 
 // Root application object: owns the profile manager and the set of currently
-// open accounts. Several accounts can be open at once — each keeps its own
-// SessionController (worker thread + background sync), so all of them receive —
+// open accounts. Several accounts can be open at once - each keeps its own
+// SessionController (worker thread + background sync), so all of them receive -
 // and one is "active" (the one the UI is bound to). Drives the launch flow
 // (pick or create a profile, then unlock it) and account switching/removal.
 class AppController : public QObject {

@@ -1,19 +1,19 @@
-# Bazarish — client-qt6
+# Bazarish - client-qt6
 
 The client for the [Bazarish](https://github.com/bazarish/docs-main) messenger.
 One library with three layers on top:
 
-- **Core library** — `ApiClient` (hybrid-signed HTTP transport over the client
+- **Core library** - `ApiClient` (hybrid-signed HTTP transport over the client
   API), `Client` (typed endpoint wrappers + sealed-envelope construction) and
   `Session` (stateful: identity, sealing key, contacts, one-time tokens, E2E
   encryption, mailbox sync).
-- **CLI** — `bazarish-client`, a stateful command-line client.
-- **GUI** — `bazarish-gui`, a Qt6 desktop app (built only when Qt6 Widgets is
+- **CLI** - `bazarish-client`, a stateful command-line client.
+- **GUI** - `bazarish-gui`, a Qt6 desktop app (built only when Qt6 Widgets is
   present), driving the same `Session`.
 
 Messages are end-to-end encrypted to the peer's user sealing key. The **first**
 contact request is encrypted too, using the peer's sealing **prekey** fetched
-from its serving server (`GET /v1/account/contact`) — there is no plaintext
+from its serving server (`GET /v1/account/contact`) - there is no plaintext
 first message. The server stores only opaque ciphertext.
 
 The private keys are stored as PEM under the state directory and may be
@@ -23,11 +23,11 @@ device migration. Contacts can be added three ways, trading convenience for
 trust (see the spec's *Out-of-band invites*): a fully offline **invite**
 (link or QR carrying the self-verifying trust chain, no server trust), a raw
 **fingerprint**, or a **username** (convenient, but the resolver is trusted for
-the name→fingerprint mapping).
+the name->fingerprint mapping).
 
 ## Build
 
-Requires CMake ≥ 3.20, C++20, OpenSSL ≥ 3.0; Qt6 Widgets is optional (enables
+Requires CMake >= 3.20, C++20, OpenSSL >= 3.0; Qt6 Widgets is optional (enables
 the GUI). `common` is a submodule.
 
 ```bash
@@ -64,9 +64,9 @@ conversation.
 
 Environment variables:
 
-- `BAZARISH_PASSPHRASE` — when set, `init` encrypts the key PEMs at rest and
+- `BAZARISH_PASSPHRASE` - when set, `init` encrypts the key PEMs at rest and
   every other command needs it to open the state.
-- `BAZARISH_EXPORT_PASSWORD` — required by `export`/`import`; protects the
+- `BAZARISH_EXPORT_PASSWORD` - required by `export`/`import`; protects the
   bundle independently of the at-rest passphrase.
 
 ## GUI

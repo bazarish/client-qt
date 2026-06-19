@@ -188,7 +188,7 @@ Item {
                 }
             }
 
-            // "Sending…" feedback while waiting for the bot's response to a tap.
+            // "Sending..." feedback while waiting for the bot's response to a tap.
             RowLayout {
                 visible: delegate.busy
                 Layout.topMargin: 2

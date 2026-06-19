@@ -75,7 +75,7 @@ void registerHandlers(Bot& bot)
 
     // Inline-keyboard button presses arrive as callbacks. The bot edits the
     // same message in place (Telegram-style), keeping the menu so the user can
-    // tap again — and the in-place change is itself the visible feedback.
+    // tap again - and the in-place change is itself the visible feedback.
     bot.onCallback([](Bot& bot, const std::string& peer, const std::string& data,
                        const std::string& ref) {
         std::string body;

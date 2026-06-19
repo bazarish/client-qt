@@ -263,7 +263,7 @@ int runInvite(const std::vector<std::string>& args)
 int runRequest(const std::vector<std::string>& args)
 {
     // request <state> <peer-fp> <text>  (peer must be on our own server;
-    // cross-server first contact uses add-invite — facade locality)
+    // cross-server first contact uses add-invite - facade locality)
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -316,7 +316,7 @@ int runAddUser(const std::vector<std::string>& args)
 int runAliasCert(const std::vector<std::string>& args)
 {
     // alias-cert <state> <alias>: emit (as JSON) the signed artifacts the central
-    // resolver's portal needs to claim a name for this identity — the alias, the
+    // resolver's portal needs to claim a name for this identity - the alias, the
     // user's serving destination + sealing key, and a user-signed alias
     // certificate. POST it to the resolver's /portal/buy (the key never leaves the
     // client; the portal only verifies the signature).

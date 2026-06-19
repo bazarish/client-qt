@@ -93,7 +93,7 @@ struct SendStatus {
 // The opaque result of one federation fetch (card / alias resolve), as seen by
 // the client: the served reply is `ok` with a `sealed` body, or `ok == false`
 // with a typed errorCode (CARD_UNKNOWN / ALIAS_UNKNOWN). The transport is
-// responsible only for moving the sealed bytes — never for reading them.
+// responsible only for moving the sealed bytes - never for reading them.
 struct FetchOutcome {
     bool ok = false;
     Bytes sealed;

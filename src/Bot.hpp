@@ -13,7 +13,7 @@ namespace bazarish::client {
 // A minimal chat-bot framework over a Session. A bot is an ordinary identity:
 // it subscribes to a server like any other client, auto-accepts incoming
 // contacts and answers commands, plain text and inline-keyboard callbacks. The
-// server, facades and federation are unchanged — a bot is pure Layer-2 content,
+// server, facades and federation are unchanged - a bot is pure Layer-2 content,
 // so the two-layer invariant (Messages.md) holds.
 //
 // Handlers receive the bot (for replies) and the peer fingerprint. Replies go

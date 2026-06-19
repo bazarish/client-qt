@@ -55,7 +55,7 @@ void testKeyboardJson()
     CHECK(json[0].size() == 2);
     CHECK(json[0][0].at("text") == "Yes");
     CHECK(json[0][0].at("data") == "yes");
-    // A callback button carries no "command", and vice versa — minimal shape.
+    // A callback button carries no "command", and vice versa - minimal shape.
     CHECK(!json[0][0].contains("command"));
     CHECK(json[1][0].at("text") == "Help");
     CHECK(json[1][0].at("command") == "help");

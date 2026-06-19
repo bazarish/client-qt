@@ -43,7 +43,7 @@ void testMastersDiffer()
 }
 
 // Offline (transient) keys operate the SAME destination as the master, and a
-// second transient yields the same address again — the migration property:
+// second transient yields the same address again - the migration property:
 // the user keeps one address while each operator gets its own short-lived key.
 void testOfflineKeepsAddress()
 {

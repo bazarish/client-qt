@@ -22,7 +22,7 @@ Popup {
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
     // The add-contact actions run on the worker thread (a lookup plus a sealed
-    // delivery with retries — slow over I2P), so reflect that immediately.
+    // delivery with retries - slow over I2P), so reflect that immediately.
     function startRequest(fn) { errorText = ""; busy = true; fn() }
 
     Connections {

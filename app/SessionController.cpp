@@ -520,7 +520,7 @@ SessionController::SessionController(QObject* parent)
     worker_->moveToThread(&thread_);
     connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);
 
-    // Commands → worker (queued across threads).
+    // Commands -> worker (queued across threads).
     connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openProfile);
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
     connect(this, &SessionController::requestUpdateFacades, worker_, &SessionWorker::updateFacades);
@@ -559,7 +559,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestRefreshI2pStatus, worker_,
         &SessionWorker::refreshI2pStatus);
 
-    // Results → controller (queued).
+    // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
     connect(worker_, &SessionWorker::openFailed, this, &SessionController::openFailed);
     connect(worker_, &SessionWorker::connectionChanged, this,
@@ -1135,7 +1135,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     }
 
     // Send a delivery receipt back (the "green" signal) when enabled, for
-    // user-visible content only — never for control or group messages (a group
+    // user-visible content only - never for control or group messages (a group
     // receipt would have no single recipient mailbox to confirm to).
     if (sendReceipts_ && !isGroupMsg && !m.protocolId.isEmpty()
         && (type == "text" || type == "file" || type == "photo" || type == "audio"
@@ -1163,8 +1163,8 @@ void SessionController::onSendProgress(qint64 localId, int state)
 
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)
 {
-    // States advance as fast as the real events occur — no artificial delay.
-    // grey↔yellow is only distinguishable when there is a real hop between two
+    // States advance as fast as the real events occur - no artificial delay.
+    // grey<->yellow is only distinguishable when there is a real hop between two
     // distinct servers; on a same-server delivery they coincide, honestly.
     bumpStatus(localId, ok ? DeliveryStatus::AtRecipientServer : DeliveryStatus::Failed);
     if (!ok) {

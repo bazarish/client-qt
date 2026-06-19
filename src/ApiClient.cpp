@@ -198,7 +198,7 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         headers.emplace("X-Bazarish-Client", clientId_);
     }
     // Extra headers ride outside the signature (e.g. blob retention, which is
-    // not integrity-critical — end-to-end integrity is the sealed pointer's
+    // not integrity-critical - end-to-end integrity is the sealed pointer's
     // sha256).
     for (const auto& [key, value] : extraHeaders) {
         headers.emplace(key, value);
@@ -260,7 +260,7 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         const httplib::Result result = attempt(facades[index]);
         if (!result) {
             lastError = "transport failure: " + httplib::to_string(result.error());
-            continue;  // facade unreachable — try the next
+            continue;  // facade unreachable - try the next
         }
         activeFacade_ = index;  // remember the working facade for next time
 
@@ -355,7 +355,7 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         const httplib::Result result = attempt(facades[index]);
         if (!result) {
             lastError = "transport failure: " + httplib::to_string(result.error());
-            continue;  // facade unreachable — try the next
+            continue;  // facade unreachable - try the next
         }
         activeFacade_ = index;
 

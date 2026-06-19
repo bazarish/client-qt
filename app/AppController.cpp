@@ -31,7 +31,7 @@ AppController::AppController(QObject* parent)
 {
     refreshProfiles();
     // Open every unencrypted profile in the background so they are all online by
-    // default, then focus the last active one — no startup dialog when at least
+    // default, then focus the last active one - no startup dialog when at least
     // one profile could be opened.
     openAllProfiles();
     const QString last = readLastActive();

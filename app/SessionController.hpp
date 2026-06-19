@@ -310,7 +310,7 @@ private:
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;
     void bumpStatus(qint64 localId, int status);
-    // Groups this account belongs to (id → name), merged into the chat list.
+    // Groups this account belongs to (id -> name), merged into the chat list.
     QStringList contactFps_;
     QStringList groupIds_;
     QHash<QString, QString> groupNames_;

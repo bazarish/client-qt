@@ -94,8 +94,8 @@ int main()
     CHECK(reopened.isConnected());
     CHECK(reopened.endpoint().serverFingerprint == "serverfp");
 
-    // Export the encrypted profile, then re-import it twice — once with an
-    // at-rest passphrase, once without — to check the contacts file matches the
+    // Export the encrypted profile, then re-import it twice - once with an
+    // at-rest passphrase, once without - to check the contacts file matches the
     // chosen scheme (sealed CMS DER vs plaintext JSON) and still reopens.
     const auto firstByte = [](const fs::path& path) -> unsigned char {
         std::ifstream in(path, std::ios::binary);

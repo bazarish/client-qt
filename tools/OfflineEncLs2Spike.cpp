@@ -1,8 +1,8 @@
 // Bazarish project (c) 2026
 //
 // Manual spike (NOT run by ctest): proves that an OFFLINE-SIGNATURE I2P
-// destination — a user-owned master key with a time-boxed transient delegation,
-// exactly the artifact a paid client hands its serving server — can be operated
+// destination - a user-owned master key with a time-boxed transient delegation,
+// exactly the artifact a paid client hands its serving server - can be operated
 // over SAM as an ENCRYPTED LeaseSet2 (the b33 invariant) AND is reachable
 // inbound on its blinded address from an independent SAM session. This is the
 // architectural gate for the per-user paid i2pDest provisioning track.
@@ -33,7 +33,7 @@ int main(const int argc, const char** argv)
     const std::uint16_t port = static_cast<std::uint16_t>(argc > 2 ? std::stoi(argv[2]) : 7656);
     // "enc" (default) publishes an encrypted LeaseSet2 and reaches it by the
     // blinded b33; "std" publishes a standard LeaseSet2 (type 3) and reaches it
-    // by the plain IdentHash b32 — a control to isolate whether the resolve
+    // by the plain IdentHash b32 - a control to isolate whether the resolve
     // failure is specific to the encrypted LeaseSet.
     const std::string mode = argc > 3 ? argv[3] : "enc";
     const bool standard = mode == "std";
@@ -41,7 +41,7 @@ int main(const int argc, const char** argv)
     const int leaseSetType = standard ? kStandardLeaseSet2 : bazarish::kEncryptedLeaseSetType;
 
     try {
-        // 1. User-owned master, then a 7-day offline ("transient") delegation —
+        // 1. User-owned master, then a 7-day offline ("transient") delegation -
         //    the exact blob a client would issue to its serving server.
         const bazarish::client::I2pMasterKey master = bazarish::client::generateI2pMaster();
         const std::int64_t expires = static_cast<std::int64_t>(std::time(nullptr)) + 7 * 86400;
@@ -103,7 +103,7 @@ int main(const int argc, const char** argv)
                     std::fflush(stdout);
                     return;
                 } catch (const std::exception&) {
-                    // SAM accept timeout / transient error — re-accept unless
+                    // SAM accept timeout / transient error - re-accept unless
                     // the prober has stopped trying.
                 }
             }

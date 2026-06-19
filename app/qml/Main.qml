@@ -21,7 +21,7 @@ ApplicationWindow {
     StackView {
         id: stack
         anchors.fill: parent
-        // Restored session(s) from last run → straight into the app, no dialog.
+        // Restored session(s) from last run -> straight into the app, no dialog.
         initialItem: App.session ? mainComponent : pickerComponent
     }
 

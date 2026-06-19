@@ -40,7 +40,7 @@ struct Contact {
     // The peer's user sealing public key (SubjectPublicKeyInfo DER, base64),
     // used to E2E-encrypt message payloads to this contact.
     std::string sealingPublicB64;
-    // The peer's I2P serving destination — where delivery envelopes are routed.
+    // The peer's I2P serving destination - where delivery envelopes are routed.
     std::string dest;
     // The peer's serving sealing public key (SPKI DER, base64): delivery
     // envelopes to this contact are sealed to it (held by the peer's server).
@@ -66,7 +66,7 @@ struct GroupMember {
 
 // A group as this client knows it: the roster (other members + their routing and
 // pools), the admin set (implied by member admin flags), and the roster epoch.
-// Purely client-side — the server never sees a group (see docs Groups.md).
+// Purely client-side - the server never sees a group (see docs Groups.md).
 struct Group {
     std::string name;
     std::int64_t epoch = 0;
@@ -88,7 +88,7 @@ struct IncomingMessage {
     // Server-visible delivery class this arrived under ("content"/"contact").
     std::string deliveryClass;
     // True when this item carried bootstrap (the peer's sealing key, serving
-    // server and a fresh token batch) — a new or refreshed contact.
+    // server and a fresh token batch) - a new or refreshed contact.
     bool establishedContact = false;
     // The original type string when contentType == "unsupported".
     std::string rawType;
@@ -169,7 +169,7 @@ public:
 
     // Exports the whole session (identity, sealing key, routing meta and
     // contacts) into a single password-encrypted file (CMS PWRI). The bundle
-    // holds the keys in plain PEM internally — the password protects the file.
+    // holds the keys in plain PEM internally - the password protects the file.
     void exportState(
         const std::filesystem::path& outFile, const std::string& password) const;
     // Imports an exported bundle into a fresh stateDir. A non-empty
@@ -216,12 +216,12 @@ public:
     // Keeps the personal destination's transient fresh: polls the server status,
     // and if the option is active and the current transient is within
     // leadSeconds of expiry (or absent), issues a fresh transient and uploads it
-    // — but only after the poll, so when another of the user's devices has
+    // - but only after the poll, so when another of the user's devices has
     // already renewed, this one stands down (the multi-device race). Returns
     // true if it uploaded a new transient. A no-op without a personal dest.
     bool refreshI2pTransientIfDue(std::int64_t now, std::int64_t leadSeconds);
     // Issues a fresh time-boxed transient (offline keys) from the master, valid
-    // until expiresUnix — the delegation handed to the serving server to operate
+    // until expiresUnix - the delegation handed to the serving server to operate
     // the destination for the subscription window. Throws if the profile has no
     // user-owned destination. subscribe() calls this automatically when one
     // exists, for the subscription period.
@@ -260,8 +260,8 @@ public:
     // Adds a contact by username (alias) on the central resolver. The resolver
     // maps the alias to a descriptor over a signed, self-verifying record (chain:
     // record -> delegated key -> hardcoded resolver root); the alias->fingerprint
-    // binding is the one residual trust of the name path. Everything after it —
-    // the card fetch and its certificates — is verified end-to-end. Returns the
+    // binding is the one residual trust of the name path. Everything after it -
+    // the card fetch and its certificates - is verified end-to-end. Returns the
     // resolved fingerprint so the UI can surface it for out-of-band verification
     // (the only defense against a hostile resolver). Throws if no resolver is
     // configured in this build.
@@ -331,12 +331,12 @@ public:
 
     // Downloads a blob attachment (from a received message) over I2P, verifies
     // and decrypts it to dest. ref is the message's base64 sealed blob pointer
-    // (keyB64 is unused — the key rides inside the pointer).
+    // (keyB64 is unused - the key rides inside the pointer).
     void saveAttachment(const std::string& ref, const std::string& keyB64,
         const std::filesystem::path& dest);
 
     // Sender unsend: deletes the blob this client externalized for a message it
-    // sent (gated by the stored delete-token), over I2P. Best effort — the blob
+    // sent (gated by the stored delete-token), over I2P. Best effort - the blob
     // also reclaims via its TTL. Throws if no blob was recorded for messageId.
     void unsend(const std::string& messageId);
 
@@ -393,10 +393,10 @@ public:
     // Authenticates a group content message's per-message signature (`gsig`).
     // `body` is the unsealed inner content; `type`/`messageId`/`groupId` are the
     // values already read from it; `members` is the known member set of that group
-    // (nullptr when the group is not known locally yet — membership is then
+    // (nullptr when the group is not known locally yet - membership is then
     // deferred and only the signature's from-authenticity is enforced). Returns
     // the cryptographically verified sender fingerprint, or nullopt when the
-    // message is unsigned, malformed, field-mismatched, or from a non-member — in
+    // message is unsigned, malformed, field-mismatched, or from a non-member - in
     // which case the caller must drop it (a member could otherwise forge another
     // member's `from`). Static + pure; exposed to unit-test the spoof rejection.
     static std::optional<std::string> authenticateGroupSender(const nlohmann::json& body,
@@ -421,7 +421,7 @@ private:
     // dial preferred (our own server uninvolved), falling back to the own-server
     // I2P proxy when there is no local SAM bridge or the direct dial fails. A
     // served negative (CARD_UNKNOWN / ALIAS_UNKNOWN) is authoritative and does
-    // not trigger the fallback — only a transport failure does.
+    // not trigger the fallback - only a transport failure does.
     FetchTransport fetchTransport() const;
 
     // Sends a built inner content envelope to an established contact: handles
@@ -445,7 +445,7 @@ private:
     // submits it, polling to completion. onAcceptedByOwnServer fires once when
     // our own server first accepts the envelope (the "grey" delivery state).
     // When tokenRejected is non-null, a token-rejected failure (the token was
-    // already spent — e.g. a concurrent group sender took it) does not throw;
+    // already spent - e.g. a concurrent group sender took it) does not throw;
     // it sets *tokenRejected and returns, so the caller can retry with another
     // token (group fan-out's optimistic retry).
     void deliver(const std::string& toDest, const Key& servingSealingKey,
@@ -459,7 +459,7 @@ private:
 
     // --- Group helpers ---
 
-    // Our own serving sealing key (SPKI DER, base64) — what contacts and group
+    // Our own serving sealing key (SPKI DER, base64) - what contacts and group
     // members seal delivery envelopes to us with.
     std::string ownServingKeyB64() const;
     // Builds and hybrid-signs the current roster of a group (we must be an
@@ -480,7 +480,7 @@ private:
     // Issues our token pool for a group and sends it (group.tokens, tokenless
     // contact class) to every other member.
     void broadcastGroupPool(const std::string& groupId);
-    // Revokes our old pool and broadcasts a fresh one — used after a removal so a
+    // Revokes our old pool and broadcasts a fresh one - used after a removal so a
     // removed member's stash of our tokens is invalidated.
     void rotateGroupPool(const std::string& groupId);
     // Re-signs the current roster and broadcasts it (group.roster) to all members.
