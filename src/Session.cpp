@@ -7,6 +7,7 @@
 #include "LargeBlob.hpp"
 
 #include <bazarish/Auth.hpp>
+#include <bazarish/Certificates.hpp>
 #include <bazarish/Cms.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/I2pAddress.hpp>
@@ -196,6 +197,18 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
     if (const char* const env = std::getenv("BAZARISH_SAM_PORT");
         env != nullptr && env[0] != '\0') {
         samPort_ = static_cast<std::uint16_t>(std::strtoul(env, nullptr, 10));
+    }
+    // The compiled-in resolver coordinate is empty until a developer-run resolver
+    // is deployed and baked in. It can be overridden from the environment so a
+    // freshly-built test or local resolver is exercised without a rebuild; all
+    // three parts must be present or the alias path stays unconfigured.
+    if (const char* const root = std::getenv("BAZARISH_RESOLVER_ROOT");
+        root != nullptr && root[0] != '\0') {
+        const char* const dest = std::getenv("BAZARISH_RESOLVER_DEST");
+        const char* const key = std::getenv("BAZARISH_RESOLVER_KEY");
+        if (dest != nullptr && dest[0] != '\0' && key != nullptr && key[0] != '\0') {
+            resolverCoordinate_ = ResolverCoordinate{root, dest, fromBase64(key)};
+        }
     }
 }
 
@@ -785,6 +798,29 @@ std::string Session::addByInvite(const std::string& inviteUri, const std::string
 void Session::setResolverCoordinate(ResolverCoordinate coordinate)
 {
     resolverCoordinate_ = std::move(coordinate);
+}
+
+std::string Session::aliasBuyArtifacts(const std::string& alias) const
+{
+    // The artifacts the central resolver's portal needs to claim <alias> for this
+    // identity: the normalized name, this user's serving destination + sealing
+    // key (its descriptor, mirroring inviteUri), and a user-signed alias
+    // certificate binding the name to the identity. The portal buy is driven by
+    // POSTing this JSON to /portal/buy — the signing key never leaves the client,
+    // the resolver only verifies the signature against the descriptor fingerprint.
+    if (myDest_.empty() || myServingKeyB64_.empty()) {
+        throw std::runtime_error("subscribe first: no serving destination to publish");
+    }
+    const std::string normalized = normalizeAlias(alias);
+    const Bytes aliasCert
+        = AliasCertificate::issue(client_->identity(), normalized, nowSeconds(), std::nullopt);
+    const nlohmann::json artifacts = {
+        {"alias", normalized},
+        {"srv", myDest_},
+        {"srvKey", myServingKeyB64_},
+        {"aliasCert", toBase64(aliasCert)},
+    };
+    return artifacts.dump();
 }
 
 std::string Session::addByUsername(const std::string& alias, const std::string& text)

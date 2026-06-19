@@ -272,6 +272,13 @@ public:
     // this exists for deployments that point at a different resolver and for tests.
     void setResolverCoordinate(ResolverCoordinate coordinate);
 
+    // Emits, as JSON, the artifacts the central resolver's portal needs to claim
+    // <alias> for this identity: the normalized name, this user's serving
+    // destination + sealing key, and a user-signed alias certificate. The buy is
+    // driven by POSTing this to the resolver's /portal/buy; the signing key never
+    // leaves the client. Throws if the user has no serving destination yet.
+    std::string aliasBuyArtifacts(const std::string& alias) const;
+
     // Sends an E2E-encrypted message to an established contact, spending one
     // of the peer's tokens. Throws if the contact is unknown or out of
     // tokens. When the contact has no reciprocal tokens from us yet (the

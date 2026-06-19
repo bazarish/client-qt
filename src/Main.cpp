@@ -67,6 +67,7 @@ void printUsage()
         "  bazarish-client request <state> <peer-fp> <text>\n"
         "  bazarish-client add-invite <state> <invite-file> <text>\n"
         "  bazarish-client add-user <state> <alias> <text>\n"
+        "  bazarish-client alias-cert <state> <alias>\n"
         "  bazarish-client send <state> <peer-fp> <text>\n"
         "  bazarish-client send-file <state> <peer-fp> <file>\n"
         "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
@@ -94,7 +95,10 @@ void printUsage()
         "Environment:\n"
         "  BAZARISH_PASSPHRASE       encrypts/decrypts the key PEMs at rest\n"
         "  BAZARISH_EXPORT_PASSWORD  protects the export/import bundle (required)\n"
-        "  BAZARISH_SAM_PORT         local SAM API port (loopback host; default 7656)\n",
+        "  BAZARISH_SAM_PORT         local SAM API port (loopback host; default 7656)\n"
+        "  BAZARISH_RESOLVER_ROOT    central resolver root fingerprint (overrides built-in)\n"
+        "  BAZARISH_RESOLVER_DEST    central resolver .b32.i2p destination\n"
+        "  BAZARISH_RESOLVER_KEY     central resolver serving key (base64 SPKI DER)\n",
         kVersion);
 }
 
@@ -306,6 +310,22 @@ int runAddUser(const std::vector<std::string>& args)
     // print the resolved fingerprint so the user can verify it out of band.
     std::printf("contact request sent to %s (verify fingerprint: %s)\n", args[2].c_str(),
         fingerprint.c_str());
+    return 0;
+}
+
+int runAliasCert(const std::vector<std::string>& args)
+{
+    // alias-cert <state> <alias>: emit (as JSON) the signed artifacts the central
+    // resolver's portal needs to claim a name for this identity — the alias, the
+    // user's serving destination + sealing key, and a user-signed alias
+    // certificate. POST it to the resolver's /portal/buy (the key never leaves the
+    // client; the portal only verifies the signature).
+    if (args.size() != 3) {
+        printUsage();
+        return 2;
+    }
+    const Session session = Session::open(args[1], keyPassphrase());
+    std::printf("%s\n", session.aliasBuyArtifacts(args[2]).c_str());
     return 0;
 }
 
@@ -667,6 +687,9 @@ int main(const int argc, const char** argv)
         }
         if (command == "add-user") {
             return runAddUser(args);
+        }
+        if (command == "alias-cert") {
+            return runAliasCert(args);
         }
         if (command == "send") {
             return runSend(args);
