@@ -383,6 +383,19 @@ public:
     // Leaves a group: notifies the members and drops local state.
     void leaveGroup(const std::string& groupId);
 
+    // Authenticates a group content message's per-message signature (`gsig`).
+    // `body` is the unsealed inner content; `type`/`messageId`/`groupId` are the
+    // values already read from it; `members` is the known member set of that group
+    // (nullptr when the group is not known locally yet — membership is then
+    // deferred and only the signature's from-authenticity is enforced). Returns
+    // the cryptographically verified sender fingerprint, or nullopt when the
+    // message is unsigned, malformed, field-mismatched, or from a non-member — in
+    // which case the caller must drop it (a member could otherwise forge another
+    // member's `from`). Static + pure; exposed to unit-test the spoof rejection.
+    static std::optional<std::string> authenticateGroupSender(const nlohmann::json& body,
+        const std::string& type, const std::string& messageId, const std::string& groupId,
+        const std::map<std::string, GroupMember>* members);
+
 private:
     Session(std::filesystem::path stateDir, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);

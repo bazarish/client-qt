@@ -1382,6 +1382,22 @@ std::vector<IncomingMessage> Session::sync()
         // thread). Orthogonal to the content type.
         if (body.contains("group")) {
             message.groupId = body.at("group").value("id", std::string());
+            // The sender is authenticated by a per-message hybrid signature
+            // (`gsig`): the roster attests who is a member, but only this binds
+            // the message's `from` and content to a signing identity. Drop
+            // anything unsigned, malformed, field-mismatched, or (for a group we
+            // already know) from a non-member — otherwise a member could forge
+            // another member's `from`. The verified signer is the authoritative
+            // sender. See docs Groups.md.
+            const auto group = groups_.find(message.groupId);
+            const std::optional<std::string> authedFrom = authenticateGroupSender(body, type,
+                message.messageId, message.groupId,
+                group != groups_.end() ? &group->second.members : nullptr);
+            if (!authedFrom.has_value()) {
+                client_->ack(entry.id);  // consume the spoofed/unsigned item; never surface it
+                continue;
+            }
+            message.fromFingerprint = *authedFrom;
         }
 
         // An inline keyboard may ride on any content message (typically text);
@@ -1704,6 +1720,34 @@ std::string Session::createGroup(
     return groupId;
 }
 
+std::optional<std::string> Session::authenticateGroupSender(const nlohmann::json& body,
+    const std::string& type, const std::string& messageId, const std::string& groupId,
+    const std::map<std::string, GroupMember>* members)
+{
+    try {
+        const cms::VerifiedHybridJson signed_
+            = cms::verifyJsonHybrid(fromBase64(body.at("gsig").get<std::string>()));
+        const nlohmann::json& sb = signed_.body;
+        // The signer signs their OWN from; the outer claim must match it; the
+        // identifying + content fields must match what was signed; and (when we
+        // know the group) the signer must be a current member.
+        const bool memberKnown
+            = members == nullptr || members->count(signed_.identityFingerprint) > 0;
+        const bool ok = sb.value("from", std::string()) == signed_.identityFingerprint
+            && sb.value("from", std::string()) == body.value("from", std::string())
+            && sb.value("groupId", std::string()) == groupId
+            && sb.value("id", std::string()) == messageId
+            && sb.value("type", std::string()) == type
+            && sb.value("text", std::string()) == body.value("text", std::string())
+            && memberKnown;
+        if (ok) {
+            return signed_.identityFingerprint;
+        }
+    } catch (const std::exception&) {
+    }
+    return std::nullopt;
+}
+
 void Session::sendGroupMessage(const std::string& groupId, const std::string& text)
 {
     const auto found = groups_.find(groupId);
@@ -1711,8 +1755,23 @@ void Session::sendGroupMessage(const std::string& groupId, const std::string& te
         throw std::runtime_error("unknown group: " + groupId);
     }
     Group& group = found->second;
-    // One logical message id shared across the fan-out.
+    // One logical message id + timestamp shared across the fan-out.
     const std::string id = toHex(randomBytes(8));
+    const std::int64_t sentAt = nowSeconds();
+    // Authenticate the sender per message: a hybrid signature over the message's
+    // identifying and content fields. The signed roster only attests membership,
+    // so without this a member could put another member's fingerprint in `from`.
+    // verifyJsonHybrid yields the signer's identity fingerprint, which the
+    // recipient checks equals `from` (and is a current member); see Groups.md.
+    const nlohmann::json gsigBody = {
+        {"type", "text"},
+        {"id", id},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"text", text},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
     std::vector<std::string> targets;
     for (const auto& [fp, member] : group.members) {
         if (!member.sendTokens.empty()) {
@@ -1725,9 +1784,10 @@ void Session::sendGroupMessage(const std::string& groupId, const std::string& te
             {"type", "text"},
             {"id", id},
             {"from", fingerprint()},
-            {"sentAt", nowSeconds()},
+            {"sentAt", sentAt},
             {"text", text},
             {"group", {{"id", groupId}}},
+            {"gsig", gsig},
         };
         // Best-effort fan-out: a member we cannot currently reach (pool drained)
         // is skipped, not allowed to abort delivery to the others.

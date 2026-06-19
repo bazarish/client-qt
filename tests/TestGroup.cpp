@@ -97,6 +97,95 @@ void testTamperedRosterRejected()
     CHECK(threw);
 }
 
+// Per-message sender signing: a group message carries a hybrid signature
+// (`gsig`) binding its `from` + content to a signing identity, so a member cannot
+// forge another member's `from`. Exercises the real Session::authenticateGroupSender.
+void testGroupMessageSenderAuth()
+{
+    const Identity alice = Identity::generate();    // an honest member (the sender)
+    const Identity mallory = Identity::generate();  // a member who tries to forge
+    const Identity victim = Identity::generate();   // the member mallory impersonates
+    const std::string groupId = "g-sign";
+    const std::int64_t sentAt = 1000;
+    const std::string id = "msg1";
+    const std::string text = "hello group";
+
+    std::map<std::string, GroupMember> members;
+    members[alice.fingerprint()] = {};
+    members[mallory.fingerprint()] = {};
+    members[victim.fingerprint()] = {};
+
+    const auto signedBody = [&](const std::string& from, const std::string& t) {
+        return nlohmann::json{{"type", "text"}, {"id", id}, {"from", from}, {"groupId", groupId},
+            {"sentAt", sentAt}, {"text", t}};
+    };
+    const auto inner = [&](const std::string& from, const std::string& t, const Bytes& gsig) {
+        return nlohmann::json{{"v", 1}, {"type", "text"}, {"id", id}, {"from", from},
+            {"sentAt", sentAt}, {"text", t}, {"group", {{"id", groupId}}}, {"gsig", toBase64(gsig)}};
+    };
+
+    // 1. Honest: alice signs her own message — authenticated as alice.
+    {
+        const Bytes gsig = cms::signJsonHybrid(signedBody(alice.fingerprint(), text), alice);
+        const auto from
+            = Session::authenticateGroupSender(inner(alice.fingerprint(), text, gsig), "text", id,
+                groupId, &members);
+        CHECK(from.has_value() && *from == alice.fingerprint());
+    }
+
+    // 2a. Forge: mallory signs a body that lies `from`=victim — signer != signed-from → rejected.
+    {
+        const Bytes gsig = cms::signJsonHybrid(signedBody(victim.fingerprint(), text), mallory);
+        CHECK(!Session::authenticateGroupSender(inner(victim.fingerprint(), text, gsig), "text", id,
+            groupId, &members)
+                   .has_value());
+    }
+
+    // 2b. Forge: mallory signs honestly (from=mallory) but sets the OUTER from=victim — the
+    //     outer claim must match the signed one → rejected.
+    {
+        const Bytes gsig = cms::signJsonHybrid(signedBody(mallory.fingerprint(), text), mallory);
+        CHECK(!Session::authenticateGroupSender(inner(victim.fingerprint(), text, gsig), "text", id,
+            groupId, &members)
+                   .has_value());
+    }
+
+    // 3. Tamper: a valid signature over the original text, but the outer text was changed → rejected.
+    {
+        const Bytes gsig = cms::signJsonHybrid(signedBody(alice.fingerprint(), text), alice);
+        CHECK(!Session::authenticateGroupSender(inner(alice.fingerprint(), "tampered", gsig), "text",
+            id, groupId, &members)
+                   .has_value());
+    }
+
+    // 4. Non-member: a correctly self-signed message from someone not in the group → rejected.
+    {
+        std::map<std::string, GroupMember> withoutAlice;
+        withoutAlice[mallory.fingerprint()] = {};
+        const Bytes gsig = cms::signJsonHybrid(signedBody(alice.fingerprint(), text), alice);
+        CHECK(!Session::authenticateGroupSender(inner(alice.fingerprint(), text, gsig), "text", id,
+            groupId, &withoutAlice)
+                   .has_value());
+    }
+
+    // 5. Unsigned: no `gsig` at all → rejected.
+    {
+        const nlohmann::json m = {{"v", 1}, {"type", "text"}, {"id", id},
+            {"from", alice.fingerprint()}, {"sentAt", sentAt}, {"text", text},
+            {"group", {{"id", groupId}}}};
+        CHECK(!Session::authenticateGroupSender(m, "text", id, groupId, &members).has_value());
+    }
+
+    // 6. Unknown group (members == nullptr): membership is deferred (roster not applied yet), but
+    //    a valid signature is still required and from-authenticity enforced.
+    {
+        const Bytes gsig = cms::signJsonHybrid(signedBody(alice.fingerprint(), text), alice);
+        const auto from = Session::authenticateGroupSender(inner(alice.fingerprint(), text, gsig),
+            "text", id, groupId, nullptr);
+        CHECK(from.has_value() && *from == alice.fingerprint());
+    }
+}
+
 // A connection-less session has no groups, and the group queries are safe on
 // unknown ids.
 void testEmptyGroupApi()
@@ -116,6 +205,7 @@ int main()
 {
     testRosterTrust();
     testTamperedRosterRejected();
+    testGroupMessageSenderAuth();
     testEmptyGroupApi();
     std::fprintf(stderr, "TestGroup passed\n");
     return 0;
