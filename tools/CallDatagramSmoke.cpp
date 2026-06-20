@@ -26,15 +26,18 @@ int main(int argc, char** argv)
         = argc > 1 ? static_cast<std::uint16_t>(std::stoi(argv[1])) : SamClient::kDefaultPort;
     const std::uint16_t udp
         = argc > 2 ? static_cast<std::uint16_t>(std::stoi(argv[2])) : kDefaultSamUdpPort;
+    // Leaseset type to publish the media destinations as: "b32" (standard, works
+    // on any SAM) or "b33" (encrypted). Routing a datagram to a b33 host needs a
+    // SAM bridge that resolves blinded addresses for datagrams (i2pd patch).
+    const std::string lsArg = argc > 3 ? argv[3] : "b32";
+    const int leaseSetType = (lsArg == "b32") ? kStandardLeaseSetType : kEncryptedLeaseSetType;
 
-    std::printf("bringing up two RAW datagram sessions (SAM %u, udp %u)...\n", control, udp);
-    // SAM datagrams route by identity hash, so the destination must publish a
-    // STANDARD leaseset (an encrypted b33 leaseset is keyed by its blinded key
-    // and is unreachable by ident hash).
+    std::printf("bringing up two RAW datagram sessions (SAM %u, udp %u, %s)...\n", control, udp,
+        lsArg.c_str());
     SamDatagramSession a(
-        "127.0.0.1", control, udp, "bz-dg-a", "TRANSIENT", kStandardLeaseSetType);
+        "127.0.0.1", control, udp, "bz-dg-a", "TRANSIENT", leaseSetType);
     SamDatagramSession b(
-        "127.0.0.1", control, udp, "bz-dg-b", "TRANSIENT", kStandardLeaseSetType);
+        "127.0.0.1", control, udp, "bz-dg-b", "TRANSIENT", leaseSetType);
     std::printf("A routes at %s\n", a.routingAddress().c_str());
     std::printf("B routes at %s\n", b.routingAddress().c_str());
 
