@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "AudioIo.hpp"
+#include "CallMedia.hpp"
 #include "Client.hpp"
 
 #include <bazarish/Bytes.hpp>
@@ -98,6 +100,10 @@ struct IncomingMessage {
     // For contentType == "receipt", the message id being acknowledged; for
     // contentType == "bot.callback", the keyboard message the button belongs to.
     std::string refId;
+
+    // For the call.* content types, the call this signal belongs to. The UI uses
+    // it to accept/decline an incoming call.invite and to match later signals.
+    std::string callId;
 
     // Inline keyboard (content types may attach one), as its JSON wire form so
     // a UI can render it without a C++ parser. Empty when there is no keyboard.
@@ -350,6 +356,62 @@ public:
     // environment variable at construction.
     void setSamPort(std::uint16_t port);
 
+    // --- Audio calls (client-to-client; signalling over E2E, media over SAM) ---
+
+    // Lifecycle of the single call this session tracks at a time.
+    enum class CallState {
+        eIdle,
+        eOutgoing,  // we invited; awaiting the peer's accept
+        eIncoming,  // a call.invite arrived; awaiting our accept/decline
+        eActive,    // media is flowing
+    };
+
+    // A snapshot of the current call for the UI / CLI.
+    struct CallInfo {
+        CallState state = CallState::eIdle;
+        std::string callId;
+        std::string peerFingerprint;
+        bool muted = false;
+        std::uint64_t packetsSent = 0;
+        std::uint64_t packetsReceived = 0;
+    };
+
+    // Audio device backends are injected so the core stays Qt-free: the GUI sets
+    // a Qt Multimedia backend; the CLI and tests fall back to the built-in
+    // synthetic backend (a tone source and a counting sink). A factory makes a
+    // fresh device per call.
+    using AudioSourceFactory = std::function<std::unique_ptr<AudioSource>()>;
+    using AudioSinkFactory = std::function<std::unique_ptr<AudioSink>()>;
+    void setAudioBackend(AudioSourceFactory sourceFactory, AudioSinkFactory sinkFactory);
+
+    // Places an outgoing audio call to an established contact. STRICT: a local
+    // I2P SAM bridge is required; without it this throws ApiError(eSamUnavailable)
+    // with a readable message and no call is placed. Builds a one-time SAM
+    // datagram destination for the media and sends a call.invite (carrying that
+    // destination and a fresh per-call media key) over the E2E content path.
+    // Throws if the contact is unknown or a call is already in progress.
+    void startAudioCall(const std::string& peerFingerprint);
+
+    // Accepts the pending incoming call (its id must match). STRICT SAM as above:
+    // builds our media destination, replies with call.accept and starts media.
+    void acceptCall(const std::string& callId);
+
+    // Declines the pending incoming call (sends call.decline) and clears it.
+    void declineCall(const std::string& callId);
+
+    // Ends the active or ringing call (sends call.end) and tears down media.
+    void endCall();
+
+    // Mutes/unmutes the local microphone while staying connected.
+    void setCallMuted(bool muted);
+
+    // The current call snapshot (state eIdle when there is none).
+    CallInfo currentCall() const;
+
+    // Sets the local SAM datagram (UDP) port used for call media. Separate from
+    // the SAM control port; defaults to kDefaultSamUdpPort (7655).
+    void setSamUdpPort(std::uint16_t port);
+
     // Pulls, decrypts, applies (contacts/tokens) and acks all pending items.
     std::vector<IncomingMessage> sync();
 
@@ -441,6 +503,26 @@ private:
     // in response to the peer signalling a low stash (Contacts.md).
     void sendTokenRefill(const std::string& peerFingerprint);
 
+    // --- Call helpers ---
+
+    // Builds the one-time SAM RAW datagram session that carries the call's media.
+    // STRICT: probes the local SAM bridge first and throws ApiError(eSamUnavailable)
+    // with a readable message when none is reachable, so a no-SAM client fails
+    // fast instead of waiting on a tunnel build that cannot happen.
+    std::unique_ptr<SamDatagramSession> openCallMediaSession();
+    // Wires the media engine (transport + audio backend + codec) for the active
+    // call against the peer's media destination and starts it.
+    void startCallMedia();
+    // Stops media, closes the datagram session, and resets to the idle state.
+    void clearCall();
+    // Sends a call.* signalling content message (E2E, content class) to a peer.
+    void sendCallSignal(
+        const std::string& peerFingerprint, const std::string& type, nlohmann::json extra);
+    // Dispatches a decrypted call.* signal during sync(), updating call state and
+    // starting/stopping media as needed. Returns the content type handled.
+    void handleCallSignal(const std::string& type, const std::string& from,
+        const nlohmann::json& body, IncomingMessage& message);
+
     // Seals a delivery envelope to the destination server's sealing key and
     // submits it, polling to completion. onAcceptedByOwnServer fires once when
     // our own server first accepts the envelope (the "grey" delivery state).
@@ -519,6 +601,26 @@ private:
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
     I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::eMax;
     std::uint16_t samPort_ = 7656;
+    std::uint16_t samUdpPort_ = kDefaultSamUdpPort;
+
+    // Injected audio device backends (empty -> the built-in synthetic backend).
+    AudioSourceFactory audioSourceFactory_;
+    AudioSinkFactory audioSinkFactory_;
+
+    // The single in-flight call. Media objects are non-null only while active.
+    struct ActiveCall {
+        CallState state = CallState::eIdle;
+        std::string callId;
+        std::string peerFingerprint;
+        std::string peerMediaDest;  // the peer's media datagram routing address
+        Bytes mediaKey;             // 32-byte AES-256-GCM key, shared both ways
+        bool initiator = false;     // true on the caller side (nonce role prefix)
+        bool muted = false;
+        std::unique_ptr<SamDatagramSession> dgram;
+        std::unique_ptr<SamCallTransport> transport;
+        std::unique_ptr<CallMedia> media;
+    };
+    ActiveCall call_;
     std::map<std::string, SentBlob> sentBlobs_;
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;

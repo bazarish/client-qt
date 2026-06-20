@@ -24,6 +24,11 @@ find_package(Threads REQUIRED)
 find_library(QRENCODE_LIBRARY NAMES qrencode REQUIRED)
 find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
 
+# libopus encodes call audio (48 kHz mono, 20 ms Opus frames). The media rides
+# SAM datagrams; this is only the codec, so it stays private to the core lib.
+find_library(OPUS_LIBRARY NAMES opus REQUIRED)
+find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
+
 # --- I2P key material (user-owned destinations + offline/transient keys) ---
 # Only the CLIENT manufactures I2P key material in-process: it owns the
 # permanent destination key and issues short-lived offline (transient) keys for
@@ -66,9 +71,12 @@ target_compile_options(libi2pd_keys PRIVATE -w -Os -g0)
 
 add_library(bazarish_client_lib STATIC
     src/ApiClient.cpp
+    src/AudioCodec.cpp
+    src/AudioIo.cpp
     src/Bot.cpp
     src/Client.cpp
     src/BlobTransport.cpp
+    src/CallMedia.cpp
     src/FederationFetch.cpp
     src/I2pKeys.cpp
     src/Invite.cpp
@@ -78,11 +86,11 @@ add_library(bazarish_client_lib STATIC
     src/Session.cpp
 )
 target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR})
+target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR})
 target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
 # libi2pd_keys is an implementation detail behind the I2pKeys wrapper; keep it
 # PRIVATE so i2pd headers/types never leak into the rest of the client.
-target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} libi2pd_keys)
+target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY} libi2pd_keys)
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 # HTTPS facades: enable httplib's TLS client. Defined PUBLIC and OpenSSL::SSL
 # linked PUBLIC so every client-side target that includes httplib (CLI, bot,
@@ -106,6 +114,12 @@ add_executable(blob-fetch-smoke tools/BlobFetchSmoke.cpp)
 target_link_libraries(blob-fetch-smoke PRIVATE bazarish_client_lib)
 target_compile_options(blob-fetch-smoke PRIVATE -Wall -Wextra -Werror)
 
+# Manual SAM datagram smoke (live router; not part of ctest): proves RAW
+# datagrams - the call media transport - round-trip over real I2P.
+add_executable(call-datagram-smoke tools/CallDatagramSmoke.cpp)
+target_link_libraries(call-datagram-smoke PRIVATE bazarish_client_lib)
+target_compile_options(call-datagram-smoke PRIVATE -Wall -Wextra -Werror)
+
 # Manual SAM spike (live router; not part of ctest): proves an offline-key
 # destination can only be served as a standard LeaseSet2 (plain b32), not an
 # encrypted LeaseSet2 (b33). Uses common's b33 derivation + the libi2pd key
@@ -116,7 +130,7 @@ target_link_libraries(offline-enc-ls2-spike PRIVATE bazarish_client_lib libi2pd_
 
 # The Qt6 Quick (QML) desktop app - the primary front-end over the same
 # Session logic the CLI uses. Built only when Qt6 Quick is available.
-find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql QUIET)
+find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql Multimedia QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
 
@@ -135,13 +149,15 @@ if(Qt6_FOUND)
         app/Models.hpp
         app/TranscriptStore.cpp
         app/TranscriptStore.hpp
+        app/QtAudioIo.cpp
+        app/QtAudioIo.hpp
         app/Identicon.cpp
         app/Identicon.hpp
     )
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(bazarish-app PRIVATE
         bazarish_client_lib ${QRENCODE_LIBRARY} ${SQLITE3_LIBRARY}
-        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql)
+        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql Qt6::Multimedia)
     target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 
@@ -189,6 +205,7 @@ endfunction()
 
 bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestBot)
+bazarish_client_add_test(TestCallMedia)
 bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestGroup)

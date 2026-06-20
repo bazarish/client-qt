@@ -3,6 +3,7 @@
 
 #include "DeliveryStatus.hpp"
 #include "Invite.hpp"
+#include "QtAudioIo.hpp"
 #include "Session.hpp"
 
 #include <QRandomGenerator>
@@ -13,6 +14,7 @@
 #include <exception>
 #include <fstream>
 #include <iterator>
+#include <memory>
 
 namespace bazarish::app {
 
@@ -52,6 +54,11 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
         emit openFailed(QString::fromUtf8(e.what()));
         return;
     }
+    // Real microphone/speaker for calls (Qt Multimedia). The factories run on
+    // this worker thread when a call starts, so the QAudio objects live here.
+    session_->setAudioBackend(
+        []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<QtAudioSource>(); },
+        []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<QtAudioSink>(); });
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected,
@@ -192,6 +199,78 @@ void SessionWorker::sync()
     emit contactsRefreshed(fps);
     emitGroups();
     emitFacadeInfo();
+    // Surface any call state change picked up this sync (a new invite, the peer
+    // accepting, or a hang-up) and refresh live media stats.
+    emitCallState();
+}
+
+void SessionWorker::emitCallState()
+{
+    if (!session_) {
+        return;
+    }
+    const Session::CallInfo call = session_->currentCall();
+    emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
+        QString::fromStdString(call.callId), call.muted);
+}
+
+void SessionWorker::startCall(const QString& peer)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->startAudioCall(peer.toStdString());
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+    emitCallState();
+}
+
+void SessionWorker::acceptCall(const QString& callId)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->acceptCall(callId.toStdString());
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+    emitCallState();
+}
+
+void SessionWorker::declineCall(const QString& callId)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->declineCall(callId.toStdString());
+    } catch (const std::exception&) {
+    }
+    emitCallState();
+}
+
+void SessionWorker::endCall()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->endCall();
+    } catch (const std::exception&) {
+    }
+    emitCallState();
+}
+
+void SessionWorker::setCallMuted(const bool muted)
+{
+    if (!session_) {
+        return;
+    }
+    session_->setCallMuted(muted);
+    emitCallState();
 }
 
 void SessionWorker::sendText(
@@ -558,6 +637,11 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::disablePersonalDest);
     connect(this, &SessionController::requestRefreshI2pStatus, worker_,
         &SessionWorker::refreshI2pStatus);
+    connect(this, &SessionController::requestStartCall, worker_, &SessionWorker::startCall);
+    connect(this, &SessionController::requestAcceptCall, worker_, &SessionWorker::acceptCall);
+    connect(this, &SessionController::requestDeclineCall, worker_, &SessionWorker::declineCall);
+    connect(this, &SessionController::requestEndCall, worker_, &SessionWorker::endCall);
+    connect(this, &SessionController::requestSetCallMuted, worker_, &SessionWorker::setCallMuted);
 
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
@@ -583,6 +667,8 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::actionFailed, this, &SessionController::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
+    connect(worker_, &SessionWorker::callStateChanged, this,
+        &SessionController::onCallStateChanged);
 
     // Keep the account-wide unread total in sync with the contacts model, so the
     // switcher badge updates even while this account is in the background.
@@ -1044,6 +1130,12 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     const QString peer = message.value("peer").toString();
     const QString type = message.value("type").toString();
 
+    // Call signalling drives the call screen via callStateChanged, never the
+    // chat list.
+    if (type.startsWith(QStringLiteral("call."))) {
+        return;
+    }
+
     // A delivery receipt acknowledges one of our sent messages: mark it
     // "green" (received by the peer's client). Not shown as a message.
     if (type == "receipt") {
@@ -1170,6 +1262,51 @@ void SessionController::onSendResult(qint64 localId, bool ok, const QString& err
     if (!ok) {
         emit actionFailed(error);
     }
+}
+
+void SessionController::startCall(const QString& peer)
+{
+    const QString target = peer.isEmpty() ? activePeer_ : peer;
+    if (target.isEmpty()) {
+        return;
+    }
+    emit requestStartCall(target);
+}
+
+void SessionController::acceptCall()
+{
+    emit requestAcceptCall(callId_);
+}
+
+void SessionController::declineCall()
+{
+    emit requestDeclineCall(callId_);
+}
+
+void SessionController::endCall()
+{
+    emit requestEndCall();
+}
+
+void SessionController::setCallMuted(const bool muted)
+{
+    emit requestSetCallMuted(muted);
+}
+
+void SessionController::onCallStateChanged(
+    const int state, const QString& peer, const QString& callId, const bool muted)
+{
+    static const char* const kNames[] = {"idle", "outgoing", "incoming", "active"};
+    const QString name = (state >= 0 && state <= 3) ? QString::fromLatin1(kNames[state])
+                                                    : QStringLiteral("idle");
+    if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted) {
+        return;
+    }
+    callState_ = name;
+    callPeer_ = peer;
+    callId_ = callId;
+    callMuted_ = muted;
+    emit callChanged();
 }
 
 }  // namespace bazarish::app

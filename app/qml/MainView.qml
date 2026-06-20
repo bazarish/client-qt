@@ -56,7 +56,7 @@ Item {
                                 else
                                     contactInfo.open()
                             }
-                            onCallRequested: callScreen.open()
+                            onCallRequested: root.session.startCall("")
                         }
                     }
                     Label {
@@ -75,6 +75,17 @@ Item {
     ContactInfo { id: contactInfo; session: root.session }
     GroupInfo { id: groupInfo; session: root.session }
     CallScreen { id: callScreen; session: root.session }
+    // Open the call overlay whenever a call is live (outgoing, incoming or
+    // active), and close it when the call returns to idle.
+    Connections {
+        target: root.session
+        function onCallChanged() {
+            if (root.session.callState === "idle")
+                callScreen.close()
+            else if (!callScreen.opened)
+                callScreen.open()
+        }
+    }
     AccountSwitcher { id: accountSwitcher }
     SettingsPage { id: settings; session: root.session; onShowInvite: inviteSheet.open() }
 

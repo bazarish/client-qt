@@ -5,6 +5,7 @@
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Log.hpp>
 
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -12,6 +13,7 @@
 #include <exception>
 #include <fstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace {
@@ -72,6 +74,8 @@ void printUsage()
         "  bazarish-client send-file <state> <peer-fp> <file>\n"
         "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
         "  bazarish-client send-callback <state> <peer-fp> <data> [ref]\n"
+        "  bazarish-client call <state> <peer-fp> [seconds]\n"
+        "  bazarish-client call-answer <state> [seconds]\n"
         "  bazarish-client get-file <state> <ref> <key-b64> <out>\n"
         "  bazarish-client group-create <state> <name> <peer-fp> [peer-fp ...]\n"
         "  bazarish-client group-send <state> <group-id> <text>\n"
@@ -630,6 +634,83 @@ int runSync(const std::vector<std::string>& args)
     return 0;
 }
 
+// Places an outgoing audio call and drives the signalling sync loop until the
+// peer answers, then runs media for the remaining window. STRICT SAM: without a
+// local bridge startAudioCall throws a readable error and nothing is dialled.
+int runCall(const std::vector<std::string>& args)
+{
+    // call <state-dir> <peer-fp> [seconds]
+    if (args.size() < 3 || args.size() > 4) {
+        printUsage();
+        return 2;
+    }
+    const int seconds = args.size() == 4 ? std::atoi(args[3].c_str()) : 30;
+    Session session = Session::open(args[1], keyPassphrase());
+    session.startAudioCall(args[2]);
+    std::printf("calling %s (audio)...\n", args[2].c_str());
+    const std::int64_t deadline = static_cast<std::int64_t>(std::time(nullptr)) + seconds;
+    bool connected = false;
+    while (static_cast<std::int64_t>(std::time(nullptr)) < deadline) {
+        session.sync();
+        const Session::CallInfo call = session.currentCall();
+        if (call.state == Session::CallState::eIdle) {
+            std::printf("call ended by peer\n");
+            return 0;
+        }
+        if (call.state == Session::CallState::eActive && !connected) {
+            std::printf("connected to %s\n", call.peerFingerprint.c_str());
+            connected = true;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    const Session::CallInfo call = session.currentCall();
+    std::printf("ending call (media sent=%llu received=%llu)\n",
+        static_cast<unsigned long long>(call.packetsSent),
+        static_cast<unsigned long long>(call.packetsReceived));
+    session.endCall();
+    return 0;
+}
+
+// Waits for an incoming call.invite, auto-accepts it (a test/headless driver),
+// runs media for the window, then ends. STRICT SAM applies on accept.
+int runCallAnswer(const std::vector<std::string>& args)
+{
+    // call-answer <state-dir> [seconds]
+    if (args.size() < 2 || args.size() > 3) {
+        printUsage();
+        return 2;
+    }
+    const int seconds = args.size() == 3 ? std::atoi(args[2].c_str()) : 60;
+    Session session = Session::open(args[1], keyPassphrase());
+    std::printf("waiting for an incoming audio call...\n");
+    const std::int64_t deadline = static_cast<std::int64_t>(std::time(nullptr)) + seconds;
+    bool accepted = false;
+    while (static_cast<std::int64_t>(std::time(nullptr)) < deadline) {
+        session.sync();
+        const Session::CallInfo call = session.currentCall();
+        if (!accepted && call.state == Session::CallState::eIncoming) {
+            std::printf("incoming call from %s; accepting\n", call.peerFingerprint.c_str());
+            session.acceptCall(call.callId);
+            accepted = true;
+        }
+        if (accepted && call.state == Session::CallState::eIdle) {
+            std::printf("call ended by peer\n");
+            return 0;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    if (!accepted) {
+        std::printf("no incoming call\n");
+        return 0;
+    }
+    const Session::CallInfo call = session.currentCall();
+    std::printf("ending call (media sent=%llu received=%llu)\n",
+        static_cast<unsigned long long>(call.packetsSent),
+        static_cast<unsigned long long>(call.packetsReceived));
+    session.endCall();
+    return 0;
+}
+
 }  // namespace
 
 int main(const int argc, const char** argv)
@@ -702,6 +783,12 @@ int main(const int argc, const char** argv)
         }
         if (command == "send-callback") {
             return runSendCallback(args);
+        }
+        if (command == "call") {
+            return runCall(args);
+        }
+        if (command == "call-answer") {
+            return runCallAnswer(args);
         }
         if (command == "get-file") {
             return runGetFile(args);

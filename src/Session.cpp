@@ -10,6 +10,7 @@
 #include <bazarish/Certificates.hpp>
 #include <bazarish/Cms.hpp>
 #include <bazarish/Descriptor.hpp>
+#include <bazarish/Errors.hpp>
 #include <bazarish/I2pAddress.hpp>
 #include <bazarish/Tokens.hpp>
 
@@ -197,6 +198,12 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
     if (const char* const env = std::getenv("BAZARISH_SAM_PORT");
         env != nullptr && env[0] != '\0') {
         samPort_ = static_cast<std::uint16_t>(std::strtoul(env, nullptr, 10));
+    }
+    // The SAM datagram (UDP) port carries call media; it is separate from the
+    // control port and likewise overridable (e.g. a second local router).
+    if (const char* const env = std::getenv("BAZARISH_SAM_UDP_PORT");
+        env != nullptr && env[0] != '\0') {
+        samUdpPort_ = static_cast<std::uint16_t>(std::strtoul(env, nullptr, 10));
     }
     // The compiled-in resolver coordinate is empty until a developer-run resolver
     // is deployed and baked in. It can be overridden from the environment so a
@@ -1345,6 +1352,11 @@ std::vector<IncomingMessage> Session::sync()
             // state). Carries the acknowledged message id.
             message.contentType = type;
             message.refId = body.value("ref", std::string());
+        } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
+            || type == "call.end") {
+            // Audio-call signalling: update call state and start/stop media. The
+            // media itself never touches the server (it rides SAM datagrams).
+            handleCallSignal(type, message.fromFingerprint, body, message);
         } else if (type == "token-refill") {
             // The fresh tokens already arrived via the bootstrap block.
             message.contentType = type;
@@ -1496,6 +1508,233 @@ void Session::sendTokenRefill(const std::string& peerFingerprint)
         {"bootstrap", {{"replyTokens", issueTokenBatch()}}},
     };
     sendContent(peerFingerprint, std::move(inner));
+}
+
+// ============================ Audio calls ============================
+
+void Session::setAudioBackend(AudioSourceFactory sourceFactory, AudioSinkFactory sinkFactory)
+{
+    audioSourceFactory_ = std::move(sourceFactory);
+    audioSinkFactory_ = std::move(sinkFactory);
+}
+
+void Session::setSamUdpPort(const std::uint16_t port)
+{
+    samUdpPort_ = port;
+}
+
+std::unique_ptr<SamDatagramSession> Session::openCallMediaSession()
+{
+    // STRICT call gate: a local SAM bridge is mandatory. Probe it first so a
+    // no-SAM client fails fast with a readable error instead of stalling on a
+    // tunnel build that can never complete.
+    try {
+        const SamClient probe("127.0.0.1", samPort_);
+        (void)probe;
+    } catch (const std::exception&) {
+        throw ApiError(ErrorCode::eSamUnavailable, 0,
+            "audio calls need a local I2P SAM bridge at 127.0.0.1:" + std::to_string(samPort_)
+                + " (none reachable)");
+    }
+    // Call media uses a STANDARD leaseset: SAM datagrams route by identity hash,
+    // and an encrypted (b33) leaseset is keyed by its blinded key and so cannot
+    // receive datagrams. The destination is one-time and torn down with the call;
+    // its b32 routing address is shared only with the peer over the E2E invite.
+    const std::string sessionId = "bz-call-" + toHex(randomBytes(6));
+    return std::make_unique<SamDatagramSession>("127.0.0.1", samPort_, samUdpPort_, sessionId,
+        "TRANSIENT", kStandardLeaseSetType, blobFetchPrivacy_, kDefaultTunnelQuantity);
+}
+
+void Session::startCallMedia()
+{
+    call_.transport = std::make_unique<SamCallTransport>(*call_.dgram, call_.peerMediaDest);
+    std::unique_ptr<AudioSource> source
+        = audioSourceFactory_ ? audioSourceFactory_() : std::make_unique<SineAudioSource>();
+    std::unique_ptr<AudioSink> sink
+        = audioSinkFactory_ ? audioSinkFactory_() : std::make_unique<CapturingAudioSink>();
+    call_.media = std::make_unique<CallMedia>(*call_.transport, std::move(source), std::move(sink),
+        call_.mediaKey, call_.initiator ? CallRole::eCaller : CallRole::eCallee);
+    call_.media->setMuted(call_.muted);
+    call_.media->start();
+}
+
+void Session::clearCall()
+{
+    if (call_.media) {
+        call_.media->stop();
+    }
+    call_.media.reset();
+    call_.transport.reset();
+    call_.dgram.reset();
+    call_.state = CallState::eIdle;
+    call_.callId.clear();
+    call_.peerFingerprint.clear();
+    call_.peerMediaDest.clear();
+    call_.mediaKey.clear();
+    call_.initiator = false;
+    call_.muted = false;
+}
+
+void Session::sendCallSignal(
+    const std::string& peerFingerprint, const std::string& type, nlohmann::json extra)
+{
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", type},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowSeconds()},
+    };
+    for (const auto& field : extra.items()) {
+        inner[field.key()] = field.value();
+    }
+    sendContent(peerFingerprint, std::move(inner));
+}
+
+void Session::startAudioCall(const std::string& peerFingerprint)
+{
+    if (call_.state != CallState::eIdle) {
+        throw std::runtime_error("a call is already in progress");
+    }
+    if (contacts_.find(peerFingerprint) == contacts_.end()) {
+        throw std::runtime_error("unknown contact: " + peerFingerprint);
+    }
+    // Build the media destination first (strict SAM); only then announce the call.
+    std::unique_ptr<SamDatagramSession> dgram = openCallMediaSession();
+    const std::string callId = toHex(randomBytes(8));
+    const Bytes mediaKey = randomBytes(kAeadKeyBytes);
+    sendCallSignal(peerFingerprint, "call.invite",
+        {
+            {"callId", callId},
+            {"media", "audio"},
+            {"codec", "opus"},
+            {"dest", dgram->routingAddress()},
+            {"key", toBase64(mediaKey)},
+        });
+    call_.state = CallState::eOutgoing;
+    call_.callId = callId;
+    call_.peerFingerprint = peerFingerprint;
+    call_.mediaKey = mediaKey;
+    call_.initiator = true;
+    call_.muted = false;
+    call_.dgram = std::move(dgram);
+}
+
+void Session::acceptCall(const std::string& callId)
+{
+    if (call_.state != CallState::eIncoming || call_.callId != callId) {
+        throw std::runtime_error("no matching incoming call");
+    }
+    std::unique_ptr<SamDatagramSession> dgram = openCallMediaSession();  // strict SAM
+    sendCallSignal(
+        call_.peerFingerprint, "call.accept", {{"callId", callId}, {"dest", dgram->routingAddress()}});
+    call_.dgram = std::move(dgram);
+    call_.state = CallState::eActive;
+    startCallMedia();
+}
+
+void Session::declineCall(const std::string& callId)
+{
+    if (call_.state != CallState::eIncoming || call_.callId != callId) {
+        throw std::runtime_error("no matching incoming call");
+    }
+    const std::string peer = call_.peerFingerprint;
+    clearCall();
+    try {
+        sendCallSignal(peer, "call.decline", {{"callId", callId}, {"reason", "declined"}});
+    } catch (const std::exception&) {
+        // The local call is already cleared; a failed signal only leaves the
+        // caller to time out on its own.
+    }
+}
+
+void Session::endCall()
+{
+    if (call_.state == CallState::eIdle) {
+        return;
+    }
+    const std::string peer = call_.peerFingerprint;
+    const std::string callId = call_.callId;
+    clearCall();
+    try {
+        sendCallSignal(peer, "call.end", {{"callId", callId}});
+    } catch (const std::exception&) {
+    }
+}
+
+void Session::setCallMuted(const bool muted)
+{
+    call_.muted = muted;
+    if (call_.media) {
+        call_.media->setMuted(muted);
+    }
+}
+
+Session::CallInfo Session::currentCall() const
+{
+    CallInfo info;
+    info.state = call_.state;
+    info.callId = call_.callId;
+    info.peerFingerprint = call_.peerFingerprint;
+    info.muted = call_.muted;
+    if (call_.media) {
+        info.packetsSent = call_.media->packetsSent();
+        info.packetsReceived = call_.media->packetsReceived();
+    }
+    return info;
+}
+
+void Session::handleCallSignal(const std::string& type, const std::string& from,
+    const nlohmann::json& body, IncomingMessage& message)
+{
+    message.contentType = type;
+    message.callId = body.value("callId", std::string());
+
+    if (type == "call.invite") {
+        if (call_.state != CallState::eIdle) {
+            // Already busy: decline so the caller is not left ringing.
+            try {
+                sendCallSignal(
+                    from, "call.decline", {{"callId", message.callId}, {"reason", "busy"}});
+            } catch (const std::exception&) {
+            }
+            message.text = "busy";
+            return;
+        }
+        Bytes key;
+        try {
+            key = fromBase64(body.value("key", std::string()));
+        } catch (const std::exception&) {
+            return;  // malformed invite: surface the event but do not ring
+        }
+        if (key.size() != kAeadKeyBytes) {
+            return;
+        }
+        call_.state = CallState::eIncoming;
+        call_.callId = message.callId;
+        call_.peerFingerprint = from;
+        call_.peerMediaDest = body.value("dest", std::string());
+        call_.mediaKey = std::move(key);
+        call_.initiator = false;
+        call_.muted = false;
+        return;
+    }
+
+    if (type == "call.accept") {
+        if (call_.state == CallState::eOutgoing && call_.callId == message.callId
+            && from == call_.peerFingerprint) {
+            call_.peerMediaDest = body.value("dest", std::string());
+            call_.state = CallState::eActive;
+            startCallMedia();
+        }
+        return;
+    }
+
+    // call.decline / call.end: tear the call down if it is the one we track.
+    if (call_.state != CallState::eIdle && call_.callId == message.callId
+        && from == call_.peerFingerprint) {
+        clearCall();
+    }
 }
 
 // ============================ Groups ============================

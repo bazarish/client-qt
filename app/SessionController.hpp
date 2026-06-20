@@ -62,6 +62,13 @@ public slots:
     void enablePersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
+    // Audio calls: each runs the matching Session method (strict SAM, so a
+    // failure surfaces as actionFailed) and then re-emits the call state.
+    void startCall(const QString& peer);
+    void acceptCall(const QString& callId);
+    void declineCall(const QString& callId);
+    void endCall();
+    void setCallMuted(bool muted);
 
 signals:
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
@@ -89,11 +96,15 @@ signals:
     // summary: a one-line human status for the settings page.
     void i2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary);
+    // Call lifecycle: state is 0 idle / 1 outgoing / 2 incoming / 3 active,
+    // matching Session::CallState. Emitted after every sync and call action.
+    void callStateChanged(int state, const QString& peer, const QString& callId, bool muted);
 
 private:
     void ensureSyncTimer();
     void emitGroups();
     void emitFacadeInfo();
+    void emitCallState();
     std::unique_ptr<bazarish::client::Session> session_;
     QTimer* syncTimer_ = nullptr;
 };
@@ -137,6 +148,12 @@ class SessionController : public QObject {
     Q_PROPERTY(bool i2pActive READ i2pActive NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pStatusText READ i2pStatusText NOTIFY i2pStatusChanged)
+    // Audio call state for the call screen: "idle"/"outgoing"/"incoming"/"active",
+    // the peer fingerprint, a display name, and the local mute flag.
+    Q_PROPERTY(QString callState READ callState NOTIFY callChanged)
+    Q_PROPERTY(QString callPeer READ callPeer NOTIFY callChanged)
+    Q_PROPERTY(QString callPeerName READ callPeerName NOTIFY callChanged)
+    Q_PROPERTY(bool callMuted READ callMuted NOTIFY callChanged)
 public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
@@ -165,6 +182,10 @@ public:
     bool i2pActive() const { return i2pActive_; }
     QString i2pAddress() const { return i2pAddress_; }
     QString i2pStatusText() const { return i2pStatusText_; }
+    QString callState() const { return callState_; }
+    QString callPeer() const { return callPeer_; }
+    QString callPeerName() const { return peerName(callPeer_); }
+    bool callMuted() const { return callMuted_; }
 
     // Opens a profile on the worker thread (dir + id + passphrase).
     void open(const QString& dir, const QString& profileId, const QString& passphrase);
@@ -217,6 +238,13 @@ public:
     Q_INVOKABLE void enablePersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
+    // Audio calls. startCall dials the active/given peer; accept/decline act on
+    // the current incoming call; end hangs up; setCallMuted toggles the mic.
+    Q_INVOKABLE void startCall(const QString& peer);
+    Q_INVOKABLE void acceptCall();
+    Q_INVOKABLE void declineCall();
+    Q_INVOKABLE void endCall();
+    Q_INVOKABLE void setCallMuted(bool muted);
 
 signals:
     void identityChanged();
@@ -230,6 +258,7 @@ signals:
     void onlineChanged();
     void reachableChanged();
     void i2pStatusChanged();
+    void callChanged();
     void openFailed(const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
@@ -265,6 +294,11 @@ signals:  // to worker
     void requestEnablePersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
+    void requestStartCall(const QString& peer);
+    void requestAcceptCall(const QString& callId);
+    void requestDeclineCall(const QString& callId);
+    void requestEndCall();
+    void requestSetCallMuted(bool muted);
 
 private slots:
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected,
@@ -281,6 +315,7 @@ private slots:
     void onGroupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary);
+    void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted);
 
 private:
     QThread thread_;
@@ -321,6 +356,10 @@ private:
     bool i2pActive_ = false;
     QString i2pAddress_;
     QString i2pStatusText_;
+    QString callState_ = QStringLiteral("idle");
+    QString callPeer_;
+    QString callId_;
+    bool callMuted_ = false;
     // Rebuilds the chat list from the cached contacts + groups.
     void rebuildChatList();
     int unreadTotal_ = 0;
