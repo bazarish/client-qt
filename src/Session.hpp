@@ -371,7 +371,9 @@ public:
         CallState state = CallState::eIdle;
         std::string callId;
         std::string peerFingerprint;
+        bool video = false;  // true for a video call (audio always runs too)
         bool muted = false;
+        bool cameraOn = true;  // local camera state on a video call
         std::uint64_t packetsSent = 0;
         std::uint64_t packetsReceived = 0;
     };
@@ -384,6 +386,13 @@ public:
     using AudioSinkFactory = std::function<std::unique_ptr<AudioSink>()>;
     void setAudioBackend(AudioSourceFactory sourceFactory, AudioSinkFactory sinkFactory);
 
+    // Video device backends, injected the same way: the GUI sets a Qt camera /
+    // render backend; the CLI and tests fall back to the built-in synthetic
+    // backend (a moving-pattern source and a counting sink).
+    using VideoSourceFactory = std::function<std::unique_ptr<VideoSource>()>;
+    using VideoSinkFactory = std::function<std::unique_ptr<VideoSink>()>;
+    void setVideoBackend(VideoSourceFactory sourceFactory, VideoSinkFactory sinkFactory);
+
     // Places an outgoing audio call to an established contact. STRICT: a local
     // I2P SAM bridge is required; without it this throws ApiError(eSamUnavailable)
     // with a readable message and no call is placed. Builds a one-time SAM
@@ -392,8 +401,14 @@ public:
     // Throws if the contact is unknown or a call is already in progress.
     void startAudioCall(const std::string& peerFingerprint);
 
+    // Places an outgoing video call (audio plus VP8 video). Identical to
+    // startAudioCall except the call.invite negotiates video, so both sides
+    // capture and render video in addition to audio.
+    void startVideoCall(const std::string& peerFingerprint);
+
     // Accepts the pending incoming call (its id must match). STRICT SAM as above:
     // builds our media destination, replies with call.accept and starts media.
+    // A video invite is accepted as a video call.
     void acceptCall(const std::string& callId);
 
     // Declines the pending incoming call (sends call.decline) and clears it.
@@ -404,6 +419,10 @@ public:
 
     // Mutes/unmutes the local microphone while staying connected.
     void setCallMuted(bool muted);
+
+    // Enables/disables the local camera on a video call while staying connected
+    // (the peer's view of us freezes on the last frame while disabled).
+    void setCameraEnabled(bool enabled);
 
     // The current call snapshot (state eIdle when there is none).
     CallInfo currentCall() const;
@@ -510,8 +529,12 @@ private:
     // with a readable message when none is reachable, so a no-SAM client fails
     // fast instead of waiting on a tunnel build that cannot happen.
     std::unique_ptr<SamDatagramSession> openCallMediaSession();
-    // Wires the media engine (transport + audio backend + codec) for the active
-    // call against the peer's media destination and starts it.
+    // Shared body of startAudioCall/startVideoCall: builds the media destination
+    // (strict SAM), sends the call.invite (negotiating video when video is true)
+    // and records the outgoing-call state.
+    void startCall(const std::string& peerFingerprint, bool video);
+    // Wires the media engine (transport + audio/video backends + codecs) for the
+    // active call against the peer's media destination and starts it.
     void startCallMedia();
     // Stops media, closes the datagram session, and resets to the idle state.
     void clearCall();
@@ -603,9 +626,12 @@ private:
     std::uint16_t samPort_ = 7656;
     std::uint16_t samUdpPort_ = kDefaultSamUdpPort;
 
-    // Injected audio device backends (empty -> the built-in synthetic backend).
+    // Injected audio/video device backends (empty -> the built-in synthetic
+    // backend).
     AudioSourceFactory audioSourceFactory_;
     AudioSinkFactory audioSinkFactory_;
+    VideoSourceFactory videoSourceFactory_;
+    VideoSinkFactory videoSinkFactory_;
 
     // The single in-flight call. Media objects are non-null only while active.
     struct ActiveCall {
@@ -615,7 +641,9 @@ private:
         std::string peerMediaDest;  // the peer's media datagram routing address
         Bytes mediaKey;             // 32-byte AES-256-GCM key, shared both ways
         bool initiator = false;     // true on the caller side (nonce role prefix)
+        bool video = false;         // true for a video call (audio plus video)
         bool muted = false;
+        bool cameraOff = false;     // local camera disabled on a video call
         std::unique_ptr<SamDatagramSession> dgram;
         std::unique_ptr<SamCallTransport> transport;
         std::unique_ptr<CallMedia> media;

@@ -1518,6 +1518,12 @@ void Session::setAudioBackend(AudioSourceFactory sourceFactory, AudioSinkFactory
     audioSinkFactory_ = std::move(sinkFactory);
 }
 
+void Session::setVideoBackend(VideoSourceFactory sourceFactory, VideoSinkFactory sinkFactory)
+{
+    videoSourceFactory_ = std::move(sourceFactory);
+    videoSinkFactory_ = std::move(sinkFactory);
+}
+
 void Session::setSamUdpPort(const std::uint16_t port)
 {
     samUdpPort_ = port;
@@ -1540,21 +1546,37 @@ std::unique_ptr<SamDatagramSession> Session::openCallMediaSession()
     // destination. This requires a SAM bridge that routes datagrams to blinded
     // addresses (i2pd with SAM b33-datagram support); without it the media never
     // arrives. The destination is one-time and torn down with the call.
+    // Call media uses minimal-length tunnels (1 hop each way, no variance): the
+    // single biggest latency/jitter lever for realtime media. This is safe here
+    // because the media destination is one-time and unlinked from the identity
+    // destination, so a short tunnel never weakens identity anonymity. Variance
+    // is off so the path length cannot jump mid-call.
     const std::string sessionId = "bz-call-" + toHex(randomBytes(6));
     return std::make_unique<SamDatagramSession>("127.0.0.1", samPort_, samUdpPort_, sessionId,
-        "TRANSIENT", kEncryptedLeaseSetType, blobFetchPrivacy_, kDefaultTunnelQuantity);
+        "TRANSIENT", kEncryptedLeaseSetType, I2pPrivacy::eMinimal, kDefaultTunnelQuantity);
 }
 
 void Session::startCallMedia()
 {
     call_.transport = std::make_unique<SamCallTransport>(*call_.dgram, call_.peerMediaDest);
-    std::unique_ptr<AudioSource> source
+    std::unique_ptr<AudioSource> audioSource
         = audioSourceFactory_ ? audioSourceFactory_() : std::make_unique<SineAudioSource>();
-    std::unique_ptr<AudioSink> sink
+    std::unique_ptr<AudioSink> audioSink
         = audioSinkFactory_ ? audioSinkFactory_() : std::make_unique<CapturingAudioSink>();
-    call_.media = std::make_unique<CallMedia>(*call_.transport, std::move(source), std::move(sink),
-        call_.mediaKey, call_.initiator ? CallRole::eCaller : CallRole::eCallee);
+    // Video backends are wired only on a video call; null source/sink leave the
+    // engine audio-only.
+    std::unique_ptr<VideoSource> videoSource;
+    std::unique_ptr<VideoSink> videoSink;
+    if (call_.video) {
+        videoSource
+            = videoSourceFactory_ ? videoSourceFactory_() : std::make_unique<PatternVideoSource>();
+        videoSink = videoSinkFactory_ ? videoSinkFactory_() : std::make_unique<CapturingVideoSink>();
+    }
+    call_.media = std::make_unique<CallMedia>(*call_.transport, std::move(audioSource),
+        std::move(audioSink), std::move(videoSource), std::move(videoSink), call_.mediaKey,
+        call_.initiator ? CallRole::eCaller : CallRole::eCallee);
     call_.media->setMuted(call_.muted);
+    call_.media->setCameraEnabled(!call_.cameraOff);
     call_.media->start();
 }
 
@@ -1572,7 +1594,9 @@ void Session::clearCall()
     call_.peerMediaDest.clear();
     call_.mediaKey.clear();
     call_.initiator = false;
+    call_.video = false;
     call_.muted = false;
+    call_.cameraOff = false;
 }
 
 void Session::sendCallSignal(
@@ -1591,7 +1615,7 @@ void Session::sendCallSignal(
     sendContent(peerFingerprint, std::move(inner));
 }
 
-void Session::startAudioCall(const std::string& peerFingerprint)
+void Session::startCall(const std::string& peerFingerprint, const bool video)
 {
     if (call_.state != CallState::eIdle) {
         throw std::runtime_error("a call is already in progress");
@@ -1606,8 +1630,9 @@ void Session::startAudioCall(const std::string& peerFingerprint)
     sendCallSignal(peerFingerprint, "call.invite",
         {
             {"callId", callId},
-            {"media", "audio"},
+            {"media", video ? "video" : "audio"},
             {"codec", "opus"},
+            {"video", video ? "vp8" : ""},
             {"dest", dgram->routingAddress()},
             {"key", toBase64(mediaKey)},
         });
@@ -1616,8 +1641,20 @@ void Session::startAudioCall(const std::string& peerFingerprint)
     call_.peerFingerprint = peerFingerprint;
     call_.mediaKey = mediaKey;
     call_.initiator = true;
+    call_.video = video;
     call_.muted = false;
+    call_.cameraOff = false;
     call_.dgram = std::move(dgram);
+}
+
+void Session::startAudioCall(const std::string& peerFingerprint)
+{
+    startCall(peerFingerprint, false);
+}
+
+void Session::startVideoCall(const std::string& peerFingerprint)
+{
+    startCall(peerFingerprint, true);
 }
 
 void Session::acceptCall(const std::string& callId)
@@ -1626,8 +1663,9 @@ void Session::acceptCall(const std::string& callId)
         throw std::runtime_error("no matching incoming call");
     }
     std::unique_ptr<SamDatagramSession> dgram = openCallMediaSession();  // strict SAM
-    sendCallSignal(
-        call_.peerFingerprint, "call.accept", {{"callId", callId}, {"dest", dgram->routingAddress()}});
+    sendCallSignal(call_.peerFingerprint, "call.accept",
+        {{"callId", callId}, {"media", call_.video ? "video" : "audio"},
+            {"dest", dgram->routingAddress()}});
     call_.dgram = std::move(dgram);
     call_.state = CallState::eActive;
     startCallMedia();
@@ -1670,13 +1708,23 @@ void Session::setCallMuted(const bool muted)
     }
 }
 
+void Session::setCameraEnabled(const bool enabled)
+{
+    call_.cameraOff = !enabled;
+    if (call_.media) {
+        call_.media->setCameraEnabled(enabled);
+    }
+}
+
 Session::CallInfo Session::currentCall() const
 {
     CallInfo info;
     info.state = call_.state;
     info.callId = call_.callId;
     info.peerFingerprint = call_.peerFingerprint;
+    info.video = call_.video;
     info.muted = call_.muted;
+    info.cameraOn = !call_.cameraOff;
     if (call_.media) {
         info.packetsSent = call_.media->packetsSent();
         info.packetsReceived = call_.media->packetsReceived();
@@ -1716,7 +1764,9 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
         call_.peerMediaDest = body.value("dest", std::string());
         call_.mediaKey = std::move(key);
         call_.initiator = false;
+        call_.video = body.value("media", std::string("audio")) == "video";
         call_.muted = false;
+        call_.cameraOff = false;
         return;
     }
 

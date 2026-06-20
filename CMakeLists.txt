@@ -29,6 +29,12 @@ find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
 find_library(OPUS_LIBRARY NAMES opus REQUIRED)
 find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 
+# libvpx encodes call video (VP8, low-resolution realtime). Like the audio codec
+# this is only the codec and stays private to the core lib; video frames ride the
+# same SAM datagram transport, fragmented to fit.
+find_library(VPX_LIBRARY NAMES vpx REQUIRED)
+find_path(VPX_INCLUDE_DIR NAMES vpx/vpx_codec.h REQUIRED)
+
 # --- I2P key material (user-owned destinations + offline/transient keys) ---
 # Only the CLIENT manufactures I2P key material in-process: it owns the
 # permanent destination key and issues short-lived offline (transient) keys for
@@ -77,6 +83,8 @@ add_library(bazarish_client_lib STATIC
     src/Client.cpp
     src/BlobTransport.cpp
     src/CallMedia.cpp
+    src/VideoCodec.cpp
+    src/VideoIo.cpp
     src/FederationFetch.cpp
     src/I2pKeys.cpp
     src/Invite.cpp
@@ -86,11 +94,11 @@ add_library(bazarish_client_lib STATIC
     src/Session.cpp
 )
 target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR})
+target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR} ${VPX_INCLUDE_DIR})
 target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
 # libi2pd_keys is an implementation detail behind the I2pKeys wrapper; keep it
 # PRIVATE so i2pd headers/types never leak into the rest of the client.
-target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY} libi2pd_keys)
+target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY} ${VPX_LIBRARY} libi2pd_keys)
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 # HTTPS facades: enable httplib's TLS client. Defined PUBLIC and OpenSSL::SSL
 # linked PUBLIC so every client-side target that includes httplib (CLI, bot,
@@ -151,6 +159,8 @@ if(Qt6_FOUND)
         app/TranscriptStore.hpp
         app/QtAudioIo.cpp
         app/QtAudioIo.hpp
+        app/QtVideoIo.cpp
+        app/QtVideoIo.hpp
         app/Identicon.cpp
         app/Identicon.hpp
     )
@@ -206,6 +216,7 @@ endfunction()
 bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestBot)
 bazarish_client_add_test(TestCallMedia)
+bazarish_client_add_test(TestVideoCodec)
 bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestGroup)

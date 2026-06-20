@@ -74,7 +74,7 @@ void printUsage()
         "  bazarish-client send-file <state> <peer-fp> <file>\n"
         "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
         "  bazarish-client send-callback <state> <peer-fp> <data> [ref]\n"
-        "  bazarish-client call <state> <peer-fp> [seconds]\n"
+        "  bazarish-client call <state> <peer-fp> [seconds] [video]\n"
         "  bazarish-client call-answer <state> [seconds]\n"
         "  bazarish-client get-file <state> <ref> <key-b64> <out>\n"
         "  bazarish-client group-create <state> <name> <peer-fp> [peer-fp ...]\n"
@@ -639,15 +639,27 @@ int runSync(const std::vector<std::string>& args)
 // local bridge startAudioCall throws a readable error and nothing is dialled.
 int runCall(const std::vector<std::string>& args)
 {
-    // call <state-dir> <peer-fp> [seconds]
-    if (args.size() < 3 || args.size() > 4) {
+    // call <state-dir> <peer-fp> [seconds] [video]
+    if (args.size() < 3 || args.size() > 5) {
         printUsage();
         return 2;
     }
-    const int seconds = args.size() == 4 ? std::atoi(args[3].c_str()) : 30;
+    int seconds = 30;
+    bool video = false;
+    for (std::size_t i = 3; i < args.size(); ++i) {
+        if (args[i] == "video") {
+            video = true;
+        } else {
+            seconds = std::atoi(args[i].c_str());
+        }
+    }
     Session session = Session::open(args[1], keyPassphrase());
-    session.startAudioCall(args[2]);
-    std::printf("calling %s (audio)...\n", args[2].c_str());
+    if (video) {
+        session.startVideoCall(args[2]);
+    } else {
+        session.startAudioCall(args[2]);
+    }
+    std::printf("calling %s (%s)...\n", args[2].c_str(), video ? "video" : "audio");
     const std::int64_t deadline = static_cast<std::int64_t>(std::time(nullptr)) + seconds;
     bool connected = false;
     while (static_cast<std::int64_t>(std::time(nullptr)) < deadline) {
@@ -682,14 +694,15 @@ int runCallAnswer(const std::vector<std::string>& args)
     }
     const int seconds = args.size() == 3 ? std::atoi(args[2].c_str()) : 60;
     Session session = Session::open(args[1], keyPassphrase());
-    std::printf("waiting for an incoming audio call...\n");
+    std::printf("waiting for an incoming call...\n");
     const std::int64_t deadline = static_cast<std::int64_t>(std::time(nullptr)) + seconds;
     bool accepted = false;
     while (static_cast<std::int64_t>(std::time(nullptr)) < deadline) {
         session.sync();
         const Session::CallInfo call = session.currentCall();
         if (!accepted && call.state == Session::CallState::eIncoming) {
-            std::printf("incoming call from %s; accepting\n", call.peerFingerprint.c_str());
+            std::printf("incoming %s call from %s; accepting\n", call.video ? "video" : "audio",
+                call.peerFingerprint.c_str());
             session.acceptCall(call.callId);
             accepted = true;
         }

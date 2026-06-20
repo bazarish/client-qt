@@ -4,6 +4,7 @@
 #include "DeliveryStatus.hpp"
 #include "Invite.hpp"
 #include "QtAudioIo.hpp"
+#include "QtVideoIo.hpp"
 #include "Session.hpp"
 
 #include <QRandomGenerator>
@@ -59,6 +60,18 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     session_->setAudioBackend(
         []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<QtAudioSource>(); },
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<QtAudioSink>(); });
+    // Real camera/display for video calls. Like the audio factories these run on
+    // this worker thread when a call starts; frames reach the GUI-thread
+    // presenters through queued invocation inside the backend.
+    VideoPresenter* const local = localPreview_;
+    VideoPresenter* const remote = remotePreview_;
+    session_->setVideoBackend(
+        [local]() -> std::unique_ptr<bazarish::VideoSource> {
+            return std::make_unique<QtVideoSource>(local);
+        },
+        [remote]() -> std::unique_ptr<bazarish::VideoSink> {
+            return std::make_unique<QtVideoSink>(remote);
+        });
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected,
@@ -211,16 +224,26 @@ void SessionWorker::emitCallState()
     }
     const Session::CallInfo call = session_->currentCall();
     emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
-        QString::fromStdString(call.callId), call.muted);
+        QString::fromStdString(call.callId), call.muted, call.video, call.cameraOn);
 }
 
-void SessionWorker::startCall(const QString& peer)
+void SessionWorker::setVideoPresenters(VideoPresenter* local, VideoPresenter* remote)
+{
+    localPreview_ = local;
+    remotePreview_ = remote;
+}
+
+void SessionWorker::startCall(const QString& peer, const bool video)
 {
     if (!session_) {
         return;
     }
     try {
-        session_->startAudioCall(peer.toStdString());
+        if (video) {
+            session_->startVideoCall(peer.toStdString());
+        } else {
+            session_->startAudioCall(peer.toStdString());
+        }
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -270,6 +293,15 @@ void SessionWorker::setCallMuted(const bool muted)
         return;
     }
     session_->setCallMuted(muted);
+    emitCallState();
+}
+
+void SessionWorker::setCameraEnabled(const bool enabled)
+{
+    if (!session_) {
+        return;
+    }
+    session_->setCameraEnabled(enabled);
     emitCallState();
 }
 
@@ -599,6 +631,13 @@ SessionController::SessionController(QObject* parent)
     worker_->moveToThread(&thread_);
     connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);
 
+    // Video presenters live on the GUI thread (this object owns them); the video
+    // backend on the worker thread renders into them via queued invocation. Set
+    // before any openProfile so the injected backend can reach them.
+    localVideo_ = new VideoPresenter(this);
+    remoteVideo_ = new VideoPresenter(this);
+    worker_->setVideoPresenters(localVideo_, remoteVideo_);
+
     // Commands -> worker (queued across threads).
     connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openProfile);
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
@@ -642,6 +681,8 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestDeclineCall, worker_, &SessionWorker::declineCall);
     connect(this, &SessionController::requestEndCall, worker_, &SessionWorker::endCall);
     connect(this, &SessionController::requestSetCallMuted, worker_, &SessionWorker::setCallMuted);
+    connect(this, &SessionController::requestSetCameraEnabled, worker_,
+        &SessionWorker::setCameraEnabled);
 
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
@@ -1270,7 +1311,26 @@ void SessionController::startCall(const QString& peer)
     if (target.isEmpty()) {
         return;
     }
-    emit requestStartCall(target);
+    emit requestStartCall(target, false);
+}
+
+void SessionController::startVideoCall(const QString& peer)
+{
+    const QString target = peer.isEmpty() ? activePeer_ : peer;
+    if (target.isEmpty()) {
+        return;
+    }
+    emit requestStartCall(target, true);
+}
+
+QObject* SessionController::localVideo() const
+{
+    return localVideo_;
+}
+
+QObject* SessionController::remoteVideo() const
+{
+    return remoteVideo_;
 }
 
 void SessionController::acceptCall()
@@ -1293,19 +1353,27 @@ void SessionController::setCallMuted(const bool muted)
     emit requestSetCallMuted(muted);
 }
 
-void SessionController::onCallStateChanged(
-    const int state, const QString& peer, const QString& callId, const bool muted)
+void SessionController::setCameraEnabled(const bool enabled)
+{
+    emit requestSetCameraEnabled(enabled);
+}
+
+void SessionController::onCallStateChanged(const int state, const QString& peer,
+    const QString& callId, const bool muted, const bool video, const bool cameraOn)
 {
     static const char* const kNames[] = {"idle", "outgoing", "incoming", "active"};
     const QString name = (state >= 0 && state <= 3) ? QString::fromLatin1(kNames[state])
                                                     : QStringLiteral("idle");
-    if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted) {
+    if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted
+        && callVideo_ == video && callCameraOn_ == cameraOn) {
         return;
     }
     callState_ = name;
     callPeer_ = peer;
     callId_ = callId;
     callMuted_ = muted;
+    callVideo_ = video;
+    callCameraOn_ = cameraOn;
     emit callChanged();
 }
 

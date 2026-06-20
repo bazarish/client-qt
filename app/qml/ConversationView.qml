@@ -8,6 +8,7 @@ Item {
     property var session: null
     signal contactInfoRequested()
     signal callRequested()
+    signal videoCallRequested()
 
     ColumnLayout {
         anchors.fill: parent
@@ -42,6 +43,7 @@ Item {
                     }
                 }
                 IconButton { text: "📞"; visible: !parent.isGroup; onClicked: root.callRequested() }
+                IconButton { text: "📹"; visible: !parent.isGroup; onClicked: root.videoCallRequested() }
                 IconButton { text: "ⓘ"; onClicked: root.contactInfoRequested() }
             }
         }

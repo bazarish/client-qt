@@ -19,6 +19,8 @@ class Session;
 
 namespace bazarish::app {
 
+class VideoPresenter;
+
 // Runs all blocking Session work (open, subscribe, send with retries, sync) on
 // a dedicated thread so the UI never freezes. Lives on that worker thread;
 // commands arrive via queued calls and results leave via queued signals.
@@ -62,13 +64,18 @@ public slots:
     void enablePersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
-    // Audio calls: each runs the matching Session method (strict SAM, so a
-    // failure surfaces as actionFailed) and then re-emits the call state.
-    void startCall(const QString& peer);
+    // Calls: each runs the matching Session method (strict SAM, so a failure
+    // surfaces as actionFailed) and then re-emits the call state. video selects
+    // an audio+video call.
+    void startCall(const QString& peer, bool video);
     void acceptCall(const QString& callId);
     void declineCall(const QString& callId);
     void endCall();
     void setCallMuted(bool muted);
+    void setCameraEnabled(bool enabled);
+    // The GUI-thread presenters the video backend renders into; set before the
+    // first openProfile so the injected backend can reach them.
+    void setVideoPresenters(VideoPresenter* local, VideoPresenter* remote);
 
 signals:
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
@@ -98,7 +105,8 @@ signals:
         const QString& summary);
     // Call lifecycle: state is 0 idle / 1 outgoing / 2 incoming / 3 active,
     // matching Session::CallState. Emitted after every sync and call action.
-    void callStateChanged(int state, const QString& peer, const QString& callId, bool muted);
+    void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
+        bool video, bool cameraOn);
 
 private:
     void ensureSyncTimer();
@@ -107,6 +115,8 @@ private:
     void emitCallState();
     std::unique_ptr<bazarish::client::Session> session_;
     QTimer* syncTimer_ = nullptr;
+    VideoPresenter* localPreview_ = nullptr;
+    VideoPresenter* remotePreview_ = nullptr;
 };
 
 // QML-facing facade: owns the worker thread, the models and the transcript
@@ -154,6 +164,12 @@ class SessionController : public QObject {
     Q_PROPERTY(QString callPeer READ callPeer NOTIFY callChanged)
     Q_PROPERTY(QString callPeerName READ callPeerName NOTIFY callChanged)
     Q_PROPERTY(bool callMuted READ callMuted NOTIFY callChanged)
+    Q_PROPERTY(bool callVideo READ callVideo NOTIFY callChanged)
+    Q_PROPERTY(bool callCameraOn READ callCameraOn NOTIFY callChanged)
+    // The video presenters QML binds VideoOutput.videoSink into (local self-view
+    // and the remote peer). Stable for the controller's lifetime.
+    Q_PROPERTY(QObject* localVideo READ localVideo CONSTANT)
+    Q_PROPERTY(QObject* remoteVideo READ remoteVideo CONSTANT)
 public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
@@ -186,6 +202,10 @@ public:
     QString callPeer() const { return callPeer_; }
     QString callPeerName() const { return peerName(callPeer_); }
     bool callMuted() const { return callMuted_; }
+    bool callVideo() const { return callVideo_; }
+    bool callCameraOn() const { return callCameraOn_; }
+    QObject* localVideo() const;
+    QObject* remoteVideo() const;
 
     // Opens a profile on the worker thread (dir + id + passphrase).
     void open(const QString& dir, const QString& profileId, const QString& passphrase);
@@ -241,10 +261,12 @@ public:
     // Audio calls. startCall dials the active/given peer; accept/decline act on
     // the current incoming call; end hangs up; setCallMuted toggles the mic.
     Q_INVOKABLE void startCall(const QString& peer);
+    Q_INVOKABLE void startVideoCall(const QString& peer);
     Q_INVOKABLE void acceptCall();
     Q_INVOKABLE void declineCall();
     Q_INVOKABLE void endCall();
     Q_INVOKABLE void setCallMuted(bool muted);
+    Q_INVOKABLE void setCameraEnabled(bool enabled);
 
 signals:
     void identityChanged();
@@ -294,11 +316,12 @@ signals:  // to worker
     void requestEnablePersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
-    void requestStartCall(const QString& peer);
+    void requestStartCall(const QString& peer, bool video);
     void requestAcceptCall(const QString& callId);
     void requestDeclineCall(const QString& callId);
     void requestEndCall();
     void requestSetCallMuted(bool muted);
+    void requestSetCameraEnabled(bool enabled);
 
 private slots:
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected,
@@ -315,7 +338,8 @@ private slots:
     void onGroupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary);
-    void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted);
+    void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
+        bool video, bool cameraOn);
 
 private:
     QThread thread_;
@@ -360,6 +384,10 @@ private:
     QString callPeer_;
     QString callId_;
     bool callMuted_ = false;
+    bool callVideo_ = false;
+    bool callCameraOn_ = true;
+    VideoPresenter* localVideo_ = nullptr;
+    VideoPresenter* remoteVideo_ = nullptr;
     // Rebuilds the chat list from the cached contacts + groups.
     void rebuildChatList();
     int unreadTotal_ = 0;
