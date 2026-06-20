@@ -1536,13 +1536,13 @@ std::unique_ptr<SamDatagramSession> Session::openCallMediaSession()
             "audio calls need a local I2P SAM bridge at 127.0.0.1:" + std::to_string(samPort_)
                 + " (none reachable)");
     }
-    // Call media uses a STANDARD leaseset: SAM datagrams route by identity hash,
-    // and an encrypted (b33) leaseset is keyed by its blinded key and so cannot
-    // receive datagrams. The destination is one-time and torn down with the call;
-    // its b32 routing address is shared only with the peer over the E2E invite.
+    // Call media uses an encrypted (b33) leaseset, like every other Bazarish
+    // destination. This requires a SAM bridge that routes datagrams to blinded
+    // addresses (i2pd with SAM b33-datagram support); without it the media never
+    // arrives. The destination is one-time and torn down with the call.
     const std::string sessionId = "bz-call-" + toHex(randomBytes(6));
     return std::make_unique<SamDatagramSession>("127.0.0.1", samPort_, samUdpPort_, sessionId,
-        "TRANSIENT", kStandardLeaseSetType, blobFetchPrivacy_, kDefaultTunnelQuantity);
+        "TRANSIENT", kEncryptedLeaseSetType, blobFetchPrivacy_, kDefaultTunnelQuantity);
 }
 
 void Session::startCallMedia()
