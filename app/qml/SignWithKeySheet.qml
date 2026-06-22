@@ -12,7 +12,9 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 480
+    // Cap at 480 but shrink with the window so the inputs and buttons (all
+    // fillWidth) narrow on a small screen instead of overflowing.
+    width: Math.min(480, (Overlay.overlay ? Overlay.overlay.width : 480) - 32)
     padding: 18
     onOpened: { challengeArea.text = ""; blobArea.text = "" }
 
@@ -50,7 +52,7 @@ Popup {
         Label { text: "1. Challenge from the site"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
         ScrollView {
             Layout.fillWidth: true
-            Layout.preferredHeight: 70
+            Layout.preferredHeight: 42
             TextArea {
                 id: challengeArea
                 wrapMode: TextArea.WrapAnywhere
