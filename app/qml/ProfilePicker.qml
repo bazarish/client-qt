@@ -7,10 +7,6 @@ Item {
     id: root
     objectName: "profilePicker"
 
-    // On a narrow window the per-row copy/delete buttons are hidden to keep the
-    // row readable (deletion stays available from Settings).
-    property bool compact: width < 430
-
     Component { id: wizardComponent; CreateProfileWizard {} }
 
     property string pendingId: ""
@@ -83,25 +79,10 @@ Item {
                             }
                         }
                         Label { text: model.encrypted ? "🔒" : ""; color: Theme.textDim }
-                        // Wide: inline copy + delete. Narrow: a single overflow
-                        // menu so both actions stay reachable instead of vanishing.
-                        IconButton {
-                            text: "📋"
-                            visible: !root.compact
-                            onClicked: root.copyFingerprint(model.fingerprint)
-                        }
-                        IconButton {
-                            text: "🗑"
-                            visible: !root.compact
-                            onClicked: {
-                                root.pendingDeleteId = model.profileId
-                                root.pendingDeleteName = model.name
-                                deleteDialog.open()
-                            }
-                        }
+                        // Copy fingerprint and delete live in an overflow menu to
+                        // keep the row clean at any width.
                         IconButton {
                             text: "⋮"
-                            visible: root.compact
                             onClicked: {
                                 root.rowFingerprint = model.fingerprint
                                 root.pendingDeleteId = model.profileId
