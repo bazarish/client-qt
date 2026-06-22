@@ -16,6 +16,7 @@ Item {
     property string pendingId: ""
     property string pendingDeleteId: ""
     property string pendingDeleteName: ""
+    property string rowFingerprint: ""
 
     // Off-screen helper used to put a fingerprint on the system clipboard.
     TextEdit { id: clip; visible: false }
@@ -82,6 +83,8 @@ Item {
                             }
                         }
                         Label { text: model.encrypted ? "🔒" : ""; color: Theme.textDim }
+                        // Wide: inline copy + delete. Narrow: a single overflow
+                        // menu so both actions stay reachable instead of vanishing.
                         IconButton {
                             text: "📋"
                             visible: !root.compact
@@ -94,6 +97,16 @@ Item {
                                 root.pendingDeleteId = model.profileId
                                 root.pendingDeleteName = model.name
                                 deleteDialog.open()
+                            }
+                        }
+                        IconButton {
+                            text: "⋮"
+                            visible: root.compact
+                            onClicked: {
+                                root.rowFingerprint = model.fingerprint
+                                root.pendingDeleteId = model.profileId
+                                root.pendingDeleteName = model.name
+                                rowMenu.popup()
                             }
                         }
                     }
@@ -149,6 +162,19 @@ Item {
                 + "messages from this device? This cannot be undone."
             color: Theme.text
             wrapMode: Text.Wrap
+        }
+    }
+
+    // Per-row actions on a narrow window (the row fields are stashed on open).
+    Menu {
+        id: rowMenu
+        MenuItem {
+            text: "Copy fingerprint"
+            onTriggered: root.copyFingerprint(root.rowFingerprint)
+        }
+        MenuItem {
+            text: "Delete profile"
+            onTriggered: deleteDialog.open()
         }
     }
 }
