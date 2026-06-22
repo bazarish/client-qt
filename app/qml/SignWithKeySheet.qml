@@ -84,12 +84,22 @@ Popup {
             }
         }
         Button {
+            id: copyBtn
+            property bool copied: false
             Layout.fillWidth: true
-            text: "Copy signature"
+            text: copied ? "Copied ✓" : "Copy signature"
             enabled: blobArea.text.length > 0
-            onClicked: { blobArea.selectAll(); blobArea.copy(); blobArea.deselect() }
-            background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
-            contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            onClicked: {
+                blobArea.selectAll(); blobArea.copy(); blobArea.deselect()
+                copied = true; copiedTimer.restart()
+            }
+            background: Rectangle {
+                radius: 10
+                color: copyBtn.copied ? "#3fb950" : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
+                Behavior on color { ColorAnimation { duration: 200 } }
+            }
+            contentItem: Label { text: copyBtn.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
         }
     }
 }

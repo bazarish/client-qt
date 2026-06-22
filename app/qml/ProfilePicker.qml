@@ -13,6 +13,16 @@ Item {
     property string pendingDeleteId: ""
     property string pendingDeleteName: ""
 
+    // Off-screen helper used to put a fingerprint on the system clipboard.
+    TextEdit { id: clip; visible: false }
+    function copyFingerprint(fp) {
+        clip.text = fp
+        clip.selectAll()
+        clip.copy()
+        clip.deselect()
+        if (typeof window !== "undefined") window.showToast("Fingerprint copied")
+    }
+
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 460)
@@ -68,6 +78,10 @@ Item {
                             }
                         }
                         Label { text: model.encrypted ? "🔒" : ""; color: Theme.textDim }
+                        IconButton {
+                            text: "📋"
+                            onClicked: root.copyFingerprint(model.fingerprint)
+                        }
                         IconButton {
                             text: "🗑"
                             onClicked: {
