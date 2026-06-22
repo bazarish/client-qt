@@ -16,6 +16,17 @@ Item {
         return urls
     }
 
+    // Back to the profile list (no server needed to switch/create a profile).
+    IconButton {
+        text: "‹ Profiles"
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.margins: 12
+        onClicked: App.requestAddAccount()
+    }
+
+    SignWithKeySheet { id: signSheet; session: root.session }
+
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 480)
@@ -120,6 +131,24 @@ Item {
             onClicked: root.session.connectServer(root.facadeList(), fpField.text.trim())
             background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
             contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+        }
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Label {
+            text: "No server yet? You can still use your key to sign in to the portals "
+                + "(buy a username, manage storage) or any site that supports sign-in-with-key."
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+        }
+        Button {
+            Layout.fillWidth: true
+            text: "Sign in with your key"
+            onClicked: signSheet.open()
+            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
+            contentItem: Label { text: parent.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
         }
     }
 }

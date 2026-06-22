@@ -73,6 +73,7 @@ Item {
 
     NewChatSheet { id: newChat; session: root.session }
     InviteSheet { id: inviteSheet; session: root.session }
+    SignWithKeySheet { id: signWithKeySheet; session: root.session }
     ContactInfo { id: contactInfo; session: root.session }
     GroupInfo { id: groupInfo; session: root.session }
     CallScreen { id: callScreen; session: root.session }
@@ -88,7 +89,12 @@ Item {
         }
     }
     AccountSwitcher { id: accountSwitcher }
-    SettingsPage { id: settings; session: root.session; onShowInvite: inviteSheet.open() }
+    SettingsPage {
+        id: settings
+        session: root.session
+        onShowInvite: inviteSheet.open()
+        onShowSignWithKey: signWithKeySheet.open()
+    }
 
     // Unlock prompt for an encrypted account the user brings online/switches to.
     property string unlockId: ""

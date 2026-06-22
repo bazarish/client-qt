@@ -503,6 +503,19 @@ void SessionWorker::requestInvite()
     }
 }
 
+void SessionWorker::signLogin(const QString& challenge)
+{
+    if (!session_) {
+        emit actionFailed(QStringLiteral("no profile open"));
+        return;
+    }
+    try {
+        emit loginSigned(QString::fromStdString(session_->signLogin(challenge.toStdString())));
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::refreshI2pStatus()
 {
     if (!session_) {
@@ -662,6 +675,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAddByFingerprint, worker_,
         &SessionWorker::addByFingerprint);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
+    connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
     connect(this, &SessionController::requestSaveAttachment, worker_,
         &SessionWorker::saveAttachment);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
@@ -707,6 +721,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, &SessionController::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
+    connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
     connect(worker_, &SessionWorker::callStateChanged, this,
         &SessionController::onCallStateChanged);
@@ -1043,6 +1058,11 @@ void SessionController::addByFingerprint(const QString& fingerprint, const QStri
 void SessionController::requestInvite()
 {
     emit requestInviteSig();
+}
+
+void SessionController::signLogin(const QString& challenge)
+{
+    emit requestSignLoginSig(challenge);
 }
 
 void SessionController::saveAttachment(

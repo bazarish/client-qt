@@ -8,6 +8,7 @@ Popup {
     id: root
     property var session: null
     signal showInvite()
+    signal showSignWithKey()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -57,6 +58,7 @@ Popup {
                         }
                     }
                     Button { text: "Show my invite / QR"; onClicked: { root.close(); root.showInvite() } }
+                    Button { text: "Sign in with key (portals / sites)"; onClicked: { root.close(); root.showSignWithKey() } }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 

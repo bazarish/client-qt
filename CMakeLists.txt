@@ -190,6 +190,7 @@ if(Qt6_FOUND)
             app/qml/Composer.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
+            app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml
             app/qml/GroupInfo.qml
             app/qml/CallScreen.qml

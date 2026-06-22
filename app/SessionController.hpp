@@ -55,6 +55,9 @@ public slots:
     void addByUsername(const QString& alias, const QString& intro);
     void addByFingerprint(const QString& fingerprint, const QString& intro);
     void requestInvite();
+    // Signs a portal/third-party login challenge with this profile's key. Local
+    // only - no server is contacted - so it works before a server is connected.
+    void signLogin(const QString& challenge);
     void saveAttachment(const QString& ref, const QString& key, const QString& destPath);
     void exportProfile(const QString& path, const QString& password);
     // Per-user I2P destination: set up the master (generate or load a .dat),
@@ -89,6 +92,8 @@ signals:
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);
+    // The signed login blob for a challenge (sign-in-with-key result).
+    void loginSigned(const QString& blob);
     // Whether the last sync reached the facade (true) or failed (false).
     void syncReachable(bool ok);
     // The facade currently in use, the configured facade list, and the server
@@ -249,6 +254,9 @@ public:
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
     Q_INVOKABLE void addByFingerprint(const QString& fingerprint, const QString& intro);
     Q_INVOKABLE void requestInvite();
+    // Signs a sign-in-with-key challenge with this profile's key (no server
+    // needed); the result arrives via loginSigned(). The key never leaves the app.
+    Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void saveAttachment(const QString& ref, const QString& key, const QString& fileUrl);
     Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
@@ -285,6 +293,7 @@ signals:
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);
+    void loginSigned(const QString& blob);
 
 signals:  // to worker
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp, int days);
@@ -307,6 +316,7 @@ signals:  // to worker
     void requestAddByUsername(const QString& alias, const QString& intro);
     void requestAddByFingerprint(const QString& fingerprint, const QString& intro);
     void requestInviteSig();
+    void requestSignLoginSig(const QString& challenge);
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath);
     void requestExport(const QString& path, const QString& password);
     void requestOpen(const QString& dir, const QString& passphrase);
