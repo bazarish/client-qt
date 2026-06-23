@@ -33,7 +33,7 @@ Popup {
             Layout.fillWidth: true
             Label {
                 text: "Sign in with your key"
-                color: Theme.text
+                color: Theme.neon
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true

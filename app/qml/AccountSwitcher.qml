@@ -40,7 +40,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            Label { text: "Accounts"; color: Theme.text; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: "Accounts"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -83,8 +83,8 @@ Popup {
                                 visible: model.open && model.online && model.connected && model.activeFacade.length > 0
                                 Layout.alignment: Qt.AlignVCenter
                                 radius: Theme.radiusSmall
-                                color: model.i2pFacade ? Theme.green : "transparent"
-                                border.color: model.i2pFacade ? Theme.green : Theme.border
+                                color: model.i2pFacade ? Theme.neon : "transparent"
+                                border.color: model.i2pFacade ? Theme.neon : Theme.border
                                 border.width: 1
                                 implicitHeight: connLabel.implicitHeight + 4
                                 implicitWidth: connLabel.implicitWidth + 12

@@ -27,7 +27,7 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            Label { text: "My invite"; color: Theme.text; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: "My invite"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; onClicked: root.close() }
         }
         Label {

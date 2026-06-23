@@ -31,7 +31,7 @@ Item {
 
         Label {
             text: "Bazarish"
-            color: Theme.text
+            color: Theme.neon
             font.pixelSize: 30
             font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignHCenter

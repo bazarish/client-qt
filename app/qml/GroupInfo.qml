@@ -29,7 +29,7 @@ Popup {
             Layout.margins: 14
             Label {
                 text: root.session ? root.session.peerName(root.session.activePeer) : "Group"
-                color: Theme.text; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+                color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                 Layout.fillWidth: true; elide: Text.ElideRight
             }
             IconButton { text: "✕"; onClicked: root.close() }

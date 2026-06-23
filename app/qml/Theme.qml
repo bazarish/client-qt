@@ -22,17 +22,19 @@ QtObject {
     readonly property color textDim:   "#8b948c"  // secondary
     readonly property color textFaint: "#5e676a"  // tertiary / comments
 
-    // Accent - the cursor (the only accent).
-    readonly property color green:     "#39ff14"
-    readonly property color greenDim:  "#1f7a14"
-    // Ink on a green fill. Not named "onGreen": QML reads an "on"-prefixed
-    // identifier as a signal handler.
-    readonly property color accentInk: "#11151a"
-    readonly property color accent:    green
+    // Neon - the brand green, reserved here for emphasis: titles/headers and
+    // positive status (a good state). Everything else stays gray; the primary
+    // buttons are white (below), so neon is the sole hue that draws the eye.
+    readonly property color neon:      "#39ff14"
+    // Accent - primary buttons / interactive emphasis are a near-white (the
+    // formerly-neon buttons are now white); dark ink sits on the white fill.
+    readonly property color accentInk: "#11151a"   // dark ink on a near-white fill
+    readonly property color accent:    "#f2f4f2"
     readonly property color accentText: accentInk
 
-    // Status (green doubles as success).
-    readonly property color success:   "#39ff14"
+    // Status. success is the neon (a good state stands out); warn and danger keep
+    // a hue because an alert must stand out.
+    readonly property color success:   neon
     readonly property color warn:      "#ffb454"
     readonly property color danger:    "#ff5b54"
 

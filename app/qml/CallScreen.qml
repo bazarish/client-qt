@@ -180,7 +180,7 @@ Popup {
         }
         CallButton {
             visible: root.callState === "incoming"
-            text: "Accept"; fill: Theme.success
+            text: "Accept"; fill: Theme.accent; label: Theme.accentInk
             onClicked: root.session.acceptCall()
         }
 
