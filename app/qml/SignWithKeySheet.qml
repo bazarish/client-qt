@@ -15,6 +15,9 @@ Popup {
     // Cap at 480 but shrink with the window so the inputs and buttons (all
     // fillWidth) narrow on a small screen instead of overflowing.
     width: Math.min(480, (Overlay.overlay ? Overlay.overlay.width : 480) - 32)
+    // Cap the height to the viewport; the content scrolls when it does not fit.
+    height: Math.min(signCol.implicitHeight + topPadding + bottomPadding,
+        (Overlay.overlay ? Overlay.overlay.height : 600) - 32)
     padding: 18
     onOpened: { challengeArea.text = ""; blobArea.text = "" }
 
@@ -26,7 +29,16 @@ Popup {
         function onLoginSigned(blob) { blobArea.text = blob }
     }
 
-    contentItem: ColumnLayout {
+    contentItem: Flickable {
+        id: signFlick
+        contentWidth: width
+        contentHeight: signCol.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        ColumnLayout {
+        id: signCol
+        width: signFlick.width
         spacing: 12
 
         RowLayout {
@@ -97,7 +109,7 @@ Popup {
             text: "Sign"
             enabled: root.session && challengeArea.text.trim().length > 0
             onClicked: root.session.signLogin(challengeArea.text.trim())
-            background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
+            background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
             contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
         }
 
@@ -133,6 +145,7 @@ Popup {
             }
             contentItem: Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
             Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
+        }
         }
     }
 }

@@ -232,7 +232,8 @@ Popup {
         title: "Backup password"
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
-        contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260 }
+        contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260
+            background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
     }
 
     Dialog {

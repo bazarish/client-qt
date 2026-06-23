@@ -138,7 +138,9 @@ Item {
             background: Rectangle {
                 radius: 8
                 color: Theme.surface
-                border.color: root.linkBorderColor
+                border.color: Qt.colorEqual(root.linkBorderColor, Theme.border)
+                    ? (linkField.activeFocus ? Theme.accent : Theme.border)
+                    : root.linkBorderColor
                 border.width: 1
                 Behavior on border.color { ColorAnimation { duration: 300 } }
             }
@@ -209,7 +211,7 @@ Item {
                 text: "Connect & subscribe"
                 enabled: root.facadeList().length > 0 && fpField.text.trim().length > 0
                 onClicked: root.session.connectServer(root.facadeList(), fpField.text.trim())
-                background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
+                background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
                 contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
             }
         }

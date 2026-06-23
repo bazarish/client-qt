@@ -120,6 +120,7 @@ Item {
             color: Theme.text
             placeholderTextColor: Theme.textDim
             implicitWidth: 280
+            background: Rectangle { radius: 8; color: Theme.surface; border.color: unlockField.activeFocus ? Theme.accent : Theme.border }
         }
     }
 

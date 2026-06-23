@@ -122,7 +122,7 @@ Popup {
             Layout.margins: 12
             text: "➕  Add account"
             onClicked: { root.close(); App.requestAddAccount() }
-            background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.1) : Theme.accent }
+            background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
             contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
         }
     }

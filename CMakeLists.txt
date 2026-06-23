@@ -83,7 +83,7 @@ target_compile_options(bazarish-bot PRIVATE -Wall -Wextra -Werror)
 
 # The Qt6 Quick (QML) desktop app - the primary front-end over the same
 # Session logic the CLI uses. Built only when Qt6 Quick is available.
-find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql Multimedia QUIET)
+find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql Multimedia Svg QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
 
@@ -112,7 +112,7 @@ if(Qt6_FOUND)
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(bazarish-app PRIVATE
         bazarish_client_lib ${QRENCODE_LIBRARY} ${SQLITE3_LIBRARY}
-        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql Qt6::Multimedia)
+        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql Qt6::Multimedia Qt6::Svg)
     target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 
@@ -127,12 +127,14 @@ if(Qt6_FOUND)
             app/fonts/RobotoMono-Bold.ttf
     )
 
-    # The brand app icon (rendered from the brand kit's icon.svg).
+    # The brand app icon (rendered from the brand kit's icon.svg) and the brand
+    # wordmark logo as SVG (scales crisply at any size / DPI).
     qt_add_resources(bazarish-app appicon
         PREFIX "/icon"
         BASE app/icon
         FILES
             app/icon/bazarish.png
+            app/icon/logo.svg
     )
 
     set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)

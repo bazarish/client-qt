@@ -5,6 +5,7 @@ import Bazarish
 Button {
     id: control
     flat: true
+    hoverEnabled: true
     property color tint: Theme.text
     font.pixelSize: 18
     implicitWidth: 40
@@ -18,6 +19,6 @@ Button {
     }
     background: Rectangle {
         radius: 8
-        color: control.down ? Theme.surfaceAlt : "transparent"
+        color: control.down ? Theme.surfaceAlt : (control.hovered ? Theme.surface : "transparent")
     }
 }

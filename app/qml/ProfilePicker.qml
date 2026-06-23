@@ -29,12 +29,14 @@ Item {
         width: Math.min(parent.width - 64, 460)
         spacing: 18
 
-        Label {
-            text: "Bazarish"
-            color: Theme.neon
-            font.pixelSize: 30
-            font.weight: Font.DemiBold
+        Image {
+            source: "qrc:/icon/logo.svg"
             Layout.alignment: Qt.AlignHCenter
+            Layout.preferredHeight: 48
+            Layout.preferredWidth: 190
+            fillMode: Image.PreserveAspectFit
+            sourceSize.height: 96
+            smooth: true
         }
         Label {
             text: App.hasOpenAccounts ? "Add or switch account"
@@ -99,19 +101,10 @@ Item {
             Layout.fillWidth: true
             text: "Create profile"
             onClicked: root.StackView.view.push(wizardComponent)
-            background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.1) : Theme.accent }
+            background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
             contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
         }
 
-        // When other accounts are already open, this picker was opened to add
-        // one; let the user return to the running session instead.
-        IconButton {
-            Layout.fillWidth: true
-            visible: App.hasOpenAccounts
-            text: "‹"
-            font.pixelSize: 26
-            onClicked: root.StackView.view.pop()
-        }
     }
 
     Dialog {
@@ -128,6 +121,7 @@ Item {
             color: Theme.text
             placeholderTextColor: Theme.textDim
             implicitWidth: 280
+            background: Rectangle { radius: 8; color: Theme.surface; border.color: passField.activeFocus ? Theme.accent : Theme.border }
         }
     }
 
