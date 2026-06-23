@@ -87,6 +87,7 @@ Popup {
                 wrapMode: TextArea.WrapAnywhere
                 placeholderText: "Paste the challenge"
                 color: Theme.text
+                placeholderTextColor: Theme.textDim
                 selectByMouse: true
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
             }
@@ -110,6 +111,7 @@ Popup {
                 wrapMode: TextArea.WrapAnywhere
                 placeholderText: "The signed blob appears here"
                 color: Theme.text
+                placeholderTextColor: Theme.textDim
                 selectByMouse: true
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
             }

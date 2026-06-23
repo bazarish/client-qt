@@ -21,6 +21,7 @@ ColumnLayout {
         id: field
         Layout.fillWidth: true
         color: Theme.text
+        placeholderTextColor: Theme.textDim
         selectByMouse: true
         background: Rectangle {
             radius: 8

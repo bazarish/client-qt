@@ -126,6 +126,8 @@ Item {
             id: passField
             echoMode: TextInput.Password
             placeholderText: "Passphrase"
+            color: Theme.text
+            placeholderTextColor: Theme.textDim
             implicitWidth: 280
         }
     }

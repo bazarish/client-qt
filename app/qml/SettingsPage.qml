@@ -232,7 +232,7 @@ Popup {
         title: "Backup password"
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
-        contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; implicitWidth: 260 }
+        contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260 }
     }
 
     Dialog {
@@ -293,6 +293,7 @@ Popup {
                         text: model.url
                         placeholderText: "http[s]://host:port/secret-path"
                         color: Theme.text
+                        placeholderTextColor: Theme.textDim
                         selectByMouse: true
                         onTextChanged: facadeModel.setProperty(index, "url", text)
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }

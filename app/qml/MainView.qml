@@ -117,6 +117,8 @@ Item {
             id: unlockField
             echoMode: TextInput.Password
             placeholderText: "Passphrase"
+            color: Theme.text
+            placeholderTextColor: Theme.textDim
             implicitWidth: 280
         }
     }

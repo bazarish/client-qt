@@ -76,6 +76,7 @@ Rectangle {
                 Layout.fillWidth: true
                 placeholderText: root.editing ? "Edit message…" : "Message…"
                 color: Theme.text
+                placeholderTextColor: Theme.textDim
                 selectByMouse: true
                 onAccepted: root.send()
                 background: Rectangle {

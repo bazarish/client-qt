@@ -138,6 +138,7 @@ Item {
             Layout.fillWidth: true
             placeholderText: "Paste a bazarish://server/… link"
             color: Theme.text
+            placeholderTextColor: Theme.textDim
             selectByMouse: true
             onTextChanged: parseTimer.restart()
             background: Rectangle {
@@ -188,6 +189,7 @@ Item {
                         text: model.url
                         placeholderText: "http[s]://host:port/secret-path"
                         color: Theme.text
+                        placeholderTextColor: Theme.textDim
                         selectByMouse: true
                         onTextChanged: facadeModel.setProperty(index, "url", text)
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
