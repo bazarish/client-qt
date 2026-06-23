@@ -45,10 +45,10 @@ I2pController::I2pController(QObject* parent)
     }
     client::setI2pEnabled(enabled_);
     bazarish::i2p::setI2pLogging(loggingEnabled_);
-    // The embedded router is a permanent warmup: when enabled, bring it up at
-    // launch so it passively learns the network (routers + floodfills) even
-    // before any session uses it.
-    ensureRouterWarm();
+    // When enabled, bring the embedded router up at launch so it passively learns
+    // the network (routers + floodfills) even before any session uses it; when
+    // disabled it stays down.
+    reconcileRouter();
     refresh();
 }
 
@@ -62,15 +62,13 @@ std::filesystem::path I2pController::loggingPath() const
     return profilesRoot() / ".i2p-logging";
 }
 
-void I2pController::ensureRouterWarm()
+void I2pController::reconcileRouter()
 {
-    if (!enabled_ || client::sharedI2pRouterIfRunning() != nullptr) {
-        return;
-    }
     const std::filesystem::path dir = profilesRoot() / "i2p";
-    // Constructing/starting the router is heavyweight, so do it off the GUI
-    // thread; it then lives until process exit (idempotent, mutex-guarded).
-    std::thread([dir]() { client::sharedI2pRouter(dir); }).detach();
+    // Starting or stopping the engine is heavyweight (it joins worker threads), so
+    // do it off the GUI thread. reconcileI2pRouter reads the enable flag itself, so
+    // rapid toggles converge on the final state (idempotent, mutex-guarded).
+    std::thread([dir]() { client::reconcileI2pRouter(dir); }).detach();
 }
 
 void I2pController::setEnabled(bool on)
@@ -83,9 +81,8 @@ void I2pController::setEnabled(bool on)
     std::ofstream out(settingPath(), std::ios::trunc);
     out << (on ? "1" : "0");
     emit enabledChanged();
-    // Turning it on brings the router up for warmup; turning it off leaves the
-    // (process-global) router as is but stops the transport from using i2p.
-    ensureRouterWarm();
+    // Honestly start or stop the embedded router to match the toggle.
+    reconcileRouter();
     refresh();
 }
 

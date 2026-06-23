@@ -30,6 +30,8 @@ bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
     if (!router) {
         router = std::make_unique<bazarish::i2p::Router>(
             bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient});
+    } else if (!router->running()) {
+        router->start();
     }
     return *router;
 }
@@ -37,7 +39,24 @@ bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
 bazarish::i2p::Router* sharedI2pRouterIfRunning()
 {
     const std::lock_guard<std::mutex> lock(routerMutex());
-    return routerSlot().get();
+    bazarish::i2p::Router* const router = routerSlot().get();
+    return (router != nullptr && router->running()) ? router : nullptr;
+}
+
+void reconcileI2pRouter(const std::filesystem::path& dataDir)
+{
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
+    if (g_i2pEnabled.load()) {
+        if (!router) {
+            router = std::make_unique<bazarish::i2p::Router>(
+                bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient});
+        } else {
+            router->start();
+        }
+    } else if (router) {
+        router->stop();
+    }
 }
 
 void setI2pEnabled(bool enabled)
