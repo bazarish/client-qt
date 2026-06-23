@@ -108,6 +108,22 @@ void Client::unsubscribe()
     api_.del("/v1/account/subscription");
 }
 
+PortalInfo Client::fetchPortalInfo()
+{
+    const ApiResponse response = api_.get("/v1/account/portal");
+    const nlohmann::json body = response.json();
+    PortalInfo info;
+    info.message = body.value("message", std::string());
+    if (const auto links = body.find("links"); links != body.end() && links->is_array()) {
+        for (const nlohmann::json& link : *links) {
+            if (link.is_string()) {
+                info.links.push_back(link.get<std::string>());
+            }
+        }
+    }
+    return info;
+}
+
 bool Client::sendI2pTransient(const std::string& transientB64, const std::int64_t expiresUnix)
 {
     const ApiResponse response = api_.postJson(

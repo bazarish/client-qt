@@ -23,6 +23,11 @@ std::filesystem::path lastActivePath()
 {
     return profilesRoot() / ".active";
 }
+
+std::filesystem::path offlinePath()
+{
+    return profilesRoot() / ".offline";
+}
 }  // namespace
 
 AppController::AppController(QObject* parent)
@@ -30,9 +35,12 @@ AppController::AppController(QObject* parent)
     , manager_(std::make_unique<client::ProfileManager>(profilesRoot()))
 {
     refreshProfiles();
+    // Accounts the user turned offline last run must stay offline: load that set
+    // before opening anything so they are skipped.
+    loadOfflineSet();
     // Open every unencrypted profile in the background so they are all online by
-    // default, then focus the last active one - no startup dialog when at least
-    // one profile could be opened.
+    // default (except the ones kept offline), then focus the last active one -
+    // no startup dialog when at least one profile could be opened.
     openAllProfiles();
     const QString last = readLastActive();
     if (sessionFor(last) != nullptr) {
@@ -78,6 +86,41 @@ void AppController::writeLastActive(const QString& id) const
 {
     std::ofstream out(lastActivePath(), std::ios::trunc);
     out << id.toStdString();
+}
+
+void AppController::loadOfflineSet()
+{
+    offline_.clear();
+    std::ifstream in(offlinePath());
+    std::string id;
+    while (std::getline(in, id)) {
+        if (!id.empty()) {
+            offline_.insert(QString::fromStdString(id));
+        }
+    }
+}
+
+void AppController::persistOfflineSet() const
+{
+    std::ofstream out(offlinePath(), std::ios::trunc);
+    for (const QString& id : offline_) {
+        out << id.toStdString() << '\n';
+    }
+}
+
+void AppController::setAccountOffline(const QString& id, bool offline)
+{
+    const bool changed = offline ? (offline_.constFind(id) == offline_.cend())
+                                 : (offline_.constFind(id) != offline_.cend());
+    if (!changed) {
+        return;
+    }
+    if (offline) {
+        offline_.insert(id);
+    } else {
+        offline_.remove(id);
+    }
+    persistOfflineSet();
 }
 
 void AppController::refreshProfiles()
@@ -219,8 +262,11 @@ void AppController::openAllProfiles()
         return;
     }
     for (const client::ProfileInfo& info : infos) {
-        if (!info.encrypted) {
-            openSession(QString::fromStdString(info.id), {}, /*makeActive=*/false);
+        const QString id = QString::fromStdString(info.id);
+        // Skip accounts the user turned offline: they stay closed (shown as
+        // Offline) until explicitly switched on, so the choice survives a restart.
+        if (!info.encrypted && offline_.constFind(id) == offline_.cend()) {
+            openSession(id, {}, /*makeActive=*/false);
         }
     }
 }
@@ -259,6 +305,9 @@ void AppController::createProfile(const QString& name, const QString& passphrase
 
 void AppController::openProfile(const QString& id, const QString& passphrase)
 {
+    // Explicitly opening an account brings it online; clear any persisted offline
+    // mark so it auto-opens on the next run too.
+    setAccountOffline(id, false);
     openSession(id, passphrase, /*makeActive=*/true);
 }
 
@@ -300,12 +349,17 @@ void AppController::switchTo(const QString& id)
     if (sessionFor(id) != nullptr) {
         setActive(id);
     } else {
+        // Switching to a closed account opens it = brings it online.
+        setAccountOffline(id, false);
         openSession(id, {}, /*makeActive=*/true);
     }
 }
 
 void AppController::setOnline(const QString& id, bool on)
 {
+    // Remember the choice across runs: an offline account is not auto-opened next
+    // launch; an online one is.
+    setAccountOffline(id, !on);
     SessionController* ctrl = sessionFor(id);
     if (on) {
         if (ctrl != nullptr) {

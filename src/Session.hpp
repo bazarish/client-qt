@@ -193,6 +193,11 @@ public:
     // registers this client ID. Stores the returned server card.
     void subscribe(std::int64_t days);
 
+    // The serving server's onboarding info (message + registration links),
+    // shown when a connect/subscribe is refused because this key is not
+    // registered yet. Requires a configured server (facades).
+    PortalInfo serverPortalInfo();
+
     // User-owned I2P destination (the per-user / "paid" path). Free profiles
     // route through the server's address pool and never call these.
     // ensureI2pDestination mints the permanent ("master") key the first time
@@ -207,6 +212,10 @@ public:
     bool hasI2pDestination() const;
     // The stable base32 address (without the ".b32.i2p" suffix), or empty.
     std::string i2pAddress() const;
+    // Permanently removes the user-owned master (and any transient) from this
+    // profile, reverting to the shared pool address. The deleted key is gone for
+    // good; enabling again later would mint a fresh, different address.
+    void deleteI2pDestination();
 
     // Turns the per-user i2p-dest option on: requires a master in the profile
     // (generate or load one first), enables it server-side (charging a term),

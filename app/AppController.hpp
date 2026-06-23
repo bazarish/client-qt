@@ -7,6 +7,7 @@
 
 #include <QList>
 #include <QObject>
+#include <QSet>
 #include <QString>
 
 #include <memory>
@@ -85,12 +86,21 @@ private:
     QString readLastActive() const;
     void writeLastActive(const QString& id) const;
 
+    // Accounts the user turned offline are remembered across runs (a file under
+    // the profiles root) and are NOT auto-opened at startup, so a disabled
+    // account stays offline. Loaded once at construction; persisted on toggle.
+    void loadOfflineSet();
+    void persistOfflineSet() const;
+    void setAccountOffline(const QString& id, bool offline);
+
     std::unique_ptr<client::ProfileManager> manager_;
     ProfileListModel profiles_;
     OpenAccountsModel accounts_;
     QList<SessionController*> sessions_;  // open accounts, owned (parented here)
     QString activeId_;
     bool haveProfiles_ = false;
+    // Ids of accounts the user turned offline (persisted; not auto-opened).
+    QSet<QString> offline_;
 };
 
 }  // namespace bazarish::app

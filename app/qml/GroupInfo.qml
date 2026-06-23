@@ -52,7 +52,7 @@ Popup {
                         + (root.admin ? " · you are an admin" : "")) : ""
                     color: Theme.textDim
                 }
-                Button { visible: root.admin; text: "＋ Add"; onClicked: { root.selectedFps = []; root.addMode = true } }
+                MenuButton { visible: root.admin; text: "＋ Add"; onClicked: { root.selectedFps = []; root.addMode = true } }
             }
             ListView {
                 visible: !root.addMode
@@ -70,12 +70,11 @@ Popup {
                         text: root.session ? root.session.shortFingerprint(modelData) : modelData
                         color: Theme.text; elide: Text.ElideRight
                     }
-                    Button {
+                    MenuButton {
                         visible: root.admin
                         text: "Remove"
+                        danger: true
                         onClicked: root.session.removeGroupMember(root.session.activePeer, modelData)
-                        background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                        contentItem: Label { text: parent.text; color: Theme.danger; horizontalAlignment: Text.AlignHCenter }
                     }
                 }
             }
@@ -110,7 +109,7 @@ Popup {
                 Layout.fillWidth: true
                 IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.addMode = false }
                 Item { Layout.fillWidth: true }
-                Button {
+                MenuButton {
                     text: "Add " + (root.selectedFps.length > 0 ? "(" + root.selectedFps.length + ")" : "")
                     enabled: root.selectedFps.length > 0
                     onClicked: { root.session.addGroupMembers(root.session.activePeer, root.selectedFps); root.addMode = false }
@@ -118,14 +117,13 @@ Popup {
             }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-        Button {
+        MenuButton {
             visible: !root.addMode
             Layout.fillWidth: true
             Layout.margins: 12
             text: "Leave group"
+            danger: true
             onClicked: { root.session.leaveGroup(root.session.activePeer); root.close() }
-            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.danger }
-            contentItem: Label { text: parent.text; color: Theme.danger; horizontalAlignment: Text.AlignHCenter }
         }
     }
 }

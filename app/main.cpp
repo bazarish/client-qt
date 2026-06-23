@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
+#include "I2pController.hpp"
 #include "Identicon.hpp"
 
 #include <QColor>
@@ -59,6 +60,11 @@ int main(int argc, char** argv)
 
     bazarish::app::AppController controller;
     engine.rootContext()->setContextProperty("App", &controller);
+
+    // The embedded I2P router status + persistent on/off setting (read at
+    // startup so a previously-disabled router stays off before any session use).
+    bazarish::app::I2pController i2pController;
+    engine.rootContext()->setContextProperty("I2p", &i2pController);
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,

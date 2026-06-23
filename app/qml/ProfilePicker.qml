@@ -115,6 +115,8 @@ Item {
         title: "Unlock profile"
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: App.openProfile(root.pendingId, passField.text)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label { text: "Unlock profile"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: TextField {
             id: passField
             echoMode: TextInput.Password
@@ -134,6 +136,9 @@ Item {
         title: "Delete profile"
         standardButtons: Dialog.Yes | Dialog.Cancel
         onAccepted: App.deleteProfile(root.pendingDeleteId)
+        // Destructive: brightest-neon outline, dark surface, light text.
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
+        header: Label { text: "Delete profile"; color: Theme.neonBright; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "Permanently delete \"" + root.pendingDeleteName + "\" and all its "
                 + "messages from this device? This cannot be undone."

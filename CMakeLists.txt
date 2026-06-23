@@ -100,6 +100,8 @@ if(Qt6_FOUND)
         app/main.cpp
         app/AppController.cpp
         app/AppController.hpp
+        app/I2pController.cpp
+        app/I2pController.hpp
         app/SessionController.cpp
         app/SessionController.hpp
         app/Models.cpp
@@ -165,9 +167,12 @@ if(Qt6_FOUND)
             app/qml/GroupInfo.qml
             app/qml/CallScreen.qml
             app/qml/SettingsPage.qml
+            app/qml/RouterStatusPage.qml
+            app/qml/ServerHelloDialog.qml
             app/qml/components/Avatar.qml
             app/qml/components/QrView.qml
             app/qml/components/IconButton.qml
+            app/qml/components/MenuButton.qml
             app/qml/components/FormField.qml
     )
     message(STATUS "Qt6 Quick found: building bazarish-app")

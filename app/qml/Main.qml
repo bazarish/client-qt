@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import Bazarish
 
 ApplicationWindow {
@@ -16,6 +17,23 @@ ApplicationWindow {
         toastLabel.text = message
         toast.opacity = 1
         toastTimer.restart()
+    }
+
+    // A failed action (i2p activation, a server error, ...) surfaces here on the
+    // top layer and stays until dismissed - never covered by another window and
+    // never auto-hidden, unlike a toast.
+    function showError(message) {
+        errorText.text = message
+        errorDialog.open()
+    }
+
+    // Errors and onboarding info come from whichever account is active; the
+    // binding re-targets when the user switches accounts.
+    Connections {
+        target: App.session
+        ignoreUnknownSignals: true
+        function onActionFailed(error) { window.showError(error) }
+        function onServerHello(reason, message, links) { helloDialog.show(reason, message, links) }
     }
 
     StackView {
@@ -69,5 +87,54 @@ ApplicationWindow {
             horizontalAlignment: Text.AlignHCenter
         }
         Timer { id: toastTimer; interval: 3500; onTriggered: toast.opacity = 0 }
+    }
+
+    // Server onboarding / hello (unregistered-key connect): its own top-layer
+    // window with copyable links, dismissed only by its button.
+    ServerHelloDialog { id: helloDialog }
+
+    // Generic top-layer error surface (see showError).
+    Popup {
+        id: errorDialog
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        z: 1000
+        closePolicy: Popup.CloseOnEscape
+        width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 32)
+        padding: 18
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.danger; border.width: 2 }
+        contentItem: ColumnLayout {
+            spacing: 12
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: "Something went wrong"
+                    color: Theme.danger; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+                    Layout.fillWidth: true
+                }
+                IconButton { text: "✕"; onClicked: errorDialog.close() }
+            }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(220, errorText.implicitHeight + 16)
+                TextArea {
+                    id: errorText
+                    readOnly: true
+                    wrapMode: TextArea.Wrap
+                    color: Theme.text
+                    selectByMouse: true
+                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                }
+            }
+            Button {
+                Layout.fillWidth: true
+                text: "Close"
+                hoverEnabled: true
+                onClicked: errorDialog.close()
+                background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
+                contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            }
+        }
     }
 }

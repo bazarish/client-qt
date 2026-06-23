@@ -200,11 +200,10 @@ Item {
                     }
                 }
             }
-            Button {
+            MenuButton {
+                Layout.fillWidth: true
                 text: "＋ Add another facade"
                 onClicked: facadeModel.append({ url: "" })
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                contentItem: Label { text: parent.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
             }
 
             FormField { id: fpField; label: "Server fingerprint" }

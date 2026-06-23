@@ -1,11 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import Bazarish
 
 Item {
     id: root
     objectName: "createWizard"
+
+    // The chosen .bazarish file while the backup password is being entered.
+    property string pendingBackupFile: ""
 
     IconButton {
         text: "‹"
@@ -63,6 +67,55 @@ Item {
             }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
             contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+        }
+
+        // Restore everything (keys, routing and contacts) from a .bazarish backup
+        // instead of creating a fresh identity. Uses the name and passphrase above.
+        Button {
+            Layout.fillWidth: true
+            text: "Restore from backup…"
+            hoverEnabled: true
+            enabled: nameField.text.trim().length > 0
+            onClicked: {
+                if (passField.text !== confirmField.text) {
+                    errorLabel.text = "Passphrases do not match."
+                    return
+                }
+                errorLabel.text = ""
+                restoreDialog.open()
+            }
+            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
+            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accent : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+        }
+    }
+
+    FileDialog {
+        id: restoreDialog
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Bazarish backup (*.bazarish)", "All files (*)"]
+        onAccepted: { root.pendingBackupFile = selectedFile; backupPassDialog.open() }
+    }
+
+    Dialog {
+        id: backupPassDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        title: "Backup password"
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        // name + at-rest passphrase come from the wizard fields; this asks only
+        // for the password the backup file was sealed with.
+        onAccepted: App.importProfile(nameField.text.trim(), root.pendingBackupFile,
+            backupPass.text, passField.text)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label { text: "Backup password"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        contentItem: TextField {
+            id: backupPass
+            echoMode: TextInput.Password
+            placeholderText: "password the backup was saved with"
+            color: Theme.text
+            placeholderTextColor: Theme.textDim
+            implicitWidth: 280
+            background: Rectangle { radius: 8; color: Theme.surface; border.color: backupPass.activeFocus ? Theme.accent : Theme.border }
         }
     }
 }

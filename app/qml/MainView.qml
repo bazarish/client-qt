@@ -8,12 +8,12 @@ Item {
     objectName: "mainView"
     property var session: App.session
 
-    // React to backend results with toasts.
+    // Positive results stay as transient toasts; failures are routed to the
+    // top-layer error dialog in Main.qml (so they are never covered or missed).
     Connections {
         target: root.session
         ignoreUnknownSignals: true
         function onActionOk(info) { if (typeof window !== "undefined") window.showToast(info) }
-        function onActionFailed(error) { if (typeof window !== "undefined") window.showToast(error) }
     }
 
     Loader {
@@ -89,11 +89,13 @@ Item {
         }
     }
     AccountSwitcher { id: accountSwitcher }
+    RouterStatusPage { id: routerStatus }
     SettingsPage {
         id: settings
         session: root.session
         onShowInvite: inviteSheet.open()
         onShowSignWithKey: signWithKeySheet.open()
+        onShowRouterStatus: routerStatus.open()
     }
 
     // Unlock prompt for an encrypted account the user brings online/switches to.
@@ -113,6 +115,8 @@ Item {
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: if (root.unlockId.length > 0) App.openProfile(root.unlockId, unlockField.text)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label { text: unlockDialog.title; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
         contentItem: TextField {
             id: unlockField
             echoMode: TextInput.Password

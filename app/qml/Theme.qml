@@ -27,6 +27,10 @@ QtObject {
     // gray; the primary buttons are white (below), so this is the sole hue that
     // draws the eye. Uses the brandbook's dim-phosphor green, not the bright one.
     readonly property color neon:      "#1f7a14"
+    // The brightest brand phosphor green, reserved for exceptional or
+    // destructive dialogs that must be unmistakable (e.g. delete account) and
+    // for the active-account outline. Used sparingly - never as a fill on text.
+    readonly property color neonBright: "#39ff14"
     // Accent - primary buttons / interactive emphasis are a near-white (the
     // formerly-neon buttons are now white); dark ink sits on the white fill.
     readonly property color accentInk: "#11151a"   // dark ink on a near-white fill

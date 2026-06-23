@@ -32,6 +32,25 @@ Popup {
         function onActionFailed(error) { if (root.busy) { root.busy = false; root.errorText = error } }
     }
 
+    // Primary action button: near-white accent fill, darker on hover/press, so it
+    // reads clearly against the dark popup (the default Basic Button blends in).
+    component ActionButton: Button {
+        id: ctl
+        hoverEnabled: true
+        background: Rectangle {
+            radius: 10
+            color: !ctl.enabled ? Theme.surfaceAlt
+                : (ctl.down ? Qt.darker(Theme.accent, 1.2)
+                : (ctl.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent))
+        }
+        contentItem: Label {
+            text: ctl.text
+            color: ctl.enabled ? Theme.accentText : Theme.textDim
+            horizontalAlignment: Text.AlignHCenter
+            leftPadding: 14; rightPadding: 14
+        }
+    }
+
     contentItem: ColumnLayout {
         spacing: 12
 
@@ -54,7 +73,20 @@ Popup {
                 text: "Sending request… this can take a moment while routing is\nresolved (longer over I2P)."
                 color: Theme.textDim
             }
-            Button { text: "Run in background"; Layout.alignment: Qt.AlignHCenter; onClicked: root.close() }
+            Button {
+                id: bgBtn
+                text: "Run in background"
+                hoverEnabled: true
+                Layout.alignment: Qt.AlignHCenter
+                onClicked: root.close()
+                background: Rectangle {
+                    radius: 10
+                    color: bgBtn.down ? Theme.border2 : (bgBtn.hovered ? Theme.surfaceAlt : Theme.surface)
+                    border.color: bgBtn.hovered ? Theme.neon : Theme.border
+                    border.width: 1
+                }
+                contentItem: Label { text: bgBtn.text; color: Theme.text; horizontalAlignment: Text.AlignHCenter; leftPadding: 14; rightPadding: 14 }
+            }
         }
 
         Label {
@@ -79,12 +111,30 @@ Popup {
                     { t: "▣  Show my invite / QR", m: "showinvite" }
                 ]
                 ItemDelegate {
+                    id: menuItem
                     Layout.fillWidth: true
+                    height: 48
                     text: modelData.t
+                    hoverEnabled: true
                     onClicked: {
                         if (modelData.m === "showinvite") { root.close(); root.showInvite() }
                         else if (modelData.m === "group") { root.selectedFps = []; root.mode = "group" }
                         else root.mode = modelData.m
+                    }
+                    // A solid surface row that lifts on hover (surfaceAlt + neon
+                    // outline), so the choices stand out and react to the cursor.
+                    contentItem: Label {
+                        text: menuItem.text
+                        color: Theme.text
+                        verticalAlignment: Text.AlignVCenter
+                        leftPadding: 10
+                    }
+                    background: Rectangle {
+                        radius: Theme.radiusSmall
+                        color: menuItem.down ? Theme.border2
+                            : (menuItem.hovered ? Theme.surfaceAlt : Theme.surface)
+                        border.color: menuItem.hovered ? Theme.neon : Theme.border
+                        border.width: 1
                     }
                 }
             }
@@ -107,7 +157,7 @@ Popup {
                 Layout.fillWidth: true
                 IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
-                Button {
+                ActionButton {
                     text: "Send request"
                     enabled: inviteText.text.trim().length > 0
                     onClicked: root.startRequest(function() {
@@ -129,7 +179,7 @@ Popup {
                 Layout.fillWidth: true
                 IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
-                Button {
+                ActionButton {
                     text: "Send request"
                     enabled: usernameField.text.trim().length > 0
                     onClicked: root.startRequest(function() {
@@ -150,7 +200,7 @@ Popup {
                 Layout.fillWidth: true
                 IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
-                Button {
+                ActionButton {
                     text: "Send request"
                     enabled: fpField.text.trim().length > 0
                     onClicked: root.startRequest(function() {
@@ -197,7 +247,7 @@ Popup {
                 IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 Label { text: root.selectedFps.length + " selected"; color: Theme.textDim }
-                Button {
+                ActionButton {
                     text: "Create"
                     enabled: groupNameField.text.trim().length > 0 && root.selectedFps.length > 0
                     onClicked: root.startRequest(function() {

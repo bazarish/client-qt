@@ -64,6 +64,7 @@ public slots:
     // turn the paid option on/off, and report the current status.
     void generatePersonalKey();
     void loadPersonalKey(const QString& path);
+    void deletePersonalKey();
     void enablePersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
@@ -105,9 +106,14 @@ signals:
     void groupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
     // hasKey: a master is set up in the profile. enabled/active: the paid option
     // is on / currently paid-active. address: the personal b32 (empty if none).
-    // summary: a one-line human status for the settings page.
+    // summary: a one-line human status for the settings page. paidThrough: the
+    // unix second the current term is paid through (0 when inactive).
     void i2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
-        const QString& summary);
+        const QString& summary, qint64 paidThrough);
+    // The serving server's onboarding info, shown when a connect/subscribe is
+    // refused because this key is not registered: the refusal reason, the
+    // server's message and its registration link(s).
+    void serverHello(const QString& reason, const QString& message, const QStringList& links);
     // Call lifecycle: state is 0 idle / 1 outgoing / 2 incoming / 3 active,
     // matching Session::CallState. Emitted after every sync and call action.
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
@@ -163,6 +169,9 @@ class SessionController : public QObject {
     Q_PROPERTY(bool i2pActive READ i2pActive NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pStatusText READ i2pStatusText NOTIFY i2pStatusChanged)
+    // Unix second the personal destination is paid through (0 when inactive), so
+    // the settings page can show an expiry date or the phrase "Inactive".
+    Q_PROPERTY(qint64 i2pPaidThrough READ i2pPaidThrough NOTIFY i2pStatusChanged)
     // Audio call state for the call screen: "idle"/"outgoing"/"incoming"/"active",
     // the peer fingerprint, a display name, and the local mute flag.
     Q_PROPERTY(QString callState READ callState NOTIFY callChanged)
@@ -203,6 +212,7 @@ public:
     bool i2pActive() const { return i2pActive_; }
     QString i2pAddress() const { return i2pAddress_; }
     QString i2pStatusText() const { return i2pStatusText_; }
+    qint64 i2pPaidThrough() const { return i2pPaidThrough_; }
     QString callState() const { return callState_; }
     QString callPeer() const { return callPeer_; }
     QString callPeerName() const { return peerName(callPeer_); }
@@ -223,8 +233,6 @@ public:
     // Decodes a bazarish://server/... link into { serverFp, facades } for the
     // connect form to prefill; returns an empty map on a malformed link.
     Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
-    // A shareable bazarish://server/... link for this account's server config.
-    Q_INVOKABLE QString myServerLink() const;
     // Brings this account online (resume syncing) or offline (stop syncing
     // without unloading it).
     Q_INVOKABLE void goOnline();
@@ -263,6 +271,7 @@ public:
     // Per-user I2P destination controls (drive the worker thread).
     Q_INVOKABLE void generatePersonalKey();
     Q_INVOKABLE void loadPersonalKey(const QString& fileUrl);
+    Q_INVOKABLE void deletePersonalKey();
     Q_INVOKABLE void enablePersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
@@ -294,6 +303,8 @@ signals:
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);
     void loginSigned(const QString& blob);
+    // Forwarded onboarding info for the hello dialog (unregistered-key connect).
+    void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
 signals:  // to worker
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp, int days);
@@ -323,6 +334,7 @@ signals:  // to worker
     void requestSetSync(bool on);
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);
+    void requestDeletePersonalKey();
     void requestEnablePersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
@@ -347,7 +359,7 @@ private slots:
     void onGroupCreated(const QString& groupId, const QString& name);
     void onGroupMembersReady(const QString& groupId, const QStringList& members, bool iAmAdmin);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
-        const QString& summary);
+        const QString& summary, qint64 paidThrough);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         bool video, bool cameraOn);
 
@@ -390,6 +402,7 @@ private:
     bool i2pActive_ = false;
     QString i2pAddress_;
     QString i2pStatusText_;
+    qint64 i2pPaidThrough_ = 0;
     QString callState_ = QStringLiteral("idle");
     QString callPeer_;
     QString callId_;

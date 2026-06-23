@@ -36,14 +36,12 @@ Popup {
             wrapMode: Text.Wrap
             Layout.fillWidth: true
         }
-        Label {
-            text: "The full chain is too large for a single QR — share the link."
-            color: Theme.textDim
-            font.italic: true
-            font.pixelSize: Theme.fontSmall
+        // The invite is a compact descriptor, so it fits one QR: show the code
+        // and the link side by side (scan or copy).
+        QrView {
+            Layout.alignment: Qt.AlignHCenter
             visible: root.uri.length > 0
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
+            text: root.uri
         }
         ScrollView {
             Layout.fillWidth: true

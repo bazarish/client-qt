@@ -124,8 +124,26 @@ void SessionWorker::connectAndSubscribe(
         session_->connectServer(endpoint);
         session_->subscribe(days);
     } catch (const std::exception& e) {
-        emit connectionChanged(false, QString::fromUtf8(e.what()));
-        emit actionFailed(QString::fromUtf8(e.what()));
+        const QString reason = QString::fromUtf8(e.what());
+        emit connectionChanged(false, reason);
+        // A refused subscribe is usually "this key is not registered yet". Fetch
+        // the server's onboarding message + registration links and surface them
+        // in a persistent dialog the user can copy from, instead of a transient
+        // toast. Fall back to the plain error if the server has no portal info.
+        try {
+            const bazarish::client::PortalInfo info = session_->serverPortalInfo();
+            if (!info.message.empty() || !info.links.empty()) {
+                QStringList links;
+                for (const std::string& link : info.links) {
+                    links << QString::fromStdString(link);
+                }
+                emit serverHello(reason, QString::fromStdString(info.message), links);
+                return;
+            }
+        } catch (const std::exception&) {
+            // No portal info reachable; fall through to the plain error.
+        }
+        emit actionFailed(reason);
         return;
     }
     emit connectionChanged(true, "active");
@@ -526,11 +544,13 @@ void SessionWorker::refreshI2pStatus()
         = hasKey ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p") : QString();
     bool enabled = false;
     bool active = false;
+    qint64 paidThrough = 0;
     QString summary;
     try {
         const bazarish::client::I2pDestStatus s = session_->i2pDestStatus();
         enabled = s.enabled;
         active = s.active;
+        paidThrough = static_cast<qint64>(s.paidThrough);
         if (enabled && active) {
             summary = QStringLiteral("On — your personal destination is live.");
         } else if (enabled) {
@@ -546,7 +566,7 @@ void SessionWorker::refreshI2pStatus()
         summary = hasKey ? QStringLiteral("Personal key ready; connect to manage it.")
                          : QStringLiteral("Using the shared pool address.");
     }
-    emit i2pStatus(hasKey, enabled, active, address, summary);
+    emit i2pStatus(hasKey, enabled, active, address, summary, paidThrough);
 }
 
 void SessionWorker::generatePersonalKey()
@@ -577,6 +597,20 @@ void SessionWorker::loadPersonalKey(const QString& path)
             (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         session_->loadI2pDestination(dat);
         emit actionOk("Personal I2P key loaded.");
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+    refreshI2pStatus();
+}
+
+void SessionWorker::deletePersonalKey()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->deleteI2pDestination();
+        emit actionOk("Personal I2P key deleted.");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -684,6 +718,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::generatePersonalKey);
     connect(this, &SessionController::requestLoadPersonalKey, worker_,
         &SessionWorker::loadPersonalKey);
+    connect(this, &SessionController::requestDeletePersonalKey, worker_,
+        &SessionWorker::deletePersonalKey);
     connect(this, &SessionController::requestEnablePersonalDest, worker_,
         &SessionWorker::enablePersonalDest);
     connect(this, &SessionController::requestDisablePersonalDest, worker_,
@@ -722,6 +758,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::actionFailed, this, &SessionController::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
     connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
+    connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
     connect(worker_, &SessionWorker::callStateChanged, this,
         &SessionController::onCallStateChanged);
@@ -796,19 +833,6 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
         // Malformed link: return an empty map (the caller checks).
     }
     return result;
-}
-
-QString SessionController::myServerLink() const
-{
-    if (serverFp_.isEmpty() || configuredFacades_.isEmpty()) {
-        return {};
-    }
-    bazarish::client::ServerLink link;
-    link.serverFingerprint = serverFp_.toStdString();
-    for (const QString& url : configuredFacades_) {
-        link.facadeUrls.push_back(url.toStdString());
-    }
-    return QString::fromStdString(bazarish::client::encodeServerLink(link));
 }
 
 void SessionController::openConversation(const QString& peer)
@@ -1103,6 +1127,11 @@ void SessionController::loadPersonalKey(const QString& fileUrl)
     }
 }
 
+void SessionController::deletePersonalKey()
+{
+    emit requestDeletePersonalKey();
+}
+
 void SessionController::enablePersonalDest()
 {
     emit requestEnablePersonalDest();
@@ -1119,13 +1148,14 @@ void SessionController::refreshI2pStatus()
 }
 
 void SessionController::onI2pStatus(const bool hasKey, const bool enabled, const bool active,
-    const QString& address, const QString& summary)
+    const QString& address, const QString& summary, const qint64 paidThrough)
 {
     i2pHasKey_ = hasKey;
     i2pEnabled_ = enabled;
     i2pActive_ = active;
     i2pAddress_ = address;
     i2pStatusText_ = summary;
+    i2pPaidThrough_ = paidThrough;
     emit i2pStatusChanged();
 }
 

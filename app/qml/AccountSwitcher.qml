@@ -53,8 +53,15 @@ Popup {
             delegate: ItemDelegate {
                 width: ListView.view.width
                 height: 68
-                highlighted: model.active
                 onClicked: { App.switchTo(model.accountId); root.close() }
+                // The active account is marked with a neon outline, not a bright
+                // accent fill (the brand's one-accent rule; gray stays the base).
+                background: Rectangle {
+                    color: "transparent"
+                    radius: Theme.radiusSmall
+                    border.color: model.active ? Theme.neon : "transparent"
+                    border.width: model.active ? 1 : 0
+                }
                 contentItem: RowLayout {
                     spacing: 12
                     Avatar { fingerprint: model.fingerprint; size: 42 }
@@ -67,7 +74,7 @@ Popup {
                             Label {
                                 visible: model.active
                                 text: "Active"
-                                color: Theme.accent
+                                color: Theme.neon
                                 font.pixelSize: Theme.fontSmall
                                 font.weight: Font.Medium
                             }

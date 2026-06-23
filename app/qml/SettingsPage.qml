@@ -9,6 +9,7 @@ Popup {
     property var session: null
     signal showInvite()
     signal showSignWithKey()
+    signal showRouterStatus()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -57,8 +58,8 @@ Popup {
                             Label { text: root.session ? root.session.shortFingerprint(root.session.fingerprint) : ""; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                         }
                     }
-                    Button { text: "Show my invite / QR"; onClicked: { root.close(); root.showInvite() } }
-                    Button { text: "Sign in with key (portals / sites)"; onClicked: { root.close(); root.showSignWithKey() } }
+                    MenuButton { Layout.fillWidth: true; text: "Show my invite / QR"; onClicked: { root.close(); root.showInvite() } }
+                    MenuButton { Layout.fillWidth: true; text: "Sign in with key (portals / sites)"; onClicked: { root.close(); root.showSignWithKey() } }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -97,7 +98,8 @@ Popup {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
-                        Button {
+                        MenuButton {
+                            Layout.fillWidth: true
                             visible: root.session && root.session.connected
                             text: "Edit facades…"
                             onClicked: {
@@ -108,10 +110,10 @@ Popup {
                                 facadeDialog.open()
                             }
                         }
-                        Button {
-                            visible: root.session && root.session.connected
-                            text: "Share server link / QR"
-                            onClicked: serverLinkDialog.open()
+                        MenuButton {
+                            Layout.fillWidth: true
+                            text: "I2P router & status…"
+                            onClicked: { root.close(); root.showRouterStatus() }
                         }
                     }
                 }
@@ -127,38 +129,86 @@ Popup {
                         text: "Off by default, you share a fixed address from the server pool. Turn this on to be served on your own stable destination — portable across servers, kept even if you move. Trade-off: a unique, lasting address across all your contacts (less crowd-blending than the shared pool). Billed per term, renewed from your balance."
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
-                    Label {
-                        text: root.session ? root.session.i2pStatusText : ""
-                        color: (root.session && root.session.i2pActive) ? Theme.success : Theme.text
-                        wrapMode: Text.Wrap; Layout.fillWidth: true
-                    }
-                    Label {
-                        visible: root.session && root.session.i2pAddress.length > 0
-                        text: root.session ? root.session.i2pAddress : ""
-                        color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle; Layout.fillWidth: true
+                    // Status block. "Refresh" re-polls the server and briefly tints
+                    // this box so the user sees the data was just updated; the
+                    // term line reads "Inactive" whenever the subscription is not
+                    // currently paid-active.
+                    Rectangle {
+                        id: i2pStatusBox
+                        Layout.fillWidth: true
+                        radius: Theme.radiusSmall
+                        color: "transparent"
+                        implicitHeight: i2pStatusCol.implicitHeight + 12
+                        SequentialAnimation {
+                            id: i2pFlash
+                            PropertyAction { target: i2pStatusBox; property: "color"; value: Qt.rgba(0.12, 0.48, 0.08, 0.5) }
+                            PauseAnimation { duration: 550 }
+                            ColorAnimation { target: i2pStatusBox; property: "color"; to: "transparent"; duration: 500 }
+                        }
+                        ColumnLayout {
+                            id: i2pStatusCol
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: 6
+                            spacing: 4
+                            Label {
+                                text: root.session ? root.session.i2pStatusText : ""
+                                color: (root.session && root.session.i2pActive) ? Theme.success : Theme.text
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            Label {
+                                text: root.session && root.session.i2pActive && root.session.i2pPaidThrough > 0
+                                    ? ("Active until " + Qt.formatDate(new Date(root.session.i2pPaidThrough * 1000), "yyyy-MM-dd"))
+                                    : "Inactive"
+                                color: (root.session && root.session.i2pActive && root.session.i2pPaidThrough > 0)
+                                    ? Theme.success : Theme.warn
+                                font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                visible: root.session && root.session.i2pAddress.length > 0
+                                text: root.session ? root.session.i2pAddress : ""
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle; Layout.fillWidth: true
+                            }
+                        }
                     }
                     // Set up a master key first (generate or load a .dat), then turn it on.
                     RowLayout {
                         visible: root.session && !root.session.i2pHasKey
                         Layout.fillWidth: true; spacing: 8
-                        Button { text: "Generate key"; onClicked: root.session.generatePersonalKey() }
-                        Button { text: "Load .dat…"; onClicked: i2pKeyDialog.open() }
+                        MenuButton { Layout.fillWidth: true; text: "Generate key"; onClicked: root.session.generatePersonalKey() }
+                        MenuButton { Layout.fillWidth: true; text: "Load .dat…"; onClicked: i2pKeyDialog.open() }
                     }
                     RowLayout {
                         visible: root.session && root.session.i2pHasKey
                         Layout.fillWidth: true; spacing: 8
-                        Button {
+                        MenuButton {
+                            Layout.fillWidth: true
                             visible: root.session && !root.session.i2pEnabled
                             text: "Turn on"
                             enabled: root.session && root.session.connected
                             onClicked: root.session.enablePersonalDest()
                         }
-                        Button {
+                        MenuButton {
+                            Layout.fillWidth: true
                             visible: root.session && root.session.i2pEnabled
                             text: "Turn off"
                             onClicked: root.session.disablePersonalDest()
                         }
-                        Button { text: "Refresh"; onClicked: root.session.refreshI2pStatus() }
+                        // Re-poll the server status and flash the box for ~1s.
+                        MenuButton {
+                            Layout.fillWidth: true
+                            text: "Refresh"
+                            onClicked: { if (root.session) root.session.refreshI2pStatus(); i2pFlash.restart() }
+                        }
+                    }
+                    // Permanently drop the personal master key (reverts to the pool).
+                    MenuButton {
+                        visible: root.session && root.session.i2pHasKey
+                        Layout.fillWidth: true
+                        text: "Delete key"
+                        danger: true
+                        onClicked: deleteKeyDialog.open()
                     }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -169,7 +219,7 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     Label { text: "Backup"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    Button { text: "Export encrypted backup…"; onClicked: exportDialog.open() }
+                    MenuButton { Layout.fillWidth: true; text: "Export encrypted backup…"; onClicked: exportDialog.open() }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -193,19 +243,16 @@ Popup {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
-                        Button {
+                        MenuButton {
                             Layout.fillWidth: true
                             text: "Sign out"
                             onClicked: { root.close(); App.closeProfile() }
-                            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
-                            contentItem: Label { text: parent.text; color: Theme.text; horizontalAlignment: Text.AlignHCenter }
                         }
-                        Button {
+                        MenuButton {
                             Layout.fillWidth: true
                             text: "Delete account…"
+                            danger: true
                             onClicked: deleteDialog.open()
-                            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.danger }
-                            contentItem: Label { text: parent.text; color: Theme.danger; horizontalAlignment: Text.AlignHCenter }
                         }
                     }
                 }
@@ -213,10 +260,16 @@ Popup {
         }
     }
 
+    // The whole profile (keys, routing meta and contacts) exports to one
+    // password-protected <username>.bazarish file; the same file restores it.
+    property string backupName: (root.session && root.session.displayName.length > 0
+        ? root.session.displayName.replace(/[^A-Za-z0-9._-]+/g, "_") : "bazarish")
     FileDialog {
         id: exportDialog
         fileMode: FileDialog.SaveFile
-        currentFile: "file:///bazarish-backup.baz"
+        defaultSuffix: "bazarish"
+        nameFilters: ["Bazarish backup (*.bazarish)", "All files (*)"]
+        currentFile: "file:///" + root.backupName + ".bazarish"
         onAccepted: { root.pendingExportFile = selectedFile; exportPassDialog.open() }
     }
     FileDialog {
@@ -232,38 +285,10 @@ Popup {
         title: "Backup password"
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label { text: "Backup password"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260
             background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
-    }
-
-    Dialog {
-        id: serverLinkDialog
-        anchors.centerIn: Overlay.overlay
-        modal: true
-        width: 360
-        title: "Share this server"
-        standardButtons: Dialog.Close
-        contentItem: ColumnLayout {
-            spacing: 12
-            Label {
-                Layout.fillWidth: true
-                text: "Anyone can add this server — fingerprint and facades — from this link or QR, with no manual entry."
-                color: Theme.textDim; wrapMode: Text.Wrap
-            }
-            QrView { Layout.alignment: Qt.AlignHCenter; text: root.session ? root.session.myServerLink() : "" }
-            ScrollView {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 70
-                TextArea {
-                    readOnly: true
-                    wrapMode: TextArea.WrapAnywhere
-                    color: Theme.text
-                    selectByMouse: true
-                    text: root.session ? root.session.myServerLink() : ""
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                }
-            }
-        }
     }
 
     ListModel { id: facadeModel }
@@ -273,6 +298,8 @@ Popup {
         modal: true
         width: 440
         title: "Facades (tried in order, with failover)"
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label { text: "Facades (tried in order, with failover)"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; wrapMode: Text.Wrap }
         standardButtons: Dialog.Save | Dialog.Cancel
         onAccepted: {
             var urls = []
@@ -302,11 +329,10 @@ Popup {
                     IconButton { text: "✕"; visible: facadeModel.count > 1; onClicked: facadeModel.remove(index) }
                 }
             }
-            Button {
+            MenuButton {
+                Layout.fillWidth: true
                 text: "＋ Add facade"
                 onClicked: facadeModel.append({ url: "" })
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                contentItem: Label { text: parent.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
             }
         }
     }
@@ -325,10 +351,33 @@ Popup {
                 App.deleteProfile(id)
             }
         }
+        // Exceptional/destructive: brightest-neon outline so it is unmistakable,
+        // dark surface with light text so it is actually readable.
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
+        header: Label { text: "Delete account"; color: Theme.neonBright; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "Permanently delete this account and all its messages from this "
                 + "device? Make sure you have a backup if you might need it again. "
                 + "This cannot be undone."
+            color: Theme.text
+            wrapMode: Text.Wrap
+        }
+    }
+
+    Dialog {
+        id: deleteKeyDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 360
+        title: "Delete personal I2P key"
+        standardButtons: Dialog.Yes | Dialog.Cancel
+        onAccepted: if (root.session) root.session.deletePersonalKey()
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
+        header: Label { text: "Delete personal I2P key"; color: Theme.neonBright; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        contentItem: Label {
+            text: "The old key will be permanently deleted and cannot be recovered. "
+                + "You will fall back to the shared pool address; enabling a personal "
+                + "destination again later would create a new, different address."
             color: Theme.text
             wrapMode: Text.Wrap
         }

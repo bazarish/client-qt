@@ -83,6 +83,15 @@ struct PendingEntry {
     std::string deliveryClass;
 };
 
+// Onboarding discovery for a server (GET /v1/account/portal, unauthenticated):
+// the operator's human message and the registration/portal link(s) a client
+// shows when it cannot subscribe yet (e.g. the key is not registered). Carries
+// no facade and no secret - just where to go to register.
+struct PortalInfo {
+    std::string message;
+    std::vector<std::string> links;
+};
+
 // Outcome of a send attempt. status is "pending", "delivered" or "failed";
 // on failure errorCode carries the typed reason when recognized.
 struct SendStatus {
@@ -149,6 +158,10 @@ public:
         std::int64_t issuedAt, std::int64_t notAfter, const Bytes& sealingPrekeyDer = {});
     Subscription subscriptionStatus();
     void unsubscribe();
+    // Onboarding discovery (GET /v1/account/portal): the server's message and
+    // registration link(s), shown when subscribing is refused because the key is
+    // not registered yet. Unauthenticated on the server; safe to call any time.
+    PortalInfo fetchPortalInfo();
     // Hands the serving server a fresh offline transient (I2P-base64) so it can
     // operate the user's personal destination for the subscription window.
     // Requires an active i2pDest entitlement server-side; returns acceptance.

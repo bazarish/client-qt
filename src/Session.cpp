@@ -491,6 +491,11 @@ void Session::persistContacts() const
     writeFileText(stateDir_ / "contacts.json", stored.dump(2));
 }
 
+PortalInfo Session::serverPortalInfo()
+{
+    return client_->fetchPortalInfo();
+}
+
 void Session::subscribe(const std::int64_t days)
 {
     const std::int64_t now = nowSeconds();
@@ -551,6 +556,16 @@ bool Session::hasI2pDestination() const
 std::string Session::i2pAddress() const
 {
     return i2pAddress_;
+}
+
+void Session::deleteI2pDestination()
+{
+    i2pMaster_.clear();
+    i2pTransient_.clear();
+    i2pAddress_.clear();
+    // fs::remove returns false (no throw) when the file is already absent.
+    fs::remove(stateDir_ / "i2p-master.dat");
+    fs::remove(stateDir_ / "i2p-transient.dat");
 }
 
 void Session::renewI2pTransient(const std::int64_t expiresUnix)

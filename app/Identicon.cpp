@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QCryptographicHash>
 #include <QPainter>
+#include <QUrl>
 
 namespace bazarish::app {
 
@@ -66,7 +67,12 @@ QImage QrImageProvider::requestImage(
     QImage image(dim, dim, QImage::Format_RGB32);
     image.fill(Qt::white);
 
-    const QByteArray utf8 = id.toUtf8();
+    // The caller percent-encodes the payload (encodeURIComponent) so characters
+    // like '&', '/', '?' survive the image:// URL; decode it back here so the QR
+    // carries the clean link (e.g. bazarish://invite?...&...), not the escaped
+    // form. Decoding is a no-op for payloads that have no percent escapes.
+    const QString text = QUrl::fromPercentEncoding(id.toUtf8());
+    const QByteArray utf8 = text.toUtf8();
     QRcode* const qr = QRcode_encodeString8bit(utf8.constData(), 0, QR_ECLEVEL_M);
     if (qr != nullptr) {
         const int quiet = 2;

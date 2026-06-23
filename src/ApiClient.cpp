@@ -355,6 +355,12 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         const Facade& facade = facades[index];
 
         if (facadeIsI2p(facade)) {
+            if (!i2pEnabled()) {
+                // I2P turned off in settings: use clearnet facades only. With no
+                // reachable clearnet facade the loop ends in an explicit error.
+                lastError = "i2p is turned off (clearnet only): " + facade.host;
+                continue;
+            }
             if (i2pDataDir_.empty()) {
                 lastError = "i2p facade without an I2P transport: " + facade.host;
                 continue;
@@ -506,6 +512,12 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         const Facade& facade = facades[index];
 
         if (facadeIsI2p(facade)) {
+            if (!i2pEnabled()) {
+                // I2P turned off in settings: use clearnet facades only. With no
+                // reachable clearnet facade the loop ends in an explicit error.
+                lastError = "i2p is turned off (clearnet only): " + facade.host;
+                continue;
+            }
             if (i2pDataDir_.empty()) {
                 lastError = "i2p facade without an I2P transport: " + facade.host;
                 continue;
