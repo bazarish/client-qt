@@ -51,6 +51,7 @@ Item {
         Button {
             Layout.fillWidth: true
             text: "Create"
+            hoverEnabled: true
             enabled: nameField.text.trim().length > 0
             onClicked: {
                 if (passField.text !== confirmField.text) {

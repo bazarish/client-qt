@@ -61,6 +61,7 @@ Popup {
         Button {
             Layout.fillWidth: true
             text: "Copy link"
+            hoverEnabled: true
             enabled: root.uri.length > 0
             onClicked: { linkArea.selectAll(); linkArea.copy(); linkArea.deselect() }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }

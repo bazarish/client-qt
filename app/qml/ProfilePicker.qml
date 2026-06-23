@@ -100,6 +100,7 @@ Item {
         Button {
             Layout.fillWidth: true
             text: "Create profile"
+            hoverEnabled: true
             onClicked: root.StackView.view.push(wizardComponent)
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
             contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }

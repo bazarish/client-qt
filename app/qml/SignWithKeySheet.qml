@@ -107,6 +107,7 @@ Popup {
         Button {
             Layout.fillWidth: true
             text: "Sign"
+            hoverEnabled: true
             enabled: root.session && challengeArea.text.trim().length > 0
             onClicked: root.session.signLogin(challengeArea.text.trim())
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
@@ -130,6 +131,7 @@ Popup {
         }
         Button {
             id: copyBtn
+            hoverEnabled: true
             property bool copied: false
             Layout.fillWidth: true
             text: copied ? "Copied ✓" : "Copy signature"

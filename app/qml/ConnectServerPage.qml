@@ -152,9 +152,12 @@ Item {
             text: "Enter server details manually"
             color: Theme.accent
             font.pixelSize: Theme.fontSmall
+            font.underline: manualMa.containsMouse
             Layout.alignment: Qt.AlignHCenter
             MouseArea {
+                id: manualMa
                 anchors.fill: parent
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.showManual = true
             }
@@ -209,6 +212,7 @@ Item {
             Button {
                 Layout.fillWidth: true
                 text: "Connect & subscribe"
+                hoverEnabled: true
                 enabled: root.facadeList().length > 0 && fpField.text.trim().length > 0
                 onClicked: root.session.connectServer(root.facadeList(), fpField.text.trim())
                 background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
