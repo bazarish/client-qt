@@ -2,6 +2,8 @@
 #include "AppController.hpp"
 #include "Identicon.hpp"
 
+#include <QFont>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -14,8 +16,17 @@ int main(int argc, char** argv)
     QGuiApplication::setOrganizationName("Bazarish");
 
     // A neutral base style; the visual language is defined by the QML Theme
-    // (a calm, minimal, privacy-first look).
+    // (the brand's terminal/neon look).
     QQuickStyle::setStyle("Basic");
+
+    // The brand is monospace everywhere: load the bundled Roboto Mono and make
+    // it the application-wide default so every control inherits it.
+    QFontDatabase::addApplicationFont(":/fonts/RobotoMono-Regular.ttf");
+    QFontDatabase::addApplicationFont(":/fonts/RobotoMono-Bold.ttf");
+    QFont baseFont("Roboto Mono");
+    baseFont.setStyleHint(QFont::Monospace);
+    baseFont.setPixelSize(14);
+    QGuiApplication::setFont(baseFont);
 
     QQmlApplicationEngine engine;
     engine.addImageProvider("identicon", new bazarish::app::IdenticonProvider());

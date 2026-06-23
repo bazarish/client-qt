@@ -4,12 +4,15 @@
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Errors.hpp>
+#include <bazarish/I2p.hpp>
 
 #include <nlohmann/json.hpp>
 
 #include <cstddef>
 #include <filesystem>
+#include <functional>
 #include <map>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -77,7 +80,12 @@ public:
 // authenticated request with both identity keys.
 class ApiClient {
 public:
-    ApiClient(const Identity& identity, std::string clientId, ServerEndpoint endpoint);
+    // i2pDataDir is the embedded router's data directory; it enables routing
+    // facades whose host ends in ".b32.i2p" over I2P. When empty, only clearnet
+    // facades are usable (i2p facades are treated as unreachable) - the CLI and
+    // tests that never touch I2P leave it unset.
+    ApiClient(const Identity& identity, std::string clientId, ServerEndpoint endpoint,
+        std::filesystem::path i2pDataDir = {});
 
     // Authenticated requests. path is the server-visible path (no base path,
     // no query string); query, when non-empty, is appended to the URL only.
@@ -107,16 +115,40 @@ public:
     // The facade the transport is currently using (last one that worked), as a
     // URL - for the GUI's "connected via" display.
     std::string activeFacadeUrl() const;
+    // Whether that active facade is an I2P facade (host ends in ".b32.i2p") -
+    // for the account list's positive "connected over I2P" marking.
+    bool activeFacadeIsI2p() const;
 
 private:
     ApiResponse send(const std::string& method, const std::string& path,
         const std::string& query, const Bytes& body, const std::string& contentType,
         bool authenticate, const std::map<std::string, std::string>& extraHeaders = {});
 
+    // True if a facade's host ends in ".b32.i2p" (reached over the embedded I2P
+    // transport rather than clearnet).
+    static bool facadeIsI2p(const Facade& facade);
+    // The order facades are tried in: I2P facades first (preferred), then
+    // clearnet, preserving each group's configured order.
+    std::vector<std::size_t> facadeOrder() const;
+    // Performs one HTTP/1.1 exchange to an I2P facade over the persistent
+    // outbound destination. writeBody streams the request body onto the stream
+    // after the head (bodyLen must equal the bytes it writes). Returns nullopt
+    // when the facade is unreachable. Throws only on a malformed response.
+    std::optional<ApiResponse> i2pExchange(const Facade& facade, const std::string& method,
+        const std::string& fullPath, const std::map<std::string, std::string>& headers,
+        std::size_t bodyLen, const std::function<void(bazarish::i2p::Stream&)>& writeBody);
+
     const Identity& identity_;
     const std::string clientId_;
     const ServerEndpoint endpoint_;
-    // Index into facadeList() of the last facade that worked; failover starts here.
+    // The embedded router's data dir (empty -> no I2P transport; i2p facades are
+    // then unreachable).
+    const std::filesystem::path i2pDataDir_;
+    // A persistent unpublished outbound destination that dials I2P facades; its
+    // tunnels stay warm across requests (a fresh transient per call would rebuild
+    // a destination on every poll). Created lazily on first I2P facade use.
+    std::shared_ptr<bazarish::i2p::Endpoint> i2pOut_;
+    // Index of the last facade that worked; the GUI "connected via" reads it.
     std::size_t activeFacade_ = 0;
 };
 

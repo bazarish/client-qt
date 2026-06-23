@@ -253,6 +253,8 @@ QVariant OpenAccountsModel::data(const QModelIndex& index, int role) const
     case ConnectedRole: return a.connected;
     case EncryptedRole: return a.encrypted;
     case UnreadRole: return a.unread;
+    case ActiveFacadeRole: return a.activeFacade;
+    case I2pFacadeRole: return a.i2pFacade;
     default: return {};
     }
 }
@@ -261,7 +263,8 @@ QHash<int, QByteArray> OpenAccountsModel::roleNames() const
 {
     return {{IdRole, "accountId"}, {NameRole, "name"}, {FingerprintRole, "fingerprint"},
         {OpenRole, "open"}, {ActiveRole, "active"}, {OnlineRole, "online"},
-        {ConnectedRole, "connected"}, {EncryptedRole, "encrypted"}, {UnreadRole, "unread"}};
+        {ConnectedRole, "connected"}, {EncryptedRole, "encrypted"}, {UnreadRole, "unread"},
+        {ActiveFacadeRole, "activeFacade"}, {I2pFacadeRole, "i2pFacade"}};
 }
 
 void OpenAccountsModel::setAccounts(QVector<AccountRow> accounts)

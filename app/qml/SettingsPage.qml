@@ -79,7 +79,7 @@ Popup {
                         Rectangle {
                             Layout.alignment: Qt.AlignVCenter
                             implicitWidth: 8; implicitHeight: 8; radius: 4
-                            color: (root.session && root.session.reachable) ? Theme.success : "#d4a017"
+                            color: (root.session && root.session.reachable) ? Theme.success : Theme.warn
                         }
                         Label {
                             Layout.fillWidth: true
@@ -173,16 +173,11 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                // Theme + session
+                // Session
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label { text: "Dark theme"; color: Theme.text; Layout.fillWidth: true }
-                        Switch { checked: Theme.dark; onToggled: Theme.dark = checked }
-                    }
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {

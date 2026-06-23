@@ -118,7 +118,7 @@ Popup {
                     anchors.top: parent.top
                     anchors.right: parent.right
                     anchors.margins: 12
-                    color: "#101010"
+                    color: Theme.deep
                     border.color: Theme.border
                     radius: 6
                     clip: true
@@ -148,7 +148,7 @@ Popup {
                         font.pixelSize: Theme.fontTitle
                     }
                     Label {
-                        color: "#d0d0d0"
+                        color: Theme.text
                         text: root.callState === "outgoing" ? "Calling..."
                             : root.callState === "incoming" ? "Incoming video call"
                             : root.callState === "active" ? "In call" : ""

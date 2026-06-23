@@ -612,11 +612,10 @@ private:
     // The central alias resolver this profile resolves usernames against.
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
     bazarish::i2p::Privacy blobFetchPrivacy_ = bazarish::i2p::Privacy::eMax;
-    // The embedded I2P router for this profile (state under stateDir_/i2p). Lazily
-    // started on first transport use via i2pRouter(), so offline operations (and
-    // tests that never reach the network) pay nothing. Mutable: the lazy start is
-    // logical constness, so const fetch paths can still reach the transport.
-    mutable std::unique_ptr<bazarish::i2p::Router> router_;
+    // The embedded I2P router is process-global (the i2pd engine allows only one
+    // per process), so every profile shares the one instance (see sharedI2pRouter).
+    // It is started lazily on first transport use, so offline operations and tests
+    // that never reach the network pay nothing.
     bazarish::i2p::Router& i2pRouter() const;
 
     // Injected audio/video device backends (empty -> the built-in synthetic

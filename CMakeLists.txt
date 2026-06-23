@@ -25,13 +25,13 @@ find_library(QRENCODE_LIBRARY NAMES qrencode REQUIRED)
 find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
 
 # libopus encodes call audio (48 kHz mono, 20 ms Opus frames). The media rides
-# SAM datagrams; this is only the codec, so it stays private to the core lib.
+# I2P datagrams; this is only the codec, so it stays private to the core lib.
 find_library(OPUS_LIBRARY NAMES opus REQUIRED)
 find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 
 # libvpx encodes call video (VP8, low-resolution realtime). Like the audio codec
 # this is only the codec and stays private to the core lib; video frames ride the
-# same SAM datagram transport, fragmented to fit.
+# same I2P datagram transport, fragmented to fit.
 find_library(VPX_LIBRARY NAMES vpx REQUIRED)
 find_path(VPX_INCLUDE_DIR NAMES vpx/vpx_codec.h REQUIRED)
 
@@ -52,6 +52,7 @@ add_library(bazarish_client_lib STATIC
     src/VideoIo.cpp
     src/FederationFetch.cpp
     src/I2pKeys.cpp
+    src/I2pRouter.cpp
     src/Invite.cpp
     src/LargeBlob.cpp
     src/ProfileManager.cpp
@@ -114,6 +115,17 @@ if(Qt6_FOUND)
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql Qt6::Multimedia)
     target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
+
+    # Bundle the brand font (Roboto Mono, static Latin cuts) so the terminal/neon
+    # look renders identically regardless of what is installed; non-Latin text
+    # falls back to the system monospace.
+    qt_add_resources(bazarish-app appfonts
+        PREFIX "/fonts"
+        BASE app/fonts
+        FILES
+            app/fonts/RobotoMono-Regular.ttf
+            app/fonts/RobotoMono-Bold.ttf
+    )
 
     set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
     qt_add_qml_module(bazarish-app

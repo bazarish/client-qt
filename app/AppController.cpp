@@ -119,6 +119,11 @@ void AppController::refreshAccounts()
             row.online = ctrl->online();
             row.connected = ctrl->reachable();
             row.unread = ctrl->unreadTotal();
+            // The active connection: which facade, and whether it is an I2P
+            // facade (host ends in ".b32.i2p") - drives the account list's
+            // positive green marking vs grey for a clearnet facade.
+            row.activeFacade = ctrl->activeFacade();
+            row.i2pFacade = row.activeFacade.contains(QStringLiteral(".b32.i2p"));
             row.name = ctrl->displayName().isEmpty() ? QString::fromStdString(info.name)
                                                       : ctrl->displayName();
             row.fingerprint = ctrl->fingerprint().isEmpty()
@@ -189,6 +194,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
     connect(ctrl, &SessionController::onlineChanged, this, &AppController::refreshAccounts);
     connect(ctrl, &SessionController::reachableChanged, this, &AppController::refreshAccounts);
     connect(ctrl, &SessionController::connectedChanged, this, &AppController::refreshAccounts);
+    connect(ctrl, &SessionController::facadeInfoChanged, this, &AppController::refreshAccounts);
 
     try {
         const QString dir = QString::fromStdString(manager_->dirFor(id.toStdString()).string());

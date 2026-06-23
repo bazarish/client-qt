@@ -25,9 +25,10 @@ Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& 
     return cms::seal(Bytes(text.begin(), text.end()), recipientSealingKey);
 }
 
-Client::Client(Identity identity, std::string clientId, ServerEndpoint endpoint)
+Client::Client(Identity identity, std::string clientId, ServerEndpoint endpoint,
+    std::filesystem::path i2pDataDir)
     : identity_(std::move(identity))
-    , api_(identity_, std::move(clientId), std::move(endpoint))
+    , api_(identity_, std::move(clientId), std::move(endpoint), std::move(i2pDataDir))
 {
 }
 
@@ -49,6 +50,11 @@ const ServerEndpoint& Client::endpoint() const
 std::string Client::activeFacadeUrl() const
 {
     return api_.activeFacadeUrl();
+}
+
+bool Client::activeFacadeIsI2p() const
+{
+    return api_.activeFacadeIsI2p();
 }
 
 SubscribeResult Client::submitSubscription(const std::string& path,

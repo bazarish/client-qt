@@ -49,10 +49,39 @@ Popup {
             Layout.fillWidth: true
         }
 
+        // Which identity will sign: the active profile's name and fingerprint.
+        Rectangle {
+            visible: root.session && root.session.fingerprint.length > 0
+            Layout.fillWidth: true
+            radius: Theme.radiusSmall
+            color: Theme.surface
+            border.color: Theme.border
+            implicitHeight: signAsCol.implicitHeight + 16
+            ColumnLayout {
+                id: signAsCol
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 2
+                Label {
+                    text: root.session && root.session.displayName.length > 0
+                        ? "Signing as " + root.session.displayName : "Signing as this profile"
+                    color: Theme.text
+                    font.weight: Font.Medium
+                }
+                Label {
+                    text: root.session ? root.session.fingerprint : ""
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                    wrapMode: Text.WrapAnywhere
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
         Label { text: "1. Challenge from the site"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
         ScrollView {
             Layout.fillWidth: true
-            Layout.preferredHeight: 42
+            Layout.preferredHeight: 96
             TextArea {
                 id: challengeArea
                 wrapMode: TextArea.WrapAnywhere
@@ -97,7 +126,7 @@ Popup {
             }
             background: Rectangle {
                 radius: 10
-                color: copyBtn.copied ? "#3fb950" : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
+                color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
             contentItem: Label { text: copyBtn.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }

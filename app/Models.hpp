@@ -110,6 +110,11 @@ struct AccountRow {
     bool connected = false;  // the last sync reached the facade
     bool encrypted = false;  // needs a passphrase to open
     int unread = 0;
+    // The facade the account is connected through, and whether it is an I2P
+    // facade (host ends in ".b32.i2p"). i2pFacade drives the positive green
+    // marking in the account list; a clearnet facade reads grey.
+    QString activeFacade;
+    bool i2pFacade = false;
 };
 
 class OpenAccountsModel : public QAbstractListModel {
@@ -117,7 +122,7 @@ class OpenAccountsModel : public QAbstractListModel {
 public:
     enum Roles {
         IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, OpenRole, ActiveRole,
-        OnlineRole, ConnectedRole, EncryptedRole, UnreadRole
+        OnlineRole, ConnectedRole, EncryptedRole, UnreadRole, ActiveFacadeRole, I2pFacadeRole
     };
     using QAbstractListModel::QAbstractListModel;
 

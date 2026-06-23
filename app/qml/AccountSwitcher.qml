@@ -29,7 +29,7 @@ Popup {
             return Theme.success
         }
         if (m.open && m.online) {
-            return "#d4a017"   // connecting
+            return Theme.warn   // connecting
         }
         return Theme.textDim   // offline / locked
     }
@@ -76,6 +76,27 @@ Popup {
                             spacing: 6
                             Rectangle { Layout.alignment: Qt.AlignVCenter; implicitWidth: 7; implicitHeight: 7; radius: 3.5; color: root.statusColor(model) }
                             Label { text: root.statusText(model); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                            // The active connection: a positive green "I2P" pill when the
+                            // account is connected over an I2P facade, a grey "web" chip for
+                            // a clearnet facade. Only shown while actually connected.
+                            Rectangle {
+                                visible: model.open && model.online && model.connected && model.activeFacade.length > 0
+                                Layout.alignment: Qt.AlignVCenter
+                                radius: Theme.radiusSmall
+                                color: model.i2pFacade ? Theme.green : "transparent"
+                                border.color: model.i2pFacade ? Theme.green : Theme.border
+                                border.width: 1
+                                implicitHeight: connLabel.implicitHeight + 4
+                                implicitWidth: connLabel.implicitWidth + 12
+                                Label {
+                                    id: connLabel
+                                    anchors.centerIn: parent
+                                    text: model.i2pFacade ? "I2P" : "web"
+                                    color: model.i2pFacade ? Theme.accentInk : Theme.textDim
+                                    font.pixelSize: Theme.fontSmall - 1
+                                    font.weight: Font.Medium
+                                }
+                            }
                         }
                     }
                     Rectangle {

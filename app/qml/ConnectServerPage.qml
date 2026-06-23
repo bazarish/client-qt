@@ -31,7 +31,7 @@ Item {
     }
     function flashGreen() {
         flashRevert.stop()
-        root.linkBorderColor = "#3fb950"
+        root.linkBorderColor = Theme.success
         flashRevert.interval = 1000
         flashRevert.start()
     }
@@ -100,6 +100,35 @@ Item {
             wrapMode: Text.Wrap
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
+        }
+
+        // Which profile is being connected: name and fingerprint.
+        Rectangle {
+            visible: root.session && root.session.fingerprint.length > 0
+            Layout.fillWidth: true
+            radius: Theme.radiusSmall
+            color: Theme.surface
+            border.color: Theme.border
+            implicitHeight: idCol.implicitHeight + 16
+            ColumnLayout {
+                id: idCol
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 2
+                Label {
+                    text: root.session && root.session.displayName.length > 0
+                        ? root.session.displayName : "This profile"
+                    color: Theme.text
+                    font.weight: Font.Medium
+                }
+                Label {
+                    text: root.session ? root.session.fingerprint : ""
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                    wrapMode: Text.WrapAnywhere
+                    Layout.fillWidth: true
+                }
+            }
         }
 
         // One-link import: paste a bazarish://server/... link; it is parsed

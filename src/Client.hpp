@@ -11,6 +11,7 @@
 #include <bazarish/Descriptor.hpp>
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <optional>
 #include <string>
@@ -122,7 +123,10 @@ Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& 
 // its identity internally).
 class Client {
 public:
-    Client(Identity identity, std::string clientId, ServerEndpoint endpoint);
+    // i2pDataDir enables reaching facades whose host ends in ".b32.i2p" over the
+    // embedded I2P transport; empty leaves only clearnet facades usable.
+    Client(Identity identity, std::string clientId, ServerEndpoint endpoint,
+        std::filesystem::path i2pDataDir = {});
 
     Client(const Client&) = delete;
     Client& operator=(const Client&) = delete;
@@ -132,6 +136,8 @@ public:
     const ServerEndpoint& endpoint() const;
     // The facade the transport is currently using (last that worked), as a URL.
     std::string activeFacadeUrl() const;
+    // Whether that facade is an I2P facade (for the account list marking).
+    bool activeFacadeIsI2p() const;
 
     // --- Account (service node) ---
 

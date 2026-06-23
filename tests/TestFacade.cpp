@@ -134,6 +134,46 @@ void testServerLink()
     CHECK(threw);
 }
 
+// I2P facades (host ends in ".b32.i2p") are preferred over clearnet, but only
+// when an I2P transport is configured; the active-facade reporting that drives
+// the account list marking reflects this. No network is touched: constructing
+// the client only computes the facade order (the router starts on first request).
+void testI2pPriority()
+{
+    const bazarish::Identity id = bazarish::Identity::generate();
+
+    {
+        // I2P transport present: the I2P facade is preferred and reported active.
+        ServerEndpoint endpoint;
+        endpoint.serverFingerprint = "srvfp";
+        endpoint.facades
+            = {parseFacadeUrl("https://clear.example:8443"), parseFacadeUrl("http://abc.b32.i2p")};
+        ApiClient api(id, "cid", endpoint, "/tmp/bazarish-test/i2p");
+        CHECK(api.activeFacadeIsI2p());
+        CHECK(api.activeFacadeUrl() == "http://abc.b32.i2p");
+    }
+    {
+        // No I2P transport: the I2P facade is unreachable, so clearnet is active
+        // and the connection is not falsely marked as I2P.
+        ServerEndpoint endpoint;
+        endpoint.serverFingerprint = "srvfp";
+        endpoint.facades
+            = {parseFacadeUrl("https://clear.example:8443"), parseFacadeUrl("http://abc.b32.i2p")};
+        ApiClient api(id, "cid", endpoint, {});
+        CHECK(!api.activeFacadeIsI2p());
+        CHECK(api.activeFacadeUrl() == "https://clear.example:8443");
+    }
+    {
+        // All-clearnet is never marked I2P, transport or not.
+        ServerEndpoint endpoint;
+        endpoint.serverFingerprint = "srvfp";
+        endpoint.facades = {parseFacadeUrl("http://a:1"), parseFacadeUrl("https://b:2/x")};
+        ApiClient api(id, "cid", endpoint, "/tmp/bazarish-test/i2p");
+        CHECK(!api.activeFacadeIsI2p());
+        CHECK(api.activeFacadeUrl() == "http://a:1");
+    }
+}
+
 }  // namespace
 
 int main()
@@ -143,6 +183,7 @@ int main()
     testInvalid();
     testEndpointFacades();
     testServerLink();
+    testI2pPriority();
     std::fprintf(stderr, "TestFacade passed\n");
     return 0;
 }

@@ -4,6 +4,7 @@
 #include "BlobTransport.hpp"
 #include "FederationFetch.hpp"
 #include "I2pKeys.hpp"
+#include "I2pRouter.hpp"
 #include "LargeBlob.hpp"
 
 #include <bazarish/Auth.hpp>
@@ -209,13 +210,11 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
 
 bazarish::i2p::Router& Session::i2pRouter() const
 {
-    // Lazily start the embedded router on first transport use; state nests under
-    // stateDir_/i2p. Client role (notransit).
-    if (!router_) {
-        router_ = std::make_unique<bazarish::i2p::Router>(
-            bazarish::i2p::RouterConfig{stateDir_ / "i2p", bazarish::i2p::Role::eClient});
-    }
-    return *router_;
+    // The embedded router is process-global (one per process), so share it across
+    // all profiles. Its state nests under the profiles root (the parent of this
+    // profile's state dir) so it is reused regardless of which profile starts it
+    // first. Started lazily on first transport use; client role (notransit).
+    return sharedI2pRouter(stateDir_.parent_path() / "i2p");
 }
 
 Session Session::create(
@@ -250,7 +249,8 @@ Session Session::create(
     };
     writeFileText(stateDir / "meta.json", meta.dump(2));
 
-    auto client = std::make_unique<Client>(std::move(identity), clientId, endpoint);
+    auto client = std::make_unique<Client>(
+        std::move(identity), clientId, endpoint, stateDir.parent_path() / "i2p");
     Session session(stateDir, std::move(client), std::move(sealing), {});
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
@@ -272,7 +272,8 @@ void Session::connectServer(const ServerEndpoint& endpoint)
     // id. The in-memory identity PEM is unencrypted, so this is independent of
     // the at-rest passphrase.
     client_ = std::make_unique<Client>(
-        Identity::fromPrivatePem(client_->identity().privatePem()), client_->clientId(), endpoint);
+        Identity::fromPrivatePem(client_->identity().privatePem()), client_->clientId(), endpoint,
+        stateDir_.parent_path() / "i2p");
     persistMeta();
 }
 
@@ -341,7 +342,8 @@ Session Session::open(const fs::path& stateDir, const std::string& passphrase)
         }
     }
 
-    auto client = std::make_unique<Client>(std::move(identity), clientId, endpoint);
+    auto client = std::make_unique<Client>(
+        std::move(identity), clientId, endpoint, stateDir.parent_path() / "i2p");
     Session session(stateDir, std::move(client), std::move(sealing), std::move(contacts));
     session.subscriptionCertB64_ = meta.value("subscriptionCert", std::string{});
     // Our own routing (dest + serving sealing key) lives in our self-signed

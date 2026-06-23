@@ -56,7 +56,7 @@ Item {
     // Single round indicator, coloured by delivery status (see DeliveryStatus).
     function statusColor(s) {
         if (s === DeliveryStatus.AtSenderServer) return Theme.textDim   // grey
-        if (s === DeliveryStatus.AtRecipientServer) return "#d4a017"    // yellow
+        if (s === DeliveryStatus.AtRecipientServer) return Theme.warn    // amber
         if (s === DeliveryStatus.Delivered) return Theme.success        // green
         if (s === DeliveryStatus.Failed) return Theme.danger            // red
         return "transparent"                                            // sending (hollow ring)

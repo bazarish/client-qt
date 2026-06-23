@@ -1,18 +1,24 @@
 // Bazarish project (c) 2026
 #include "ApiClient.hpp"
 
+#include "I2pRouter.hpp"
+
 #include <bazarish/Auth.hpp>
+#include <bazarish/I2pHttp.hpp>
 
 #include <httplib/httplib.h>
 
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <chrono>
 #include <cstddef>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <memory>
+#include <optional>
 
 namespace bazarish::client {
 
@@ -116,11 +122,48 @@ ApiError::ApiError(
 {
 }
 
-ApiClient::ApiClient(const Identity& identity, std::string clientId, ServerEndpoint endpoint)
+ApiClient::ApiClient(const Identity& identity, std::string clientId, ServerEndpoint endpoint,
+    std::filesystem::path i2pDataDir)
     : identity_(identity)
     , clientId_(std::move(clientId))
     , endpoint_(std::move(endpoint))
+    , i2pDataDir_(std::move(i2pDataDir))
 {
+    // Point the "connected via" display at the preferred facade before the first
+    // request confirms one (I2P is tried first, so it reads as the active one).
+    if (!endpoint_.facades.empty()) {
+        activeFacade_ = facadeOrder().front();
+    }
+}
+
+bool ApiClient::facadeIsI2p(const Facade& facade)
+{
+    static const std::string kSuffix = ".b32.i2p";
+    const std::string& host = facade.host;
+    return host.size() >= kSuffix.size()
+        && host.compare(host.size() - kSuffix.size(), kSuffix.size(), kSuffix) == 0;
+}
+
+std::vector<std::size_t> ApiClient::facadeOrder() const
+{
+    // I2P facades are preferred, but only when an I2P transport is configured;
+    // without one they are unreachable, so clearnet goes first instead (and the
+    // "connected via" display does not falsely claim I2P). The preferred group is
+    // emitted first, each group keeping its configured order.
+    const bool preferI2p = !i2pDataDir_.empty();
+    std::vector<std::size_t> order;
+    order.reserve(endpoint_.facades.size());
+    for (std::size_t i = 0; i < endpoint_.facades.size(); ++i) {
+        if (facadeIsI2p(endpoint_.facades[i]) == preferI2p) {
+            order.push_back(i);
+        }
+    }
+    for (std::size_t i = 0; i < endpoint_.facades.size(); ++i) {
+        if (facadeIsI2p(endpoint_.facades[i]) != preferI2p) {
+            order.push_back(i);
+        }
+    }
+    return order;
 }
 
 const std::string& ApiClient::clientId() const
@@ -140,6 +183,51 @@ std::string ApiClient::activeFacadeUrl() const
     }
     const std::size_t index = activeFacade_ < endpoint_.facades.size() ? activeFacade_ : 0;
     return facadeToUrl(endpoint_.facades[index]);
+}
+
+bool ApiClient::activeFacadeIsI2p() const
+{
+    if (endpoint_.facades.empty()) {
+        return false;
+    }
+    const std::size_t index = activeFacade_ < endpoint_.facades.size() ? activeFacade_ : 0;
+    return facadeIsI2p(endpoint_.facades[index]);
+}
+
+std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const std::string& method,
+    const std::string& fullPath, const std::map<std::string, std::string>& headers,
+    const std::size_t bodyLen, const std::function<void(bazarish::i2p::Stream&)>& writeBody)
+{
+    bazarish::i2p::Router& router = sharedI2pRouter(i2pDataDir_);
+    if (!i2pOut_) {
+        i2pOut_ = router.createEndpoint(bazarish::i2p::EndpointConfig{
+            bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
+            bazarish::i2p::Privacy::eMax, bazarish::i2p::kDefaultTunnelQuantity, false});
+    }
+    std::unique_ptr<bazarish::i2p::Stream> stream
+        = i2pOut_->connect(facade.host, std::chrono::seconds(60));
+    if (!stream) {
+        return std::nullopt;  // facade unreachable - try the next
+    }
+
+    const std::string head = buildI2pHttpRequest(method, facade.host, fullPath, headers, bodyLen);
+    stream->writeAll(head.data(), head.size());
+    if (bodyLen > 0 && writeBody) {
+        writeBody(*stream);
+    }
+
+    // The request carries Content-Length and the facade closes after responding
+    // (Connection: close), so reading to EOF yields the whole response. `auto`
+    // avoids clashing with bazarish::client::I2pHttpResponse declared elsewhere.
+    const auto parsed = readI2pHttpResponse(*stream);
+    ApiResponse response;
+    response.status = parsed.status;
+    response.body = Bytes(parsed.body.begin(), parsed.body.end());
+    if (const auto it = parsed.headers.find("content-type"); it != parsed.headers.end()) {
+        response.contentType = it->second;
+    }
+    response.headers = parsed.headers;  // already lowercased by the parser
+    return response;
 }
 
 ApiResponse ApiClient::get(const std::string& path, const std::string& query)
@@ -204,11 +292,20 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         headers.emplace(key, value);
     }
 
-    // Issues the request against one facade. A send may relay over I2P
+    // The same headers as a plain map for the I2P transport (which writes them
+    // verbatim; Host / Content-Length / Connection are added by the builder).
+    std::map<std::string, std::string> i2pHeaders;
+    for (const auto& [key, value] : headers) {
+        i2pHeaders[key] = value;
+    }
+    if (!body.empty() && !contentType.empty()) {
+        i2pHeaders["Content-Type"] = contentType;
+    }
+
+    // Issues the request against one clearnet facade. A send may relay over I2P
     // synchronously on the server side (tens of seconds), so the timeouts are
-    // generous. Returns the result; an empty result means the facade was
-    // unreachable.
-    const auto attempt = [&](const Facade& facade) -> httplib::Result {
+    // generous. An empty result means the facade was unreachable.
+    const auto clearnetAttempt = [&](const Facade& facade) -> httplib::Result {
         std::string url = facade.basePath + path;
         if (!query.empty()) {
             url += "?" + query;
@@ -249,15 +346,40 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         return run(http);
     };
 
-    // Try facades in order, starting from the last that worked, and cycle once
-    // through all of them. A reachable facade that returns an error response is
-    // final (no failover); only an unreachable facade advances to the next. The
-    // caller's retry loop re-enters here, so failover continues without end.
+    // Try facades in priority order (I2P first), failing over only when a facade
+    // is unreachable. A reachable facade that returns an error response is final
+    // (no failover); the caller's retry loop re-enters here so failover continues.
     const std::vector<Facade>& facades = endpoint_.facades;
     std::string lastError = "no facade configured";
-    for (std::size_t i = 0; i < facades.size(); ++i) {
-        const std::size_t index = (activeFacade_ + i) % facades.size();
-        const httplib::Result result = attempt(facades[index]);
+    for (const std::size_t index : facadeOrder()) {
+        const Facade& facade = facades[index];
+
+        if (facadeIsI2p(facade)) {
+            if (i2pDataDir_.empty()) {
+                lastError = "i2p facade without an I2P transport: " + facade.host;
+                continue;
+            }
+            std::string fullPath = facade.basePath + path;
+            if (!query.empty()) {
+                fullPath += "?" + query;
+            }
+            const std::optional<ApiResponse> response
+                = i2pExchange(facade, method, fullPath, i2pHeaders, body.size(),
+                    [&body](bazarish::i2p::Stream& stream) {
+                        stream.writeAll(body.data(), body.size());
+                    });
+            if (!response) {
+                lastError = "i2p facade unreachable: " + facade.host;
+                continue;
+            }
+            activeFacade_ = index;
+            if (response->status < 200 || response->status >= 300) {
+                raiseFromResponse(response->status, response->body);
+            }
+            return *response;
+        }
+
+        const httplib::Result result = clearnetAttempt(facade);
         if (!result) {
             lastError = "transport failure: " + httplib::to_string(result.error());
             continue;  // facade unreachable - try the next
@@ -298,7 +420,15 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         headers.emplace(key, value);
     }
 
-    const auto attempt = [&](const Facade& facade) -> httplib::Result {
+    std::map<std::string, std::string> i2pHeaders;
+    for (const auto& [key, value] : headers) {
+        i2pHeaders[key] = value;
+    }
+    if (!contentType.empty()) {
+        i2pHeaders["Content-Type"] = contentType;
+    }
+
+    const auto clearnetAttempt = [&](const Facade& facade) -> httplib::Result {
         const std::string url = facade.basePath + path;
         // A fresh stream per attempt so a facade failover restarts cleanly from
         // the beginning of the file (the content provider seeks within it).
@@ -348,11 +478,52 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         return run(http);
     };
 
+    // Streams the file body onto an I2P stream after the request head (the i2p
+    // counterpart of the clearnet content provider).
+    const auto writeFileBody = [&filePath, length](bazarish::i2p::Stream& stream) {
+        std::ifstream file(filePath, std::ios::binary);
+        if (!file) {
+            throw ApiError(std::nullopt, 0, "cannot open blob file: " + filePath.string());
+        }
+        std::array<char, 64 * 1024> buffer;
+        std::uintmax_t remaining = length;
+        while (remaining > 0) {
+            const std::streamsize chunk = static_cast<std::streamsize>(
+                std::min<std::uintmax_t>(remaining, buffer.size()));
+            file.read(buffer.data(), chunk);
+            const std::streamsize got = file.gcount();
+            if (got <= 0) {
+                break;
+            }
+            stream.writeAll(buffer.data(), static_cast<std::size_t>(got));
+            remaining -= static_cast<std::uintmax_t>(got);
+        }
+    };
+
     const std::vector<Facade>& facades = endpoint_.facades;
     std::string lastError = "no facade configured";
-    for (std::size_t i = 0; i < facades.size(); ++i) {
-        const std::size_t index = (activeFacade_ + i) % facades.size();
-        const httplib::Result result = attempt(facades[index]);
+    for (const std::size_t index : facadeOrder()) {
+        const Facade& facade = facades[index];
+
+        if (facadeIsI2p(facade)) {
+            if (i2pDataDir_.empty()) {
+                lastError = "i2p facade without an I2P transport: " + facade.host;
+                continue;
+            }
+            const std::optional<ApiResponse> response = i2pExchange(facade, "PUT",
+                facade.basePath + path, i2pHeaders, static_cast<std::size_t>(length), writeFileBody);
+            if (!response) {
+                lastError = "i2p facade unreachable: " + facade.host;
+                continue;
+            }
+            activeFacade_ = index;
+            if (response->status < 200 || response->status >= 300) {
+                raiseFromResponse(response->status, response->body);
+            }
+            return *response;
+        }
+
+        const httplib::Result result = clearnetAttempt(facade);
         if (!result) {
             lastError = "transport failure: " + httplib::to_string(result.error());
             continue;  // facade unreachable - try the next
