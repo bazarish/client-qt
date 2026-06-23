@@ -214,7 +214,7 @@ Item {
                 enabled: root.facadeList().length > 0 && fpField.text.trim().length > 0
                 onClicked: root.session.connectServer(root.facadeList(), fpField.text.trim())
                 background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
-                contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+                contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
             }
         }
     }

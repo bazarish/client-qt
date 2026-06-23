@@ -127,6 +127,14 @@ if(Qt6_FOUND)
             app/fonts/RobotoMono-Bold.ttf
     )
 
+    # The brand app icon (rendered from the brand kit's icon.svg).
+    qt_add_resources(bazarish-app appicon
+        PREFIX "/icon"
+        BASE app/icon
+        FILES
+            app/icon/bazarish.png
+    )
+
     set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
     qt_add_qml_module(bazarish-app
         URI Bazarish

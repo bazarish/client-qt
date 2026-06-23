@@ -97,7 +97,7 @@ Popup {
             enabled: root.session && challengeArea.text.trim().length > 0
             onClicked: root.session.signLogin(challengeArea.text.trim())
             background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
-            contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
         }
 
         Label { text: "2. Paste this signature back into the site"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
@@ -129,7 +129,7 @@ Popup {
                 color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
                 Behavior on color { ColorAnimation { duration: 200 } }
             }
-            contentItem: Label { text: copyBtn.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            contentItem: Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
             Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
         }
     }

@@ -61,7 +61,7 @@ Item {
                 App.createProfile(nameField.text.trim(), passField.text)
             }
             background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
-            contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
         }
     }
 }

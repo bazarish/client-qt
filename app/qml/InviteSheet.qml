@@ -64,7 +64,7 @@ Popup {
             enabled: root.uri.length > 0
             onClicked: { linkArea.selectAll(); linkArea.copy(); linkArea.deselect() }
             background: Rectangle { radius: 10; color: parent.enabled ? Theme.accent : Theme.surfaceAlt }
-            contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
         }
     }
 }
