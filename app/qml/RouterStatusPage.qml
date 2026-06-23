@@ -66,9 +66,9 @@ Popup {
                             Layout.fillWidth: true
                             Label { text: "Embedded I2P"; color: Theme.text; font.weight: Font.Medium }
                             Label {
-                                text: "Anonymous transport for messages, calls and files: it hides "
-                                    + "your IP address from the servers and peers you reach. It stays "
-                                    + "off until you turn it back on."
+                                text: "Anonymous transport for messages, calls and files: it carries "
+                                    + "your traffic to the server without revealing your IP address. It "
+                                    + "stays off until you turn it back on."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -80,10 +80,10 @@ Popup {
                     }
                     Label {
                         visible: !I2p.enabled
-                        text: "I2P is off — your IP address and network activity are exposed to the "
-                            + "servers and peers you connect to, and anything reachable only over "
-                            + "I2P (some contacts, calls or files) becomes unavailable until you turn "
-                            + "it back on."
+                        text: "I2P is off — you now reach the server over clearnet, so its operator "
+                            + "and anyone watching your network can see your IP address and that you "
+                            + "use this service. Calls and any server reachable only over I2P stop "
+                            + "working until you turn it back on."
                         color: Theme.warn; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
