@@ -113,10 +113,14 @@ void testEndpointFacades()
 void testServerLink()
 {
     ServerLink link;
-    link.serverFingerprint = "abcdef0123456789";
+    link.serverFingerprint = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq";
     link.facadeUrls = {"https://relay.example.org:8443/s/9f3c", "http://127.0.0.1:18482"};
     const std::string uri = encodeServerLink(link);
-    CHECK(uri.rfind("bazarish://server/", 0) == 0);
+    // The link is human-readable: prefix, fingerprint and facade URLs are legible.
+    CHECK(uri.rfind("bazarish://server?v=1&", 0) == 0);
+    CHECK(uri.find("fp=" + link.serverFingerprint) != std::string::npos);
+    CHECK(uri.find("facade=https://relay.example.org:8443/s/9f3c") != std::string::npos);
+    CHECK(uri.find("facade=http://127.0.0.1:18482") != std::string::npos);
 
     const ServerLink back = decodeServerLink(uri);
     CHECK(back.serverFingerprint == link.serverFingerprint);

@@ -1,8 +1,6 @@
 // Bazarish project (c) 2026
 #pragma once
 
-#include <bazarish/Bytes.hpp>
-
 #include <string>
 #include <vector>
 
@@ -21,7 +19,8 @@ struct ServerLink {
     std::vector<std::string> facadeUrls;
 };
 
-// Encodes a server link as bazarish://server/<base64url(JSON)>.
+// Encodes a server link as the human-readable URI
+// bazarish://server?v=1&fp=<fp>&facade=<url>... (see common ServerDescriptor.hpp).
 std::string encodeServerLink(const ServerLink& link);
 // Decodes such a URI. Throws on a malformed URI or payload.
 ServerLink decodeServerLink(const std::string& uri);
