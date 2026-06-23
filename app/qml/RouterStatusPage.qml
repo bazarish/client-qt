@@ -8,6 +8,8 @@ import Bazarish
 // while the router is running (it starts lazily on first I2P use).
 Popup {
     id: root
+    // Return to the page this opened from (Settings); the close button exits.
+    signal back()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -39,6 +41,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
+            IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
             Label { text: "I2P router"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; onClicked: root.close() }
         }

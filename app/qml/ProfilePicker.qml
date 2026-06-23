@@ -113,10 +113,10 @@ Item {
         anchors.centerIn: parent
         modal: true
         title: "Unlock profile"
-        standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: App.openProfile(root.pendingId, passField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Unlock profile"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.accept(); onRejected: passDialog.reject() }
         contentItem: TextField {
             id: passField
             echoMode: TextInput.Password
@@ -124,6 +124,7 @@ Item {
             color: Theme.text
             placeholderTextColor: Theme.textDim
             implicitWidth: 280
+            onAccepted: passDialog.accept()
             background: Rectangle { radius: 8; color: Theme.surface; border.color: passField.activeFocus ? Theme.accent : Theme.border }
         }
     }
@@ -134,7 +135,7 @@ Item {
         modal: true
         width: 360
         title: "Delete profile"
-        standardButtons: Dialog.Yes | Dialog.Cancel
+        footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteDialog.accept(); onRejected: deleteDialog.reject() }
         onAccepted: App.deleteProfile(root.pendingDeleteId)
         // Destructive: brightest-neon outline, dark surface, light text.
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }

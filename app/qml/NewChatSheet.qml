@@ -6,7 +6,6 @@ import Bazarish
 Popup {
     id: root
     property var session: null
-    signal showInvite()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -56,6 +55,8 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
+            // Back to the menu page, shown left of the title while on a sub-page.
+            IconButton { text: "‹"; font.pixelSize: 26; visible: !root.busy && root.mode !== "menu"; onClicked: root.mode = "menu" }
             Label { text: "New chat"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; visible: !root.busy; onClicked: root.close() }
         }
@@ -106,9 +107,7 @@ Popup {
                 model: [
                     { t: "🔗  Add by invite link", m: "invite" },
                     { t: "@  Add by username", m: "username" },
-                    { t: "#  Add by fingerprint", m: "fingerprint" },
-                    { t: "👥  New group", m: "group" },
-                    { t: "▣  Show my invite / QR", m: "showinvite" }
+                    { t: "👥  New group", m: "group" }
                 ]
                 ItemDelegate {
                     id: menuItem
@@ -117,8 +116,7 @@ Popup {
                     text: modelData.t
                     hoverEnabled: true
                     onClicked: {
-                        if (modelData.m === "showinvite") { root.close(); root.showInvite() }
-                        else if (modelData.m === "group") { root.selectedFps = []; root.mode = "group" }
+                        if (modelData.m === "group") { root.selectedFps = []; root.mode = "group" }
                         else root.mode = modelData.m
                     }
                     // A solid surface row that lifts on hover (surfaceAlt + neon
@@ -155,7 +153,6 @@ Popup {
             FormField { id: inviteIntro; label: "Introduction"; text: "Hi, found your invite!" }
             RowLayout {
                 Layout.fillWidth: true
-                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 ActionButton {
                     text: "Send request"
@@ -177,34 +174,12 @@ Popup {
             FormField { id: usernameIntro; label: "Introduction"; text: "Hi, add me?" }
             RowLayout {
                 Layout.fillWidth: true
-                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 ActionButton {
                     text: "Send request"
                     enabled: usernameField.text.trim().length > 0
                     onClicked: root.startRequest(function() {
                         root.session.addByUsername(usernameField.text.trim(), usernameIntro.text)
-                    })
-                }
-            }
-        }
-
-        // --- Add by fingerprint ---
-        ColumnLayout {
-            visible: !root.busy && root.mode === "fingerprint"
-            Layout.fillWidth: true
-            spacing: 8
-            FormField { id: fpField; label: "Contact fingerprint (52 chars)" }
-            FormField { id: fpIntro; label: "Introduction"; text: "Hi, add me?" }
-            RowLayout {
-                Layout.fillWidth: true
-                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
-                Item { Layout.fillWidth: true }
-                ActionButton {
-                    text: "Send request"
-                    enabled: fpField.text.trim().length > 0
-                    onClicked: root.startRequest(function() {
-                        root.session.addByFingerprint(fpField.text.trim(), fpIntro.text)
                     })
                 }
             }
@@ -244,7 +219,6 @@ Popup {
             }
             RowLayout {
                 Layout.fillWidth: true
-                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 Label { text: root.selectedFps.length + " selected"; color: Theme.textDim }
                 ActionButton {

@@ -7,6 +7,8 @@ Popup {
     id: root
     property var session: null
     property string uri: ""
+    // Return to the page this opened from (Settings); the close button exits.
+    signal back()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -27,6 +29,7 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
+            IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
             Label { text: "My invite"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; onClicked: root.close() }
         }

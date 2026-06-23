@@ -283,11 +283,11 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         title: "Backup password"
-        standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Backup password"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
-        contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260
+        footer: DialogButtons { onAccepted: exportPassDialog.accept(); onRejected: exportPassDialog.reject() }
+        contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260; onAccepted: exportPassDialog.accept()
             background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
     }
 
@@ -299,8 +299,18 @@ Popup {
         width: 440
         title: "Facades (tried in order, with failover)"
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        header: Label { text: "Facades (tried in order, with failover)"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; wrapMode: Text.Wrap }
-        standardButtons: Dialog.Save | Dialog.Cancel
+        // Back arrow dismisses (returns to Settings); a single styled Save commits.
+        header: RowLayout {
+            spacing: 4
+            IconButton { text: "‹"; font.pixelSize: 26; Layout.leftMargin: 8; onClicked: facadeDialog.reject() }
+            Label {
+                text: "Facades (tried in order, with failover)"
+                color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+                Layout.fillWidth: true; Layout.rightMargin: 14; topPadding: 14; bottomPadding: 14
+                wrapMode: Text.Wrap
+            }
+        }
+        footer: DialogButtons { showReject: false; acceptText: "Save"; onAccepted: facadeDialog.accept() }
         onAccepted: {
             var urls = []
             for (var i = 0; i < facadeModel.count; ++i) {
@@ -343,7 +353,7 @@ Popup {
         modal: true
         width: 360
         title: "Delete account"
-        standardButtons: Dialog.Yes | Dialog.Cancel
+        footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteDialog.accept(); onRejected: deleteDialog.reject() }
         onAccepted: {
             const id = root.session ? root.session.accountId : ""
             root.close()
@@ -370,7 +380,7 @@ Popup {
         modal: true
         width: 360
         title: "Delete personal I2P key"
-        standardButtons: Dialog.Yes | Dialog.Cancel
+        footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteKeyDialog.accept(); onRejected: deleteKeyDialog.reject() }
         onAccepted: if (root.session) root.session.deletePersonalKey()
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
         header: Label { text: "Delete personal I2P key"; color: Theme.neonBright; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }

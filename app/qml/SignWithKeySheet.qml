@@ -10,6 +10,8 @@ import Bazarish
 Popup {
     id: root
     property var session: null
+    // Return to the page this opened from (Settings); the close button exits.
+    signal back()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -32,6 +34,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
+            IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
             Label {
                 text: "Sign in with your key"
                 color: Theme.neon

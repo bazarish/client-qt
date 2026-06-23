@@ -71,11 +71,12 @@ Item {
 
         // Restore everything (keys, routing and contacts) from a .bazarish backup
         // instead of creating a fresh identity. Uses the name and passphrase above.
+        // The display name is restored from the backup itself, so a name is not
+        // required here; if one is typed it only picks the on-disk profile id.
         Button {
             Layout.fillWidth: true
             text: "Restore from backup…"
             hoverEnabled: true
-            enabled: nameField.text.trim().length > 0
             onClicked: {
                 if (passField.text !== confirmField.text) {
                     errorLabel.text = "Passphrases do not match."
@@ -101,13 +102,13 @@ Item {
         anchors.centerIn: Overlay.overlay
         modal: true
         title: "Backup password"
-        standardButtons: Dialog.Ok | Dialog.Cancel
         // name + at-rest passphrase come from the wizard fields; this asks only
         // for the password the backup file was sealed with.
         onAccepted: App.importProfile(nameField.text.trim(), root.pendingBackupFile,
             backupPass.text, passField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Backup password"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        footer: DialogButtons { onAccepted: backupPassDialog.accept(); onRejected: backupPassDialog.reject() }
         contentItem: TextField {
             id: backupPass
             echoMode: TextInput.Password
@@ -115,6 +116,7 @@ Item {
             color: Theme.text
             placeholderTextColor: Theme.textDim
             implicitWidth: 280
+            onAccepted: backupPassDialog.accept()
             background: Rectangle { radius: 8; color: Theme.surface; border.color: backupPass.activeFocus ? Theme.accent : Theme.border }
         }
     }

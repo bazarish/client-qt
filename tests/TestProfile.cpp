@@ -124,6 +124,25 @@ int main()
     CHECK(firstByte(scratch / "imported-plain" / "contacts.json") == '{');
     const Session importedPlain = Session::open(scratch / "imported-plain");
     CHECK(importedPlain.fingerprint() == a.fingerprint);
+
+    // Importing through a manager restores the display name from the bundle. With
+    // no explicit name the on-disk id is derived from that restored name; an
+    // explicit name only chooses the id (the display name still comes from the
+    // bundle). Use a fresh root so the derived "acetone" id does not collide.
+    const fs::path root2
+        = fs::temp_directory_path() / ("bazarish-profiles-" + toHex(randomBytes(8)));
+    ProfileManager manager2(root2);
+    const ProfileInfo imp1 = manager2.import("", bundle, "bundle-pw");
+    CHECK(imp1.id == "acetone");
+    CHECK(imp1.name == "Acetone");
+    CHECK(imp1.fingerprint == a.fingerprint);
+    const ProfileInfo imp2 = manager2.import("Other Name", bundle, "bundle-pw");
+    CHECK(imp2.id == "other-name");
+    CHECK(imp2.name == "Acetone");
+    CHECK(manager2.list().size() == 2);
+    CHECK(!fs::exists(root2 / ".import-tmp"));
+    fs::remove_all(root2);
+
     fs::remove_all(scratch);
 
     // Removal drops the profile.

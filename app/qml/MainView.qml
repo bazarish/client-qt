@@ -72,8 +72,9 @@ Item {
     }
 
     NewChatSheet { id: newChat; session: root.session }
-    InviteSheet { id: inviteSheet; session: root.session }
-    SignWithKeySheet { id: signWithKeySheet; session: root.session }
+    // These three open from Settings; their back button returns there.
+    InviteSheet { id: inviteSheet; session: root.session; onBack: { inviteSheet.close(); settings.open() } }
+    SignWithKeySheet { id: signWithKeySheet; session: root.session; onBack: { signWithKeySheet.close(); settings.open() } }
     ContactInfo { id: contactInfo; session: root.session }
     GroupInfo { id: groupInfo; session: root.session }
     CallScreen { id: callScreen; session: root.session }
@@ -89,7 +90,7 @@ Item {
         }
     }
     AccountSwitcher { id: accountSwitcher }
-    RouterStatusPage { id: routerStatus }
+    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); settings.open() } }
     SettingsPage {
         id: settings
         session: root.session
@@ -113,10 +114,10 @@ Item {
         id: unlockDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: if (root.unlockId.length > 0) App.openProfile(root.unlockId, unlockField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: unlockDialog.title; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
+        footer: DialogButtons { acceptText: "Unlock"; onAccepted: unlockDialog.accept(); onRejected: unlockDialog.reject() }
         contentItem: TextField {
             id: unlockField
             echoMode: TextInput.Password
@@ -124,12 +125,8 @@ Item {
             color: Theme.text
             placeholderTextColor: Theme.textDim
             implicitWidth: 280
+            onAccepted: unlockDialog.accept()
             background: Rectangle { radius: 8; color: Theme.surface; border.color: unlockField.activeFocus ? Theme.accent : Theme.border }
         }
-    }
-
-    Connections {
-        target: newChat
-        function onShowInvite() { inviteSheet.open() }
     }
 }
