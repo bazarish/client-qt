@@ -105,13 +105,12 @@ Item {
 
         // When other accounts are already open, this picker was opened to add
         // one; let the user return to the running session instead.
-        Button {
+        IconButton {
             Layout.fillWidth: true
             visible: App.hasOpenAccounts
-            text: "Back"
+            text: "‹"
+            font.pixelSize: 26
             onClicked: root.StackView.view.pop()
-            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
-            contentItem: Label { text: parent.text; color: Theme.text; horizontalAlignment: Text.AlignHCenter }
         }
     }
 

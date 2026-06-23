@@ -82,7 +82,7 @@ Rectangle {
                 background: Rectangle {
                     radius: 18
                     color: Theme.bg
-                    border.color: root.editing ? Theme.accent : Theme.border
+                    border.color: (input.activeFocus || root.editing) ? Theme.accent : Theme.border
                 }
             }
             IconButton { text: root.editing ? "✓" : "➤"; tint: Theme.accent; onClicked: root.send() }

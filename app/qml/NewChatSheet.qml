@@ -105,7 +105,7 @@ Popup {
             FormField { id: inviteIntro; label: "Introduction"; text: "Hi, found your invite!" }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Back"; onClicked: root.mode = "menu" }
+                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 Button {
                     text: "Send request"
@@ -127,7 +127,7 @@ Popup {
             FormField { id: usernameIntro; label: "Introduction"; text: "Hi, add me?" }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Back"; onClicked: root.mode = "menu" }
+                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 Button {
                     text: "Send request"
@@ -148,7 +148,7 @@ Popup {
             FormField { id: fpIntro; label: "Introduction"; text: "Hi, add me?" }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Back"; onClicked: root.mode = "menu" }
+                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 Button {
                     text: "Send request"
@@ -194,7 +194,7 @@ Popup {
             }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Back"; onClicked: root.mode = "menu" }
+                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.mode = "menu" }
                 Item { Layout.fillWidth: true }
                 Label { text: root.selectedFps.length + " selected"; color: Theme.textDim }
                 Button {

@@ -92,7 +92,7 @@ Popup {
                                     id: connLabel
                                     anchors.centerIn: parent
                                     text: model.i2pFacade ? "I2P" : "web"
-                                    color: model.i2pFacade ? Theme.accentInk : Theme.textDim
+                                    color: model.i2pFacade ? Theme.text : Theme.textDim
                                     font.pixelSize: Theme.fontSmall - 1
                                     font.weight: Font.Medium
                                 }

@@ -64,19 +64,13 @@ Item {
     Timer { id: flashRevert; onTriggered: root.linkBorderColor = Theme.border }
 
     // Back to the profile list (no server needed to switch/create a profile).
-    Button {
-        text: "Back"
+    IconButton {
+        text: "‹"
+        font.pixelSize: 26
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.margins: 12
-        padding: 8
         onClicked: App.requestAddAccount()
-        background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-        contentItem: Label {
-            text: parent.text; color: Theme.text
-            leftPadding: 8; rightPadding: 8
-            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-        }
     }
 
     SignWithKeySheet { id: signSheet; session: root.session }
@@ -192,7 +186,7 @@ Item {
                         placeholderTextColor: Theme.textDim
                         selectByMouse: true
                         onTextChanged: facadeModel.setProperty(index, "url", text)
-                        background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                        background: Rectangle { radius: 8; color: Theme.surface; border.color: parent.activeFocus ? Theme.accent : Theme.border }
                     }
                     IconButton {
                         text: "✕"

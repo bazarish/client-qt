@@ -296,7 +296,7 @@ Popup {
                         placeholderTextColor: Theme.textDim
                         selectByMouse: true
                         onTextChanged: facadeModel.setProperty(index, "url", text)
-                        background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                        background: Rectangle { radius: 8; color: Theme.surface; border.color: parent.activeFocus ? Theme.accent : Theme.border }
                     }
                     IconButton { text: "✕"; visible: facadeModel.count > 1; onClicked: facadeModel.remove(index) }
                 }

@@ -22,10 +22,11 @@ QtObject {
     readonly property color textDim:   "#8b948c"  // secondary
     readonly property color textFaint: "#5e676a"  // tertiary / comments
 
-    // Neon - the brand green, reserved here for emphasis: titles/headers and
-    // positive status (a good state). Everything else stays gray; the primary
-    // buttons are white (below), so neon is the sole hue that draws the eye.
-    readonly property color neon:      "#39ff14"
+    // Neon - the brand's (darker) green, reserved here for emphasis:
+    // titles/headers and positive status (a good state). Everything else stays
+    // gray; the primary buttons are white (below), so this is the sole hue that
+    // draws the eye. Uses the brandbook's dim-phosphor green, not the bright one.
+    readonly property color neon:      "#1f7a14"
     // Accent - primary buttons / interactive emphasis are a near-white (the
     // formerly-neon buttons are now white); dark ink sits on the white fill.
     readonly property color accentInk: "#11151a"   // dark ink on a near-white fill

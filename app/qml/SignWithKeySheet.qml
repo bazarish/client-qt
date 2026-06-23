@@ -89,7 +89,7 @@ Popup {
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 selectByMouse: true
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                background: Rectangle { radius: 8; color: Theme.surface; border.color: challengeArea.activeFocus ? Theme.accent : Theme.border }
             }
         }
         Button {

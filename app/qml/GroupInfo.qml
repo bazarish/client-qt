@@ -108,7 +108,7 @@ Popup {
             RowLayout {
                 visible: root.addMode
                 Layout.fillWidth: true
-                Button { text: "Back"; onClicked: root.addMode = false }
+                IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.addMode = false }
                 Item { Layout.fillWidth: true }
                 Button {
                     text: "Add " + (root.selectedFps.length > 0 ? "(" + root.selectedFps.length + ")" : "")
