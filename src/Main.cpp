@@ -99,7 +99,6 @@ void printUsage()
         "Environment:\n"
         "  BAZARISH_PASSPHRASE       encrypts/decrypts the key PEMs at rest\n"
         "  BAZARISH_EXPORT_PASSWORD  protects the export/import bundle (required)\n"
-        "  BAZARISH_SAM_PORT         local SAM API port (loopback host; default 7656)\n"
         "  BAZARISH_RESOLVER_ROOT    central resolver root fingerprint (overrides built-in)\n"
         "  BAZARISH_RESOLVER_DEST    central resolver .b32.i2p destination\n"
         "  BAZARISH_RESOLVER_KEY     central resolver serving key (base64 SPKI DER)\n",
@@ -573,7 +572,7 @@ int runSync(const std::vector<std::string>& args)
     }
     Session session = Session::open(args[1], keyPassphrase());
     if (args.size() == 4) {
-        const std::optional<bazarish::I2pPrivacy> parsed = bazarish::i2pPrivacyFromString(args[3]);
+        const std::optional<bazarish::i2p::Privacy> parsed = bazarish::i2p::privacyFromString(args[3]);
         if (!parsed.has_value()) {
             printUsage();
             return 2;
@@ -635,8 +634,8 @@ int runSync(const std::vector<std::string>& args)
 }
 
 // Places an outgoing audio call and drives the signalling sync loop until the
-// peer answers, then runs media for the remaining window. STRICT SAM: without a
-// local bridge startAudioCall throws a readable error and nothing is dialled.
+// peer answers, then runs media for the remaining window. STRICT I2P: without a
+// working transport startAudioCall throws a readable error and nothing is dialled.
 int runCall(const std::vector<std::string>& args)
 {
     // call <state-dir> <peer-fp> [seconds] [video]
@@ -684,7 +683,7 @@ int runCall(const std::vector<std::string>& args)
 }
 
 // Waits for an incoming call.invite, auto-accepts it (a test/headless driver),
-// runs media for the window, then ends. STRICT SAM applies on accept.
+// runs media for the window, then ends. STRICT I2P applies on accept.
 int runCallAnswer(const std::vector<std::string>& args)
 {
     // call-answer <state-dir> [seconds]

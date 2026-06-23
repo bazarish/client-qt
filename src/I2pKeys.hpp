@@ -35,14 +35,14 @@ I2pMasterKey loadI2pMaster(const Bytes& privateKeysDat);
 // private keys - master or offline. Throws on a malformed blob.
 std::string i2pBase32(const Bytes& privateKeys);
 
-// The I2P-base64 serialization of a destination's private keys - the form the
-// SAM DESTINATION= field expects when a server operates the destination from a
+// The I2P-base64 serialization of a destination's private keys - the form a
+// server loads into its I2P router when it operates the destination from a
 // delegated transient. Throws on a malformed blob.
 std::string i2pPrivateKeysBase64(const Bytes& privateKeys);
 
 // Issues time-boxed offline ("transient") keys from the master, valid until
 // expiresUnix (unix seconds). The returned blob is handed to the serving
-// server, which feeds it to its I2P router (SAM) to operate the destination
+// server, which feeds it to its I2P router to operate the destination
 // for the subscription window; the master stays on the client. The offline
 // destination's base32 equals the master's, so the address is unchanged when
 // the user moves to another server (a fresh transient is issued to the new

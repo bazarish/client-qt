@@ -5,7 +5,7 @@
 #include "LargeBlob.hpp"
 
 #include <bazarish/Bytes.hpp>
-#include <bazarish/Sam.hpp>
+#include <bazarish/I2p.hpp>
 
 #include <cstdint>
 #include <filesystem>
@@ -52,16 +52,16 @@ struct I2pHttpResponse {
     std::map<std::string, std::string> headers;  // response header names, lowercased
 };
 
-// Performs one HTTP/1.1 request to a .b32.i2p host over a FRESH transient SAM
-// session (a throwaway destination per call, so the store cannot link a
+// Performs one HTTP/1.1 request to a .b32.i2p host over a FRESH transient I2P
+// destination (a throwaway destination per call, so the store cannot link a
 // fetcher's requests to each other or to a messaging identity). One connection
 // per call (Connection: close). Used for blob download (GET /b/<id>), confirm
 // (POST /b/<id>/confirm) and unsend (DELETE /b/<id>). Construction blocks on
 // tunnel build, so each call carries I2P latency. Throws on transport failure.
-I2pHttpResponse i2pRequest(const std::string& samHost, std::uint16_t samPort,
+I2pHttpResponse i2pRequest(bazarish::i2p::Router& router,
     const std::string& b33Host, const std::string& method, const std::string& path,
     const std::map<std::string, std::string>& headers = {}, const Bytes& body = {},
-    I2pPrivacy privacy = I2pPrivacy::eMax);
+    bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax);
 
 // One ranged GET attempt against the blob store, as seen by the resume driver.
 // total is the full ciphertext length the store declares (Content-Length for a
@@ -96,30 +96,30 @@ void assembleBlobToFile(
 // verifies its digest and decrypts it, then confirms receipt (anonymous, blobId
 // only). Returns the original message blob. Throws on a fetch error or an
 // integrity failure.
-Bytes fetchBlob(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
-    I2pPrivacy privacy = I2pPrivacy::eMax);
+Bytes fetchBlob(bazarish::i2p::Router& router, const BlobPointer& pointer,
+    bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax);
 
 // Like fetchBlob, but streams the ciphertext straight to a temporary file and
 // decrypts it file-to-file into destPath, so a multi-gigabyte attachment is
 // never held whole in memory on the recipient. Verifies the digest before
 // decrypting (a tampered or truncated transfer is rejected) and confirms
 // receipt. Throws on a fetch error or an integrity failure.
-void fetchBlobToFile(const std::string& samHost, std::uint16_t samPort, const BlobPointer& pointer,
-    const std::filesystem::path& destPath, I2pPrivacy privacy = I2pPrivacy::eMax);
+void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
+    const std::filesystem::path& destPath, bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax);
 
 // Fetches a blob through the user's own server (the proxy-fetch fallback for
-// clients with no local SAM bridge): the server fetches the b33 ciphertext over
+// clients with no I2P transport of their own): the server fetches the b33 ciphertext over
 // I2P and relays it back over the facade. Verifies the digest and decrypts.
 // Throws (ApiError) on a fetch error. No receipt confirm (TTL reclaims).
 Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer);
 
-// Sender unsend: deletes the blob over a fresh transient SAM session, gated by
-// the delete-token. Throws on transport failure.
-void deleteBlob(const std::string& samHost, std::uint16_t samPort, const std::string& blobUrl,
-    const std::string& deleteToken, I2pPrivacy privacy = I2pPrivacy::eMax);
+// Sender unsend: deletes the blob over a fresh transient I2P destination, gated
+// by the delete-token. Throws on transport failure.
+void deleteBlob(bazarish::i2p::Router& router, const std::string& blobUrl,
+    const std::string& deleteToken, bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax);
 
-// Sender unsend through the own-server I2P proxy (no-SAM fallback). Throws on a
-// proxy error.
+// Sender unsend through the own-server I2P proxy (fallback for a client with no
+// I2P transport of its own). Throws on a proxy error.
 void deleteBlobViaProxy(ApiClient& api, const std::string& blobUrl, const std::string& deleteToken);
 
 // Splits a blob download URL ("http://<b33>.b32.i2p/b/<id>") into its host and

@@ -5,6 +5,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <chrono>
 #include <stdexcept>
 
 namespace bazarish::client {
@@ -14,7 +15,7 @@ namespace {
 // Reads a single newline-terminated header line from the stream (the federation
 // framing: one JSON object per line). Mirrors the server's reader, including the
 // 64 KiB guard against an unbounded line.
-std::string readHeaderLine(SamStream& stream)
+std::string readHeaderLine(bazarish::i2p::Stream& stream)
 {
     std::string line;
     char c = 0;
@@ -33,22 +34,24 @@ std::string readHeaderLine(SamStream& stream)
 
 }  // namespace
 
-FetchOutcome federationFetchOverSam(const std::string& samHost, const std::uint16_t samPort,
-    const std::string& dest, const std::string& op, const Bytes& sealed, const I2pPrivacy privacy)
+FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::string& dest,
+    const std::string& op, const Bytes& sealed, const bazarish::i2p::Privacy privacy)
 {
-    // A fresh throwaway destination per call (unlinkability). Construction blocks
-    // on tunnel build.
-    SamSession session(samHost, samPort, "fedfetch-" + toHex(randomBytes(6)), "TRANSIENT",
-        kEncryptedLeaseSetType, privacy);
-    SamStream stream = session.connect(dest);
+    // A fresh throwaway destination per call (unlinkability); connecting out does
+    // not need a published leaseset.
+    auto endpoint = router.createEndpoint(bazarish::i2p::EndpointConfig{
+        bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
+        bazarish::i2p::kDefaultTunnelQuantity, false});
+    auto stream = endpoint->connect(dest, std::chrono::seconds(60));
+    if (!stream) {
+        throw std::runtime_error("federation fetch: cannot reach " + dest);
+    }
 
     const nlohmann::json header = {{"op", op}, {"sealed", toBase64(sealed)}};
     const std::string line = header.dump() + "\n";
-    stream.writeAll(line.data(), line.size());
-    // No half-close: the framing is line-delimited both ways, and SAM propagates
-    // a SHUT_WR as a full stream teardown.
+    stream->writeAll(line.data(), line.size());
 
-    const nlohmann::json reply = nlohmann::json::parse(readHeaderLine(stream));
+    const nlohmann::json reply = nlohmann::json::parse(readHeaderLine(*stream));
     FetchOutcome outcome;
     outcome.ok = reply.at("ok").get<bool>();
     if (reply.contains("sealed")) {

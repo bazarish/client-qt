@@ -5,6 +5,7 @@
 #include "VideoIo.hpp"
 
 #include <bazarish/Bytes.hpp>
+#include <bazarish/I2p.hpp>
 
 #include <atomic>
 #include <cstdint>
@@ -17,10 +18,8 @@
 
 namespace bazarish {
 
-class SamDatagramSession;
-
 // Per-call media datagram transport to one fixed peer. Abstract so the engine
-// runs over an in-memory loopback in tests and over SAM in production.
+// runs over an in-memory loopback in tests and over I2P in production.
 class CallTransport {
 public:
     virtual ~CallTransport() = default;
@@ -30,16 +29,17 @@ public:
     virtual std::vector<std::uint8_t> receiveDatagram(int timeoutMs) = 0;
 };
 
-// Routes media over a SAM RAW datagram session to one fixed peer destination
-// (a base64 destination or a .b32.i2p host).
-class SamCallTransport : public CallTransport {
+// Routes media over a bazarish::i2p RAW datagram endpoint to one fixed peer
+// destination (a base64 destination or a .b32.i2p host). RAW carries no
+// per-packet source or I2P-layer auth; the engine AEAD-seals every datagram.
+class I2pCallTransport : public CallTransport {
 public:
-    SamCallTransport(SamDatagramSession& session, std::string peerDestination);
+    I2pCallTransport(bazarish::i2p::Endpoint& endpoint, std::string peerDestination);
     void sendDatagram(const void* data, std::size_t size) override;
     std::vector<std::uint8_t> receiveDatagram(int timeoutMs) override;
 
 private:
-    SamDatagramSession& session_;
+    bazarish::i2p::Endpoint& endpoint_;
     std::string peerDestination_;
 };
 

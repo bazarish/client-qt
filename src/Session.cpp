@@ -193,18 +193,6 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
     , sealingKey_(std::move(sealingKey))
     , contacts_(std::move(contacts))
 {
-    // The local SAM bridge port defaults to 7656 but can be overridden per
-    // environment (the SAM host stays loopback-only, never configurable).
-    if (const char* const env = std::getenv("BAZARISH_SAM_PORT");
-        env != nullptr && env[0] != '\0') {
-        samPort_ = static_cast<std::uint16_t>(std::strtoul(env, nullptr, 10));
-    }
-    // The SAM datagram (UDP) port carries call media; it is separate from the
-    // control port and likewise overridable (e.g. a second local router).
-    if (const char* const env = std::getenv("BAZARISH_SAM_UDP_PORT");
-        env != nullptr && env[0] != '\0') {
-        samUdpPort_ = static_cast<std::uint16_t>(std::strtoul(env, nullptr, 10));
-    }
     // The compiled-in resolver coordinate is empty until a developer-run resolver
     // is deployed and baked in. It can be overridden from the environment so a
     // freshly-built test or local resolver is exercised without a rebuild; all
@@ -217,6 +205,17 @@ Session::Session(fs::path stateDir, std::unique_ptr<Client> client, Key sealingK
             resolverCoordinate_ = ResolverCoordinate{root, dest, fromBase64(key)};
         }
     }
+}
+
+bazarish::i2p::Router& Session::i2pRouter() const
+{
+    // Lazily start the embedded router on first transport use; state nests under
+    // stateDir_/i2p. Client role (notransit).
+    if (!router_) {
+        router_ = std::make_unique<bazarish::i2p::Router>(
+            bazarish::i2p::RouterConfig{stateDir_ / "i2p", bazarish::i2p::Role::eClient});
+    }
+    return *router_;
 }
 
 Session Session::create(
@@ -778,12 +777,11 @@ FetchTransport Session::fetchTransport() const
 {
     return [this](const std::string& toDest, const std::string& op, const Bytes& sealed) {
         try {
-            // Direct over a fresh transient SAM session (preferred - our own
+            // Direct over a fresh transient I2P destination (preferred - our own
             // server is never involved, and a b33 dial authenticates the target).
-            return federationFetchOverSam(
-                "127.0.0.1", samPort_, toDest, op, sealed, blobFetchPrivacy_);
+            return federationFetchOverI2p(i2pRouter(), toDest, op, sealed, blobFetchPrivacy_);
         } catch (const std::exception&) {
-            // No local SAM bridge (or the direct dial failed): relay the opaque
+            // No I2P transport of our own (or the direct dial failed): relay the opaque
             // sealed bytes through our own server's I2P proxy.
             return client_->relayFetch(toDest, op, sealed);
         }
@@ -1132,25 +1130,20 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     persistContacts();
 }
 
-void Session::setBlobFetchPrivacy(const I2pPrivacy privacy)
+void Session::setBlobFetchPrivacy(const bazarish::i2p::Privacy privacy)
 {
     blobFetchPrivacy_ = privacy;
-}
-
-void Session::setSamPort(const std::uint16_t port)
-{
-    samPort_ = port;
 }
 
 Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
 {
     try {
-        // Direct over a fresh transient SAM session (preferred - our server is
+        // Direct over a fresh transient I2P destination (preferred - our server is
         // never involved).
-        return fetchBlob("127.0.0.1", samPort_, pointer, blobFetchPrivacy_);
+        return fetchBlob(i2pRouter(), pointer, blobFetchPrivacy_);
     } catch (const std::exception&) {
-        // No local SAM bridge (or the direct fetch failed): fall back to our own
-        // server proxying the fetch over I2P.
+        // No I2P transport of our own (or the direct fetch failed): fall back to our
+        // own server proxying the fetch over I2P.
         return client_->fetchBlobViaProxy(pointer);
     }
 }
@@ -1158,11 +1151,11 @@ Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
 void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& dest)
 {
     try {
-        // Direct over a fresh transient SAM session, streamed to disk (preferred
+        // Direct over a fresh transient I2P destination, streamed to disk (preferred
         // - our server is never involved and the file never sits whole in RAM).
-        fetchBlobToFile("127.0.0.1", samPort_, pointer, dest, blobFetchPrivacy_);
+        fetchBlobToFile(i2pRouter(), pointer, dest, blobFetchPrivacy_);
     } catch (const std::exception&) {
-        // No local SAM bridge (or the direct fetch failed): the own-server proxy
+        // No I2P transport of our own (or the direct fetch failed): the own-server proxy
         // relays the whole ciphertext through the facade (buffered fallback).
         const Bytes plain = client_->fetchBlobViaProxy(pointer);
         writeFileBytes(dest, plain);
@@ -1172,7 +1165,7 @@ void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& d
 void Session::deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken)
 {
     try {
-        deleteBlob("127.0.0.1", samPort_, blobUrl, deleteToken, blobFetchPrivacy_);  // direct
+        deleteBlob(i2pRouter(), blobUrl, deleteToken, blobFetchPrivacy_);  // direct
     } catch (const std::exception&) {
         client_->deleteBlobViaProxy(blobUrl, deleteToken);  // own-server proxy fallback
     }
@@ -1355,7 +1348,7 @@ std::vector<IncomingMessage> Session::sync()
         } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
             || type == "call.end") {
             // Audio-call signalling: update call state and start/stop media. The
-            // media itself never touches the server (it rides SAM datagrams).
+            // media itself never touches the server (it rides I2P datagrams).
             handleCallSignal(type, message.fromFingerprint, body, message);
         } else if (type == "token-refill") {
             // The fresh tokens already arrived via the bootstrap block.
@@ -1524,41 +1517,22 @@ void Session::setVideoBackend(VideoSourceFactory sourceFactory, VideoSinkFactory
     videoSinkFactory_ = std::move(sinkFactory);
 }
 
-void Session::setSamUdpPort(const std::uint16_t port)
+std::shared_ptr<bazarish::i2p::Endpoint> Session::openCallMediaSession()
 {
-    samUdpPort_ = port;
-}
-
-std::unique_ptr<SamDatagramSession> Session::openCallMediaSession()
-{
-    // STRICT call gate: a local SAM bridge is mandatory. Probe it first so a
-    // no-SAM client fails fast with a readable error instead of stalling on a
-    // tunnel build that can never complete.
-    try {
-        const SamClient probe("127.0.0.1", samPort_);
-        (void)probe;
-    } catch (const std::exception&) {
-        throw ApiError(ErrorCode::eSamUnavailable, 0,
-            "audio calls need a local I2P SAM bridge at 127.0.0.1:" + std::to_string(samPort_)
-                + " (none reachable)");
-    }
-    // Call media uses an encrypted (b33) leaseset, like every other Bazarish
-    // destination. This requires a SAM bridge that routes datagrams to blinded
-    // addresses (i2pd with SAM b33-datagram support); without it the media never
-    // arrives. The destination is one-time and torn down with the call.
-    // Call media uses minimal-length tunnels (1 hop each way, no variance): the
-    // single biggest latency/jitter lever for realtime media. This is safe here
-    // because the media destination is one-time and unlinked from the identity
-    // destination, so a short tunnel never weakens identity anonymity. Variance
-    // is off so the path length cannot jump mid-call.
-    const std::string sessionId = "bz-call-" + toHex(randomBytes(6));
-    return std::make_unique<SamDatagramSession>("127.0.0.1", samPort_, samUdpPort_, sessionId,
-        "TRANSIENT", kEncryptedLeaseSetType, I2pPrivacy::eMinimal, kDefaultTunnelQuantity);
+    // Call media rides a one-time encrypted-LS (b33) destination on the embedded
+    // router, published so the peer can send RAW media datagrams to it; torn down
+    // with the call. Minimal-length tunnels (1 hop each way, no variance): the
+    // single biggest latency/jitter lever for realtime media. Safe here because
+    // the media destination is one-time and unlinked from the identity
+    // destination, so a short tunnel never weakens identity anonymity.
+    return i2pRouter().createEndpoint(bazarish::i2p::EndpointConfig{
+        bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
+        bazarish::i2p::Privacy::eMinimal, bazarish::i2p::kDefaultTunnelQuantity, true});
 }
 
 void Session::startCallMedia()
 {
-    call_.transport = std::make_unique<SamCallTransport>(*call_.dgram, call_.peerMediaDest);
+    call_.transport = std::make_unique<I2pCallTransport>(*call_.dgram, call_.peerMediaDest);
     std::unique_ptr<AudioSource> audioSource
         = audioSourceFactory_ ? audioSourceFactory_() : std::make_unique<SineAudioSource>();
     std::unique_ptr<AudioSink> audioSink
@@ -1623,8 +1597,8 @@ void Session::startCall(const std::string& peerFingerprint, const bool video)
     if (contacts_.find(peerFingerprint) == contacts_.end()) {
         throw std::runtime_error("unknown contact: " + peerFingerprint);
     }
-    // Build the media destination first (strict SAM); only then announce the call.
-    std::unique_ptr<SamDatagramSession> dgram = openCallMediaSession();
+    // Build the media destination first (strict I2P); only then announce the call.
+    auto dgram = openCallMediaSession();
     const std::string callId = toHex(randomBytes(8));
     const Bytes mediaKey = randomBytes(kAeadKeyBytes);
     sendCallSignal(peerFingerprint, "call.invite",
@@ -1633,7 +1607,7 @@ void Session::startCall(const std::string& peerFingerprint, const bool video)
             {"media", video ? "video" : "audio"},
             {"codec", "opus"},
             {"video", video ? "vp8" : ""},
-            {"dest", dgram->routingAddress()},
+            {"dest", dgram->routingHost()},
             {"key", toBase64(mediaKey)},
         });
     call_.state = CallState::eOutgoing;
@@ -1662,10 +1636,10 @@ void Session::acceptCall(const std::string& callId)
     if (call_.state != CallState::eIncoming || call_.callId != callId) {
         throw std::runtime_error("no matching incoming call");
     }
-    std::unique_ptr<SamDatagramSession> dgram = openCallMediaSession();  // strict SAM
+    auto dgram = openCallMediaSession();
     sendCallSignal(call_.peerFingerprint, "call.accept",
         {{"callId", callId}, {"media", call_.video ? "video" : "audio"},
-            {"dest", dgram->routingAddress()}});
+            {"dest", dgram->routingHost()}});
     call_.dgram = std::move(dgram);
     call_.state = CallState::eActive;
     startCallMedia();

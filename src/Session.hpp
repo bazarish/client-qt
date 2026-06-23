@@ -7,7 +7,7 @@
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
-#include <bazarish/Sam.hpp>
+#include <bazarish/I2p.hpp>
 
 #include <cstdint>
 #include <filesystem>
@@ -234,7 +234,7 @@ public:
     void renewI2pTransient(std::int64_t expiresUnix);
     // The active transient blob to hand to the serving server (empty if none).
     Bytes i2pTransient() const;
-    // The active transient as I2P-base64 (the form the server feeds SAM).
+    // The active transient as I2P-base64 (the form the server feeds its I2P router).
     std::string i2pTransientBase64() const;
 
     // Sign-in-with-key: signs an opaque challenge issued by a service portal,
@@ -347,16 +347,10 @@ public:
     void unsend(const std::string& messageId);
 
     // Selects the I2P tunnel privacy profile used when fetching externalized
-    // large blobs over a transient SAM session. Defaults to the most private.
-    void setBlobFetchPrivacy(I2pPrivacy privacy);
+    // large blobs over a throwaway destination. Defaults to the most private.
+    void setBlobFetchPrivacy(bazarish::i2p::Privacy privacy);
 
-    // Sets the local SAM API port the client connects to for transient-SAM blob
-    // and federation fetches. The host is always loopback (127.0.0.1), never
-    // configurable. Defaults to 7656, overridable via the BAZARISH_SAM_PORT
-    // environment variable at construction.
-    void setSamPort(std::uint16_t port);
-
-    // --- Audio calls (client-to-client; signalling over E2E, media over SAM) ---
+    // --- Audio calls (client-to-client; signalling over E2E, media over I2P) ---
 
     // Lifecycle of the single call this session tracks at a time.
     enum class CallState {
@@ -393,9 +387,9 @@ public:
     using VideoSinkFactory = std::function<std::unique_ptr<VideoSink>()>;
     void setVideoBackend(VideoSourceFactory sourceFactory, VideoSinkFactory sinkFactory);
 
-    // Places an outgoing audio call to an established contact. STRICT: a local
-    // I2P SAM bridge is required; without it this throws ApiError(eSamUnavailable)
-    // with a readable message and no call is placed. Builds a one-time SAM
+    // Places an outgoing audio call to an established contact. STRICT: a working
+    // I2P transport is required; without it this throws ApiError(eI2pUnavailable)
+    // with a readable message and no call is placed. Builds a one-time I2P
     // datagram destination for the media and sends a call.invite (carrying that
     // destination and a fresh per-call media key) over the E2E content path.
     // Throws if the contact is unknown or a call is already in progress.
@@ -406,7 +400,7 @@ public:
     // capture and render video in addition to audio.
     void startVideoCall(const std::string& peerFingerprint);
 
-    // Accepts the pending incoming call (its id must match). STRICT SAM as above:
+    // Accepts the pending incoming call (its id must match). STRICT I2P as above:
     // builds our media destination, replies with call.accept and starts media.
     // A video invite is accepted as a video call.
     void acceptCall(const std::string& callId);
@@ -426,10 +420,6 @@ public:
 
     // The current call snapshot (state eIdle when there is none).
     CallInfo currentCall() const;
-
-    // Sets the local SAM datagram (UDP) port used for call media. Separate from
-    // the SAM control port; defaults to kDefaultSamUdpPort (7655).
-    void setSamUdpPort(std::uint16_t port);
 
     // Pulls, decrypts, applies (contacts/tokens) and acks all pending items.
     std::vector<IncomingMessage> sync();
@@ -498,9 +488,9 @@ private:
     void requestWithInfo(const std::string& peerFingerprint, const std::string& text,
         const ContactInfo& info);
 
-    // The fetch transport for card / alias-resolve frames: a fresh transient-SAM
+    // The fetch transport for card / alias-resolve frames: a fresh transient-I2P
     // dial preferred (our own server uninvolved), falling back to the own-server
-    // I2P proxy when there is no local SAM bridge or the direct dial fails. A
+    // I2P proxy when there is no I2P transport of our own or the direct dial fails. A
     // served negative (CARD_UNKNOWN / ALIAS_UNKNOWN) is authoritative and does
     // not trigger the fallback - only a transport failure does.
     FetchTransport fetchTransport() const;
@@ -524,13 +514,12 @@ private:
 
     // --- Call helpers ---
 
-    // Builds the one-time SAM RAW datagram session that carries the call's media.
-    // STRICT: probes the local SAM bridge first and throws ApiError(eSamUnavailable)
-    // with a readable message when none is reachable, so a no-SAM client fails
-    // fast instead of waiting on a tunnel build that cannot happen.
-    std::unique_ptr<SamDatagramSession> openCallMediaSession();
+    // Builds the one-time RAW datagram endpoint that carries the call's media (a
+    // published encrypted-LS b33 destination on the embedded router, torn down
+    // with the call).
+    std::shared_ptr<bazarish::i2p::Endpoint> openCallMediaSession();
     // Shared body of startAudioCall/startVideoCall: builds the media destination
-    // (strict SAM), sends the call.invite (negotiating video when video is true)
+    // (strict I2P), sends the call.invite (negotiating video when video is true)
     // and records the outgoing-call state.
     void startCall(const std::string& peerFingerprint, bool video);
     // Wires the media engine (transport + audio/video backends + codecs) for the
@@ -602,14 +591,14 @@ private:
     nlohmann::json groupsToJson() const;
 
     std::filesystem::path stateDir_;
-    // Fetches an externalized blob: direct over a transient SAM session, falling
-    // back to the own-server I2P proxy when this client has no local SAM bridge.
+    // Fetches an externalized blob: direct over a transient I2P destination, falling
+    // back to the own-server I2P proxy when this client has no I2P transport of its own.
     Bytes fetchLargeBlob(const BlobPointer& pointer);
     // Same, but streams the blob straight to dest so a large attachment never
     // sits whole in memory. The direct path is streamed; the proxy fallback
-    // (no-SAM clients) still buffers the ciphertext through the facade.
+    // (clients with no I2P transport) still buffers the ciphertext through the facade.
     void fetchLargeBlobToFile(const BlobPointer& pointer, const std::filesystem::path& dest);
-    // Deletes an externalized blob (unsend): direct over a transient SAM session,
+    // Deletes an externalized blob (unsend): direct over a transient I2P destination,
     // falling back to the own-server I2P proxy.
     void deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken);
     // Records / persists the blob externalized for a sent message, so it can be
@@ -622,9 +611,13 @@ private:
     std::unique_ptr<Client> client_;
     // The central alias resolver this profile resolves usernames against.
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
-    I2pPrivacy blobFetchPrivacy_ = I2pPrivacy::eMax;
-    std::uint16_t samPort_ = 7656;
-    std::uint16_t samUdpPort_ = kDefaultSamUdpPort;
+    bazarish::i2p::Privacy blobFetchPrivacy_ = bazarish::i2p::Privacy::eMax;
+    // The embedded I2P router for this profile (state under stateDir_/i2p). Lazily
+    // started on first transport use via i2pRouter(), so offline operations (and
+    // tests that never reach the network) pay nothing. Mutable: the lazy start is
+    // logical constness, so const fetch paths can still reach the transport.
+    mutable std::unique_ptr<bazarish::i2p::Router> router_;
+    bazarish::i2p::Router& i2pRouter() const;
 
     // Injected audio/video device backends (empty -> the built-in synthetic
     // backend).
@@ -644,8 +637,8 @@ private:
         bool video = false;         // true for a video call (audio plus video)
         bool muted = false;
         bool cameraOff = false;     // local camera disabled on a video call
-        std::unique_ptr<SamDatagramSession> dgram;
-        std::unique_ptr<SamCallTransport> transport;
+        std::shared_ptr<bazarish::i2p::Endpoint> dgram;
+        std::unique_ptr<I2pCallTransport> transport;
         std::unique_ptr<CallMedia> media;
     };
     ActiveCall call_;

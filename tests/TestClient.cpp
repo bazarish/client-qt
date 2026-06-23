@@ -266,7 +266,8 @@ int main()
 
     Client client(Identity::fromPrivatePem(alice.privatePem()), "client01", endpoint);
 
-    // The own-server proxy fetch transport (the no-SAM-bridge path): card and
+    // The own-server proxy fetch transport (the path for a client with no I2P
+    // transport of its own): card and
     // resolve frames ride through POST /v1/messaging/fetch (relayFetch).
     const FetchTransport proxy
         = [&client](const std::string& toDest, const std::string& op, const Bytes& sealed) {

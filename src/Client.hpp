@@ -101,7 +101,7 @@ struct FetchOutcome {
 };
 
 // Moves one sealed fetch frame ({op, sealed}) to a .b32.i2p destination and
-// returns the sealed reply. Two implementations back this: a direct transient-SAM
+// returns the sealed reply. Two implementations back this: a direct transient-I2P
 // dial (preferred, our server uninvolved) and the own-server proxy relay
 // (Client::relayFetch). The caller picks; the crypto stays in fetchCard/resolve.
 using FetchTransport
@@ -159,14 +159,14 @@ public:
     ContactInfo lookupContact(const std::string& peerFingerprint);
     // Own-server proxy relay (POST /v1/messaging/fetch): moves a sealed fetch
     // frame over I2P to toDest and returns the sealed reply opaquely. The
-    // fallback FetchTransport for clients with no local SAM bridge.
+    // fallback FetchTransport for clients with no I2P transport of their own.
     FetchOutcome relayFetch(
         const std::string& toDest, const std::string& op, const Bytes& sealed);
     // First-contact card fetch from a descriptor (fp + serving destination +
     // serving sealing key). The query (which fingerprint) is sealed to the
     // serving server's key so a relay cannot read it; the response is sealed to a
     // fresh ephemeral key. The sealed frame is moved by `transport` (direct
-    // transient-SAM, or the own-server proxy). Verifies the card and that it is
+    // transient-I2P, or the own-server proxy). Verifies the card and that it is
     // for the descriptor's fingerprint (see docs-main api/FederatedResolve.md).
     ContactInfo fetchCard(const Descriptor& descriptor, const FetchTransport& transport);
     // Resolves an alias to a descriptor via the central resolver: seals the query
@@ -206,7 +206,7 @@ public:
         const PackedBlobFile& packed, const BlobRetention& retention);
 
     // Fetches a blob through our own server's I2P proxy (the fallback when this
-    // client has no local SAM bridge), verifying and decrypting it.
+    // client has no I2P transport of its own), verifying and decrypting it.
     Bytes fetchBlobViaProxy(const BlobPointer& pointer);
 
     // Deletes a blob (sender unsend) through our own server's I2P proxy.

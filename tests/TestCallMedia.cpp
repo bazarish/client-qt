@@ -63,7 +63,7 @@ private:
 };
 
 // Sends into one channel, receives from the other; a pair forms a full-duplex
-// loopback link standing in for two SAM datagram sessions.
+// loopback link standing in for two I2P datagram endpoints.
 class LoopbackTransport : public CallTransport {
 public:
     LoopbackTransport(LoopbackChannel& out, LoopbackChannel& in)

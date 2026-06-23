@@ -3,9 +3,10 @@
 
 #include <bazarish/Cms.hpp>
 #include <bazarish/Crypto.hpp>
-#include <bazarish/Sam.hpp>
-#include <bazarish/SamHttp.hpp>
+#include <bazarish/I2p.hpp>
+#include <bazarish/I2pHttp.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -163,21 +164,21 @@ private:
     std::uint64_t size_ = 0;
 };
 
-// Builds a ranged-GET function that fetches the blob over a fresh transient SAM
-// session per attempt, asking for "bytes=<offset>-" once past the start so a
-// dropped stream resumes instead of restarting. Captures by value so the
-// returned function outlives the call.
-RangedGetFn makeI2pRangedGet(std::string samHost, const std::uint16_t samPort, std::string host,
-    std::string path, const I2pPrivacy privacy)
+// Builds a ranged-GET function that fetches the blob over a fresh throwaway
+// destination per attempt, asking for "bytes=<offset>-" once past the start so a
+// dropped stream resumes instead of restarting. The router outlives every use
+// of the returned function (it is driven within the fetch call).
+RangedGetFn makeI2pRangedGet(bazarish::i2p::Router& router, std::string host,
+    std::string path, const bazarish::i2p::Privacy privacy)
 {
-    return [samHost = std::move(samHost), samPort, host = std::move(host),
+    return [router = &router, host = std::move(host),
                path = std::move(path), privacy](const std::uint64_t offset) -> RangedGet {
         std::map<std::string, std::string> headers;
         if (offset > 0) {
             headers["Range"] = "bytes=" + std::to_string(offset) + "-";
         }
         const I2pHttpResponse resp
-            = i2pRequest(samHost, samPort, host, "GET", path, headers, {}, privacy);
+            = i2pRequest(*router, host, "GET", path, headers, {}, privacy);
         RangedGet ranged;
         ranged.status = resp.status;
         ranged.body = resp.body;
@@ -212,28 +213,33 @@ void splitBlobUrl(const std::string& blobUrl, std::string& host, std::string& pa
     }
 }
 
-I2pHttpResponse i2pRequest(const std::string& samHost, const std::uint16_t samPort,
+I2pHttpResponse i2pRequest(bazarish::i2p::Router& router,
     const std::string& b33Host, const std::string& method, const std::string& path,
     const std::map<std::string, std::string>& headers, const Bytes& body,
-    const I2pPrivacy privacy)
+    const bazarish::i2p::Privacy privacy)
 {
-    // A fresh throwaway destination per call (unlinkability). Construction blocks
-    // on tunnel build.
-    SamSession session(samHost, samPort, "blobfetch-" + toHex(randomBytes(6)),
-        "TRANSIENT", kEncryptedLeaseSetType, privacy);
-    SamStream stream = session.connect(b33Host);
-
-    const std::string request = buildSamHttpRequest(method, b33Host, path, headers, body.size());
-    stream.writeAll(request.data(), request.size());
-    if (!body.empty()) {
-        stream.writeAll(body.data(), body.size());
+    // A fresh throwaway destination per call (unlinkability); connecting out does
+    // not need a published leaseset.
+    auto endpoint = router.createEndpoint(bazarish::i2p::EndpointConfig{
+        bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
+        bazarish::i2p::kDefaultTunnelQuantity, false});
+    auto stream = endpoint->connect(b33Host, std::chrono::seconds(60));
+    if (!stream) {
+        throw std::runtime_error("i2p blob request: cannot reach " + b33Host);
     }
-    // No half-close: SAM propagates a SHUT_WR as a full stream teardown, so the
-    // request carries Content-Length and the server closes after responding
-    // (Connection: close); reading to EOF then yields the whole response. The
-    // status + lowercased header map let the resume driver read
-    // Content-Length / Content-Range.
-    const SamHttpResponse parsed = readSamHttpResponse(stream);
+
+    const std::string request = buildI2pHttpRequest(method, b33Host, path, headers, body.size());
+    stream->writeAll(request.data(), request.size());
+    if (!body.empty()) {
+        stream->writeAll(body.data(), body.size());
+    }
+    // The request carries Content-Length and the server closes after responding
+    // (Connection: close); reading to EOF yields the whole response. The status +
+    // lowercased header map let the resume driver read Content-Length /
+    // Content-Range.
+    // Common's HTTP-over-stream reader; auto avoids clashing with this layer's own
+    // I2pHttpResponse type (Bytes body) declared just below.
+    const auto parsed = readI2pHttpResponse(*stream);
     I2pHttpResponse response;
     response.status = parsed.status;
     response.headers = parsed.headers;
@@ -251,21 +257,20 @@ Bytes downloadWithResume(const RangedGetFn& get)
     return cipher;
 }
 
-Bytes fetchBlob(const std::string& samHost, const std::uint16_t samPort,
-    const BlobPointer& pointer, const I2pPrivacy privacy)
+Bytes fetchBlob(bazarish::i2p::Router& router, const BlobPointer& pointer,
+    const bazarish::i2p::Privacy privacy)
 {
     std::string host;
     std::string path;
     splitBlobUrl(pointer.blobUrl, host, path);
 
-    const Bytes ciphertext
-        = downloadWithResume(makeI2pRangedGet(samHost, samPort, host, path, privacy));
+    const Bytes ciphertext = downloadWithResume(makeI2pRangedGet(router, host, path, privacy));
     Bytes blob = unpackLargeBlob(ciphertext, pointer.fileKey, pointer.sha256);
 
     // Confirm receipt (anonymous, blobId only) so the store can reclaim it. Best
     // effort: the blob is already in hand; a failed confirm just leaves TTL to it.
     try {
-        (void)i2pRequest(samHost, samPort, host, "POST", path + "/confirm", {}, {}, privacy);
+        (void)i2pRequest(router, host, "POST", path + "/confirm", {}, {}, privacy);
     } catch (const std::exception&) {
         // ignore - reclamation falls back to TTL
     }
@@ -302,19 +307,19 @@ void assembleBlobToFile(
     std::filesystem::remove(tempPath, ec);
 }
 
-void fetchBlobToFile(const std::string& samHost, const std::uint16_t samPort,
-    const BlobPointer& pointer, const std::filesystem::path& destPath, const I2pPrivacy privacy)
+void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
+    const std::filesystem::path& destPath, const bazarish::i2p::Privacy privacy)
 {
     std::string host;
     std::string path;
     splitBlobUrl(pointer.blobUrl, host, path);
 
-    assembleBlobToFile(makeI2pRangedGet(samHost, samPort, host, path, privacy), pointer, destPath);
+    assembleBlobToFile(makeI2pRangedGet(router, host, path, privacy), pointer, destPath);
 
     // Confirm receipt (anonymous, blobId only) so the store can reclaim it. Best
     // effort: the blob is already on disk; a failed confirm just leaves TTL to it.
     try {
-        (void)i2pRequest(samHost, samPort, host, "POST", path + "/confirm", {}, {}, privacy);
+        (void)i2pRequest(router, host, "POST", path + "/confirm", {}, {}, privacy);
     } catch (const std::exception&) {
         // ignore - reclamation falls back to TTL
     }
@@ -347,14 +352,14 @@ Bytes fetchBlobViaProxy(ApiClient& api, const BlobPointer& pointer)
     return unpackLargeBlob(ciphertext, pointer.fileKey, pointer.sha256);
 }
 
-void deleteBlob(const std::string& samHost, const std::uint16_t samPort, const std::string& blobUrl,
-    const std::string& deleteToken, const I2pPrivacy privacy)
+void deleteBlob(bazarish::i2p::Router& router, const std::string& blobUrl,
+    const std::string& deleteToken, const bazarish::i2p::Privacy privacy)
 {
     std::string host;
     std::string path;
     splitBlobUrl(blobUrl, host, path);
     (void)i2pRequest(
-        samHost, samPort, host, "DELETE", path, {{"X-Delete-Token", deleteToken}}, {}, privacy);
+        router, host, "DELETE", path, {{"X-Delete-Token", deleteToken}}, {}, privacy);
 }
 
 void deleteBlobViaProxy(ApiClient& api, const std::string& blobUrl, const std::string& deleteToken)

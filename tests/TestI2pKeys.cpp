@@ -58,7 +58,7 @@ void testOfflineKeepsAddress()
     CHECK(i2pBase32(operatorA) == master.base32);
     CHECK(i2pBase32(operatorB) == master.base32);
 
-    // The I2P-base64 form (the blob handed to the serving server for SAM) is
+    // The I2P-base64 form (the blob handed to the serving server's I2P router) is
     // non-empty, deterministic for a given transient, and distinct per transient.
     const std::string b64A = i2pPrivateKeysBase64(operatorA);
     CHECK(!b64A.empty());

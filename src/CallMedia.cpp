@@ -2,9 +2,9 @@
 #include "CallMedia.hpp"
 
 #include <bazarish/Crypto.hpp>
-#include <bazarish/Sam.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 #include <utility>
 
@@ -71,20 +71,24 @@ std::uint64_t sequenceFromNonce(const Bytes& nonce)
 
 }  // namespace
 
-SamCallTransport::SamCallTransport(SamDatagramSession& session, std::string peerDestination)
-    : session_(session)
+I2pCallTransport::I2pCallTransport(bazarish::i2p::Endpoint& endpoint, std::string peerDestination)
+    : endpoint_(endpoint)
     , peerDestination_(std::move(peerDestination))
 {
 }
 
-void SamCallTransport::sendDatagram(const void* data, const std::size_t size)
+void I2pCallTransport::sendDatagram(const void* data, const std::size_t size)
 {
-    session_.send(peerDestination_, data, size);
+    endpoint_.sendRawDatagram(peerDestination_, data, size);
 }
 
-std::vector<std::uint8_t> SamCallTransport::receiveDatagram(const int timeoutMs)
+std::vector<std::uint8_t> I2pCallTransport::receiveDatagram(const int timeoutMs)
 {
-    return session_.receive(timeoutMs);
+    // A negative timeout means block; map it to a long poll so the engine's stop
+    // flag is still observed between polls.
+    const auto wait = timeoutMs < 0 ? std::chrono::milliseconds(1000)
+                                     : std::chrono::milliseconds(timeoutMs);
+    return endpoint_.receiveRawDatagram(wait);
 }
 
 CallMedia::CallMedia(CallTransport& transport, std::unique_ptr<AudioSource> audioSource,

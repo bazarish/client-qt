@@ -67,7 +67,7 @@ public slots:
     void enablePersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
-    // Calls: each runs the matching Session method (strict SAM, so a failure
+    // Calls: each runs the matching Session method (strict I2P, so a failure
     // surfaces as actionFailed) and then re-emits the call state. video selects
     // an audio+video call.
     void startCall(const QString& peer, bool video);
