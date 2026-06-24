@@ -175,6 +175,7 @@ if(Qt6_FOUND)
             app/qml/components/IconButton.qml
             app/qml/components/MenuButton.qml
             app/qml/components/FormField.qml
+            app/qml/components/ServerConnectForm.qml
     )
     message(STATUS "Qt6 Quick found: building bazarish-app")
 else()

@@ -14,6 +14,17 @@ Item {
     property string pendingDeleteName: ""
     property string rowFingerprint: ""
 
+    // When the picker was pushed over a running app (the user is just switching
+    // account), pop it at once on selection so the extra window does not linger;
+    // the active session swaps underneath. On first launch (nothing open yet)
+    // there is nothing to return to, so the open transition replaces it instead.
+    function closeIfSwitching() {
+        const view = root.StackView.view
+        if (App.hasOpenAccounts && view && view.depth > 1) {
+            view.pop()
+        }
+    }
+
     // Off-screen helper used to put a fingerprint on the system clipboard.
     TextEdit { id: clip; visible: false }
     function copyFingerprint(fp) {
@@ -65,6 +76,7 @@ Item {
                             passDialog.open()
                         } else {
                             App.openProfile(model.profileId, "")
+                            root.closeIfSwitching()
                         }
                     }
                     contentItem: RowLayout {
@@ -113,7 +125,7 @@ Item {
         anchors.centerIn: parent
         modal: true
         title: "Unlock profile"
-        onAccepted: App.openProfile(root.pendingId, passField.text)
+        onAccepted: { App.openProfile(root.pendingId, passField.text); root.closeIfSwitching() }
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Unlock profile"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.accept(); onRejected: passDialog.reject() }

@@ -175,6 +175,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
+    case ErrorRole: return errorById_.value(m.id);
     default: return {};
     }
 }
@@ -185,13 +186,14 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
         {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {SenderRole, "sender"},
-        {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}};
+        {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
 {
     beginResetModel();
     messages_ = std::move(messages);
+    errorById_.clear();
     endResetModel();
 }
 
@@ -211,6 +213,22 @@ void ConversationModel::setStatusForId(qint64 id, int status)
             messages_[i].status = status;
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx, {StatusRole});
+            return;
+        }
+    }
+}
+
+void ConversationModel::setErrorForId(qint64 id, const QString& error)
+{
+    if (error.isEmpty()) {
+        errorById_.remove(id);
+    } else {
+        errorById_.insert(id, error);
+    }
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {ErrorRole});
             return;
         }
     }

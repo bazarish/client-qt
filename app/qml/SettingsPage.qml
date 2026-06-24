@@ -68,10 +68,16 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 6
-                    Label { text: "Connection (HTTP facade)"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: "Server connection"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     Label {
-                        text: root.session && root.session.connected ? ("Connected · " + root.session.subscriptionText) : "Not connected"
-                        color: Theme.text
+                        text: !(root.session && root.session.connected)
+                            ? "No server configured"
+                            : (root.session.reachable
+                                ? "Connected"
+                                : "Not reaching the server — Connect to finish setup")
+                        color: (root.session && root.session.connected && !root.session.reachable)
+                            ? Theme.warn : Theme.text
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     RowLayout {
                         visible: root.session && root.session.connected
@@ -98,17 +104,13 @@ Popup {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
+                        // Full descriptor editor (link / facades / fingerprint), the
+                        // same flow as first connect: lets the user re-point the server
+                        // or, after registering on the portal, Connect again to finish.
                         MenuButton {
                             Layout.fillWidth: true
-                            visible: root.session && root.session.connected
-                            text: "Edit facades…"
-                            onClicked: {
-                                facadeModel.clear()
-                                var cfg = root.session.configuredFacades
-                                for (var i = 0; i < cfg.length; ++i) facadeModel.append({ url: cfg[i] })
-                                if (facadeModel.count === 0) facadeModel.append({ url: "" })
-                                facadeDialog.open()
-                            }
+                            text: "Server connection…"
+                            onClicked: connectionDialog.open()
                         }
                         MenuButton {
                             Layout.fillWidth: true
@@ -291,58 +293,43 @@ Popup {
             background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
     }
 
-    ListModel { id: facadeModel }
+    // Full server-connection editor: the same descriptor flow as first connect,
+    // reachable any time so a profile stuck unconnected can be repaired (re-point
+    // the server, or Connect again once registered on the portal). The form
+    // carries its own Connect action, so the dialog has no footer.
     Dialog {
-        id: facadeDialog
+        id: connectionDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        width: 440
-        title: "Facades (tried in order, with failover)"
+        width: 460
+        onOpened: connectionForm.reset()
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        // Back arrow dismisses (returns to Settings); a single styled Save commits.
         header: RowLayout {
             spacing: 4
-            IconButton { text: "‹"; font.pixelSize: 26; Layout.leftMargin: 8; onClicked: facadeDialog.reject() }
+            IconButton { text: "‹"; font.pixelSize: 26; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
             Label {
-                text: "Facades (tried in order, with failover)"
+                text: "Server connection"
                 color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                 Layout.fillWidth: true; Layout.rightMargin: 14; topPadding: 14; bottomPadding: 14
-                wrapMode: Text.Wrap
             }
-        }
-        footer: DialogButtons { showReject: false; acceptText: "Save"; onAccepted: facadeDialog.accept() }
-        onAccepted: {
-            var urls = []
-            for (var i = 0; i < facadeModel.count; ++i) {
-                var u = facadeModel.get(i).url.trim()
-                if (u.length > 0) urls.push(u)
-            }
-            if (urls.length > 0) root.session.updateFacades(urls)
         }
         contentItem: ColumnLayout {
-            spacing: 8
-            Repeater {
-                model: facadeModel
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 6
-                    TextField {
-                        Layout.fillWidth: true
-                        text: model.url
-                        placeholderText: "http[s]://host:port/secret-path"
-                        color: Theme.text
-                        placeholderTextColor: Theme.textDim
-                        selectByMouse: true
-                        onTextChanged: facadeModel.setProperty(index, "url", text)
-                        background: Rectangle { radius: 8; color: Theme.surface; border.color: parent.activeFocus ? Theme.accent : Theme.border }
-                    }
-                    IconButton { text: "✕"; visible: facadeModel.count > 1; onClicked: facadeModel.remove(index) }
-                }
+            spacing: 12
+            Label {
+                text: "Paste a server link, or edit the facades and fingerprint, then "
+                    + "Connect. If the server says your key needs registration, "
+                    + "register on its portal and Connect again to finish setup."
+                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap; Layout.fillWidth: true
             }
-            MenuButton {
+            ServerConnectForm {
+                id: connectionForm
                 Layout.fillWidth: true
-                text: "＋ Add facade"
-                onClicked: facadeModel.append({ url: "" })
+                session: root.session
+                actionText: "Connect"
+                initialFacades: root.session ? root.session.configuredFacades : []
+                initialFingerprint: root.session ? root.session.serverFingerprint : ""
+                onSubmitted: connectionDialog.close()
             }
         }
     }

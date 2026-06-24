@@ -80,7 +80,7 @@ public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
-        SenderRole, TimeRole, StatusRole, MsgIdRole
+        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -91,11 +91,15 @@ public:
     void setMessages(QVector<StoredMessage> messages);
     int appendMessage(const StoredMessage& message);  // returns row
     void setStatusForId(qint64 id, int status);
+    // Attaches (or, when empty, clears) a delivery-error string for a message,
+    // shown inline on a failed outgoing bubble. Session-only; not persisted.
+    void setErrorForId(qint64 id, const QString& error);
     // Replaces a message's text and keyboard in place and marks it edited.
     void editById(qint64 id, const QString& text, const QString& keyboard);
 
 private:
     QVector<StoredMessage> messages_;
+    QHash<qint64, QString> errorById_;
 };
 
 // One account in the unified account list. Covers every on-disk profile, with

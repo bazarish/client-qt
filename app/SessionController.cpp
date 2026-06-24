@@ -147,37 +147,10 @@ void SessionWorker::connectAndSubscribe(
         return;
     }
     emit connectionChanged(true, "active");
-    emit actionOk("Connected and subscribed.");
+    emit actionOk("Connected.");
     emitFacadeInfo();
     ensureSyncTimer();
     sync();
-}
-
-void SessionWorker::updateFacades(const QStringList& facadeUrls)
-{
-    if (!session_ || !session_->isConnected()) {
-        return;
-    }
-    try {
-        ServerEndpoint endpoint;
-        endpoint.serverFingerprint = session_->endpoint().serverFingerprint;
-        for (const QString& url : facadeUrls) {
-            const QString trimmed = url.trimmed();
-            if (!trimmed.isEmpty()) {
-                endpoint.facades.push_back(
-                    bazarish::client::parseFacadeUrl(trimmed.toStdString()));
-            }
-        }
-        if (endpoint.facades.empty()) {
-            throw std::runtime_error("enter at least one facade URL");
-        }
-        session_->connectServer(endpoint);
-        emit actionOk("Facades updated.");
-        emitFacadeInfo();
-        sync();
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
 }
 
 void SessionWorker::setSyncEnabled(bool on)
@@ -230,9 +203,40 @@ void SessionWorker::sync()
     emit contactsRefreshed(fps);
     emitGroups();
     emitFacadeInfo();
+    // Resolve any sends still in flight from earlier (late delivery or failure).
+    reconcilePendingSends();
     // Surface any call state change picked up this sync (a new invite, the peer
     // accepting, or a hang-up) and refresh live media stats.
     emitCallState();
+}
+
+void SessionWorker::reconcilePendingSends()
+{
+    if (!session_ || pendingSends_.empty()) {
+        return;
+    }
+    std::vector<qint64> resolved;
+    for (const auto& [localId, attemptId] : pendingSends_) {
+        const bazarish::client::Session::AttemptOutcome outcome = session_->pollAttempt(attemptId);
+        if (outcome.status == "delivered") {
+            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);  // grey -> yellow
+            resolved.push_back(localId);
+        } else if (outcome.status == "failed") {
+            // grey -> red, with the reason attached to the message.
+            emit sendResult(localId, false,
+                QString::fromStdString(outcome.errorMessage.empty() ? std::string("delivery failed")
+                                                                     : outcome.errorMessage));
+            resolved.push_back(localId);
+        } else if (outcome.status == "unknown") {
+            // The server forgot this attempt (expired or it restarted): stop
+            // tracking it. The message stays grey and can be resent manually.
+            resolved.push_back(localId);
+        }
+        // "pending": still in flight; keep it for the next sync.
+    }
+    for (const qint64 localId : resolved) {
+        pendingSends_.erase(localId);
+    }
 }
 
 void SessionWorker::emitCallState()
@@ -327,10 +331,24 @@ void SessionWorker::sendText(
     const QString& peer, const QString& text, qint64 localId, const QString& protocolId)
 {
     try {
-        session_->sendMessage(peer.toStdString(), text.toStdString(), protocolId.toStdString(),
-            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); });
-        emit sendResult(localId, true, {});  // advances to AtRecipientServer
+        // The callback fires "grey" the instant our own server accepts the
+        // envelope; "delivered" (yellow) only when the server confirms the
+        // recipient stored it. A still-pending delivery leaves the message grey
+        // and is reconciled on later syncs via its attempt id.
+        std::string attemptId;
+        const bool delivered = session_->sendMessage(peer.toStdString(), text.toStdString(),
+            protocolId.toStdString(),
+            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            &attemptId);
+        if (delivered) {
+            pendingSends_.erase(localId);
+            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
+        } else if (!attemptId.empty()) {
+            pendingSends_[localId] = attemptId;
+        }
+        emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
+        pendingSends_.erase(localId);
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
 }
@@ -339,10 +357,20 @@ void SessionWorker::sendFile(
     const QString& peer, const QString& localPath, qint64 localId, const QString& protocolId)
 {
     try {
-        session_->sendFile(peer.toStdString(), localPath.toStdString(), protocolId.toStdString(),
-            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); });
-        emit sendResult(localId, true, {});  // advances to AtRecipientServer
+        std::string attemptId;
+        const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
+            protocolId.toStdString(),
+            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            &attemptId);
+        if (delivered) {
+            pendingSends_.erase(localId);
+            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
+        } else if (!attemptId.empty()) {
+            pendingSends_[localId] = attemptId;
+        }
+        emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
+        pendingSends_.erase(localId);
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
 }
@@ -419,6 +447,9 @@ void SessionWorker::sendGroupText(const QString& groupId, const QString& text, q
 {
     try {
         session_->sendGroupMessage(groupId.toStdString(), text.toStdString());
+        // A group fan-out has no single recipient to confirm; treat a clean
+        // send as handed off (yellow).
+        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
         emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -482,6 +513,7 @@ void SessionWorker::addByInvite(const QString& uri, const QString& intro)
         const std::string fingerprint = session_->addByInvite(uri.toStdString(), intro.toStdString());
         // Surface the fingerprint for out-of-band verification (safety-number style).
         emit actionOk(QString::fromStdString("Contact request sent. Verify fingerprint: " + fingerprint));
+        emit contactRequestSent(QString::fromStdString(fingerprint), intro);
         sync();
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -495,6 +527,7 @@ void SessionWorker::addByUsername(const QString& alias, const QString& intro)
         // The alias->fingerprint binding is the one residual trust of the name
         // path; surface the resolved fingerprint for out-of-band verification.
         emit actionOk(QString::fromStdString("Contact request sent. Verify fingerprint: " + fingerprint));
+        emit contactRequestSent(QString::fromStdString(fingerprint), intro);
         sync();
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -506,6 +539,7 @@ void SessionWorker::addByFingerprint(const QString& fingerprint, const QString& 
     try {
         session_->sendContactRequest(fingerprint.toStdString(), intro.toStdString());
         emit actionOk("Contact request sent.");
+        emit contactRequestSent(fingerprint, intro);
         sync();
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -688,7 +722,6 @@ SessionController::SessionController(QObject* parent)
     // Commands -> worker (queued across threads).
     connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openProfile);
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
-    connect(this, &SessionController::requestUpdateFacades, worker_, &SessionWorker::updateFacades);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
@@ -752,6 +785,8 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onGroupMembersReady);
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
+    connect(worker_, &SessionWorker::contactRequestSent, this,
+        &SessionController::onContactRequestSent);
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
@@ -801,11 +836,6 @@ void SessionController::open(const QString& dir, const QString& profileId, const
 void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp)
 {
     emit requestConnect(facadeUrls, serverFp, 14);
-}
-
-void SessionController::updateFacades(const QStringList& facadeUrls)
-{
-    emit requestUpdateFacades(facadeUrls);
 }
 
 void SessionController::onFacadeInfo(
@@ -1346,13 +1376,62 @@ void SessionController::onSendProgress(qint64 localId, int state)
 
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)
 {
-    // States advance as fast as the real events occur - no artificial delay.
-    // grey<->yellow is only distinguishable when there is a real hop between two
-    // distinct servers; on a same-server delivery they coincide, honestly.
-    bumpStatus(localId, ok ? DeliveryStatus::AtRecipientServer : DeliveryStatus::Failed);
-    if (!ok) {
-        emit actionFailed(error);
+    if (ok) {
+        // The grey state (and yellow, when the server confirmed the recipient
+        // stored it) were already set via sendProgress; a still-pending delivery
+        // stays grey on purpose. Just clear any prior failure note.
+        conversation_.setErrorForId(localId, {});
+        return;
     }
+    // A delivery failure belongs to one message, not the whole app: mark that
+    // bubble failed and attach the reason inline (with a resend affordance in the
+    // UI) instead of raising an application-wide error banner.
+    bumpStatus(localId, DeliveryStatus::Failed);
+    conversation_.setErrorForId(localId, error);
+}
+
+void SessionController::resendText(qint64 localId, const QString& text, const QString& protocolId)
+{
+    if (activePeer_.isEmpty() || text.isEmpty()) {
+        return;
+    }
+    // Reset to "sending" and clear the prior error, then re-dispatch with the
+    // SAME protocol id so the recipient's server still deduplicates it (a retry
+    // must never double-deliver).
+    statusById_[localId] = DeliveryStatus::Sending;
+    store_.updateStatus(localId, DeliveryStatus::Sending);
+    conversation_.setStatusForId(localId, DeliveryStatus::Sending);
+    conversation_.setErrorForId(localId, {});
+    emit requestSendText(activePeer_, text, localId, protocolId);
+}
+
+void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro)
+{
+    // Mirror the request on our own side: store the intro we just sent as an
+    // outgoing message and open a chat for the new peer, so adding a contact
+    // produces a visible conversation immediately instead of an empty roster
+    // entry. The contact itself is already persisted by the core session; the
+    // following sync() refresh will keep the chat list consistent.
+    if (fingerprint.isEmpty()) {
+        return;
+    }
+    const QString body = intro.isEmpty() ? QStringLiteral("Contact request sent.") : intro;
+    StoredMessage m;
+    m.peer = fingerprint;
+    m.outgoing = true;
+    m.type = "contact.request";
+    m.protocolId = SessionController_genProtocolId();
+    m.text = body;
+    m.ts = nowSeconds();
+    // The request was delivered to the peer's server before this fires (the add
+    // call returned without throwing), so it is honestly past our own server.
+    m.status = DeliveryStatus::AtRecipientServer;
+    m.id = store_.append(m);
+    statusById_[m.id] = m.status;
+    if (fingerprint == activePeer_) {
+        conversation_.appendMessage(m);
+    }
+    contacts_.touch(fingerprint, {}, body, m.ts, false);
 }
 
 void SessionController::startCall(const QString& peer)

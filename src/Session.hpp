@@ -300,19 +300,22 @@ public:
     // first reply), a fresh batch for the peer is registered and attached.
     // messageId, when given, is used as the protocol message id (so a delivery
     // receipt can be matched back). onAcceptedByOwnServer fires once when our
-    // own server has accepted the envelope into its buffer (the "grey" state),
-    // before the recipient server confirms storage (the "yellow" state, which
-    // is this call returning normally).
-    void sendMessage(const std::string& peerFingerprint, const std::string& text,
+    // own server has accepted the envelope into its buffer (the "grey" state).
+    // Returns true if the recipient server confirmed storage within the poll
+    // window (the "yellow" state), false if it was accepted but is still being
+    // delivered in the background (stays grey until a read receipt confirms it).
+    bool sendMessage(const std::string& peerFingerprint, const std::string& text,
         const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {});
+        const std::function<void()>& onAcceptedByOwnServer = {},
+        std::string* outAttemptId = nullptr);
 
     // Sends a file as a "file" content message: the bytes are encrypted with a
     // fresh key and uploaded to the content store; the message carries the
     // reference and key end-to-end. The server never sees the content type.
-    void sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
+    bool sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {});
+        const std::function<void()>& onAcceptedByOwnServer = {},
+        std::string* outAttemptId = nullptr);
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.
@@ -343,6 +346,17 @@ public:
     // Sends a delivery receipt (content type "receipt") acknowledging that we
     // received the message with id refMessageId. Costs one delivery token.
     void sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId);
+
+    // The outcome of a still-in-flight send, re-polled after the initial submit
+    // window. status is "pending", "delivered", "failed", or "unknown" (the
+    // server no longer knows the attempt - it expired or the server restarted).
+    struct AttemptOutcome {
+        std::string status;
+        std::string errorMessage;
+    };
+    // Re-polls a previously submitted send by its server attempt id to resolve a
+    // delivery that was still pending when the send call returned. Never throws.
+    AttemptOutcome pollAttempt(const std::string& attemptId);
 
     // Downloads a blob attachment (from a received message) over I2P, verifies
     // and decrypts it to dest. ref is the message's base64 sealed blob pointer
@@ -505,9 +519,11 @@ private:
     FetchTransport fetchTransport() const;
 
     // Sends a built inner content envelope to an established contact: handles
-    // the first-reply bootstrap, seals to the peer and spends one token.
-    void sendContent(const std::string& peerFingerprint, nlohmann::json inner,
-        const std::function<void()>& onAcceptedByOwnServer = {});
+    // the first-reply bootstrap, seals to the peer and spends one token. Returns
+    // whether delivery was confirmed within the poll window (see deliver()).
+    bool sendContent(const std::string& peerFingerprint, nlohmann::json inner,
+        const std::function<void()>& onAcceptedByOwnServer = {},
+        std::string* outAttemptId = nullptr);
 
     // Sends the user-owned I2P master to the account's other devices: a
     // service content message ("device.i2p-master") sealed to our own sealing
@@ -545,16 +561,21 @@ private:
         const nlohmann::json& body, IncomingMessage& message);
 
     // Seals a delivery envelope to the destination server's sealing key and
-    // submits it, polling to completion. onAcceptedByOwnServer fires once when
-    // our own server first accepts the envelope (the "grey" delivery state).
-    // When tokenRejected is non-null, a token-rejected failure (the token was
-    // already spent - e.g. a concurrent group sender took it) does not throw;
-    // it sets *tokenRejected and returns, so the caller can retry with another
-    // token (group fan-out's optimistic retry).
-    void deliver(const std::string& toDest, const Key& servingSealingKey,
+    // hands it to our own server, which accepts it at once (store-and-forward)
+    // and federates in the background. onAcceptedByOwnServer fires once on that
+    // acceptance (the "grey" delivery state). Returns true if the server
+    // confirmed the recipient server stored it within the poll window (the
+    // "yellow" state), false if it was accepted but is still being delivered
+    // (stays grey - the server keeps retrying and a read receipt confirms it
+    // later). Throws on a terminal failure. When tokenRejected is non-null, a
+    // token-rejected failure (the token was already spent - e.g. a concurrent
+    // group sender took it) does not throw; it sets *tokenRejected and returns
+    // false so the caller can retry with another token.
+    bool deliver(const std::string& toDest, const Key& servingSealingKey,
         const std::string& deliveryClass, const std::string& mailbox,
         const std::optional<Bytes>& token, const Bytes& payload,
-        const std::function<void()>& onAcceptedByOwnServer = {}, bool* tokenRejected = nullptr);
+        const std::function<void()>& onAcceptedByOwnServer = {}, bool* tokenRejected = nullptr,
+        std::string* outAttemptId = nullptr);
     void persistContacts() const;
     void persistMeta() const;
     // Serializes the in-memory contacts into the on-disk JSON shape.

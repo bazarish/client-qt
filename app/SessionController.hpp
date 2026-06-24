@@ -9,7 +9,9 @@
 #include <QThread>
 #include <QVariantMap>
 
+#include <map>
 #include <memory>
+#include <string>
 
 class QTimer;
 
@@ -32,8 +34,6 @@ public:
 public slots:
     void openProfile(const QString& dir, const QString& passphrase);
     void connectAndSubscribe(const QStringList& facadeUrls, const QString& serverFp, int days);
-    // Re-points the existing server connection at a new facade list (same server).
-    void updateFacades(const QStringList& facadeUrls);
     void sync();
     // Starts or stops background syncing (the account going online/offline).
     void setSyncEnabled(bool on);
@@ -92,6 +92,10 @@ signals:
     void sendResult(qint64 localId, bool ok, const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
+    // A contact request was sent (add-by-invite/username/fingerprint succeeded):
+    // the resolved peer fingerprint and the intro text it carried, so the GUI can
+    // open the chat and show the sent request straight away.
+    void contactRequestSent(const QString& fingerprint, const QString& intro);
     void inviteReady(const QString& uri);
     // The signed login blob for a challenge (sign-in-with-key result).
     void loginSigned(const QString& blob);
@@ -124,10 +128,16 @@ private:
     void emitGroups();
     void emitFacadeInfo();
     void emitCallState();
+    // Re-polls sends still in flight after their initial submit window so a late
+    // delivery (yellow) or failure (red) reaches the message; run each sync.
+    void reconcilePendingSends();
     std::unique_ptr<bazarish::client::Session> session_;
     QTimer* syncTimer_ = nullptr;
     VideoPresenter* localPreview_ = nullptr;
     VideoPresenter* remotePreview_ = nullptr;
+    // Outgoing messages accepted by our server but not yet confirmed delivered:
+    // local message id -> server attempt id, reconciled on each sync.
+    std::map<qint64, std::string> pendingSends_;
 };
 
 // QML-facing facade: owns the worker thread, the models and the transcript
@@ -147,6 +157,8 @@ class SessionController : public QObject {
     // configured facade list (for the connection editor and status display).
     Q_PROPERTY(QString activeFacade READ activeFacade NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
+    // The configured server's fingerprint, so the connection editor can prefill it.
+    Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     // The on-disk profile id this session was opened from (stable per account).
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
@@ -196,6 +208,7 @@ public:
     bool reachable() const { return reachable_; }
     QString activeFacade() const { return activeFacade_; }
     QStringList configuredFacades() const { return configuredFacades_; }
+    QString serverFingerprint() const { return serverFp_; }
     QString activePeer() const { return activePeer_; }
     QString accountId() const { return profileId_; }
     int unreadTotal() const { return unreadTotal_; }
@@ -228,8 +241,6 @@ public:
     // Connects (and subscribes) through an ordered list of facade URLs
     // (http[s]://host[:port][/secret]). The client fails over across them.
     Q_INVOKABLE void connectServer(const QStringList& facadeUrls, const QString& serverFp);
-    // Edits the facade list of an already-connected server.
-    Q_INVOKABLE void updateFacades(const QStringList& facadeUrls);
     // Decodes a bazarish://server/... link into { serverFp, facades } for the
     // connect form to prefill; returns an empty map on a malformed link.
     Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
@@ -239,6 +250,9 @@ public:
     Q_INVOKABLE void goOffline();
     Q_INVOKABLE void openConversation(const QString& peer);
     Q_INVOKABLE void sendText(const QString& text);
+    // Re-dispatches a failed outgoing text message (same protocol id) after the
+    // user taps "Resend" on its bubble.
+    Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& protocolId);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
     // Creates a group from selected contacts and opens it.
     Q_INVOKABLE void createGroup(const QString& name, const QStringList& memberFps);
@@ -308,7 +322,6 @@ signals:
 
 signals:  // to worker
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp, int days);
-    void requestUpdateFacades(const QStringList& facadeUrls);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
@@ -352,6 +365,7 @@ private slots:
     void onMessageReceived(const QVariantMap& message);
     void onSendProgress(qint64 localId, int state);
     void onSendResult(qint64 localId, bool ok, const QString& error);
+    void onContactRequestSent(const QString& fingerprint, const QString& intro);
     void onSyncReachable(bool ok);
     void onFacadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);

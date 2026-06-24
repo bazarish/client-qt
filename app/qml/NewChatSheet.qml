@@ -71,8 +71,19 @@ Popup {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.Wrap
-                text: "Sending request… this can take a moment while routing is\nresolved (longer over I2P)."
+                text: "Sending request… this can take a moment while routing is resolved."
                 color: Theme.textDim
+            }
+            // When the embedded I2P router is off, routing falls back to the
+            // server proxy - say so, so the wait is explained rather than silent.
+            Label {
+                visible: !I2p.enabled
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.Wrap
+                text: "I2P is off — relaying through your server."
+                color: Theme.warn
+                font.pixelSize: Theme.fontSmall
             }
             Button {
                 id: bgBtn

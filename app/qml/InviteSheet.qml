@@ -60,13 +60,23 @@ Popup {
             }
         }
         Button {
-            Layout.fillWidth: true
-            text: "Copy link"
+            id: copyBtn
             hoverEnabled: true
+            property bool copied: false
+            Layout.fillWidth: true
+            text: copied ? "Copied ✓" : "Copy link"
             enabled: root.uri.length > 0
-            onClicked: { linkArea.selectAll(); linkArea.copy(); linkArea.deselect() }
-            background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
-            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+            onClicked: {
+                linkArea.selectAll(); linkArea.copy(); linkArea.deselect()
+                copied = true; copiedTimer.restart()
+            }
+            background: Rectangle {
+                radius: 10
+                color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
+                Behavior on color { ColorAnimation { duration: 200 } }
+            }
+            contentItem: Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+            Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
         }
     }
 }

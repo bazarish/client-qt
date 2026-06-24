@@ -227,6 +227,39 @@ Item {
                     ToolTip.text: delegate.statusText(model.status)
                 }
             }
+
+            // Delivery-failure notice for an outgoing message: the reason and a
+            // resend action, shown on the message itself rather than as an
+            // application-wide banner.
+            RowLayout {
+                visible: model.outgoing && model.status === DeliveryStatus.Failed
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                spacing: 8
+                Label {
+                    text: (model.error && model.error.length > 0) ? model.error : "Failed to send"
+                    color: Theme.danger
+                    font.pixelSize: Theme.fontSmall
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                // Resend covers one-to-one text only; group messages and
+                // attachments go through other send paths.
+                Label {
+                    id: resendLink
+                    visible: model.type === "text"
+                        && (!model.sender || model.sender.length === 0)
+                    text: "Resend"
+                    color: Theme.accent
+                    font.pixelSize: Theme.fontSmall
+                    font.weight: Font.Medium
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        onTapped: delegate.session.resendText(
+                            model.msgId, model.text, model.protocolId)
+                    }
+                }
+            }
         }
 
         // Right-click or long-press one's own text message to edit it.

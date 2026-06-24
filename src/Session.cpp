@@ -12,6 +12,7 @@
 #include <bazarish/Cms.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Errors.hpp>
+#include <bazarish/Log.hpp>
 #include <bazarish/I2pAddress.hpp>
 #include <bazarish/Tokens.hpp>
 
@@ -718,66 +719,78 @@ std::vector<std::string> Session::issueTokenBatch()
     return tokens;
 }
 
-void Session::deliver(const std::string& toDest, const Key& servingSealingKey,
+bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     const std::string& kind, const std::string& mailbox, const std::optional<Bytes>& token,
-    const Bytes& payload, const std::function<void()>& onAcceptedByOwnServer, bool* tokenRejected)
+    const Bytes& payload, const std::function<void()>& onAcceptedByOwnServer, bool* tokenRejected,
+    std::string* outAttemptId)
 {
     // The envelope is sealed to the recipient destination's serving sealing key,
     // so the routing metadata is readable only by the server operating that
-    // destination. Our own server relays it to toDest over federation (or
-    // delivers locally when toDest is our own destination). messageId stays
-    // fixed across retries: the recipient server dedups, so resubmits are
-    // idempotent and never consume a second token.
+    // destination. messageId stays fixed: the recipient server dedups, so a
+    // resubmit is idempotent and never consumes a second token.
     const std::string messageId = toHex(randomBytes(16));
     const Bytes sealed = sealDeliveryEnvelope(kind, mailbox, messageId, token, servingSealingKey);
 
-    // A foreign server may be momentarily unreachable while its I2P leaseset
-    // publishes; that is transient, so retry. Other failures are terminal.
-    constexpr int kMaxRounds = 12;
-    std::string lastError = "delivery not attempted";
-    bool acceptedByOwnServer = false;
-    for (int round = 0; round < kMaxRounds; ++round) {
-        try {
-            const std::string attemptId = client_->submitSend(toDest, sealed, payload);
-            // Our own server accepted the envelope into its buffer: the "grey"
-            // delivery state. Fire once.
-            if (!acceptedByOwnServer) {
-                acceptedByOwnServer = true;
-                if (onAcceptedByOwnServer) {
-                    onAcceptedByOwnServer();
-                }
-            }
-            for (int poll = 0; poll < 50; ++poll) {
-                const SendStatus status = client_->pollSend(attemptId);
-                if (status.status == "delivered") {
-                    return;
-                }
-                if (status.status == "failed") {
-                    if (status.errorCode == ErrorCode::eRecipientServerUnreachable) {
-                        lastError = status.errorMessage.empty() ? "recipient unreachable"
-                                                                : status.errorMessage;
-                        break;  // transient: retry this round
-                    }
-                    // A spent token (e.g. a concurrent group sender took it): let
-                    // the caller retry with another token instead of failing.
-                    if (tokenRejected != nullptr
-                        && status.errorCode == ErrorCode::eDeliveryRejected) {
-                        *tokenRejected = true;
-                        return;
-                    }
-                    throw std::runtime_error("delivery failed: "
-                        + (status.errorMessage.empty() ? std::string("unknown")
-                                                        : status.errorMessage));
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }
-        } catch (const ApiError& error) {
-            // Transport-level failure (timeout, attempt expired): resubmit.
-            lastError = error.what();
-        }
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+    // Hand the envelope to our own server. With store-and-forward it accepts the
+    // envelope at once and federates in the background (retrying a recipient
+    // whose I2P leaseset is still publishing), so this returns quickly. We poll
+    // the attempt for the outcome, but only for a bounded window: a delivery
+    // still in flight when the window passes is left "at our server" (grey) - the
+    // server keeps trying and the recipient's read receipt confirms it (green) -
+    // rather than blocking the caller for the whole federation.
+    const std::string attemptId = client_->submitSend(toDest, sealed, payload);
+    if (outAttemptId != nullptr) {
+        *outAttemptId = attemptId;  // so the caller can reconcile a late outcome
     }
-    throw std::runtime_error("delivery did not complete after retries: " + lastError);
+    if (onAcceptedByOwnServer) {
+        onAcceptedByOwnServer();  // grey: our own server accepted the envelope
+    }
+    constexpr int kPollAttempts = 150;  // ~15 s at 100 ms
+    for (int poll = 0; poll < kPollAttempts; ++poll) {
+        try {
+            const SendStatus status = client_->pollSend(attemptId);
+            if (status.status == "delivered") {
+                return true;  // recipient server stored it: yellow
+            }
+            if (status.status == "failed") {
+                // A spent token (e.g. a concurrent group sender took it): let the
+                // caller retry with another token instead of failing.
+                if (tokenRejected != nullptr
+                    && status.errorCode == ErrorCode::eDeliveryRejected) {
+                    *tokenRejected = true;
+                    return false;
+                }
+                throw std::runtime_error("delivery failed: "
+                    + (status.errorMessage.empty() ? std::string("unknown")
+                                                    : status.errorMessage));
+            }
+            // "pending": still being delivered server-side; keep waiting.
+        } catch (const ApiError&) {
+            // The attempt is momentarily unpollable (e.g. our own server restarted
+            // and forgot it). The envelope was accepted; leave it grey rather than
+            // failing the message.
+            return false;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    return false;  // accepted, still being delivered in the background
+}
+
+Session::AttemptOutcome Session::pollAttempt(const std::string& attemptId)
+{
+    try {
+        const SendStatus status = client_->pollSend(attemptId);
+        return AttemptOutcome{status.status, status.errorMessage};
+    } catch (const ApiError& error) {
+        // A definite non-200 response means the server no longer knows this
+        // attempt (it expired or the server restarted): report "unknown" so the
+        // caller stops tracking it. A transport failure with no HTTP status is
+        // transient - report "pending" so the next sync retries.
+        if (error.httpStatus != 0) {
+            return AttemptOutcome{"unknown", error.what()};
+        }
+        return AttemptOutcome{"pending", error.what()};
+    }
 }
 
 void Session::sendContactRequest(const std::string& peerFingerprint, const std::string& text)
@@ -932,8 +945,9 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     persistContacts();
 }
 
-void Session::sendMessage(const std::string& peerFingerprint, const std::string& text,
-    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer)
+bool Session::sendMessage(const std::string& peerFingerprint, const std::string& text,
+    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
+    std::string* outAttemptId)
 {
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -943,11 +957,12 @@ void Session::sendMessage(const std::string& peerFingerprint, const std::string&
         {"sentAt", nowSeconds()},
         {"text", text},
     };
-    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
-void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer)
+bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
+    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
+    std::string* outAttemptId)
 {
     // Encrypt the file under a fresh key straight to a temp ciphertext file and
     // upload it streaming, so a large file is never held whole in memory. The
@@ -994,7 +1009,7 @@ void Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     };
     // Remember the blob so the sender can unsend it later.
     recordSentBlob(inner.at("id").get<std::string>(), uploaded.blobUrl, uploaded.deleteToken);
-    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
 void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
@@ -1090,8 +1105,8 @@ void Session::saveAttachment(
     fetchLargeBlobToFile(pointer, dest);
 }
 
-void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
-    const std::function<void()>& onAcceptedByOwnServer)
+bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
+    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId)
 {
     const auto found = contacts_.find(peerFingerprint);
     if (found == contacts_.end()) {
@@ -1160,12 +1175,15 @@ void Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
 
     const std::string token = contact.sendTokens.back();
-    deliver(contact.dest, peerServingKey, "content", peerFingerprint, fromBase64(token), payload,
-        onAcceptedByOwnServer);
+    const bool delivered = deliver(contact.dest, peerServingKey, "content", peerFingerprint,
+        fromBase64(token), payload, onAcceptedByOwnServer, nullptr, outAttemptId);
 
-    // Spend the token only after a successful delivery.
+    // Spend the token: it is now committed to this message (consumed by the
+    // recipient on delivery, or in flight while the server keeps delivering).
+    // deliver() throws on a terminal failure, so a thrown send never spends one.
     contact.sendTokens.pop_back();
     persistContacts();
+    return delivered;
 }
 
 void Session::setBlobFetchPrivacy(const bazarish::i2p::Privacy privacy)
@@ -1303,197 +1321,216 @@ std::vector<IncomingMessage> Session::sync()
     };
     std::vector<DeferredTokens> deferredTokens;
     for (const PendingEntry& entry : client_->listPending()) {
-        const Bytes blob = client_->fetchBlob(entry.id);
-        // Every item is sealed to our user sealing key the same way; the
-        // server-visible delivery class never changes how we decrypt.
-        const Bytes plain = cms::unseal(blob, sealingKey_);
-        nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
+        try {
+            const Bytes blob = client_->fetchBlob(entry.id);
+            // Every item is sealed to our user sealing key the same way; the
+            // server-visible delivery class never changes how we decrypt.
+            const Bytes plain = cms::unseal(blob, sealingKey_);
+            nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
 
-        IncomingMessage message;
-        message.deliveryClass = entry.deliveryClass;
-        message.fromFingerprint = body.at("from").get<std::string>();
-        message.messageId = body.value("id", std::string());
-        std::string type = body.value("type", std::string("text"));
+            IncomingMessage message;
+            message.deliveryClass = entry.deliveryClass;
+            message.fromFingerprint = body.at("from").get<std::string>();
+            message.messageId = body.value("id", std::string());
+            std::string type = body.value("type", std::string("text"));
 
-        // Bootstrap may ride with any content type; apply it before dispatch
-        // so a new or migrated contact is established regardless of type.
-        if (body.contains("bootstrap")) {
-            applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"));
-            message.establishedContact = true;
-        }
-
-        // The peer is low on our tokens and asked to be refilled.
-        if (body.value("lowStash", false)) {
-            refillPeers.insert(message.fromFingerprint);
-        }
-
-        // A blob pointer: the real content was externalized to blob storage.
-        // Fetch it over I2P (a fresh transient destination), verify and decrypt
-        // it, then dispatch on the recovered content's real type. Best effort -
-        // a failed fetch surfaces the pointer (the blob persists until its TTL,
-        // so a later sync can retry).
-        if (type == "blob.pointer") {
-            try {
-                const BlobPointer pointer = blobPointerFromJson(body.at("pointer"));
-                const Bytes content = fetchLargeBlob(pointer);
-                body = nlohmann::json::parse(content.begin(), content.end());
-                type = body.value("type", std::string("text"));
-            } catch (const std::exception&) {
-                message.contentType = "blob.pointer";
-                message.text = "[large message — fetch failed; retry later]";
+            // Bootstrap may ride with any content type; apply it before dispatch
+            // so a new or migrated contact is established regardless of type.
+            if (body.contains("bootstrap")) {
+                applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"));
+                message.establishedContact = true;
             }
-        }
 
-        // Content dispatch. An unknown type is still acked and surfaced (not
-        // dropped) so a newer client could render it; see docs Messages.md.
-        if (type == "text" || type == "contact.request") {
-            message.contentType = type;
-            message.text = body.value("text", std::string());
-        } else if (type == "file" || type == "photo" || type == "audio" || type == "voice") {
-            message.contentType = type;
-            const nlohmann::json& file = body.at("file");
-            // The base64 sealed blob pointer; the decryption key rides inside it.
-            message.attachmentRef = file.at("ptr").get<std::string>();
-            message.attachmentName = file.value("name", std::string());
-            message.attachmentMime = file.value("mime", std::string());
-            message.attachmentSize = file.value("size", std::uint64_t{0});
-        } else if (type == "bot.command") {
-            // A command invocation aimed at a bot: the command name and its
-            // raw argument string. Surfaced as text too, for plain rendering.
-            message.contentType = type;
-            message.commandName = body.value("command", std::string());
-            message.commandArgs = body.value("args", std::string());
-            message.text = "/" + message.commandName
-                + (message.commandArgs.empty() ? std::string() : " " + message.commandArgs);
-        } else if (type == "bot.callback") {
-            // A button press: the tapped button's payload and the keyboard
-            // message it belongs to.
-            message.contentType = type;
-            message.callbackData = body.value("data", std::string());
-            message.refId = body.value("ref", std::string());
-        } else if (type == "edit") {
-            // An in-place edit of a message the sender previously sent: the new
-            // text (and keyboard, via the generic block below). refId is the
-            // target message's id.
-            message.contentType = type;
-            message.refId = body.value("ref", std::string());
-            message.text = body.value("text", std::string());
-        } else if (type == "receipt") {
-            // A delivery receipt for one of our sent messages (the "green"
-            // state). Carries the acknowledged message id.
-            message.contentType = type;
-            message.refId = body.value("ref", std::string());
-        } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
-            || type == "call.end") {
-            // Audio-call signalling: update call state and start/stop media. The
-            // media itself never touches the server (it rides I2P datagrams).
-            handleCallSignal(type, message.fromFingerprint, body, message);
-        } else if (type == "token-refill") {
-            // The fresh tokens already arrived via the bootstrap block.
-            message.contentType = type;
-        } else if (type == "device.i2p-master") {
-            // A self-sync from another of our devices: adopt the I2P master if we
-            // do not already hold one, so this device keeps the same address.
-            // Idempotent (a device that already has it ignores it) and handled
-            // silently - not a user-visible message.
-            message.contentType = type;
-            if (message.fromFingerprint == fingerprint() && i2pMaster_.empty()) {
+            // The peer is low on our tokens and asked to be refilled.
+            if (body.value("lowStash", false)) {
+                refillPeers.insert(message.fromFingerprint);
+            }
+
+            // A blob pointer: the real content was externalized to blob storage.
+            // Fetch it over I2P (a fresh transient destination), verify and decrypt
+            // it, then dispatch on the recovered content's real type. Best effort -
+            // a failed fetch surfaces the pointer (the blob persists until its TTL,
+            // so a later sync can retry).
+            if (type == "blob.pointer") {
                 try {
-                    loadI2pDestination(fromBase64(body.at("i2pMaster").get<std::string>()));
+                    const BlobPointer pointer = blobPointerFromJson(body.at("pointer"));
+                    const Bytes content = fetchLargeBlob(pointer);
+                    body = nlohmann::json::parse(content.begin(), content.end());
+                    type = body.value("type", std::string("text"));
                 } catch (const std::exception&) {
-                    // Malformed, wrong key type, or already configured: ignore.
+                    message.contentType = "blob.pointer";
+                    message.text = "[large message — fetch failed; retry later]";
                 }
             }
-        } else if (type == "group.invite") {
-            // Added to a group: verify and store the signed roster, then bootstrap
-            // our token pool to its members after the loop.
-            message.contentType = type;
-            message.groupId = body.value("groupId", std::string());
-            message.groupName = body.value("name", std::string());
-            message.text = message.groupName;
-            try {
-                applyRoster(message.groupId, fromBase64(body.at("roster").get<std::string>()));
-                bootstrapGroups.insert(message.groupId);
-                groupsTouched = true;
-            } catch (const std::exception&) {
-                // Untrusted/malformed roster: surface the invite, do not join.
-            }
-        } else if (type == "group.tokens") {
-            // A member's token pool for a group; record it so we can deliver to
-            // them. Deferred when the invite has not been applied yet this sync.
-            message.contentType = type;
-            message.groupId = body.value("groupId", std::string());
-            const nlohmann::json tokens = body.value("tokens", nlohmann::json::array());
-            if (applyGroupTokens(message.groupId, message.fromFingerprint, tokens)) {
-                groupsTouched = true;
+
+            // Content dispatch. An unknown type is still acked and surfaced (not
+            // dropped) so a newer client could render it; see docs Messages.md.
+            if (type == "text" || type == "contact.request") {
+                message.contentType = type;
+                message.text = body.value("text", std::string());
+            } else if (type == "file" || type == "photo" || type == "audio" || type == "voice") {
+                message.contentType = type;
+                const nlohmann::json& file = body.at("file");
+                // The base64 sealed blob pointer; the decryption key rides inside it.
+                message.attachmentRef = file.at("ptr").get<std::string>();
+                message.attachmentName = file.value("name", std::string());
+                message.attachmentMime = file.value("mime", std::string());
+                message.attachmentSize = file.value("size", std::uint64_t{0});
+            } else if (type == "bot.command") {
+                // A command invocation aimed at a bot: the command name and its
+                // raw argument string. Surfaced as text too, for plain rendering.
+                message.contentType = type;
+                message.commandName = body.value("command", std::string());
+                message.commandArgs = body.value("args", std::string());
+                message.text = "/" + message.commandName
+                    + (message.commandArgs.empty() ? std::string() : " " + message.commandArgs);
+            } else if (type == "bot.callback") {
+                // A button press: the tapped button's payload and the keyboard
+                // message it belongs to.
+                message.contentType = type;
+                message.callbackData = body.value("data", std::string());
+                message.refId = body.value("ref", std::string());
+            } else if (type == "edit") {
+                // An in-place edit of a message the sender previously sent: the new
+                // text (and keyboard, via the generic block below). refId is the
+                // target message's id.
+                message.contentType = type;
+                message.refId = body.value("ref", std::string());
+                message.text = body.value("text", std::string());
+            } else if (type == "receipt") {
+                // A delivery receipt for one of our sent messages (the "green"
+                // state). Carries the acknowledged message id.
+                message.contentType = type;
+                message.refId = body.value("ref", std::string());
+            } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
+                || type == "call.end") {
+                // Audio-call signalling: update call state and start/stop media. The
+                // media itself never touches the server (it rides I2P datagrams).
+                handleCallSignal(type, message.fromFingerprint, body, message);
+            } else if (type == "token-refill") {
+                // The fresh tokens already arrived via the bootstrap block.
+                message.contentType = type;
+            } else if (type == "device.i2p-master") {
+                // A self-sync from another of our devices: adopt the I2P master if we
+                // do not already hold one, so this device keeps the same address.
+                // Idempotent (a device that already has it ignores it) and handled
+                // silently - not a user-visible message.
+                message.contentType = type;
+                if (message.fromFingerprint == fingerprint() && i2pMaster_.empty()) {
+                    try {
+                        loadI2pDestination(fromBase64(body.at("i2pMaster").get<std::string>()));
+                    } catch (const std::exception&) {
+                        // Malformed, wrong key type, or already configured: ignore.
+                    }
+                }
+            } else if (type == "group.invite") {
+                // Added to a group: verify and store the signed roster, then bootstrap
+                // our token pool to its members after the loop.
+                message.contentType = type;
+                message.groupId = body.value("groupId", std::string());
+                message.groupName = body.value("name", std::string());
+                message.text = message.groupName;
+                try {
+                    applyRoster(message.groupId, fromBase64(body.at("roster").get<std::string>()));
+                    bootstrapGroups.insert(message.groupId);
+                    groupsTouched = true;
+                } catch (const std::exception&) {
+                    // Untrusted/malformed roster: surface the invite, do not join.
+                }
+            } else if (type == "group.tokens") {
+                // A member's token pool for a group; record it so we can deliver to
+                // them. Deferred when the invite has not been applied yet this sync.
+                message.contentType = type;
+                message.groupId = body.value("groupId", std::string());
+                const nlohmann::json tokens = body.value("tokens", nlohmann::json::array());
+                if (applyGroupTokens(message.groupId, message.fromFingerprint, tokens)) {
+                    groupsTouched = true;
+                } else {
+                    deferredTokens.push_back({message.groupId, message.fromFingerprint, tokens});
+                }
+            } else if (type == "group.roster") {
+                // A signed roster update (membership/admin/epoch). If it removed a
+                // member, rotate our pool after the loop so their tokens die.
+                message.contentType = type;
+                message.groupId = body.value("groupId", std::string());
+                try {
+                    bool shrank = false;
+                    applyRoster(
+                        message.groupId, fromBase64(body.at("roster").get<std::string>()), &shrank);
+                    groupsTouched = true;
+                    if (shrank) {
+                        rotateGroups.insert(message.groupId);
+                    }
+                } catch (const std::exception&) {
+                }
+            } else if (type == "group.leave") {
+                message.contentType = type;
+                message.groupId = body.value("groupId", std::string());
+                const auto group = groups_.find(message.groupId);
+                if (group != groups_.end()) {
+                    group->second.members.erase(message.fromFingerprint);
+                    groupsTouched = true;
+                }
             } else {
-                deferredTokens.push_back({message.groupId, message.fromFingerprint, tokens});
+                message.contentType = "unsupported";
+                message.rawType = type;
             }
-        } else if (type == "group.roster") {
-            // A signed roster update (membership/admin/epoch). If it removed a
-            // member, rotate our pool after the loop so their tokens die.
-            message.contentType = type;
-            message.groupId = body.value("groupId", std::string());
-            try {
-                bool shrank = false;
-                applyRoster(
-                    message.groupId, fromBase64(body.at("roster").get<std::string>()), &shrank);
-                groupsTouched = true;
-                if (shrank) {
-                    rotateGroups.insert(message.groupId);
+
+            // A content message may belong to a group (filed under it, not the 1:1
+            // thread). Orthogonal to the content type.
+            if (body.contains("group")) {
+                message.groupId = body.at("group").value("id", std::string());
+                // The sender is authenticated by a per-message hybrid signature
+                // (`gsig`): the roster attests who is a member, but only this binds
+                // the message's `from` and content to a signing identity. Drop
+                // anything unsigned, malformed, field-mismatched, or (for a group we
+                // already know) from a non-member - otherwise a member could forge
+                // another member's `from`. The verified signer is the authoritative
+                // sender. See docs Groups.md.
+                const auto group = groups_.find(message.groupId);
+                const std::optional<std::string> authedFrom = authenticateGroupSender(body, type,
+                    message.messageId, message.groupId,
+                    group != groups_.end() ? &group->second.members : nullptr);
+                if (!authedFrom.has_value()) {
+                    client_->ack(entry.id);  // consume the spoofed/unsigned item; never surface it
+                    continue;
                 }
-            } catch (const std::exception&) {
+                message.fromFingerprint = *authedFrom;
             }
-        } else if (type == "group.leave") {
-            message.contentType = type;
-            message.groupId = body.value("groupId", std::string());
-            const auto group = groups_.find(message.groupId);
-            if (group != groups_.end()) {
-                group->second.members.erase(message.fromFingerprint);
-                groupsTouched = true;
+
+            // An inline keyboard may ride on any content message (typically text);
+            // preserve it as its wire form so a UI can render the buttons.
+            if (body.contains("keyboard")) {
+                message.keyboardJson = body.at("keyboard").dump();
             }
-        } else {
-            message.contentType = "unsupported";
-            message.rawType = type;
-        }
 
-        // A content message may belong to a group (filed under it, not the 1:1
-        // thread). Orthogonal to the content type.
-        if (body.contains("group")) {
-            message.groupId = body.at("group").value("id", std::string());
-            // The sender is authenticated by a per-message hybrid signature
-            // (`gsig`): the roster attests who is a member, but only this binds
-            // the message's `from` and content to a signing identity. Drop
-            // anything unsigned, malformed, field-mismatched, or (for a group we
-            // already know) from a non-member - otherwise a member could forge
-            // another member's `from`. The verified signer is the authoritative
-            // sender. See docs Groups.md.
-            const auto group = groups_.find(message.groupId);
-            const std::optional<std::string> authedFrom = authenticateGroupSender(body, type,
-                message.messageId, message.groupId,
-                group != groups_.end() ? &group->second.members : nullptr);
-            if (!authedFrom.has_value()) {
-                client_->ack(entry.id);  // consume the spoofed/unsigned item; never surface it
-                continue;
-            }
-            message.fromFingerprint = *authedFrom;
+            client_->ack(entry.id);
+            result.push_back(std::move(message));
+        } catch (const std::exception& error) {
+            // Isolate a poison item: a single unreadable pending entry must
+            // never throw out of the whole sync. That would leave it unacked,
+            // blocking every later item and pinning the account at
+            // "connecting" forever. Consume it so the mailbox unblocks and
+            // carry on; the bytes are already delivered to us, we just cannot
+            // read them. If the ack itself fails the server is unreachable, so
+            // the exception propagates and the caller retries the whole tick.
+            bazarish::log::warn(
+                "sync: dropping unreadable pending item: {}", error.what());
+            client_->ack(entry.id);
         }
-
-        // An inline keyboard may ride on any content message (typically text);
-        // preserve it as its wire form so a UI can render the buttons.
-        if (body.contains("keyboard")) {
-            message.keyboardJson = body.at("keyboard").dump();
-        }
-
-        client_->ack(entry.id);
-        result.push_back(std::move(message));
     }
     persistContacts();
 
     // Refill peers that ran low (a fresh token batch, sent as a token-refill).
     // Done after the loop so the outbound send never races the fetch loop.
     for (const std::string& peer : refillPeers) {
-        sendTokenRefill(peer);
+        // Best-effort: a peer we cannot route to right now must not fail the
+        // whole sync (which would read as "server unreachable"); retry next tick.
+        try {
+            sendTokenRefill(peer);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("sync: token refill failed: {}", error.what());
+        }
     }
     // Re-apply token grants whose group/invite was processed later in this sync.
     for (const DeferredTokens& deferred : deferredTokens) {
@@ -1503,12 +1540,21 @@ std::vector<IncomingMessage> Session::sync()
     }
     // Hand our token pool to the members of any group we were just invited to.
     for (const std::string& groupId : bootstrapGroups) {
-        broadcastGroupPool(groupId);
+        // Best-effort, like the token refills above.
+        try {
+            broadcastGroupPool(groupId);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("sync: group pool broadcast failed: {}", error.what());
+        }
     }
     // Rotate our pool for groups where someone was removed (cut them off).
     for (const std::string& groupId : rotateGroups) {
         if (bootstrapGroups.find(groupId) == bootstrapGroups.end()) {
-            rotateGroupPool(groupId);
+            try {
+                rotateGroupPool(groupId);
+            } catch (const std::exception& error) {
+                bazarish::log::warn("sync: group pool rotate failed: {}", error.what());
+            }
         }
     }
     if (groupsTouched) {

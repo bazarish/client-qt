@@ -108,5 +108,60 @@ Item {
                 }
             }
         }
+
+        // Connection status plate: makes a missing or pending server connection
+        // obvious at the bottom-left without opening any menu. "Offline" when the
+        // account is not syncing; "Connecting…" while online but not yet reaching
+        // the server. Tapping it opens Settings, where the connection is managed.
+        Rectangle {
+            id: connPlate
+            Layout.fillWidth: true
+            property bool isOffline: root.session && !root.session.online
+            property bool isConnecting: root.session && root.session.online && !root.session.reachable
+            visible: connPlate.isOffline || connPlate.isConnecting
+            implicitHeight: plateRow.implicitHeight + 16
+            color: Theme.surface
+
+            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.border }
+
+            RowLayout {
+                id: plateRow
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 12
+                anchors.topMargin: 8
+                anchors.bottomMargin: 8
+                spacing: 8
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: 8; implicitHeight: 8; radius: 4
+                    color: connPlate.isOffline ? Theme.textDim : Theme.warn
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Label {
+                        text: connPlate.isOffline ? "Offline" : "Connecting…"
+                        color: connPlate.isOffline ? Theme.textDim : Theme.warn
+                        font.pixelSize: Theme.fontSmall
+                        font.weight: Font.Medium
+                    }
+                    Label {
+                        text: connPlate.isOffline ? "This account is not syncing"
+                                                  : "No server connection yet"
+                        color: Theme.textFaint
+                        font.pixelSize: Theme.fontSmall
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+                Label {
+                    text: "⚙"
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontBody
+                }
+            }
+            TapHandler { onTapped: root.settingsRequested() }
+        }
     }
 }
