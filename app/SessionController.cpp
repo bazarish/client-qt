@@ -229,9 +229,12 @@ void SessionWorker::reconcilePendingSends()
                 QString::fromStdString(outcome.errorMessage.empty() ? std::string("delivery failed")
                                                                      : outcome.errorMessage));
             resolved.push_back(localId);
-        } else if (outcome.status == "unknown") {
-            // The server forgot this attempt (expired or it restarted): stop
-            // tracking it. The message stays grey and can be resent manually.
+        } else if (outcome.status == "unconfirmed" || outcome.status == "unknown") {
+            // "unconfirmed": our server exhausted its retries without confirming
+            // delivery, but the envelope may still have been stored (only its ack
+            // was lost) - so this is NOT a failure. "unknown": the server forgot
+            // the attempt (expired or it restarted). Either way stop tracking it;
+            // the message stays grey and a read receipt can still turn it green.
             resolved.push_back(localId);
         }
         // "pending": still in flight; keep it for the next sync.
@@ -363,7 +366,10 @@ void SessionWorker::sendFile(
         const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
             protocolId.toStdString(),
             [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
-            &attemptId);
+            &attemptId,
+            [this, localId](std::uint64_t sent, std::uint64_t total) {
+                emit uploadProgress(localId, static_cast<qint64>(sent), static_cast<qint64>(total));
+            });
         if (delivered) {
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
@@ -786,6 +792,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::groupMembersReady, this,
         &SessionController::onGroupMembersReady);
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
+    connect(worker_, &SessionWorker::uploadProgress, this, &SessionController::onUploadProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
     connect(worker_, &SessionWorker::contactRequestSent, this,
         &SessionController::onContactRequestSent);
@@ -832,6 +839,11 @@ void SessionController::open(const QString& dir, const QString& profileId, const
     profileId_ = profileId;
     // The passphrase that unlocks the keys also seals the transcript at rest.
     store_.open(profileId, dir + "/transcript.db", passphrase);
+    // There is no persistent outbound queue, so any outgoing message still at
+    // "sending" is an interrupted send (the app closed mid-upload), not one in
+    // flight. Mark these failed on load so they read as "not sent" with a resend
+    // option, instead of a perpetual upload animation.
+    store_.failUnsentOnLoad(DeliveryStatus::Sending, DeliveryStatus::Failed);
     emit requestOpen(dir, passphrase);
 }
 
@@ -1035,6 +1047,9 @@ void SessionController::sendFile(const QString& fileUrl)
     const QFileInfo info(localPath);
     m.attSize = info.size();
     m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
+    // Keep the local source path so a failed send can be resent without re-picking
+    // the file (the bytes are not kept; only the path).
+    m.attSrcPath = localPath;
     m.ts = nowSeconds();
     m.status = 0;
     m.id = store_.append(m);
@@ -1323,6 +1338,22 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     const bool isGroupMsg = !groupId.isEmpty();
     const QString convKey = isGroupMsg ? groupId : peer;
 
+    // Idempotent receive. The mailbox is at-least-once: a blob whose ack was lost
+    // (or that we processed just before a restart) is legitimately re-offered and
+    // arrives here again with the same id. Dedup against the transcript we already
+    // keep - if this conversation already holds an incoming message with this id,
+    // this is that redelivery. Re-send the receipt (idempotent, so the sender
+    // still goes green) but never store or surface it a second time.
+    const QString incomingId = message.value("messageId").toString();
+    if (!incomingId.isEmpty() && store_.idForIncomingProtocol(incomingId, convKey) != 0) {
+        if (sendReceipts_ && !isGroupMsg
+            && (type == "text" || type == "file" || type == "photo" || type == "audio"
+                || type == "voice")) {
+            emit requestSendReceipt(peer, incomingId);
+        }
+        return;
+    }
+
     StoredMessage m;
     m.peer = convKey;
     m.outgoing = false;
@@ -1381,6 +1412,12 @@ void SessionController::onSendProgress(qint64 localId, int state)
     bumpStatus(localId, state);  // AtSenderServer (our own server accepted it)
 }
 
+void SessionController::onUploadProgress(qint64 localId, qint64 sent, qint64 total)
+{
+    const double fraction = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : 0.0;
+    conversation_.setUploadProgressForId(localId, fraction);
+}
+
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)
 {
     if (ok) {
@@ -1410,6 +1447,28 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
     emit requestSendText(activePeer_, text, localId, protocolId);
+}
+
+void SessionController::resendFile(qint64 localId, const QString& protocolId)
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    const QString srcPath = store_.sourcePathFor(localId);
+    if (srcPath.isEmpty() || !QFileInfo::exists(srcPath)) {
+        // The original file is no longer on disk (or predates path recording): let
+        // the UI pick a file to send. The failed bubble stays as a record.
+        emit resendFilePickRequested();
+        return;
+    }
+    // Reset to "sending" and re-upload from the saved path, reusing this bubble.
+    // Same protocol id as resendText: the inner content id is preserved so the
+    // recipient still recognises the message.
+    statusById_[localId] = DeliveryStatus::Sending;
+    store_.updateStatus(localId, DeliveryStatus::Sending);
+    conversation_.setStatusForId(localId, DeliveryStatus::Sending);
+    conversation_.setErrorForId(localId, {});
+    emit requestSendFile(activePeer_, srcPath, localId, protocolId);
 }
 
 void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro)

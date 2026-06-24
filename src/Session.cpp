@@ -770,6 +770,12 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
                     + (status.errorMessage.empty() ? std::string("unknown")
                                                     : status.errorMessage));
             }
+            if (status.status == "unconfirmed") {
+                // Our server gave up trying to confirm delivery, but the envelope
+                // may have been stored (only its ack was lost): leave it grey, not
+                // failed. A read receipt later confirms it (green).
+                return false;
+            }
             // "pending": still being delivered server-side; keep waiting.
         } catch (const ApiError&) {
             // The attempt is momentarily unpollable (e.g. our own server restarted
@@ -968,7 +974,7 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
 
 bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
-    std::string* outAttemptId)
+    std::string* outAttemptId, const UploadProgressFn& onUploadProgress)
 {
     // Encrypt the file under a fresh key straight to a temp ciphertext file and
     // upload it streaming, so a large file is never held whole in memory. The
@@ -983,7 +989,7 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     BlobUploadResult uploaded;
     try {
         const PackedBlobFile packed = packLargeBlobToFile(path, ciphertextPath);
-        uploaded = client_->uploadBlobFromFile(packed, BlobRetention{});
+        uploaded = client_->uploadBlobFromFile(packed, BlobRetention{}, onUploadProgress);
         pointer.fileKey = packed.fileKey;
         pointer.sha256 = packed.sha256;
         pointer.size = packed.size;

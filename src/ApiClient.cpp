@@ -412,7 +412,7 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
 
 ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::path& filePath,
     const std::string& bodySha256Hex, const std::string& contentType,
-    const std::map<std::string, std::string>& extraHeaders)
+    const std::map<std::string, std::string>& extraHeaders, const UploadProgressFn& onProgress)
 {
     const std::uintmax_t length = std::filesystem::file_size(filePath);
 
@@ -443,12 +443,13 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
             throw ApiError(std::nullopt, 0, "cannot open blob file: " + filePath.string());
         }
         const httplib::ContentProvider provider
-            = [file](const std::size_t offset, const std::size_t want,
+            = [file, length, &onProgress](const std::size_t offset, const std::size_t want,
                   httplib::DataSink& sink) -> bool {
             file->clear();
             file->seekg(static_cast<std::streamoff>(offset));
             std::array<char, 64 * 1024> buffer;
             std::size_t remaining = want;
+            std::size_t produced = offset;  // bytes of the body emitted so far
             while (remaining > 0) {
                 const std::streamsize chunk = static_cast<std::streamsize>(
                     std::min<std::size_t>(remaining, buffer.size()));
@@ -461,6 +462,10 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
                     return false;
                 }
                 remaining -= static_cast<std::size_t>(got);
+                produced += static_cast<std::size_t>(got);
+                if (onProgress) {
+                    onProgress(produced, static_cast<std::uint64_t>(length));
+                }
             }
             return true;
         };

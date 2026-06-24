@@ -394,8 +394,8 @@ BlobUploadResult uploadBlob(
     return result;
 }
 
-BlobUploadResult uploadBlobFromFile(
-    ApiClient& api, const PackedBlobFile& packed, const BlobRetention& retention)
+BlobUploadResult uploadBlobFromFile(ApiClient& api, const PackedBlobFile& packed,
+    const BlobRetention& retention, const UploadProgressFn& onProgress)
 {
     std::map<std::string, std::string> headers;
     headers["X-Blob-Sha256"] = packed.sha256;
@@ -407,7 +407,7 @@ BlobUploadResult uploadBlobFromFile(
     }
 
     const ApiResponse response = api.putFile("/v1/storage/blob", packed.ciphertextPath,
-        packed.sha256, "application/octet-stream", headers);
+        packed.sha256, "application/octet-stream", headers, onProgress);
     const nlohmann::json json = response.json();
 
     BlobUploadResult result;

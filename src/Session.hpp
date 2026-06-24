@@ -312,10 +312,12 @@ public:
     // Sends a file as a "file" content message: the bytes are encrypted with a
     // fresh key and uploaded to the content store; the message carries the
     // reference and key end-to-end. The server never sees the content type.
+    // onUploadProgress, when set, is called as the ciphertext streams out (bytes
+    // sent, total), so the sender can show real upload progress.
     bool sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr);
+        std::string* outAttemptId = nullptr, const UploadProgressFn& onUploadProgress = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.

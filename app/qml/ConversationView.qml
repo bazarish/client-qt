@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import Bazarish
 
 Item {
@@ -9,6 +10,16 @@ Item {
     signal contactInfoRequested()
     signal callRequested()
     signal videoCallRequested()
+
+    // A failed file whose saved source is gone: let the user pick a file to send.
+    Connections {
+        target: root.session
+        function onResendFilePickRequested() { resendPickDialog.open() }
+    }
+    FileDialog {
+        id: resendPickDialog
+        onAccepted: if (root.session) { root.session.sendFile(selectedFile) }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -59,8 +70,46 @@ Item {
             bottomMargin: 10
             model: root.session ? root.session.conversation : null
             delegate: MessageBubble { session: root.session }
-            onCountChanged: positionViewAtEnd()
-            Component.onCompleted: positionViewAtEnd()
+
+            // Whether the view is pinned to the bottom and should follow new
+            // messages; cleared once the user scrolls up into history.
+            property bool stickToBottom: true
+            // Set while a programmatic scroll runs so it is not mistaken for the
+            // user moving the view.
+            property bool autoScrolling: false
+
+            function scrollToEnd() {
+                autoScrolling = true
+                positionViewAtEnd()
+                autoScrolling = false
+            }
+
+            // A manual scroll (drag, flick or wheel) decides whether we are still
+            // pinned to the bottom.
+            onContentYChanged: if (!autoScrolling) { stickToBottom = atYEnd }
+            // Keep following the bottom while the last bubble's height settles.
+            onContentHeightChanged: if (stickToBottom) { scrollToEnd() }
+
+            Connections {
+                target: messages.model
+                // An own outgoing message always scrolls into view; an incoming
+                // one only when the user had not scrolled up into history.
+                function onRowsInserted() {
+                    if (messages.model.lastMessageOutgoing()) {
+                        messages.stickToBottom = true
+                    }
+                    if (messages.stickToBottom) {
+                        Qt.callLater(messages.scrollToEnd)
+                    }
+                }
+                // Switching or reloading a conversation always shows the latest.
+                function onModelReset() {
+                    messages.stickToBottom = true
+                    Qt.callLater(messages.scrollToEnd)
+                }
+            }
+
+            Component.onCompleted: scrollToEnd()
         }
 
         Composer { session: root.session }

@@ -176,6 +176,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
     case ErrorRole: return errorById_.value(m.id);
+    case UploadProgressRole: return uploadProgressById_.value(m.id, -1.0);
     default: return {};
     }
 }
@@ -186,7 +187,8 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
         {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {SenderRole, "sender"},
-        {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"}};
+        {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"},
+        {UploadProgressRole, "uploadProgress"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
@@ -194,6 +196,7 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
     beginResetModel();
     messages_ = std::move(messages);
     errorById_.clear();
+    uploadProgressById_.clear();
     endResetModel();
 }
 
@@ -234,6 +237,18 @@ void ConversationModel::setErrorForId(qint64 id, const QString& error)
     }
 }
 
+void ConversationModel::setUploadProgressForId(qint64 id, double fraction)
+{
+    uploadProgressById_.insert(id, fraction);
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {UploadProgressRole});
+            return;
+        }
+    }
+}
+
 void ConversationModel::editById(qint64 id, const QString& text, const QString& keyboard)
 {
     for (int i = 0; i < messages_.size(); ++i) {
@@ -246,6 +261,11 @@ void ConversationModel::editById(qint64 id, const QString& text, const QString& 
             return;
         }
     }
+}
+
+bool ConversationModel::lastMessageOutgoing() const
+{
+    return !messages_.isEmpty() && messages_.last().outgoing;
 }
 
 // ---------------- OpenAccountsModel ----------------

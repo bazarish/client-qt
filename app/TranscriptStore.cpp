@@ -104,9 +104,13 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
             "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, sender TEXT, protocolId TEXT,"
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
-            "attRef TEXT, attKey TEXT, keyboard TEXT, edited INTEGER, ts INTEGER, status INTEGER)")) {
+            "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
+            " ts INTEGER, status INTEGER)")) {
         return false;
     }
+    // Migrate a database created before attSrcPath existed: ALTER fails harmlessly
+    // (duplicate column) on a schema that already has it, so its result is ignored.
+    query.exec("ALTER TABLE messages ADD COLUMN attSrcPath TEXT");
     ready_ = true;
     return true;
 }
@@ -132,8 +136,8 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, sender, protocolId, text, attName, attMime,"
-        " attSize, attRef, attKey, keyboard, edited, ts, status)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -145,6 +149,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.attSize);
     query.addBindValue(message.attRef);
     query.addBindValue(message.attKey);
+    query.addBindValue(message.attSrcPath);
     query.addBindValue(message.keyboard);
     query.addBindValue(message.edited ? 1 : 0);
     query.addBindValue(message.ts);
@@ -173,7 +178,7 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
     QVector<StoredMessage> result;
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare("SELECT id, peer, outgoing, type, sender, protocolId, text, attName, attMime,"
-                  " attSize, attRef, attKey, keyboard, edited, ts, status FROM messages"
+                  " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status FROM messages"
                   " WHERE peer = ? ORDER BY id");
     query.addBindValue(peer);
     if (!query.exec()) {
@@ -193,13 +198,41 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
         m.attSize = query.value(9).toLongLong();
         m.attRef = query.value(10).toString();
         m.attKey = query.value(11).toString();
-        m.keyboard = query.value(12).toString();
-        m.edited = query.value(13).toInt() != 0;
-        m.ts = query.value(14).toLongLong();
-        m.status = query.value(15).toInt();
+        m.attSrcPath = query.value(12).toString();
+        m.keyboard = query.value(13).toString();
+        m.edited = query.value(14).toInt() != 0;
+        m.ts = query.value(15).toLongLong();
+        m.status = query.value(16).toInt();
         result.push_back(m);
     }
     return result;
+}
+
+int TranscriptStore::failUnsentOnLoad(int sendingStatus, int failedStatus)
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("UPDATE messages SET status = ? WHERE outgoing = 1 AND status = ?");
+    query.addBindValue(failedStatus);
+    query.addBindValue(sendingStatus);
+    if (!query.exec()) {
+        return 0;
+    }
+    const int changed = query.numRowsAffected();
+    if (changed > 0) {
+        flush();
+    }
+    return changed;
+}
+
+QString TranscriptStore::sourcePathFor(qint64 id) const
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT attSrcPath FROM messages WHERE id = ? LIMIT 1");
+    query.addBindValue(id);
+    if (query.exec() && query.next()) {
+        return query.value(0).toString();
+    }
+    return {};
 }
 
 qint64 TranscriptStore::idForProtocol(const QString& protocolId) const

@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -19,6 +20,10 @@
 #include <vector>
 
 namespace bazarish::client {
+
+// Reports upload progress as (bytes sent so far, total bytes). Invoked from the
+// thread driving the upload; called repeatedly as the body streams out.
+using UploadProgressFn = std::function<void(std::uint64_t sent, std::uint64_t total)>;
 
 // One facade entry point, parsed from a single URL. A server may expose several
 // facades; the client tries them in order and fails over (see ServerEndpoint).
@@ -104,7 +109,8 @@ public:
     // provider. Used for large blob upload.
     ApiResponse putFile(const std::string& path, const std::filesystem::path& filePath,
         const std::string& bodySha256Hex, const std::string& contentType,
-        const std::map<std::string, std::string>& extraHeaders = {});
+        const std::map<std::string, std::string>& extraHeaders = {},
+        const UploadProgressFn& onProgress = {});
     ApiResponse del(const std::string& path, const nlohmann::json& body = nlohmann::json());
 
     // Unauthenticated GET (alias resolution is findable by design).

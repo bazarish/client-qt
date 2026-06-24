@@ -80,7 +80,7 @@ public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
-        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole
+        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -94,12 +94,20 @@ public:
     // Attaches (or, when empty, clears) a delivery-error string for a message,
     // shown inline on a failed outgoing bubble. Session-only; not persisted.
     void setErrorForId(qint64 id, const QString& error);
+    // Sets the upload progress fraction (0..1) for an outgoing file in flight;
+    // a negative value (the default) means "no determinate progress". Session-only.
+    void setUploadProgressForId(qint64 id, double fraction);
     // Replaces a message's text and keyboard in place and marks it edited.
     void editById(qint64 id, const QString& text, const QString& keyboard);
+    // True when the most recent message is one the local user sent. The view
+    // uses this to always scroll an own message into view, while following an
+    // incoming message only when the view was already pinned to the bottom.
+    Q_INVOKABLE bool lastMessageOutgoing() const;
 
 private:
     QVector<StoredMessage> messages_;
     QHash<qint64, QString> errorById_;
+    QHash<qint64, double> uploadProgressById_;
 };
 
 // One account in the unified account list. Covers every on-disk profile, with

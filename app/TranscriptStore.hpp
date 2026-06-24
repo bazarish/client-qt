@@ -24,6 +24,7 @@ struct StoredMessage {
     qint64 attSize = 0;
     QString attRef;        // content-store id
     QString attKey;        // base64 content key
+    QString attSrcPath;    // local source path of an outgoing attachment (for resend)
     QString keyboard;      // inline-keyboard JSON (empty when none)
     bool edited = false;   // true once the message was edited in place
     qint64 ts = 0;         // unix seconds
@@ -46,6 +47,13 @@ public:
 
     qint64 append(const StoredMessage& message);
     void updateStatus(qint64 id, int status);
+    // Marks every outgoing message still left at the "sending" status (there is no
+    // persistent outbound queue, so on load these are interrupted sends, not ones
+    // in flight) as failedStatus, so the UI shows "not sent" with a resend option
+    // instead of a perpetual upload animation. Returns the number changed.
+    int failUnsentOnLoad(int sendingStatus, int failedStatus);
+    // The local source path recorded for an outgoing attachment (empty if none).
+    QString sourcePathFor(qint64 id) const;
     // The row id of an outgoing message with this protocol id (0 if none).
     qint64 idForProtocol(const QString& protocolId) const;
     // The row id of an incoming message from peer with this protocol id, the

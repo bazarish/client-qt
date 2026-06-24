@@ -111,15 +111,30 @@ Item {
                 Layout.fillWidth: true
                 Label { text: "📎 " + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
                 Label { visible: model.attSize > 0; text: (model.attSize / 1024).toFixed(1) + " KB"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                // Upload feedback on one's own file while it is still being sent
-                // to the own server (no byte percentage available, so the bar is
-                // indeterminate); it disappears once the server has accepted it.
+                // Upload feedback on one's own file while it is actively being
+                // sent (status stays Sending only during the live upload; an
+                // interrupted send is demoted to Failed on load). Shows the real
+                // byte percentage once known, falling back to an indeterminate bar
+                // before the first progress callback arrives.
                 RowLayout {
                     visible: model.outgoing && model.status === DeliveryStatus.Sending
                     Layout.fillWidth: true
                     spacing: 6
-                    ProgressBar { indeterminate: true; Layout.fillWidth: true; Layout.preferredHeight: 4 }
-                    Label { text: "Uploading…"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    ProgressBar {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 4
+                        from: 0
+                        to: 1
+                        indeterminate: model.uploadProgress < 0
+                        value: model.uploadProgress >= 0 ? model.uploadProgress : 0
+                    }
+                    Label {
+                        text: model.uploadProgress >= 0
+                            ? Math.round(model.uploadProgress * 100) + "%"
+                            : "Uploading…"
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                    }
                 }
                 Button {
                     visible: !model.outgoing
@@ -258,20 +273,27 @@ Item {
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
                 }
-                // Resend covers one-to-one text only; group messages and
-                // attachments go through other send paths.
+                // Resend covers one-to-one text and files (group messages go
+                // through other send paths and have no resend affordance).
                 Label {
                     id: resendLink
-                    visible: model.type === "text"
-                        && (!model.sender || model.sender.length === 0)
+                    visible: (!model.sender || model.sender.length === 0)
+                        && (model.type === "text" || model.type === "file"
+                            || model.type === "photo" || model.type === "audio")
                     text: "Resend"
                     color: Theme.accent
                     font.pixelSize: Theme.fontSmall
                     font.weight: Font.Medium
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler {
-                        onTapped: delegate.session.resendText(
-                            model.msgId, model.text, model.protocolId)
+                        onTapped: {
+                            if (model.type === "text") {
+                                delegate.session.resendText(
+                                    model.msgId, model.text, model.protocolId)
+                            } else {
+                                delegate.session.resendFile(model.msgId, model.protocolId)
+                            }
+                        }
                     }
                 }
             }

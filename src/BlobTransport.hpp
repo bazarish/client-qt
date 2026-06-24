@@ -41,8 +41,8 @@ BlobUploadResult uploadBlob(
 // As uploadBlob, but streams the ciphertext from packed.ciphertextPath without
 // reading it into memory (the request is signed over packed.sha256). The
 // counterpart to packLargeBlobToFile for the large-file upload path.
-BlobUploadResult uploadBlobFromFile(
-    ApiClient& api, const PackedBlobFile& packed, const BlobRetention& retention);
+BlobUploadResult uploadBlobFromFile(ApiClient& api, const PackedBlobFile& packed,
+    const BlobRetention& retention, const UploadProgressFn& onProgress = {});
 
 // --- Download / confirm: over I2P only (never clearnet - no IP leak) ---
 

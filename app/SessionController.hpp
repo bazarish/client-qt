@@ -90,6 +90,8 @@ signals:
     void contactsRefreshed(const QStringList& fingerprints);
     void sendProgress(qint64 localId, int state);  // 1 = accepted by own server (grey)
     void sendResult(qint64 localId, bool ok, const QString& error);
+    // Upload progress for an outgoing file (bytes sent so far, total bytes).
+    void uploadProgress(qint64 localId, qint64 sent, qint64 total);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     // A contact request was sent (add-by-invite/username/fingerprint succeeded):
@@ -254,6 +256,10 @@ public:
     // user taps "Resend" on its bubble.
     Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& protocolId);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
+    // Re-dispatches a failed outgoing file. Re-uploads from the saved source path
+    // (reusing the bubble); if that file is gone, emits resendFilePickRequested so
+    // the UI can offer to pick a file to send instead.
+    Q_INVOKABLE void resendFile(qint64 localId, const QString& protocolId);
     // Creates a group from selected contacts and opens it.
     Q_INVOKABLE void createGroup(const QString& name, const QStringList& memberFps);
     // Whether a chat-list id is a group, and a display name for any peer/group.
@@ -317,6 +323,8 @@ signals:
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);
     void loginSigned(const QString& blob);
+    // A failed file's saved source is gone: the UI should offer to pick a file.
+    void resendFilePickRequested();
     // Forwarded onboarding info for the hello dialog (unregistered-key connect).
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
@@ -364,6 +372,7 @@ private slots:
     void onConnectionChanged(bool connected, const QString& subscriptionText);
     void onMessageReceived(const QVariantMap& message);
     void onSendProgress(qint64 localId, int state);
+    void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);
     void onSyncReachable(bool ok);

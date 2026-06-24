@@ -353,9 +353,9 @@ BlobUploadResult Client::uploadBlob(const PackedBlob& packed, const BlobRetentio
 }
 
 BlobUploadResult Client::uploadBlobFromFile(
-    const PackedBlobFile& packed, const BlobRetention& retention)
+    const PackedBlobFile& packed, const BlobRetention& retention, const UploadProgressFn& onProgress)
 {
-    return bazarish::client::uploadBlobFromFile(api_, packed, retention);
+    return bazarish::client::uploadBlobFromFile(api_, packed, retention, onProgress);
 }
 
 Bytes Client::fetchBlobViaProxy(const BlobPointer& pointer)
