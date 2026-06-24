@@ -818,20 +818,19 @@ FetchTransport Session::fetchTransport() const
 std::string Session::addByInvite(const std::string& inviteUri, const std::string& text)
 {
     // The invite is a descriptor (fingerprint + serving destination + serving
-    // sealing key). For a peer subscribed to our OWN server, look their routing up
-    // over the facade (no I2P): the server is authoritative for its own users
-    // (facade locality), the same path a by-fingerprint contact request uses, so a
-    // same-server add never depends on I2P federation. Only when the peer is not on
-    // our server does lookupContact fail; then fetch the user-signed card over I2P
-    // and verify it against the fingerprint (api/FederatedResolve.md) - a wrong
-    // server can withhold but never forge a card for someone else's fingerprint.
+    // sealing key). Fetch the user-signed contact card for that fingerprint and
+    // verify it against the fingerprint (api/FederatedResolve.md): a wrong server
+    // can only withhold, never forge a card for someone else's fingerprint.
+    //
+    // ALWAYS over I2P federation, even for a peer on our own server. Do NOT
+    // short-circuit to a facade contact lookup for "same-server" peers: when two
+    // clients of one server have different i2p destinations, routing the lookup
+    // through I2P is what keeps our own server from learning that we and the peer
+    // are co-located on it. A facade lookup would disclose that. (Contacts.md /
+    // the co-location rule - the by-fingerprint facade path is only for peers a
+    // caller already knows are local.)
     const Descriptor descriptor = parseDescriptor(inviteUri);
-    ContactInfo info;
-    try {
-        info = client_->lookupContact(descriptor.fingerprint);
-    } catch (const std::exception&) {
-        info = client_->fetchCard(descriptor, fetchTransport());
-    }
+    const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
     requestWithInfo(descriptor.fingerprint, text, info);
     return descriptor.fingerprint;
 }
@@ -879,14 +878,10 @@ std::string Session::addByUsername(const std::string& alias, const std::string& 
     const std::string normalized = normalizeAlias(alias);
     const Descriptor descriptor
         = client_->resolveAlias(normalized, resolverCoordinate_, nowSeconds(), fetchTransport());
-    // Same-server peers resolve over the facade (no I2P); a cross-server peer falls
-    // back to the self-verifying card fetch over I2P (see addByInvite).
-    ContactInfo info;
-    try {
-        info = client_->lookupContact(descriptor.fingerprint);
-    } catch (const std::exception&) {
-        info = client_->fetchCard(descriptor, fetchTransport());
-    }
+    // Card fetch always over I2P (never a facade contact lookup), to avoid
+    // disclosing co-location to our own server (see addByInvite / the co-location
+    // rule in Contacts.md).
+    const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
     requestWithInfo(descriptor.fingerprint, text, info);
     return descriptor.fingerprint;
 }
