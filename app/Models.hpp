@@ -90,6 +90,12 @@ public:
 
     void setMessages(QVector<StoredMessage> messages);
     int appendMessage(const StoredMessage& message);  // returns row
+    // Inserts a batch of older messages at the front (paging up into history).
+    void prependMessages(const QVector<StoredMessage>& messages);
+    // Appends a batch of newer messages at the end (paging down toward the newest).
+    void appendMessages(const QVector<StoredMessage>& messages);
+    // The row index of the message with this id, or -1 (for scroll-to-message).
+    Q_INVOKABLE int rowForId(qint64 id) const;
     void setStatusForId(qint64 id, int status);
     // Attaches (or, when empty, clears) a delivery-error string for a message,
     // shown inline on a failed outgoing bubble. Session-only; not persisted.

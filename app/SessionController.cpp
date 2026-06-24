@@ -30,6 +30,10 @@ qint64 nowSeconds()
 {
     return static_cast<qint64>(std::time(nullptr));
 }
+
+// How many messages a conversation loads per page (initial window and each
+// older/newer step). Keeps even a huge dialog cheap to open and scroll.
+constexpr int kPageSize = 50;
 }  // namespace
 
 // ============================ SessionWorker ============================
@@ -879,11 +883,10 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
     return result;
 }
 
-void SessionController::openConversation(const QString& peer)
+void SessionController::activateConversation(const QString& peer)
 {
     activePeer_ = peer;
     emit activePeerChanged();
-    conversation_.setMessages(store_.messagesFor(peer));
     contacts_.clearUnread(peer);
     // Load the member list for a group conversation (cleared for a 1:1 chat).
     activeGroupMembers_.clear();
@@ -892,6 +895,144 @@ void SessionController::openConversation(const QString& peer)
     if (groupIds_.contains(peer)) {
         emit requestFetchGroupMembers(peer);
     }
+}
+
+void SessionController::loadLatestWindow()
+{
+    // The newest page. A huge conversation opens at its end instantly because only
+    // the tail is read; older messages page in when the user scrolls up.
+    const QVector<StoredMessage> msgs = store_.latestMessages(activePeer_, kPageSize);
+    oldestLoadedId_ = msgs.isEmpty() ? 0 : msgs.front().id;
+    newestLoadedId_ = msgs.isEmpty() ? 0 : msgs.back().id;
+    hasMoreOlder_ = !msgs.isEmpty() && store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
+    hasMoreNewer_ = false;  // the latest page is, by definition, at the newest
+    conversation_.setMessages(msgs);
+    emit pagingChanged();
+}
+
+void SessionController::showInActiveView(const StoredMessage& m, bool isOwn)
+{
+    if (m.peer != activePeer_) {
+        return;  // not the open conversation
+    }
+    if (hasMoreNewer_) {
+        // The window is scrolled back into history (e.g. opened at a search hit),
+        // so the newest page is not loaded and a bottom append would be out of
+        // place. The message is already persisted. For our own send, jump to the
+        // newest page so it is visible; for an incoming one, leave it to the
+        // jump-to-latest control.
+        if (isOwn) {
+            loadLatestWindow();
+            emit scrollToBottom();
+        }
+        return;
+    }
+    conversation_.appendMessage(m);
+    newestLoadedId_ = m.id;
+}
+
+void SessionController::openConversation(const QString& peer)
+{
+    activateConversation(peer);
+    loadLatestWindow();
+}
+
+void SessionController::openConversationAtMessage(const QString& peer, qint64 messageId)
+{
+    activateConversation(peer);
+    // A window ending at the target message (it sits at the window's newest edge),
+    // so older context pages in above and newer messages page in below.
+    const QVector<StoredMessage> win = store_.olderMessages(peer, messageId + 1, kPageSize);
+    oldestLoadedId_ = win.isEmpty() ? 0 : win.front().id;
+    newestLoadedId_ = win.isEmpty() ? 0 : win.back().id;
+    hasMoreOlder_ = !win.isEmpty() && store_.hasMessagesBefore(peer, oldestLoadedId_);
+    hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
+    conversation_.setMessages(win);
+    emit pagingChanged();
+    emit scrollToMessage(messageId);
+}
+
+int SessionController::loadOlderMessages()
+{
+    if (!hasMoreOlder_ || activePeer_.isEmpty()) {
+        return 0;
+    }
+    const QVector<StoredMessage> older
+        = store_.olderMessages(activePeer_, oldestLoadedId_, kPageSize);
+    if (older.isEmpty()) {
+        hasMoreOlder_ = false;
+        emit pagingChanged();
+        return 0;
+    }
+    oldestLoadedId_ = older.front().id;
+    hasMoreOlder_ = store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
+    conversation_.prependMessages(older);
+    emit pagingChanged();
+    return static_cast<int>(older.size());
+}
+
+int SessionController::loadNewerMessages()
+{
+    if (!hasMoreNewer_ || activePeer_.isEmpty()) {
+        return 0;
+    }
+    const QVector<StoredMessage> newer
+        = store_.newerMessages(activePeer_, newestLoadedId_, kPageSize);
+    if (newer.isEmpty()) {
+        hasMoreNewer_ = false;
+        emit pagingChanged();
+        return 0;
+    }
+    newestLoadedId_ = newer.back().id;
+    hasMoreNewer_ = store_.hasMessagesAfter(activePeer_, newestLoadedId_);
+    conversation_.appendMessages(newer);
+    emit pagingChanged();
+    return static_cast<int>(newer.size());
+}
+
+void SessionController::jumpToLatest()
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    if (hasMoreNewer_) {
+        loadLatestWindow();  // a model reset; the view autoscrolls to the bottom
+    }
+    emit scrollToBottom();
+}
+
+bool SessionController::atNewest() const
+{
+    return !hasMoreNewer_;
+}
+
+bool SessionController::hasMoreOlder() const
+{
+    return hasMoreOlder_;
+}
+
+QVariantList SessionController::searchMessages(const QString& query)
+{
+    QVariantList results;
+    if (activePeer_.isEmpty()) {
+        return results;
+    }
+    const bool isGroup = groupIds_.contains(activePeer_);
+    for (const SearchHit& hit : store_.searchInPeer(activePeer_, query)) {
+        QVariantMap row;
+        row["id"] = hit.id;
+        row["text"] = hit.text;
+        row["time"] = hit.ts;
+        row["outgoing"] = hit.outgoing;
+        // For a group hit, label the author; a 1:1 hit is "you" or the peer.
+        if (isGroup && !hit.sender.isEmpty()) {
+            row["author"] = shortFingerprint(hit.sender);
+        } else {
+            row["author"] = hit.outgoing ? QStringLiteral("You") : peerName(activePeer_);
+        }
+        results.push_back(row);
+    }
+    return results;
 }
 
 void SessionController::rebuildChatList()
@@ -1007,7 +1148,7 @@ void SessionController::sendText(const QString& text)
         gm.status = DeliveryStatus::Sending;
         gm.id = store_.append(gm);
         statusById_[gm.id] = DeliveryStatus::Sending;
-        conversation_.appendMessage(gm);
+        showInActiveView(gm, true);
         contacts_.touch(activePeer_, groupNames_.value(activePeer_), text, gm.ts, false, true);
         emit requestSendGroupText(activePeer_, text, gm.id);
         return;
@@ -1022,7 +1163,7 @@ void SessionController::sendText(const QString& text)
     m.status = DeliveryStatus::Sending;
     m.id = store_.append(m);
     statusById_[m.id] = DeliveryStatus::Sending;
-    conversation_.appendMessage(m);
+    showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, text, m.ts, false);
     emit requestSendText(activePeer_, text, m.id, m.protocolId);
 }
@@ -1054,7 +1195,7 @@ void SessionController::sendFile(const QString& fileUrl)
     m.status = 0;
     m.id = store_.append(m);
     statusById_[m.id] = 0;
-    conversation_.appendMessage(m);
+    showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     emit requestSendFile(activePeer_, localPath, m.id, m.protocolId);
 }
@@ -1323,9 +1464,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.ts = nowSeconds();
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
-        if (gid == activePeer_) {
-            conversation_.appendMessage(sys);
-        }
+        showInActiveView(sys, false);
         contacts_.touch(gid, gname, sys.text, sys.ts, gid != activePeer_, true);
         return;
     }
@@ -1371,9 +1510,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.status = DeliveryStatus::Received;  // incoming; no indicator rendered
     m.id = store_.append(m);
 
-    if (convKey == activePeer_) {
-        conversation_.appendMessage(m);
-    }
+    showInActiveView(m, false);
     QString preview = m.text;
     if (preview.isEmpty() && !m.attName.isEmpty()) {
         preview = "[" + type + "] " + m.attName;
@@ -1494,9 +1631,7 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
     m.status = DeliveryStatus::AtRecipientServer;
     m.id = store_.append(m);
     statusById_[m.id] = m.status;
-    if (fingerprint == activePeer_) {
-        conversation_.appendMessage(m);
-    }
+    showInActiveView(m, true);
     contacts_.touch(fingerprint, {}, body, m.ts, false);
 }
 

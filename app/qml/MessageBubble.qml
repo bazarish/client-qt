@@ -7,6 +7,8 @@ import Bazarish
 Item {
     id: delegate
     property var session: null
+    // Briefly true when a search jump lands on this message, to flash it.
+    property bool highlighted: false
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
@@ -85,6 +87,10 @@ Item {
         height: content.implicitHeight + 14
         radius: 12
         color: model.outgoing ? Theme.bubbleOut : Theme.bubbleIn
+        // Search-jump flash: a brief accent outline on the targeted message.
+        border.width: delegate.highlighted ? 2 : 0
+        border.color: Theme.accent
+        Behavior on border.width { NumberAnimation { duration: 220 } }
 
         ColumnLayout {
             id: content

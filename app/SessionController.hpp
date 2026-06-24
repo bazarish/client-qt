@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QString>
 #include <QThread>
+#include <QVariantList>
 #include <QVariantMap>
 
 #include <map>
@@ -162,6 +163,10 @@ class SessionController : public QObject {
     // The configured server's fingerprint, so the connection editor can prefill it.
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
+    // Paging state of the open conversation: whether the newest page is loaded
+    // (so stick-to-bottom applies) and whether older history remains above.
+    Q_PROPERTY(bool atNewest READ atNewest NOTIFY pagingChanged)
+    Q_PROPERTY(bool hasMoreOlder READ hasMoreOlder NOTIFY pagingChanged)
     // The on-disk profile id this session was opened from (stable per account).
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
     // Total unread across this account's conversations (for the switcher badge).
@@ -212,6 +217,8 @@ public:
     QStringList configuredFacades() const { return configuredFacades_; }
     QString serverFingerprint() const { return serverFp_; }
     QString activePeer() const { return activePeer_; }
+    bool atNewest() const;
+    bool hasMoreOlder() const;
     QString accountId() const { return profileId_; }
     int unreadTotal() const { return unreadTotal_; }
     QObject* contacts() { return &contacts_; }
@@ -251,6 +258,18 @@ public:
     Q_INVOKABLE void goOnline();
     Q_INVOKABLE void goOffline();
     Q_INVOKABLE void openConversation(const QString& peer);
+    // Opens a conversation positioned at a specific message (a search hit): loads
+    // a window ending at it and asks the view to scroll there.
+    Q_INVOKABLE void openConversationAtMessage(const QString& peer, qint64 messageId);
+    // Pages the open conversation: loads the next batch of older (top) / newer
+    // (bottom) messages into the model and returns how many were added.
+    Q_INVOKABLE int loadOlderMessages();
+    Q_INVOKABLE int loadNewerMessages();
+    // Returns to the newest page (reloading it if the window was scrolled back).
+    Q_INVOKABLE void jumpToLatest();
+    // Case-insensitive full-text search of the open conversation; returns a list
+    // of {id, text, time, outgoing, author} maps for the search popup.
+    Q_INVOKABLE QVariantList searchMessages(const QString& query);
     Q_INVOKABLE void sendText(const QString& text);
     // Re-dispatches a failed outgoing text message (same protocol id) after the
     // user taps "Resend" on its bubble.
@@ -309,6 +328,12 @@ signals:
     void identityChanged();
     void connectedChanged();
     void activePeerChanged();
+    // The open conversation's paging state changed (atNewest / hasMoreOlder).
+    void pagingChanged();
+    // Asks the view to scroll the given message into view (a search jump).
+    void scrollToMessage(qint64 messageId);
+    // Asks the view to scroll to the bottom (jump-to-latest).
+    void scrollToBottom();
     void activeGroupChanged();
     void facadeInfoChanged();
     void sendReceiptsChanged();
@@ -414,6 +439,21 @@ private:
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;
     void bumpStatus(qint64 localId, int status);
+    // Conversation paging window. The model holds only [oldestLoadedId_ ..
+    // newestLoadedId_]; the has-more flags say whether the store has rows beyond
+    // either edge (drives load-more and the jump-to-latest control).
+    qint64 oldestLoadedId_ = 0;
+    qint64 newestLoadedId_ = 0;
+    bool hasMoreOlder_ = false;
+    bool hasMoreNewer_ = false;
+    // Sets the active peer + clears unread + (re)loads group state, without
+    // touching the message window (the caller chooses which window to load).
+    void activateConversation(const QString& peer);
+    // Loads the newest page into the model and resets the paging window.
+    void loadLatestWindow();
+    // Adds a just-stored message to the open conversation's window when the window
+    // is at the newest edge; isOwn jumps to the newest page if it was scrolled back.
+    void showInActiveView(const StoredMessage& m, bool isOwn);
     // Groups this account belongs to (id -> name), merged into the chat list.
     QStringList contactFps_;
     QStringList groupIds_;

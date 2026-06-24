@@ -159,6 +159,7 @@ if(Qt6_FOUND)
             app/qml/AccountSwitcher.qml
             app/qml/ConversationView.qml
             app/qml/MessageBubble.qml
+            app/qml/SearchPopup.qml
             app/qml/Composer.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml

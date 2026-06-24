@@ -209,6 +209,39 @@ int ConversationModel::appendMessage(const StoredMessage& message)
     return row;
 }
 
+void ConversationModel::prependMessages(const QVector<StoredMessage>& messages)
+{
+    if (messages.isEmpty()) {
+        return;
+    }
+    beginInsertRows({}, 0, static_cast<int>(messages.size()) - 1);
+    QVector<StoredMessage> merged = messages;
+    merged += messages_;
+    messages_ = std::move(merged);
+    endInsertRows();
+}
+
+void ConversationModel::appendMessages(const QVector<StoredMessage>& messages)
+{
+    if (messages.isEmpty()) {
+        return;
+    }
+    const int row = static_cast<int>(messages_.size());
+    beginInsertRows({}, row, row + static_cast<int>(messages.size()) - 1);
+    messages_ += messages;
+    endInsertRows();
+}
+
+int ConversationModel::rowForId(qint64 id) const
+{
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void ConversationModel::setStatusForId(qint64 id, int status)
 {
     for (int i = 0; i < messages_.size(); ++i) {

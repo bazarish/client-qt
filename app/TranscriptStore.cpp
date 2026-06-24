@@ -12,6 +12,7 @@
 
 #include <sqlite3.h>
 
+#include <algorithm>
 #include <fstream>
 #include <stdexcept>
 
@@ -48,6 +49,35 @@ void writeFileBytes(const QString& path, const Bytes& bytes)
     if (!out) {
         throw std::runtime_error("transcript: failed to write sealed database");
     }
+}
+
+// Column list shared by every full-row query, so the indices below stay aligned.
+const char* const kMessageColumns = "id, peer, outgoing, type, sender, protocolId, text, attName,"
+                                    " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
+                                    " edited, ts, status";
+
+// Reads one row produced by a SELECT over kMessageColumns into a StoredMessage.
+StoredMessage readMessageRow(const QSqlQuery& query)
+{
+    StoredMessage m;
+    m.id = query.value(0).toLongLong();
+    m.peer = query.value(1).toString();
+    m.outgoing = query.value(2).toInt() != 0;
+    m.type = query.value(3).toString();
+    m.sender = query.value(4).toString();
+    m.protocolId = query.value(5).toString();
+    m.text = query.value(6).toString();
+    m.attName = query.value(7).toString();
+    m.attMime = query.value(8).toString();
+    m.attSize = query.value(9).toLongLong();
+    m.attRef = query.value(10).toString();
+    m.attKey = query.value(11).toString();
+    m.attSrcPath = query.value(12).toString();
+    m.keyboard = query.value(13).toString();
+    m.edited = query.value(14).toInt() != 0;
+    m.ts = query.value(15).toLongLong();
+    m.status = query.value(16).toInt();
+    return m;
 }
 
 }  // namespace
@@ -177,35 +207,130 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
 {
     QVector<StoredMessage> result;
     QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("SELECT id, peer, outgoing, type, sender, protocolId, text, attName, attMime,"
-                  " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status FROM messages"
-                  " WHERE peer = ? ORDER BY id");
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? ORDER BY id")
+                      .arg(kMessageColumns));
     query.addBindValue(peer);
     if (!query.exec()) {
         return result;
     }
     while (query.next()) {
-        StoredMessage m;
-        m.id = query.value(0).toLongLong();
-        m.peer = query.value(1).toString();
-        m.outgoing = query.value(2).toInt() != 0;
-        m.type = query.value(3).toString();
-        m.sender = query.value(4).toString();
-        m.protocolId = query.value(5).toString();
-        m.text = query.value(6).toString();
-        m.attName = query.value(7).toString();
-        m.attMime = query.value(8).toString();
-        m.attSize = query.value(9).toLongLong();
-        m.attRef = query.value(10).toString();
-        m.attKey = query.value(11).toString();
-        m.attSrcPath = query.value(12).toString();
-        m.keyboard = query.value(13).toString();
-        m.edited = query.value(14).toInt() != 0;
-        m.ts = query.value(15).toLongLong();
-        m.status = query.value(16).toInt();
-        result.push_back(m);
+        result.push_back(readMessageRow(query));
     }
     return result;
+}
+
+QVector<StoredMessage> TranscriptStore::latestMessages(const QString& peer, int limit) const
+{
+    // Newest `limit` rows, returned oldest-first (the display order). DESC+LIMIT
+    // reads only the tail of a huge conversation; the result is then reversed.
+    QVector<StoredMessage> result;
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? ORDER BY id DESC LIMIT ?")
+                      .arg(kMessageColumns));
+    query.addBindValue(peer);
+    query.addBindValue(limit);
+    if (!query.exec()) {
+        return result;
+    }
+    while (query.next()) {
+        result.push_back(readMessageRow(query));
+    }
+    std::reverse(result.begin(), result.end());
+    return result;
+}
+
+QVector<StoredMessage> TranscriptStore::olderMessages(
+    const QString& peer, qint64 beforeId, int limit) const
+{
+    // The `limit` rows immediately older than beforeId, oldest-first.
+    QVector<StoredMessage> result;
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id < ?"
+                                 " ORDER BY id DESC LIMIT ?")
+                      .arg(kMessageColumns));
+    query.addBindValue(peer);
+    query.addBindValue(beforeId);
+    query.addBindValue(limit);
+    if (!query.exec()) {
+        return result;
+    }
+    while (query.next()) {
+        result.push_back(readMessageRow(query));
+    }
+    std::reverse(result.begin(), result.end());
+    return result;
+}
+
+QVector<StoredMessage> TranscriptStore::newerMessages(
+    const QString& peer, qint64 afterId, int limit) const
+{
+    // The `limit` rows immediately newer than afterId, already oldest-first.
+    QVector<StoredMessage> result;
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id > ?"
+                                 " ORDER BY id ASC LIMIT ?")
+                      .arg(kMessageColumns));
+    query.addBindValue(peer);
+    query.addBindValue(afterId);
+    query.addBindValue(limit);
+    if (!query.exec()) {
+        return result;
+    }
+    while (query.next()) {
+        result.push_back(readMessageRow(query));
+    }
+    return result;
+}
+
+bool TranscriptStore::hasMessagesBefore(const QString& peer, qint64 id) const
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT 1 FROM messages WHERE peer = ? AND id < ? LIMIT 1");
+    query.addBindValue(peer);
+    query.addBindValue(id);
+    return query.exec() && query.next();
+}
+
+bool TranscriptStore::hasMessagesAfter(const QString& peer, qint64 id) const
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT 1 FROM messages WHERE peer = ? AND id > ? LIMIT 1");
+    query.addBindValue(peer);
+    query.addBindValue(id);
+    return query.exec() && query.next();
+}
+
+QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QString& query) const
+{
+    // Full-text scan of a conversation's text, newest first. The match is done in
+    // C++ so it is case-insensitive for non-ASCII (Cyrillic) too, which SQLite's
+    // LIKE/lower() is not. Capped so a degenerate query cannot flood the popup.
+    QVector<SearchHit> hits;
+    if (query.isEmpty()) {
+        return hits;
+    }
+    QSqlQuery sql(QSqlDatabase::database(connectionName_));
+    sql.prepare("SELECT id, ts, text, outgoing, sender FROM messages"
+                " WHERE peer = ? AND text <> '' ORDER BY id DESC");
+    sql.addBindValue(peer);
+    if (!sql.exec()) {
+        return hits;
+    }
+    constexpr int kMaxHits = 500;
+    while (sql.next() && hits.size() < kMaxHits) {
+        const QString text = sql.value(2).toString();
+        if (!text.contains(query, Qt::CaseInsensitive)) {
+            continue;
+        }
+        SearchHit hit;
+        hit.id = sql.value(0).toLongLong();
+        hit.ts = sql.value(1).toLongLong();
+        hit.text = text;
+        hit.outgoing = sql.value(3).toInt() != 0;
+        hit.sender = sql.value(4).toString();
+        hits.push_back(hit);
+    }
+    return hits;
 }
 
 int TranscriptStore::failUnsentOnLoad(int sendingStatus, int failedStatus)

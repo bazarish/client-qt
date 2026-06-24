@@ -31,6 +31,16 @@ struct StoredMessage {
     int status = 0;        // 0 sending, 1 sent, 2 failed, 3 received
 };
 
+// One full-text search match within a conversation (lightweight: enough to list
+// the hit and jump to it, without the attachment fields).
+struct SearchHit {
+    qint64 id = 0;
+    qint64 ts = 0;
+    QString text;
+    bool outgoing = false;
+    QString sender;
+};
+
 // Persistent local message log for one profile. When a passphrase is given the
 // database is never written to disk in the clear: it lives in an in-memory
 // SQLite connection and is persisted as a single CMS PWRI-sealed blob
@@ -63,6 +73,17 @@ public:
     // Replaces a message's text and keyboard and marks it edited.
     void editContent(qint64 id, const QString& text, const QString& keyboard);
     QVector<StoredMessage> messagesFor(const QString& peer) const;
+    // Windowed reads for paging a large conversation: the newest `limit` rows,
+    // the `limit` rows just older than beforeId, and the `limit` rows just newer
+    // than afterId - all returned oldest-first (the display order).
+    QVector<StoredMessage> latestMessages(const QString& peer, int limit) const;
+    QVector<StoredMessage> olderMessages(const QString& peer, qint64 beforeId, int limit) const;
+    QVector<StoredMessage> newerMessages(const QString& peer, qint64 afterId, int limit) const;
+    // Whether any row exists strictly older / newer than id (drives "load more").
+    bool hasMessagesBefore(const QString& peer, qint64 id) const;
+    bool hasMessagesAfter(const QString& peer, qint64 id) const;
+    // Case-insensitive full-text matches within a conversation, newest first.
+    QVector<SearchHit> searchInPeer(const QString& peer, const QString& query) const;
     QString lastText(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
 
