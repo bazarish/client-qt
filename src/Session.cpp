@@ -793,26 +793,45 @@ void Session::sendContactRequest(const std::string& peerFingerprint, const std::
 FetchTransport Session::fetchTransport() const
 {
     return [this](const std::string& toDest, const std::string& op, const Bytes& sealed) {
-        try {
-            // Direct over a fresh transient I2P destination (preferred - our own
-            // server is never involved, and a b33 dial authenticates the target).
-            return federationFetchOverI2p(i2pRouter(), toDest, op, sealed, blobFetchPrivacy_);
-        } catch (const std::exception&) {
-            // No I2P transport of our own (or the direct dial failed): relay the opaque
-            // sealed bytes through our own server's I2P proxy.
-            return client_->relayFetch(toDest, op, sealed);
+        // Direct over a fresh transient I2P destination is preferred (our own
+        // server is never involved, and a b33 dial authenticates the target), but
+        // it needs the embedded router up with tunnels. Only attempt it when I2P
+        // is enabled and the router is already running and ready: never force-start
+        // a disabled router, and never block building tunnels that may never come
+        // up (e.g. no reachable I2P network). Otherwise - or on a direct-dial
+        // failure - relay the opaque sealed bytes through our own server's I2P
+        // proxy, so adding a contact still works without a local I2P transport.
+        if (i2pEnabled()) {
+            bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
+            if (router != nullptr && router->ready()) {
+                try {
+                    return federationFetchOverI2p(*router, toDest, op, sealed, blobFetchPrivacy_);
+                } catch (const std::exception&) {
+                    // Direct dial failed; fall back to the server proxy below.
+                }
+            }
         }
+        return client_->relayFetch(toDest, op, sealed);
     };
 }
 
 std::string Session::addByInvite(const std::string& inviteUri, const std::string& text)
 {
     // The invite is a descriptor (fingerprint + serving destination + serving
-    // sealing key). Fetch the user-signed contact card for that fingerprint and
-    // verify it against the fingerprint (api/FederatedResolve.md): a wrong server
-    // can only withhold, never forge a card for someone else's fingerprint.
+    // sealing key). For a peer subscribed to our OWN server, look their routing up
+    // over the facade (no I2P): the server is authoritative for its own users
+    // (facade locality), the same path a by-fingerprint contact request uses, so a
+    // same-server add never depends on I2P federation. Only when the peer is not on
+    // our server does lookupContact fail; then fetch the user-signed card over I2P
+    // and verify it against the fingerprint (api/FederatedResolve.md) - a wrong
+    // server can withhold but never forge a card for someone else's fingerprint.
     const Descriptor descriptor = parseDescriptor(inviteUri);
-    const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
+    ContactInfo info;
+    try {
+        info = client_->lookupContact(descriptor.fingerprint);
+    } catch (const std::exception&) {
+        info = client_->fetchCard(descriptor, fetchTransport());
+    }
     requestWithInfo(descriptor.fingerprint, text, info);
     return descriptor.fingerprint;
 }
@@ -860,7 +879,14 @@ std::string Session::addByUsername(const std::string& alias, const std::string& 
     const std::string normalized = normalizeAlias(alias);
     const Descriptor descriptor
         = client_->resolveAlias(normalized, resolverCoordinate_, nowSeconds(), fetchTransport());
-    const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
+    // Same-server peers resolve over the facade (no I2P); a cross-server peer falls
+    // back to the self-verifying card fetch over I2P (see addByInvite).
+    ContactInfo info;
+    try {
+        info = client_->lookupContact(descriptor.fingerprint);
+    } catch (const std::exception&) {
+        info = client_->fetchCard(descriptor, fetchTransport());
+    }
     requestWithInfo(descriptor.fingerprint, text, info);
     return descriptor.fingerprint;
 }
