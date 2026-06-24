@@ -521,9 +521,12 @@ private:
     // Sends a built inner content envelope to an established contact: handles
     // the first-reply bootstrap, seals to the peer and spends one token. Returns
     // whether delivery was confirmed within the poll window (see deliver()).
+    // waitForOutcome=false returns as soon as the own server accepts (skipping
+    // the poll), so a slow send never blocks the worker; the caller reconciles
+    // the outcome on a later sync.
     bool sendContent(const std::string& peerFingerprint, nlohmann::json inner,
         const std::function<void()>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr);
+        std::string* outAttemptId = nullptr, bool waitForOutcome = true);
 
     // Sends the user-owned I2P master to the account's other devices: a
     // service content message ("device.i2p-master") sealed to our own sealing
@@ -570,12 +573,15 @@ private:
     // later). Throws on a terminal failure. When tokenRejected is non-null, a
     // token-rejected failure (the token was already spent - e.g. a concurrent
     // group sender took it) does not throw; it sets *tokenRejected and returns
-    // false so the caller can retry with another token.
+    // false so the caller can retry with another token. waitForOutcome=false
+    // skips the poll entirely: it submits, fires the grey callback and returns
+    // false at once (used for large sends so the upload never adds a poll wait on
+    // top; the caller reconciles the outcome on a later sync).
     bool deliver(const std::string& toDest, const Key& servingSealingKey,
         const std::string& deliveryClass, const std::string& mailbox,
         const std::optional<Bytes>& token, const Bytes& payload,
         const std::function<void()>& onAcceptedByOwnServer = {}, bool* tokenRejected = nullptr,
-        std::string* outAttemptId = nullptr);
+        std::string* outAttemptId = nullptr, bool waitForOutcome = true);
     void persistContacts() const;
     void persistMeta() const;
     // Serializes the in-memory contacts into the on-disk JSON shape.

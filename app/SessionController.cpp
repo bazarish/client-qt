@@ -7,6 +7,8 @@
 #include "QtVideoIo.hpp"
 #include "Session.hpp"
 
+#include <QFileInfo>
+#include <QMimeDatabase>
 #include <QRandomGenerator>
 #include <QTimer>
 #include <QUrl>
@@ -1028,6 +1030,11 @@ void SessionController::sendFile(const QString& fileUrl)
     m.type = "file";
     m.protocolId = SessionController_genProtocolId();
     m.attName = QUrl(fileUrl).fileName();
+    // Record the local size and mime so the sender's own bubble renders a real
+    // attachment card (name + size) immediately, without waiting for the upload.
+    const QFileInfo info(localPath);
+    m.attSize = info.size();
+    m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
     m.ts = nowSeconds();
     m.status = 0;
     m.id = store_.append(m);

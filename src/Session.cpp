@@ -722,7 +722,7 @@ std::vector<std::string> Session::issueTokenBatch()
 bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     const std::string& kind, const std::string& mailbox, const std::optional<Bytes>& token,
     const Bytes& payload, const std::function<void()>& onAcceptedByOwnServer, bool* tokenRejected,
-    std::string* outAttemptId)
+    std::string* outAttemptId, bool waitForOutcome)
 {
     // The envelope is sealed to the recipient destination's serving sealing key,
     // so the routing metadata is readable only by the server operating that
@@ -744,6 +744,12 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     }
     if (onAcceptedByOwnServer) {
         onAcceptedByOwnServer();  // grey: our own server accepted the envelope
+    }
+    if (!waitForOutcome) {
+        // The caller does not want to block on the outcome (e.g. a file send,
+        // where the upload already took the time budget): leave it grey and let
+        // the next sync reconcile the attempt to yellow/green/red.
+        return false;
     }
     constexpr int kPollAttempts = 150;  // ~15 s at 100 ms
     for (int poll = 0; poll < kPollAttempts; ++poll) {
@@ -1009,7 +1015,12 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     };
     // Remember the blob so the sender can unsend it later.
     recordSentBlob(inner.at("id").get<std::string>(), uploaded.blobUrl, uploaded.deleteToken);
-    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+    // Do not poll for the outcome: the upload already consumed the time budget, so
+    // blocking the worker on a delivery poll on top of it is what made a file send
+    // feel like a freeze. The grey state is fired on acceptance; a later sync
+    // reconciles the attempt to yellow/green/red.
+    return sendContent(
+        peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId, false);
 }
 
 void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
@@ -1106,7 +1117,8 @@ void Session::saveAttachment(
 }
 
 bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
-    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId)
+    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+    bool waitForOutcome)
 {
     const auto found = contacts_.find(peerFingerprint);
     if (found == contacts_.end()) {
@@ -1176,7 +1188,7 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
 
     const std::string token = contact.sendTokens.back();
     const bool delivered = deliver(contact.dest, peerServingKey, "content", peerFingerprint,
-        fromBase64(token), payload, onAcceptedByOwnServer, nullptr, outAttemptId);
+        fromBase64(token), payload, onAcceptedByOwnServer, nullptr, outAttemptId, waitForOutcome);
 
     // Spend the token: it is now committed to this message (consumed by the
     // recipient on delivery, or in flight while the server keeps delivering).

@@ -10,7 +10,12 @@ Item {
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
-    readonly property bool isAttachment: model.attRef && model.attRef.length > 0
+    // An attachment card is shown both for an incoming message (which carries a
+    // content-store ref) and for one's own outgoing file (which has the type set
+    // locally before the upload finishes, so the ref is not there yet).
+    readonly property bool isAttachment: (model.attRef && model.attRef.length > 0)
+        || (model.outgoing && (model.type === "file" || model.type === "photo"
+            || model.type === "audio"))
     readonly property bool isUnsupported: model.type === "unsupported"
     readonly property bool isSystem: model.type === "system"
     // The author of an incoming group message (empty for one-to-one chats).
@@ -105,7 +110,17 @@ Item {
                 spacing: 2
                 Layout.fillWidth: true
                 Label { text: "📎 " + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
-                Label { text: (model.attSize / 1024).toFixed(1) + " KB"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                Label { visible: model.attSize > 0; text: (model.attSize / 1024).toFixed(1) + " KB"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                // Upload feedback on one's own file while it is still being sent
+                // to the own server (no byte percentage available, so the bar is
+                // indeterminate); it disappears once the server has accepted it.
+                RowLayout {
+                    visible: model.outgoing && model.status === DeliveryStatus.Sending
+                    Layout.fillWidth: true
+                    spacing: 6
+                    ProgressBar { indeterminate: true; Layout.fillWidth: true; Layout.preferredHeight: 4 }
+                    Label { text: "Uploading…"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                }
                 Button {
                     visible: !model.outgoing
                     text: "Save"
