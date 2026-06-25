@@ -46,14 +46,22 @@ Popup {
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
         ListView {
+            id: accountList
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             model: App.accounts
+            // Switching and closing live here, not in the delegate's onClicked: a
+            // compiled signal handler inside a delegate cannot resolve the enclosing
+            // Popup's id, so the delegate calls in through ListView.view instead.
+            function activate(accountId) {
+                App.switchTo(accountId)
+                root.close()
+            }
             delegate: ItemDelegate {
                 width: ListView.view.width
                 height: 68
-                onClicked: { App.switchTo(model.accountId); root.close() }
+                onClicked: ListView.view.activate(model.accountId)
                 // The active account is marked with a neon outline, not a bright
                 // accent fill (the brand's one-accent rule; gray stays the base).
                 background: Rectangle {
