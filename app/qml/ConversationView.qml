@@ -172,6 +172,42 @@ Item {
                     }
                 }
 
+                // Restore where the user left this conversation after the active
+                // account changes under us: at the bottom (and keep following new
+                // messages) if it was pinned there, otherwise anchored on the row
+                // that was at the top. Anchoring by row index (not by a raw contentY)
+                // forces the delegate to be built, so the view never lands blank.
+                function restoreScroll() {
+                    if (!root.session) {
+                        autoScrolling = false
+                        return
+                    }
+                    const st = root.session.scrollFor(root.session.activePeer)
+                    forceLayout()  // build delegates now so positioning is reliable
+                    if (!st.has || st.stick || st.anchor < 0) {
+                        stickToBottom = true
+                        pinToBottom()
+                    } else {
+                        stickToBottom = false
+                        restoreToRow(st.anchor)
+                        // Re-assert next frame once late delegates have measured.
+                        Qt.callLater(function() { messages.restoreToRow(st.anchor) })
+                    }
+                    Qt.callLater(root.markVisibleRead)
+                }
+                function restoreToRow(idx) {
+                    if (count === 0) {
+                        return
+                    }
+                    autoScrolling = true
+                    positionViewAtIndex(Math.min(count - 1, Math.max(0, idx)), ListView.Beginning)
+                    autoScrolling = false
+                }
+                // The active account changed (the user switched local profiles): the
+                // model is now the new account's conversation. Restore that
+                // conversation's last scroll position instead of resetting to the top.
+                onModelChanged: if (model) { autoScrolling = true; Qt.callLater(restoreScroll) }
+
                 function loadOlder() {
                     paging = true
                     const k = root.session.loadOlderMessages()
@@ -196,7 +232,18 @@ Item {
                     if (autoScrolling || !root.session) {
                         return
                     }
-                    stickToBottom = atYEnd && root.session.atNewest
+                    // Only a genuine user gesture (drag/flick/wheel) updates the
+                    // follow flag and the saved position. Programmatic scrolls and
+                    // the settle that happens while a model is swapped in must not, or
+                    // they would wrongly record the view as "scrolled up" and break
+                    // the restore on the next switch. The saved anchor is the row at
+                    // the top of the view (-1 when pinned to the bottom).
+                    if (moving || dragging || flicking) {
+                        stickToBottom = atYEnd && root.session.atNewest
+                        const anchor = stickToBottom
+                            ? -1 : indexAt(width / 2, contentY + topMargin + 2)
+                        root.session.saveScroll(root.session.activePeer, anchor, stickToBottom)
+                    }
                     if (atYBeginning && root.session.hasMoreOlder && !paging) {
                         loadOlder()
                     } else if (atYEnd && !root.session.atNewest && !paging) {
@@ -216,6 +263,11 @@ Item {
                         }
                         if (messages.model.lastMessageOutgoing()) {
                             messages.stickToBottom = true
+                        }
+                        if (messages.stickToBottom && root.session) {
+                            // Keep the saved position in sync when our own send
+                            // re-pins us to the bottom, so a switch restores there.
+                            root.session.saveScroll(root.session.activePeer, -1, true)
                         }
                         if (messages.stickToBottom) {
                             Qt.callLater(messages.scrollToEnd)
@@ -239,7 +291,7 @@ Item {
                     }
                 }
 
-                Component.onCompleted: { pinToBottom(); Qt.callLater(root.markVisibleRead) }
+                Component.onCompleted: { Qt.callLater(restoreScroll) }
             }
 
             // Jump-to-latest: shown whenever the view is not resting at the true

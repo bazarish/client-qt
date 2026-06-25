@@ -267,6 +267,13 @@ public:
     Q_INVOKABLE int loadNewerMessages();
     // Returns to the newest page (reloading it if the window was scrolled back).
     Q_INVOKABLE void jumpToLatest();
+    // Remembers / restores the open conversation's scroll position, so switching
+    // this account out and back brings the dialog back to where it was left (or
+    // keeps it pinned to the bottom if it was). The view saves the top-visible row
+    // index as the user scrolls (-1 when pinned to the bottom), keyed by peer, and
+    // restores it when this account becomes active again.
+    Q_INVOKABLE void saveScroll(const QString& peer, int anchorRow, bool stick);
+    Q_INVOKABLE QVariantMap scrollFor(const QString& peer) const;
     // The user is reading: the view is open, the window is focused and scrolled so
     // that `row` is the bottom-most visible row. Sends a read receipt (green) for
     // the newest incoming message at or before it (high-water, deduped per peer).
@@ -450,6 +457,12 @@ private:
     qint64 newestLoadedId_ = 0;
     bool hasMoreOlder_ = false;
     bool hasMoreNewer_ = false;
+    // Saved scroll position of the open conversation so switching this account out
+    // and back restores the view instead of jumping to the top. Peer-keyed; stick
+    // means it rested at the bottom (restore by pinning, not by the saved row).
+    QString scrollPeer_;
+    int scrollAnchorRow_ = -1;
+    bool scrollStick_ = true;
     // Sets the active peer + clears unread + (re)loads group state, without
     // touching the message window (the caller chooses which window to load).
     void activateConversation(const QString& peer);

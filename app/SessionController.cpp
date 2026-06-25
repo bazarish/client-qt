@@ -730,7 +730,7 @@ void SessionWorker::saveAttachment(
 void SessionWorker::exportProfile(const QString& path, const QString& password)
 {
     try {
-        session_->exportState(path.toStdString(), password.toStdString());
+        session_->exportProfile(path.toStdString(), password.toStdString());
         emit actionOk("Backup exported.");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -957,6 +957,27 @@ void SessionController::openConversation(const QString& peer)
 {
     activateConversation(peer);
     loadLatestWindow();
+}
+
+void SessionController::saveScroll(const QString& peer, int anchorRow, bool stick)
+{
+    // The view reports the open conversation's position as the user scrolls, so it
+    // is already current the moment this account is switched away.
+    scrollPeer_ = peer;
+    scrollAnchorRow_ = anchorRow;
+    scrollStick_ = stick;
+}
+
+QVariantMap SessionController::scrollFor(const QString& peer) const
+{
+    // "has" is false for any peer we never saved; the view then falls back to
+    // pinning to the bottom, the default for a freshly opened conversation.
+    QVariantMap m;
+    const bool has = !peer.isEmpty() && peer == scrollPeer_;
+    m[QStringLiteral("has")] = has;
+    m[QStringLiteral("anchor")] = scrollAnchorRow_;
+    m[QStringLiteral("stick")] = scrollStick_;
+    return m;
 }
 
 void SessionController::openConversationAtMessage(const QString& peer, qint64 messageId)
