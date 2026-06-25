@@ -68,16 +68,14 @@ Popup {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
-                        RowLayout {
-                            spacing: 6
-                            Label { text: model.name; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.maximumWidth: 200 }
-                            Label {
-                                visible: model.active
-                                text: "Active"
-                                color: Theme.neon
-                                font.pixelSize: Theme.fontSmall
-                                font.weight: Font.Medium
-                            }
+                        // The active account is marked by its name glowing neon
+                        // green (plus the row's neon outline), not a separate label.
+                        Label {
+                            text: model.name
+                            color: model.active ? Theme.neon : Theme.text
+                            font.weight: Font.Medium
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 200
                         }
                         RowLayout {
                             spacing: 6

@@ -119,10 +119,6 @@ Item {
                 property bool paging: false
                 // Message id to flash after a search jump (-1 = none).
                 property var highlightId: -1
-                // Whether the view rests at the very bottom. Maintained from the
-                // handlers below (a direct binding to atYEnd does not re-evaluate
-                // reliably), and drives the jump-to-latest button's visibility.
-                property bool atBottom: true
 
                 function scrollToEnd() {
                     autoScrolling = true
@@ -149,7 +145,6 @@ Item {
                         ticks += 1
                         if (messages.atYEnd || ticks >= 12) {
                             messages.stickToBottom = root.session ? root.session.atNewest : true
-                            messages.atBottom = messages.atYEnd
                             stop()
                         }
                     }
@@ -175,7 +170,6 @@ Item {
                 }
 
                 onContentYChanged: {
-                    atBottom = atYEnd  // updated even during a programmatic scroll
                     if (autoScrolling || !root.session) {
                         return
                     }
@@ -187,12 +181,7 @@ Item {
                     }
                 }
                 // Keep following the bottom while the last bubble's height settles.
-                onContentHeightChanged: {
-                    if (stickToBottom && !paging) {
-                        scrollToEnd()
-                    }
-                    atBottom = atYEnd  // content grew/shrank: re-check the bottom edge
-                }
+                onContentHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
 
                 Connections {
                     target: messages.model
@@ -229,9 +218,14 @@ Item {
             // bottom (scrolled up, or viewing older history after a search jump).
             RoundButton {
                 id: jumpButton
-                // Hidden once the view rests at the very bottom (so it never
-                // overlaps the latest messages); shown whenever scrolled up.
-                visible: messages.count > 0 && !messages.atBottom
+                // Shown only when scrolled up more than half a screen above the
+                // content end, so it never overlaps the latest messages. Measured
+                // by distance (the bottom can sit below the visible area, so atYEnd
+                // is not a reliable gate); the binding tracks contentY so it stays
+                // current as the user scrolls.
+                visible: messages.count > 0
+                    && (messages.contentHeight + messages.originY
+                        - messages.contentY - messages.height) > messages.height / 2
                 hoverEnabled: true
                 // Semi-transparent at rest, fully opaque on hover.
                 opacity: jumpButton.hovered ? 1.0 : 0.45

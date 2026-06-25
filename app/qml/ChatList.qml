@@ -64,10 +64,20 @@ Item {
             clip: true
             model: root.session ? root.session.contacts : null
             delegate: ItemDelegate {
+                id: chatRow
                 width: ListView.view.width
                 height: 66
                 highlighted: root.session && root.session.activePeer === model.fingerprint
                 onClicked: root.session.openConversation(model.fingerprint)
+                // The default highlight paints a solid near-white fill that breaks
+                // the dark look; mark the active chat with a white outline instead
+                // (the name turns green below), and keep a subtle hover tint only.
+                background: Rectangle {
+                    color: chatRow.hovered ? Theme.surfaceAlt : "transparent"
+                    radius: Theme.radiusSmall
+                    border.width: chatRow.highlighted ? 1 : 0
+                    border.color: Theme.accent
+                }
                 contentItem: RowLayout {
                     spacing: 10
                     Avatar { fingerprint: model.fingerprint; size: 44 }
@@ -80,7 +90,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: (model.isGroup ? "👥 " : "")
                                     + (model.name.length > 14 ? model.name.substring(0, 12) + "…" : model.name)
-                                color: Theme.text
+                                color: chatRow.highlighted ? Theme.neon : Theme.text
                                 font.weight: Font.Medium
                                 elide: Text.ElideRight
                             }
