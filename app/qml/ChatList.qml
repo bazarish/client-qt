@@ -15,6 +15,17 @@ Item {
         return new Date(ts).toLocaleTimeString(Qt.locale(), "hh:mm")
     }
 
+    // One-line, length-capped preview so a long or multi-line message never
+    // breaks the chat row: newlines/whitespace collapse to single spaces and the
+    // text is cut to 30 characters.
+    function previewText(s) {
+        if (!s) {
+            return ""
+        }
+        const oneLine = s.replace(/\s+/g, " ").trim()
+        return oneLine.length > 30 ? oneLine.substring(0, 30) + "…" : oneLine
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -100,9 +111,10 @@ Item {
                             Layout.fillWidth: true
                             Label {
                                 Layout.fillWidth: true
-                                text: model.lastText
+                                text: root.previewText(model.lastText)
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
+                                maximumLineCount: 1
                                 elide: Text.ElideRight
                             }
                             Rectangle {
