@@ -738,7 +738,9 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     // still in flight when the window passes is left "at our server" (grey) - the
     // server keeps trying and the recipient's read receipt confirms it (green) -
     // rather than blocking the caller for the whole federation.
-    const std::string attemptId = client_->submitSend(toDest, sealed, payload);
+    // messageId is passed in the clear too, so our server can match the recipient
+    // server's signed delivered-ack (the amber "delivered to recipient's server").
+    const std::string attemptId = client_->submitSend(toDest, sealed, payload, messageId);
     if (outAttemptId != nullptr) {
         *outAttemptId = attemptId;  // so the caller can reconcile a late outcome
     }
@@ -1416,8 +1418,10 @@ std::vector<IncomingMessage> Session::sync()
                 message.refId = body.value("ref", std::string());
                 message.text = body.value("text", std::string());
             } else if (type == "receipt") {
-                // A delivery receipt for one of our sent messages (the "green"
-                // state). Carries the acknowledged message id.
+                // A receipt: the recipient's client received one of our sent
+                // messages (the green state). Carries the acknowledged message id.
+                // The amber "delivered to the recipient's server" state is reported
+                // by our own server (the send attempt), not by this receipt.
                 message.contentType = type;
                 message.refId = body.value("ref", std::string());
             } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"

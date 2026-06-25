@@ -11,6 +11,28 @@ Item {
     signal callRequested()
     signal videoCallRequested()
 
+    // A message counts as read only on a genuine read: this view is open, the app
+    // window is focused, and the message is within the visible scroll area. We ack
+    // the newest incoming message at or before the bottom-most visible row.
+    function markVisibleRead() {
+        if (!session || !visible || messages.count === 0) {
+            return
+        }
+        if (Qt.application.state !== Qt.ApplicationActive) {
+            return
+        }
+        var row = messages.indexAt(messages.width / 2, messages.contentY + messages.height - 2)
+        if (row < 0) {
+            row = messages.count - 1  // content shorter than the view: all visible
+        }
+        session.markReadThroughRow(row)
+    }
+    // Reading also resumes when the app regains focus on an already-open chat.
+    Connections {
+        target: Qt.application
+        function onStateChanged() { root.markVisibleRead() }
+    }
+
     // A failed file whose saved source is gone: let the user pick a file to send.
     Connections {
         target: root.session
@@ -170,6 +192,7 @@ Item {
                 }
 
                 onContentYChanged: {
+                    root.markVisibleRead()  // scrolling a message into view reads it
                     if (autoScrolling || !root.session) {
                         return
                     }
@@ -197,6 +220,9 @@ Item {
                         if (messages.stickToBottom) {
                             Qt.callLater(messages.scrollToEnd)
                         }
+                        // A new incoming message in the open, focused, bottom-pinned
+                        // chat is read on arrival.
+                        Qt.callLater(root.markVisibleRead)
                     }
                     // Switching/reloading a conversation: land on the newest, unless
                     // a search jump positioned the window back in history (handled by
@@ -208,10 +234,12 @@ Item {
                         } else {
                             messages.stickToBottom = false
                         }
+                        // Opening a chat reads what is on screen.
+                        Qt.callLater(root.markVisibleRead)
                     }
                 }
 
-                Component.onCompleted: pinToBottom()
+                Component.onCompleted: { pinToBottom(); Qt.callLater(root.markVisibleRead) }
             }
 
             // Jump-to-latest: shown whenever the view is not resting at the true

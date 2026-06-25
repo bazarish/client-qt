@@ -62,6 +62,11 @@ public:
     // in flight) as failedStatus, so the UI shows "not sent" with a resend option
     // instead of a perpetual upload animation. Returns the number changed.
     int failUnsentOnLoad(int sendingStatus, int failedStatus);
+    // Marks outgoing messages to peer with id <= uptoId whose status is within
+    // [minStatus, maxStatus] as readStatus (the recipient read up to uptoId). Used
+    // to persist the green "read" state high-water, including paged-out rows.
+    void markOutgoingReadUpTo(
+        const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus);
     // The local source path recorded for an outgoing attachment (empty if none).
     QString sourcePathFor(qint64 id) const;
     // The row id of an outgoing message with this protocol id (0 if none).

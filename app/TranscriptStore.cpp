@@ -349,6 +349,22 @@ int TranscriptStore::failUnsentOnLoad(int sendingStatus, int failedStatus)
     return changed;
 }
 
+void TranscriptStore::markOutgoingReadUpTo(
+    const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus)
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("UPDATE messages SET status = ? WHERE outgoing = 1 AND peer = ? AND id <= ?"
+                  " AND status >= ? AND status <= ?");
+    query.addBindValue(readStatus);
+    query.addBindValue(peer);
+    query.addBindValue(uptoId);
+    query.addBindValue(minStatus);
+    query.addBindValue(maxStatus);
+    if (query.exec() && query.numRowsAffected() > 0) {
+        flush();
+    }
+}
+
 QString TranscriptStore::sourcePathFor(qint64 id) const
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));

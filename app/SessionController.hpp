@@ -267,6 +267,10 @@ public:
     Q_INVOKABLE int loadNewerMessages();
     // Returns to the newest page (reloading it if the window was scrolled back).
     Q_INVOKABLE void jumpToLatest();
+    // The user is reading: the view is open, the window is focused and scrolled so
+    // that `row` is the bottom-most visible row. Sends a read receipt (green) for
+    // the newest incoming message at or before it (high-water, deduped per peer).
+    Q_INVOKABLE void markReadThroughRow(int row);
     // Case-insensitive full-text search of the open conversation; returns a list
     // of {id, text, time, outgoing, author} maps for the search popup.
     Q_INVOKABLE QVariantList searchMessages(const QString& query);
@@ -454,6 +458,12 @@ private:
     // Adds a just-stored message to the open conversation's window when the window
     // is at the newest edge; isOwn jumps to the newest page if it was scrolled back.
     void showInActiveView(const StoredMessage& m, bool isOwn);
+    // Marks our outgoing messages to peer with id <= uptoId as read (green), in
+    // the store and the open window, on receiving a read receipt.
+    void markOutgoingRead(const QString& peer, qint64 uptoId);
+    // Per-peer high-water of the newest incoming message we have already sent a
+    // read receipt for, so reading does not re-send receipts on every scroll tick.
+    QHash<QString, qint64> lastReadAckedId_;
     // Groups this account belongs to (id -> name), merged into the chat list.
     QStringList contactFps_;
     QStringList groupIds_;

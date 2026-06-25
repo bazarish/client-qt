@@ -96,6 +96,12 @@ public:
     void appendMessages(const QVector<StoredMessage>& messages);
     // The row index of the message with this id, or -1 (for scroll-to-message).
     Q_INVOKABLE int rowForId(qint64 id) const;
+    // Marks loaded outgoing messages with id <= uptoId currently at AtSenderServer
+    // or AtRecipientServer as Delivered (read high-water); returns the changed ids.
+    QVector<qint64> markDeliveredThrough(qint64 uptoId);
+    // The id + protocol id of the newest incoming message at or before `row`
+    // (for the read high-water). Returns false when there is none.
+    bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol) const;
     void setStatusForId(qint64 id, int status);
     // Attaches (or, when empty, clears) a delivery-error string for a message,
     // shown inline on a failed outgoing bubble. Session-only; not persisted.

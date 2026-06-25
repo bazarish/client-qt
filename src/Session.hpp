@@ -523,12 +523,14 @@ private:
     // Sends a built inner content envelope to an established contact: handles
     // the first-reply bootstrap, seals to the peer and spends one token. Returns
     // whether delivery was confirmed within the poll window (see deliver()).
-    // waitForOutcome=false returns as soon as the own server accepts (skipping
-    // the poll), so a slow send never blocks the worker; the caller reconciles
-    // the outcome on a later sync.
+    // waitForOutcome defaults to false: the call returns as soon as our own server
+    // accepts the envelope (grey is instant and the single worker thread is never
+    // blocked on the federation/ack round-trip), and the caller reconciles the
+    // delivered/failed outcome on a later sync. (The amber state arrives via the
+    // recipient's signed delivered-ack, so the old inline poll is obsolete.)
     bool sendContent(const std::string& peerFingerprint, nlohmann::json inner,
         const std::function<void()>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, bool waitForOutcome = true);
+        std::string* outAttemptId = nullptr, bool waitForOutcome = false);
 
     // Sends the user-owned I2P master to the account's other devices: a
     // service content message ("device.i2p-master") sealed to our own sealing

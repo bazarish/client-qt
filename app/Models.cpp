@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Models.hpp"
 
+#include "DeliveryStatus.hpp"
+
 #include <algorithm>
 
 namespace bazarish::app {
@@ -240,6 +242,37 @@ int ConversationModel::rowForId(qint64 id) const
         }
     }
     return -1;
+}
+
+QVector<qint64> ConversationModel::markDeliveredThrough(qint64 uptoId)
+{
+    QVector<qint64> changed;
+    for (int i = 0; i < messages_.size(); ++i) {
+        StoredMessage& m = messages_[i];
+        if (m.outgoing && m.id <= uptoId
+            && (m.status == DeliveryStatus::AtSenderServer
+                || m.status == DeliveryStatus::AtRecipientServer)) {
+            m.status = DeliveryStatus::Delivered;
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {StatusRole});
+            changed.push_back(m.id);
+        }
+    }
+    return changed;
+}
+
+bool ConversationModel::newestIncomingThrough(int row, qint64& outId, QString& outProtocol) const
+{
+    const int start = std::min(row, static_cast<int>(messages_.size()) - 1);
+    for (int i = start; i >= 0; --i) {
+        const StoredMessage& m = messages_[i];
+        if (!m.outgoing && !m.protocolId.isEmpty() && m.type != "system") {
+            outId = m.id;
+            outProtocol = m.protocolId;
+            return true;
+        }
+    }
+    return false;
 }
 
 void ConversationModel::setStatusForId(qint64 id, int status)

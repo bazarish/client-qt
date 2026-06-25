@@ -1420,12 +1420,12 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
-    // A delivery receipt acknowledges one of our sent messages: mark it
-    // "green" (received by the peer's client). Not shown as a message.
+    // A read receipt: the peer read our referenced message (the green state), and
+    // by the read high-water everything we sent them before it too. Not shown.
     if (type == "receipt") {
         const qint64 localId = store_.idForProtocol(message.value("ref").toString());
         if (localId != 0) {
-            bumpStatus(localId, DeliveryStatus::Delivered);
+            markOutgoingRead(peer, localId);
         }
         return;
     }
@@ -1481,15 +1481,10 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // (or that we processed just before a restart) is legitimately re-offered and
     // arrives here again with the same id. Dedup against the transcript we already
     // keep - if this conversation already holds an incoming message with this id,
-    // this is that redelivery. Re-send the receipt (idempotent, so the sender
-    // still goes green) but never store or surface it a second time.
+    // this is that redelivery: never store or surface it a second time. (A read
+    // receipt is only sent on a real read, handled by markReadThroughRow.)
     const QString incomingId = message.value("messageId").toString();
     if (!incomingId.isEmpty() && store_.idForIncomingProtocol(incomingId, convKey) != 0) {
-        if (sendReceipts_ && !isGroupMsg
-            && (type == "text" || type == "file" || type == "photo" || type == "audio"
-                || type == "voice")) {
-            emit requestSendReceipt(peer, incomingId);
-        }
         return;
     }
 
@@ -1521,15 +1516,9 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     } else {
         contacts_.touch(peer, peer, preview, m.ts, peer != activePeer_);
     }
-
-    // Send a delivery receipt back (the "green" signal) when enabled, for
-    // user-visible content only - never for control or group messages (a group
-    // receipt would have no single recipient mailbox to confirm to).
-    if (sendReceipts_ && !isGroupMsg && !m.protocolId.isEmpty()
-        && (type == "text" || type == "file" || type == "photo" || type == "audio"
-            || type == "voice")) {
-        emit requestSendReceipt(peer, m.protocolId);
-    }
+    // No receipt is sent on arrival: the green "read" state is reported only when
+    // the user actually reads the message (chat open + window focused + the message
+    // in view), driven by markReadThroughRow.
 }
 
 void SessionController::bumpStatus(qint64 localId, int status)
@@ -1606,6 +1595,39 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
     emit requestSendFile(activePeer_, srcPath, localId, protocolId);
+}
+
+void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
+{
+    // Persist the green high-water (covers paged-out rows too)...
+    store_.markOutgoingReadUpTo(peer, uptoId, DeliveryStatus::Delivered,
+        DeliveryStatus::AtSenderServer, DeliveryStatus::AtRecipientServer);
+    // ...and reflect it in the open window.
+    if (peer == activePeer_) {
+        for (const qint64 id : conversation_.markDeliveredThrough(uptoId)) {
+            statusById_[id] = DeliveryStatus::Delivered;
+        }
+    }
+}
+
+void SessionController::markReadThroughRow(int row)
+{
+    // The user actually read up to `row` (the view is open, focused and scrolled
+    // to it): send a read receipt for the newest incoming message at or before it,
+    // advancing a per-peer high-water so we send at most one receipt per new read.
+    if (activePeer_.isEmpty() || row < 0) {
+        return;
+    }
+    qint64 id = 0;
+    QString protocolId;
+    if (!conversation_.newestIncomingThrough(row, id, protocolId)) {
+        return;
+    }
+    if (id <= lastReadAckedId_.value(activePeer_, 0)) {
+        return;  // already acknowledged up to here
+    }
+    lastReadAckedId_[activePeer_] = id;
+    emit requestSendReceipt(activePeer_, protocolId);
 }
 
 void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro)

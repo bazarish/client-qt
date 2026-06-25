@@ -321,13 +321,14 @@ void Client::ack(const std::string& blobId)
 }
 
 std::string Client::submitSend(
-    const std::string& toDest, const Bytes& sealed, const Bytes& payload)
+    const std::string& toDest, const Bytes& sealed, const Bytes& payload, const std::string& messageId)
 {
     const ApiResponse response = api_.postJson("/v1/messaging/send",
         {
             {"toDest", toDest},
             {"sealed", toBase64(sealed)},
             {"payload", toBase64(payload)},
+            {"messageId", messageId},
         });
     return response.json().at("attemptId").get<std::string>();
 }
