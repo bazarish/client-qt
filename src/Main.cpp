@@ -57,40 +57,40 @@ void printUsage()
         "A stateful command-line messenger client.\n"
         "\n"
         "Usage:\n"
-        "  bazarish-client init <state> <facade-url> <server-fp>\n"
-        "  bazarish-client subscribe <state> [days]\n"
-        "  bazarish-client whoami <state>\n"
-        "  bazarish-client i2p-enable <state> [keyfile.dat]\n"
-        "  bazarish-client i2p-buy <state>\n"
-        "  bazarish-client i2p-cancel <state>\n"
-        "  bazarish-client i2p-status <state>\n"
-        "  bazarish-client sign-login <state> <challenge>\n"
-        "  bazarish-client invite <state>\n"
-        "  bazarish-client request <state> <peer-fp> <text>\n"
-        "  bazarish-client add-invite <state> <invite-file> <text>\n"
-        "  bazarish-client add-user <state> <alias> <text>\n"
-        "  bazarish-client alias-cert <state> <alias>\n"
-        "  bazarish-client send <state> <peer-fp> <text>\n"
-        "  bazarish-client send-file <state> <peer-fp> <file>\n"
-        "  bazarish-client send-command <state> <peer-fp> <command> [args]\n"
-        "  bazarish-client send-callback <state> <peer-fp> <data> [ref]\n"
-        "  bazarish-client call <state> <peer-fp> [seconds] [video]\n"
-        "  bazarish-client call-answer <state> [seconds]\n"
-        "  bazarish-client get-file <state> <ref> <key-b64> <out>\n"
-        "  bazarish-client group-create <state> <name> <peer-fp> [peer-fp ...]\n"
-        "  bazarish-client group-send <state> <group-id> <text>\n"
-        "  bazarish-client group-list <state>\n"
-        "  bazarish-client group-members <state> <group-id>\n"
-        "  bazarish-client group-add <state> <group-id> <peer-fp> [peer-fp ...]\n"
-        "  bazarish-client group-remove <state> <group-id> <peer-fp>\n"
-        "  bazarish-client group-admin <state> <group-id> <peer-fp> <on|off>\n"
-        "  bazarish-client group-leave <state> <group-id>\n"
-        "  bazarish-client unsend <state> <message-id>\n"
-        "  bazarish-client sync <state> [--privacy <minimal|middle|max>]\n"
-        "  bazarish-client export <state> <out-file>\n"
-        "  bazarish-client import <in-file> <state>\n"
+        "  bazarish-client init <profile> <facade-url> <server-fp>\n"
+        "  bazarish-client subscribe <profile> [days]\n"
+        "  bazarish-client whoami <profile>\n"
+        "  bazarish-client i2p-enable <profile> [keyfile.dat]\n"
+        "  bazarish-client i2p-buy <profile>\n"
+        "  bazarish-client i2p-cancel <profile>\n"
+        "  bazarish-client i2p-status <profile>\n"
+        "  bazarish-client sign-login <profile> <challenge>\n"
+        "  bazarish-client invite <profile>\n"
+        "  bazarish-client request <profile> <peer-fp> <text>\n"
+        "  bazarish-client add-invite <profile> <invite-file> <text>\n"
+        "  bazarish-client add-user <profile> <alias> <text>\n"
+        "  bazarish-client alias-cert <profile> <alias>\n"
+        "  bazarish-client send <profile> <peer-fp> <text>\n"
+        "  bazarish-client send-file <profile> <peer-fp> <file>\n"
+        "  bazarish-client send-command <profile> <peer-fp> <command> [args]\n"
+        "  bazarish-client send-callback <profile> <peer-fp> <data> [ref]\n"
+        "  bazarish-client call <profile> <peer-fp> [seconds] [video]\n"
+        "  bazarish-client call-answer <profile> [seconds]\n"
+        "  bazarish-client get-file <profile> <ref> <key-b64> <out>\n"
+        "  bazarish-client group-create <profile> <name> <peer-fp> [peer-fp ...]\n"
+        "  bazarish-client group-send <profile> <group-id> <text>\n"
+        "  bazarish-client group-list <profile>\n"
+        "  bazarish-client group-members <profile> <group-id>\n"
+        "  bazarish-client group-add <profile> <group-id> <peer-fp> [peer-fp ...]\n"
+        "  bazarish-client group-remove <profile> <group-id> <peer-fp>\n"
+        "  bazarish-client group-admin <profile> <group-id> <peer-fp> <on|off>\n"
+        "  bazarish-client group-leave <profile> <group-id>\n"
+        "  bazarish-client unsend <profile> <message-id>\n"
+        "  bazarish-client sync <profile> [--privacy <minimal|middle|max>]\n"
+        "  bazarish-client export <profile> <out-file>\n"
+        "  bazarish-client import <in-file> <profile>\n"
         "\n"
-        "<state> is a directory holding this client's identity and contacts.\n"
+        "<profile> is a directory holding this client's identity and contacts.\n"
         "request/add-* bootstrap a contact (E2E-encrypted to the peer's prekey).\n"
         "invite prints a self-verifying bazarish:// link and QR codes carrying the\n"
         "full trust chain (no server trust needed). add-invite consumes such a\n"
@@ -107,7 +107,7 @@ void printUsage()
 
 int runInit(const std::vector<std::string>& args)
 {
-    // init <state> <facade-url> <server-fp>
+    // init <profile> <facade-url> <server-fp>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -155,7 +155,7 @@ int runWhoami(const std::vector<std::string>& args)
 
 int runI2pEnable(const std::vector<std::string>& args)
 {
-    // i2p-enable <state> [keyfile.dat]: set up a user-owned I2P destination.
+    // i2p-enable <profile> [keyfile.dat]: set up a user-owned I2P destination.
     // With no file it mints a fresh random master; with a .dat it adopts an
     // existing unencrypted Ed25519 destination key. The master never leaves the
     // client.
@@ -183,7 +183,7 @@ int runI2pEnable(const std::vector<std::string>& args)
 
 int runI2pBuy(const std::vector<std::string>& args)
 {
-    // i2p-buy <state>: turn on the paid per-user destination (charges a term,
+    // i2p-buy <profile>: turn on the paid per-user destination (charges a term,
     // issues and uploads a transient, and backs the master up to other devices).
     if (args.size() != 2) {
         printUsage();
@@ -200,7 +200,7 @@ int runI2pBuy(const std::vector<std::string>& args)
 
 int runI2pCancel(const std::vector<std::string>& args)
 {
-    // i2p-cancel <state>: turn the paid per-user destination off (falls back to
+    // i2p-cancel <profile>: turn the paid per-user destination off (falls back to
     // the fixed pool address). The master stays in the profile.
     if (args.size() != 2) {
         printUsage();
@@ -214,7 +214,7 @@ int runI2pCancel(const std::vector<std::string>& args)
 
 int runI2pStatus(const std::vector<std::string>& args)
 {
-    // i2p-status <state>: print the per-user i2p-dest status from the server.
+    // i2p-status <profile>: print the per-user i2p-dest status from the server.
     if (args.size() != 2) {
         printUsage();
         return 2;
@@ -235,7 +235,7 @@ int runI2pStatus(const std::vector<std::string>& args)
 
 int runSignLogin(const std::vector<std::string>& args)
 {
-    // sign-login <state> <challenge>: prove key ownership to a service portal by
+    // sign-login <profile> <challenge>: prove key ownership to a service portal by
     // signing its challenge; print the blob to paste back into the site.
     if (args.size() != 3) {
         printUsage();
@@ -265,7 +265,7 @@ int runInvite(const std::vector<std::string>& args)
 
 int runRequest(const std::vector<std::string>& args)
 {
-    // request <state> <peer-fp> <text>  (peer must be on our own server;
+    // request <profile> <peer-fp> <text>  (peer must be on our own server;
     // cross-server first contact uses add-invite - facade locality)
     if (args.size() != 4) {
         printUsage();
@@ -279,7 +279,7 @@ int runRequest(const std::vector<std::string>& args)
 
 int runAddInvite(const std::vector<std::string>& args)
 {
-    // add-invite <state> <invite-file> <text>
+    // add-invite <profile> <invite-file> <text>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -301,7 +301,7 @@ int runAddInvite(const std::vector<std::string>& args)
 
 int runAddUser(const std::vector<std::string>& args)
 {
-    // add-user <state> <alias> <text>  (alias resolves on the central resolver
+    // add-user <profile> <alias> <text>  (alias resolves on the central resolver
     // over a signed, self-verifying record)
     if (args.size() != 4) {
         printUsage();
@@ -318,7 +318,7 @@ int runAddUser(const std::vector<std::string>& args)
 
 int runAliasCert(const std::vector<std::string>& args)
 {
-    // alias-cert <state> <alias>: emit (as JSON) the signed artifacts the central
+    // alias-cert <profile> <alias>: emit (as JSON) the signed artifacts the central
     // resolver's portal needs to claim a name for this identity - the alias, the
     // user's serving destination + sealing key, and a user-signed alias
     // certificate. POST it to the resolver's /portal/buy (the key never leaves the
@@ -346,7 +346,7 @@ int runSend(const std::vector<std::string>& args)
 
 int runSendFile(const std::vector<std::string>& args)
 {
-    // send-file <state> <peer-fp> <file>
+    // send-file <profile> <peer-fp> <file>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -359,7 +359,7 @@ int runSendFile(const std::vector<std::string>& args)
 
 int runSendCommand(const std::vector<std::string>& args)
 {
-    // send-command <state> <peer-fp> <command> [args]
+    // send-command <profile> <peer-fp> <command> [args]
     if (args.size() < 4 || args.size() > 5) {
         printUsage();
         return 2;
@@ -373,7 +373,7 @@ int runSendCommand(const std::vector<std::string>& args)
 
 int runSendCallback(const std::vector<std::string>& args)
 {
-    // send-callback <state> <peer-fp> <data> [ref]
+    // send-callback <profile> <peer-fp> <data> [ref]
     if (args.size() < 4 || args.size() > 5) {
         printUsage();
         return 2;
@@ -387,7 +387,7 @@ int runSendCallback(const std::vector<std::string>& args)
 
 int runGetFile(const std::vector<std::string>& args)
 {
-    // get-file <state> <ref> <key-b64> <out>
+    // get-file <profile> <ref> <key-b64> <out>
     if (args.size() != 5) {
         printUsage();
         return 2;
@@ -400,7 +400,7 @@ int runGetFile(const std::vector<std::string>& args)
 
 int runUnsend(const std::vector<std::string>& args)
 {
-    // unsend <state> <message-id>
+    // unsend <profile> <message-id>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -413,7 +413,7 @@ int runUnsend(const std::vector<std::string>& args)
 
 int runExport(const std::vector<std::string>& args)
 {
-    // export <state> <out-file>
+    // export <profile> <out-file>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -424,14 +424,14 @@ int runExport(const std::vector<std::string>& args)
         return 1;
     }
     const Session session = Session::open(args[1], keyPassphrase());
-    session.exportState(args[2], password);
+    session.exportProfile(args[2], password);
     std::printf("exported encrypted session to %s\n", args[2].c_str());
     return 0;
 }
 
 int runImport(const std::vector<std::string>& args)
 {
-    // import <in-file> <state>
+    // import <in-file> <profile>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -442,14 +442,14 @@ int runImport(const std::vector<std::string>& args)
         return 1;
     }
     // The imported keys adopt the at-rest passphrase (if any) of this host.
-    Session::importState(args[1], args[2], password, keyPassphrase());
+    Session::importProfile(args[1], args[2], password, keyPassphrase());
     std::printf("imported session into %s\n", args[2].c_str());
     return 0;
 }
 
 int runGroupCreate(const std::vector<std::string>& args)
 {
-    // group-create <state> <name> <peer-fp> [peer-fp ...]
+    // group-create <profile> <name> <peer-fp> [peer-fp ...]
     if (args.size() < 4) {
         printUsage();
         return 2;
@@ -464,7 +464,7 @@ int runGroupCreate(const std::vector<std::string>& args)
 
 int runGroupSend(const std::vector<std::string>& args)
 {
-    // group-send <state> <group-id> <text>
+    // group-send <profile> <group-id> <text>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -477,7 +477,7 @@ int runGroupSend(const std::vector<std::string>& args)
 
 int runGroupList(const std::vector<std::string>& args)
 {
-    // group-list <state>
+    // group-list <profile>
     if (args.size() != 2) {
         printUsage();
         return 2;
@@ -497,7 +497,7 @@ int runGroupList(const std::vector<std::string>& args)
 
 int runGroupMembers(const std::vector<std::string>& args)
 {
-    // group-members <state> <group-id>
+    // group-members <profile> <group-id>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -511,7 +511,7 @@ int runGroupMembers(const std::vector<std::string>& args)
 
 int runGroupAdd(const std::vector<std::string>& args)
 {
-    // group-add <state> <group-id> <peer-fp> [peer-fp ...]
+    // group-add <profile> <group-id> <peer-fp> [peer-fp ...]
     if (args.size() < 4) {
         printUsage();
         return 2;
@@ -525,7 +525,7 @@ int runGroupAdd(const std::vector<std::string>& args)
 
 int runGroupRemove(const std::vector<std::string>& args)
 {
-    // group-remove <state> <group-id> <peer-fp>
+    // group-remove <profile> <group-id> <peer-fp>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -538,7 +538,7 @@ int runGroupRemove(const std::vector<std::string>& args)
 
 int runGroupAdmin(const std::vector<std::string>& args)
 {
-    // group-admin <state> <group-id> <peer-fp> <on|off>
+    // group-admin <profile> <group-id> <peer-fp> <on|off>
     if (args.size() != 5) {
         printUsage();
         return 2;
@@ -553,7 +553,7 @@ int runGroupAdmin(const std::vector<std::string>& args)
 
 int runGroupLeave(const std::vector<std::string>& args)
 {
-    // group-leave <state> <group-id>
+    // group-leave <profile> <group-id>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -638,7 +638,7 @@ int runSync(const std::vector<std::string>& args)
 // working transport startAudioCall throws a readable error and nothing is dialled.
 int runCall(const std::vector<std::string>& args)
 {
-    // call <state-dir> <peer-fp> [seconds] [video]
+    // call <profile-dir> <peer-fp> [seconds] [video]
     if (args.size() < 3 || args.size() > 5) {
         printUsage();
         return 2;
@@ -686,7 +686,7 @@ int runCall(const std::vector<std::string>& args)
 // runs media for the window, then ends. STRICT I2P applies on accept.
 int runCallAnswer(const std::vector<std::string>& args)
 {
-    // call-answer <state-dir> [seconds]
+    // call-answer <profile-dir> [seconds]
     if (args.size() < 2 || args.size() > 3) {
         printUsage();
         return 2;

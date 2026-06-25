@@ -107,17 +107,17 @@ int main()
     const fs::path bundle = uniqueTempDir("bundle") / "session.baz";
     fs::create_directories(bundle.parent_path());
     const std::string exportPw = "export password";
-    Session::open(dirA, passphrase).exportState(bundle, exportPw);
+    Session::open(dirA, passphrase).exportProfile(bundle, exportPw);
 
     const fs::path dirB = uniqueTempDir("b");
-    CHECK_THROWS(Session::importState(bundle, dirB, "bad password"));
-    Session::importState(bundle, dirB, exportPw);
+    CHECK_THROWS(Session::importProfile(bundle, dirB, "bad password"));
+    Session::importProfile(bundle, dirB, exportPw);
     // No at-rest passphrase on the imported copy: it opens with none.
     CHECK(Session::open(dirB).fingerprint() == fingerprintA);
 
     // Import again, this time re-encrypting at rest under a new passphrase.
     const fs::path dirC = uniqueTempDir("c");
-    Session::importState(bundle, dirC, exportPw, "new at-rest");
+    Session::importProfile(bundle, dirC, exportPw, "new at-rest");
     CHECK_THROWS(Session::open(dirC));
     CHECK(Session::open(dirC, "new at-rest").fingerprint() == fingerprintA);
 

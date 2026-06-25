@@ -190,13 +190,13 @@ void testGroupMessageSenderAuth()
 // unknown ids.
 void testEmptyGroupApi()
 {
-    const fs::path stateDir = fs::temp_directory_path() / "bz-testgroup-state";
-    fs::remove_all(stateDir);
-    const Session session = Session::create(stateDir, std::string{}, "tester");
+    const fs::path profileDir = fs::temp_directory_path() / "bz-testgroup-state";
+    fs::remove_all(profileDir);
+    const Session session = Session::create(profileDir, std::string{}, "tester");
     CHECK(session.groupIds().empty());
     CHECK(session.groupName("nope").empty());
     CHECK(session.groupMemberFingerprints("nope").empty());
-    fs::remove_all(stateDir);
+    fs::remove_all(profileDir);
 }
 
 }  // namespace

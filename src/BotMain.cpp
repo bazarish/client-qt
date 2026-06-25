@@ -110,10 +110,10 @@ void printUsage()
         "A demo chat bot over a Bazarish identity (commands + inline keyboards).\n"
         "\n"
         "Usage:\n"
-        "  bazarish-bot <state>          poll forever (stop with Ctrl-C)\n"
-        "  bazarish-bot --once <state>   process one batch of updates and exit\n"
+        "  bazarish-bot <profile>          poll forever (stop with Ctrl-C)\n"
+        "  bazarish-bot --once <profile>   process one batch of updates and exit\n"
         "\n"
-        "<state> is an existing, subscribed client profile (create it with\n"
+        "<profile> is an existing, subscribed client profile (create it with\n"
         "bazarish-client init/subscribe). --once suits a cron-driven bot.\n"
         "\n"
         "Environment:\n"
@@ -132,19 +132,19 @@ int main(const int argc, const char** argv)
     }
 
     bool once = false;
-    const char* state = nullptr;
+    const char* profile = nullptr;
     if (argc == 2) {
-        state = argv[1];
+        profile = argv[1];
     } else if (argc == 3 && std::strcmp(argv[1], "--once") == 0) {
         once = true;
-        state = argv[2];
+        profile = argv[2];
     } else {
         printUsage();
         return 2;
     }
 
     try {
-        Session session = Session::open(state, keyPassphrase());
+        Session session = Session::open(profile, keyPassphrase());
         if (!session.isConnected()) {
             bazarish::log::error("profile is not connected to a server; subscribe first");
             return 1;

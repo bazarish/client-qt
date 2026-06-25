@@ -16,7 +16,7 @@ contact request is encrypted too, using the peer's sealing **prekey** fetched
 from its serving server (`GET /v1/account/contact`) - there is no plaintext
 first message. The server stores only opaque ciphertext.
 
-The private keys are stored as PEM under the state directory and may be
+The private keys are stored as PEM under the profile directory and may be
 **encrypted at rest** with a passphrase (AES-256-CBC). The whole state can be
 **exported** into a single password-encrypted bundle (CMS PWRI) for backup or
 device migration. Contacts can be added three ways, trading convenience for
@@ -39,21 +39,21 @@ ctest --test-dir build
 ## CLI
 
 ```
-bazarish-client init       <state> <host> <port> <server-fp> [base-path]
-bazarish-client subscribe  <state> [days]
-bazarish-client whoami     <state>
-bazarish-client alias      <state> <name>
-bazarish-client invite     <state>
-bazarish-client request    <state> <peer-fp> <text> [peer-host peer-port [base-path]]
-bazarish-client add-invite <state> <invite-file> <text>
-bazarish-client add-user   <state> <alias> <text> [host port [base-path]]
-bazarish-client send       <state> <peer-fp> <text>
-bazarish-client sync       <state>
-bazarish-client export     <state> <out-file>
-bazarish-client import     <in-file> <state>
+bazarish-client init       <profile> <host> <port> <server-fp> [base-path]
+bazarish-client subscribe  <profile> [days]
+bazarish-client whoami     <profile>
+bazarish-client alias      <profile> <name>
+bazarish-client invite     <profile>
+bazarish-client request    <profile> <peer-fp> <text> [peer-host peer-port [base-path]]
+bazarish-client add-invite <profile> <invite-file> <text>
+bazarish-client add-user   <profile> <alias> <text> [host port [base-path]]
+bazarish-client send       <profile> <peer-fp> <text>
+bazarish-client sync       <profile>
+bazarish-client export     <profile> <out-file>
+bazarish-client import     <in-file> <profile>
 ```
 
-`<state>` is a directory holding this client's identity and contacts.
+`<profile>` is a directory holding this client's identity and contacts.
 `<host> <port>` point at a facade. For a cross-server first contact, give the
 peer's facade host/port to `request` so its prekey and server card can be
 looked up; omit them when the peer is on the same facade. `invite` prints a
@@ -72,6 +72,6 @@ Environment variables:
 ## GUI
 
 ```
-bazarish-gui <state>                              # open an existing client
-bazarish-gui <state> <host> <port> <server-fp>    # create and subscribe a new one
+bazarish-gui <profile>                              # open an existing client
+bazarish-gui <profile> <host> <port> <server-fp>    # create and subscribe a new one
 ```

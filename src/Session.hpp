@@ -142,7 +142,7 @@ struct SentBlob {
     std::string deleteToken;
 };
 
-// bookkeeping persisted under a state directory, layered over the stateless
+// bookkeeping persisted under a profile directory, layered over the stateless
 // Client API wrappers. This is the logic a GUI or CLI front-end drives.
 //
 // Token model (per Contacts.md): to let a peer write to us we generate a
@@ -152,19 +152,19 @@ struct SentBlob {
 // its reply.
 class Session {
 public:
-    // Creates a fresh identity and sealing key under stateDir, with no server
+    // Creates a fresh identity and sealing key under profileDir, with no server
     // connection yet. A non-empty passphrase encrypts the private key PEMs at
     // rest (AES-256-CBC); name is a human label stored in the clear for the
     // profile picker. Use connectServer() + subscribe() to attach a server.
-    static Session create(const std::filesystem::path& stateDir,
+    static Session create(const std::filesystem::path& profileDir,
         const std::string& passphrase = {}, const std::string& name = {});
     // Creates a profile already bound to a server (convenience for the CLI and
     // tests): equivalent to create() followed by connectServer().
-    static Session create(const std::filesystem::path& stateDir, const ServerEndpoint& endpoint,
+    static Session create(const std::filesystem::path& profileDir, const ServerEndpoint& endpoint,
         const std::string& passphrase);
     // Opens an existing session. The passphrase is required when the keys
     // were created encrypted; it is ignored for unencrypted keys.
-    static Session open(const std::filesystem::path& stateDir, const std::string& passphrase = {});
+    static Session open(const std::filesystem::path& profileDir, const std::string& passphrase = {});
 
     // Binds the profile to a serving server (or changes it). Rebinds the
     // transport to the new endpoint and persists it; subscribe() afterwards.
@@ -180,12 +180,12 @@ public:
     // Exports the whole session (identity, sealing key, routing meta and
     // contacts) into a single password-encrypted file (CMS PWRI). The bundle
     // holds the keys in plain PEM internally - the password protects the file.
-    void exportState(
+    void exportProfile(
         const std::filesystem::path& outFile, const std::string& password) const;
-    // Imports an exported bundle into a fresh stateDir. A non-empty
+    // Imports an exported bundle into a fresh profileDir. A non-empty
     // atRestPassphrase re-encrypts the imported keys on disk.
-    static void importState(const std::filesystem::path& bundleFile,
-        const std::filesystem::path& stateDir, const std::string& password,
+    static void importProfile(const std::filesystem::path& bundleFile,
+        const std::filesystem::path& profileDir, const std::string& password,
         const std::string& atRestPassphrase = {});
 
     std::string fingerprint() const;
@@ -504,7 +504,7 @@ public:
         const std::map<std::string, GroupMember>* members);
 
 private:
-    Session(std::filesystem::path stateDir, std::unique_ptr<Client> client, Key sealingKey,
+    Session(std::filesystem::path profileDir, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);
 
     // Generates a token batch for ourselves: registers the hashes with our
@@ -634,7 +634,7 @@ private:
     void persistGroups() const;
     nlohmann::json groupsToJson() const;
 
-    std::filesystem::path stateDir_;
+    std::filesystem::path profileDir_;
     // Fetches an externalized blob: direct over a transient I2P destination, falling
     // back to the own-server I2P proxy when this client has no I2P transport of its own.
     Bytes fetchLargeBlob(const BlobPointer& pointer);

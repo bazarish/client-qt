@@ -139,13 +139,13 @@ Session ProfileManager::open(const std::string& id, const std::string& passphras
 ProfileInfo ProfileManager::import(const std::string& name, const fs::path& bundleFile,
     const std::string& password, const std::string& atRestPassphrase)
 {
-    // The display name is restored from the bundle (importState writes the bundled
+    // The display name is restored from the bundle (importProfile writes the bundled
     // meta verbatim). An explicit name, when given, only chooses the on-disk id;
     // when omitted the id is derived from the restored name. So import into a temp
     // dir first, read the restored name, then move it into place under its final id.
     const fs::path tmp = root_ / ".import-tmp";
     fs::remove_all(tmp);
-    Session::importState(bundleFile, tmp, password, atRestPassphrase);
+    Session::importProfile(bundleFile, tmp, password, atRestPassphrase);
     const std::string restoredName = readInfo(std::string{}, tmp).name;
     const std::string id = sanitizeId(name.empty() ? restoredName : name);
     if (exists(id)) {

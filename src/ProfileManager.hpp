@@ -24,8 +24,8 @@ struct ProfileInfo {
     bool connected = false;
 };
 
-// Manages the set of local profiles under a root directory (each profile is a
-// Session state directory). Enumerates, creates, opens and removes them.
+// Manages the set of local profiles under a root directory (each profile is its
+// own directory). Enumerates, creates, opens and removes them.
 class ProfileManager {
 public:
     // Default location: $XDG_DATA_HOME/bazarish/profiles (or ~/.local/share).
