@@ -245,7 +245,7 @@ Item {
                     font.italic: true
                 }
                 Label {
-                    text: model.time ? new Date(model.time * 1000).toLocaleTimeString(Qt.locale(), "hh:mm") : ""
+                    text: model.time ? new Date(model.time).toLocaleTimeString(Qt.locale(), "hh:mm") : ""
                     color: Theme.textDim
                     font.pixelSize: 10
                 }

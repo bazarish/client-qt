@@ -97,6 +97,10 @@ struct IncomingMessage {
     // The sender's protocol message id (envelope "id"), used to send a
     // delivery receipt back for it.
     std::string messageId;
+    // The sender's send time (envelope "sentAt", unix milliseconds). The
+    // recipient orders by it and shows it as the message time, not the receive
+    // time (docs-main Messages.md "Ordering and timestamps"). 0 when absent.
+    std::int64_t sentAt = 0;
     // For contentType == "receipt", the message id being acknowledged; for
     // contentType == "bot.callback", the keyboard message the button belongs to.
     std::string refId;

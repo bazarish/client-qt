@@ -12,7 +12,7 @@ Item {
 
     function formatTime(ts) {
         if (!ts) return ""
-        return new Date(ts * 1000).toLocaleTimeString(Qt.locale(), "hh:mm")
+        return new Date(ts).toLocaleTimeString(Qt.locale(), "hh:mm")
     }
 
     ColumnLayout {

@@ -7,6 +7,7 @@
 #include "QtVideoIo.hpp"
 #include "Session.hpp"
 
+#include <QDateTime>
 #include <QFileInfo>
 #include <QMimeDatabase>
 #include <QRandomGenerator>
@@ -26,9 +27,29 @@ using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
 namespace {
-qint64 nowSeconds()
+// Unix milliseconds: the message display/order clock (sentAt is in ms).
+qint64 nowMillis()
 {
-    return static_cast<qint64>(std::time(nullptr));
+    return QDateTime::currentMSecsSinceEpoch();
+}
+
+// A received message whose sentAt is within this window of arrival is placed in
+// sentAt order (repairing an out-of-order burst); an older arrival is appended at
+// the end as new instead (docs-main Messages.md "Ordering and timestamps").
+constexpr qint64 kReorderWindowMs = 5000;
+
+// The order key (sort position) and display time for a received message.
+// orderKey is sentAt when the message arrived within the reorder window, else the
+// arrival time (so a long-delayed message lands at the end, not up in history);
+// the display time is always the message's own sentAt when present.
+struct Placement {
+    qint64 displayTs = 0;
+    qint64 orderKey = 0;
+};
+Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
+{
+    const bool recent = sentAtMs > 0 && (arrivalMs - sentAtMs) <= kReorderWindowMs;
+    return {sentAtMs > 0 ? sentAtMs : arrivalMs, recent ? sentAtMs : arrivalMs};
 }
 
 // How many messages a conversation loads per page (initial window and each
@@ -200,6 +221,7 @@ void SessionWorker::sync()
         map["sender"] = QString::fromStdString(m.fromFingerprint);
         map["messageId"] = QString::fromStdString(m.messageId);
         map["ref"] = QString::fromStdString(m.refId);
+        map["sentAt"] = static_cast<qint64>(m.sentAt);
         emit messageReceived(map);
     }
     QStringList fps;
@@ -1144,7 +1166,8 @@ void SessionController::sendText(const QString& text)
         gm.sender = fingerprint_;
         gm.protocolId = SessionController_genProtocolId();
         gm.text = text;
-        gm.ts = nowSeconds();
+        gm.ts = nowMillis();
+        gm.orderKey = gm.ts;
         gm.status = DeliveryStatus::Sending;
         gm.id = store_.append(gm);
         statusById_[gm.id] = DeliveryStatus::Sending;
@@ -1159,7 +1182,8 @@ void SessionController::sendText(const QString& text)
     m.type = "text";
     m.protocolId = SessionController_genProtocolId();
     m.text = text;
-    m.ts = nowSeconds();
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
     m.status = DeliveryStatus::Sending;
     m.id = store_.append(m);
     statusById_[m.id] = DeliveryStatus::Sending;
@@ -1191,7 +1215,8 @@ void SessionController::sendFile(const QString& fileUrl)
     // Keep the local source path so a failed send can be resent without re-picking
     // the file (the bytes are not kept; only the path).
     m.attSrcPath = localPath;
-    m.ts = nowSeconds();
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
     m.status = 0;
     m.id = store_.append(m);
     statusById_[m.id] = 0;
@@ -1239,7 +1264,7 @@ void SessionController::commitEdit(const QString& newText)
         // tell the peer to update theirs.
         store_.editContent(editingLocalId_, trimmed, {});
         conversation_.editById(editingLocalId_, trimmed, {});
-        contacts_.touch(activePeer_, {}, trimmed, nowSeconds(), false);
+        contacts_.touch(activePeer_, {}, trimmed, nowMillis(), false);
         emit requestSendEdit(activePeer_, editingProtocolId_, trimmed);
     }
     cancelEdit();
@@ -1447,7 +1472,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             if (preview.isEmpty() && !newKeyboard.isEmpty()) {
                 preview = "[interactive]";
             }
-            contacts_.touch(peer, peer, preview, nowSeconds(), peer != activePeer_);
+            contacts_.touch(peer, peer, preview, nowMillis(), peer != activePeer_);
         }
         return;
     }
@@ -1461,7 +1486,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.peer = gid;
         sys.type = "system";
         sys.text = "You were added to \"" + gname + "\"";
-        sys.ts = nowSeconds();
+        sys.ts = nowMillis();
+        sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
         showInActiveView(sys, false);
@@ -1501,7 +1527,12 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.attRef = message.value("attRef").toString();
     m.attKey = message.value("attKey").toString();
     m.keyboard = message.value("keyboard").toString();
-    m.ts = nowSeconds();
+    // Order by and display the sender's own sentAt (ms): a recent burst that
+    // arrived out of order is reordered into place; a long-delayed arrival is
+    // appended at the end as new (docs-main Messages.md "Ordering and timestamps").
+    const Placement placement = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
+    m.ts = placement.displayTs;
+    m.orderKey = placement.orderKey;
     m.status = DeliveryStatus::Received;  // incoming; no indicator rendered
     m.id = store_.append(m);
 
@@ -1647,7 +1678,8 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
     m.type = "contact.request";
     m.protocolId = SessionController_genProtocolId();
     m.text = body;
-    m.ts = nowSeconds();
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
     // The request was delivered to the peer's server before this fires (the add
     // call returned without throwing), so it is honestly past our own server.
     m.status = DeliveryStatus::AtRecipientServer;

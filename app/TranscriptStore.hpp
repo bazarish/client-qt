@@ -27,7 +27,9 @@ struct StoredMessage {
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
     QString keyboard;      // inline-keyboard JSON (empty when none)
     bool edited = false;   // true once the message was edited in place
-    qint64 ts = 0;         // unix seconds
+    qint64 ts = 0;         // unix milliseconds - the message's sentAt (display time)
+    qint64 orderKey = 0;   // unix ms sort position: sentAt for a recent arrival,
+                           // the local arrival time for a late one (see append path)
     int status = 0;        // 0 sending, 1 sent, 2 failed, 3 received
 };
 

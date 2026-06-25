@@ -51,6 +51,16 @@ std::int64_t nowSeconds()
     return static_cast<std::int64_t>(std::time(nullptr));
 }
 
+// Unix milliseconds from the client clock. Stamped into every outgoing message's
+// sentAt so the recipient can reorder a burst that arrived out of order and show
+// each message's own send time (see docs-main Messages.md "Ordering and timestamps").
+std::int64_t nowMillis()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}
+
 // Normalizes an alias to the resolver's canonical form: case-insensitive, 1-32
 // characters of a-z and 0-9 (api/AliasResolver.md). Throws on an invalid name so
 // a malformed query never reaches the resolver.
@@ -637,7 +647,7 @@ void Session::syncI2pMasterToSelf()
         {"type", "device.i2p-master"},
         {"id", toHex(randomBytes(16))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"i2pMaster", toBase64(i2pMaster_)},
     };
     const std::string innerText = inner.dump();
@@ -933,7 +943,7 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
         {"type", "contact.request"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"text", text},
         {"bootstrap",
             {
@@ -968,7 +978,7 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
         {"type", "text"},
         {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"text", text},
     };
     return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
@@ -1012,7 +1022,7 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
         {"type", "file"},
         {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"file",
             {
                 {"ptr", toBase64(Bytes(pointerJson.begin(), pointerJson.end()))},
@@ -1043,7 +1053,7 @@ void Session::sendInteractive(const std::string& peerFingerprint, const std::str
         {"type", "text"},
         {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"text", text},
         {"keyboard", keyboardToJson(keyboard)},
     };
@@ -1059,7 +1069,7 @@ void Session::sendCommand(const std::string& peerFingerprint, const std::string&
         {"type", "bot.command"},
         {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"command", command},
         {"args", args},
     };
@@ -1074,7 +1084,7 @@ void Session::sendCallback(
         {"type", "bot.callback"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"data", data},
         {"ref", refMessageId},
     };
@@ -1091,7 +1101,7 @@ void Session::sendEdit(const std::string& peerFingerprint, const std::string& re
         {"type", "edit"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"ref", refMessageId},
         {"text", text},
         {"keyboard", keyboardToJson(keyboard)},
@@ -1106,7 +1116,7 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
         {"type", "receipt"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"ref", refMessageId},
     };
     sendContent(peerFingerprint, std::move(inner));
@@ -1352,6 +1362,7 @@ std::vector<IncomingMessage> Session::sync()
             message.deliveryClass = entry.deliveryClass;
             message.fromFingerprint = body.at("from").get<std::string>();
             message.messageId = body.value("id", std::string());
+            message.sentAt = body.value("sentAt", static_cast<std::int64_t>(0));
             std::string type = body.value("type", std::string("text"));
 
             // Bootstrap may ride with any content type; apply it before dispatch
@@ -1603,7 +1614,7 @@ void Session::sendTokenRefill(const std::string& peerFingerprint)
         {"type", "token-refill"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"bootstrap", {{"replyTokens", issueTokenBatch()}}},
     };
     sendContent(peerFingerprint, std::move(inner));
@@ -1687,7 +1698,7 @@ void Session::sendCallSignal(
         {"type", type},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
     };
     for (const auto& field : extra.items()) {
         inner[field.key()] = field.value();
@@ -2069,7 +2080,7 @@ void Session::broadcastGroupPool(const std::string& groupId)
         {"type", "group.tokens"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"groupId", groupId},
         {"tokens", pool},
     };
@@ -2113,7 +2124,7 @@ std::string Session::createGroup(
             {"type", "group.invite"},
             {"id", toHex(randomBytes(8))},
             {"from", fingerprint()},
-            {"sentAt", nowSeconds()},
+            {"sentAt", nowMillis()},
             {"groupId", groupId},
             {"name", name},
             {"roster", roster},
@@ -2162,7 +2173,7 @@ void Session::sendGroupMessage(const std::string& groupId, const std::string& te
     Group& group = found->second;
     // One logical message id + timestamp shared across the fan-out.
     const std::string id = toHex(randomBytes(8));
-    const std::int64_t sentAt = nowSeconds();
+    const std::int64_t sentAt = nowMillis();
     // Authenticate the sender per message: a hybrid signature over the message's
     // identifying and content fields. The signed roster only attests membership,
     // so without this a member could put another member's fingerprint in `from`.
@@ -2220,7 +2231,7 @@ void Session::broadcastRoster(const std::string& groupId)
         {"type", "group.roster"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"groupId", groupId},
         {"roster", roster},
     };
@@ -2274,7 +2285,7 @@ void Session::addGroupMembers(
             {"type", "group.invite"},
             {"id", toHex(randomBytes(8))},
             {"from", fingerprint()},
-            {"sentAt", nowSeconds()},
+            {"sentAt", nowMillis()},
             {"groupId", groupId},
             {"name", group.name},
             {"roster", roster},
@@ -2331,7 +2342,7 @@ void Session::leaveGroup(const std::string& groupId)
         {"type", "group.leave"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
-        {"sentAt", nowSeconds()},
+        {"sentAt", nowMillis()},
         {"groupId", groupId},
     };
     for (const auto& [fp, member] : group.members) {

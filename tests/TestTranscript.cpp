@@ -148,6 +148,46 @@ int main(int argc, char** argv)
         }
     }
 
+    // Reordering by orderKey: a conversation is returned sorted by the sentAt-based
+    // sort position, not by insertion (arrival) order. Simulates an out-of-order
+    // burst plus a long-delayed arrival pinned at the end (docs-main Messages.md).
+    {
+        const QString rdb = QString::fromStdString((dir / "reorder.db").string());
+        TranscriptStore store;
+        CHECK(store.open("ro", rdb, ""));
+        struct In {
+            const char* text;
+            qint64 ts;
+            qint64 orderKey;
+        };
+        // Inserted in arrival order (ascending id); orderKey is the send position.
+        const In in[] = {
+            {"second", 2000, 2000},  // sent 2nd, arrived 1st
+            {"first", 1000, 1000},   // sent 1st, arrived 2nd (out of order)
+            {"third", 3000, 3000},   // sent 3rd, arrived 3rd
+            {"late", 500, 9000},     // sent long ago (ts 500), arrived late -> pinned last
+        };
+        for (const In& e : in) {
+            StoredMessage m;
+            m.peer = "dave";
+            m.type = "text";
+            m.text = QString::fromUtf8(e.text);
+            m.ts = e.ts;
+            m.orderKey = e.orderKey;
+            CHECK(store.append(m) > 0);
+        }
+        const QVector<StoredMessage> ordered = store.messagesFor("dave");
+        CHECK(ordered.size() == 4);
+        CHECK(ordered[0].text == "first");   // orderKey 1000
+        CHECK(ordered[1].text == "second");  // orderKey 2000
+        CHECK(ordered[2].text == "third");   // orderKey 3000
+        CHECK(ordered[3].text == "late");    // orderKey 9000: pinned at the end
+        CHECK(ordered[3].ts == 500);         // but still displays its own (old) sentAt
+        // lastTime / lastText reflect the newest by orderKey (the late arrival).
+        CHECK(store.lastTime("dave") == 500);
+        CHECK(store.lastText("dave") == "late");
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;

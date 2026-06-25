@@ -204,9 +204,23 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
 
 int ConversationModel::appendMessage(const StoredMessage& message)
 {
-    const int row = static_cast<int>(messages_.size());
+    // Insert keeping the list sorted by (orderKey, id). A local send and a late
+    // arrival both carry orderKey ~= now, so they land at the end; a message that
+    // was sent recently but arrived out of order (smaller orderKey) slots back
+    // into its place among the recent tail. Scanning from the end keeps the common
+    // append case O(1) (see docs-main Messages.md "Ordering and timestamps").
+    int row = static_cast<int>(messages_.size());
+    while (row > 0) {
+        const StoredMessage& prev = messages_[row - 1];
+        const bool prevComesAfter = prev.orderKey > message.orderKey
+            || (prev.orderKey == message.orderKey && prev.id > message.id);
+        if (!prevComesAfter) {
+            break;
+        }
+        --row;
+    }
     beginInsertRows({}, row, row);
-    messages_.push_back(message);
+    messages_.insert(row, message);
     endInsertRows();
     return row;
 }

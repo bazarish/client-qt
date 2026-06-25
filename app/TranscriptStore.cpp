@@ -52,9 +52,24 @@ void writeFileBytes(const QString& path, const Bytes& bytes)
 }
 
 // Column list shared by every full-row query, so the indices below stay aligned.
+// orderKey is appended last so the existing 0..16 indices are unchanged.
 const char* const kMessageColumns = "id, peer, outgoing, type, sender, protocolId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
-                                    " edited, ts, status";
+                                    " edited, ts, status, orderKey";
+
+// Orders a loaded window oldest-first by the sort position (orderKey), then id as
+// a stable tiebreak. Each window is a contiguous id-range, so this repairs an
+// out-of-order burst within the window; orderKey is near-monotonic with id, so a
+// burst straddling a page boundary is at most a hair off (see Messages.md).
+void sortByOrder(QVector<StoredMessage>& rows)
+{
+    std::sort(rows.begin(), rows.end(), [](const StoredMessage& a, const StoredMessage& b) {
+        if (a.orderKey != b.orderKey) {
+            return a.orderKey < b.orderKey;
+        }
+        return a.id < b.id;
+    });
+}
 
 // Reads one row produced by a SELECT over kMessageColumns into a StoredMessage.
 StoredMessage readMessageRow(const QSqlQuery& query)
@@ -77,6 +92,7 @@ StoredMessage readMessageRow(const QSqlQuery& query)
     m.edited = query.value(14).toInt() != 0;
     m.ts = query.value(15).toLongLong();
     m.status = query.value(16).toInt();
+    m.orderKey = query.value(17).toLongLong();
     return m;
 }
 
@@ -135,12 +151,22 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, sender TEXT, protocolId TEXT,"
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
-            " ts INTEGER, status INTEGER)")) {
+            " ts INTEGER, status INTEGER, orderKey INTEGER)")) {
         return false;
     }
     // Migrate a database created before attSrcPath existed: ALTER fails harmlessly
     // (duplicate column) on a schema that already has it, so its result is ignored.
     query.exec("ALTER TABLE messages ADD COLUMN attSrcPath TEXT");
+    // Migrate a pre-reordering database: when the orderKey column is newly added,
+    // every existing row has it NULL. Promote the old seconds-unit ts to
+    // milliseconds (new rows store ms) and seed orderKey from id, which preserves
+    // the old insertion order and sits below any real ms timestamp, so migrated
+    // history stays above newly received messages.
+    if (query.exec("ALTER TABLE messages ADD COLUMN orderKey INTEGER")) {
+        QSqlQuery migrate(db);
+        migrate.exec("UPDATE messages SET ts = ts * 1000 WHERE orderKey IS NULL");
+        migrate.exec("UPDATE messages SET orderKey = id WHERE orderKey IS NULL");
+    }
     ready_ = true;
     return true;
 }
@@ -166,8 +192,8 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, sender, protocolId, text, attName, attMime,"
-        " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -184,6 +210,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.edited ? 1 : 0);
     query.addBindValue(message.ts);
     query.addBindValue(message.status);
+    query.addBindValue(message.orderKey);
     if (!query.exec()) {
         return 0;
     }
@@ -216,6 +243,7 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
     while (query.next()) {
         result.push_back(readMessageRow(query));
     }
+    sortByOrder(result);
     return result;
 }
 
@@ -235,7 +263,7 @@ QVector<StoredMessage> TranscriptStore::latestMessages(const QString& peer, int 
     while (query.next()) {
         result.push_back(readMessageRow(query));
     }
-    std::reverse(result.begin(), result.end());
+    sortByOrder(result);
     return result;
 }
 
@@ -257,7 +285,7 @@ QVector<StoredMessage> TranscriptStore::olderMessages(
     while (query.next()) {
         result.push_back(readMessageRow(query));
     }
-    std::reverse(result.begin(), result.end());
+    sortByOrder(result);
     return result;
 }
 
@@ -279,6 +307,7 @@ QVector<StoredMessage> TranscriptStore::newerMessages(
     while (query.next()) {
         result.push_back(readMessageRow(query));
     }
+    sortByOrder(result);
     return result;
 }
 
@@ -421,7 +450,8 @@ void TranscriptStore::editContent(qint64 id, const QString& text, const QString&
 QString TranscriptStore::lastText(const QString& peer) const
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("SELECT text, type FROM messages WHERE peer = ? ORDER BY id DESC LIMIT 1");
+    query.prepare(
+        "SELECT text, type FROM messages WHERE peer = ? ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         const QString text = query.value(0).toString();
@@ -439,7 +469,8 @@ QString TranscriptStore::lastText(const QString& peer) const
 qint64 TranscriptStore::lastTime(const QString& peer) const
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("SELECT ts FROM messages WHERE peer = ? ORDER BY id DESC LIMIT 1");
+    query.prepare(
+        "SELECT ts FROM messages WHERE peer = ? ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         return query.value(0).toLongLong();
