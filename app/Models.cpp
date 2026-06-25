@@ -3,6 +3,8 @@
 
 #include "DeliveryStatus.hpp"
 
+#include <QDateTime>
+
 #include <algorithm>
 
 namespace bazarish::app {
@@ -179,6 +181,13 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case MsgIdRole: return m.id;
     case ErrorRole: return errorById_.value(m.id);
     case UploadProgressRole: return uploadProgressById_.value(m.id, -1.0);
+    // The local calendar day this message belongs to, as an ISO date string. The
+    // view groups messages into per-day sections off this role and renders a
+    // centered date separator at each change.
+    case DayRole:
+        return m.ts > 0
+            ? QDateTime::fromMSecsSinceEpoch(m.ts).date().toString(QStringLiteral("yyyy-MM-dd"))
+            : QString();
     default: return {};
     }
 }
@@ -190,7 +199,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
         {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {SenderRole, "sender"},
         {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"},
-        {UploadProgressRole, "uploadProgress"}};
+        {UploadProgressRole, "uploadProgress"}, {DayRole, "day"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
@@ -338,6 +347,20 @@ void ConversationModel::editById(qint64 id, const QString& text, const QString& 
             messages_[i].edited = true;
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx, {TextRole, KeyboardRole, EditedRole});
+            return;
+        }
+    }
+}
+
+void ConversationModel::removeById(qint64 id)
+{
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            beginRemoveRows({}, i, i);
+            messages_.removeAt(i);
+            endRemoveRows();
+            errorById_.remove(id);
+            uploadProgressById_.remove(id);
             return;
         }
     }

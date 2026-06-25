@@ -346,8 +346,19 @@ public:
     // (an empty keyboard removes any buttons). Both a bot updating its own
     // keyboard message on a callback and a user revising their own line use
     // this. A client applies it only to a message the sender actually sent.
-    void sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
-        const std::string& text, const InlineKeyboard& keyboard = {});
+    // Delivery is tracked like a normal send (onAcceptedByOwnServer / outAttemptId
+    // / return value), so the edited message's bubble can reflect the edit's own
+    // delivery status instead of the original's.
+    bool sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
+        const std::string& text, const InlineKeyboard& keyboard = {},
+        const std::function<void()>& onAcceptedByOwnServer = {},
+        std::string* outAttemptId = nullptr);
+
+    // Deletes a previously sent message for everyone (content type "delete"): the
+    // peer removes the message whose id is refMessageId from its transcript, with
+    // no tombstone left behind. Scoped on the receiver to a message the sender
+    // actually sent, exactly like an edit. Costs one delivery token.
+    void sendDelete(const std::string& peerFingerprint, const std::string& refMessageId);
 
     // Sends a delivery receipt (content type "receipt") acknowledging that we
     // received the message with id refMessageId. Costs one delivery token.

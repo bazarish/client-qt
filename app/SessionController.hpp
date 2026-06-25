@@ -45,7 +45,8 @@ public slots:
     void sendReceipt(const QString& peer, const QString& refId);
     void sendCallback(const QString& peer, const QString& data, const QString& ref);
     void sendCommand(const QString& peer, const QString& command, const QString& args);
-    void sendEdit(const QString& peer, const QString& refId, const QString& text);
+    void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
+    void sendDelete(const QString& peer, const QString& refId);
     void createGroup(const QString& name, const QStringList& memberFps);
     void sendGroupText(const QString& groupId, const QString& text, qint64 localId);
     void addGroupMembers(const QString& groupId, const QStringList& fps);
@@ -308,6 +309,12 @@ public:
     Q_INVOKABLE void beginEdit(qint64 localId, const QString& protocolId, const QString& text);
     Q_INVOKABLE void commitEdit(const QString& newText);
     Q_INVOKABLE void cancelEdit();
+    // Deletes a message with no trace. The local copy is always removed; for one's
+    // own one-to-one message (outgoing, protocolId set) the recipient is asked to
+    // remove its copy too. A received message is removed locally only.
+    Q_INVOKABLE void deleteMessage(qint64 localId, const QString& protocolId, bool outgoing);
+    // Copies arbitrary text (a whole message) to the system clipboard.
+    Q_INVOKABLE void copyText(const QString& text) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
     Q_INVOKABLE void addByFingerprint(const QString& fingerprint, const QString& intro);
@@ -373,7 +380,9 @@ signals:  // to worker
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
     void requestSendCommand(const QString& peer, const QString& command, const QString& args);
-    void requestSendEdit(const QString& peer, const QString& refId, const QString& text);
+    void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
+        const QString& text);
+    void requestSendDelete(const QString& peer, const QString& refId);
     void requestCreateGroup(const QString& name, const QStringList& memberFps);
     void requestSendGroupText(const QString& groupId, const QString& text, qint64 localId);
     void requestAddGroupMembers(const QString& groupId, const QStringList& fps);

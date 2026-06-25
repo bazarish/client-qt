@@ -11,6 +11,37 @@ Item {
     signal callRequested()
     signal videoCallRequested()
 
+    // The message awaiting delete confirmation (set when a bubble asks to delete).
+    property var pendingDeleteId: null
+    property string pendingDeleteProtocol: ""
+    property bool pendingDeleteOutgoing: false
+
+    // Humanises a "yyyy-MM-dd" day key into a date-separator label.
+    function formatDaySection(iso) {
+        if (!iso || iso.length < 10) {
+            return ""
+        }
+        const parts = iso.split("-")
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const diff = Math.round((today.getTime() - d.getTime()) / 86400000)
+        if (diff === 0) {
+            return "Today"
+        }
+        if (diff === 1) {
+            return "Yesterday"
+        }
+        return d.toLocaleDateString(Qt.locale(), "d MMMM yyyy")
+    }
+
+    function confirmDeleteMessage(msgId, protocolId, outgoing) {
+        root.pendingDeleteId = msgId
+        root.pendingDeleteProtocol = protocolId
+        root.pendingDeleteOutgoing = outgoing
+        deleteMessageDialog.open()
+    }
+
     // A message counts as read only on a genuine read: this view is open, the app
     // window is focused, and the message is within the visible scroll area. We ack
     // the newest incoming message at or before the bottom-most visible row.
@@ -67,6 +98,47 @@ Item {
             if (root.session) {
                 root.session.openConversationAtMessage(root.session.activePeer, messageId)
             }
+        }
+    }
+
+    // Confirms an irreversible message delete. For one's own one-to-one message it
+    // is removed at the recipient too (no trace); otherwise it is removed locally.
+    Dialog {
+        id: deleteMessageDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 360
+        readonly property bool forEveryone: root.pendingDeleteOutgoing && root.session
+            && !root.session.isGroup(root.session.activePeer)
+        footer: DialogButtons {
+            acceptText: "Delete"
+            danger: true
+            onAccepted: deleteMessageDialog.accept()
+            onRejected: deleteMessageDialog.reject()
+        }
+        onAccepted: {
+            if (root.session && root.pendingDeleteId !== null) {
+                root.session.deleteMessage(root.pendingDeleteId, root.pendingDeleteProtocol,
+                    root.pendingDeleteOutgoing)
+            }
+            root.pendingDeleteId = null
+        }
+        onRejected: root.pendingDeleteId = null
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        header: Label {
+            text: "Delete message"
+            color: Theme.neon
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        contentItem: Label {
+            text: deleteMessageDialog.forEveryone
+                ? "Delete this message for everyone? It is removed from the recipient too, "
+                    + "with no trace. This cannot be undone."
+                : "Delete this message from this device? This cannot be undone."
+            color: Theme.text
+            wrapMode: Text.Wrap
         }
     }
 
@@ -128,6 +200,36 @@ Item {
                 delegate: MessageBubble {
                     session: root.session
                     highlighted: ListView.view && ListView.view.highlightId === model.msgId
+                    onDeleteRequested: function(msgId, protocolId, outgoing) {
+                        root.confirmDeleteMessage(msgId, protocolId, outgoing)
+                    }
+                }
+
+                // Group messages by calendar day and show a centered date
+                // separator wherever the day changes (driven by the model's "day"
+                // role; the header text is humanised to Today / Yesterday / a date).
+                section.property: "day"
+                section.criteria: ViewSection.FullString
+                section.delegate: Item {
+                    id: sectionRoot
+                    required property string section
+                    width: messages.width
+                    height: 30
+                    Rectangle {
+                        anchors.centerIn: parent
+                        height: 20
+                        width: dayLabel.implicitWidth + 18
+                        radius: 10
+                        color: Theme.surface
+                        border.color: Theme.border
+                        Label {
+                            id: dayLabel
+                            anchors.centerIn: parent
+                            text: root.formatDaySection(sectionRoot.section)
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSmall
+                        }
+                    }
                 }
 
                 // Whether the view is pinned to the bottom and follows new messages;

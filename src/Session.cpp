@@ -1091,8 +1091,9 @@ void Session::sendCallback(
     sendContent(peerFingerprint, std::move(inner));
 }
 
-void Session::sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
-    const std::string& text, const InlineKeyboard& keyboard)
+bool Session::sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
+    const std::string& text, const InlineKeyboard& keyboard,
+    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId)
 {
     // An edit fully replaces the target's text and keyboard; the keyboard is
     // always carried (an empty array clears it) so the shape is unambiguous.
@@ -1105,6 +1106,19 @@ void Session::sendEdit(const std::string& peerFingerprint, const std::string& re
         {"ref", refMessageId},
         {"text", text},
         {"keyboard", keyboardToJson(keyboard)},
+    };
+    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+}
+
+void Session::sendDelete(const std::string& peerFingerprint, const std::string& refMessageId)
+{
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "delete"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"ref", refMessageId},
     };
     sendContent(peerFingerprint, std::move(inner));
 }
@@ -1428,6 +1442,11 @@ std::vector<IncomingMessage> Session::sync()
                 message.contentType = type;
                 message.refId = body.value("ref", std::string());
                 message.text = body.value("text", std::string());
+            } else if (type == "delete") {
+                // A delete-for-everyone of a message the sender previously sent:
+                // refId is the target message's id; the client drops it.
+                message.contentType = type;
+                message.refId = body.value("ref", std::string());
             } else if (type == "receipt") {
                 // A receipt: the recipient's client received one of our sent
                 // messages (the green state). Carries the acknowledged message id.

@@ -79,6 +79,8 @@ public:
     qint64 idForIncomingProtocol(const QString& protocolId, const QString& peer) const;
     // Replaces a message's text and keyboard and marks it edited.
     void editContent(qint64 id, const QString& text, const QString& keyboard);
+    // Permanently removes a message (delete with no trace).
+    void removeById(qint64 id);
     QVector<StoredMessage> messagesFor(const QString& peer) const;
     // Windowed reads for paging a large conversation: the newest `limit` rows,
     // the `limit` rows just older than beforeId, and the `limit` rows just newer

@@ -9,6 +9,9 @@ Item {
     property var session: null
     // Briefly true when a search jump lands on this message, to flash it.
     property bool highlighted: false
+    // Asks the view to confirm and delete this message (irreversible; for one's
+    // own one-to-one message it is removed at the recipient too).
+    signal deleteRequested(var msgId, string protocolId, bool outgoing)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
@@ -51,6 +54,9 @@ Item {
     // unsupported placeholder).
     readonly property bool canEdit: model.outgoing && model.type === "text"
         && !delegate.isAttachment && !delegate.isUnsupported
+    // The whole message body for "Copy all" (the file name for an attachment).
+    readonly property string fullText: delegate.isAttachment
+        ? (model.attName || "") : (model.text || "")
 
     // Transient "waiting for the bot" state set when a keyboard button is
     // tapped; cleared when the message's content changes (the reply edited it)
@@ -161,12 +167,20 @@ Item {
                 Layout.fillWidth: true
             }
 
-            // Plain text.
-            Label {
+            // Plain text. A read-only TextEdit (not a Label) so the user can
+            // select text with the mouse and copy it (Ctrl+C); "Copy all" in the
+            // context menu copies the whole message.
+            TextEdit {
+                id: bodyText
                 visible: !delegate.isAttachment && !delegate.isUnsupported && model.text.length > 0
                 text: model.text
                 color: Theme.text
-                wrapMode: Text.Wrap
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.Wrap
+                textFormat: TextEdit.PlainText
+                selectionColor: Theme.accent
+                selectedTextColor: Theme.bg
                 Layout.fillWidth: true
             }
 
@@ -245,9 +259,16 @@ Item {
                     font.italic: true
                 }
                 Label {
+                    id: timeLabel
                     text: model.time ? new Date(model.time).toLocaleTimeString(Qt.locale(), "hh:mm") : ""
                     color: Theme.textDim
                     font.pixelSize: 10
+                    // Hovering the time reveals the full date and time.
+                    HoverHandler { id: timeHover }
+                    ToolTip.visible: timeHover.hovered && model.time > 0
+                    ToolTip.text: model.time
+                        ? new Date(model.time).toLocaleString(Qt.locale(), "dddd, d MMMM yyyy, hh:mm:ss")
+                        : ""
                 }
                 Rectangle {
                     visible: model.outgoing
@@ -305,20 +326,32 @@ Item {
             }
         }
 
-        // Right-click or long-press one's own text message to edit it.
+        // Right-click or long-press a message to open its context menu (copy /
+        // edit own text / delete).
         TapHandler {
             acceptedButtons: Qt.RightButton
-            onTapped: if (delegate.canEdit) editMenu.popup()
+            onTapped: contextMenu.popup()
         }
         TapHandler {
             acceptedButtons: Qt.LeftButton
-            onLongPressed: if (delegate.canEdit) editMenu.popup()
+            onLongPressed: contextMenu.popup()
         }
         Menu {
-            id: editMenu
+            id: contextMenu
+            MenuItem {
+                text: "Copy all"
+                enabled: delegate.fullText.length > 0
+                onTriggered: delegate.session.copyText(delegate.fullText)
+            }
             MenuItem {
                 text: "Edit"
+                visible: delegate.canEdit
+                height: visible ? implicitHeight : 0
                 onTriggered: delegate.session.beginEdit(model.msgId, model.protocolId, model.text)
+            }
+            MenuItem {
+                text: "Delete"
+                onTriggered: delegate.deleteRequested(model.msgId, model.protocolId, model.outgoing)
             }
         }
     }

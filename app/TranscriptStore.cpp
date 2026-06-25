@@ -447,6 +447,16 @@ void TranscriptStore::editContent(qint64 id, const QString& text, const QString&
     }
 }
 
+void TranscriptStore::removeById(qint64 id)
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("DELETE FROM messages WHERE id = ?");
+    query.addBindValue(id);
+    if (query.exec()) {
+        flush();
+    }
+}
+
 QString TranscriptStore::lastText(const QString& peer) const
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));

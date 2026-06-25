@@ -80,7 +80,7 @@ public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
-        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole
+        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -111,6 +111,9 @@ public:
     void setUploadProgressForId(qint64 id, double fraction);
     // Replaces a message's text and keyboard in place and marks it edited.
     void editById(qint64 id, const QString& text, const QString& keyboard);
+    // Removes a message from the open window (delete with no trace). No-op if the
+    // id is not currently loaded.
+    void removeById(qint64 id);
     // True when the most recent message is one the local user sent. The view
     // uses this to always scroll an own message into view, while following an
     // incoming message only when the view was already pinned to the bottom.

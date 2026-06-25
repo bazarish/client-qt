@@ -7,8 +7,10 @@
 #include "QtVideoIo.hpp"
 #include "Session.hpp"
 
+#include <QClipboard>
 #include <QDateTime>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QMimeDatabase>
 #include <QRandomGenerator>
 #include <QTimer>
@@ -436,12 +438,45 @@ void SessionWorker::sendCommand(const QString& peer, const QString& command, con
     }
 }
 
-void SessionWorker::sendEdit(const QString& peer, const QString& refId, const QString& text)
+void SessionWorker::sendEdit(
+    const QString& peer, const QString& refId, qint64 localId, const QString& text)
 {
     try {
-        // A user edit replaces text only; the (empty) keyboard clears none here
-        // because user messages carry no keyboard.
-        session_->sendEdit(peer.toStdString(), refId.toStdString(), text.toStdString());
+        // A user edit replaces text only (the empty keyboard carries nothing, as
+        // user messages have none). It is delivery-tracked exactly like a fresh
+        // send so the edited bubble's status reflects the edit, not the original:
+        // grey on our server's accept, yellow on the recipient server's confirm,
+        // and reconciled later via the attempt id.
+        std::string attemptId;
+        const bool delivered = session_->sendEdit(peer.toStdString(), refId.toStdString(),
+            text.toStdString(), {},
+            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            &attemptId);
+        if (delivered) {
+            pendingSends_.erase(localId);
+            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
+        } else if (!attemptId.empty()) {
+            pendingSends_[localId] = attemptId;
+        }
+        emit sendResult(localId, true, {});
+    } catch (const std::exception& e) {
+        pendingSends_.erase(localId);
+        emit sendResult(localId, false, QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::sendDelete(const QString& peer, const QString& refId)
+{
+    try {
+        // Reclaim the externalized blob (if this message had one) before telling
+        // the peer to drop the message, so a deleted attachment leaves no trace.
+        try {
+            session_->unsend(refId.toStdString());
+        } catch (const std::exception&) {
+            // No blob recorded for this id (a plain text message), or the reclaim
+            // failed: the blob also reclaims via its TTL. Not fatal to the delete.
+        }
+        session_->sendDelete(peer.toStdString(), refId.toStdString());
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -762,6 +797,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
+    connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
     connect(this, &SessionController::requestCreateGroup, worker_, &SessionWorker::createGroup);
     connect(this, &SessionController::requestSendGroupText, worker_, &SessionWorker::sendGroupText);
     connect(this, &SessionController::requestAddGroupMembers, worker_,
@@ -1286,7 +1322,14 @@ void SessionController::commitEdit(const QString& newText)
         store_.editContent(editingLocalId_, trimmed, {});
         conversation_.editById(editingLocalId_, trimmed, {});
         contacts_.touch(activePeer_, {}, trimmed, nowMillis(), false);
-        emit requestSendEdit(activePeer_, editingProtocolId_, trimmed);
+        // The edited version starts its delivery afresh: reset the bubble's status
+        // to "sending" (grey) and clear any prior error, so it then advances on the
+        // edit's own delivery instead of showing the original message's state.
+        statusById_[editingLocalId_] = DeliveryStatus::Sending;
+        store_.updateStatus(editingLocalId_, DeliveryStatus::Sending);
+        conversation_.setStatusForId(editingLocalId_, DeliveryStatus::Sending);
+        conversation_.setErrorForId(editingLocalId_, {});
+        emit requestSendEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
     }
     cancelEdit();
 }
@@ -1301,6 +1344,34 @@ void SessionController::cancelEdit()
     editingProtocolId_.clear();
     editingText_.clear();
     emit editingChanged();
+}
+
+void SessionController::deleteMessage(qint64 localId, const QString& protocolId, bool outgoing)
+{
+    if (activePeer_.isEmpty() || localId == 0) {
+        return;
+    }
+    const bool isGroup = groupIds_.contains(activePeer_);
+    // Remove our own copy with no trace.
+    store_.removeById(localId);
+    conversation_.removeById(localId);
+    statusById_.remove(localId);
+    // Refresh the chat-list preview to whatever the new last message now is.
+    contacts_.touch(activePeer_, isGroup ? groupNames_.value(activePeer_) : QString(),
+        store_.lastText(activePeer_), store_.lastTime(activePeer_), false, isGroup);
+    // Ask the recipient to delete it too, but only for our own one-to-one message:
+    // a peer cannot be told to drop a message we received from them, and a group
+    // fan-out delete is out of scope - those stay local-only.
+    if (outgoing && !isGroup && !protocolId.isEmpty()) {
+        emit requestSendDelete(activePeer_, protocolId);
+    }
+}
+
+void SessionController::copyText(const QString& text) const
+{
+    if (QClipboard* const clipboard = QGuiApplication::clipboard()) {
+        clipboard->setText(text);
+    }
 }
 
 void SessionController::addByInvite(const QString& uri, const QString& intro)
@@ -1489,11 +1560,35 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             if (peer == activePeer_) {
                 conversation_.editById(localId, newText, newKeyboard);
             }
+            // If we had already read this message, the edit is read again the
+            // moment it lands in the open chat: re-acknowledge it so the sender's
+            // edited bubble can advance to delivered (green), the same way a fresh
+            // message does. (ref is the protocol id our copy is stored under.)
+            if (peer == activePeer_ && sendReceipts_
+                && localId <= lastReadAckedId_.value(peer, 0)) {
+                emit requestSendReceipt(peer, message.value("ref").toString());
+            }
             QString preview = newText;
             if (preview.isEmpty() && !newKeyboard.isEmpty()) {
                 preview = "[interactive]";
             }
             contacts_.touch(peer, peer, preview, nowMillis(), peer != activePeer_);
+        }
+        return;
+    }
+
+    // A delete-for-everyone of a message this peer previously sent us: remove it
+    // with no trace. Scoped to incoming-from-peer in the store, so a peer can only
+    // delete its own messages.
+    if (type == "delete") {
+        const qint64 localId
+            = store_.idForIncomingProtocol(message.value("ref").toString(), peer);
+        if (localId != 0) {
+            store_.removeById(localId);
+            if (peer == activePeer_) {
+                conversation_.removeById(localId);
+            }
+            contacts_.touch(peer, peer, store_.lastText(peer), store_.lastTime(peer), false);
         }
         return;
     }
