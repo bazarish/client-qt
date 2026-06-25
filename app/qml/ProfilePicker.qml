@@ -127,7 +127,7 @@ Item {
         title: "Unlock profile"
         onAccepted: { App.openProfile(root.pendingId, passField.text); root.closeIfSwitching() }
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        header: Label { text: "Unlock profile"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: "Unlock profile"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.accept(); onRejected: passDialog.reject() }
         contentItem: TextField {
             id: passField
@@ -150,8 +150,8 @@ Item {
         footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteDialog.accept(); onRejected: deleteDialog.reject() }
         onAccepted: App.deleteProfile(root.pendingDeleteId)
         // Destructive: brightest-neon outline, dark surface, light text.
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
-        header: Label { text: "Delete profile"; color: Theme.neonBright; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        header: Label { text: "Delete profile"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "Permanently delete \"" + root.pendingDeleteName + "\" and all its "
                 + "messages from this device? This cannot be undone."

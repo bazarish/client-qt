@@ -27,7 +27,7 @@ Item {
 
         Label {
             text: "New profile"
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: 24
             font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignHCenter
@@ -107,7 +107,7 @@ Item {
         onAccepted: App.importProfile(nameField.text.trim(), root.pendingBackupFile,
             backupPass.text, passField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        header: Label { text: "Backup password"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: "Backup password"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { onAccepted: backupPassDialog.accept(); onRejected: backupPassDialog.reject() }
         contentItem: TextField {
             id: backupPass

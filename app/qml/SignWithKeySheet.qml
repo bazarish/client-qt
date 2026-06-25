@@ -37,7 +37,7 @@ Popup {
             IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
             Label {
                 text: "Sign in with your key"
-                color: Theme.neon
+                color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true

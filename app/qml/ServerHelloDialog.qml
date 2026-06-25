@@ -30,7 +30,7 @@ Popup {
     height: Math.min(helloCol.implicitHeight + topPadding + bottomPadding,
         (Overlay.overlay ? Overlay.overlay.height : 600) - 32)
     padding: 18
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
+    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
 
     // Off-screen helper for copying a link to the system clipboard.
     TextEdit { id: clip; visible: false }
@@ -58,7 +58,7 @@ Popup {
                 Layout.fillWidth: true
                 Label {
                     text: "This server needs registration"
-                    color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+                    color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                     Layout.fillWidth: true; wrapMode: Text.Wrap
                 }
             }

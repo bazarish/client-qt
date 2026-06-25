@@ -71,7 +71,7 @@ Item {
                 onClicked: root.session.openConversation(model.fingerprint)
                 // The default highlight paints a solid near-white fill that breaks
                 // the dark look; mark the active chat with a white outline instead
-                // (the name turns green below), and keep a subtle hover tint only.
+                // (the name turns neon below), and keep a subtle hover tint only.
                 background: Rectangle {
                     color: chatRow.hovered ? Theme.surfaceAlt : "transparent"
                     radius: Theme.radiusSmall

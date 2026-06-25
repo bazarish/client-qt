@@ -30,7 +30,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
-            Label { text: "My invite"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: "My invite"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; onClicked: root.close() }
         }
         Label {

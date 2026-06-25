@@ -116,7 +116,7 @@ Item {
         modal: true
         onAccepted: if (root.unlockId.length > 0) App.openProfile(root.unlockId, unlockField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        header: Label { text: unlockDialog.title; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
+        header: Label { text: unlockDialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
         footer: DialogButtons { acceptText: "Unlock"; onAccepted: unlockDialog.accept(); onRejected: unlockDialog.reject() }
         contentItem: TextField {
             id: unlockField

@@ -26,7 +26,7 @@ Item {
 
         Label {
             text: "Connect to a server"
-            color: Theme.neon
+            color: Theme.green
             font.pixelSize: 24
             font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignHCenter

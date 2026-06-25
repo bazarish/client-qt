@@ -16,7 +16,7 @@ Button {
         radius: Theme.radiusSmall
         color: control.down ? Theme.border2 : (control.hovered ? Theme.surfaceAlt : Theme.surface)
         border.width: 1
-        border.color: control.hovered ? (control.danger ? Theme.danger : Theme.neon)
+        border.color: control.hovered ? (control.danger ? Theme.danger : Theme.green)
                                        : (control.danger ? Theme.danger : Theme.border)
         Behavior on color { ColorAnimation { duration: 120 } }
         Behavior on border.color { ColorAnimation { duration: 120 } }

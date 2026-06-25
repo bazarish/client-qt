@@ -22,24 +22,25 @@ QtObject {
     readonly property color textDim:   "#8b948c"  // secondary
     readonly property color textFaint: "#5e676a"  // tertiary / comments
 
-    // Neon - the brand's (darker) green, reserved here for emphasis:
-    // titles/headers and positive status (a good state). Everything else stays
-    // gray; the primary buttons are white (below), so this is the sole hue that
-    // draws the eye. Uses the brandbook's dim-phosphor green, not the bright one.
-    readonly property color neon:      "#1f7a14"
-    // The brightest brand phosphor green, reserved for exceptional or
-    // destructive dialogs that must be unmistakable (e.g. delete account) and
-    // for the active-account outline. Used sparingly - never as a fill on text.
-    readonly property color neonBright: "#39ff14"
+    // Green - the brand's dim-phosphor green (brandbook --bz-green-dim), the
+    // workhorse accent reserved for emphasis: titles/headers and positive status
+    // (a good state). Everything else stays gray; the primary buttons are white
+    // (below), so this is the main hue that draws the eye. Not the bright one.
+    readonly property color green:     "#1f7a14"
+    // Neon - the brightest brand phosphor green (brandbook --bz-green, the cursor
+    // accent). Reserved for the rare, must-be-unmistakable highlights: the active
+    // conversation/account name, and exceptional or destructive dialogs (e.g.
+    // delete account). Used sparingly - never as a fill on text.
+    readonly property color neon:      "#39ff14"
     // Accent - primary buttons / interactive emphasis are a near-white (the
     // formerly-neon buttons are now white); dark ink sits on the white fill.
     readonly property color accentInk: "#11151a"   // dark ink on a near-white fill
     readonly property color accent:    "#f2f4f2"
     readonly property color accentText: accentInk
 
-    // Status. success is the neon (a good state stands out); warn and danger keep
+    // Status. success is the green (a good state stands out); warn and danger keep
     // a hue because an alert must stand out.
-    readonly property color success:   neon
+    readonly property color success:   green
     readonly property color warn:      "#ffb454"
     readonly property color danger:    "#ff5b54"
 

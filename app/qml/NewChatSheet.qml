@@ -57,7 +57,7 @@ Popup {
             Layout.fillWidth: true
             // Back to the menu page, shown left of the title while on a sub-page.
             IconButton { text: "‹"; font.pixelSize: 26; visible: !root.busy && root.mode !== "menu"; onClicked: root.mode = "menu" }
-            Label { text: "New chat"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: "New chat"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; visible: !root.busy; onClicked: root.close() }
         }
 
@@ -94,7 +94,7 @@ Popup {
                 background: Rectangle {
                     radius: 10
                     color: bgBtn.down ? Theme.border2 : (bgBtn.hovered ? Theme.surfaceAlt : Theme.surface)
-                    border.color: bgBtn.hovered ? Theme.neon : Theme.border
+                    border.color: bgBtn.hovered ? Theme.green : Theme.border
                     border.width: 1
                 }
                 contentItem: Label { text: bgBtn.text; color: Theme.text; horizontalAlignment: Text.AlignHCenter; leftPadding: 14; rightPadding: 14 }
@@ -142,7 +142,7 @@ Popup {
                         radius: Theme.radiusSmall
                         color: menuItem.down ? Theme.border2
                             : (menuItem.hovered ? Theme.surfaceAlt : Theme.surface)
-                        border.color: menuItem.hovered ? Theme.neon : Theme.border
+                        border.color: menuItem.hovered ? Theme.green : Theme.border
                         border.width: 1
                     }
                 }

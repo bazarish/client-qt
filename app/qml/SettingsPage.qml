@@ -30,7 +30,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            Label { text: "Settings"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: "Settings"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { text: "✕"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -287,7 +287,7 @@ Popup {
         title: "Backup password"
         onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        header: Label { text: "Backup password"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: "Backup password"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { onAccepted: exportPassDialog.accept(); onRejected: exportPassDialog.reject() }
         contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260; onAccepted: exportPassDialog.accept()
             background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
@@ -309,7 +309,7 @@ Popup {
             IconButton { text: "‹"; font.pixelSize: 26; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
             Label {
                 text: "Server connection"
-                color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+                color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                 Layout.fillWidth: true; Layout.rightMargin: 14; topPadding: 14; bottomPadding: 14
             }
         }
@@ -350,8 +350,8 @@ Popup {
         }
         // Exceptional/destructive: brightest-neon outline so it is unmistakable,
         // dark surface with light text so it is actually readable.
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
-        header: Label { text: "Delete account"; color: Theme.neonBright; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        header: Label { text: "Delete account"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "Permanently delete this account and all its messages from this "
                 + "device? Make sure you have a backup if you might need it again. "
@@ -369,8 +369,8 @@ Popup {
         title: "Delete personal I2P key"
         footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteKeyDialog.accept(); onRejected: deleteKeyDialog.reject() }
         onAccepted: if (root.session) root.session.deletePersonalKey()
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neonBright; border.width: 2 }
-        header: Label { text: "Delete personal I2P key"; color: Theme.neonBright; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        header: Label { text: "Delete personal I2P key"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "The old key will be permanently deleted and cannot be recovered. "
                 + "You will fall back to the shared pool address; enabling a personal "
