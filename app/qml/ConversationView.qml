@@ -119,11 +119,40 @@ Item {
                 property bool paging: false
                 // Message id to flash after a search jump (-1 = none).
                 property var highlightId: -1
+                // Whether the view rests at the very bottom. Maintained from the
+                // handlers below (a direct binding to atYEnd does not re-evaluate
+                // reliably), and drives the jump-to-latest button's visibility.
+                property bool atBottom: true
 
                 function scrollToEnd() {
                     autoScrolling = true
                     positionViewAtEnd()
                     autoScrolling = false
+                }
+
+                // Reliably land on the newest message after a (re)load. A single
+                // positionViewAtEnd is unreliable until the freshly created
+                // delegates have been measured, so re-scroll for a few frames
+                // until the bottom is actually reached.
+                function pinToBottom() {
+                    pinTimer.ticks = 0
+                    scrollToEnd()
+                    pinTimer.restart()
+                }
+                Timer {
+                    id: pinTimer
+                    interval: 16
+                    repeat: true
+                    property int ticks: 0
+                    onTriggered: {
+                        messages.scrollToEnd()
+                        ticks += 1
+                        if (messages.atYEnd || ticks >= 12) {
+                            messages.stickToBottom = root.session ? root.session.atNewest : true
+                            messages.atBottom = messages.atYEnd
+                            stop()
+                        }
+                    }
                 }
 
                 function loadOlder() {
@@ -146,6 +175,7 @@ Item {
                 }
 
                 onContentYChanged: {
+                    atBottom = atYEnd  // updated even during a programmatic scroll
                     if (autoScrolling || !root.session) {
                         return
                     }
@@ -157,7 +187,12 @@ Item {
                     }
                 }
                 // Keep following the bottom while the last bubble's height settles.
-                onContentHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
+                onContentHeightChanged: {
+                    if (stickToBottom && !paging) {
+                        scrollToEnd()
+                    }
+                    atBottom = atYEnd  // content grew/shrank: re-check the bottom edge
+                }
 
                 Connections {
                     target: messages.model
@@ -174,17 +209,20 @@ Item {
                             Qt.callLater(messages.scrollToEnd)
                         }
                     }
-                    // Switching/reloading a conversation: show the latest, unless a
-                    // search jump positioned the window back in history.
+                    // Switching/reloading a conversation: land on the newest, unless
+                    // a search jump positioned the window back in history (handled by
+                    // onScrollToMessage).
                     function onModelReset() {
-                        messages.stickToBottom = root.session ? root.session.atNewest : true
-                        if (messages.stickToBottom) {
-                            Qt.callLater(messages.scrollToEnd)
+                        if (root.session && root.session.atNewest) {
+                            messages.stickToBottom = true
+                            messages.pinToBottom()
+                        } else {
+                            messages.stickToBottom = false
                         }
                     }
                 }
 
-                Component.onCompleted: scrollToEnd()
+                Component.onCompleted: pinToBottom()
             }
 
             // Jump-to-latest: shown whenever the view is not resting at the true
@@ -193,7 +231,7 @@ Item {
                 id: jumpButton
                 // Hidden once the view rests at the very bottom (so it never
                 // overlaps the latest messages); shown whenever scrolled up.
-                visible: messages.count > 0 && !messages.atYEnd
+                visible: messages.count > 0 && !messages.atBottom
                 hoverEnabled: true
                 // Semi-transparent at rest, fully opaque on hover.
                 opacity: jumpButton.hovered ? 1.0 : 0.45
