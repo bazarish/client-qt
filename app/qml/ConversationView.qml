@@ -190,9 +190,14 @@ Item {
             // Jump-to-latest: shown whenever the view is not resting at the true
             // bottom (scrolled up, or viewing older history after a search jump).
             RoundButton {
-                visible: messages.count > 0
-                    && root.session
-                    && (!root.session.atNewest || !messages.atYEnd)
+                id: jumpButton
+                // Hidden once the view rests at the very bottom (so it never
+                // overlaps the latest messages); shown whenever scrolled up.
+                visible: messages.count > 0 && !messages.atYEnd
+                hoverEnabled: true
+                // Semi-transparent at rest, fully opaque on hover.
+                opacity: jumpButton.hovered ? 1.0 : 0.45
+                Behavior on opacity { NumberAnimation { duration: 120 } }
                 text: "⌄"
                 width: 40
                 height: 40
