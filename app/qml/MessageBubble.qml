@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -359,7 +360,11 @@ Item {
     FileDialog {
         id: saveDialog
         fileMode: FileDialog.SaveFile
-        currentFile: "file:///" + model.attName
+        // Pre-fill the original file name and open in Downloads, so the user only
+        // picks where to save - no manual typing. (currentFile is deprecated in
+        // Qt6 and was ignored by the native dialog; selectedFile is honoured.)
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DownloadLocation)
+        selectedFile: saveDialog.currentFolder + "/" + model.attName
         onAccepted: delegate.session.saveAttachment(model.attRef, model.attKey, selectedFile)
     }
 }
