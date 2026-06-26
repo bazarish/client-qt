@@ -866,13 +866,13 @@ void SessionWorker::disablePersonalDest()
 }
 
 void SessionWorker::saveAttachment(
-    const QString& ref, const QString& key, const QString& destPath)
+    const QString& ref, const QString& key, const QString& destPath, qint64 token)
 {
     try {
         session_->saveAttachment(ref.toStdString(), key.toStdString(), destPath.toStdString());
-        emit actionOk("Saved.");
+        emit downloadFinished(token, true, {});
     } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+        emit downloadFinished(token, false, QString::fromUtf8(e.what()));
     }
 }
 
@@ -931,6 +931,8 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
     connect(this, &SessionController::requestSaveAttachment, worker_,
         &SessionWorker::saveAttachment);
+    // Forward the download outcome straight to QML (the save dialog filters by token).
+    connect(worker_, &SessionWorker::downloadFinished, this, &SessionController::downloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
     connect(this, &SessionController::requestGeneratePersonalKey, worker_,
@@ -1566,20 +1568,21 @@ void SessionController::saveAttachment(
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (!localPath.isEmpty()) {
-        emit requestSaveAttachment(ref, key, localPath);
+        emit requestSaveAttachment(ref, key, localPath, 0);
     }
 }
 
-void SessionController::saveAttachmentToFolder(
-    const QString& ref, const QString& key, const QString& folderUrl, const QString& fileName)
+void SessionController::saveAttachmentToFolder(const QString& ref, const QString& key,
+    const QString& folderUrl, const QString& fileName, qint64 token)
 {
     const QString dir = QUrl(folderUrl).toLocalFile();
     if (dir.isEmpty() || fileName.isEmpty()) {
+        emit downloadFinished(token, false, QStringLiteral("Choose a folder and a file name."));
         return;
     }
     // QDir::filePath joins the chosen directory and the original name safely,
     // regardless of separators or spaces in the name.
-    emit requestSaveAttachment(ref, key, QDir(dir).filePath(fileName));
+    emit requestSaveAttachment(ref, key, QDir(dir).filePath(fileName), token);
 }
 
 void SessionController::exportProfile(const QString& fileUrl, const QString& password)

@@ -164,6 +164,7 @@ if(Qt6_FOUND)
             app/qml/SearchPopup.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
+            app/qml/SaveAttachmentDialog.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml

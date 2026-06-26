@@ -65,7 +65,7 @@ public slots:
     // Signs a portal/third-party login challenge with this profile's key. Local
     // only - no server is contacted - so it works before a server is connected.
     void signLogin(const QString& challenge);
-    void saveAttachment(const QString& ref, const QString& key, const QString& destPath);
+    void saveAttachment(const QString& ref, const QString& key, const QString& destPath, qint64 token);
     void exportProfile(const QString& path, const QString& password);
     // Per-user I2P destination: set up the master (generate or load a .dat),
     // turn the paid option on/off, and report the current status.
@@ -103,6 +103,9 @@ signals:
     void sendResult(qint64 localId, bool ok, const QString& error);
     // Upload progress for an outgoing file (bytes sent so far, total bytes).
     void uploadProgress(qint64 localId, qint64 sent, qint64 total);
+    // An attachment download/save finished (token identifies the message): ok is
+    // false with an error string on failure.
+    void downloadFinished(qint64 token, bool ok, const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     // A contact request was sent (add-by-invite/username/fingerprint succeeded):
@@ -353,7 +356,7 @@ public:
     // original file name, so the user only picks the directory. Robust where the
     // native Save dialog will not pre-fill a suggested file name.
     Q_INVOKABLE void saveAttachmentToFolder(const QString& ref, const QString& key,
-        const QString& folderUrl, const QString& fileName);
+        const QString& folderUrl, const QString& fileName, qint64 token);
     Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     // Per-user I2P destination controls (drive the worker thread).
@@ -400,6 +403,9 @@ signals:
     void loginSigned(const QString& blob);
     // A failed file's saved source is gone: the UI should offer to pick a file.
     void resendFilePickRequested();
+    // An attachment download/save finished (token identifies the message): drives
+    // the save dialog's progress / error UI.
+    void downloadFinished(qint64 token, bool ok, const QString& error);
     // Forwarded onboarding info for the hello dialog (unregistered-key connect).
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
@@ -428,7 +434,8 @@ signals:  // to worker
     void requestAddByFingerprint(const QString& fingerprint, const QString& intro);
     void requestInviteSig();
     void requestSignLoginSig(const QString& challenge);
-    void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath);
+    void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
+        qint64 token);
     void requestExport(const QString& path, const QString& password);
     void requestOpen(const QString& dir, const QString& passphrase);
     void requestSetSync(bool on);

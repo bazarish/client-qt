@@ -152,15 +152,14 @@ Item {
                 Button {
                     visible: !model.outgoing
                     text: "Save"
-                    // Pick a destination folder; the file is saved under the
-                    // message's own name (the native Save dialog will not reliably
-                    // pre-fill a suggested name, so the user only chooses where).
+                    // Opens the in-app save dialog (editable name + folder + live
+                    // download progress / error), seeded from this message.
                     onClicked: {
-                        var dir = StandardPaths.writableLocation(StandardPaths.DownloadLocation)
-                        if (("" + dir).length === 0) {
-                            dir = StandardPaths.writableLocation(StandardPaths.HomeLocation)
-                        }
-                        saveDialog.currentFolder = dir
+                        saveDialog.attRef = model.attRef
+                        saveDialog.attKey = model.attKey
+                        saveDialog.defaultName = model.attName
+                        saveDialog.fileSize = model.attSize
+                        saveDialog.token = model.msgId
                         saveDialog.open()
                     }
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
@@ -367,13 +366,10 @@ Item {
         }
     }
 
-    // A directory picker: the attachment is saved into the chosen folder under
-    // the message's original file name (joined in C++ by saveAttachmentToFolder),
-    // so the user only chooses where. The title shows the name being saved.
-    FolderDialog {
+    // The in-app save dialog: editable file name (pre-filled), folder chooser,
+    // and live download progress / error. Seeded by the Save button above.
+    SaveAttachmentDialog {
         id: saveDialog
-        title: "Save \"" + (model.attName || "file") + "\" to folder"
-        onAccepted: delegate.session.saveAttachmentToFolder(
-            model.attRef, model.attKey, selectedFolder, model.attName)
+        session: delegate.session
     }
 }
