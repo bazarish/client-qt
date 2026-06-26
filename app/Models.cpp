@@ -185,6 +185,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case DownloadReceivedRole: return downloadReceivedById_.value(m.id, 0);
     case DownloadTotalRole: return downloadTotalById_.value(m.id, 0);
     case DownloadErrorRole: return downloadErrorById_.value(m.id);
+    case SavedPathRole: return m.savedPath;
     // The local calendar day this message belongs to, as an ISO date string. The
     // view groups messages into per-day sections off this role and renders a
     // centered date separator at each change.
@@ -205,7 +206,8 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"},
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
-        {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"}};
+        {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
+        {SavedPathRole, "savedPath"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
@@ -376,6 +378,18 @@ void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& e
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx,
                 {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
+            return;
+        }
+    }
+}
+
+void ConversationModel::setSavedPathForId(qint64 id, const QString& path)
+{
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            messages_[i].savedPath = path;
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {SavedPathRole});
             return;
         }
     }

@@ -55,7 +55,7 @@ void writeFileBytes(const QString& path, const Bytes& bytes)
 // orderKey is appended last so the existing 0..16 indices are unchanged.
 const char* const kMessageColumns = "id, peer, outgoing, type, sender, protocolId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
-                                    " edited, ts, status, orderKey";
+                                    " edited, ts, status, orderKey, savedPath";
 
 // Orders a loaded window oldest-first by the sort position (orderKey), then id as
 // a stable tiebreak. Each window is a contiguous id-range, so this repairs an
@@ -93,6 +93,7 @@ StoredMessage readMessageRow(const QSqlQuery& query)
     m.ts = query.value(15).toLongLong();
     m.status = query.value(16).toInt();
     m.orderKey = query.value(17).toLongLong();
+    m.savedPath = query.value(18).toString();
     return m;
 }
 
@@ -151,12 +152,14 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, sender TEXT, protocolId TEXT,"
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
-            " ts INTEGER, status INTEGER, orderKey INTEGER)")) {
+            " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT)")) {
         return false;
     }
     // Migrate a database created before attSrcPath existed: ALTER fails harmlessly
     // (duplicate column) on a schema that already has it, so its result is ignored.
     query.exec("ALTER TABLE messages ADD COLUMN attSrcPath TEXT");
+    // Migrate a database created before savedPath existed (same harmless ALTER).
+    query.exec("ALTER TABLE messages ADD COLUMN savedPath TEXT");
     // Migrate a pre-reordering database: when the orderKey column is newly added,
     // every existing row has it NULL. Promote the old seconds-unit ts to
     // milliseconds (new rows store ms) and seed orderKey from id, which preserves
@@ -403,6 +406,17 @@ QString TranscriptStore::sourcePathFor(qint64 id) const
         return query.value(0).toString();
     }
     return {};
+}
+
+void TranscriptStore::setSavedPath(qint64 id, const QString& path)
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("UPDATE messages SET savedPath = ? WHERE id = ?");
+    query.addBindValue(path);
+    query.addBindValue(id);
+    if (query.exec()) {
+        flush();
+    }
 }
 
 qint64 TranscriptStore::idForProtocol(const QString& protocolId) const

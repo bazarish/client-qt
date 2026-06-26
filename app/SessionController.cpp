@@ -12,6 +12,7 @@
 #include <QByteArray>
 #include <QClipboard>
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -1592,8 +1593,11 @@ void SessionController::saveAttachmentToFolder(const QString& ref, const QString
     // before the first byte-progress callback arrives.
     conversation_.setDownloadProgressForId(token, 0, 0);
     // QDir::filePath joins the chosen directory and the original name safely,
-    // regardless of separators or spaces in the name.
-    emit requestSaveAttachment(ref, key, QDir(dir).filePath(fileName), token);
+    // regardless of separators or spaces in the name. Remember it so a successful
+    // download can record where it landed (for the later "Open" action).
+    const QString dest = QDir(dir).filePath(fileName);
+    pendingSavePath_.insert(token, dest);
+    emit requestSaveAttachment(ref, key, dest, token);
 }
 
 void SessionController::exportProfile(const QString& fileUrl, const QString& password)
@@ -1892,6 +1896,30 @@ void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64
 void SessionController::onDownloadFinished(qint64 token, bool ok, const QString& error)
 {
     conversation_.finishDownloadForId(token, ok, error);
+    const QString path = pendingSavePath_.take(token);
+    if (ok && !path.isEmpty()) {
+        // Remember where it landed, in the store and the open view, so the bubble
+        // can offer to open it (falling back to re-save when the file is gone).
+        store_.setSavedPath(token, path);
+        conversation_.setSavedPathForId(token, path);
+    }
+}
+
+bool SessionController::fileExists(const QString& path) const
+{
+    return !path.isEmpty() && QFileInfo::exists(path);
+}
+
+void SessionController::openContainingFolder(const QString& path) const
+{
+    if (path.isEmpty()) {
+        return;
+    }
+    // Open the directory holding the saved file in the system file manager.
+    const QString dir = QFileInfo(path).absolutePath();
+    if (!dir.isEmpty()) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+    }
 }
 
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)

@@ -25,6 +25,7 @@ struct StoredMessage {
     QString attRef;        // content-store id
     QString attKey;        // base64 content key
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
+    QString savedPath;     // where an incoming attachment was last saved (local path)
     QString keyboard;      // inline-keyboard JSON (empty when none)
     bool edited = false;   // true once the message was edited in place
     qint64 ts = 0;         // unix milliseconds - the message's sentAt (display time)
@@ -71,6 +72,9 @@ public:
         const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus);
     // The local source path recorded for an outgoing attachment (empty if none).
     QString sourcePathFor(qint64 id) const;
+    // Records where an incoming attachment was saved, so the UI can later offer to
+    // open it (and fall back to re-saving if the file is gone).
+    void setSavedPath(qint64 id, const QString& path);
     // The row id of an outgoing message with this protocol id (0 if none).
     qint64 idForProtocol(const QString& protocolId) const;
     // The row id of an incoming message from peer with this protocol id, the

@@ -211,12 +211,21 @@ Item {
                     wrapMode: Text.Wrap
                 }
                 Button {
+                    id: saveButton
                     visible: !model.outgoing && !model.downloading
-                    text: "Save"
-                    // Opens the in-app save dialog (editable name + folder); on Save
-                    // it closes and the download runs in the background, with progress
-                    // shown above.
+                    // Once saved and the file is still on disk, offer to open its
+                    // folder; otherwise (never saved, or the file is gone) offer Save.
+                    readonly property bool savedExists: model.savedPath.length > 0
+                        && delegate.session && delegate.session.fileExists(model.savedPath)
+                    text: savedExists ? "Open" : "Save"
                     onClicked: {
+                        // Re-check on click so a file deleted since the last load
+                        // falls back to re-saving rather than opening a stale path.
+                        if (model.savedPath.length > 0 && delegate.session
+                                && delegate.session.fileExists(model.savedPath)) {
+                            delegate.session.openContainingFolder(model.savedPath)
+                            return
+                        }
                         saveDialog.attRef = model.attRef
                         saveDialog.attKey = model.attKey
                         saveDialog.defaultName = model.attName
@@ -224,7 +233,7 @@ Item {
                         saveDialog.open()
                     }
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                    contentItem: Label { text: parent.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
+                    contentItem: Label { text: saveButton.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
                 }
             }
 

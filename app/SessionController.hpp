@@ -360,6 +360,10 @@ public:
     // native Save dialog will not pre-fill a suggested file name.
     Q_INVOKABLE void saveAttachmentToFolder(const QString& ref, const QString& key,
         const QString& folderUrl, const QString& fileName, qint64 token);
+    // Whether a saved attachment still exists on disk (drives Save vs Open).
+    Q_INVOKABLE bool fileExists(const QString& path) const;
+    // Opens the folder containing a saved attachment in the system file manager.
+    Q_INVOKABLE void openContainingFolder(const QString& path) const;
     Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     // Per-user I2P destination controls (drive the worker thread).
@@ -535,6 +539,9 @@ private:
     // Per-contact local display names (fingerprint -> name), kept in sync from the
     // worker. Drives peerName() and the chat-list labels.
     QHash<QString, QString> contactNames_;
+    // Destination chosen for an in-flight attachment save (message id -> path),
+    // recorded as the saved location once the download succeeds.
+    QHash<qint64, QString> pendingSavePath_;
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart
     // falls back to the store default.

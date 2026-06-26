@@ -81,7 +81,7 @@ public:
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
         SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
-        DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole
+        DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -116,6 +116,9 @@ public:
     // Marks a download finished: ok clears the progress; otherwise records an
     // inline error and clears the progress. Session-only.
     void finishDownloadForId(qint64 id, bool ok, const QString& error);
+    // Records where an incoming attachment was saved, so the bubble can offer to
+    // open it instead of re-saving.
+    void setSavedPathForId(qint64 id, const QString& path);
     // Replaces a message's text and keyboard in place and marks it edited.
     void editById(qint64 id, const QString& text, const QString& keyboard);
     // Removes a message from the open window (delete with no trace). No-op if the
