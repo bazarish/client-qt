@@ -191,6 +191,93 @@ RangedGetFn makeI2pRangedGet(bazarish::i2p::Router& router, std::string host,
     };
 }
 
+// Streams a blob download straight into `sink`, resuming a dropped I2P stream
+// from the current offset, and reports byte progress as it goes. Mirrors
+// runResume but reads the body off the stream in chunks (so the UI sees real
+// bytes received / total) instead of buffering each attempt whole in memory.
+void streamResumeToSink(bazarish::i2p::Router& router, const std::string& host,
+    const std::string& path, const bazarish::i2p::Privacy privacy, FileSink& sink,
+    const UploadProgressFn& onProgress)
+{
+    constexpr int kMaxStalledAttempts = 5;
+    bool haveTotal = false;
+    std::uint64_t total = 0;
+    int stalled = 0;
+    while (!haveTotal || sink.size() < total) {
+        const std::uint64_t before = sink.size();
+        try {
+            // A fresh throwaway destination per attempt (unlinkability).
+            auto endpoint = router.createEndpoint(bazarish::i2p::EndpointConfig{
+                bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
+                bazarish::i2p::kDefaultTunnelQuantity, false});
+            auto stream = endpoint->connect(host, std::chrono::seconds(60));
+            if (!stream) {
+                throw std::runtime_error("i2p blob request: cannot reach " + host);
+            }
+            std::map<std::string, std::string> headers;
+            if (before > 0) {
+                headers["Range"] = "bytes=" + std::to_string(before) + "-";
+            }
+            const std::string request = buildI2pHttpRequest("GET", host, path, headers, 0);
+            stream->writeAll(request.data(), request.size());
+
+            I2pHttpHead head = readI2pHttpHead(*stream);
+            const Bytes leftover(head.leftover.begin(), head.leftover.end());
+            if (head.status == 200) {
+                // The store ignored the Range and served the whole object: rewrite.
+                total = headerUint64(head.headers, "content-length", 0);
+                haveTotal = total > 0;
+                sink.replace(leftover);
+            } else if (head.status == 206) {
+                total = contentRangeTotal(head.headers);
+                if (total == 0) {
+                    throw std::runtime_error("blob store returned 206 without a total length");
+                }
+                haveTotal = true;
+                sink.append(leftover);
+            } else {
+                throw std::runtime_error(
+                    "blob download failed: status " + std::to_string(head.status));
+            }
+            if (onProgress && total > 0) {
+                onProgress(sink.size(), total);
+            }
+            std::array<char, 65536> buffer{};
+            for (;;) {
+                const std::size_t got = stream->readSome(buffer.data(), buffer.size());
+                if (got == 0) {
+                    break;
+                }
+                sink.append(Bytes(buffer.data(), buffer.data() + got));
+                if (onProgress && total > 0) {
+                    onProgress(sink.size(), total);
+                }
+            }
+            // A 200 without a Content-Length: the bytes just drained to EOF are the
+            // whole object, so adopt that as the total (else the loop never ends).
+            if (!haveTotal) {
+                total = sink.size();
+                haveTotal = true;
+                if (onProgress && total > 0) {
+                    onProgress(sink.size(), total);
+                }
+            }
+        } catch (const std::exception&) {
+            if (++stalled >= kMaxStalledAttempts) {
+                throw;
+            }
+            continue;
+        }
+        if (sink.size() <= before) {
+            if (++stalled >= kMaxStalledAttempts) {
+                throw std::runtime_error("blob download stalled with no progress");
+            }
+        } else {
+            stalled = 0;
+        }
+    }
+}
+
 }  // namespace
 
 void splitBlobUrl(const std::string& blobUrl, std::string& host, std::string& path)
@@ -277,12 +364,13 @@ Bytes fetchBlob(bazarish::i2p::Router& router, const BlobPointer& pointer,
     return blob;
 }
 
+// The buffered file assembler (whole-body ranged GETs): assembles the ciphertext
+// from a RangedGetFn, verifies its digest and decrypts it. Retained so the resume
+// / verify / decrypt logic stays unit-testable without a live I2P transport; the
+// production download path (fetchBlobToFile) streams the body for byte progress.
 void assembleBlobToFile(
     const RangedGetFn& get, const BlobPointer& pointer, const std::filesystem::path& destPath)
 {
-    // Stream the ciphertext to a temp file, verify its digest, then decrypt it
-    // file-to-file into destPath. Neither the ciphertext nor the cleartext is
-    // ever held whole in memory. The temp file is removed on every exit path.
     const std::filesystem::path tempPath = destPath.string() + ".part";
     try {
         FileSink sink(tempPath);
@@ -290,6 +378,36 @@ void assembleBlobToFile(
             get, [&sink]() { return sink.size(); },
             [&sink](Bytes&& body) { sink.replace(body); },
             [&sink](const Bytes& body) { sink.append(body); });
+        sink.finish();
+        if (toHex(sha256File(tempPath)) != pointer.sha256) {
+            throw std::runtime_error("blob digest mismatch");
+        }
+        cms::unsealWithPasswordToFile(tempPath, destPath, pointer.fileKey);
+    } catch (...) {
+        std::error_code ec;
+        std::filesystem::remove(tempPath, ec);
+        throw;
+    }
+    std::error_code ec;
+    std::filesystem::remove(tempPath, ec);
+}
+
+void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
+    const std::filesystem::path& destPath, const bazarish::i2p::Privacy privacy,
+    const UploadProgressFn& onProgress)
+{
+    std::string host;
+    std::string path;
+    splitBlobUrl(pointer.blobUrl, host, path);
+
+    // Stream the ciphertext to a temp file (reporting real byte progress), verify
+    // its digest, then decrypt it file-to-file into destPath. Neither the
+    // ciphertext nor the cleartext is ever held whole in memory; the temp file is
+    // removed on every exit path.
+    const std::filesystem::path tempPath = destPath.string() + ".part";
+    try {
+        FileSink sink(tempPath);
+        streamResumeToSink(router, host, path, privacy, sink, onProgress);
         sink.finish();
 
         // Verify-then-decrypt: a tampered or truncated transfer is rejected before
@@ -305,16 +423,6 @@ void assembleBlobToFile(
     }
     std::error_code ec;
     std::filesystem::remove(tempPath, ec);
-}
-
-void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
-    const std::filesystem::path& destPath, const bazarish::i2p::Privacy privacy)
-{
-    std::string host;
-    std::string path;
-    splitBlobUrl(pointer.blobUrl, host, path);
-
-    assembleBlobToFile(makeI2pRangedGet(router, host, path, privacy), pointer, destPath);
 
     // Confirm receipt (anonymous, blobId only) so the store can reclaim it. Best
     // effort: the blob is already on disk; a failed confirm just leaves TTL to it.

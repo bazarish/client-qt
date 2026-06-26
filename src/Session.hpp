@@ -419,7 +419,7 @@ public:
     // and decrypts it to dest. ref is the message's base64 sealed blob pointer
     // (keyB64 is unused - the key rides inside the pointer).
     void saveAttachment(const std::string& ref, const std::string& keyB64,
-        const std::filesystem::path& dest);
+        const std::filesystem::path& dest, const UploadProgressFn& onProgress = {});
 
     // Sender unsend: deletes the blob this client externalized for a message it
     // sent (gated by the stored delete-token), over I2P. Best effort - the blob
@@ -713,7 +713,8 @@ private:
     // Same, but streams the blob straight to dest so a large attachment never
     // sits whole in memory. The direct path is streamed; the proxy fallback
     // (clients with no I2P transport) still buffers the ciphertext through the facade.
-    void fetchLargeBlobToFile(const BlobPointer& pointer, const std::filesystem::path& dest);
+    void fetchLargeBlobToFile(const BlobPointer& pointer, const std::filesystem::path& dest,
+        const UploadProgressFn& onProgress = {});
     // Deletes an externalized blob (unsend): direct over a transient I2P destination,
     // falling back to the own-server I2P proxy.
     void deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken);

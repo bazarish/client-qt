@@ -80,7 +80,8 @@ public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
-        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole
+        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
+        DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -109,6 +110,12 @@ public:
     // Sets the upload progress fraction (0..1) for an outgoing file in flight;
     // a negative value (the default) means "no determinate progress". Session-only.
     void setUploadProgressForId(qint64 id, double fraction);
+    // Download progress for an incoming attachment being saved: received/total
+    // ciphertext bytes (total > 0 means a download is in flight). Session-only.
+    void setDownloadProgressForId(qint64 id, qint64 received, qint64 total);
+    // Marks a download finished: ok clears the progress; otherwise records an
+    // inline error and clears the progress. Session-only.
+    void finishDownloadForId(qint64 id, bool ok, const QString& error);
     // Replaces a message's text and keyboard in place and marks it edited.
     void editById(qint64 id, const QString& text, const QString& keyboard);
     // Removes a message from the open window (delete with no trace). No-op if the
@@ -123,6 +130,9 @@ private:
     QVector<StoredMessage> messages_;
     QHash<qint64, QString> errorById_;
     QHash<qint64, double> uploadProgressById_;
+    QHash<qint64, qint64> downloadReceivedById_;
+    QHash<qint64, qint64> downloadTotalById_;
+    QHash<qint64, QString> downloadErrorById_;
 };
 
 // One account in the unified account list. Covers every on-disk profile, with

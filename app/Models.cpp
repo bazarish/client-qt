@@ -181,6 +181,10 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case MsgIdRole: return m.id;
     case ErrorRole: return errorById_.value(m.id);
     case UploadProgressRole: return uploadProgressById_.value(m.id, -1.0);
+    case DownloadingRole: return downloadReceivedById_.contains(m.id);
+    case DownloadReceivedRole: return downloadReceivedById_.value(m.id, 0);
+    case DownloadTotalRole: return downloadTotalById_.value(m.id, 0);
+    case DownloadErrorRole: return downloadErrorById_.value(m.id);
     // The local calendar day this message belongs to, as an ISO date string. The
     // view groups messages into per-day sections off this role and renders a
     // centered date separator at each change.
@@ -199,7 +203,9 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
         {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {SenderRole, "sender"},
         {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"},
-        {UploadProgressRole, "uploadProgress"}, {DayRole, "day"}};
+        {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
+        {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
+        {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
@@ -208,6 +214,9 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
     messages_ = std::move(messages);
     errorById_.clear();
     uploadProgressById_.clear();
+    downloadReceivedById_.clear();
+    downloadTotalById_.clear();
+    downloadErrorById_.clear();
     endResetModel();
 }
 
@@ -338,6 +347,40 @@ void ConversationModel::setUploadProgressForId(qint64 id, double fraction)
     }
 }
 
+void ConversationModel::setDownloadProgressForId(qint64 id, qint64 received, qint64 total)
+{
+    downloadReceivedById_.insert(id, received);
+    downloadTotalById_.insert(id, total);
+    downloadErrorById_.remove(id);
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx,
+                {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
+            return;
+        }
+    }
+}
+
+void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& error)
+{
+    downloadReceivedById_.remove(id);
+    downloadTotalById_.remove(id);
+    if (ok || error.isEmpty()) {
+        downloadErrorById_.remove(id);
+    } else {
+        downloadErrorById_.insert(id, error);
+    }
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx,
+                {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
+            return;
+        }
+    }
+}
+
 void ConversationModel::editById(qint64 id, const QString& text, const QString& keyboard)
 {
     for (int i = 0; i < messages_.size(); ++i) {
@@ -361,6 +404,9 @@ void ConversationModel::removeById(qint64 id)
             endRemoveRows();
             errorById_.remove(id);
             uploadProgressById_.remove(id);
+            downloadReceivedById_.remove(id);
+            downloadTotalById_.remove(id);
+            downloadErrorById_.remove(id);
             return;
         }
     }

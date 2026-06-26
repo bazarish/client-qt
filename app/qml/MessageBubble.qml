@@ -16,6 +16,18 @@ Item {
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
+    // Human-readable byte count for the download progress line.
+    function humanSize(n) {
+        if (!n || n <= 0) {
+            return "0 B"
+        }
+        const u = ["B", "KB", "MB", "GB"]
+        var v = n
+        var i = 0
+        while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
+        return (i === 0 ? v : v.toFixed(1)) + " " + u[i]
+    }
+
     // An attachment card is shown both for an incoming message (which carries a
     // content-store ref) and for one's own outgoing file (which has the type set
     // locally before the upload finishes, so the ref is not there yet).
@@ -149,16 +161,65 @@ Item {
                         font.pixelSize: Theme.fontSmall
                     }
                 }
+                // Download progress for an incoming attachment being saved: a real
+                // bytes received / total bar with a percentage (the I2P stream is
+                // read in chunks). Indeterminate only briefly, before the first
+                // byte arrives.
+                ColumnLayout {
+                    visible: model.downloading
+                    Layout.fillWidth: true
+                    spacing: 2
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        ProgressBar {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 4
+                            from: 0
+                            to: 1
+                            indeterminate: model.downloadTotal <= 0
+                            value: model.downloadTotal > 0
+                                ? model.downloadReceived / model.downloadTotal : 0
+                        }
+                        Label {
+                            text: model.downloadTotal > 0
+                                ? Math.round(model.downloadReceived / model.downloadTotal * 100) + "%"
+                                : ""
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSmall
+                        }
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        text: model.downloadTotal > 0
+                            ? (delegate.humanSize(model.downloadReceived) + " / "
+                                + delegate.humanSize(model.downloadTotal))
+                            : "Connecting over I2P…"
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        elide: Text.ElideRight
+                    }
+                }
+                // A failed save: the reason, inline. The Save button reappears so
+                // the user can retry.
+                Label {
+                    visible: model.downloadError.length > 0
+                    Layout.fillWidth: true
+                    text: "Save failed: " + model.downloadError
+                    color: Theme.danger
+                    font.pixelSize: Theme.fontSmall
+                    wrapMode: Text.Wrap
+                }
                 Button {
-                    visible: !model.outgoing
+                    visible: !model.outgoing && !model.downloading
                     text: "Save"
-                    // Opens the in-app save dialog (editable name + folder + live
-                    // download progress / error), seeded from this message.
+                    // Opens the in-app save dialog (editable name + folder); on Save
+                    // it closes and the download runs in the background, with progress
+                    // shown above.
                     onClicked: {
                         saveDialog.attRef = model.attRef
                         saveDialog.attKey = model.attKey
                         saveDialog.defaultName = model.attName
-                        saveDialog.fileSize = model.attSize
                         saveDialog.token = model.msgId
                         saveDialog.open()
                     }

@@ -869,7 +869,11 @@ void SessionWorker::saveAttachment(
     const QString& ref, const QString& key, const QString& destPath, qint64 token)
 {
     try {
-        session_->saveAttachment(ref.toStdString(), key.toStdString(), destPath.toStdString());
+        session_->saveAttachment(ref.toStdString(), key.toStdString(), destPath.toStdString(),
+            [this, token](std::uint64_t received, std::uint64_t total) {
+                emit downloadProgress(
+                    token, static_cast<qint64>(received), static_cast<qint64>(total));
+            });
         emit downloadFinished(token, true, {});
     } catch (const std::exception& e) {
         emit downloadFinished(token, false, QString::fromUtf8(e.what()));
@@ -931,8 +935,11 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
     connect(this, &SessionController::requestSaveAttachment, worker_,
         &SessionWorker::saveAttachment);
-    // Forward the download outcome straight to QML (the save dialog filters by token).
-    connect(worker_, &SessionWorker::downloadFinished, this, &SessionController::downloadFinished);
+    // Download progress / outcome land on the message via the conversation model.
+    connect(worker_, &SessionWorker::downloadProgress, this,
+        &SessionController::onDownloadProgress);
+    connect(worker_, &SessionWorker::downloadFinished, this,
+        &SessionController::onDownloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
     connect(this, &SessionController::requestGeneratePersonalKey, worker_,
@@ -1577,9 +1584,13 @@ void SessionController::saveAttachmentToFolder(const QString& ref, const QString
 {
     const QString dir = QUrl(folderUrl).toLocalFile();
     if (dir.isEmpty() || fileName.isEmpty()) {
-        emit downloadFinished(token, false, QStringLiteral("Choose a folder and a file name."));
+        conversation_.finishDownloadForId(
+            token, false, QStringLiteral("Choose a folder and a file name."));
         return;
     }
+    // Mark the message as downloading at once, so the bubble shows activity even
+    // before the first byte-progress callback arrives.
+    conversation_.setDownloadProgressForId(token, 0, 0);
     // QDir::filePath joins the chosen directory and the original name safely,
     // regardless of separators or spaces in the name.
     emit requestSaveAttachment(ref, key, QDir(dir).filePath(fileName), token);
@@ -1871,6 +1882,16 @@ void SessionController::onUploadProgress(qint64 localId, qint64 sent, qint64 tot
 {
     const double fraction = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : 0.0;
     conversation_.setUploadProgressForId(localId, fraction);
+}
+
+void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64 total)
+{
+    conversation_.setDownloadProgressForId(token, received, total);
+}
+
+void SessionController::onDownloadFinished(qint64 token, bool ok, const QString& error)
+{
+    conversation_.finishDownloadForId(token, ok, error);
 }
 
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)

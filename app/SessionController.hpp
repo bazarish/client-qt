@@ -103,6 +103,9 @@ signals:
     void sendResult(qint64 localId, bool ok, const QString& error);
     // Upload progress for an outgoing file (bytes sent so far, total bytes).
     void uploadProgress(qint64 localId, qint64 sent, qint64 total);
+    // Download progress for an incoming attachment being saved (token = message
+    // id): received/total ciphertext bytes.
+    void downloadProgress(qint64 token, qint64 received, qint64 total);
     // An attachment download/save finished (token identifies the message): ok is
     // false with an error string on failure.
     void downloadFinished(qint64 token, bool ok, const QString& error);
@@ -403,9 +406,6 @@ signals:
     void loginSigned(const QString& blob);
     // A failed file's saved source is gone: the UI should offer to pick a file.
     void resendFilePickRequested();
-    // An attachment download/save finished (token identifies the message): drives
-    // the save dialog's progress / error UI.
-    void downloadFinished(qint64 token, bool ok, const QString& error);
     // Forwarded onboarding info for the hello dialog (unregistered-key connect).
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
@@ -460,6 +460,8 @@ private slots:
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onSendProgress(qint64 localId, int state);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
+    void onDownloadProgress(qint64 token, qint64 received, qint64 total);
+    void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);
     void onSyncReachable(bool ok);

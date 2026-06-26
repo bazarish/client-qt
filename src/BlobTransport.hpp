@@ -104,8 +104,12 @@ Bytes fetchBlob(bazarish::i2p::Router& router, const BlobPointer& pointer,
 // never held whole in memory on the recipient. Verifies the digest before
 // decrypting (a tampered or truncated transfer is rejected) and confirms
 // receipt. Throws on a fetch error or an integrity failure.
+// onProgress, when set, is called with (received, total) ciphertext bytes as the
+// stream arrives, so the recipient can show a real download progress bar.
 void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
-    const std::filesystem::path& destPath, bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax);
+    const std::filesystem::path& destPath,
+    bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax,
+    const UploadProgressFn& onProgress = {});
 
 // Fetches a blob through the user's own server (the proxy-fetch fallback for
 // clients with no I2P transport of their own): the server fetches the b33 ciphertext over

@@ -1346,8 +1346,8 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
     sendContent(peerFingerprint, std::move(inner));
 }
 
-void Session::saveAttachment(
-    const std::string& ref, const std::string& keyB64, const fs::path& dest)
+void Session::saveAttachment(const std::string& ref, const std::string& keyB64,
+    const fs::path& dest, const UploadProgressFn& onProgress)
 {
     (void)keyB64;  // the decryption key now travels inside the pointer
     // ref is the base64 sealed blob pointer; fetch the ciphertext over I2P,
@@ -1355,7 +1355,7 @@ void Session::saveAttachment(
     const Bytes pointerBytes = fromBase64(ref);
     const BlobPointer pointer
         = blobPointerFromJson(nlohmann::json::parse(pointerBytes.begin(), pointerBytes.end()));
-    fetchLargeBlobToFile(pointer, dest);
+    fetchLargeBlobToFile(pointer, dest, onProgress);
 }
 
 bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
@@ -1468,12 +1468,13 @@ Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
     }
 }
 
-void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& dest)
+void Session::fetchLargeBlobToFile(
+    const BlobPointer& pointer, const fs::path& dest, const UploadProgressFn& onProgress)
 {
     try {
         // Direct over a fresh transient I2P destination, streamed to disk (preferred
         // - our server is never involved and the file never sits whole in RAM).
-        fetchBlobToFile(i2pRouter(), pointer, dest, blobFetchPrivacy_);
+        fetchBlobToFile(i2pRouter(), pointer, dest, blobFetchPrivacy_, onProgress);
     } catch (const std::exception&) {
         // No I2P transport of our own (or the direct fetch failed): the own-server proxy
         // relays the whole ciphertext through the facade (buffered fallback).
