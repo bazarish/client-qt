@@ -12,6 +12,7 @@
 #include <QByteArray>
 #include <QClipboard>
 #include <QDateTime>
+#include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QImage>
@@ -1567,6 +1568,18 @@ void SessionController::saveAttachment(
     if (!localPath.isEmpty()) {
         emit requestSaveAttachment(ref, key, localPath);
     }
+}
+
+void SessionController::saveAttachmentToFolder(
+    const QString& ref, const QString& key, const QString& folderUrl, const QString& fileName)
+{
+    const QString dir = QUrl(folderUrl).toLocalFile();
+    if (dir.isEmpty() || fileName.isEmpty()) {
+        return;
+    }
+    // QDir::filePath joins the chosen directory and the original name safely,
+    // regardless of separators or spaces in the name.
+    emit requestSaveAttachment(ref, key, QDir(dir).filePath(fileName));
 }
 
 void SessionController::exportProfile(const QString& fileUrl, const QString& password)

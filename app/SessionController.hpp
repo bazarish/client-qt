@@ -349,6 +349,11 @@ public:
     // needed); the result arrives via loginSigned(). The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void saveAttachment(const QString& ref, const QString& key, const QString& fileUrl);
+    // Saves a received attachment into a chosen folder under the message's
+    // original file name, so the user only picks the directory. Robust where the
+    // native Save dialog will not pre-fill a suggested file name.
+    Q_INVOKABLE void saveAttachmentToFolder(const QString& ref, const QString& key,
+        const QString& folderUrl, const QString& fileName);
     Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     // Per-user I2P destination controls (drive the worker thread).

@@ -152,17 +152,15 @@ Item {
                 Button {
                     visible: !model.outgoing
                     text: "Save"
-                    // Set the suggested folder + the message's file name imperatively
-                    // right before opening, so the native dialog shows the name
-                    // pre-filled and the user only picks the directory. Bindings here
-                    // would fight the dialog's own folder/name state.
+                    // Pick a destination folder; the file is saved under the
+                    // message's own name (the native Save dialog will not reliably
+                    // pre-fill a suggested name, so the user only chooses where).
                     onClicked: {
                         var dir = StandardPaths.writableLocation(StandardPaths.DownloadLocation)
                         if (("" + dir).length === 0) {
                             dir = StandardPaths.writableLocation(StandardPaths.HomeLocation)
                         }
                         saveDialog.currentFolder = dir
-                        saveDialog.selectedFile = dir + "/" + model.attName
                         saveDialog.open()
                     }
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
@@ -369,11 +367,13 @@ Item {
         }
     }
 
-    // The folder and the suggested file name are set imperatively by the Save
-    // button just before open() (no bindings, which would fight the dialog).
-    FileDialog {
+    // A directory picker: the attachment is saved into the chosen folder under
+    // the message's original file name (joined in C++ by saveAttachmentToFolder),
+    // so the user only chooses where. The title shows the name being saved.
+    FolderDialog {
         id: saveDialog
-        fileMode: FileDialog.SaveFile
-        onAccepted: delegate.session.saveAttachment(model.attRef, model.attKey, selectedFile)
+        title: "Save \"" + (model.attName || "file") + "\" to folder"
+        onAccepted: delegate.session.saveAttachmentToFolder(
+            model.attRef, model.attKey, selectedFolder, model.attName)
     }
 }
