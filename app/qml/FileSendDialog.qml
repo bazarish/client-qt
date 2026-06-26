@@ -7,11 +7,19 @@ import Bazarish
 // blob lives on the store. A TTL is always a backstop; an optional download
 // count deletes the blob the moment that many recipients have fetched it
 // (whichever comes first). Then it hands the choice to session.sendFile().
+//
+// Styled to the app's dialog language (Settings / New Chat): a dark surface with
+// hairline borders, selectable chips that mark the choice with a neon outline,
+// and the shared DialogButtons footer - no default-styled inputs.
 Dialog {
     id: root
     property var session: null
     // The picked file (a file:// URL). Set this, then open().
     property url fileUrl: ""
+
+    // Selected TTL (index into ttlOptions) and the download-count choice.
+    property int ttlIndex: 2          // 1 week
+    property bool limitDownloads: false
 
     readonly property string fileName: {
         const s = decodeURIComponent("" + root.fileUrl)
@@ -48,8 +56,9 @@ Dialog {
 
     onAccepted: {
         if (root.session && ("" + root.fileUrl).length > 0) {
-            const secs = root.ttlOptions[ttlBox.currentIndex].secs
-            root.session.sendFile(root.fileUrl, secs, countCheck.checked ? countSpin.value : 0)
+            const secs = root.ttlOptions[root.ttlIndex].secs
+            const count = root.limitDownloads ? (parseInt(countField.text) || 1) : 0
+            root.session.sendFile(root.fileUrl, secs, count)
         }
         root.fileUrl = ""
     }
@@ -60,45 +69,95 @@ Dialog {
 
         Label {
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
             Layout.topMargin: 4
             text: "📎  " + root.fileName
             color: Theme.text
             elide: Text.ElideMiddle
         }
 
+        // TTL: a 2x2 grid of selectable chips (the active one carries a neon outline).
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
-            spacing: 4
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            spacing: 6
             Label { text: "Auto-delete after:"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-            ComboBox {
-                id: ttlBox
+            GridLayout {
                 Layout.fillWidth: true
-                currentIndex: 2  // 1 week
-                model: root.ttlOptions.map(function(o) { return o.label })
+                columns: 2
+                rowSpacing: 8
+                columnSpacing: 8
+                Repeater {
+                    model: root.ttlOptions
+                    delegate: Rectangle {
+                        required property int index
+                        required property var modelData
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 38
+                        radius: Theme.radiusSmall
+                        readonly property bool selected: root.ttlIndex === index
+                        color: selected ? Theme.surfaceAlt : Theme.surface
+                        border.color: selected ? Theme.neon : Theme.border
+                        border.width: 1
+                        Label {
+                            anchors.centerIn: parent
+                            text: modelData.label
+                            color: parent.selected ? Theme.text : Theme.textDim
+                        }
+                        TapHandler { onTapped: root.ttlIndex = index }
+                    }
+                }
             }
         }
 
+        // Optional download cap: a Settings-style toggle plus a FormField-style count.
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
-            Layout.bottomMargin: 8
-            spacing: 4
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Layout.bottomMargin: 10
+            spacing: 8
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 8
-                CheckBox { id: countCheck; text: "Delete after downloads" }
-                Item { Layout.fillWidth: true }
-                SpinBox {
-                    id: countSpin
-                    enabled: countCheck.checked
-                    from: 1
-                    to: 999
-                    value: 1
+                spacing: 10
+                Label {
+                    Layout.fillWidth: true
+                    text: "Delete after downloads"
+                    color: Theme.text
+                    verticalAlignment: Text.AlignVCenter
+                }
+                Switch {
+                    checked: root.limitDownloads
+                    onToggled: root.limitDownloads = checked
+                }
+            }
+            RowLayout {
+                visible: root.limitDownloads
+                Layout.fillWidth: true
+                spacing: 10
+                Label {
+                    Layout.fillWidth: true
+                    text: "Number of downloads:"
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                    verticalAlignment: Text.AlignVCenter
+                }
+                TextField {
+                    id: countField
+                    Layout.preferredWidth: 72
+                    text: "1"
+                    horizontalAlignment: Text.AlignHCenter
+                    color: Theme.text
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    validator: IntValidator { bottom: 1; top: 999 }
+                    selectByMouse: true
+                    background: Rectangle {
+                        radius: 8
+                        color: Theme.surface
+                        border.color: countField.activeFocus ? Theme.accent : Theme.border
+                    }
                 }
             }
             Label {
