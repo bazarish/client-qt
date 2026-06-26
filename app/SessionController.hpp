@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QString>
 #include <QThread>
+#include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -355,15 +356,19 @@ public:
     // needed); the result arrives via loginSigned(). The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void saveAttachment(const QString& ref, const QString& key, const QString& fileUrl);
-    // Saves a received attachment into a chosen folder under the message's
-    // original file name, so the user only picks the directory. Robust where the
-    // native Save dialog will not pre-fill a suggested file name.
-    Q_INVOKABLE void saveAttachmentToFolder(const QString& ref, const QString& key,
-        const QString& folderUrl, const QString& fileName, qint64 token);
+    // Saves a received attachment to the file the user picked in the native Save
+    // dialog (which already resolved any name conflict), reporting byte progress
+    // and the outcome back onto the message identified by token.
+    Q_INVOKABLE void saveAttachmentToFile(const QString& ref, const QString& key,
+        const QString& fileUrl, qint64 token);
+    // A suggested save location (the Downloads folder joined with fileName) as a
+    // file URL, used to pre-fill the native Save dialog's name and folder.
+    Q_INVOKABLE QUrl defaultSaveUrl(const QString& fileName) const;
     // Whether a saved attachment still exists on disk (drives Save vs Open).
     Q_INVOKABLE bool fileExists(const QString& path) const;
-    // Opens the folder containing a saved attachment in the system file manager.
-    Q_INVOKABLE void openContainingFolder(const QString& path) const;
+    // Reveals a saved attachment in the system file manager with the file itself
+    // selected (falling back to opening its folder).
+    Q_INVOKABLE void showInFolder(const QString& path) const;
     Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     // Per-user I2P destination controls (drive the worker thread).

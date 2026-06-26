@@ -19,8 +19,15 @@
 #include <QImage>
 #include <QMimeDatabase>
 #include <QRandomGenerator>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QUrl>
+
+#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QDBusReply>
+#endif
 
 #include <algorithm>
 #include <ctime>
@@ -1580,24 +1587,32 @@ void SessionController::saveAttachment(
     }
 }
 
-void SessionController::saveAttachmentToFolder(const QString& ref, const QString& key,
-    const QString& folderUrl, const QString& fileName, qint64 token)
+void SessionController::saveAttachmentToFile(const QString& ref, const QString& key,
+    const QString& fileUrl, qint64 token)
 {
-    const QString dir = QUrl(folderUrl).toLocalFile();
-    if (dir.isEmpty() || fileName.isEmpty()) {
+    const QString dest = QUrl(fileUrl).toLocalFile();
+    if (dest.isEmpty()) {
         conversation_.finishDownloadForId(
-            token, false, QStringLiteral("Choose a folder and a file name."));
+            token, false, QStringLiteral("Choose where to save the file."));
         return;
     }
     // Mark the message as downloading at once, so the bubble shows activity even
     // before the first byte-progress callback arrives.
     conversation_.setDownloadProgressForId(token, 0, 0);
-    // QDir::filePath joins the chosen directory and the original name safely,
-    // regardless of separators or spaces in the name. Remember it so a successful
-    // download can record where it landed (for the later "Open" action).
-    const QString dest = QDir(dir).filePath(fileName);
+    // Remember the destination so a successful download can record where it landed
+    // (for the later "Open" action).
     pendingSavePath_.insert(token, dest);
     emit requestSaveAttachment(ref, key, dest, token);
+}
+
+QUrl SessionController::defaultSaveUrl(const QString& fileName) const
+{
+    QString dir = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    if (dir.isEmpty()) {
+        dir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    }
+    const QString name = fileName.isEmpty() ? QStringLiteral("file") : fileName;
+    return QUrl::fromLocalFile(QDir(dir).filePath(name));
 }
 
 void SessionController::exportProfile(const QString& fileUrl, const QString& password)
@@ -1895,8 +1910,20 @@ void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64
 
 void SessionController::onDownloadFinished(qint64 token, bool ok, const QString& error)
 {
-    conversation_.finishDownloadForId(token, ok, error);
     const QString path = pendingSavePath_.take(token);
+    // A 404/410 means the blob has aged out of the store (its TTL or download
+    // count is spent) and will never come back. Record that permanently so the
+    // bubble shows "Not found" with no Save button, even after a restart, instead
+    // of a transient retryable error.
+    const bool notFound = !ok
+        && (error.contains(QStringLiteral("status 404")) || error.contains(QStringLiteral("status 410")));
+    if (notFound) {
+        store_.setBlobGone(token, true);
+        conversation_.setBlobGoneForId(token, true);
+        conversation_.finishDownloadForId(token, false, QString());
+        return;
+    }
+    conversation_.finishDownloadForId(token, ok, error);
     if (ok && !path.isEmpty()) {
         // Remember where it landed, in the store and the open view, so the bubble
         // can offer to open it (falling back to re-save when the file is gone).
@@ -1910,13 +1937,31 @@ bool SessionController::fileExists(const QString& path) const
     return !path.isEmpty() && QFileInfo::exists(path);
 }
 
-void SessionController::openContainingFolder(const QString& path) const
+void SessionController::showInFolder(const QString& path) const
 {
     if (path.isEmpty()) {
         return;
     }
-    // Open the directory holding the saved file in the system file manager.
-    const QString dir = QFileInfo(path).absolutePath();
+    const QFileInfo info(path);
+#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
+    // Ask the desktop's file manager to reveal the file with it selected, via the
+    // freedesktop.org FileManager1 D-Bus interface (Nautilus, Dolphin, Nemo, ...).
+    if (info.exists()) {
+        QDBusInterface fm(QStringLiteral("org.freedesktop.FileManager1"),
+            QStringLiteral("/org/freedesktop/FileManager1"),
+            QStringLiteral("org.freedesktop.FileManager1"), QDBusConnection::sessionBus());
+        if (fm.isValid()) {
+            const QStringList uris{QUrl::fromLocalFile(info.absoluteFilePath()).toString()};
+            const QDBusReply<void> reply = fm.call(QStringLiteral("ShowItems"), uris, QString());
+            if (reply.isValid()) {
+                return;
+            }
+        }
+    }
+#endif
+    // Fallback (no D-Bus file manager, or the call failed): open the containing
+    // directory without a selection.
+    const QString dir = info.absolutePath();
     if (!dir.isEmpty()) {
         QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
     }

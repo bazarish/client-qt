@@ -26,6 +26,8 @@ struct StoredMessage {
     QString attKey;        // base64 content key
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
     QString savedPath;     // where an incoming attachment was last saved (local path)
+    bool blobGone = false; // incoming attachment whose blob is gone from the store
+                           // (download returned 404/410); shows "Not found", no Save
     QString keyboard;      // inline-keyboard JSON (empty when none)
     bool edited = false;   // true once the message was edited in place
     qint64 ts = 0;         // unix milliseconds - the message's sentAt (display time)
@@ -75,6 +77,10 @@ public:
     // Records where an incoming attachment was saved, so the UI can later offer to
     // open it (and fall back to re-saving if the file is gone).
     void setSavedPath(qint64 id, const QString& path);
+    // Marks an incoming attachment whose blob is no longer on the store (the
+    // download returned 404/410): the bubble then shows "Not found" with no Save,
+    // a state that survives a restart.
+    void setBlobGone(qint64 id, bool gone);
     // The row id of an outgoing message with this protocol id (0 if none).
     qint64 idForProtocol(const QString& protocolId) const;
     // The row id of an incoming message from peer with this protocol id, the

@@ -210,26 +210,44 @@ Item {
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
                 }
+                // The blob aged out of the store (404/410): a permanent,
+                // non-retryable state (persisted across restarts), so the Save
+                // button is dropped and this stands in its place.
+                Label {
+                    visible: model.blobGone
+                    Layout.fillWidth: true
+                    text: "Not found"
+                    color: Theme.danger
+                    font.pixelSize: Theme.fontSmall
+                    font.weight: Font.Medium
+                }
                 Button {
                     id: saveButton
-                    visible: !model.outgoing && !model.downloading
-                    // Once saved and the file is still on disk, offer to open its
-                    // folder; otherwise (never saved, or the file is gone) offer Save.
+                    visible: !model.outgoing && !model.downloading && !model.blobGone
+                    // Once saved and the file is still on disk, offer to open it;
+                    // otherwise (never saved, or the file is gone) offer Save.
                     readonly property bool savedExists: model.savedPath.length > 0
                         && delegate.session && delegate.session.fileExists(model.savedPath)
                     text: savedExists ? "Open" : "Save"
                     onClicked: {
                         // Re-check on click so a file deleted since the last load
-                        // falls back to re-saving rather than opening a stale path.
+                        // falls back to re-saving rather than revealing a stale path.
                         if (model.savedPath.length > 0 && delegate.session
                                 && delegate.session.fileExists(model.savedPath)) {
-                            delegate.session.openContainingFolder(model.savedPath)
+                            delegate.session.showInFolder(model.savedPath)
                             return
                         }
+                        // Snapshot the attachment onto the shared dialog and seed the
+                        // native picker with the message's file name in Downloads.
                         saveDialog.attRef = model.attRef
                         saveDialog.attKey = model.attKey
-                        saveDialog.defaultName = model.attName
                         saveDialog.token = model.msgId
+                        var d = StandardPaths.writableLocation(StandardPaths.DownloadLocation)
+                        if (("" + d).length === 0) {
+                            d = StandardPaths.writableLocation(StandardPaths.HomeLocation)
+                        }
+                        saveDialog.currentFolder = d
+                        saveDialog.selectedFile = delegate.session.defaultSaveUrl(model.attName)
                         saveDialog.open()
                     }
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
@@ -436,10 +454,23 @@ Item {
         }
     }
 
-    // The in-app save dialog: editable file name (pre-filled), folder chooser,
-    // and live download progress / error. Seeded by the Save button above.
-    SaveAttachmentDialog {
+    // Native Save dialog: the OS file picker pre-filled with the message's file
+    // name, so it resolves any name conflict itself. On accept the download runs in
+    // the background with its byte progress shown on this bubble. attRef/attKey/token
+    // are snapshotted on open so a recycled delegate cannot misroute the result.
+    FileDialog {
         id: saveDialog
-        session: delegate.session
+        property string attRef: ""
+        property string attKey: ""
+        property var token: 0
+        title: "Save file"
+        fileMode: FileDialog.SaveFile
+        onAccepted: {
+            if (delegate.session) {
+                delegate.session.saveAttachmentToFile(
+                    saveDialog.attRef, saveDialog.attKey, "" + saveDialog.selectedFile,
+                    saveDialog.token)
+            }
+        }
     }
 }

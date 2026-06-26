@@ -48,7 +48,10 @@ Rectangle {
             if (root.session.editing) {
                 input.text = root.session.editingText
                 input.forceActiveFocus()
-                input.selectAll()
+                // Place the caret at the end without selecting the prefilled text,
+                // so the first keystroke edits rather than replacing the message.
+                input.cursorPosition = input.length
+                input.deselect()
             } else {
                 input.text = ""
             }

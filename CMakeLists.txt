@@ -91,6 +91,12 @@ find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Sql Multimedia QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
 
+    # Optional: revealing a saved file selected in the system file manager uses the
+    # freedesktop.org FileManager1 D-Bus interface on Linux. Found separately (not a
+    # required component) so a system without the DBus dev config still builds the
+    # GUI; the code falls back to opening the containing folder when it is absent.
+    find_package(Qt6 COMPONENTS DBus QUIET)
+
     # Direct SQLite calls (serialize/deserialize) seal the transcript at rest;
     # this is the same libsqlite3 Qt's QSQLITE driver links.
     find_library(SQLITE3_LIBRARY NAMES sqlite3 REQUIRED)
@@ -123,6 +129,13 @@ if(Qt6_FOUND)
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Sql Qt6::Multimedia)
     target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
+
+    # Reveal-in-file-manager (FileManager1 over D-Bus) when the optional module is
+    # present; otherwise the code path is compiled out and falls back gracefully.
+    if(TARGET Qt6::DBus)
+        target_link_libraries(bazarish-app PRIVATE Qt6::DBus)
+        target_compile_definitions(bazarish-app PRIVATE BAZARISH_HAVE_QTDBUS)
+    endif()
 
     # Bundle the brand font (Roboto Mono, static Latin cuts) so the terminal/neon
     # look renders identically regardless of what is installed; non-Latin text
@@ -164,7 +177,6 @@ if(Qt6_FOUND)
             app/qml/SearchPopup.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
-            app/qml/SaveAttachmentDialog.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml

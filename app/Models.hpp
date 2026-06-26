@@ -81,7 +81,8 @@ public:
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
         SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
-        DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole
+        DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
+        BlobGoneRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -119,6 +120,9 @@ public:
     // Records where an incoming attachment was saved, so the bubble can offer to
     // open it instead of re-saving.
     void setSavedPathForId(qint64 id, const QString& path);
+    // Marks an incoming attachment as gone from the store (404/410): the bubble
+    // shows "Not found" and drops the Save button.
+    void setBlobGoneForId(qint64 id, bool gone);
     // Replaces a message's text and keyboard in place and marks it edited.
     void editById(qint64 id, const QString& text, const QString& keyboard);
     // Removes a message from the open window (delete with no trace). No-op if the

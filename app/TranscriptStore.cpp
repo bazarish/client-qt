@@ -55,7 +55,7 @@ void writeFileBytes(const QString& path, const Bytes& bytes)
 // orderKey is appended last so the existing 0..16 indices are unchanged.
 const char* const kMessageColumns = "id, peer, outgoing, type, sender, protocolId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
-                                    " edited, ts, status, orderKey, savedPath";
+                                    " edited, ts, status, orderKey, savedPath, blobGone";
 
 // Orders a loaded window oldest-first by the sort position (orderKey), then id as
 // a stable tiebreak. Each window is a contiguous id-range, so this repairs an
@@ -94,6 +94,7 @@ StoredMessage readMessageRow(const QSqlQuery& query)
     m.status = query.value(16).toInt();
     m.orderKey = query.value(17).toLongLong();
     m.savedPath = query.value(18).toString();
+    m.blobGone = query.value(19).toInt() != 0;
     return m;
 }
 
@@ -152,7 +153,8 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, sender TEXT, protocolId TEXT,"
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
-            " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT)")) {
+            " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
+            " blobGone INTEGER)")) {
         return false;
     }
     // Migrate a database created before attSrcPath existed: ALTER fails harmlessly
@@ -160,6 +162,8 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
     query.exec("ALTER TABLE messages ADD COLUMN attSrcPath TEXT");
     // Migrate a database created before savedPath existed (same harmless ALTER).
     query.exec("ALTER TABLE messages ADD COLUMN savedPath TEXT");
+    // Migrate a database created before blobGone existed (same harmless ALTER).
+    query.exec("ALTER TABLE messages ADD COLUMN blobGone INTEGER");
     // Migrate a pre-reordering database: when the orderKey column is newly added,
     // every existing row has it NULL. Promote the old seconds-unit ts to
     // milliseconds (new rows store ms) and seed orderKey from id, which preserves
@@ -413,6 +417,17 @@ void TranscriptStore::setSavedPath(qint64 id, const QString& path)
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare("UPDATE messages SET savedPath = ? WHERE id = ?");
     query.addBindValue(path);
+    query.addBindValue(id);
+    if (query.exec()) {
+        flush();
+    }
+}
+
+void TranscriptStore::setBlobGone(qint64 id, bool gone)
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("UPDATE messages SET blobGone = ? WHERE id = ?");
+    query.addBindValue(gone ? 1 : 0);
     query.addBindValue(id);
     if (query.exec()) {
         flush();
