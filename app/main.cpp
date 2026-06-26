@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
+#include "AvatarStore.hpp"
 #include "I2pController.hpp"
 #include "Identicon.hpp"
 
@@ -56,10 +57,14 @@ int main(int argc, char** argv)
 
     QQmlApplicationEngine engine;
     engine.addImageProvider("identicon", new bazarish::app::IdenticonProvider());
+    engine.addImageProvider("avatar", new bazarish::app::AvatarProvider());
     engine.addImageProvider("qr", new bazarish::app::QrImageProvider());
 
     bazarish::app::AppController controller;
     engine.rootContext()->setContextProperty("App", &controller);
+    // The shared avatar registry: QML reads Avatars.revision to bust its image
+    // cache when an avatar changes (the image://avatar provider reads the store).
+    engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
 
     // The embedded I2P router status + persistent on/off setting (read at
     // startup so a previously-disabled router stays off before any session use).

@@ -1,21 +1,26 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
+#include "AvatarStore.hpp"
 #include "DeliveryStatus.hpp"
 #include "Invite.hpp"
 #include "QtAudioIo.hpp"
 #include "QtVideoIo.hpp"
 #include "Session.hpp"
 
+#include <QBuffer>
+#include <QByteArray>
 #include <QClipboard>
 #include <QDateTime>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QImage>
 #include <QMimeDatabase>
 #include <QRandomGenerator>
 #include <QTimer>
 #include <QUrl>
 
+#include <algorithm>
 #include <ctime>
 #include <exception>
 #include <fstream>
@@ -105,17 +110,45 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected,
         connected ? "connected" : "");
-    QStringList fps;
-    for (const std::string& fp : session_->contactFingerprints()) {
-        fps << QString::fromStdString(fp);
+    emitContacts();
+    // Seed the avatar store from disk: our own avatar plus every contact that has
+    // one, so faces appear before any sync runs.
+    {
+        const bazarish::Bytes& own = session_->avatar();
+        if (!own.empty()) {
+            emit avatarReady(QString::fromStdString(session_->fingerprint()),
+                QByteArray(reinterpret_cast<const char*>(own.data()),
+                    static_cast<int>(own.size())));
+        }
+        for (const std::string& fp : session_->contactFingerprints()) {
+            const bazarish::Bytes av = session_->contactAvatar(fp);
+            if (!av.empty()) {
+                emit avatarReady(QString::fromStdString(fp),
+                    QByteArray(reinterpret_cast<const char*>(av.data()),
+                        static_cast<int>(av.size())));
+            }
+        }
     }
-    emit contactsRefreshed(fps);
     emitGroups();
     emitFacadeInfo();
     if (connected) {
         ensureSyncTimer();
         sync();
     }
+}
+
+void SessionWorker::emitContacts()
+{
+    if (!session_) {
+        return;
+    }
+    QStringList fps;
+    QStringList names;
+    for (const std::string& fp : session_->contactFingerprints()) {
+        fps << QString::fromStdString(fp);
+        names << QString::fromStdString(session_->contactDisplayName(fp));
+    }
+    emit contactsRefreshed(fps, names);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -206,6 +239,22 @@ void SessionWorker::sync()
         return;  // transient (server momentarily unreachable); next tick retries
     }
     for (const IncomingMessage& m : messages) {
+        // Avatar payloads and self-sync control messages never become chat
+        // bubbles: route avatars to the store and drop the rest silently (the
+        // chat list reflects name changes via the contactsRefreshed below).
+        if (m.contentType == "avatar") {
+            emit avatarReady(QString::fromStdString(m.fromFingerprint),
+                QByteArray(m.avatarData.data(), static_cast<int>(m.avatarData.size())));
+            continue;
+        }
+        if (m.contentType == "device.avatar") {
+            emit avatarReady(QString::fromStdString(session_->fingerprint()),
+                QByteArray(m.avatarData.data(), static_cast<int>(m.avatarData.size())));
+            continue;
+        }
+        if (m.contentType == "device.contact-name" || m.contentType == "device.i2p-master") {
+            continue;
+        }
         QVariantMap map;
         map["peer"] = QString::fromStdString(m.fromFingerprint);
         map["type"] = QString::fromStdString(m.contentType);
@@ -226,11 +275,7 @@ void SessionWorker::sync()
         map["sentAt"] = static_cast<qint64>(m.sentAt);
         emit messageReceived(map);
     }
-    QStringList fps;
-    for (const std::string& fp : session_->contactFingerprints()) {
-        fps << QString::fromStdString(fp);
-    }
-    emit contactsRefreshed(fps);
+    emitContacts();
     emitGroups();
     emitFacadeInfo();
     // Resolve any sends still in flight from earlier (late delivery or failure).
@@ -624,6 +669,68 @@ void SessionWorker::requestInvite()
     }
 }
 
+void SessionWorker::setAvatar(const QString& localPath)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        QImage img(localPath);
+        if (img.isNull()) {
+            emit actionFailed(QStringLiteral("Could not read the selected image."));
+            return;
+        }
+        // Center-crop to a square, then downscale to a sane avatar resolution.
+        const int side = std::min(img.width(), img.height());
+        QImage square
+            = img.copy((img.width() - side) / 2, (img.height() - side) / 2, side, side);
+        constexpr int kDim = 256;
+        if (square.width() > kDim) {
+            square = square.scaled(kDim, kDim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        }
+        // Encode as JPEG within the 500 KB protocol cap, dropping quality - then,
+        // as a last resort, resolution - until it fits.
+        constexpr int kCap = 500 * 1024;
+        const auto encode = [&square](int quality) {
+            QByteArray out;
+            QBuffer buffer(&out);
+            buffer.open(QIODevice::WriteOnly);
+            square.save(&buffer, "JPEG", quality);
+            buffer.close();
+            return out;
+        };
+        QByteArray bytes;
+        int quality = 90;
+        do {
+            bytes = encode(quality);
+            quality -= 15;
+        } while (bytes.size() > kCap && quality >= 30);
+        if (bytes.size() > kCap) {
+            square = square.scaled(128, 128, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+            bytes = encode(80);
+        }
+        session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
+        // Echo locally at once so our own avatar updates without waiting for a sync.
+        emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
+        emit actionOk(QStringLiteral("Avatar updated."));
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::renameContact(const QString& peer, const QString& name)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->renameContact(peer.toStdString(), name.toStdString());
+        emitContacts();  // reflect the new name in the chat list at once
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::signLogin(const QString& challenge)
 {
     if (!session_) {
@@ -798,6 +905,8 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
     connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
+    connect(this, &SessionController::requestSetAvatar, worker_, &SessionWorker::setAvatar);
+    connect(this, &SessionController::requestRenameContact, worker_, &SessionWorker::renameContact);
     connect(this, &SessionController::requestCreateGroup, worker_, &SessionWorker::createGroup);
     connect(this, &SessionController::requestSendGroupText, worker_, &SessionWorker::sendGroupText);
     connect(this, &SessionController::requestAddGroupMembers, worker_,
@@ -845,10 +954,18 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::messageReceived, this,
         &SessionController::onMessageReceived);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
-        [this](const QStringList& fps) {
+        [this](const QStringList& fps, const QStringList& names) {
             contactFps_ = fps;
+            contactNames_.clear();
+            for (int i = 0; i < fps.size() && i < names.size(); ++i) {
+                if (!names[i].isEmpty()) {
+                    contactNames_.insert(fps[i], names[i]);
+                }
+            }
             rebuildChatList();
+            emit activePeerNameChanged();  // the open chat's header may have renamed
         });
+    connect(worker_, &SessionWorker::avatarReady, this, &SessionController::onAvatarReady);
     connect(worker_, &SessionWorker::groupsRefreshed, this, &SessionController::onGroupsRefreshed);
     connect(worker_, &SessionWorker::groupCreated, this, &SessionController::onGroupCreated);
     connect(worker_, &SessionWorker::groupMembersReady, this,
@@ -945,6 +1062,7 @@ void SessionController::activateConversation(const QString& peer)
 {
     activePeer_ = peer;
     emit activePeerChanged();
+    emit activePeerNameChanged();
     contacts_.clearUnread(peer);
     // Load the member list for a group conversation (cleared for a 1:1 chat).
     activeGroupMembers_.clear();
@@ -1118,7 +1236,8 @@ void SessionController::rebuildChatList()
 {
     QVector<ContactRow> rows;
     for (const QString& fp : contactFps_) {
-        rows.push_back(ContactRow{fp, fp, store_.lastText(fp), store_.lastTime(fp), 0, false});
+        rows.push_back(
+            ContactRow{fp, peerName(fp), store_.lastText(fp), store_.lastTime(fp), 0, false});
     }
     for (const QString& gid : groupIds_) {
         rows.push_back(ContactRow{gid, groupNames_.value(gid, gid), store_.lastText(gid),
@@ -1174,7 +1293,42 @@ QString SessionController::peerName(const QString& id) const
     if (groupIds_.contains(id)) {
         return groupNames_.value(id, id);
     }
+    const QString name = contactNames_.value(id);
+    if (!name.isEmpty()) {
+        return name;  // the local display name (alias / invite name / rename)
+    }
     return shortFingerprint(id);
+}
+
+QString SessionController::contactName(const QString& fp) const
+{
+    return contactNames_.value(fp);
+}
+
+void SessionController::setAvatar(const QString& fileUrl)
+{
+    const QString localPath = QUrl(fileUrl).toLocalFile();
+    if (!localPath.isEmpty()) {
+        emit requestSetAvatar(localPath);
+    }
+}
+
+void SessionController::renameContact(const QString& fp, const QString& name)
+{
+    if (fp.isEmpty()) {
+        return;
+    }
+    const QString trimmed = name.trimmed();
+    // Optimistic local update so the UI reflects the rename at once; the worker
+    // persists it and mirrors it to the account's own other devices.
+    if (trimmed.isEmpty()) {
+        contactNames_.remove(fp);
+    } else {
+        contactNames_.insert(fp, trimmed);
+    }
+    rebuildChatList();
+    emit activePeerNameChanged();
+    emit requestRenameContact(fp, trimmed);
 }
 
 void SessionController::addGroupMembers(const QString& groupId, const QStringList& fps)
@@ -1572,7 +1726,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             if (preview.isEmpty() && !newKeyboard.isEmpty()) {
                 preview = "[interactive]";
             }
-            contacts_.touch(peer, peer, preview, nowMillis(), peer != activePeer_);
+            contacts_.touch(peer, peerName(peer), preview, nowMillis(), peer != activePeer_);
         }
         return;
     }
@@ -1588,7 +1742,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             if (peer == activePeer_) {
                 conversation_.removeById(localId);
             }
-            contacts_.touch(peer, peer, store_.lastText(peer), store_.lastTime(peer), false);
+            contacts_.touch(peer, peerName(peer), store_.lastText(peer), store_.lastTime(peer), false);
         }
         return;
     }
@@ -1661,11 +1815,16 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         contacts_.touch(convKey, groupNames_.value(convKey), preview, m.ts,
             convKey != activePeer_, true);
     } else {
-        contacts_.touch(peer, peer, preview, m.ts, peer != activePeer_);
+        contacts_.touch(peer, peerName(peer), preview, m.ts, peer != activePeer_);
     }
     // No receipt is sent on arrival: the green "read" state is reported only when
     // the user actually reads the message (chat open + window focused + the message
     // in view), driven by markReadThroughRow.
+}
+
+void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)
+{
+    AvatarStore::instance().put(fingerprint, data);
 }
 
 void SessionController::bumpStatus(qint64 localId, int status)

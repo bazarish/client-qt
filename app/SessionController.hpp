@@ -47,6 +47,11 @@ public slots:
     void sendCommand(const QString& peer, const QString& command, const QString& args);
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
     void sendDelete(const QString& peer, const QString& refId);
+    // Compresses the picked image to a square avatar within the protocol cap and
+    // sets it (persist + distribute to contacts and the account's other devices).
+    void setAvatar(const QString& localPath);
+    // Renames a contact locally (mirrored only to the account's other devices).
+    void renameContact(const QString& peer, const QString& name);
     void createGroup(const QString& name, const QStringList& memberFps);
     void sendGroupText(const QString& groupId, const QString& text, qint64 localId);
     void addGroupMembers(const QString& groupId, const QStringList& fps);
@@ -89,7 +94,11 @@ signals:
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& subscriptionText);
     void messageReceived(const QVariantMap& message);
-    void contactsRefreshed(const QStringList& fingerprints);
+    // The current contacts and their local display names (parallel lists).
+    void contactsRefreshed(const QStringList& fingerprints, const QStringList& names);
+    // A real avatar became available for an identity (own or a contact): the GUI
+    // feeds it to the shared avatar store. Empty data clears it.
+    void avatarReady(const QString& fingerprint, const QByteArray& data);
     void sendProgress(qint64 localId, int state);  // 1 = accepted by own server (grey)
     void sendResult(qint64 localId, bool ok, const QString& error);
     // Upload progress for an outgoing file (bytes sent so far, total bytes).
@@ -131,6 +140,8 @@ private:
     void ensureSyncTimer();
     void emitGroups();
     void emitFacadeInfo();
+    // Emits the current contacts with their display names (parallel lists).
+    void emitContacts();
     void emitCallState();
     // Re-polls sends still in flight after their initial submit window so a late
     // delivery (yellow) or failure (red) reaches the message; run each sync.
@@ -164,6 +175,10 @@ class SessionController : public QObject {
     // The configured server's fingerprint, so the connection editor can prefill it.
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
+    // The active peer's display name (the local label, or a short fingerprint when
+    // unnamed). Notified on both opening a conversation and a rename, so the chat
+    // header stays current.
+    Q_PROPERTY(QString activePeerName READ activePeerName NOTIFY activePeerNameChanged)
     // Paging state of the open conversation: whether the newest page is loaded
     // (so stick-to-bottom applies) and whether older history remains above.
     Q_PROPERTY(bool atNewest READ atNewest NOTIFY pagingChanged)
@@ -218,6 +233,7 @@ public:
     QStringList configuredFacades() const { return configuredFacades_; }
     QString serverFingerprint() const { return serverFp_; }
     QString activePeer() const { return activePeer_; }
+    QString activePeerName() const { return peerName(activePeer_); }
     bool atNewest() const;
     bool hasMoreOlder() const;
     QString accountId() const { return profileId_; }
@@ -296,6 +312,13 @@ public:
     // Whether a chat-list id is a group, and a display name for any peer/group.
     Q_INVOKABLE bool isGroup(const QString& id) const;
     Q_INVOKABLE QString peerName(const QString& id) const;
+    // The contact's stored local display name, empty when unnamed (so a rename
+    // field can prefill it and show a fingerprint placeholder otherwise).
+    Q_INVOKABLE QString contactName(const QString& fp) const;
+    // Sets the account's own avatar from a picked image file (file:// URL).
+    Q_INVOKABLE void setAvatar(const QString& fileUrl);
+    // Renames a contact locally (mirrored to the account's own other devices).
+    Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     // Group membership management (operate on the given group id).
     Q_INVOKABLE void addGroupMembers(const QString& groupId, const QStringList& fps);
     Q_INVOKABLE void removeGroupMember(const QString& groupId, const QString& fp);
@@ -346,6 +369,7 @@ signals:
     void identityChanged();
     void connectedChanged();
     void activePeerChanged();
+    void activePeerNameChanged();
     // The open conversation's paging state changed (atNewest / hasMoreOlder).
     void pagingChanged();
     // Asks the view to scroll the given message into view (a search jump).
@@ -383,6 +407,8 @@ signals:  // to worker
     void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
+    void requestSetAvatar(const QString& localPath);
+    void requestRenameContact(const QString& peer, const QString& name);
     void requestCreateGroup(const QString& name, const QStringList& memberFps);
     void requestSendGroupText(const QString& groupId, const QString& text, qint64 localId);
     void requestAddGroupMembers(const QString& groupId, const QStringList& fps);
@@ -416,6 +442,7 @@ private slots:
         const QString& subscriptionText);
     void onConnectionChanged(bool connected, const QString& subscriptionText);
     void onMessageReceived(const QVariantMap& message);
+    void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onSendProgress(qint64 localId, int state);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onSendResult(qint64 localId, bool ok, const QString& error);
@@ -488,6 +515,9 @@ private:
     QHash<QString, qint64> lastReadAckedId_;
     // Groups this account belongs to (id -> name), merged into the chat list.
     QStringList contactFps_;
+    // Per-contact local display names (fingerprint -> name), kept in sync from the
+    // worker. Drives peerName() and the chat-list labels.
+    QHash<QString, QString> contactNames_;
     QStringList groupIds_;
     QHash<QString, QString> groupNames_;
     QStringList activeGroupMembers_;

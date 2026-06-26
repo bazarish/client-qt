@@ -114,6 +114,8 @@ if(Qt6_FOUND)
         app/QtVideoIo.hpp
         app/Identicon.cpp
         app/Identicon.hpp
+        app/AvatarStore.cpp
+        app/AvatarStore.hpp
     )
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(bazarish-app PRIVATE

@@ -1,7 +1,11 @@
 // Bazarish project (c) 2026
 #include "Identicon.hpp"
 
+#include "AvatarStore.hpp"
+
 #include <qrencode.h>
+
+#include <algorithm>
 
 #include <QColor>
 #include <QCryptographicHash>
@@ -10,19 +14,8 @@
 
 namespace bazarish::app {
 
-IdenticonProvider::IdenticonProvider()
-    : QQuickImageProvider(QQuickImageProvider::Image)
+QImage renderIdenticon(const QString& id, const int dim)
 {
-}
-
-QImage IdenticonProvider::requestImage(
-    const QString& id, QSize* size, const QSize& requestedSize)
-{
-    const int dim = requestedSize.width() > 0 ? requestedSize.width() : 96;
-    if (size != nullptr) {
-        *size = QSize(dim, dim);
-    }
-
     // Derive a stable hash; first bytes pick the hue, the rest fill a 5x5
     // mirrored grid (GitHub-identicon style).
     const QByteArray hash
@@ -53,6 +46,54 @@ QImage IdenticonProvider::requestImage(
     }
     painter.end();
     return image;
+}
+
+IdenticonProvider::IdenticonProvider()
+    : QQuickImageProvider(QQuickImageProvider::Image)
+{
+}
+
+QImage IdenticonProvider::requestImage(
+    const QString& id, QSize* size, const QSize& requestedSize)
+{
+    const int dim = requestedSize.width() > 0 ? requestedSize.width() : 96;
+    if (size != nullptr) {
+        *size = QSize(dim, dim);
+    }
+    return renderIdenticon(id, dim);
+}
+
+AvatarProvider::AvatarProvider()
+    : QQuickImageProvider(QQuickImageProvider::Image)
+{
+}
+
+QImage AvatarProvider::requestImage(
+    const QString& id, QSize* size, const QSize& requestedSize)
+{
+    const int dim = requestedSize.width() > 0 ? requestedSize.width() : 96;
+    // Strip the cache-busting "?r=<revision>" the QML caller appends.
+    const QString fingerprint = id.section('?', 0, 0);
+
+    const QImage stored = AvatarStore::instance().image(fingerprint);
+    if (!stored.isNull()) {
+        // Square center-crop (a peer could send a non-square image), then scale
+        // to the requested size; the QML clip renders it as a circle.
+        const int side = std::min(stored.width(), stored.height());
+        const QImage square = stored.copy(
+            (stored.width() - side) / 2, (stored.height() - side) / 2, side, side);
+        const QImage scaled
+            = square.scaled(dim, dim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        if (size != nullptr) {
+            *size = QSize(dim, dim);
+        }
+        return scaled;
+    }
+
+    if (size != nullptr) {
+        *size = QSize(dim, dim);
+    }
+    return renderIdenticon(fingerprint, dim);
 }
 
 QrImageProvider::QrImageProvider()

@@ -53,6 +53,19 @@ struct Contact {
     // Whether we have already issued a token batch to this peer (so they
     // can write to us). Set on the contact request or the first reply.
     bool issuedToThem = false;
+    // Local display name for this contact: the alias used when adding, or the
+    // name carried in the invite. Purely local - never sent to the peer and
+    // never overwritten by anything the peer sends. The user may rename it, and
+    // that rename is mirrored only to the account's own other devices.
+    std::string displayName;
+    // The peer's avatar as last received (raw PNG/JPEG bytes) and its mime; the
+    // bytes live in a sealed per-contact file, only the mime rides in the JSON.
+    Bytes avatar;
+    std::string avatarMime;
+    // Whether we have already pushed our own avatar to this peer, so it is sent
+    // once on establishing the dialog (not on every sync). Reset when our avatar
+    // changes, so the new one is re-broadcast.
+    bool avatarSentToPeer = false;
 };
 
 // A member of a group: routing plus the one-time token pool that member issued
@@ -132,6 +145,11 @@ struct IncomingMessage {
     std::string attachmentName;
     std::string attachmentMime;
     std::uint64_t attachmentSize = 0;
+
+    // For the "avatar"/"device.avatar" content types: the raw avatar image bytes
+    // (already decoded from base64), so the UI can hand them to its avatar store
+    // without a chat bubble. Empty for every other type.
+    std::string avatarData;
 };
 
 // The stateful client session: a user identity plus contact and token
@@ -192,6 +210,23 @@ public:
     std::string sealingPublicB64() const;
     // The human label set at creation (may be empty).
     const std::string& displayName() const;
+
+    // The user's own avatar (raw, already-compressed PNG/JPEG bytes) and its
+    // mime type; both empty when no avatar is set.
+    const Bytes& avatar() const;
+    const std::string& avatarMime() const;
+    // Sets the user's own avatar. The bytes must already be compressed by the UI
+    // to a square image within the protocol cap (500 KB). Persists it, pushes it
+    // to every established contact (best effort, no error surfaced) and self-syncs
+    // it to the account's other devices. Throws if the data exceeds the cap.
+    void setAvatar(const Bytes& data, const std::string& mime);
+
+    // A contact's local display name (empty when unnamed) and its avatar bytes.
+    std::string contactDisplayName(const std::string& peerFingerprint) const;
+    Bytes contactAvatar(const std::string& peerFingerprint) const;
+    // Renames a contact locally and mirrors the change to the account's other
+    // devices (a device.contact-name self-message). No-op for an unknown contact.
+    void renameContact(const std::string& peerFingerprint, const std::string& name);
 
     // Subscribes to the configured server for the given number of days and
     // registers this client ID. Stores the returned server card.
@@ -524,9 +559,10 @@ private:
 
     // Sends a contact request to a peer whose verified routing info is
     // already known (from a lookup or an invite). Mints a reply token batch
-    // and records the contact.
+    // and records the contact, adopting displayName as its local label (the
+    // alias used or the name carried in the invite) when non-empty.
     void requestWithInfo(const std::string& peerFingerprint, const std::string& text,
-        const ContactInfo& info);
+        const ContactInfo& info, const std::string& displayName = {});
 
     // The fetch transport for card / alias-resolve frames: a fresh transient-I2P
     // dial preferred (our own server uninvolved), falling back to the own-server
@@ -558,6 +594,26 @@ private:
     // Mints a fresh token batch for the peer and sends it as a token-refill,
     // in response to the peer signalling a low stash (Contacts.md).
     void sendTokenRefill(const std::string& peerFingerprint);
+
+    // Pushes our own avatar to a contact as an "avatar" service message, once,
+    // when the dialog is mutually established (we have engaged with them) and we
+    // can reach them. A no-op (never an error) when we have no avatar, the peer
+    // is unreachable, or it was already sent. Gated on issuedToThem so an
+    // un-accepted incoming request never triggers an automatic avatar reply.
+    void maybeSendAvatarToContact(const std::string& peerFingerprint);
+    // Sends our own avatar to the account's other devices (a device.avatar
+    // self-message), sealed to our own key and delivered to our own destination.
+    void syncAvatarToSelf();
+    // Mirrors a contact rename to the account's other devices (device.contact-name).
+    void syncContactNameToSelf(const std::string& peerFingerprint, const std::string& name);
+    // Persists our own avatar bytes (sealed at rest) and records its mime in meta.
+    void storeOwnAvatar(const Bytes& data, const std::string& mime);
+    // Persists a contact's received avatar bytes (sealed at rest) and its mime.
+    void storeContactAvatar(
+        const std::string& peerFingerprint, const Bytes& data, const std::string& mime);
+    // Writes a profile blob, sealed under the passphrase when the profile is
+    // encrypted (the generic form behind persistI2pBlob, reused for avatars).
+    void persistSealedBlob(const std::string& filename, const Bytes& blob) const;
 
     // --- Call helpers ---
 
@@ -708,6 +764,11 @@ private:
     std::string myServingKeyB64_;
     // Human label for the profile picker (stored in the clear in meta.json).
     std::string name_;
+    // The user's own avatar (compressed PNG/JPEG bytes) and its mime. The bytes
+    // live in a sealed profile file; the mime is recorded in meta.json. Empty
+    // when no avatar is set.
+    Bytes avatar_;
+    std::string avatarMime_;
     // Our own subscription certificate (DER, base64), retained on subscribe
     // so we can publish the full self-verifying chain in an invite.
     std::string subscriptionCertB64_;

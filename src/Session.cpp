@@ -85,6 +85,10 @@ std::string normalizeAlias(const std::string& alias)
     return normalized;
 }
 
+// The protocol cap on an avatar's compressed size. The UI compresses a chosen
+// image to a square within this limit before it ever reaches the core.
+constexpr std::size_t kAvatarMaxBytes = 500 * 1024;
+
 // Applies a bootstrap block (the peer's sealing prekey, serving destination +
 // serving sealing key, and a fresh token batch) carried by a contact request, a
 // first reply or a token refill. Orthogonal to the message's content type.
@@ -349,6 +353,11 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
             contact.servingSealingB64 = entry.at("servingSealingB64").get<std::string>();
             contact.sendTokens = entry.at("sendTokens").get<std::vector<std::string>>();
             contact.issuedToThem = entry.at("issuedToThem").get<bool>();
+            // Display name and avatar metadata are newer fields: tolerate their
+            // absence in profiles written before they existed.
+            contact.displayName = entry.value("displayName", std::string());
+            contact.avatarMime = entry.value("avatarMime", std::string());
+            contact.avatarSentToPeer = entry.value("avatarSentToPeer", false);
             contacts.emplace(fingerprint, std::move(contact));
         }
     }
@@ -417,6 +426,24 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     }
     session.i2pTransient_ = loadI2pBlob("i2p-transient.dat");
 
+    // Avatars (own + per-contact): the bytes live in sealed blob files, only the
+    // mime flags ride in meta/contacts. Load the bytes for whatever has a mime.
+    session.avatarMime_ = meta.value("avatarMime", std::string{});
+    if (!session.avatarMime_.empty()) {
+        session.avatar_ = loadI2pBlob("avatar.self");
+        if (session.avatar_.empty()) {
+            session.avatarMime_.clear();  // file gone (e.g. a backup restore): no avatar
+        }
+    }
+    for (auto& [contactFp, contact] : session.contacts_) {
+        if (!contact.avatarMime.empty()) {
+            contact.avatar = loadI2pBlob(("avatar-" + contactFp).c_str());
+            if (contact.avatar.empty()) {
+                contact.avatarMime.clear();
+            }
+        }
+    }
+
     return session;
 }
 
@@ -428,6 +455,28 @@ std::string Session::fingerprint() const
 const std::string& Session::displayName() const
 {
     return name_;
+}
+
+const Bytes& Session::avatar() const
+{
+    return avatar_;
+}
+
+const std::string& Session::avatarMime() const
+{
+    return avatarMime_;
+}
+
+std::string Session::contactDisplayName(const std::string& peerFingerprint) const
+{
+    const auto found = contacts_.find(peerFingerprint);
+    return found == contacts_.end() ? std::string() : found->second.displayName;
+}
+
+Bytes Session::contactAvatar(const std::string& peerFingerprint) const
+{
+    const auto found = contacts_.find(peerFingerprint);
+    return found == contacts_.end() ? Bytes() : found->second.avatar;
 }
 
 std::string Session::sealingPublicB64() const
@@ -469,6 +518,7 @@ void Session::persistMeta() const
             }},
         {"subscriptionCert", subscriptionCertB64_},
         {"encrypted", encrypted_},
+        {"avatarMime", avatarMime_},
     };
     writeFileText(profileDir_ / "meta.json", meta.dump(2));
 }
@@ -483,6 +533,9 @@ nlohmann::json Session::contactsToJson() const
             {"servingSealingB64", contact.servingSealingB64},
             {"sendTokens", contact.sendTokens},
             {"issuedToThem", contact.issuedToThem},
+            {"displayName", contact.displayName},
+            {"avatarMime", contact.avatarMime},
+            {"avatarSentToPeer", contact.avatarSentToPeer},
         };
     }
     return stored;
@@ -539,13 +592,18 @@ void Session::subscribe(const std::int64_t days)
     }
 }
 
+void Session::persistSealedBlob(const std::string& filename, const Bytes& blob) const
+{
+    const Bytes onDisk = encrypted_ ? cms::sealWithPassword(blob, passphrase_) : blob;
+    writeFileText(profileDir_ / filename, std::string(onDisk.begin(), onDisk.end()));
+}
+
 void Session::persistI2pBlob(const std::string& filename, const Bytes& blob) const
 {
     // The master is the user's long-term routing identity and the transient is
     // a live delegation key: both are sealed at rest under the profile
     // passphrase, like the private-key PEMs.
-    const Bytes onDisk = encrypted_ ? cms::sealWithPassword(blob, passphrase_) : blob;
-    writeFileText(profileDir_ / filename, std::string(onDisk.begin(), onDisk.end()));
+    persistSealedBlob(filename, blob);
 }
 
 std::string Session::ensureI2pDestination()
@@ -659,6 +717,150 @@ void Session::syncI2pMasterToSelf()
     // Tokenless contact-class delivery to our own destination: it lands in our
     // own mailbox, which every device of this account polls.
     deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+}
+
+void Session::storeOwnAvatar(const Bytes& data, const std::string& mime)
+{
+    avatar_ = data;
+    avatarMime_ = mime;
+    persistSealedBlob("avatar.self", avatar_);
+    persistMeta();  // record the mime so open() knows to load the blob
+}
+
+void Session::storeContactAvatar(
+    const std::string& peerFingerprint, const Bytes& data, const std::string& mime)
+{
+    if (data.size() > kAvatarMaxBytes) {
+        return;  // over the protocol cap: drop it rather than store an oversized blob
+    }
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end()) {
+        return;  // an avatar from someone who is not a contact: ignore
+    }
+    found->second.avatar = data;
+    found->second.avatarMime = mime;
+    persistSealedBlob("avatar-" + peerFingerprint, data);
+    persistContacts();  // record the mime flag
+}
+
+void Session::syncAvatarToSelf()
+{
+    if (avatar_.empty() || myDest_.empty() || myServingKeyB64_.empty()) {
+        return;  // nothing to sync, or our own routing is not known yet
+    }
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.avatar"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"avatar", {{"mime", avatarMime_}, {"data", toBase64(avatar_)}}},
+    };
+    const std::string innerText = inner.dump();
+    // Sealed to our own sealing key: only this account's devices can read it.
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
+    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+}
+
+void Session::syncContactNameToSelf(const std::string& peerFingerprint, const std::string& name)
+{
+    if (myDest_.empty() || myServingKeyB64_.empty()) {
+        return;  // our own routing is not known yet
+    }
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.contact-name"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"peer", peerFingerprint},
+        {"name", name},
+    };
+    const std::string innerText = inner.dump();
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
+    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+}
+
+void Session::maybeSendAvatarToContact(const std::string& peerFingerprint)
+{
+    if (avatar_.empty()) {
+        return;  // no avatar to share
+    }
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end()) {
+        return;
+    }
+    Contact& contact = found->second;
+    // Share only once the dialog is mutually established (issuedToThem: we are the
+    // requester, or we accepted their request - never an automatic reply to an
+    // un-accepted incoming request) and we can actually reach the peer.
+    if (!contact.issuedToThem || contact.avatarSentToPeer || contact.sendTokens.empty()
+        || contact.sealingPublicB64.empty() || contact.servingSealingB64.empty()) {
+        return;
+    }
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "avatar"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"avatar", {{"mime", avatarMime_}, {"data", toBase64(avatar_)}}},
+    };
+    try {
+        sendContent(peerFingerprint, std::move(inner));
+        contact.avatarSentToPeer = true;
+        persistContacts();
+    } catch (const std::exception& error) {
+        // Best effort by design: a peer we cannot reach now gets the avatar on a
+        // later establishment or avatar update. The spec surfaces no send error
+        // for avatar distribution.
+        bazarish::log::warn("avatar push to {} failed: {}", peerFingerprint, error.what());
+    }
+}
+
+void Session::setAvatar(const Bytes& data, const std::string& mime)
+{
+    if (data.size() > kAvatarMaxBytes) {
+        throw std::runtime_error("avatar exceeds the 500 KB protocol limit");
+    }
+    storeOwnAvatar(data, mime);
+    // A changed avatar must reach every established contact: reset the per-contact
+    // "already sent" flag, then push to all reachable contacts (best effort).
+    for (auto& [contactFp, contact] : contacts_) {
+        (void)contactFp;
+        contact.avatarSentToPeer = false;
+    }
+    persistContacts();
+    for (const auto& [contactFp, contact] : contacts_) {
+        (void)contact;
+        maybeSendAvatarToContact(contactFp);
+    }
+    // And to the account's other devices.
+    try {
+        syncAvatarToSelf();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("avatar self-sync failed: {}", error.what());
+    }
+}
+
+void Session::renameContact(const std::string& peerFingerprint, const std::string& name)
+{
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end()) {
+        return;
+    }
+    found->second.displayName = name;
+    persistContacts();
+    // The rename is local; mirror it to the account's other devices only.
+    try {
+        syncContactNameToSelf(peerFingerprint, name);
+    } catch (const std::exception& error) {
+        bazarish::log::warn("contact-name self-sync failed: {}", error.what());
+    }
 }
 
 I2pDestStatus Session::i2pDestStatus()
@@ -868,7 +1070,8 @@ std::string Session::addByInvite(const std::string& inviteUri, const std::string
     // caller already knows are local.)
     const Descriptor descriptor = parseDescriptor(inviteUri);
     const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
-    requestWithInfo(descriptor.fingerprint, text, info);
+    // Adopt the name advertised in the invite as this contact's local label.
+    requestWithInfo(descriptor.fingerprint, text, info, descriptor.name);
     return descriptor.fingerprint;
 }
 
@@ -919,12 +1122,13 @@ std::string Session::addByUsername(const std::string& alias, const std::string& 
     // disclosing co-location to our own server (see addByInvite / the co-location
     // rule in Contacts.md).
     const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
-    requestWithInfo(descriptor.fingerprint, text, info);
+    // The alias the user typed becomes this contact's local display name.
+    requestWithInfo(descriptor.fingerprint, text, info, alias);
     return descriptor.fingerprint;
 }
 
 void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,
-    const ContactInfo& info)
+    const ContactInfo& info, const std::string& displayName)
 {
     if (info.subscriptionCert.user != peerFingerprint) {
         throw std::runtime_error("contact lookup returned a different user");
@@ -966,6 +1170,11 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     contact.sealingPublicB64 = toBase64(peerPrekey.publicDer());
     contact.servingSealingB64 = toBase64(peerServingKey.publicDer());
     contact.issuedToThem = true;
+    // The name (from an invite or the alias used) is a one-time local label set
+    // at add time; it is never re-fetched or transmitted afterwards.
+    if (!displayName.empty()) {
+        contact.displayName = displayName;
+    }
     persistContacts();
 }
 
@@ -1163,6 +1372,9 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     if (contact.sendTokens.empty()) {
         throw std::runtime_error("no delivery tokens left for contact: " + peerFingerprint);
     }
+    // Captured before the bootstrap block below: when false here, this very send
+    // is our first reply to the peer - the moment we accept/establish the dialog.
+    const bool wasIssuedToThem = contact.issuedToThem;
 
     // Externalize content larger than the threshold: encrypt it under a fresh
     // key, upload the ciphertext to blob storage, and replace the body with a
@@ -1227,6 +1439,13 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // deliver() throws on a terminal failure, so a thrown send never spends one.
     contact.sendTokens.pop_back();
     persistContacts();
+
+    // If this send is the first reply that just established the reverse direction
+    // (we accepted their request), share our avatar now - consent-gated, exactly
+    // the "reply to the friend request" the spec ties avatar exchange to.
+    if (!wasIssuedToThem) {
+        maybeSendAvatarToContact(peerFingerprint);
+    }
     return delivered;
 }
 
@@ -1332,6 +1551,10 @@ std::vector<IncomingMessage> Session::sync()
     // Peers whose stash of our tokens is running low and who asked for a
     // refill; topped up after the fetch loop so we never write mid-iteration.
     std::set<std::string> refillPeers;
+    // Peers that carried a bootstrap this sync (a contact request, or - for one we
+    // requested - their acceptance): we push our avatar to the established ones
+    // after the loop, same "never write mid-iteration" rule.
+    std::set<std::string> establishedPeers;
     // Groups we were just invited to: hand our token pool to their members after
     // the loop (same "never write mid-iteration" rule as refills).
     std::set<std::string> bootstrapGroups;
@@ -1384,6 +1607,7 @@ std::vector<IncomingMessage> Session::sync()
             if (body.contains("bootstrap")) {
                 applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"));
                 message.establishedContact = true;
+                establishedPeers.insert(message.fromFingerprint);
             }
 
             // The peer is low on our tokens and asked to be refilled.
@@ -1473,6 +1697,43 @@ std::vector<IncomingMessage> Session::sync()
                         loadI2pDestination(fromBase64(body.at("i2pMaster").get<std::string>()));
                     } catch (const std::exception&) {
                         // Malformed, wrong key type, or already configured: ignore.
+                    }
+                }
+            } else if (type == "avatar") {
+                // A contact pushed their avatar (silent service message): store it
+                // and surface the bytes so the UI's avatar store updates. Never a
+                // chat bubble.
+                message.contentType = type;
+                try {
+                    const nlohmann::json& av = body.at("avatar");
+                    const Bytes data = fromBase64(av.value("data", std::string()));
+                    storeContactAvatar(
+                        message.fromFingerprint, data, av.value("mime", std::string()));
+                    message.avatarData = std::string(data.begin(), data.end());
+                } catch (const std::exception&) {
+                    // Malformed avatar payload: ignore.
+                }
+            } else if (type == "device.avatar") {
+                // Our own avatar from another of our devices: adopt it. Silent.
+                message.contentType = type;
+                if (message.fromFingerprint == fingerprint()) {
+                    try {
+                        const nlohmann::json& av = body.at("avatar");
+                        const Bytes data = fromBase64(av.value("data", std::string()));
+                        storeOwnAvatar(data, av.value("mime", std::string()));
+                        message.avatarData = std::string(data.begin(), data.end());
+                    } catch (const std::exception&) {
+                        // Malformed avatar payload: ignore.
+                    }
+                }
+            } else if (type == "device.contact-name") {
+                // A contact rename mirrored from another of our devices: apply it
+                // locally (purely a local label). Silent.
+                message.contentType = type;
+                if (message.fromFingerprint == fingerprint()) {
+                    const auto named = contacts_.find(body.value("peer", std::string()));
+                    if (named != contacts_.end()) {
+                        named->second.displayName = body.value("name", std::string());
                     }
                 }
             } else if (type == "group.invite") {
@@ -1572,6 +1833,14 @@ std::vector<IncomingMessage> Session::sync()
         }
     }
     persistContacts();
+
+    // A peer accepted our request (or we just learned their routing): push our
+    // avatar to any now-established contact we have engaged with. maybeSend... is
+    // gated on issuedToThem, so an un-accepted incoming request never triggers an
+    // automatic avatar reply. Best effort, after the loop like the refills below.
+    for (const std::string& peer : establishedPeers) {
+        maybeSendAvatarToContact(peer);
+    }
 
     // Refill peers that ran low (a fresh token batch, sent as a token-refill).
     // Done after the loop so the outbound send never races the fetch loop.
@@ -2455,6 +2724,8 @@ std::string Session::inviteUri() const
     descriptor.fingerprint = fingerprint();
     descriptor.srv = myDest_;
     descriptor.srvKeyDer = fromBase64(myServingKeyB64_);
+    // Advertise our profile name so the contact can adopt it as our display name.
+    descriptor.name = name_;
     return encodeDescriptor(descriptor);
 }
 

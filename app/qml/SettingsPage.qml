@@ -51,13 +51,19 @@ Popup {
                     Label { text: "Profile"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     RowLayout {
                         spacing: 12
-                        Avatar { fingerprint: root.session ? root.session.fingerprint : ""; size: 56 }
+                        // Tap the avatar (or the button below) to set a photo.
+                        Avatar {
+                            fingerprint: root.session ? root.session.fingerprint : ""
+                            size: 56
+                            TapHandler { onTapped: avatarDialog.open() }
+                        }
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label { text: root.session ? root.session.displayName : ""; color: Theme.text; font.weight: Font.Medium }
                             Label { text: root.session ? root.session.shortFingerprint(root.session.fingerprint) : ""; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                         }
                     }
+                    MenuButton { Layout.fillWidth: true; text: "Set photo…"; onClicked: avatarDialog.open() }
                     MenuButton { Layout.fillWidth: true; text: "Show my invite / QR"; onClicked: { root.close(); root.showInvite() } }
                     MenuButton { Layout.fillWidth: true; text: "Sign in with key (portals / sites)"; onClicked: { root.close(); root.showSignWithKey() } }
                 }
@@ -279,6 +285,14 @@ Popup {
         fileMode: FileDialog.OpenFile
         nameFilters: ["I2P destination key (*.dat)", "All files (*)"]
         onAccepted: if (root.session) root.session.loadPersonalKey(selectedFile)
+    }
+    // Pick an image for the profile photo; the app squares and compresses it to
+    // within the 500 KB protocol cap before storing and distributing it.
+    FileDialog {
+        id: avatarDialog
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)", "All files (*)"]
+        onAccepted: if (root.session) root.session.setAvatar(selectedFile)
     }
     Dialog {
         id: exportPassDialog

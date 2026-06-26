@@ -162,16 +162,23 @@ Item {
                     Layout.fillWidth: true
                     spacing: 0
                     Label {
-                        text: root.session ? root.session.peerName(root.session.activePeer) : ""
+                        text: root.session ? root.session.activePeerName : ""
                         color: Theme.text
                         font.weight: Font.Medium
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
+                    // Under the display name: the peer's full fingerprint (the
+                    // identity itself), so it stays visible/verifiable. A group has
+                    // no single fingerprint, so it just reads "group".
                     Label {
-                        text: parent.parent.isGroup ? "group · end-to-end encrypted" : "end-to-end encrypted"
+                        text: parent.parent.isGroup
+                            ? "group"
+                            : (root.session ? root.session.activePeer : "")
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
+                        elide: Text.ElideMiddle
+                        Layout.fillWidth: true
                     }
                 }
                 IconButton { text: "🔍"; onClicked: searchPopup.openSearch() }
