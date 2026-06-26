@@ -152,7 +152,19 @@ Item {
                 Button {
                     visible: !model.outgoing
                     text: "Save"
-                    onClicked: saveDialog.open()
+                    // Set the suggested folder + the message's file name imperatively
+                    // right before opening, so the native dialog shows the name
+                    // pre-filled and the user only picks the directory. Bindings here
+                    // would fight the dialog's own folder/name state.
+                    onClicked: {
+                        var dir = StandardPaths.writableLocation(StandardPaths.DownloadLocation)
+                        if (("" + dir).length === 0) {
+                            dir = StandardPaths.writableLocation(StandardPaths.HomeLocation)
+                        }
+                        saveDialog.currentFolder = dir
+                        saveDialog.selectedFile = dir + "/" + model.attName
+                        saveDialog.open()
+                    }
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
                     contentItem: Label { text: parent.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
                 }
@@ -357,14 +369,11 @@ Item {
         }
     }
 
+    // The folder and the suggested file name are set imperatively by the Save
+    // button just before open() (no bindings, which would fight the dialog).
     FileDialog {
         id: saveDialog
         fileMode: FileDialog.SaveFile
-        // Pre-fill the original file name and open in Downloads, so the user only
-        // picks where to save - no manual typing. (currentFile is deprecated in
-        // Qt6 and was ignored by the native dialog; selectedFile is honoured.)
-        currentFolder: StandardPaths.writableLocation(StandardPaths.DownloadLocation)
-        selectedFile: saveDialog.currentFolder + "/" + model.attName
         onAccepted: delegate.session.saveAttachment(model.attRef, model.attKey, selectedFile)
     }
 }
