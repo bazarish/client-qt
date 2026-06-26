@@ -353,10 +353,15 @@ public:
     // reference and key end-to-end. The server never sees the content type.
     // onUploadProgress, when set, is called as the ciphertext streams out (bytes
     // sent, total), so the sender can show real upload progress.
+    // retention sets how long the encrypted blob lives on the store: a TTL
+    // backstop and, optionally, a download count that reclaims it the moment that
+    // many recipients have fetched it (whichever comes first). Defaulted retention
+    // means the store's default TTL with no download cap.
     bool sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, const UploadProgressFn& onUploadProgress = {});
+        std::string* outAttemptId = nullptr, const UploadProgressFn& onUploadProgress = {},
+        const BlobRetention& retention = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.

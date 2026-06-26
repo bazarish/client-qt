@@ -431,10 +431,15 @@ void SessionWorker::sendText(
     }
 }
 
-void SessionWorker::sendFile(
-    const QString& peer, const QString& localPath, qint64 localId, const QString& protocolId)
+void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint64 localId,
+    const QString& protocolId, qint64 ttlSeconds, int downloadCount)
 {
     try {
+        bazarish::client::BlobRetention retention;
+        retention.ttlSeconds = ttlSeconds;
+        if (downloadCount > 0) {
+            retention.count = static_cast<std::uint32_t>(downloadCount);
+        }
         std::string attemptId;
         const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
             protocolId.toStdString(),
@@ -442,7 +447,8 @@ void SessionWorker::sendFile(
             &attemptId,
             [this, localId](std::uint64_t sent, std::uint64_t total) {
                 emit uploadProgress(localId, static_cast<qint64>(sent), static_cast<qint64>(total));
-            });
+            },
+            retention);
         if (delivered) {
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
@@ -1403,7 +1409,7 @@ void SessionController::sendText(const QString& text)
     emit requestSendText(activePeer_, text, m.id, m.protocolId);
 }
 
-void SessionController::sendFile(const QString& fileUrl)
+void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int downloadCount)
 {
     if (activePeer_.isEmpty()) {
         return;
@@ -1431,9 +1437,10 @@ void SessionController::sendFile(const QString& fileUrl)
     m.status = 0;
     m.id = store_.append(m);
     statusById_[m.id] = 0;
+    fileRetention_.insert(m.id, FileRetention{ttlSeconds, downloadCount});
     showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
-    emit requestSendFile(activePeer_, localPath, m.id, m.protocolId);
+    emit requestSendFile(activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount);
 }
 
 void SessionController::sendCallback(const QString& data, const QString& refMsgId)
@@ -1900,7 +1907,8 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     store_.updateStatus(localId, DeliveryStatus::Sending);
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
-    emit requestSendFile(activePeer_, srcPath, localId, protocolId);
+    const FileRetention r = fileRetention_.value(localId);
+    emit requestSendFile(activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount);
 }
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)

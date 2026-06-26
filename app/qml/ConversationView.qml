@@ -85,7 +85,11 @@ Item {
     }
     FileDialog {
         id: resendPickDialog
-        onAccepted: if (root.session) { root.session.sendFile(selectedFile) }
+        onAccepted: { resendSendOptions.fileUrl = selectedFile; resendSendOptions.open() }
+    }
+    FileSendDialog {
+        id: resendSendOptions
+        session: root.session
     }
     Timer { id: highlightTimer; interval: 1800; onTriggered: messages.highlightId = -1 }
 

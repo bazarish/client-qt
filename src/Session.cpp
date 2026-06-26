@@ -1195,7 +1195,8 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
 
 bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
-    std::string* outAttemptId, const UploadProgressFn& onUploadProgress)
+    std::string* outAttemptId, const UploadProgressFn& onUploadProgress,
+    const BlobRetention& retention)
 {
     // Encrypt the file under a fresh key straight to a temp ciphertext file and
     // upload it streaming, so a large file is never held whole in memory. The
@@ -1210,7 +1211,7 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     BlobUploadResult uploaded;
     try {
         const PackedBlobFile packed = packLargeBlobToFile(path, ciphertextPath);
-        uploaded = client_->uploadBlobFromFile(packed, BlobRetention{}, onUploadProgress);
+        uploaded = client_->uploadBlobFromFile(packed, retention, onUploadProgress);
         pointer.fileKey = packed.fileKey;
         pointer.sha256 = packed.sha256;
         pointer.size = packed.size;

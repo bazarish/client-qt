@@ -163,6 +163,7 @@ if(Qt6_FOUND)
             app/qml/MessageBubble.qml
             app/qml/SearchPopup.qml
             app/qml/Composer.qml
+            app/qml/FileSendDialog.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml

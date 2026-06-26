@@ -41,7 +41,7 @@ public slots:
     void sendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& protocolId);
+        const QString& protocolId, qint64 ttlSeconds, int downloadCount);
     void sendReceipt(const QString& peer, const QString& refId);
     void sendCallback(const QString& peer, const QString& data, const QString& ref);
     void sendCommand(const QString& peer, const QString& command, const QString& args);
@@ -302,7 +302,10 @@ public:
     // Re-dispatches a failed outgoing text message (same protocol id) after the
     // user taps "Resend" on its bubble.
     Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& protocolId);
-    Q_INVOKABLE void sendFile(const QString& fileUrl);
+    // Sends a picked file with a blob-retention choice: ttlSeconds is the TTL
+    // backstop (0 -> the store default); downloadCount > 0 deletes the blob after
+    // that many recipient downloads (0 -> TTL only).
+    Q_INVOKABLE void sendFile(const QString& fileUrl, qint64 ttlSeconds, int downloadCount);
     // Re-dispatches a failed outgoing file. Re-uploads from the saved source path
     // (reusing the bubble); if that file is gone, emits resendFilePickRequested so
     // the UI can offer to pick a file to send instead.
@@ -400,7 +403,7 @@ signals:  // to worker
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& protocolId);
+        const QString& protocolId, qint64 ttlSeconds, int downloadCount);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
     void requestSendCommand(const QString& peer, const QString& command, const QString& args);
@@ -518,6 +521,11 @@ private:
     // Per-contact local display names (fingerprint -> name), kept in sync from the
     // worker. Drives peerName() and the chat-list labels.
     QHash<QString, QString> contactNames_;
+    // The blob-retention chosen for each outgoing file (by local id), so a resend
+    // reuses the same TTL / download cap. Session-only; a resend after a restart
+    // falls back to the store default.
+    struct FileRetention { qint64 ttlSeconds = 0; int downloadCount = 0; };
+    QHash<qint64, FileRetention> fileRetention_;
     QStringList groupIds_;
     QHash<QString, QString> groupNames_;
     QStringList activeGroupMembers_;

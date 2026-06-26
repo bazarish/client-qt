@@ -177,8 +177,13 @@ Rectangle {
         }
     }
 
+    // Pick a file, then choose its retention (TTL / download count) before sending.
     FileDialog {
         id: fileDialog
-        onAccepted: root.session.sendFile(selectedFile)
+        onAccepted: { sendOptions.fileUrl = selectedFile; sendOptions.open() }
+    }
+    FileSendDialog {
+        id: sendOptions
+        session: root.session
     }
 }
