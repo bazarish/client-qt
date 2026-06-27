@@ -9,6 +9,7 @@ Rectangle {
     id: root
     property var session: null
     readonly property bool editing: root.session ? root.session.editing : false
+    readonly property bool replying: root.session ? root.session.replying : false
 
     // Multi-line auto-growing input: it grows with the text up to a cap of 30% of
     // the window height, can be resized by dragging the top grip (like an html
@@ -56,6 +57,12 @@ Rectangle {
                 input.text = ""
             }
         }
+        // Focus the composer when a reply starts (the field keeps its draft).
+        function onReplyingChanged() {
+            if (root.session.replying) {
+                input.forceActiveFocus()
+            }
+        }
     }
 
     ColumnLayout {
@@ -81,6 +88,39 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
             IconButton { text: "✕"; onClicked: root.session.cancelEdit() }
+        }
+
+        // Reply banner (shown while composing a reply): the quoted author + preview.
+        RowLayout {
+            visible: root.replying
+            Layout.fillWidth: true
+            Layout.preferredHeight: 30
+            Layout.leftMargin: 10
+            Layout.rightMargin: 6
+            spacing: 8
+            Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 22; radius: 1; color: Theme.accent }
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+                Label {
+                    text: "Reply to " + (root.session ? root.session.replyingSender : "")
+                    color: Theme.accent
+                    font.pixelSize: Theme.fontSmall
+                    font.weight: Font.Medium
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+                Label {
+                    visible: root.session && root.session.replyingText.length > 0
+                    text: root.session ? root.session.replyingText : ""
+                    color: Theme.textDim
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                    Layout.fillWidth: true
+                }
+            }
+            IconButton { text: "✕"; onClicked: root.session.cancelReply() }
         }
 
         // Resize grip: drag up to enlarge the composer, down to shrink it.
@@ -143,7 +183,8 @@ Rectangle {
 
                     TextArea {
                         id: input
-                        placeholderText: root.editing ? "Edit message…" : "Message…"
+                        placeholderText: root.editing ? "Edit message…"
+                            : (root.replying ? "Reply…" : "Message…")
                         color: Theme.text
                         placeholderTextColor: Theme.textDim
                         wrapMode: TextArea.Wrap

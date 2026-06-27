@@ -188,6 +188,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case DownloadStageRole: return downloadStageById_.value(m.id, 0);
     case SavedPathRole: return m.savedPath;
     case BlobGoneRole: return m.blobGone;
+    case ReplyToRole: return m.replyTo;
     // The local calendar day this message belongs to, as an ISO date string. The
     // view groups messages into per-day sections off this role and renders a
     // centered date separator at each change.
@@ -210,7 +211,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
         {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
         {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"},
-        {DownloadStageRole, "downloadStage"}};
+        {DownloadStageRole, "downloadStage"}, {ReplyToRole, "replyTo"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)

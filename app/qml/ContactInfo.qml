@@ -66,16 +66,12 @@ Popup {
             }
             MenuButton { text: "Save"; onClicked: root.saveName() }
         }
+        // The identity itself, in full. Verify it out of band (read it out, compare
+        // over a trusted channel) to confirm you are talking to the right person.
         Label {
-            text: "Scan to verify the contact's identity:"
+            text: "Identity fingerprint (verify out of band):"
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
-            Layout.alignment: Qt.AlignHCenter
-        }
-        QrView {
-            Layout.alignment: Qt.AlignHCenter
-            text: root.session ? root.session.activePeer : ""
-            dim: 200
         }
         TextArea {
             Layout.fillWidth: true
@@ -86,6 +82,113 @@ Popup {
             font.pixelSize: Theme.fontSmall
             selectByMouse: true
             background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+        }
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
+
+        // Destructive chat actions. Clearing empties the history (the chat stays);
+        // deleting removes the contact and the whole conversation for good.
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            MenuButton {
+                Layout.fillWidth: true
+                text: "Clear chat"
+                onClicked: clearChoiceDialog.open()
+            }
+            MenuButton {
+                Layout.fillWidth: true
+                text: "Delete contact"
+                danger: true
+                onClicked: deleteContactDialog.open()
+            }
+        }
+    }
+
+    // Clear-chat choice: only your copy, or ask the peer to clear theirs too.
+    Dialog {
+        id: clearChoiceDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 360
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label {
+            text: "Clear chat"
+            color: Theme.green
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Cancel"
+            showReject: false
+            onAccepted: clearChoiceDialog.close()
+        }
+        contentItem: ColumnLayout {
+            spacing: 10
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: Theme.text
+                text: "Remove every message in this chat. The chat itself stays."
+            }
+            MenuButton {
+                Layout.fillWidth: true
+                text: "Clear only for me"
+                onClicked: {
+                    if (root.session) { root.session.clearChat(false) }
+                    clearChoiceDialog.close()
+                    root.close()
+                }
+            }
+            MenuButton {
+                Layout.fillWidth: true
+                text: "Clear for everyone"
+                danger: true
+                onClicked: {
+                    if (root.session) { root.session.clearChat(true) }
+                    clearChoiceDialog.close()
+                    root.close()
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                text: "“For everyone” asks the other side to clear their copy too; their client clears it automatically."
+            }
+        }
+    }
+
+    // Irreversible contact deletion.
+    Dialog {
+        id: deleteContactDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: 360
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        header: Label {
+            text: "Delete contact"
+            color: Theme.neon
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Delete"
+            danger: true
+            onAccepted: deleteContactDialog.accept()
+            onRejected: deleteContactDialog.reject()
+        }
+        onAccepted: {
+            if (root.session) { root.session.deleteContact() }
+            root.close()
+        }
+        contentItem: Label {
+            wrapMode: Text.Wrap
+            color: Theme.text
+            text: "This permanently removes this contact and your entire chat history with them from this device. This cannot be undone."
         }
     }
 }

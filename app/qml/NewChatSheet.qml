@@ -200,23 +200,31 @@ Popup {
         ColumnLayout {
             visible: !root.busy && root.mode === "group"
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 10
             FormField { id: groupNameField; label: "Group name" }
-            Label { text: "Pick members (existing contacts):"; color: Theme.textDim }
+            Label { text: "Pick members:"; color: Theme.textDim }
+            // Selectable contact rows in the shared terminal style (solid surface,
+            // neon outline on hover/selection, avatar + readable name + a check on
+            // the right), so the picker matches Settings and New chat.
             Frame {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 200
+                Layout.preferredHeight: 240
+                padding: 4
                 background: Rectangle { color: Theme.surface; radius: 8; border.color: Theme.border }
                 ListView {
                     id: memberList
                     anchors.fill: parent
                     clip: true
+                    spacing: 4
                     model: root.session ? root.session.contacts : null
                     delegate: CheckDelegate {
-                        width: ListView.view.width
+                        id: mc
+                        width: ListView.view ? ListView.view.width : 0
                         visible: !model.isGroup
-                        height: model.isGroup ? 0 : 46
-                        text: root.session ? root.session.shortFingerprint(model.fingerprint) : model.fingerprint
+                        height: model.isGroup ? 0 : 52
+                        hoverEnabled: true
+                        leftPadding: 10
+                        rightPadding: 42
                         checked: root.selectedFps.indexOf(model.fingerprint) >= 0
                         onToggled: {
                             var arr = root.selectedFps.slice()
@@ -224,6 +232,40 @@ Popup {
                             if (checked && i < 0) arr.push(model.fingerprint)
                             else if (!checked && i >= 0) arr.splice(i, 1)
                             root.selectedFps = arr
+                        }
+                        background: Rectangle {
+                            radius: Theme.radiusSmall
+                            color: mc.down ? Theme.border2 : (mc.hovered ? Theme.surfaceAlt : Theme.bg)
+                            border.width: 1
+                            border.color: (mc.checked || mc.hovered) ? Theme.green : Theme.border
+                            Behavior on border.color { ColorAnimation { duration: 120 } }
+                        }
+                        indicator: Rectangle {
+                            implicitWidth: 20; implicitHeight: 20
+                            x: mc.width - width - 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            radius: 4
+                            color: mc.checked ? Theme.green : "transparent"
+                            border.width: 1
+                            border.color: mc.checked ? Theme.green : Theme.border2
+                            Label {
+                                anchors.centerIn: parent
+                                visible: mc.checked
+                                text: "✓"
+                                color: Theme.bg
+                                font.pixelSize: 14
+                            }
+                        }
+                        contentItem: RowLayout {
+                            spacing: 10
+                            Avatar { fingerprint: model.fingerprint; size: 30 }
+                            Label {
+                                Layout.fillWidth: true
+                                text: root.session ? root.session.peerName(model.fingerprint) : model.fingerprint
+                                color: Theme.text
+                                elide: Text.ElideRight
+                                verticalAlignment: Text.AlignVCenter
+                            }
                         }
                     }
                 }

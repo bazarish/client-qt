@@ -16,6 +16,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -78,6 +79,11 @@ struct GroupMember {
     std::string servingSealingB64;
     std::vector<std::string> sendTokens;
     bool admin = false;
+    // The member's self-chosen account display name, learned from the `dn` field
+    // their group messages carry (signed by the member's own identity). Purely a
+    // soft label shown until/unless we have a local name for them; the fingerprint
+    // is the ground truth. Empty until that member has sent in the group.
+    std::string displayName;
 };
 
 // A group as this client knows it: the roster (other members + their routing and
@@ -91,6 +97,11 @@ struct Group {
     // Base64 hashes of the token pool we last issued to this group, so we can
     // revoke it (cut off a removed member) and issue a fresh one.
     std::vector<std::string> myPoolHashes;
+    // The group photo (raw compressed image bytes) and its mime, as last set by
+    // any member. Stored in a sealed per-group file; only the mime rides in the
+    // groups JSON. Empty when the group has no photo.
+    Bytes avatar;
+    std::string avatarMime;
 };
 
 // A decrypted item pulled from the mailbox during sync.
@@ -118,6 +129,10 @@ struct IncomingMessage {
     // For contentType == "receipt", the message id being acknowledged; for
     // contentType == "bot.callback", the keyboard message the button belongs to.
     std::string refId;
+
+    // When this message replies to another, the protocol id of that original
+    // message (so the UI can render a quote and link to it). Empty when not a reply.
+    std::string replyTo;
 
     // For the call.* content types, the call this signal belongs to. The UI uses
     // it to accept/decline an incoming call.invite and to match later signals.
@@ -225,9 +240,17 @@ public:
     // A contact's local display name (empty when unnamed) and its avatar bytes.
     std::string contactDisplayName(const std::string& peerFingerprint) const;
     Bytes contactAvatar(const std::string& peerFingerprint) const;
+    // Whether this contact sent us a request we have not yet accepted (we hold
+    // their tokens but have not issued ours). Drives the "Agree" affordance.
+    bool contactIsPending(const std::string& peerFingerprint) const;
     // Renames a contact locally and mirrors the change to the account's other
     // devices (a device.contact-name self-message). No-op for an unknown contact.
     void renameContact(const std::string& peerFingerprint, const std::string& name);
+
+    // Permanently removes a contact: drops it from the roster, deletes its sealed
+    // avatar blob, and persists. Local only and irreversible - the peer is not
+    // told. No-op for an unknown contact. The caller wipes the local transcript.
+    void removeContact(const std::string& peerFingerprint);
 
     // Subscribes to the configured server for the given number of days and
     // registers this client ID. Stores the returned server card.
@@ -306,6 +329,23 @@ public:
     // reach us with no trust in any server. Requires an active subscription.
     std::string inviteUri() const;
 
+    // Requests adding a fellow group member as a one-to-one contact. The member's
+    // routing comes from the (admin-signed) group roster, but the contact card is
+    // fetched and verified end-to-end against their fingerprint - so a hostile
+    // admin can only make the add fail, never substitute a key. The request is a
+    // direct, E2E-sealed delivery to that member only (never through the group), so
+    // no other member sees it and the two parties never exchange anything else
+    // until the member agrees. Returns the member's fingerprint. Throws if it is
+    // not a member, is already a contact, or is ourselves.
+    std::string requestContactFromGroup(const std::string& groupId,
+        const std::string& memberFingerprint, const std::string& text);
+
+    // Accepts a received contact request: sends a "contact.accept" back, which (as
+    // our first reply) carries our descriptor and a reply-token batch, so the
+    // requester becomes a fully mutual contact and a one-to-one chat opens. A no-op
+    // if we cannot reach the requester (no contact / tokens) yet.
+    void acceptContactRequest(const std::string& peerFingerprint);
+
     // Adds a contact from an invite descriptor (bazarish://invite?fp&srv&srv_key):
     // the user-signed contact card is fetched for the descriptor's fingerprint
     // and verified against it, then a contact request is sent. Returns the added
@@ -344,10 +384,13 @@ public:
     // Returns true if the recipient server confirmed storage within the poll
     // window (the "yellow" state), false if it was accepted but is still being
     // delivered in the background (stays grey until a read receipt confirms it).
+    // replyTo, when set, is the protocol id of the message this one replies to;
+    // it rides in the envelope so the recipient can render a quote and link to
+    // the original (a no-op reference if they do not hold it locally).
     bool sendMessage(const std::string& peerFingerprint, const std::string& text,
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr);
+        std::string* outAttemptId = nullptr, const std::string& replyTo = {});
 
     // Sends a file as a "file" content message: the bytes are encrypted with a
     // fresh key and uploaded to the content store; the message carries the
@@ -362,7 +405,7 @@ public:
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, const UploadProgressFn& onUploadProgress = {},
-        const BlobRetention& retention = {});
+        const BlobRetention& retention = {}, const std::string& replyTo = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.
@@ -404,6 +447,11 @@ public:
     // Sends a delivery receipt (content type "receipt") acknowledging that we
     // received the message with id refMessageId. Costs one delivery token.
     void sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId);
+
+    // Asks the peer to clear the whole conversation with us (content type
+    // "chat.clear"): on receipt their client wipes its transcript with us, the
+    // same way it auto-applies a delete-for-everyone. Costs one delivery token.
+    void sendChatClear(const std::string& peerFingerprint);
 
     // The outcome of a still-in-flight send, re-polled after the initial submit
     // window. status is "pending", "delivered", "failed", or "unknown" (the
@@ -520,14 +568,42 @@ public:
 
     // Sends a text message to a group: one content delivery per member (client
     // fan-out), each spending one of that member's pool tokens. Members we have
-    // no pool token for yet are skipped (their pool has not arrived).
-    void sendGroupMessage(const std::string& groupId, const std::string& text);
+    // no pool token for yet are skipped (their pool has not arrived). replyTo, when
+    // set, is the protocol id of the group message this one replies to.
+    void sendGroupMessage(
+        const std::string& groupId, const std::string& text, const std::string& replyTo = {});
+
+    // Edits one of our own group messages: fans a signed "edit" to every member
+    // (like a group text), so an edit works in a group exactly as in a 1:1 chat
+    // (the 1:1 path needs a contact, which a group id is not).
+    void sendGroupEdit(
+        const std::string& groupId, const std::string& refMessageId, const std::string& text);
 
     // Group listing and membership, for the UI / CLI.
     std::vector<std::string> groupIds() const;
     std::string groupName(const std::string& groupId) const;
     std::vector<std::string> groupMemberFingerprints(const std::string& groupId) const;
     bool isGroupAdmin(const std::string& groupId) const;
+    // A group member's self-chosen display name, learned from their messages
+    // (empty when unknown or for our own / a non-member fingerprint).
+    std::string groupMemberDisplayName(
+        const std::string& groupId, const std::string& memberFingerprint) const;
+
+    // The group photo bytes and mime as last set by any member (both empty when
+    // none). Set the group photo (any member may): persists it, surfaces it, and
+    // broadcasts a signed "group.avatar" to every member so it appears in the chat
+    // as a message from us. The bytes must already be compressed by the UI within
+    // the protocol cap (500 KB); throws if they exceed it.
+    Bytes groupAvatar(const std::string& groupId) const;
+    std::string groupAvatarMime(const std::string& groupId) const;
+    // Sets the group photo. Admin-only: throws if we are not an admin of the group.
+    void setGroupAvatar(const std::string& groupId, const Bytes& data, const std::string& mime);
+
+    // Renames the group (admin-only): updates the name, bumps the roster epoch,
+    // re-broadcasts the signed roster (the authoritative name) and sends a signed
+    // "group.rename" service message so every member shows a rename notice. Throws
+    // if we are not an admin.
+    void setGroupName(const std::string& groupId, const std::string& name);
 
     // Adds existing contacts to a group (admin only): bumps the roster epoch,
     // invites the new members, and tells the existing members. Throws if we are
@@ -618,6 +694,10 @@ private:
     // Persists a contact's received avatar bytes (sealed at rest) and its mime.
     void storeContactAvatar(
         const std::string& peerFingerprint, const Bytes& data, const std::string& mime);
+    // Persists a group's photo bytes (sealed at rest, keyed by group id) and its
+    // mime in memory. The caller persists the groups JSON (which records the mime).
+    void storeGroupAvatar(
+        const std::string& groupId, const Bytes& data, const std::string& mime);
     // Writes a profile blob, sealed under the passphrase when the profile is
     // encrypted (the generic form behind persistI2pBlob, reused for avatars).
     void persistSealedBlob(const std::string& filename, const Bytes& blob) const;
@@ -707,6 +787,10 @@ private:
         const std::string& groupId, const std::string& memberFp, const nlohmann::json& inner);
     void persistGroups() const;
     nlohmann::json groupsToJson() const;
+    // Persists / loads the left-group tombstone set (groups-left.json, sealed at
+    // rest when the profile is encrypted).
+    void persistLeftGroups() const;
+    void loadLeftGroups();
 
     std::filesystem::path profileDir_;
     // Fetches an externalized blob: direct over a transient I2P destination, falling
@@ -766,6 +850,11 @@ private:
     std::map<std::string, Contact> contacts_;
     // Groups this client belongs to, by group id (client-side only).
     std::map<std::string, Group> groups_;
+    // Groups we have left: a tombstone so a late group item (one a member sent
+    // before our pool revocation reached them, or a stray roster/token broadcast)
+    // can never resurrect a chat we deleted. Group content/control for a left id
+    // is dropped on sync; a genuine re-invite clears the tombstone. Persisted.
+    std::set<std::string> leftGroups_;
     // Our own serving destination + serving sealing key (SPKI DER, base64),
     // learned on subscribe (GET /v1/messaging/destination) and forwarded to
     // contacts in the E2E bootstrap so they route and seal replies to us.

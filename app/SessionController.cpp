@@ -71,6 +71,44 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 // How many messages a conversation loads per page (initial window and each
 // older/newer step). Keeps even a huge dialog cheap to open and scroll.
 constexpr int kPageSize = 50;
+
+// Loads a picked image and compresses it to a square JPEG within the 500 KB
+// avatar protocol cap (center-crop, downscale to 256, drop quality - then, as a
+// last resort, resolution - until it fits). Returns empty bytes when the file is
+// not a readable image. Shared by the own-avatar and group-photo paths.
+QByteArray compressAvatarJpeg(const QString& localPath)
+{
+    const QImage img(localPath);
+    if (img.isNull()) {
+        return {};
+    }
+    const int side = std::min(img.width(), img.height());
+    QImage square = img.copy((img.width() - side) / 2, (img.height() - side) / 2, side, side);
+    constexpr int kDim = 256;
+    if (square.width() > kDim) {
+        square = square.scaled(kDim, kDim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
+    constexpr int kCap = 500 * 1024;
+    const auto encode = [&square](int quality) {
+        QByteArray out;
+        QBuffer buffer(&out);
+        buffer.open(QIODevice::WriteOnly);
+        square.save(&buffer, "JPEG", quality);
+        buffer.close();
+        return out;
+    };
+    QByteArray bytes;
+    int quality = 90;
+    do {
+        bytes = encode(quality);
+        quality -= 15;
+    } while (bytes.size() > kCap && quality >= 30);
+    if (bytes.size() > kCap) {
+        square = square.scaled(128, 128, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        bytes = encode(80);
+    }
+    return bytes;
+}
 }  // namespace
 
 // ============================ SessionWorker ============================
@@ -152,6 +190,15 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
                         static_cast<int>(av.size())));
             }
         }
+        // Group photos are keyed by group id in the same store.
+        for (const std::string& gid : session_->groupIds()) {
+            const bazarish::Bytes av = session_->groupAvatar(gid);
+            if (!av.empty()) {
+                emit avatarReady(QString::fromStdString(gid),
+                    QByteArray(reinterpret_cast<const char*>(av.data()),
+                        static_cast<int>(av.size())));
+            }
+        }
     }
     emitGroups();
     emitFacadeInfo();
@@ -168,11 +215,13 @@ void SessionWorker::emitContacts()
     }
     QStringList fps;
     QStringList names;
+    QStringList pending;
     for (const std::string& fp : session_->contactFingerprints()) {
         fps << QString::fromStdString(fp);
         names << QString::fromStdString(session_->contactDisplayName(fp));
+        pending << (session_->contactIsPending(fp) ? QStringLiteral("1") : QStringLiteral("0"));
     }
-    emit contactsRefreshed(fps, names);
+    emit contactsRefreshed(fps, names, pending);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -279,6 +328,13 @@ void SessionWorker::sync()
         if (m.contentType == "device.contact-name" || m.contentType == "device.i2p-master") {
             continue;
         }
+        // A group photo update both refreshes the avatar store (keyed by group id)
+        // and surfaces a "set the group photo" bubble - so it falls through to the
+        // message map below after routing the image to the store.
+        if (m.contentType == "group.avatar" && !m.avatarData.empty()) {
+            emit avatarReady(QString::fromStdString(m.groupId),
+                QByteArray(m.avatarData.data(), static_cast<int>(m.avatarData.size())));
+        }
         QVariantMap map;
         map["peer"] = QString::fromStdString(m.fromFingerprint);
         map["type"] = QString::fromStdString(m.contentType);
@@ -296,6 +352,7 @@ void SessionWorker::sync()
         map["sender"] = QString::fromStdString(m.fromFingerprint);
         map["messageId"] = QString::fromStdString(m.messageId);
         map["ref"] = QString::fromStdString(m.refId);
+        map["replyTo"] = QString::fromStdString(m.replyTo);
         map["sentAt"] = static_cast<qint64>(m.sentAt);
         emit messageReceived(map);
     }
@@ -429,8 +486,8 @@ void SessionWorker::setCameraEnabled(const bool enabled)
     emitCallState();
 }
 
-void SessionWorker::sendText(
-    const QString& peer, const QString& text, qint64 localId, const QString& protocolId)
+void SessionWorker::sendText(const QString& peer, const QString& text, qint64 localId,
+    const QString& protocolId, const QString& replyTo)
 {
     try {
         // The callback fires "grey" the instant our own server accepts the
@@ -441,7 +498,7 @@ void SessionWorker::sendText(
         const bool delivered = session_->sendMessage(peer.toStdString(), text.toStdString(),
             protocolId.toStdString(),
             [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
-            &attemptId);
+            &attemptId, replyTo.toStdString());
         if (delivered) {
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
@@ -456,7 +513,7 @@ void SessionWorker::sendText(
 }
 
 void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint64 localId,
-    const QString& protocolId, qint64 ttlSeconds, int downloadCount)
+    const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo)
 {
     try {
         bazarish::client::BlobRetention retention;
@@ -472,7 +529,7 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
             [this, localId](std::uint64_t sent, std::uint64_t total) {
                 emit uploadProgress(localId, static_cast<qint64>(sent), static_cast<qint64>(total));
             },
-            retention);
+            retention, replyTo.toStdString());
         if (delivered) {
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
@@ -587,12 +644,26 @@ void SessionWorker::createGroup(const QString& name, const QStringList& memberFp
     }
 }
 
-void SessionWorker::sendGroupText(const QString& groupId, const QString& text, qint64 localId)
+void SessionWorker::sendGroupText(
+    const QString& groupId, const QString& text, qint64 localId, const QString& replyTo)
 {
     try {
-        session_->sendGroupMessage(groupId.toStdString(), text.toStdString());
+        session_->sendGroupMessage(
+            groupId.toStdString(), text.toStdString(), replyTo.toStdString());
         // A group fan-out has no single recipient to confirm; treat a clean
         // send as handed off (yellow).
+        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
+        emit sendResult(localId, true, {});
+    } catch (const std::exception& e) {
+        emit sendResult(localId, false, QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::sendGroupEdit(
+    const QString& groupId, const QString& refId, qint64 localId, const QString& text)
+{
+    try {
+        session_->sendGroupEdit(groupId.toStdString(), refId.toStdString(), text.toStdString());
         emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
         emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
@@ -606,10 +677,14 @@ void SessionWorker::fetchGroupMembers(const QString& groupId)
         return;
     }
     QStringList members;
+    QStringList selfNames;
     for (const std::string& fp : session_->groupMemberFingerprints(groupId.toStdString())) {
         members << QString::fromStdString(fp);
+        selfNames << QString::fromStdString(
+            session_->groupMemberDisplayName(groupId.toStdString(), fp));
     }
-    emit groupMembersReady(groupId, members, session_->isGroupAdmin(groupId.toStdString()));
+    emit groupMembersReady(
+        groupId, members, selfNames, session_->isGroupAdmin(groupId.toStdString()));
 }
 
 void SessionWorker::addGroupMembers(const QString& groupId, const QStringList& fps)
@@ -678,12 +753,27 @@ void SessionWorker::addByUsername(const QString& alias, const QString& intro)
     }
 }
 
-void SessionWorker::addByFingerprint(const QString& fingerprint, const QString& intro)
+void SessionWorker::requestContactFromGroup(
+    const QString& groupId, const QString& memberFp, const QString& intro)
 {
     try {
-        session_->sendContactRequest(fingerprint.toStdString(), intro.toStdString());
-        emit actionOk("Contact request sent.");
-        emit contactRequestSent(fingerprint, intro);
+        const std::string fingerprint = session_->requestContactFromGroup(
+            groupId.toStdString(), memberFp.toStdString(), intro.toStdString());
+        emit actionOk(QString::fromStdString(
+            "Contact request sent. Verify fingerprint: " + fingerprint));
+        emit contactRequestSent(QString::fromStdString(fingerprint), intro);
+        emitContacts();
+        sync();
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::acceptContact(const QString& peer)
+{
+    try {
+        session_->acceptContactRequest(peer.toStdString());
+        emitContacts();  // issuedToThem flipped: the contact is no longer pending
         sync();
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -705,44 +795,51 @@ void SessionWorker::setAvatar(const QString& localPath)
         return;
     }
     try {
-        QImage img(localPath);
-        if (img.isNull()) {
+        const QByteArray bytes = compressAvatarJpeg(localPath);
+        if (bytes.isEmpty()) {
             emit actionFailed(QStringLiteral("Could not read the selected image."));
             return;
-        }
-        // Center-crop to a square, then downscale to a sane avatar resolution.
-        const int side = std::min(img.width(), img.height());
-        QImage square
-            = img.copy((img.width() - side) / 2, (img.height() - side) / 2, side, side);
-        constexpr int kDim = 256;
-        if (square.width() > kDim) {
-            square = square.scaled(kDim, kDim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        }
-        // Encode as JPEG within the 500 KB protocol cap, dropping quality - then,
-        // as a last resort, resolution - until it fits.
-        constexpr int kCap = 500 * 1024;
-        const auto encode = [&square](int quality) {
-            QByteArray out;
-            QBuffer buffer(&out);
-            buffer.open(QIODevice::WriteOnly);
-            square.save(&buffer, "JPEG", quality);
-            buffer.close();
-            return out;
-        };
-        QByteArray bytes;
-        int quality = 90;
-        do {
-            bytes = encode(quality);
-            quality -= 15;
-        } while (bytes.size() > kCap && quality >= 30);
-        if (bytes.size() > kCap) {
-            square = square.scaled(128, 128, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-            bytes = encode(80);
         }
         session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
         // Echo locally at once so our own avatar updates without waiting for a sync.
         emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
         emit actionOk(QStringLiteral("Avatar updated."));
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::setGroupAvatar(const QString& groupId, const QString& localPath)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        const QByteArray bytes = compressAvatarJpeg(localPath);
+        if (bytes.isEmpty()) {
+            emit actionFailed(QStringLiteral("Could not read the selected image."));
+            return;
+        }
+        session_->setGroupAvatar(
+            groupId.toStdString(), bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
+        // Update the store at once (keyed by group id) so the photo shows without
+        // waiting for a sync; the chat bubble was already added by the controller.
+        emit avatarReady(groupId, bytes);
+        emit actionOk(QStringLiteral("Group photo updated."));
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::setGroupName(const QString& groupId, const QString& name)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setGroupName(groupId.toStdString(), name.toStdString());
+        emitGroups();  // reflect the new name in the chat list / header at once
+        emit actionOk(QStringLiteral("Group renamed."));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -756,6 +853,34 @@ void SessionWorker::renameContact(const QString& peer, const QString& name)
     try {
         session_->renameContact(peer.toStdString(), name.toStdString());
         emitContacts();  // reflect the new name in the chat list at once
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::removeContact(const QString& peer)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->removeContact(peer.toStdString());
+        // Clear the avatar store entry and re-emit the (now shorter) contact list.
+        emit avatarReady(peer, QByteArray());
+        emitContacts();
+        emit actionOk(QStringLiteral("Contact deleted."));
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::clearChatForEveryone(const QString& peer)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->sendChatClear(peer.toStdString());
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -968,9 +1093,17 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
+    connect(
+        this, &SessionController::requestSendGroupEdit, worker_, &SessionWorker::sendGroupEdit);
     connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
     connect(this, &SessionController::requestSetAvatar, worker_, &SessionWorker::setAvatar);
+    connect(
+        this, &SessionController::requestSetGroupAvatar, worker_, &SessionWorker::setGroupAvatar);
+    connect(this, &SessionController::requestSetGroupName, worker_, &SessionWorker::setGroupName);
     connect(this, &SessionController::requestRenameContact, worker_, &SessionWorker::renameContact);
+    connect(this, &SessionController::requestRemoveContact, worker_, &SessionWorker::removeContact);
+    connect(this, &SessionController::requestClearChatForEveryone, worker_,
+        &SessionWorker::clearChatForEveryone);
     connect(this, &SessionController::requestCreateGroup, worker_, &SessionWorker::createGroup);
     connect(this, &SessionController::requestSendGroupText, worker_, &SessionWorker::sendGroupText);
     connect(this, &SessionController::requestAddGroupMembers, worker_,
@@ -982,8 +1115,9 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::fetchGroupMembers);
     connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
     connect(this, &SessionController::requestAddByUsername, worker_, &SessionWorker::addByUsername);
-    connect(this, &SessionController::requestAddByFingerprint, worker_,
-        &SessionWorker::addByFingerprint);
+    connect(this, &SessionController::requestContactFromGroup, worker_,
+        &SessionWorker::requestContactFromGroup);
+    connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
     connect(this, &SessionController::requestSaveAttachment, worker_,
@@ -1025,16 +1159,25 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::messageReceived, this,
         &SessionController::onMessageReceived);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
-        [this](const QStringList& fps, const QStringList& names) {
+        [this](const QStringList& fps, const QStringList& names, const QStringList& pending) {
             contactFps_ = fps;
             contactNames_.clear();
+            pendingContacts_.clear();
             for (int i = 0; i < fps.size() && i < names.size(); ++i) {
                 if (!names[i].isEmpty()) {
                     contactNames_.insert(fps[i], names[i]);
                 }
             }
+            for (int i = 0; i < fps.size() && i < pending.size(); ++i) {
+                if (pending[i] == QStringLiteral("1")) {
+                    pendingContacts_.insert(fps[i]);
+                }
+            }
             rebuildChatList();
             emit activePeerNameChanged();  // the open chat's header may have renamed
+            // Re-drive any contact-request bubble's "Agree" visibility.
+            ++contactsRevision_;
+            emit contactsRevisionChanged();
         });
     connect(worker_, &SessionWorker::avatarReady, this, &SessionController::onAvatarReady);
     connect(worker_, &SessionWorker::groupsRefreshed, this, &SessionController::onGroupsRefreshed);
@@ -1384,6 +1527,91 @@ void SessionController::setAvatar(const QString& fileUrl)
     }
 }
 
+void SessionController::setGroupAvatar(const QString& fileUrl)
+{
+    if (activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
+        return;
+    }
+    const QString localPath = QUrl(fileUrl).toLocalFile();
+    if (localPath.isEmpty()) {
+        return;
+    }
+    // An optimistic "set the group photo" bubble from us, mirroring how a group
+    // text appears at once; the worker compresses, persists and broadcasts the
+    // photo. The image the bubble shows is the group avatar (updated by the
+    // avatarReady the worker emits), so it refreshes the moment the bytes land.
+    StoredMessage m;
+    m.peer = activePeer_;
+    m.outgoing = true;
+    m.type = QStringLiteral("group.avatar");
+    m.sender = fingerprint_;
+    m.text = QStringLiteral("set the group photo");
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
+    m.status = DeliveryStatus::AtRecipientServer;  // a group fan-out has no single ack
+    m.id = store_.append(m);
+    showInActiveView(m, true);
+    contacts_.touch(activePeer_, groupNames_.value(activePeer_), m.text, m.ts, false, true);
+    emit requestSetGroupAvatar(activePeer_, localPath);
+}
+
+void SessionController::setGroupName(const QString& name)
+{
+    const QString trimmed = name.trimmed();
+    if (trimmed.isEmpty() || activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
+        return;
+    }
+    if (trimmed == groupNames_.value(activePeer_)) {
+        return;  // no change
+    }
+    // Optimistic local rename + a "renamed the group" notice from us, mirroring the
+    // group-photo flow; the worker bumps the epoch, broadcasts the roster (the
+    // authoritative name) and the rename notice to every member.
+    groupNames_.insert(activePeer_, trimmed);
+    StoredMessage m;
+    m.peer = activePeer_;
+    m.outgoing = true;
+    m.type = QStringLiteral("group.rename");
+    m.sender = fingerprint_;
+    m.text = QStringLiteral("changed the group name to \"") + trimmed + QStringLiteral("\"");
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
+    m.status = DeliveryStatus::AtRecipientServer;
+    m.id = store_.append(m);
+    showInActiveView(m, true);
+    contacts_.touch(activePeer_, trimmed, m.text, m.ts, false, true);
+    rebuildChatList();
+    emit activePeerNameChanged();
+    emit requestSetGroupName(activePeer_, trimmed);
+}
+
+QVariantMap SessionController::groupSenderInfo(const QString& fp) const
+{
+    QVariantMap info;
+    // A local contact name we keep takes precedence (and is shown as trusted).
+    const QString contact = contactNames_.value(fp);
+    if (!contact.isEmpty()) {
+        info[QStringLiteral("name")] = contact;
+        info[QStringLiteral("isContact")] = true;
+        info[QStringLiteral("fpShort")] = QString();
+        return info;
+    }
+    // Otherwise the sender's own account name (unverified), with the short
+    // fingerprint beneath it as the ground truth.
+    const QString self = memberSelfNames_.value(fp);
+    if (!self.isEmpty()) {
+        info[QStringLiteral("name")] = self;
+        info[QStringLiteral("isContact")] = false;
+        info[QStringLiteral("fpShort")] = shortFingerprint(fp);
+        return info;
+    }
+    // Nothing known yet (a silent non-contact member): the short fingerprint alone.
+    info[QStringLiteral("name")] = shortFingerprint(fp);
+    info[QStringLiteral("isContact")] = false;
+    info[QStringLiteral("fpShort")] = QString();
+    return info;
+}
+
 void SessionController::renameContact(const QString& fp, const QString& name)
 {
     if (fp.isEmpty()) {
@@ -1416,14 +1644,78 @@ void SessionController::removeGroupMember(const QString& groupId, const QString&
 
 void SessionController::leaveGroup(const QString& groupId)
 {
+    if (groupId.isEmpty()) {
+        return;
+    }
+    // Leave no trace locally: wipe the group's transcript and drop it from the chat
+    // list at once. The worker notifies members, revokes our pool (so no member can
+    // deliver to us in this group again) and tombstones the id so a late item can
+    // never resurrect the chat. Local cleanup is optimistic - leaving is final.
+    store_.clearPeer(groupId);
+    groupIds_.removeAll(groupId);
+    groupNames_.remove(groupId);
+    if (activePeer_ == groupId) {
+        openConversation({});  // close the conversation we just left
+    }
+    rebuildChatList();
+    refreshUnreadTotal();
     emit requestLeaveGroup(groupId);
 }
 
-void SessionController::onGroupMembersReady(
-    const QString& groupId, const QStringList& members, bool iAmAdmin)
+void SessionController::clearChat(bool forEveryone)
+{
+    if (activePeer_.isEmpty() || groupIds_.contains(activePeer_)) {
+        return;  // 1:1 conversations only
+    }
+    const QString peer = activePeer_;
+    store_.clearPeer(peer);
+    if (forEveryone) {
+        emit requestClearChatForEveryone(peer);
+        // A single note so the now-empty chat explains itself.
+        StoredMessage sys;
+        sys.peer = peer;
+        sys.type = QStringLiteral("system");
+        sys.text = QStringLiteral("You cleared the chat for everyone.");
+        sys.ts = nowMillis();
+        sys.orderKey = sys.ts;
+        sys.status = DeliveryStatus::Received;
+        sys.id = store_.append(sys);
+    }
+    // The chat row stays (clearing is not deleting); reload its window and refresh
+    // the chat-list preview to the now-empty / one-line state.
+    loadLatestWindow();
+    contacts_.touch(peer, peerName(peer), store_.lastText(peer), store_.lastTime(peer), false);
+    refreshUnreadTotal();
+}
+
+void SessionController::deleteContact()
+{
+    if (activePeer_.isEmpty() || groupIds_.contains(activePeer_)) {
+        return;  // 1:1 contacts only
+    }
+    const QString peer = activePeer_;
+    // Wipe the chat and drop the contact from the list at once; the worker removes
+    // it from the roster and clears its avatar. Irreversible.
+    store_.clearPeer(peer);
+    contactFps_.removeAll(peer);
+    contactNames_.remove(peer);
+    openConversation({});  // close the conversation we just deleted
+    rebuildChatList();
+    refreshUnreadTotal();
+    emit requestRemoveContact(peer);
+}
+
+void SessionController::onGroupMembersReady(const QString& groupId, const QStringList& members,
+    const QStringList& selfNames, bool iAmAdmin)
 {
     if (groupId == activePeer_) {
         activeGroupMembers_ = members;
+        memberSelfNames_.clear();
+        for (int i = 0; i < members.size() && i < selfNames.size(); ++i) {
+            if (!selfNames[i].isEmpty()) {
+                memberSelfNames_.insert(members[i], selfNames[i]);
+            }
+        }
         activeGroupAdmin_ = iAmAdmin;
         emit activeGroupChanged();
     }
@@ -1439,6 +1731,11 @@ void SessionController::sendText(const QString& text)
     if (activePeer_.isEmpty() || text.isEmpty()) {
         return;
     }
+    // Consume any reply-in-progress: the reference rides with this one message.
+    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    if (replying_) {
+        cancelReply();
+    }
     // Group conversation: fan out to all members via the group path.
     if (groupIds_.contains(activePeer_)) {
         StoredMessage gm;
@@ -1448,6 +1745,7 @@ void SessionController::sendText(const QString& text)
         gm.sender = fingerprint_;
         gm.protocolId = SessionController_genProtocolId();
         gm.text = text;
+        gm.replyTo = replyTo;
         gm.ts = nowMillis();
         gm.orderKey = gm.ts;
         gm.status = DeliveryStatus::Sending;
@@ -1455,7 +1753,7 @@ void SessionController::sendText(const QString& text)
         statusById_[gm.id] = DeliveryStatus::Sending;
         showInActiveView(gm, true);
         contacts_.touch(activePeer_, groupNames_.value(activePeer_), text, gm.ts, false, true);
-        emit requestSendGroupText(activePeer_, text, gm.id);
+        emit requestSendGroupText(activePeer_, text, gm.id, replyTo);
         return;
     }
     StoredMessage m;
@@ -1464,6 +1762,7 @@ void SessionController::sendText(const QString& text)
     m.type = "text";
     m.protocolId = SessionController_genProtocolId();
     m.text = text;
+    m.replyTo = replyTo;
     m.ts = nowMillis();
     m.orderKey = m.ts;
     m.status = DeliveryStatus::Sending;
@@ -1471,7 +1770,7 @@ void SessionController::sendText(const QString& text)
     statusById_[m.id] = DeliveryStatus::Sending;
     showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, text, m.ts, false);
-    emit requestSendText(activePeer_, text, m.id, m.protocolId);
+    emit requestSendText(activePeer_, text, m.id, m.protocolId, replyTo);
 }
 
 void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int downloadCount)
@@ -1483,11 +1782,16 @@ void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int 
     if (localPath.isEmpty()) {
         return;
     }
+    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    if (replying_) {
+        cancelReply();
+    }
     StoredMessage m;
     m.peer = activePeer_;
     m.outgoing = true;
     m.type = "file";
     m.protocolId = SessionController_genProtocolId();
+    m.replyTo = replyTo;
     m.attName = QUrl(fileUrl).fileName();
     // Record the local size and mime so the sender's own bubble renders a real
     // attachment card (name + size) immediately, without waiting for the upload.
@@ -1505,7 +1809,8 @@ void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int 
     fileRetention_.insert(m.id, FileRetention{ttlSeconds, downloadCount});
     showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
-    emit requestSendFile(activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount);
+    emit requestSendFile(
+        activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount, replyTo);
 }
 
 void SessionController::sendCallback(const QString& data, const QString& refMsgId)
@@ -1528,11 +1833,75 @@ void SessionController::sendCommand(const QString& command, const QString& args)
 
 void SessionController::beginEdit(qint64 localId, const QString& protocolId, const QString& text)
 {
+    if (replying_) {
+        cancelReply();  // editing and replying are mutually exclusive composer modes
+    }
     editing_ = true;
     editingLocalId_ = localId;
     editingProtocolId_ = protocolId;
     editingText_ = text;
     emit editingChanged();
+}
+
+void SessionController::beginReply(
+    const QString& protocolId, const QString& previewText, const QString& sender)
+{
+    if (protocolId.isEmpty()) {
+        return;
+    }
+    if (editing_) {
+        cancelEdit();  // mutually exclusive composer modes
+    }
+    replying_ = true;
+    replyingProtocolId_ = protocolId;
+    replyingText_ = previewText;
+    replyingSender_ = sender;
+    emit replyingChanged();
+}
+
+void SessionController::cancelReply()
+{
+    if (!replying_) {
+        return;
+    }
+    replying_ = false;
+    replyingProtocolId_.clear();
+    replyingText_.clear();
+    replyingSender_.clear();
+    emit replyingChanged();
+}
+
+QVariantMap SessionController::replyPreview(const QString& protocolId) const
+{
+    QVariantMap info;
+    info[QStringLiteral("found")] = false;
+    info[QStringLiteral("localId")] = 0;
+    info[QStringLiteral("text")] = QString();
+    info[QStringLiteral("sender")] = QString();
+    if (protocolId.isEmpty() || activePeer_.isEmpty()) {
+        return info;
+    }
+    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    if (m.id == 0) {
+        return info;  // the original is not in our local history: a dead reference
+    }
+    info[QStringLiteral("found")] = true;
+    info[QStringLiteral("localId")] = m.id;
+    // A short preview: the text, or a file label for an attachment.
+    QString preview = m.text;
+    if (preview.isEmpty() && !m.attName.isEmpty()) {
+        preview = QStringLiteral("\xF0\x9F\x93\x8E ") + m.attName;  // paperclip + name
+    }
+    info[QStringLiteral("text")] = preview;
+    // The author label: "You" for our own, else a contact/self name or short fp.
+    if (m.outgoing) {
+        info[QStringLiteral("sender")] = QStringLiteral("You");
+    } else if (!m.sender.isEmpty()) {
+        info[QStringLiteral("sender")] = groupSenderInfo(m.sender).value("name").toString();
+    } else {
+        info[QStringLiteral("sender")] = peerName(activePeer_);
+    }
+    return info;
 }
 
 void SessionController::commitEdit(const QString& newText)
@@ -1555,7 +1924,13 @@ void SessionController::commitEdit(const QString& newText)
         store_.updateStatus(editingLocalId_, DeliveryStatus::Sending);
         conversation_.setStatusForId(editingLocalId_, DeliveryStatus::Sending);
         conversation_.setErrorForId(editingLocalId_, {});
-        emit requestSendEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
+        // A group edit fans out to members (the 1:1 edit path needs a contact,
+        // which a group id is not - that was the "contact not found" failure).
+        if (groupIds_.contains(activePeer_)) {
+            emit requestSendGroupEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
+        } else {
+            emit requestSendEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
+        }
     }
     cancelEdit();
 }
@@ -1610,9 +1985,36 @@ void SessionController::addByUsername(const QString& alias, const QString& intro
     emit requestAddByUsername(alias, intro);
 }
 
-void SessionController::addByFingerprint(const QString& fingerprint, const QString& intro)
+void SessionController::addContactFromGroup(const QString& memberFp)
 {
-    emit requestAddByFingerprint(fingerprint, intro);
+    if (memberFp.isEmpty() || activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
+        return;
+    }
+    // A friendly default intro; the request is a direct, member-only delivery.
+    emit requestContactFromGroup(activePeer_, memberFp, QStringLiteral("Hi, let's connect."));
+}
+
+void SessionController::acceptContact()
+{
+    if (activePeer_.isEmpty() || groupIds_.contains(activePeer_)) {
+        return;
+    }
+    const QString peer = activePeer_;
+    // Hide the "Agree" button at once; the worker confirms via contactsRefreshed.
+    pendingContacts_.remove(peer);
+    ++contactsRevision_;
+    emit contactsRevisionChanged();
+    emit requestAcceptContact(peer);
+}
+
+bool SessionController::isContact(const QString& fp) const
+{
+    return contactFps_.contains(fp);
+}
+
+bool SessionController::contactCanAccept(const QString& fp) const
+{
+    return pendingContacts_.contains(fp);
 }
 
 void SessionController::requestInvite()
@@ -1805,28 +2207,37 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // where it sits instead of adding a new bubble. Scoped to incoming-from-peer
     // in the store, so a peer can only edit its own messages.
     if (type == "edit") {
-        const qint64 localId
-            = store_.idForIncomingProtocol(message.value("ref").toString(), peer);
+        // A group edit is filed under the group id and scoped to the authoring
+        // member (so a member can only edit its own message); a 1:1 edit is scoped
+        // to incoming-from-peer.
+        const QString gid = message.value("groupId").toString();
+        const bool isGroup = !gid.isEmpty();
+        const QString convKey = isGroup ? gid : peer;
+        const qint64 localId = isGroup
+            ? store_.idForIncomingGroupProtocol(
+                  message.value("ref").toString(), gid, message.value("sender").toString())
+            : store_.idForIncomingProtocol(message.value("ref").toString(), peer);
         if (localId != 0) {
             const QString newText = message.value("text").toString();
             const QString newKeyboard = message.value("keyboard").toString();
             store_.editContent(localId, newText, newKeyboard);
-            if (peer == activePeer_) {
+            if (convKey == activePeer_) {
                 conversation_.editById(localId, newText, newKeyboard);
             }
-            // If we had already read this message, the edit is read again the
+            // If we had already read this 1:1 message, the edit is read again the
             // moment it lands in the open chat: re-acknowledge it so the sender's
-            // edited bubble can advance to delivered (green), the same way a fresh
-            // message does. (ref is the protocol id our copy is stored under.)
-            if (peer == activePeer_ && sendReceipts_
-                && localId <= lastReadAckedId_.value(peer, 0)) {
+            // edited bubble can advance to delivered (green). (Groups have no
+            // receipts.)
+            if (!isGroup && convKey == activePeer_ && sendReceipts_
+                && localId <= lastReadAckedId_.value(convKey, 0)) {
                 emit requestSendReceipt(peer, message.value("ref").toString());
             }
             QString preview = newText;
             if (preview.isEmpty() && !newKeyboard.isEmpty()) {
                 preview = "[interactive]";
             }
-            contacts_.touch(peer, peerName(peer), preview, nowMillis(), peer != activePeer_);
+            contacts_.touch(convKey, isGroup ? groupNames_.value(convKey) : peerName(convKey),
+                preview, nowMillis(), false, isGroup);
         }
         return;
     }
@@ -1844,6 +2255,27 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             }
             contacts_.touch(peer, peerName(peer), store_.lastText(peer), store_.lastTime(peer), false);
         }
+        return;
+    }
+
+    // The peer cleared the whole conversation for everyone: honour their wish and
+    // wipe our transcript with them, leaving a single note so the empty chat
+    // explains itself.
+    if (type == "chat.clear") {
+        store_.clearPeer(peer);
+        StoredMessage sys;
+        sys.peer = peer;
+        sys.type = QStringLiteral("system");
+        sys.text = peerName(peer) + QStringLiteral(" cleared the chat.");
+        sys.ts = nowMillis();
+        sys.orderKey = sys.ts;
+        sys.status = DeliveryStatus::Received;
+        sys.id = store_.append(sys);
+        if (peer == activePeer_) {
+            loadLatestWindow();
+        }
+        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, peer != activePeer_);
+        refreshUnreadTotal();
         return;
     }
 
@@ -1866,6 +2298,22 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     }
     if (type == "group.tokens" || type == "group.roster" || type == "group.leave") {
         return;  // group control; the chat list reflects the change
+    }
+
+    // The peer agreed to our contact request: we are now mutual contacts (their
+    // descriptor already arrived via the bootstrap in sync). Surface a note.
+    if (type == "contact.accept") {
+        StoredMessage sys;
+        sys.peer = peer;
+        sys.type = QStringLiteral("system");
+        sys.text = peerName(peer) + QStringLiteral(" accepted your contact request.");
+        sys.ts = nowMillis();
+        sys.orderKey = sys.ts;
+        sys.status = DeliveryStatus::Received;
+        sys.id = store_.append(sys);
+        showInActiveView(sys, false);
+        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, peer != activePeer_);
+        return;
     }
 
     // A group content message is filed under the group, with its author recorded.
@@ -1891,6 +2339,16 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.sender = isGroupMsg ? message.value("sender").toString() : QString();
     m.protocolId = message.value("messageId").toString();
     m.text = message.value("text").toString();
+    m.replyTo = message.value("replyTo").toString();
+    // A group photo update carries no text on the wire; render it as a service
+    // line ("<author> set the group photo") shown in the bubble and the preview.
+    if (type == "group.avatar") {
+        m.text = QStringLiteral("set the group photo");
+    }
+    // A group rename carries the new name in `text`; render the notice from it.
+    if (type == "group.rename") {
+        m.text = QStringLiteral("changed the group name to \"") + m.text + QStringLiteral("\"");
+    }
     m.attName = message.value("attName").toString();
     m.attMime = message.value("attMime").toString();
     m.attSize = message.value("attSize").toLongLong();
@@ -2047,7 +2505,9 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     store_.updateStatus(localId, DeliveryStatus::Sending);
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
-    emit requestSendText(activePeer_, text, localId, protocolId);
+    // Preserve the original reply reference on a resend.
+    const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
+    emit requestSendText(activePeer_, text, localId, protocolId, replyTo);
 }
 
 void SessionController::resendFile(qint64 localId, const QString& protocolId)
@@ -2070,7 +2530,9 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
     const FileRetention r = fileRetention_.value(localId);
-    emit requestSendFile(activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount);
+    const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
+    emit requestSendFile(
+        activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount, replyTo);
 }
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)

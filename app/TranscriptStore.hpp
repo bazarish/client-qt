@@ -29,6 +29,8 @@ struct StoredMessage {
     bool blobGone = false; // incoming attachment whose blob is gone from the store
                            // (download returned 404/410); shows "Not found", no Save
     QString keyboard;      // inline-keyboard JSON (empty when none)
+    QString replyTo;       // protocol id of the message this one replies to (empty
+                           // when not a reply); the UI resolves it to a local row
     bool edited = false;   // true once the message was edited in place
     qint64 ts = 0;         // unix milliseconds - the message's sentAt (display time)
     qint64 orderKey = 0;   // unix ms sort position: sentAt for a recent arrival,
@@ -87,10 +89,24 @@ public:
     // target of an edit (0 if none). Scoping to incoming-from-peer is the
     // security check: a peer can only edit a message it actually sent.
     qint64 idForIncomingProtocol(const QString& protocolId, const QString& peer) const;
+    // The row id of an incoming group message under `peer` (a group id) with this
+    // protocol id AND this author (0 if none). Scoping to the author is the group
+    // edit/delete security check: a member can only edit a message it actually sent.
+    qint64 idForIncomingGroupProtocol(
+        const QString& protocolId, const QString& peer, const QString& sender) const;
+    // The row id of a message under `peer` with this protocol id, either direction
+    // (0 if none). Used to resolve a reply reference to a local message to jump to.
+    qint64 idForAnyProtocol(const QString& protocolId, const QString& peer) const;
+    // The full row for a protocol id under `peer`, either direction (id 0 when not
+    // found). Used to render a reply quote (author + text/file name of the original).
+    StoredMessage messageByProtocol(const QString& protocolId, const QString& peer) const;
     // Replaces a message's text and keyboard and marks it edited.
     void editContent(qint64 id, const QString& text, const QString& keyboard);
     // Permanently removes a message (delete with no trace).
     void removeById(qint64 id);
+    // Permanently removes every message of a conversation (clear chat / a left
+    // group / a deleted contact). The peer key is a contact fingerprint or group id.
+    void clearPeer(const QString& peer);
     QVector<StoredMessage> messagesFor(const QString& peer) const;
     // Windowed reads for paging a large conversation: the newest `limit` rows,
     // the `limit` rows just older than beforeId, and the `limit` rows just newer

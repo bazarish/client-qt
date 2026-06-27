@@ -55,7 +55,7 @@ void writeFileBytes(const QString& path, const Bytes& bytes)
 // orderKey is appended last so the existing 0..16 indices are unchanged.
 const char* const kMessageColumns = "id, peer, outgoing, type, sender, protocolId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
-                                    " edited, ts, status, orderKey, savedPath, blobGone";
+                                    " edited, ts, status, orderKey, savedPath, blobGone, replyTo";
 
 // Orders a loaded window oldest-first by the sort position (orderKey), then id as
 // a stable tiebreak. Each window is a contiguous id-range, so this repairs an
@@ -95,6 +95,7 @@ StoredMessage readMessageRow(const QSqlQuery& query)
     m.orderKey = query.value(17).toLongLong();
     m.savedPath = query.value(18).toString();
     m.blobGone = query.value(19).toInt() != 0;
+    m.replyTo = query.value(20).toString();
     return m;
 }
 
@@ -154,7 +155,7 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
-            " blobGone INTEGER)")) {
+            " blobGone INTEGER, replyTo TEXT)")) {
         return false;
     }
     // Migrate a database created before attSrcPath existed: ALTER fails harmlessly
@@ -164,6 +165,8 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
     query.exec("ALTER TABLE messages ADD COLUMN savedPath TEXT");
     // Migrate a database created before blobGone existed (same harmless ALTER).
     query.exec("ALTER TABLE messages ADD COLUMN blobGone INTEGER");
+    // Migrate a database created before replyTo existed (same harmless ALTER).
+    query.exec("ALTER TABLE messages ADD COLUMN replyTo TEXT");
     // Migrate a pre-reordering database: when the orderKey column is newly added,
     // every existing row has it NULL. Promote the old seconds-unit ts to
     // milliseconds (new rows store ms) and seed orderKey from id, which preserves
@@ -199,8 +202,8 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, sender, protocolId, text, attName, attMime,"
-        " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -218,6 +221,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.ts);
     query.addBindValue(message.status);
     query.addBindValue(message.orderKey);
+    query.addBindValue(message.replyTo);
     if (!query.exec()) {
         return 0;
     }
@@ -469,6 +473,58 @@ qint64 TranscriptStore::idForIncomingProtocol(const QString& protocolId, const Q
     return 0;
 }
 
+qint64 TranscriptStore::idForIncomingGroupProtocol(
+    const QString& protocolId, const QString& peer, const QString& sender) const
+{
+    if (protocolId.isEmpty()) {
+        return 0;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT id FROM messages WHERE protocolId = ? AND peer = ? AND sender = ?"
+                  " AND outgoing = 0 LIMIT 1");
+    query.addBindValue(protocolId);
+    query.addBindValue(peer);
+    query.addBindValue(sender);
+    if (query.exec() && query.next()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
+qint64 TranscriptStore::idForAnyProtocol(const QString& protocolId, const QString& peer) const
+{
+    if (protocolId.isEmpty()) {
+        return 0;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT id FROM messages WHERE protocolId = ? AND peer = ? ORDER BY id LIMIT 1");
+    query.addBindValue(protocolId);
+    query.addBindValue(peer);
+    if (query.exec() && query.next()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
+StoredMessage TranscriptStore::messageByProtocol(
+    const QString& protocolId, const QString& peer) const
+{
+    StoredMessage m;
+    if (protocolId.isEmpty()) {
+        return m;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE protocolId = ? AND peer = ?"
+                                 " ORDER BY id LIMIT 1")
+                      .arg(kMessageColumns));
+    query.addBindValue(protocolId);
+    query.addBindValue(peer);
+    if (query.exec() && query.next()) {
+        m = readMessageRow(query);
+    }
+    return m;
+}
+
 void TranscriptStore::editContent(qint64 id, const QString& text, const QString& keyboard)
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));
@@ -486,6 +542,16 @@ void TranscriptStore::removeById(qint64 id)
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare("DELETE FROM messages WHERE id = ?");
     query.addBindValue(id);
+    if (query.exec()) {
+        flush();
+    }
+}
+
+void TranscriptStore::clearPeer(const QString& peer)
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("DELETE FROM messages WHERE peer = ?");
+    query.addBindValue(peer);
     if (query.exec()) {
         flush();
     }
