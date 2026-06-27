@@ -274,6 +274,7 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
     const std::string& query, const Bytes& body, const std::string& contentType,
     const bool authenticate, const std::map<std::string, std::string>& extraHeaders)
 {
+    const std::lock_guard<std::mutex> lock(netMutex_);
     // The signed canonical path is the server-visible path: no base path and
     // no query string (the facade strips the base path before forwarding and
     // the server verifies the query-less path). The signature is therefore the
@@ -414,6 +415,7 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
     const std::string& bodySha256Hex, const std::string& contentType,
     const std::map<std::string, std::string>& extraHeaders, const UploadProgressFn& onProgress)
 {
+    const std::lock_guard<std::mutex> lock(netMutex_);
     const std::uintmax_t length = std::filesystem::file_size(filePath);
 
     // The body is signed only through its digest, so a multi-gigabyte file is

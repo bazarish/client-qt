@@ -75,7 +75,14 @@ constexpr int kPageSize = 50;
 
 // ============================ SessionWorker ============================
 
-SessionWorker::~SessionWorker() = default;
+SessionWorker::~SessionWorker()
+{
+    // Stop in-flight downloads before session_ (which their tasks use) is torn
+    // down. Cancel first so a parked fetch closes its stream and stops retrying,
+    // then wait for the pool to drain.
+    downloadsCancelled_.store(true);
+    downloadPool_.waitForDone();
+}
 
 void SessionWorker::ensureSyncTimer()
 {
@@ -91,6 +98,14 @@ void SessionWorker::ensureSyncTimer()
 
 void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
 {
+    // Bound concurrent downloads so a burst never spawns an unreasonable number of
+    // throwaway I2P destinations at once.
+    downloadPool_.setMaxThreadCount(3);
+    // Drain any download still running against a previously opened session before
+    // that session_ is replaced (its tasks hold a raw pointer to it).
+    downloadsCancelled_.store(true);
+    downloadPool_.waitForDone();
+    downloadsCancelled_.store(false);
     try {
         session_ = std::make_unique<Session>(
             Session::open(dir.toStdString(), passphrase.toStdString()));
@@ -876,16 +891,46 @@ void SessionWorker::disablePersonalDest()
 void SessionWorker::saveAttachment(
     const QString& ref, const QString& key, const QString& destPath, qint64 token)
 {
-    try {
-        session_->saveAttachment(ref.toStdString(), key.toStdString(), destPath.toStdString(),
-            [this, token](std::uint64_t received, std::uint64_t total) {
-                emit downloadProgress(
-                    token, static_cast<qint64>(received), static_cast<qint64>(total));
-            });
-        emit downloadFinished(token, true, {});
-    } catch (const std::exception& e) {
-        emit downloadFinished(token, false, QString::fromUtf8(e.what()));
+    // Run the download off the worker thread (on the pool) so a long or stalled
+    // fetch never blocks sends, uploads or sync. The direct fetch uses its own
+    // throwaway I2P endpoints; only the rare proxy fallback touches the (now
+    // thread-safe) facade client. The task captures `this`, session_ and the
+    // cancel flag, all kept alive until the pool is drained (see the destructor
+    // and openProfile). Emits are skipped once cancelled, so a tearing-down
+    // session is never signalled.
+    Session* const session = session_.get();
+    if (session == nullptr) {
+        emit downloadFinished(token, false, QStringLiteral("no open session"));
+        return;
     }
+    const std::string refStd = ref.toStdString();
+    const std::string keyStd = key.toStdString();
+    const std::string destStd = destPath.toStdString();
+    downloadPool_.start([this, session, refStd, keyStd, destStd, token]() {
+        try {
+            session->saveAttachment(
+                refStd, keyStd, destStd,
+                [this, token](std::uint64_t received, std::uint64_t total) {
+                    if (!downloadsCancelled_.load()) {
+                        emit downloadProgress(
+                            token, static_cast<qint64>(received), static_cast<qint64>(total));
+                    }
+                },
+                [this, token](bazarish::client::BlobFetchStage stage) {
+                    if (!downloadsCancelled_.load()) {
+                        emit downloadStage(token, static_cast<int>(stage));
+                    }
+                },
+                &downloadsCancelled_);
+            if (!downloadsCancelled_.load()) {
+                emit downloadFinished(token, true, {});
+            }
+        } catch (const std::exception& e) {
+            if (!downloadsCancelled_.load()) {
+                emit downloadFinished(token, false, QString::fromUtf8(e.what()));
+            }
+        }
+    });
 }
 
 void SessionWorker::exportProfile(const QString& path, const QString& password)
@@ -946,6 +991,8 @@ SessionController::SessionController(QObject* parent)
     // Download progress / outcome land on the message via the conversation model.
     connect(worker_, &SessionWorker::downloadProgress, this,
         &SessionController::onDownloadProgress);
+    connect(worker_, &SessionWorker::downloadStage, this,
+        &SessionController::onDownloadStage);
     connect(worker_, &SessionWorker::downloadFinished, this,
         &SessionController::onDownloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
@@ -1906,6 +1953,11 @@ void SessionController::onUploadProgress(qint64 localId, qint64 sent, qint64 tot
 void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64 total)
 {
     conversation_.setDownloadProgressForId(token, received, total);
+}
+
+void SessionController::onDownloadStage(qint64 token, int stage)
+{
+    conversation_.setDownloadStageForId(token, stage);
 }
 
 void SessionController::onDownloadFinished(qint64 token, bool ok, const QString& error)

@@ -82,7 +82,7 @@ public:
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
         SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
-        BlobGoneRole
+        BlobGoneRole, DownloadStageRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -114,6 +114,10 @@ public:
     // Download progress for an incoming attachment being saved: received/total
     // ciphertext bytes (total > 0 means a download is in flight). Session-only.
     void setDownloadProgressForId(qint64 id, qint64 received, qint64 total);
+    // The fetch stage of an in-flight download (a BlobFetchStage: 0 connecting,
+    // 1 downloading, 2 reconnecting), so a stalled transfer reads as "reconnecting"
+    // rather than a frozen bar. Session-only.
+    void setDownloadStageForId(qint64 id, int stage);
     // Marks a download finished: ok clears the progress; otherwise records an
     // inline error and clears the progress. Session-only.
     void finishDownloadForId(qint64 id, bool ok, const QString& error);
@@ -140,6 +144,7 @@ private:
     QHash<qint64, qint64> downloadReceivedById_;
     QHash<qint64, qint64> downloadTotalById_;
     QHash<qint64, QString> downloadErrorById_;
+    QHash<qint64, int> downloadStageById_;
 };
 
 // One account in the unified account list. Covers every on-disk profile, with

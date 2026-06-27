@@ -1347,7 +1347,8 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
 }
 
 void Session::saveAttachment(const std::string& ref, const std::string& keyB64,
-    const fs::path& dest, const UploadProgressFn& onProgress)
+    const fs::path& dest, const UploadProgressFn& onProgress, const BlobStageFn& onStage,
+    const std::atomic<bool>* cancel)
 {
     (void)keyB64;  // the decryption key now travels inside the pointer
     // ref is the base64 sealed blob pointer; fetch the ciphertext over I2P,
@@ -1355,7 +1356,7 @@ void Session::saveAttachment(const std::string& ref, const std::string& keyB64,
     const Bytes pointerBytes = fromBase64(ref);
     const BlobPointer pointer
         = blobPointerFromJson(nlohmann::json::parse(pointerBytes.begin(), pointerBytes.end()));
-    fetchLargeBlobToFile(pointer, dest, onProgress);
+    fetchLargeBlobToFile(pointer, dest, onProgress, onStage, cancel);
 }
 
 bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
@@ -1468,14 +1469,24 @@ Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
     }
 }
 
-void Session::fetchLargeBlobToFile(
-    const BlobPointer& pointer, const fs::path& dest, const UploadProgressFn& onProgress)
+void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& dest,
+    const UploadProgressFn& onProgress, const BlobStageFn& onStage,
+    const std::atomic<bool>* cancel)
 {
     try {
         // Direct over a fresh transient I2P destination, streamed to disk (preferred
         // - our server is never involved and the file never sits whole in RAM).
-        fetchBlobToFile(i2pRouter(), pointer, dest, blobFetchPrivacy_, onProgress);
+        fetchBlobToFile(i2pRouter(), pointer, dest, blobFetchPrivacy_, onProgress, onStage, cancel);
+    } catch (const BlobNotFoundError&) {
+        // The blob has aged out of the store (404/410). The own-server proxy hits
+        // the same store and would also 404, so don't bother - surface it at once.
+        throw;
     } catch (const std::exception&) {
+        // A cancelled fetch (teardown / session switch) must abort, not fall back to
+        // a fresh proxy download.
+        if (cancel && cancel->load()) {
+            throw;
+        }
         // No I2P transport of our own (or the direct fetch failed): the own-server proxy
         // relays the whole ciphertext through the facade (buffered fallback).
         const Bytes plain = client_->fetchBlobViaProxy(pointer);

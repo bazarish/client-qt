@@ -7,10 +7,12 @@
 #include <QObject>
 #include <QString>
 #include <QThread>
+#include <QThreadPool>
 #include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <string>
@@ -107,6 +109,10 @@ signals:
     // Download progress for an incoming attachment being saved (token = message
     // id): received/total ciphertext bytes.
     void downloadProgress(qint64 token, qint64 received, qint64 total);
+    // Download stage for an incoming attachment (token = message id): the int is a
+    // bazarish::client::BlobFetchStage (0 connecting, 1 downloading, 2 reconnecting),
+    // so a stalled transfer reads as "reconnecting" rather than a frozen bar.
+    void downloadStage(qint64 token, int stage);
     // An attachment download/save finished (token identifies the message): ok is
     // false with an error string on failure.
     void downloadFinished(qint64 token, bool ok, const QString& error);
@@ -160,6 +166,14 @@ private:
     // Outgoing messages accepted by our server but not yet confirmed delivered:
     // local message id -> server attempt id, reconciled on each sync.
     std::map<qint64, std::string> pendingSends_;
+    // Set true to abort in-flight downloads (teardown / session switch); the fetch
+    // polls it to close a parked read and stop retrying, and queued tasks skip
+    // emitting onto a tearing-down session.
+    std::atomic<bool> downloadsCancelled_{false};
+    // Attachment downloads run here, off the worker thread, so a long or stalled
+    // fetch never blocks sends, uploads or sync. Declared last so it is drained
+    // before session_ is destroyed; its tasks capture session_ and the cancel flag.
+    QThreadPool downloadPool_;
 };
 
 // QML-facing facade: owns the worker thread, the models and the transcript
@@ -470,6 +484,7 @@ private slots:
     void onSendProgress(qint64 localId, int state);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onDownloadProgress(qint64 token, qint64 received, qint64 total);
+    void onDownloadStage(qint64 token, int stage);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);

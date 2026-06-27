@@ -6,6 +6,8 @@
 #include <bazarish/I2p.hpp>
 #include <bazarish/I2pHttp.hpp>
 
+#include <array>
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -14,6 +16,7 @@
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 
 namespace bazarish::client {
@@ -21,6 +24,33 @@ namespace bazarish::client {
 namespace {
 
 constexpr const char* kB32Suffix = ".b32.i2p";
+
+// Per-attempt connect timeout for a blob fetch. Shorter than a long default so a
+// dead reconnect attempt surfaces (and retries) in seconds, not a frozen minute.
+constexpr auto kBlobConnectTimeout = std::chrono::seconds(30);
+// Watchdog budget: if a transfer makes no forward progress for this long, the
+// stream is closed so a parked readSome returns and the resume driver reconnects
+// (a half-dead I2P stream otherwise never delivers EOF and the read hangs).
+constexpr long long kBlobStallBudgetMs = 20'000;
+
+// Steady-clock milliseconds (monotonic), for the no-progress watchdog.
+long long steadyNowMs()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+
+// Maps a blob-store HTTP status that is not 200/206 to the right exception: a
+// definitive "gone" (404/410) is non-retryable (BlobNotFoundError); anything else
+// is treated as a transient failure the resume driver may retry.
+[[noreturn]] void throwForBlobStatus(int status)
+{
+    if (status == 404 || status == 410) {
+        throw BlobNotFoundError("blob not found: status " + std::to_string(status));
+    }
+    throw std::runtime_error("blob download failed: status " + std::to_string(status));
+}
 
 std::uint64_t headerUint64(const std::map<std::string, std::string>& headers,
     const std::string& key, const std::uint64_t fallback)
@@ -94,8 +124,7 @@ void runResume(const RangedGetFn& get, const std::function<std::uint64_t()>& siz
             onAppend(attempt.body);
             haveTotal = true;
         } else {
-            throw std::runtime_error(
-                "blob download failed: status " + std::to_string(attempt.status));
+            throwForBlobStatus(attempt.status);
         }
         if (sizeNow() <= before) {
             if (++stalled >= kMaxStalledAttempts) {
@@ -197,23 +226,66 @@ RangedGetFn makeI2pRangedGet(bazarish::i2p::Router& router, std::string host,
 // bytes received / total) instead of buffering each attempt whole in memory.
 void streamResumeToSink(bazarish::i2p::Router& router, const std::string& host,
     const std::string& path, const bazarish::i2p::Privacy privacy, FileSink& sink,
-    const UploadProgressFn& onProgress)
+    const UploadProgressFn& onProgress, const BlobStageFn& onStage,
+    const std::atomic<bool>* cancel)
 {
     constexpr int kMaxStalledAttempts = 5;
     bool haveTotal = false;
     std::uint64_t total = 0;
     int stalled = 0;
     while (!haveTotal || sink.size() < total) {
+        if (cancel && cancel->load()) {
+            throw std::runtime_error("blob download cancelled");
+        }
         const std::uint64_t before = sink.size();
+        // A first attempt at offset zero is "connecting"; resuming (already have
+        // bytes, or after a stall) is "reconnecting".
+        if (onStage) {
+            onStage((before > 0 || stalled > 0) ? BlobFetchStage::eReconnecting
+                                                : BlobFetchStage::eConnecting);
+        }
         try {
             // A fresh throwaway destination per attempt (unlinkability).
             auto endpoint = router.createEndpoint(bazarish::i2p::EndpointConfig{
                 bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
                 bazarish::i2p::kDefaultTunnelQuantity, false});
-            auto stream = endpoint->connect(host, std::chrono::seconds(60));
+            auto stream = endpoint->connect(host, kBlobConnectTimeout);
             if (!stream) {
                 throw std::runtime_error("i2p blob request: cannot reach " + host);
             }
+            // No-progress watchdog (covers the request, header read and body): a
+            // half-dead I2P stream never delivers EOF, so a parked readSome would
+            // hang this attempt forever. A side thread closes the stream once there
+            // is no progress for the stall budget (or on cancel), which makes
+            // readSome return and the attempt resume from the current offset.
+            std::atomic<bool> attemptDone{false};
+            std::atomic<long long> lastProgressMs{steadyNowMs()};
+            std::thread watchdog([&attemptDone, &lastProgressMs, &stream, cancel]() {
+                while (!attemptDone.load()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                    if (attemptDone.load()) {
+                        break;
+                    }
+                    const bool cancelled = cancel && cancel->load();
+                    if (cancelled || steadyNowMs() - lastProgressMs.load() > kBlobStallBudgetMs) {
+                        stream->close();  // unblocks a parked readSome
+                        break;
+                    }
+                }
+            });
+            // Join the watchdog on every exit path (normal end or an exception).
+            struct JoinGuard {
+                std::atomic<bool>& done;
+                std::thread& t;
+                ~JoinGuard()
+                {
+                    done.store(true);
+                    if (t.joinable()) {
+                        t.join();
+                    }
+                }
+            } joinGuard{attemptDone, watchdog};
+
             std::map<std::string, std::string> headers;
             if (before > 0) {
                 headers["Range"] = "bytes=" + std::to_string(before) + "-";
@@ -222,6 +294,7 @@ void streamResumeToSink(bazarish::i2p::Router& router, const std::string& host,
             stream->writeAll(request.data(), request.size());
 
             I2pHttpHead head = readI2pHttpHead(*stream);
+            lastProgressMs.store(steadyNowMs());  // headers arrived: restart the budget
             const Bytes leftover(head.leftover.begin(), head.leftover.end());
             if (head.status == 200) {
                 // The store ignored the Range and served the whole object: rewrite.
@@ -236,8 +309,10 @@ void streamResumeToSink(bazarish::i2p::Router& router, const std::string& host,
                 haveTotal = true;
                 sink.append(leftover);
             } else {
-                throw std::runtime_error(
-                    "blob download failed: status " + std::to_string(head.status));
+                throwForBlobStatus(head.status);  // 404/410 -> terminal (no retry)
+            }
+            if (onStage) {
+                onStage(BlobFetchStage::eDownloading);
             }
             if (onProgress && total > 0) {
                 onProgress(sink.size(), total);
@@ -249,6 +324,7 @@ void streamResumeToSink(bazarish::i2p::Router& router, const std::string& host,
                     break;
                 }
                 sink.append(Bytes(buffer.data(), buffer.data() + got));
+                lastProgressMs.store(steadyNowMs());
                 if (onProgress && total > 0) {
                     onProgress(sink.size(), total);
                 }
@@ -262,6 +338,8 @@ void streamResumeToSink(bazarish::i2p::Router& router, const std::string& host,
                     onProgress(sink.size(), total);
                 }
             }
+        } catch (const BlobNotFoundError&) {
+            throw;  // definitive: the blob is gone, retrying cannot help
         } catch (const std::exception&) {
             if (++stalled >= kMaxStalledAttempts) {
                 throw;
@@ -394,7 +472,8 @@ void assembleBlobToFile(
 
 void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
     const std::filesystem::path& destPath, const bazarish::i2p::Privacy privacy,
-    const UploadProgressFn& onProgress)
+    const UploadProgressFn& onProgress, const BlobStageFn& onStage,
+    const std::atomic<bool>* cancel)
 {
     std::string host;
     std::string path;
@@ -407,7 +486,7 @@ void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
     const std::filesystem::path tempPath = destPath.string() + ".part";
     try {
         FileSink sink(tempPath);
-        streamResumeToSink(router, host, path, privacy, sink, onProgress);
+        streamResumeToSink(router, host, path, privacy, sink, onProgress, onStage, cancel);
         sink.finish();
 
         // Verify-then-decrypt: a tampered or truncated transfer is rejected before

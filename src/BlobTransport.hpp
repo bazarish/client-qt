@@ -7,14 +7,29 @@
 #include <bazarish/Bytes.hpp>
 #include <bazarish/I2p.hpp>
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <map>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 namespace bazarish::client {
+
+// Stage of a streaming blob fetch, surfaced for UI feedback during a long or
+// flaky I2P transfer: eConnecting before the first byte, eDownloading while bytes
+// flow, eReconnecting while a dropped/stalled transfer is being resumed.
+enum class BlobFetchStage { eConnecting, eDownloading, eReconnecting };
+using BlobStageFn = std::function<void(BlobFetchStage)>;
+
+// Thrown when the blob store answers that the object does not exist (HTTP 404)
+// or is gone (410): a definitive, non-retryable outcome (the blob aged out of the
+// store by TTL or download count), distinct from a transient transport failure.
+struct BlobNotFoundError : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
 
 // Retention requested at upload; mirrors blob storage's policy. Only the sender
 // sets a download count; with none, reclamation is by TTL alone.
@@ -106,10 +121,14 @@ Bytes fetchBlob(bazarish::i2p::Router& router, const BlobPointer& pointer,
 // receipt. Throws on a fetch error or an integrity failure.
 // onProgress, when set, is called with (received, total) ciphertext bytes as the
 // stream arrives, so the recipient can show a real download progress bar.
+// onStage, when set, reports connecting/downloading/reconnecting transitions so a
+// stalled transfer reads as "reconnecting" rather than a frozen bar. cancel, when
+// non-null, is polled to abort promptly (closing a parked read) on teardown.
 void fetchBlobToFile(bazarish::i2p::Router& router, const BlobPointer& pointer,
     const std::filesystem::path& destPath,
     bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax,
-    const UploadProgressFn& onProgress = {});
+    const UploadProgressFn& onProgress = {}, const BlobStageFn& onStage = {},
+    const std::atomic<bool>* cancel = nullptr);
 
 // Fetches a blob through the user's own server (the proxy-fetch fallback for
 // clients with no I2P transport of their own): the server fetches the b33 ciphertext over

@@ -16,6 +16,26 @@
 
 int main(int argc, char** argv)
 {
+    // Qt selects a platform theme from the desktop environment; that theme is what
+    // provides the NATIVE file dialog (the system file manager, with a pre-filled
+    // save name). When no theme is advertised - or the desktop is GTK-based but Qt
+    // does not map it to the GTK theme on its own (e.g. XFCE), or nothing is
+    // detected at all - QtQuick.Dialogs.FileDialog falls back to its own non-native
+    // dialog: a different look that does not open the file manager and cannot
+    // pre-fill the name. Default to the GTK theme (shipped with Qt; GTK3 is
+    // near-universal on Linux) for those cases so the real file chooser is used.
+    // A theme the user set, and Qt-native desktops (KDE, LXQt), are left untouched.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME")) {
+        const QByteArray desktop = qgetenv("XDG_CURRENT_DESKTOP").toLower();
+        const bool gtkBasedOrUnknown = desktop.isEmpty() || desktop.contains("gnome")
+            || desktop.contains("xfce") || desktop.contains("mate")
+            || desktop.contains("cinnamon") || desktop.contains("unity")
+            || desktop.contains("lxde") || desktop.contains("budgie");
+        if (gtkBasedOrUnknown) {
+            qputenv("QT_QPA_PLATFORMTHEME", "gtk3");
+        }
+    }
+
     QGuiApplication app(argc, argv);
     QGuiApplication::setApplicationName("Bazarish");
     QGuiApplication::setOrganizationName("Bazarish");

@@ -14,6 +14,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -156,6 +157,12 @@ private:
     std::shared_ptr<bazarish::i2p::Endpoint> i2pOut_;
     // Index of the last facade that worked; the GUI "connected via" reads it.
     std::size_t activeFacade_ = 0;
+    // Serializes the two network entry points (send / putFile) so the client is
+    // safe to call from more than one thread: a blob download running off the main
+    // worker thread may take the own-server proxy fallback, which goes through this
+    // client concurrently with the worker's sync/sends. Guards the shared lazily
+    // created outbound endpoint and the active-facade index.
+    mutable std::mutex netMutex_;
 };
 
 }  // namespace bazarish::client

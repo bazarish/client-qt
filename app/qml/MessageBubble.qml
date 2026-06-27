@@ -166,9 +166,12 @@ Item {
                 // read in chunks). Indeterminate only briefly, before the first
                 // byte arrives.
                 ColumnLayout {
+                    id: dlProgress
                     visible: model.downloading
                     Layout.fillWidth: true
                     spacing: 2
+                    // downloadStage: 0 connecting, 1 downloading, 2 reconnecting.
+                    readonly property bool reconnecting: model.downloadStage === 2
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 6
@@ -177,7 +180,9 @@ Item {
                             Layout.preferredHeight: 4
                             from: 0
                             to: 1
-                            indeterminate: model.downloadTotal <= 0
+                            // Hold the bar at the bytes we have while reconnecting,
+                            // rather than dropping back to an indeterminate sweep.
+                            indeterminate: model.downloadTotal <= 0 && !dlProgress.reconnecting
                             value: model.downloadTotal > 0
                                 ? model.downloadReceived / model.downloadTotal : 0
                         }
@@ -191,11 +196,16 @@ Item {
                     }
                     Label {
                         Layout.fillWidth: true
-                        text: model.downloadTotal > 0
-                            ? (delegate.humanSize(model.downloadReceived) + " / "
-                                + delegate.humanSize(model.downloadTotal))
-                            : "Connecting over I2P…"
-                        color: Theme.textDim
+                        text: dlProgress.reconnecting
+                            ? (model.downloadTotal > 0
+                                ? "Reconnecting… " + delegate.humanSize(model.downloadReceived)
+                                    + " / " + delegate.humanSize(model.downloadTotal)
+                                : "Reconnecting over I2P…")
+                            : (model.downloadTotal > 0
+                                ? (delegate.humanSize(model.downloadReceived) + " / "
+                                    + delegate.humanSize(model.downloadTotal))
+                                : "Connecting over I2P…")
+                        color: dlProgress.reconnecting ? Theme.warn : Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight
                     }
@@ -239,15 +249,13 @@ Item {
                         }
                         // Snapshot the attachment onto the shared dialog and seed the
                         // native picker with the message's file name in Downloads.
+                        // currentFile (not selectedFile) is what pre-fills the
+                        // suggested name in SaveFile mode here - matching the export
+                        // backup dialog, which is the pattern that actually pre-fills.
                         saveDialog.attRef = model.attRef
                         saveDialog.attKey = model.attKey
                         saveDialog.token = model.msgId
-                        var d = StandardPaths.writableLocation(StandardPaths.DownloadLocation)
-                        if (("" + d).length === 0) {
-                            d = StandardPaths.writableLocation(StandardPaths.HomeLocation)
-                        }
-                        saveDialog.currentFolder = d
-                        saveDialog.selectedFile = delegate.session.defaultSaveUrl(model.attName)
+                        saveDialog.currentFile = delegate.session.defaultSaveUrl(model.attName)
                         saveDialog.open()
                     }
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }

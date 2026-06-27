@@ -185,6 +185,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case DownloadReceivedRole: return downloadReceivedById_.value(m.id, 0);
     case DownloadTotalRole: return downloadTotalById_.value(m.id, 0);
     case DownloadErrorRole: return downloadErrorById_.value(m.id);
+    case DownloadStageRole: return downloadStageById_.value(m.id, 0);
     case SavedPathRole: return m.savedPath;
     case BlobGoneRole: return m.blobGone;
     // The local calendar day this message belongs to, as an ISO date string. The
@@ -208,7 +209,8 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
         {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
-        {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"}};
+        {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"},
+        {DownloadStageRole, "downloadStage"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
@@ -220,6 +222,7 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
     downloadReceivedById_.clear();
     downloadTotalById_.clear();
     downloadErrorById_.clear();
+    downloadStageById_.clear();
     endResetModel();
 }
 
@@ -365,10 +368,23 @@ void ConversationModel::setDownloadProgressForId(qint64 id, qint64 received, qin
     }
 }
 
+void ConversationModel::setDownloadStageForId(qint64 id, int stage)
+{
+    downloadStageById_.insert(id, stage);
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {DownloadStageRole});
+            return;
+        }
+    }
+}
+
 void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& error)
 {
     downloadReceivedById_.remove(id);
     downloadTotalById_.remove(id);
+    downloadStageById_.remove(id);
     if (ok || error.isEmpty()) {
         downloadErrorById_.remove(id);
     } else {
@@ -377,8 +393,8 @@ void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& e
     for (int i = 0; i < messages_.size(); ++i) {
         if (messages_[i].id == id) {
             const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx,
-                {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
+            emit dataChanged(idx, idx, {DownloadingRole, DownloadReceivedRole, DownloadTotalRole,
+                                           DownloadErrorRole, DownloadStageRole});
             return;
         }
     }
