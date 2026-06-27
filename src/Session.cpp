@@ -1851,7 +1851,11 @@ std::vector<IncomingMessage> Session::sync()
                 message.groupName = body.value("name", std::string());
                 message.text = message.groupName;
                 try {
-                    applyRoster(message.groupId, fromBase64(body.at("roster").get<std::string>()));
+                    // bootstrap=true: a first invite may establish the admin set
+                    // (trust on first use). A re-invite to a group we already hold
+                    // is still anchored to our known admins inside applyRoster.
+                    applyRoster(message.groupId,
+                        fromBase64(body.at("roster").get<std::string>()), nullptr, true);
                     bootstrapGroups.insert(message.groupId);
                     groupsTouched = true;
                     // A genuine re-invitation lifts the tombstone so the chat may
@@ -1901,8 +1905,15 @@ std::vector<IncomingMessage> Session::sync()
                 message.groupId = body.value("groupId", std::string());
                 const auto group = groups_.find(message.groupId);
                 if (group != groups_.end()) {
-                    group->second.members.erase(message.fromFingerprint);
-                    groupsTouched = true;
+                    // A member removes ONLY themselves, authenticated by the leave's
+                    // own signature - `from` alone is unauthenticated and must never
+                    // drive a membership change. An unsigned/forged leave is ignored
+                    // (the next roster reconciles membership).
+                    const std::optional<std::string> leaver
+                        = authenticateGroupLeave(body, message.groupId);
+                    if (leaver && group->second.members.erase(*leaver) > 0) {
+                        groupsTouched = true;
+                    }
                 }
             } else if (type == "chat.clear") {
                 // The peer asked to clear our whole conversation with them; the GUI
@@ -2403,24 +2414,77 @@ std::string Session::signedRosterB64(const std::string& groupId) const
     return toBase64(cms::signJsonHybrid(body, client_->identity()));
 }
 
-void Session::applyRoster(const std::string& groupId, const Bytes& rosterDer, bool* membershipShrank)
+std::optional<std::string> Session::authenticateGroupLeave(
+    const nlohmann::json& body, const std::string& groupId)
+{
+    try {
+        const cms::VerifiedHybridJson v
+            = cms::verifyJsonHybrid(fromBase64(body.at("gsig").get<std::string>()));
+        // The signature authorizes removing exactly its own signer: the signed
+        // `from` must equal the verified identity (so a member cannot sign a leave
+        // claiming another member's `from`), and the group id must match.
+        if (v.body.value("type", std::string()) == "group.leave"
+            && v.body.value("groupId", std::string()) == groupId
+            && !v.identityFingerprint.empty()
+            && v.body.value("from", std::string()) == v.identityFingerprint) {
+            return v.identityFingerprint;
+        }
+    } catch (const std::exception&) {
+    }
+    return std::nullopt;
+}
+
+bool Session::isRosterUpdateAuthorized(const std::string& signerFingerprint,
+    const nlohmann::json& newRosterBody, const std::set<std::string>& currentAdmins,
+    bool established, bool bootstrap)
+{
+    if (established) {
+        // Anchored authority: the signer must be an admin we ALREADY recognize.
+        // The incoming roster's own `admins` array is deliberately NOT consulted -
+        // consulting it would let a member sign a roster naming themselves admin.
+        return currentAdmins.count(signerFingerprint) > 0;
+    }
+    if (bootstrap) {
+        // First roster (an invite), trusted on first use via the inviting contact:
+        // accept a self-consistent roster signed by one of its declared admins.
+        for (const nlohmann::json& admin : newRosterBody.at("admins")) {
+            if (admin.get<std::string>() == signerFingerprint) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void Session::applyRoster(
+    const std::string& groupId, const Bytes& rosterDer, bool* membershipShrank, bool bootstrap)
 {
     // The roster is self-verifying: the embedded signature yields the signer's
-    // identity fingerprint, which must be in the roster's admin set.
+    // identity fingerprint.
     const cms::VerifiedHybridJson verified = cms::verifyJsonHybrid(rosterDer);
     const nlohmann::json& body = verified.body;
     if (body.at("groupId").get<std::string>() != groupId) {
         throw std::runtime_error("group roster id mismatch");
     }
-    bool signerIsAdmin = false;
-    for (const nlohmann::json& admin : body.at("admins")) {
-        if (admin.get<std::string>() == verified.identityFingerprint) {
-            signerIsAdmin = true;
-            break;
+
+    // The admin set WE currently recognize for this group (anchored authority), and
+    // whether we already hold the group at all.
+    const auto existing = groups_.find(groupId);
+    const bool established = existing != groups_.end() && !existing->second.members.empty();
+    std::set<std::string> currentAdmins;
+    if (existing != groups_.end()) {
+        for (const auto& [fp, member] : existing->second.members) {
+            if (member.admin) {
+                currentAdmins.insert(fp);
+            }
+        }
+        if (existing->second.iAmAdmin) {
+            currentAdmins.insert(fingerprint());
         }
     }
-    if (!signerIsAdmin) {
-        throw std::runtime_error("group roster not signed by an admin");
+    if (!isRosterUpdateAuthorized(
+            verified.identityFingerprint, body, currentAdmins, established, bootstrap)) {
+        throw std::runtime_error("group roster not signed by a current admin");
     }
 
     Group& group = groups_[groupId];
@@ -3015,13 +3079,18 @@ void Session::leaveGroup(const std::string& groupId)
         return;
     }
     Group& group = found->second;
-    const nlohmann::json inner = {
+    // Sign the departure so a member cannot forge another member's leave (the
+    // recipient verifies the signature authorizes removing exactly the signer).
+    const nlohmann::json leaveBody
+        = {{"type", "group.leave"}, {"groupId", groupId}, {"from", fingerprint()}};
+    nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "group.leave"},
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"groupId", groupId},
+        {"gsig", toBase64(cms::signJsonHybrid(leaveBody, client_->identity()))},
     };
     for (const auto& [fp, member] : group.members) {
         try {

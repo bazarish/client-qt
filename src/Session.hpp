@@ -632,6 +632,28 @@ public:
         const std::string& type, const std::string& messageId, const std::string& groupId,
         const std::map<std::string, GroupMember>* members);
 
+    // Decides whether an incoming roster update may be applied. `signerFingerprint`
+    // is the verified signer of the roster; `newRosterBody` is the roster JSON it
+    // signed; `currentAdmins` is the admin set WE already recognize for the group
+    // (members flagged admin, plus ourselves if we are an admin); `established` is
+    // whether we already hold this group. For an established group the signer must
+    // be a CURRENT admin (anchored authority) - the new roster's own `admins` array
+    // is NOT consulted, which is what stops a member from signing a roster naming
+    // themselves admin. Only a `bootstrap` first roster (an invite) may trust the
+    // roster's declared admins, on first use. Static + pure for unit testing.
+    static bool isRosterUpdateAuthorized(const std::string& signerFingerprint,
+        const nlohmann::json& newRosterBody, const std::set<std::string>& currentAdmins,
+        bool established, bool bootstrap);
+
+    // Authenticates a `group.leave`: verifies the embedded `gsig` and that it
+    // authorizes removing exactly the signer from `groupId`. Returns the departing
+    // member's fingerprint, or nullopt for an unsigned / forged / mismatched leave -
+    // so a member can remove ONLY themselves, never forge another member's removal.
+    // (Leaving is a self-service action, not an admin one; admins fold the
+    // departure into a later roster.) Static + pure for unit testing.
+    static std::optional<std::string> authenticateGroupLeave(
+        const nlohmann::json& body, const std::string& groupId);
+
 private:
     Session(std::filesystem::path profileDir, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);
@@ -761,8 +783,15 @@ private:
     // (members/routing/admins/epoch), preserving any pool tokens we already hold.
     // Sets *membershipShrank when a member disappeared (a removal, so the caller
     // rotates its pool to cut off the removed member).
-    void applyRoster(
-        const std::string& groupId, const Bytes& rosterDer, bool* membershipShrank = nullptr);
+    //
+    // Admin authority is ANCHORED, not self-asserted: for a group we already hold,
+    // the roster must be signed by an admin WE currently recognize. Only the first
+    // roster for a group - delivered as a `group.invite`, with bootstrap=true -
+    // may declare its own admin set (trust on first use, via the inviting contact).
+    // Without this anchoring a member could sign a roster naming themselves admin
+    // and take the group over (the "admins" array would otherwise vouch for itself).
+    void applyRoster(const std::string& groupId, const Bytes& rosterDer,
+        bool* membershipShrank = nullptr, bool bootstrap = false);
     // Registers a fresh token pool for a group (recording its hashes so it can
     // be revoked later) and returns the raw tokens.
     std::vector<std::string> issueGroupPool(Group& group);

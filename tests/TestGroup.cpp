@@ -6,10 +6,13 @@
 
 #include <nlohmann/json.hpp>
 
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <set>
 #include <string>
+#include <vector>
 
 #define CHECK(condition)                                                            \
     do {                                                                            \
@@ -43,42 +46,64 @@ nlohmann::json rosterBody(const std::string& groupId, const Identity& admin, con
     };
 }
 
-// Mirrors Session::applyRoster's trust decision: the embedded signer must be in
-// the roster's admin set.
-bool rosterAccepted(const Bytes& signedDer, const std::string& groupId)
+// A roster body that lists every fingerprint in `adminFps` as an admin member
+// (used to forge a "promote myself" roster).
+nlohmann::json rosterBodyClaiming(
+    const std::string& groupId, const std::vector<std::string>& adminFps, std::int64_t epoch)
 {
-    const cms::VerifiedHybridJson verified = cms::verifyJsonHybrid(signedDer);
-    if (verified.body.at("groupId").get<std::string>() != groupId) {
-        return false;
+    nlohmann::json admins = nlohmann::json::array();
+    nlohmann::json members = nlohmann::json::array();
+    for (const std::string& fp : adminFps) {
+        admins.push_back(fp);
+        members.push_back({{"fp", fp}, {"admin", true}});
     }
-    for (const nlohmann::json& admin : verified.body.at("admins")) {
-        if (admin.get<std::string>() == verified.identityFingerprint) {
-            return true;
-        }
-    }
-    return false;
+    return {{"v", 1}, {"groupId", groupId}, {"name", "g"}, {"epoch", epoch},
+        {"members", members}, {"admins", admins}};
 }
 
-// A roster signed by a current admin is accepted; one signed by a non-admin
-// member is rejected. This is the governance invariant the group protocol relies
-// on (only admins author the roster).
+// Admin authority over a group's roster is ANCHORED, not self-asserted: a roster
+// update to an established group is applied only when signed by an admin we
+// already recognize. This is the governance invariant - without it a member could
+// sign a roster naming themselves admin and seize the group. Exercises the real
+// Session::isRosterUpdateAuthorized decision.
 void testRosterTrust()
 {
     const Identity admin = Identity::generate();
     const Identity member = Identity::generate();
     const std::string groupId = "abc123";
 
+    // The signature authenticates the signer (sanity).
     const Bytes byAdmin = cms::signJsonHybrid(rosterBody(groupId, admin, member), admin);
-    CHECK(rosterAccepted(byAdmin, groupId));
-    // The verified signer is exactly the admin.
     CHECK(cms::verifyJsonHybrid(byAdmin).identityFingerprint == admin.fingerprint());
 
-    // The same body, but signed by the non-admin member: must be refused.
-    const Bytes byMember = cms::signJsonHybrid(rosterBody(groupId, admin, member), member);
-    CHECK(!rosterAccepted(byMember, groupId));
+    const nlohmann::json adminRoster = rosterBody(groupId, admin, member);
+    const std::set<std::string> knownAdmins{admin.fingerprint()};  // we recognize `admin`
 
-    // A wrong-group roster is refused even when validly admin-signed.
-    CHECK(!rosterAccepted(byAdmin, "different-group"));
+    // Established group: a roster signed by a CURRENT admin is applied.
+    CHECK(Session::isRosterUpdateAuthorized(
+        admin.fingerprint(), adminRoster, knownAdmins, /*established=*/true, /*bootstrap=*/false));
+
+    // ESCALATION REGRESSION: the non-admin member forges a roster that lists
+    // *themselves* as admin and signs it. The new roster vouches for them, but an
+    // established group MUST refuse it - authority is anchored to who we already
+    // know, never to the roster's own claims.
+    const nlohmann::json selfPromote = rosterBodyClaiming(groupId, {member.fingerprint()}, 99);
+    CHECK(!Session::isRosterUpdateAuthorized(
+        member.fingerprint(), selfPromote, knownAdmins, /*established=*/true, /*bootstrap=*/false));
+    // Even routed as a (forged) invite, it is refused for a group we already hold.
+    CHECK(!Session::isRosterUpdateAuthorized(
+        member.fingerprint(), selfPromote, knownAdmins, /*established=*/true, /*bootstrap=*/true));
+
+    // First roster (an invite, trust on first use): a self-consistent roster
+    // signed by one of its declared admins is accepted only on the bootstrap path.
+    CHECK(Session::isRosterUpdateAuthorized(
+        admin.fingerprint(), adminRoster, {}, /*established=*/false, /*bootstrap=*/true));
+    // A bootstrap roster whose signer is not even in its own admins is refused.
+    CHECK(!Session::isRosterUpdateAuthorized(
+        member.fingerprint(), adminRoster, {}, /*established=*/false, /*bootstrap=*/true));
+    // A non-bootstrap update for a group we do not hold is refused outright.
+    CHECK(!Session::isRosterUpdateAuthorized(
+        admin.fingerprint(), adminRoster, {}, /*established=*/false, /*bootstrap=*/false));
 }
 
 // A tampered signed roster fails verification outright.
@@ -199,6 +224,43 @@ void testEmptyGroupApi()
     fs::remove_all(profileDir);
 }
 
+// A member can remove THEMSELVES with a signed `group.leave`, but cannot forge
+// another member's removal. Self-service leaving is authenticated by the leaver's
+// own signature, independent of any admin. Exercises Session::authenticateGroupLeave.
+void testGroupLeaveAuth()
+{
+    const Identity a = Identity::generate();
+    const Identity b = Identity::generate();
+    const std::string gid = "g-leave";
+
+    const auto leaveMsg = [&](const std::string& from, const Identity& signer) {
+        const nlohmann::json signedBody
+            = {{"type", "group.leave"}, {"groupId", gid}, {"from", from}};
+        return nlohmann::json{{"v", 1}, {"type", "group.leave"}, {"from", from},
+            {"groupId", gid}, {"gsig", toBase64(cms::signJsonHybrid(signedBody, signer))}};
+    };
+
+    // Self-service: A signs their own leave -> authorized to remove exactly A.
+    {
+        const auto who = Session::authenticateGroupLeave(leaveMsg(a.fingerprint(), a), gid);
+        CHECK(who.has_value() && *who == a.fingerprint());
+    }
+    // Forge: B signs a leave whose `from` claims A -> signer != from -> refused.
+    {
+        CHECK(!Session::authenticateGroupLeave(leaveMsg(a.fingerprint(), b), gid).has_value());
+    }
+    // Unsigned leave -> refused (a bare `from` must never remove anyone).
+    {
+        const nlohmann::json m
+            = {{"v", 1}, {"type", "group.leave"}, {"from", a.fingerprint()}, {"groupId", gid}};
+        CHECK(!Session::authenticateGroupLeave(m, gid).has_value());
+    }
+    // Wrong group id -> refused even with a valid self-signature.
+    {
+        CHECK(!Session::authenticateGroupLeave(leaveMsg(a.fingerprint(), a), "other").has_value());
+    }
+}
+
 }  // namespace
 
 int main()
@@ -206,6 +268,7 @@ int main()
     testRosterTrust();
     testTamperedRosterRejected();
     testGroupMessageSenderAuth();
+    testGroupLeaveAuth();
     testEmptyGroupApi();
     std::fprintf(stderr, "TestGroup passed\n");
     return 0;
