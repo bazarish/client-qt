@@ -72,10 +72,11 @@ public slots:
     // client wipes its transcript on receipt.
     void clearChatForEveryone(const QString& peer);
     void createGroup(const QString& name, const QStringList& memberFps);
-    void sendGroupText(
-        const QString& groupId, const QString& text, qint64 localId, const QString& replyTo);
+    void sendGroupText(const QString& groupId, const QString& text, qint64 localId,
+        const QString& protocolId, const QString& replyTo);
     void addGroupMembers(const QString& groupId, const QStringList& fps);
     void removeGroupMember(const QString& groupId, const QString& fp);
+    void setGroupAdmin(const QString& groupId, const QString& fp, bool admin);
     void leaveGroup(const QString& groupId);
     void fetchGroupMembers(const QString& groupId);
     void addByInvite(const QString& uri, const QString& intro);
@@ -158,9 +159,10 @@ signals:
     void groupsRefreshed(const QStringList& ids, const QStringList& names);
     void groupCreated(const QString& groupId, const QString& name);
     // The group's members, their self-chosen display names (parallel to members,
-    // empty when unknown) and whether we administer it.
+    // empty when unknown), per-member "1"/"0" admin flags (parallel), and whether
+    // we administer it.
     void groupMembersReady(const QString& groupId, const QStringList& members,
-        const QStringList& selfNames, bool iAmAdmin);
+        const QStringList& selfNames, const QStringList& adminFlags, bool iAmAdmin);
     // hasKey: a master is set up in the profile. enabled/active: the paid option
     // is on / currently paid-active. address: the personal b32 (empty if none).
     // summary: a one-line human status for the settings page. paidThrough: the
@@ -385,6 +387,11 @@ public:
     Q_INVOKABLE void setGroupAvatar(const QString& fileUrl);
     // Renames the active group (admin only). A rename notice appears from us at once.
     Q_INVOKABLE void setGroupName(const QString& name);
+    // Whether a group member is an admin (for the member-list highlight).
+    Q_INVOKABLE bool memberIsAdmin(const QString& fp) const;
+    // A human list of the active group's admin display names (for non-admins to
+    // see who administers the group). Empty when none/unknown.
+    Q_INVOKABLE QString groupAdminNames() const;
     // The display info for a group message's author: { name, isContact, fpShort }.
     // name is the local contact name when we have one (isContact true), else the
     // sender's self-chosen account name (isContact false) with fpShort the short
@@ -400,6 +407,8 @@ public:
     // Group membership management (operate on the given group id).
     Q_INVOKABLE void addGroupMembers(const QString& groupId, const QStringList& fps);
     Q_INVOKABLE void removeGroupMember(const QString& groupId, const QString& fp);
+    // Grants or revokes a member's admin flag in the active group (admin only).
+    Q_INVOKABLE void setGroupAdmin(const QString& fp, bool admin);
     Q_INVOKABLE void leaveGroup(const QString& groupId);
     // Inline-keyboard button presses in the active conversation: a callback
     // (button data + the keyboard message's protocol id) or a command button.
@@ -526,10 +535,11 @@ signals:  // to worker
     void requestRemoveContact(const QString& peer);
     void requestClearChatForEveryone(const QString& peer);
     void requestCreateGroup(const QString& name, const QStringList& memberFps);
-    void requestSendGroupText(
-        const QString& groupId, const QString& text, qint64 localId, const QString& replyTo);
+    void requestSendGroupText(const QString& groupId, const QString& text, qint64 localId,
+        const QString& protocolId, const QString& replyTo);
     void requestAddGroupMembers(const QString& groupId, const QStringList& fps);
     void requestRemoveGroupMember(const QString& groupId, const QString& fp);
+    void requestSetGroupAdmin(const QString& groupId, const QString& fp, bool admin);
     void requestLeaveGroup(const QString& groupId);
     void requestFetchGroupMembers(const QString& groupId);
     void requestAddByInvite(const QString& uri, const QString& intro);
@@ -576,7 +586,7 @@ private slots:
     void onGroupsRefreshed(const QStringList& ids, const QStringList& names);
     void onGroupCreated(const QString& groupId, const QString& name);
     void onGroupMembersReady(const QString& groupId, const QStringList& members,
-        const QStringList& selfNames, bool iAmAdmin);
+        const QStringList& selfNames, const QStringList& adminFlags, bool iAmAdmin);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 paidThrough);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
@@ -667,6 +677,9 @@ private:
     // -> name, empty when unknown), so a group bubble can show a non-contact
     // member's own name. Refreshed with the member list.
     QHash<QString, QString> memberSelfNames_;
+    // Fingerprints of the active group's admins (for the member-list highlight and
+    // the admin-name line). Refreshed with the member list.
+    QSet<QString> memberAdmins_;
     bool activeGroupAdmin_ = false;
     bool i2pHasKey_ = false;
     bool i2pEnabled_ = false;

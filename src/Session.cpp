@@ -1922,8 +1922,12 @@ std::vector<IncomingMessage> Session::sync()
             } else if (type == "group.avatar" || type == "group.rename") {
                 // A group photo or rename by an admin; applied/surfaced after the
                 // group-sender authentication and admin check below (so an unsigned
-                // or non-admin one cannot take effect). Mark the type for now.
+                // or non-admin one cannot take effect). The rename carries the new
+                // name in `text` (so the recipient's notice is not blank).
                 message.contentType = type;
+                if (type == "group.rename") {
+                    message.text = body.value("text", std::string());
+                }
             } else if (type == "contact.accept") {
                 // The peer agreed to our contact request: their descriptor + reply
                 // tokens already rode in the bootstrap block above, so we are now a
@@ -2553,25 +2557,24 @@ void Session::sendToMemberContent(
 {
     Group& group = groups_.at(groupId);
     GroupMember& member = group.members.at(memberFp);
+    if (member.sendTokens.empty()) {
+        throw std::runtime_error("no usable group token for member " + memberFp);
+    }
     const std::string text = inner.dump();
     const Key memberSealing = Key::fromPublicDer(fromBase64(member.sealingPublicB64));
     const Bytes payload = cms::seal(Bytes(text.begin(), text.end()), memberSealing);
     const Key memberServingKey = Key::fromPublicDer(fromBase64(member.servingSealingB64));
 
-    // Optimistic retry: the pool is shared, so a token may have been spent by a
-    // concurrent sender. Drop a rejected token and try the next until one is
-    // accepted or the pool is empty (then the member must refill us).
-    while (!member.sendTokens.empty()) {
-        const std::string token = member.sendTokens.back();
-        member.sendTokens.pop_back();
-        bool rejected = false;
-        deliver(member.dest, memberServingKey, "content", memberFp, fromBase64(token), payload,
-            {}, &rejected);
-        if (!rejected) {
-            return;
-        }
-    }
-    throw std::runtime_error("no usable group token for member " + memberFp);
+    // Spend one pool token and submit WITHOUT polling the outcome (waitForOutcome
+    // false), exactly like a one-to-one send: the own server accepts at once
+    // (store-and-forward) and federates in the background, so a group fan-out never
+    // blocks the worker on per-member delivery polls. (A token a concurrent sender
+    // already spent is reconciled by the member's next pool refill; the previous
+    // synchronous retry is what made every group send wait on each recipient.)
+    const std::string token = member.sendTokens.back();
+    member.sendTokens.pop_back();
+    deliver(member.dest, memberServingKey, "content", memberFp, fromBase64(token), payload, {},
+        nullptr, nullptr, false);
 }
 
 std::vector<std::string> Session::issueGroupPool(Group& group)
@@ -2708,15 +2711,18 @@ std::optional<std::string> Session::authenticateGroupSender(const nlohmann::json
 }
 
 void Session::sendGroupMessage(
-    const std::string& groupId, const std::string& text, const std::string& replyTo)
+    const std::string& groupId, const std::string& text, const std::string& replyTo,
+    const std::string& messageId)
 {
     const auto found = groups_.find(groupId);
     if (found == groups_.end()) {
         throw std::runtime_error("unknown group: " + groupId);
     }
     Group& group = found->second;
-    // One logical message id + timestamp shared across the fan-out.
-    const std::string id = toHex(randomBytes(8));
+    // One logical message id + timestamp shared across the fan-out. The caller's id
+    // is reused when given, so its own stored copy and every recipient's copy carry
+    // the SAME id - an edit/reply/delete referencing it then resolves on every side.
+    const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
     const std::int64_t sentAt = nowMillis();
     // Authenticate the sender per message: a hybrid signature over the message's
     // identifying and content fields. The signed roster only attests membership,
@@ -2988,6 +2994,17 @@ bool Session::isGroupAdmin(const std::string& groupId) const
 {
     const auto found = groups_.find(groupId);
     return found != groups_.end() && found->second.iAmAdmin;
+}
+
+bool Session::isGroupMemberAdmin(
+    const std::string& groupId, const std::string& memberFingerprint) const
+{
+    const auto group = groups_.find(groupId);
+    if (group == groups_.end()) {
+        return false;
+    }
+    const auto member = group->second.members.find(memberFingerprint);
+    return member != group->second.members.end() && member->second.admin;
 }
 
 void Session::addGroupMembers(

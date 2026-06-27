@@ -57,16 +57,23 @@ Popup {
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
         // Group photo + name. Changing either is an admin privilege; everyone
-        // else sees the photo read-only (the name is in the title above).
+        // else sees the photo read-only and who administers the group.
         ColumnLayout {
             visible: !root.addMode
             Layout.fillWidth: true
-            Layout.topMargin: 12
-            spacing: 6
-            Avatar {
-                Layout.alignment: Qt.AlignHCenter
-                fingerprint: root.session ? root.session.activePeer : ""
-                size: 72
+            Layout.topMargin: 14
+            Layout.bottomMargin: 4
+            spacing: 8
+            // Centred avatar (anchored in a full-width item so it never drifts to
+            // the edge when the admin controls below are hidden).
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 88
+                Avatar {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    fingerprint: root.session ? root.session.activePeer : ""
+                    size: 88
+                }
             }
             MenuButton {
                 Layout.alignment: Qt.AlignHCenter
@@ -92,6 +99,17 @@ Popup {
                 }
                 MenuButton { text: "Rename"; onClicked: root.saveGroupName() }
             }
+            // Non-admin: who administers the group (the rename/photo controls are
+            // hidden for them, so this fills the space and explains the read-only).
+            Label {
+                readonly property string admins: (root.session && root.session.activeGroupMembers !== undefined)
+                    ? root.session.groupAdminNames() : ""
+                visible: !root.admin && admins.length > 0
+                Layout.alignment: Qt.AlignHCenter
+                text: "Admin: " + admins
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+            }
         }
 
         ColumnLayout {
@@ -112,6 +130,27 @@ Popup {
                 }
                 MenuButton { visible: root.admin; text: "＋ Add"; onClicked: { root.selectedFps = []; root.addMode = true } }
             }
+
+            // You (the current user) - always a member, shown first with no actions.
+            RowLayout {
+                visible: !root.addMode
+                Layout.fillWidth: true
+                Layout.preferredHeight: 52
+                spacing: 8
+                Avatar { fingerprint: root.session ? root.session.fingerprint : ""; size: 32 }
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+                    Label { text: "You"; color: Theme.text; font.weight: Font.Medium }
+                    Label {
+                        visible: root.admin
+                        text: "admin"
+                        color: Theme.green; font.pixelSize: 10; font.weight: Font.Medium
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+            }
+
             ListView {
                 visible: !root.addMode
                 Layout.fillWidth: true
@@ -122,20 +161,33 @@ Popup {
                     id: memberRow
                     required property var modelData
                     width: ListView.view.width
-                    height: 50
-                    spacing: 10
+                    height: 52
+                    spacing: 8
                     // The member's display info: a local contact name (bright) or
                     // the member's own account name (green) with the short
                     // fingerprint beneath it.
                     readonly property var info: root.session ? root.session.groupSenderInfo(memberRow.modelData) : null
+                    readonly property bool memberAdmin: root.session && root.session.memberIsAdmin(memberRow.modelData)
+                    readonly property bool isContact: root.session && root.session.contactsRevision >= 0
+                        && root.session.isContact(memberRow.modelData)
                     Avatar { fingerprint: memberRow.modelData; size: 32 }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 0
-                        Label {
-                            text: memberRow.info ? memberRow.info.name : memberRow.modelData
-                            color: (memberRow.info && memberRow.info.isContact) ? Theme.text : Theme.green
-                            elide: Text.ElideRight; Layout.fillWidth: true
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Label {
+                                text: memberRow.info ? memberRow.info.name : memberRow.modelData
+                                color: (memberRow.info && memberRow.info.isContact) ? Theme.text : Theme.green
+                                elide: Text.ElideRight; Layout.fillWidth: true
+                            }
+                            // Highlight an admin member.
+                            Label {
+                                visible: memberRow.memberAdmin
+                                text: "admin"
+                                color: Theme.green; font.pixelSize: 10; font.weight: Font.Medium
+                            }
                         }
                         Label {
                             visible: memberRow.info && memberRow.info.fpShort.length > 0
@@ -145,20 +197,35 @@ Popup {
                             elide: Text.ElideRight; Layout.fillWidth: true
                         }
                     }
-                    // Add a fellow member as a one-to-one contact (a direct,
-                    // member-only request - other members never see it). Hidden
-                    // once they are a contact (contactsRevision re-drives this).
+                    // Chat (an existing contact: opens the 1:1 and closes this panel)
+                    // or Add (a non-contact: a direct, member-only contact request).
                     MenuButton {
-                        visible: root.session && root.session.contactsRevision >= 0
-                            && !root.session.isContact(memberRow.modelData)
-                        text: "Add"
-                        onClicked: root.session.addContactFromGroup(memberRow.modelData)
+                        text: memberRow.isContact ? "Chat" : "Add"
+                        onClicked: {
+                            if (memberRow.isContact) {
+                                root.session.openConversation(memberRow.modelData)
+                                root.close()
+                            } else {
+                                root.session.addContactFromGroup(memberRow.modelData)
+                            }
+                        }
                     }
-                    MenuButton {
+                    // Admin-only actions (grant/revoke admin, remove) in an overflow menu.
+                    IconButton {
                         visible: root.admin
-                        text: "Remove"
-                        danger: true
-                        onClicked: root.session.removeGroupMember(root.session.activePeer, memberRow.modelData)
+                        text: "⋮"
+                        onClicked: memberMenu.popup()
+                        Menu {
+                            id: memberMenu
+                            MenuItem {
+                                text: memberRow.memberAdmin ? "Dismiss as admin" : "Make admin"
+                                onTriggered: root.session.setGroupAdmin(memberRow.modelData, !memberRow.memberAdmin)
+                            }
+                            MenuItem {
+                                text: "Remove from group"
+                                onTriggered: root.session.removeGroupMember(root.session.activePeer, memberRow.modelData)
+                            }
+                        }
                     }
                 }
             }

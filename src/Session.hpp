@@ -569,9 +569,14 @@ public:
     // Sends a text message to a group: one content delivery per member (client
     // fan-out), each spending one of that member's pool tokens. Members we have
     // no pool token for yet are skipped (their pool has not arrived). replyTo, when
-    // set, is the protocol id of the group message this one replies to.
-    void sendGroupMessage(
-        const std::string& groupId, const std::string& text, const std::string& replyTo = {});
+    // set, is the protocol id of the group message this one replies to. messageId,
+    // when set, is used as the SHARED message id across the fan-out (so the
+    // sender's own stored copy and every recipient's copy carry the same id - an
+    // edit/reply/delete that references it then resolves on every side); empty mints
+    // a fresh one. Fan-out is asynchronous (no per-member delivery poll), like a
+    // one-to-one send, so it never blocks the worker.
+    void sendGroupMessage(const std::string& groupId, const std::string& text,
+        const std::string& replyTo = {}, const std::string& messageId = {});
 
     // Edits one of our own group messages: fans a signed "edit" to every member
     // (like a group text), so an edit works in a group exactly as in a 1:1 chat
@@ -584,6 +589,8 @@ public:
     std::string groupName(const std::string& groupId) const;
     std::vector<std::string> groupMemberFingerprints(const std::string& groupId) const;
     bool isGroupAdmin(const std::string& groupId) const;
+    // Whether a specific member is flagged admin in the group's roster.
+    bool isGroupMemberAdmin(const std::string& groupId, const std::string& memberFingerprint) const;
     // A group member's self-chosen display name, learned from their messages
     // (empty when unknown or for our own / a non-member fingerprint).
     std::string groupMemberDisplayName(

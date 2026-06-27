@@ -172,13 +172,15 @@ Item {
                 }
             }
 
-            // Reply quote: the message this one replies to. Clickable (jumps to the
-            // original) when it is in local history; a faint static quote otherwise.
+            // Reply quote: the message this one replies to. Shown ONLY when the
+            // original is in local history (then it is a clickable jump to it); a
+            // reference we cannot resolve shows no quote at all.
+            readonly property bool hasReplyQuote: delegate.replyInfo !== null && delegate.replyInfo.found
             Rectangle {
                 id: replyQuote
-                visible: delegate.replyInfo !== null
+                visible: delegate.hasReplyQuote
                 Layout.fillWidth: true
-                implicitHeight: replyCol.implicitHeight + 8
+                Layout.preferredHeight: delegate.hasReplyQuote ? replyCol.implicitHeight + 8 : 0
                 radius: 6
                 color: Theme.surface
                 border.color: Theme.border
@@ -200,24 +202,16 @@ Item {
                         Layout.fillWidth: true
                     }
                     Label {
-                        text: delegate.replyInfo
-                            ? (delegate.replyInfo.found ? delegate.replyInfo.text
-                                : "(original message unavailable)")
-                            : ""
+                        text: delegate.replyInfo ? delegate.replyInfo.text : ""
                         color: Theme.textDim
                         font.pixelSize: 11
-                        font.italic: delegate.replyInfo ? !delegate.replyInfo.found : false
                         elide: Text.ElideRight
                         maximumLineCount: 1
                         Layout.fillWidth: true
                     }
                 }
-                HoverHandler {
-                    cursorShape: (delegate.replyInfo && delegate.replyInfo.found)
-                        ? Qt.PointingHandCursor : Qt.ArrowCursor
-                }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
                 TapHandler {
-                    enabled: delegate.replyInfo !== null && delegate.replyInfo.found
                     onTapped: if (delegate.session) {
                         delegate.session.openConversationAtMessage(
                             delegate.session.activePeer, delegate.replyInfo.localId)

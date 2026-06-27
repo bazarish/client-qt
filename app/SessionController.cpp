@@ -644,14 +644,17 @@ void SessionWorker::createGroup(const QString& name, const QStringList& memberFp
     }
 }
 
-void SessionWorker::sendGroupText(
-    const QString& groupId, const QString& text, qint64 localId, const QString& replyTo)
+void SessionWorker::sendGroupText(const QString& groupId, const QString& text, qint64 localId,
+    const QString& protocolId, const QString& replyTo)
 {
     try {
-        session_->sendGroupMessage(
-            groupId.toStdString(), text.toStdString(), replyTo.toStdString());
-        // A group fan-out has no single recipient to confirm; treat a clean
-        // send as handed off (yellow).
+        // Grey at once (our own server will accept the fan-out store-and-forward),
+        // so the bubble never hangs on the hollow "sending" ring while the fan-out
+        // runs. The fan-out itself no longer polls per member (see sendGroupMessage),
+        // so it returns fast; treat a clean send as handed off (yellow).
+        emit sendProgress(localId, DeliveryStatus::AtSenderServer);
+        session_->sendGroupMessage(groupId.toStdString(), text.toStdString(),
+            replyTo.toStdString(), protocolId.toStdString());
         emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
         emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
@@ -663,6 +666,7 @@ void SessionWorker::sendGroupEdit(
     const QString& groupId, const QString& refId, qint64 localId, const QString& text)
 {
     try {
+        emit sendProgress(localId, DeliveryStatus::AtSenderServer);  // grey at once
         session_->sendGroupEdit(groupId.toStdString(), refId.toStdString(), text.toStdString());
         emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
         emit sendResult(localId, true, {});
@@ -678,13 +682,17 @@ void SessionWorker::fetchGroupMembers(const QString& groupId)
     }
     QStringList members;
     QStringList selfNames;
+    QStringList adminFlags;
     for (const std::string& fp : session_->groupMemberFingerprints(groupId.toStdString())) {
         members << QString::fromStdString(fp);
         selfNames << QString::fromStdString(
             session_->groupMemberDisplayName(groupId.toStdString(), fp));
+        adminFlags << (session_->isGroupMemberAdmin(groupId.toStdString(), fp)
+                ? QStringLiteral("1")
+                : QStringLiteral("0"));
     }
     emit groupMembersReady(
-        groupId, members, selfNames, session_->isGroupAdmin(groupId.toStdString()));
+        groupId, members, selfNames, adminFlags, session_->isGroupAdmin(groupId.toStdString()));
 }
 
 void SessionWorker::addGroupMembers(const QString& groupId, const QStringList& fps)
@@ -710,6 +718,18 @@ void SessionWorker::removeGroupMember(const QString& groupId, const QString& fp)
         emit actionOk("Member removed.");
         emitGroups();
         fetchGroupMembers(groupId);
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::setGroupAdmin(const QString& groupId, const QString& fp, bool admin)
+{
+    try {
+        session_->setGroupAdmin(groupId.toStdString(), fp.toStdString(), admin);
+        emit actionOk(admin ? QStringLiteral("Admin granted.") : QStringLiteral("Admin revoked."));
+        emitGroups();
+        fetchGroupMembers(groupId);  // refresh the admin flags shown in the panel
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1110,6 +1130,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::addGroupMembers);
     connect(this, &SessionController::requestRemoveGroupMember, worker_,
         &SessionWorker::removeGroupMember);
+    connect(this, &SessionController::requestSetGroupAdmin, worker_,
+        &SessionWorker::setGroupAdmin);
     connect(this, &SessionController::requestLeaveGroup, worker_, &SessionWorker::leaveGroup);
     connect(this, &SessionController::requestFetchGroupMembers, worker_,
         &SessionWorker::fetchGroupMembers);
@@ -1468,6 +1490,9 @@ void SessionController::onGroupsRefreshed(const QStringList& ids, const QStringL
         groupNames_.insert(ids[i], names[i]);
     }
     rebuildChatList();
+    // A renamed group must update the open conversation header too, not just the
+    // chat list (the header binds activePeerName).
+    emit activePeerNameChanged();
     // If the open group went away (we left it), close the conversation; otherwise
     // refresh its member list (membership may have changed).
     if (!activePeer_.isEmpty() && !groupIds_.contains(activePeer_)
@@ -1642,6 +1667,14 @@ void SessionController::removeGroupMember(const QString& groupId, const QString&
     emit requestRemoveGroupMember(groupId, fp);
 }
 
+void SessionController::setGroupAdmin(const QString& fp, bool admin)
+{
+    if (fp.isEmpty() || activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
+        return;
+    }
+    emit requestSetGroupAdmin(activePeer_, fp, admin);
+}
+
 void SessionController::leaveGroup(const QString& groupId)
 {
     if (groupId.isEmpty()) {
@@ -1706,19 +1739,46 @@ void SessionController::deleteContact()
 }
 
 void SessionController::onGroupMembersReady(const QString& groupId, const QStringList& members,
-    const QStringList& selfNames, bool iAmAdmin)
+    const QStringList& selfNames, const QStringList& adminFlags, bool iAmAdmin)
 {
     if (groupId == activePeer_) {
         activeGroupMembers_ = members;
         memberSelfNames_.clear();
+        memberAdmins_.clear();
         for (int i = 0; i < members.size() && i < selfNames.size(); ++i) {
             if (!selfNames[i].isEmpty()) {
                 memberSelfNames_.insert(members[i], selfNames[i]);
             }
         }
+        for (int i = 0; i < members.size() && i < adminFlags.size(); ++i) {
+            if (adminFlags[i] == QStringLiteral("1")) {
+                memberAdmins_.insert(members[i]);
+            }
+        }
         activeGroupAdmin_ = iAmAdmin;
         emit activeGroupChanged();
     }
+}
+
+bool SessionController::memberIsAdmin(const QString& fp) const
+{
+    return memberAdmins_.contains(fp);
+}
+
+QString SessionController::groupAdminNames() const
+{
+    // The protocol allows several admins (multi-admin governance, so a group
+    // survives the creator's account loss); today only the creator is one until an
+    // appoint-admin action is wired up. Shown to non-admins, so we never list
+    // ourselves here.
+    QStringList names;
+    for (const QString& fp : memberAdmins_) {
+        const QString contact = contactNames_.value(fp);
+        const QString self = memberSelfNames_.value(fp);
+        names << (!contact.isEmpty() ? contact : (!self.isEmpty() ? self : shortFingerprint(fp)));
+    }
+    names.sort();
+    return names.join(QStringLiteral(", "));
 }
 
 QString SessionController_genProtocolId()
@@ -1753,7 +1813,9 @@ void SessionController::sendText(const QString& text)
         statusById_[gm.id] = DeliveryStatus::Sending;
         showInActiveView(gm, true);
         contacts_.touch(activePeer_, groupNames_.value(activePeer_), text, gm.ts, false, true);
-        emit requestSendGroupText(activePeer_, text, gm.id, replyTo);
+        // Pass our local protocol id as the SHARED message id so the wire copy and
+        // our own copy match (an edit/reply referencing it then resolves everywhere).
+        emit requestSendGroupText(activePeer_, text, gm.id, gm.protocolId, replyTo);
         return;
     }
     StoredMessage m;
