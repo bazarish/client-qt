@@ -346,8 +346,8 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
         return hits;
     }
     QSqlQuery sql(QSqlDatabase::database(connectionName_));
-    sql.prepare("SELECT id, ts, text, outgoing, sender FROM messages"
-                " WHERE peer = ? AND text <> '' ORDER BY id DESC");
+    sql.prepare("SELECT id, ts, text, outgoing, sender, attName FROM messages"
+                " WHERE peer = ? AND (text <> '' OR attName <> '') ORDER BY id DESC");
     sql.addBindValue(peer);
     if (!sql.exec()) {
         return hits;
@@ -355,13 +355,18 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
     constexpr int kMaxHits = 500;
     while (sql.next() && hits.size() < kMaxHits) {
         const QString text = sql.value(2).toString();
-        if (!text.contains(query, Qt::CaseInsensitive)) {
+        const QString attName = sql.value(5).toString();
+        // Match the message text or, for an attachment, its file name.
+        if (!text.contains(query, Qt::CaseInsensitive)
+            && !attName.contains(query, Qt::CaseInsensitive)) {
             continue;
         }
         SearchHit hit;
         hit.id = sql.value(0).toLongLong();
         hit.ts = sql.value(1).toLongLong();
-        hit.text = text;
+        // Show the message text, or the file name (with a paperclip) for an
+        // attachment, so a file hit reads as a file in the results.
+        hit.text = !text.isEmpty() ? text : (QStringLiteral("📎 ") + attName);
         hit.outgoing = sql.value(3).toInt() != 0;
         hit.sender = sql.value(4).toString();
         hits.push_back(hit);

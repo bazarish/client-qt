@@ -446,6 +446,9 @@ Item {
             id: contextMenu
             MenuItem {
                 text: "Copy all"
+                // Only for text messages: an attachment has nothing to copy.
+                visible: !delegate.isAttachment
+                height: visible ? implicitHeight : 0
                 enabled: delegate.fullText.length > 0
                 onTriggered: delegate.session.copyText(delegate.fullText)
             }
