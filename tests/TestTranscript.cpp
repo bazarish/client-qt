@@ -242,6 +242,36 @@ int main(int argc, char** argv)
         }
     }
 
+    // Service banners (type 'system', e.g. "X cleared the chat") are not messages
+    // to be read: they never raise the unread count or the open-at-first-unread.
+    {
+        const QString sdb = QString::fromStdString((dir / "sysunread.db").string());
+        TranscriptStore store;
+        CHECK(store.open("su", sdb, ""));
+        StoredMessage note;
+        note.peer = "frank";
+        note.outgoing = false;
+        note.type = "system";
+        note.text = "frank cleared the chat.";
+        note.ts = 300;
+        note.orderKey = note.ts;
+        CHECK(store.append(note) > 0);
+        CHECK(store.unreadCount("frank") == 0);
+        CHECK(store.firstUnreadId("frank") == 0);
+        // A real incoming message after it does count, and is the first unread.
+        StoredMessage real;
+        real.peer = "frank";
+        real.outgoing = false;
+        real.type = "text";
+        real.text = "hi again";
+        real.ts = 301;
+        real.orderKey = real.ts;
+        const qint64 realId = store.append(real);
+        CHECK(realId > 0);
+        CHECK(store.unreadCount("frank") == 1);
+        CHECK(store.firstUnreadId("frank") == realId);
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;

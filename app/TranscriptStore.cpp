@@ -637,8 +637,9 @@ int TranscriptStore::unreadCount(const QString& peer) const
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     // Incoming messages newer than the read high-water. Only inbound rows count
-    // (our own messages are always "read").
-    query.prepare("SELECT COUNT(*) FROM messages WHERE peer = ? AND outgoing = 0 AND id >"
+    // (our own messages are always "read"), and locally-generated service banners
+    // (type 'system', e.g. "X cleared the chat") are not messages to be read.
+    query.prepare("SELECT COUNT(*) FROM messages WHERE peer = ? AND outgoing = 0 AND type != 'system' AND id >"
                   " (SELECT COALESCE(MAX(last_read_id), 0) FROM read_state WHERE peer = ?)");
     query.addBindValue(peer);
     query.addBindValue(peer);
@@ -651,7 +652,7 @@ int TranscriptStore::unreadCount(const QString& peer) const
 qint64 TranscriptStore::firstUnreadId(const QString& peer) const
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("SELECT MIN(id) FROM messages WHERE peer = ? AND outgoing = 0 AND id >"
+    query.prepare("SELECT MIN(id) FROM messages WHERE peer = ? AND outgoing = 0 AND type != 'system' AND id >"
                   " (SELECT COALESCE(MAX(last_read_id), 0) FROM read_state WHERE peer = ?)");
     query.addBindValue(peer);
     query.addBindValue(peer);
