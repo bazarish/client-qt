@@ -707,14 +707,17 @@ Item {
                 }
             }
             MenuItem {
-                text: "React…"
+                // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
+                // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
+                // these labels into "React_" / "React_ view".
+                text: "React"
                 visible: delegate.reactable
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.reactRequested(model.protocolId)
             }
             MenuItem {
                 // Group only: who reacted, and (for our own messages) who has read it.
-                text: "Reactions & views"
+                text: "Views"
                 visible: delegate.reactable && delegate.inGroup
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.reactionDetailsRequested(model.protocolId)
