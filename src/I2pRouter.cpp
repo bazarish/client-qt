@@ -21,6 +21,10 @@ std::unique_ptr<bazarish::i2p::Router>& routerSlot()
 }
 
 std::atomic<bool> g_i2pEnabled{true};
+// Full privacy mode (default off): when on, the transport refuses every clearnet
+// facade, so all traffic runs over I2P (and a profile with no I2P facade is
+// explicitly offline). Consulted at request time, like g_i2pEnabled.
+std::atomic<bool> g_fullPrivacy{false};
 }  // namespace
 
 bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
@@ -67,6 +71,16 @@ void setI2pEnabled(bool enabled)
 bool i2pEnabled()
 {
     return g_i2pEnabled.load();
+}
+
+void setFullPrivacy(bool enabled)
+{
+    g_fullPrivacy.store(enabled);
+}
+
+bool fullPrivacy()
+{
+    return g_fullPrivacy.load();
 }
 
 }  // namespace bazarish::client

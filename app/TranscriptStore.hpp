@@ -48,6 +48,13 @@ struct SearchHit {
     QString sender;
 };
 
+// One reaction on a message: who reacted (fingerprint) and the emoji. One per
+// reactor per message - a new emoji from the same reactor overwrites the old.
+struct Reaction {
+    QString reactor;
+    QString emoji;
+};
+
 // Persistent local message log for one profile. When a passphrase is given the
 // database is never written to disk in the clear: it lives in an in-memory
 // SQLite connection and is persisted as a single CMS PWRI-sealed blob
@@ -121,6 +128,34 @@ public:
     QVector<SearchHit> searchInPeer(const QString& peer, const QString& query) const;
     QString lastText(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
+
+    // --- Read state (persistent unread tracking) ---
+    // A per-peer high-water of the last locally-read incoming message id. It only
+    // advances (a lower id is ignored), so re-reading older history never lowers it.
+    // Survives restart, so the unread badge and the open-at-first-unread position
+    // are accurate across sessions.
+    void setLastReadId(const QString& peer, qint64 id);
+    qint64 lastReadId(const QString& peer) const;
+    // The number of incoming messages newer than the read high-water (the unread
+    // badge count for this conversation).
+    int unreadCount(const QString& peer) const;
+    // The id of the oldest unread incoming message (0 when nothing is unread): the
+    // row a conversation opens at, so the user lands on the first thing they missed.
+    qint64 firstUnreadId(const QString& peer) const;
+
+    // --- Reactions (one emoji per user per message; new overwrites old) ---
+    // Sets `reactor`'s reaction to `target` (a message protocol id under `peer`) to
+    // `emoji`; an empty emoji removes their reaction. Idempotent upsert.
+    void setReaction(
+        const QString& peer, const QString& target, const QString& reactor, const QString& emoji);
+    // Every reaction on a message, for the bubble summary and the who-reacted list.
+    QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
+
+    // --- Group read receipts (who has viewed a message) ---
+    // Records that `viewer` has read `target` under group `peer` (insert-or-ignore).
+    void addView(const QString& peer, const QString& target, const QString& viewer);
+    // Every member who has read `target`, for the viewers list and the green status.
+    QStringList viewersFor(const QString& peer, const QString& target) const;
 
 private:
     // Serializes the in-memory database and writes the sealed blob. No-op when

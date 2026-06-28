@@ -47,6 +47,11 @@ public slots:
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
     void sendReceipt(const QString& peer, const QString& refId);
+    // Sets our reaction emoji on a message (1:1 or group); empty emoji removes it.
+    void sendReaction(const QString& peer, const QString& refId, const QString& emoji);
+    void sendGroupReaction(const QString& groupId, const QString& refId, const QString& emoji);
+    // Sends a group read receipt for `refId` to its `author` (opt-in, group-only).
+    void sendGroupReceipt(const QString& groupId, const QString& refId, const QString& author);
     void sendCallback(const QString& peer, const QString& data, const QString& ref);
     void sendCommand(const QString& peer, const QString& command, const QString& args);
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
@@ -58,6 +63,8 @@ public slots:
     // Compresses the picked image to a square avatar within the protocol cap and
     // sets it (persist + distribute to contacts and the account's other devices).
     void setAvatar(const QString& localPath);
+    // Changes the account's own display name (local + future invites only).
+    void setDisplayName(const QString& name);
     // Compresses the picked image and sets it as a group's photo (persist + signed
     // broadcast to every member), so it appears in the chat as a message from us.
     void setGroupAvatar(const QString& groupId, const QString& localPath);
@@ -100,6 +107,8 @@ public slots:
     void enablePersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
+    // Polls the user's own storage usage (mailbox + blob backends) and reports it.
+    void refreshStorageUsage();
     // Calls: each runs the matching Session method (strict I2P, so a failure
     // surfaces as actionFailed) and then re-emits the call state. video selects
     // an audio+video call.
@@ -116,6 +125,9 @@ public slots:
 signals:
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& subscriptionText);
+    // The account's own display name was changed (so the GUI updates it without a
+    // full re-open).
+    void renamed(const QString& newName);
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& subscriptionText);
     void messageReceived(const QVariantMap& message);
@@ -169,6 +181,10 @@ signals:
     // unix second the current term is paid through (0 when inactive).
     void i2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 paidThrough);
+    // The user's storage usage (mailbox + blob), each with an `ok` flag (a backend
+    // that did not answer keeps its last figures and is marked stale by the UI).
+    void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota,
+        bool blobOk, qulonglong blobUsed, qulonglong blobQuota);
     // The serving server's onboarding info, shown when a connect/subscribe is
     // refused because this key is not registered: the refusal reason, the
     // server's message and its registration link(s).
@@ -222,6 +238,10 @@ class SessionController : public QObject {
     // configured facade list (for the connection editor and status display).
     Q_PROPERTY(QString activeFacade READ activeFacade NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
+    // Whether any configured facade is an I2P facade (host ends in ".b32.i2p"). When
+    // full privacy mode is on and this is false, the profile cannot reach its server
+    // (clearnet is refused), so its status reads as an explicit I2P-only offline error.
+    Q_PROPERTY(bool hasI2pFacade READ hasI2pFacade NOTIFY facadeInfoChanged)
     // The configured server's fingerprint, so the connection editor can prefill it.
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
@@ -252,6 +272,9 @@ class SessionController : public QObject {
     // Bumped whenever the contact set/state changes, so a contact-request bubble's
     // "Agree" button re-evaluates contactCanAccept() after an accept.
     Q_PROPERTY(int contactsRevision READ contactsRevision NOTIFY contactsRevisionChanged)
+    // Bumped whenever any reaction or group read receipt changes, so a message
+    // bubble's reaction chips and the who-reacted/viewed modal re-query the store.
+    Q_PROPERTY(int reactionsRevision READ reactionsRevision NOTIFY reactionsRevisionChanged)
     // The active group's members and whether we administer it (empty/false for a
     // one-to-one chat), for the group-info panel.
     Q_PROPERTY(QStringList activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
@@ -265,6 +288,12 @@ class SessionController : public QObject {
     // Unix second the personal destination is paid through (0 when inactive), so
     // the settings page can show an expiry date or the phrase "Inactive".
     Q_PROPERTY(qint64 i2pPaidThrough READ i2pPaidThrough NOTIFY i2pStatusChanged)
+    // This profile's storage usage for the settings view: a map with mailboxOk,
+    // mailboxUsed, mailboxQuota, blobOk, blobUsed, blobQuota (bytes), updatedAt (the
+    // unix-ms time it was last fetched, 0 if never) and everFetched. The figures
+    // persist for the session, so an offline profile still shows its last-known
+    // usage with a "updated N ago" age.
+    Q_PROPERTY(QVariantMap storageInfo READ storageInfo NOTIFY storageChanged)
     // Audio call state for the call screen: "idle"/"outgoing"/"incoming"/"active",
     // the peer fingerprint, a display name, and the local mute flag.
     Q_PROPERTY(QString callState READ callState NOTIFY callChanged)
@@ -289,6 +318,7 @@ public:
     bool reachable() const { return reachable_; }
     QString activeFacade() const { return activeFacade_; }
     QStringList configuredFacades() const { return configuredFacades_; }
+    bool hasI2pFacade() const;
     QString serverFingerprint() const { return serverFp_; }
     QString activePeer() const { return activePeer_; }
     QString activePeerName() const { return peerName(activePeer_); }
@@ -306,6 +336,7 @@ public:
     QString replyingText() const { return replyingText_; }
     QString replyingSender() const { return replyingSender_; }
     int contactsRevision() const { return contactsRevision_; }
+    int reactionsRevision() const { return reactionsRevision_; }
     QStringList activeGroupMembers() const { return activeGroupMembers_; }
     bool activeGroupAdmin() const { return activeGroupAdmin_; }
     bool i2pHasKey() const { return i2pHasKey_; }
@@ -313,6 +344,7 @@ public:
     bool i2pActive() const { return i2pActive_; }
     QString i2pAddress() const { return i2pAddress_; }
     QString i2pStatusText() const { return i2pStatusText_; }
+    QVariantMap storageInfo() const;
     qint64 i2pPaidThrough() const { return i2pPaidThrough_; }
     QString callState() const { return callState_; }
     QString callPeer() const { return callPeer_; }
@@ -382,6 +414,10 @@ public:
     Q_INVOKABLE QString contactName(const QString& fp) const;
     // Sets the account's own avatar from a picked image file (file:// URL).
     Q_INVOKABLE void setAvatar(const QString& fileUrl);
+    // Changes the account's own display name (trimmed). Local only: updates this
+    // device and the name carried in future invite descriptors; contacts are not
+    // told (each keeps their own local name for us).
+    Q_INVOKABLE void setDisplayName(const QString& name);
     // Sets the active group's photo from a picked image file (file:// URL). Admin
     // only. A "set the group photo" bubble appears from us at once.
     Q_INVOKABLE void setGroupAvatar(const QString& fileUrl);
@@ -397,6 +433,20 @@ public:
     // sender's self-chosen account name (isContact false) with fpShort the short
     // fingerprint to show beneath it, falling back to the short fingerprint alone.
     Q_INVOKABLE QVariantMap groupSenderInfo(const QString& fp) const;
+    // --- Reactions + read receipts ---
+    // Sets our reaction emoji on a message (by its protocol id) in the active chat:
+    // optimistic local store + send. Tapping the emoji we already set removes it.
+    Q_INVOKABLE void react(const QString& protocolId, const QString& emoji);
+    // Our current reaction emoji on a message (empty when none) - for the toggle.
+    Q_INVOKABLE QString myReaction(const QString& protocolId) const;
+    // The reaction chips for a message: a list of { emoji, count, mine } aggregated
+    // across reactors, in first-seen order.
+    Q_INVOKABLE QVariantList reactionSummary(const QString& protocolId) const;
+    // The who-reacted list for a message: { name, emoji } per reactor (for the modal).
+    Q_INVOKABLE QVariantList reactionDetails(const QString& protocolId) const;
+    // The who-viewed list for a message: { name } per member who has read it. Only a
+    // message we authored accrues viewers (read receipts come to the author).
+    Q_INVOKABLE QVariantList viewers(const QString& protocolId) const;
     // Renames a contact locally (mirrored to the account's own other devices).
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     // Clears the active 1:1 conversation. forEveryone also asks the peer to clear
@@ -472,6 +522,10 @@ public:
     Q_INVOKABLE void enablePersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
+    // Triggers a fresh poll of this profile's storage usage (mailbox + blob). The
+    // result lands in the storageInfo property; until it does, the last figures (if
+    // any) stay, with the UI showing how long ago they were taken.
+    Q_INVOKABLE void refreshStorageUsage();
     // Audio calls. startCall dials the active/given peer; accept/decline act on
     // the current incoming call; end hangs up; setCallMuted toggles the mic.
     Q_INVOKABLE void startCall(const QString& peer);
@@ -491,6 +545,9 @@ signals:
     void pagingChanged();
     // Asks the view to scroll the given message into view (a search jump).
     void scrollToMessage(qint64 messageId);
+    // Asks the view to position the first unread message near the top and briefly
+    // highlight the unread tail (a conversation opened with unread messages).
+    void scrollToUnread(qint64 firstUnreadId);
     // Asks the view to scroll to the bottom (jump-to-latest).
     void scrollToBottom();
     void activeGroupChanged();
@@ -499,10 +556,12 @@ signals:
     void editingChanged();
     void replyingChanged();
     void contactsRevisionChanged();
+    void reactionsRevisionChanged();
     void unreadTotalChanged();
     void onlineChanged();
     void reachableChanged();
     void i2pStatusChanged();
+    void storageChanged();
     void callChanged();
     void openFailed(const QString& error);
     void actionOk(const QString& info);
@@ -521,6 +580,11 @@ signals:  // to worker
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
     void requestSendReceipt(const QString& peer, const QString& refId);
+    void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
+    void requestSendGroupReaction(
+        const QString& groupId, const QString& refId, const QString& emoji);
+    void requestSendGroupReceipt(
+        const QString& groupId, const QString& refId, const QString& author);
     void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
     void requestSendCommand(const QString& peer, const QString& command, const QString& args);
     void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
@@ -529,6 +593,7 @@ signals:  // to worker
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
     void requestSetAvatar(const QString& localPath);
+    void requestSetDisplayName(const QString& name);
     void requestSetGroupAvatar(const QString& groupId, const QString& localPath);
     void requestSetGroupName(const QString& groupId, const QString& name);
     void requestRenameContact(const QString& peer, const QString& name);
@@ -560,6 +625,7 @@ signals:  // to worker
     void requestEnablePersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
+    void requestRefreshStorageUsage();
     void requestStartCall(const QString& peer, bool video);
     void requestAcceptCall(const QString& callId);
     void requestDeclineCall(const QString& callId);
@@ -589,6 +655,8 @@ private slots:
         const QStringList& selfNames, const QStringList& adminFlags, bool iAmAdmin);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 paidThrough);
+    void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota,
+        bool blobOk, qulonglong blobUsed, qulonglong blobQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         bool video, bool cameraOn);
 
@@ -626,6 +694,8 @@ private:
     // worker; contactsRevision_ bumps on every refresh to re-drive the binding.
     QSet<QString> pendingContacts_;
     int contactsRevision_ = 0;
+    // Bumped on any reaction / group-view change so QML re-queries the store.
+    int reactionsRevision_ = 0;
     // Current delivery status per outgoing local id, so a later/lower signal
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;
@@ -648,12 +718,22 @@ private:
     void activateConversation(const QString& peer);
     // Loads the newest page into the model and resets the paging window.
     void loadLatestWindow();
+    // Loads a page anchored at the first unread message (it sits at the window's
+    // oldest edge, so the unread block flows down from the top) and asks the view to
+    // scroll there and highlight the unread tail.
+    void openWindowAtUnread(const QString& peer, qint64 firstUnread);
     // Adds a just-stored message to the open conversation's window when the window
     // is at the newest edge; isOwn jumps to the newest page if it was scrolled back.
     void showInActiveView(const StoredMessage& m, bool isOwn);
     // Marks our outgoing messages to peer with id <= uptoId as read (green), in
     // the store and the open window, on receiving a read receipt.
     void markOutgoingRead(const QString& peer, qint64 uptoId);
+    // Marks one of our own group messages (by local id) read (green) on the first
+    // group read receipt; a group fan-out has no single ack, so the first reader wins.
+    void markGroupMessageDelivered(qint64 localId);
+    // A display name for a reactor/viewer: "You" for ourselves, else the local
+    // contact name / the member's own name / the short fingerprint.
+    QString reactorName(const QString& fp) const;
     // Per-peer high-water of the newest incoming message we have already sent a
     // read receipt for, so reading does not re-send receipts on every scroll tick.
     QHash<QString, qint64> lastReadAckedId_;
@@ -687,6 +767,15 @@ private:
     QString i2pAddress_;
     QString i2pStatusText_;
     qint64 i2pPaidThrough_ = 0;
+    // Last-fetched storage usage (session-scoped), with the wall-clock ms it was
+    // taken so the settings view can show "updated N ago" even while offline.
+    bool storageMailboxOk_ = false;
+    quint64 storageMailboxUsed_ = 0;
+    quint64 storageMailboxQuota_ = 0;
+    bool storageBlobOk_ = false;
+    quint64 storageBlobUsed_ = 0;
+    quint64 storageBlobQuota_ = 0;
+    qint64 storageUpdatedAtMs_ = 0;
     QString callState_ = QStringLiteral("idle");
     QString callPeer_;
     QString callId_;

@@ -188,6 +188,60 @@ int main(int argc, char** argv)
         CHECK(store.lastText("dave") == "late");
     }
 
+    // Read state: persistent unread tracking (the unread badge + open-at-first-unread).
+    {
+        const QString sdb = QString::fromStdString((dir / "readstate.db").string());
+        QVector<qint64> ids;
+        {
+            TranscriptStore store;
+            CHECK(store.open("rs", sdb, "pw"));  // sealed, to exercise persistence too
+            // 5 messages under "erin": outgoing at 0,2; incoming at 1,3,4.
+            for (int i = 0; i < 5; ++i) {
+                StoredMessage m;
+                m.peer = "erin";
+                m.outgoing = (i == 0 || i == 2);
+                m.type = "text";
+                m.text = QString("m%1").arg(i);
+                m.ts = 200 + i;
+                m.orderKey = m.ts;
+                const qint64 id = store.append(m);
+                CHECK(id > 0);
+                ids.push_back(id);
+            }
+            // Nothing read yet: all 3 incoming are unread; the first is index 1.
+            CHECK(store.unreadCount("erin") == 3);
+            CHECK(store.firstUnreadId("erin") == ids[1]);
+            CHECK(store.lastReadId("erin") == 0);
+            // An unknown peer has no unread.
+            CHECK(store.unreadCount("nobody") == 0);
+            CHECK(store.firstUnreadId("nobody") == 0);
+
+            // Read through the incoming message at index 3: index 1 and 3 are now
+            // read, leaving index 4 unread (the first unread advances to it).
+            store.setLastReadId("erin", ids[3]);
+            CHECK(store.unreadCount("erin") == 1);
+            CHECK(store.firstUnreadId("erin") == ids[4]);
+
+            // The high-water is monotonic: a lower id never lowers it (re-reading
+            // older history must not resurrect newer messages as unread).
+            store.setLastReadId("erin", ids[1]);
+            CHECK(store.lastReadId("erin") == ids[3]);
+            CHECK(store.unreadCount("erin") == 1);
+        }
+        // Persistence across a reopen: the high-water survives, so unread is stable.
+        {
+            TranscriptStore store;
+            CHECK(store.open("rs2", sdb, "pw"));
+            CHECK(store.lastReadId("erin") == ids[3]);
+            CHECK(store.unreadCount("erin") == 1);
+            CHECK(store.firstUnreadId("erin") == ids[4]);
+            // Reading to the end clears it.
+            store.setLastReadId("erin", ids[4]);
+            CHECK(store.unreadCount("erin") == 0);
+            CHECK(store.firstUnreadId("erin") == 0);
+        }
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;

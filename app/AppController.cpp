@@ -1,7 +1,13 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
 
+#include "I2pRouter.hpp"
+
+#include <bazarish/I2p.hpp>
+
 #include <QUrl>
+
+#include <nlohmann/json.hpp>
 
 #include <cstdlib>
 #include <exception>
@@ -28,6 +34,11 @@ std::filesystem::path offlinePath()
 {
     return profilesRoot() / ".offline";
 }
+
+std::filesystem::path settingsPath()
+{
+    return profilesRoot() / ".settings";
+}
 }  // namespace
 
 AppController::AppController(QObject* parent)
@@ -35,6 +46,9 @@ AppController::AppController(QObject* parent)
     , manager_(std::make_unique<client::ProfileManager>(profilesRoot()))
 {
     refreshProfiles();
+    // Apply global settings (e.g. full privacy mode) before opening any profile, so
+    // the first background sync already honours them.
+    loadSettings();
     // Accounts the user turned offline last run must stay offline: load that set
     // before opening anything so they are skipped.
     loadOfflineSet();
@@ -86,6 +100,45 @@ void AppController::writeLastActive(const QString& id) const
 {
     std::ofstream out(lastActivePath(), std::ios::trunc);
     out << id.toStdString();
+}
+
+void AppController::loadSettings()
+{
+    fullPrivacy_ = false;
+    try {
+        std::ifstream in(settingsPath());
+        if (in.good()) {
+            nlohmann::json j;
+            in >> j;
+            fullPrivacy_ = j.value("fullPrivacyMode", false);
+        }
+    } catch (const std::exception&) {
+        // A missing or malformed settings file just means defaults.
+    }
+    client::setFullPrivacy(fullPrivacy_);
+}
+
+void AppController::persistSettings() const
+{
+    const nlohmann::json j = {{"fullPrivacyMode", fullPrivacy_}};
+    std::ofstream out(settingsPath(), std::ios::trunc);
+    out << j.dump();
+}
+
+void AppController::setFullPrivacyMode(bool on)
+{
+    if (fullPrivacy_ == on) {
+        return;
+    }
+    fullPrivacy_ = on;
+    client::setFullPrivacy(on);  // takes effect on the next request, process-wide
+    persistSettings();
+    emit fullPrivacyModeChanged();
+}
+
+QString AppController::i2pdVersion() const
+{
+    return QString::fromStdString(bazarish::i2p::routerVersion());
 }
 
 void AppController::loadOfflineSet()

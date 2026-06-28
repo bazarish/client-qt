@@ -13,6 +13,10 @@ Item {
     // Asks the view to confirm and delete this message (irreversible; for one's
     // own one-to-one message it is removed at the recipient too).
     signal deleteRequested(var msgId, string protocolId, bool outgoing)
+    // Asks the view to open the emoji picker / the reactions-and-views modal for
+    // this message (handled by a single shared popup, not one per bubble).
+    signal reactRequested(string protocolId)
+    signal reactionDetailsRequested(string protocolId)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
@@ -65,6 +69,25 @@ Item {
     // { found, localId, text, sender }. Null when this is not a reply.
     readonly property var replyInfo: (model.replyTo && model.replyTo.length > 0 && delegate.session)
         ? delegate.session.replyPreview(model.replyTo) : null
+    // The reply quote is shown ONLY when the original is in local history; an
+    // unresolved reference shows no quote at all. Declared on the delegate (not on
+    // `content`) so the quote Rectangle's visible/height bindings resolve it.
+    readonly property bool hasReplyQuote: delegate.replyInfo !== null && delegate.replyInfo.found
+
+    // Whether this is a group chat (the "who reacted / viewed" detail makes sense
+    // only there; a 1:1 chat has a single peer).
+    readonly property bool inGroup: delegate.session
+        && delegate.session.isGroup(delegate.session.activePeer)
+    // A real message can carry reactions (not a service notice, request or
+    // placeholder, and it must have a protocol id to reference).
+    readonly property bool reactable: !delegate.isSystem && !delegate.isUnsupported
+        && !delegate.isGroupService && !delegate.isContactRequest
+        && model.protocolId && model.protocolId.length > 0
+    // The reaction chips for this message: [{ emoji, count, mine }], re-queried
+    // whenever any reaction changes (reactionsRevision drives the binding).
+    readonly property var reactions: (delegate.session && delegate.reactable
+        && delegate.session.reactionsRevision >= 0)
+        ? delegate.session.reactionSummary(model.protocolId) : []
 
     // Centered system notice (e.g. "added to a group").
     Label {
@@ -175,7 +198,6 @@ Item {
             // Reply quote: the message this one replies to. Shown ONLY when the
             // original is in local history (then it is a clickable jump to it); a
             // reference we cannot resolve shows no quote at all.
-            readonly property bool hasReplyQuote: delegate.replyInfo !== null && delegate.replyInfo.found
             Rectangle {
                 id: replyQuote
                 visible: delegate.hasReplyQuote
@@ -525,6 +547,51 @@ Item {
                 Label { text: "sending…"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
             }
 
+            // Reaction chips: one per distinct emoji with its count; the one we set
+            // is outlined. Tapping a chip toggles our reaction to that emoji.
+            Flow {
+                visible: delegate.reactions.length > 0
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                spacing: 4
+                Repeater {
+                    model: delegate.reactions
+                    Rectangle {
+                        required property var modelData
+                        height: 22
+                        width: chipRow.implicitWidth + 12
+                        radius: 11
+                        color: modelData.mine ? Qt.rgba(0.22, 0.5, 0.2, 0.35) : Theme.surface
+                        border.width: 1
+                        border.color: modelData.mine ? Theme.green : Theme.border
+                        Row {
+                            id: chipRow
+                            anchors.centerIn: parent
+                            spacing: 3
+                            Label { text: modelData.emoji; font.pixelSize: 13 }
+                            Label {
+                                visible: modelData.count > 1
+                                text: modelData.count
+                                color: Theme.textDim
+                                font.pixelSize: 11
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            onTapped: if (delegate.session) {
+                                delegate.session.react(delegate.msgProtocolId, modelData.emoji)
+                            }
+                            // Long-press / right-click a chip opens the who-reacted
+                            // detail in a group chat.
+                            onLongPressed: if (delegate.inGroup) {
+                                delegate.reactionDetailsRequested(delegate.msgProtocolId)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Footer: edited marker + time + outgoing status.
             RowLayout {
                 Layout.alignment: Qt.AlignRight
@@ -631,6 +698,19 @@ Item {
                             : (delegate.session ? delegate.session.activePeerName : ""))
                     delegate.session.beginReply(model.protocolId, preview, who)
                 }
+            }
+            MenuItem {
+                text: "React…"
+                visible: delegate.reactable
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.reactRequested(model.protocolId)
+            }
+            MenuItem {
+                // Group only: who reacted, and (for our own messages) who has read it.
+                text: "Reactions & views"
+                visible: delegate.reactable && delegate.inGroup
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.reactionDetailsRequested(model.protocolId)
             }
             MenuItem {
                 text: "Copy all"

@@ -386,6 +386,12 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
             return *response;
         }
 
+        if (fullPrivacy()) {
+            // Full privacy mode: never touch a clearnet facade. With no reachable
+            // I2P facade the loop ends in an explicit error and the profile is offline.
+            lastError = "full privacy mode (I2P only): " + facade.host;
+            continue;
+        }
         const httplib::Result result = clearnetAttempt(facade);
         if (!result) {
             lastError = "transport failure: " + httplib::to_string(result.error());
@@ -542,6 +548,11 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
             return *response;
         }
 
+        if (fullPrivacy()) {
+            // Full privacy mode: never touch a clearnet facade (see send()).
+            lastError = "full privacy mode (I2P only): " + facade.host;
+            continue;
+        }
         const httplib::Result result = clearnetAttempt(facade);
         if (!result) {
             lastError = "transport failure: " + httplib::to_string(result.error());

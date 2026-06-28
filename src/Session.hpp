@@ -226,6 +226,10 @@ public:
     std::string sealingPublicB64() const;
     // The human label set at creation (may be empty).
     const std::string& displayName() const;
+    // Changes the account's own display name. Local only: it rewrites the profile
+    // meta and so the name carried in future invite descriptors (inviteUri), but it
+    // is NEVER sent to contacts - each contact controls the name they keep for us.
+    void setDisplayName(const std::string& name);
 
     // The user's own avatar (raw, already-compressed PNG/JPEG bytes) and its
     // mime type; both empty when no avatar is set.
@@ -291,6 +295,9 @@ public:
     void disableI2pDest();
     // The per-user i2p-dest status from the server (for display and decisions).
     I2pDestStatus i2pDestStatus();
+    // The user's own storage usage on the mailbox + blob backends (used/quota each),
+    // for the per-profile settings view. Best effort - never throws.
+    StorageUsage storageUsage();
     // Keeps the personal destination's transient fresh: polls the server status,
     // and if the option is active and the current transient is within
     // leadSeconds of expiry (or absent), issues a fresh transient and uploads it
@@ -447,6 +454,25 @@ public:
     // Sends a delivery receipt (content type "receipt") acknowledging that we
     // received the message with id refMessageId. Costs one delivery token.
     void sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId);
+
+    // Sets our reaction (an emoji) to a one-to-one message: content type "reaction"
+    // referencing refMessageId. An empty emoji removes our reaction. One reaction per
+    // user per message - a new one overwrites the old at the recipient.
+    void sendReaction(const std::string& peerFingerprint, const std::string& refMessageId,
+        const std::string& emoji);
+    // Sets our reaction to a group message: a signed "reaction" fanned out to every
+    // member (like a group text), so every member sees who reacted with what. The
+    // gsig binds the target ref + emoji to us, so a reaction cannot be forged onto
+    // another member or re-pointed at another message. An empty emoji removes it.
+    void sendGroupReaction(const std::string& groupId, const std::string& refMessageId,
+        const std::string& emoji);
+    // Sends a group read receipt: a signed "receipt" delivered to the message's
+    // author only (never fanned out), so the author learns we have read their
+    // message (the viewers list, and the green "read" state on the first receipt).
+    // A no-op if the author is unknown or unreachable. Opt-in: the GUI sends these
+    // only when the user has read receipts enabled.
+    void sendGroupReceipt(const std::string& groupId, const std::string& refMessageId,
+        const std::string& authorFingerprint);
 
     // Asks the peer to clear the whole conversation with us (content type
     // "chat.clear"): on receipt their client wipes its transcript with us, the

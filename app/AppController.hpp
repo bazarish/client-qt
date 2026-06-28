@@ -26,6 +26,13 @@ class AppController : public QObject {
     Q_PROPERTY(QObject* session READ session NOTIFY sessionChanged)
     Q_PROPERTY(bool hasProfiles READ hasProfiles NOTIFY profilesChanged)
     Q_PROPERTY(bool hasOpenAccounts READ hasOpenAccounts NOTIFY accountsChanged)
+    // --- Global (app-wide) settings, shared by every profile ---
+    // Full privacy mode: forbid connecting through any clearnet client-facade, so
+    // all traffic runs over I2P only. Persisted across runs and applied process-wide.
+    Q_PROPERTY(bool fullPrivacyMode READ fullPrivacyMode WRITE setFullPrivacyMode
+            NOTIFY fullPrivacyModeChanged)
+    // The embedded upstream i2pd engine version (e.g. "2.60.0"), for display.
+    Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
 public:
     explicit AppController(QObject* parent = nullptr);
 
@@ -34,6 +41,9 @@ public:
     QObject* session();
     bool hasProfiles() const { return haveProfiles_; }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }
+    bool fullPrivacyMode() const { return fullPrivacy_; }
+    void setFullPrivacyMode(bool on);
+    QString i2pdVersion() const;
 
     Q_INVOKABLE void refreshProfiles();
     Q_INVOKABLE void createProfile(const QString& name, const QString& passphrase);
@@ -58,6 +68,7 @@ signals:
     void profilesChanged();
     void accountsChanged();
     void sessionChanged();
+    void fullPrivacyModeChanged();
     void profileOpened();
     void profileOpenFailed(const QString& error);
     void createFailed(const QString& error);
@@ -93,6 +104,11 @@ private:
     void persistOfflineSet() const;
     void setAccountOffline(const QString& id, bool offline);
 
+    // Global settings (a small JSON file under the profiles root), loaded once at
+    // construction and persisted on change. Currently just full privacy mode.
+    void loadSettings();
+    void persistSettings() const;
+
     std::unique_ptr<client::ProfileManager> manager_;
     ProfileListModel profiles_;
     OpenAccountsModel accounts_;
@@ -101,6 +117,8 @@ private:
     bool haveProfiles_ = false;
     // Ids of accounts the user turned offline (persisted; not auto-opened).
     QSet<QString> offline_;
+    // Global full-privacy mode (persisted; applied process-wide on load/change).
+    bool fullPrivacy_ = false;
 };
 
 }  // namespace bazarish::app

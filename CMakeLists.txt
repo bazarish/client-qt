@@ -175,6 +175,8 @@ if(Qt6_FOUND)
             app/qml/ConversationView.qml
             app/qml/MessageBubble.qml
             app/qml/SearchPopup.qml
+            app/qml/ReactionPicker.qml
+            app/qml/ReactionsPopup.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
             app/qml/NewChatSheet.qml

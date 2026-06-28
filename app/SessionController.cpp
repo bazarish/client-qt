@@ -552,6 +552,35 @@ void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
     }
 }
 
+void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
+{
+    try {
+        session_->sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
+    } catch (const std::exception&) {
+        // Best effort: the local optimistic reaction stands either way.
+    }
+}
+
+void SessionWorker::sendGroupReaction(
+    const QString& groupId, const QString& refId, const QString& emoji)
+{
+    try {
+        session_->sendGroupReaction(
+            groupId.toStdString(), refId.toStdString(), emoji.toStdString());
+    } catch (const std::exception&) {
+    }
+}
+
+void SessionWorker::sendGroupReceipt(
+    const QString& groupId, const QString& refId, const QString& author)
+{
+    try {
+        session_->sendGroupReceipt(
+            groupId.toStdString(), refId.toStdString(), author.toStdString());
+    } catch (const std::exception&) {
+    }
+}
+
 void SessionWorker::sendCallback(const QString& peer, const QString& data, const QString& ref)
 {
     try {
@@ -829,6 +858,20 @@ void SessionWorker::setAvatar(const QString& localPath)
     }
 }
 
+void SessionWorker::setDisplayName(const QString& name)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setDisplayName(name.toStdString());
+        emit renamed(QString::fromStdString(session_->displayName()));
+        emit actionOk(QStringLiteral("Name updated."));
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::setGroupAvatar(const QString& groupId, const QString& localPath)
 {
     if (!session_) {
@@ -952,6 +995,17 @@ void SessionWorker::refreshI2pStatus()
                          : QStringLiteral("Using the shared pool address.");
     }
     emit i2pStatus(hasKey, enabled, active, address, summary, paidThrough);
+}
+
+void SessionWorker::refreshStorageUsage()
+{
+    if (!session_) {
+        return;
+    }
+    const bazarish::client::StorageUsage u = session_->storageUsage();
+    emit storageUsageReady(u.mailboxOk, static_cast<qulonglong>(u.mailboxUsedBytes),
+        static_cast<qulonglong>(u.mailboxQuotaBytes), u.blobOk,
+        static_cast<qulonglong>(u.blobUsedBytes), static_cast<qulonglong>(u.blobQuotaBytes));
 }
 
 void SessionWorker::generatePersonalKey()
@@ -1110,6 +1164,11 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
+    connect(this, &SessionController::requestSendReaction, worker_, &SessionWorker::sendReaction);
+    connect(this, &SessionController::requestSendGroupReaction, worker_,
+        &SessionWorker::sendGroupReaction);
+    connect(this, &SessionController::requestSendGroupReceipt, worker_,
+        &SessionWorker::sendGroupReceipt);
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
@@ -1117,6 +1176,8 @@ SessionController::SessionController(QObject* parent)
         this, &SessionController::requestSendGroupEdit, worker_, &SessionWorker::sendGroupEdit);
     connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
     connect(this, &SessionController::requestSetAvatar, worker_, &SessionWorker::setAvatar);
+    connect(this, &SessionController::requestSetDisplayName, worker_,
+        &SessionWorker::setDisplayName);
     connect(
         this, &SessionController::requestSetGroupAvatar, worker_, &SessionWorker::setGroupAvatar);
     connect(this, &SessionController::requestSetGroupName, worker_, &SessionWorker::setGroupName);
@@ -1165,6 +1226,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::disablePersonalDest);
     connect(this, &SessionController::requestRefreshI2pStatus, worker_,
         &SessionWorker::refreshI2pStatus);
+    connect(this, &SessionController::requestRefreshStorageUsage, worker_,
+        &SessionWorker::refreshStorageUsage);
     connect(this, &SessionController::requestStartCall, worker_, &SessionWorker::startCall);
     connect(this, &SessionController::requestAcceptCall, worker_, &SessionWorker::acceptCall);
     connect(this, &SessionController::requestDeclineCall, worker_, &SessionWorker::declineCall);
@@ -1175,6 +1238,12 @@ SessionController::SessionController(QObject* parent)
 
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
+    connect(worker_, &SessionWorker::renamed, this, [this](const QString& newName) {
+        if (newName != displayName_) {
+            displayName_ = newName;
+            emit identityChanged();
+        }
+    });
     connect(worker_, &SessionWorker::openFailed, this, &SessionController::openFailed);
     connect(worker_, &SessionWorker::connectionChanged, this,
         &SessionController::onConnectionChanged);
@@ -1219,6 +1288,8 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
     connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
+    connect(worker_, &SessionWorker::storageUsageReady, this,
+        &SessionController::onStorageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, this,
         &SessionController::onCallStateChanged);
 
@@ -1267,6 +1338,16 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
     emit requestConnect(facadeUrls, serverFp, 14);
 }
 
+bool SessionController::hasI2pFacade() const
+{
+    for (const QString& url : configuredFacades_) {
+        if (url.contains(QStringLiteral(".b32.i2p"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void SessionController::onFacadeInfo(
     const QString& activeUrl, const QStringList& configured, const QString& serverFp)
 {
@@ -1299,7 +1380,12 @@ void SessionController::activateConversation(const QString& peer)
     activePeer_ = peer;
     emit activePeerChanged();
     emit activePeerNameChanged();
-    contacts_.clearUnread(peer);
+    // The unread badge is NOT cleared on open: a message counts as read only when it
+    // genuinely scrolls into the focused viewport (markReadThroughRow), so opening a
+    // chat and immediately leaving does not silently swallow unread messages. Seed
+    // the receipt high-water from the persistent read state so we never re-ack
+    // already-read messages after a restart.
+    lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
     // Load the member list for a group conversation (cleared for a 1:1 chat).
     activeGroupMembers_.clear();
     activeGroupAdmin_ = false;
@@ -1346,7 +1432,33 @@ void SessionController::showInActiveView(const StoredMessage& m, bool isOwn)
 void SessionController::openConversation(const QString& peer)
 {
     activateConversation(peer);
-    loadLatestWindow();
+    // Open on the first unread message (the user lands on the first thing they
+    // missed, with the unread tail highlighted) when there is any; otherwise at the
+    // newest page. Read marking then advances only as messages enter the viewport.
+    const qint64 firstUnread = store_.firstUnreadId(peer);
+    if (firstUnread > 0) {
+        openWindowAtUnread(peer, firstUnread);
+    } else {
+        loadLatestWindow();
+    }
+}
+
+void SessionController::openWindowAtUnread(const QString& peer, qint64 firstUnread)
+{
+    // A page starting at the first unread message (oldest unread at the top), with
+    // older read context paging in above and any further unread below.
+    const QVector<StoredMessage> win = store_.newerMessages(peer, firstUnread - 1, kPageSize);
+    if (win.isEmpty()) {
+        loadLatestWindow();
+        return;
+    }
+    oldestLoadedId_ = win.front().id;
+    newestLoadedId_ = win.back().id;
+    hasMoreOlder_ = store_.hasMessagesBefore(peer, oldestLoadedId_);
+    hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
+    conversation_.setMessages(win);
+    emit pagingChanged();
+    emit scrollToUnread(firstUnread);
 }
 
 void SessionController::saveScroll(const QString& peer, int anchorRow, bool stick)
@@ -1472,12 +1584,12 @@ void SessionController::rebuildChatList()
 {
     QVector<ContactRow> rows;
     for (const QString& fp : contactFps_) {
-        rows.push_back(
-            ContactRow{fp, peerName(fp), store_.lastText(fp), store_.lastTime(fp), 0, false});
+        rows.push_back(ContactRow{fp, peerName(fp), store_.lastText(fp), store_.lastTime(fp),
+            store_.unreadCount(fp), false});
     }
     for (const QString& gid : groupIds_) {
         rows.push_back(ContactRow{gid, groupNames_.value(gid, gid), store_.lastText(gid),
-            store_.lastTime(gid), 0, true});
+            store_.lastTime(gid), store_.unreadCount(gid), true});
     }
     contacts_.setContacts(std::move(rows));
 }
@@ -1550,6 +1662,15 @@ void SessionController::setAvatar(const QString& fileUrl)
     if (!localPath.isEmpty()) {
         emit requestSetAvatar(localPath);
     }
+}
+
+void SessionController::setDisplayName(const QString& name)
+{
+    const QString trimmed = name.trimmed();
+    if (trimmed.isEmpty() || trimmed == displayName_) {
+        return;
+    }
+    emit requestSetDisplayName(trimmed);
 }
 
 void SessionController::setGroupAvatar(const QString& fileUrl)
@@ -2187,6 +2308,49 @@ void SessionController::onI2pStatus(const bool hasKey, const bool enabled, const
     emit i2pStatusChanged();
 }
 
+void SessionController::refreshStorageUsage()
+{
+    emit requestRefreshStorageUsage();
+}
+
+void SessionController::onStorageUsageReady(const bool mailboxOk, const qulonglong mailboxUsed,
+    const qulonglong mailboxQuota, const bool blobOk, const qulonglong blobUsed,
+    const qulonglong blobQuota)
+{
+    // Only overwrite a half that actually answered, so a backend that is momentarily
+    // offline keeps its last-known figures (the UI marks the whole view by its age).
+    if (mailboxOk) {
+        storageMailboxOk_ = true;
+        storageMailboxUsed_ = mailboxUsed;
+        storageMailboxQuota_ = mailboxQuota;
+    }
+    if (blobOk) {
+        storageBlobOk_ = true;
+        storageBlobUsed_ = blobUsed;
+        storageBlobQuota_ = blobQuota;
+    }
+    // Stamp the age only when at least one half refreshed (a fully failed poll
+    // leaves the previous "updated N ago" standing).
+    if (mailboxOk || blobOk) {
+        storageUpdatedAtMs_ = nowMillis();
+    }
+    emit storageChanged();
+}
+
+QVariantMap SessionController::storageInfo() const
+{
+    QVariantMap m;
+    m[QStringLiteral("mailboxOk")] = storageMailboxOk_;
+    m[QStringLiteral("mailboxUsed")] = static_cast<qulonglong>(storageMailboxUsed_);
+    m[QStringLiteral("mailboxQuota")] = static_cast<qulonglong>(storageMailboxQuota_);
+    m[QStringLiteral("blobOk")] = storageBlobOk_;
+    m[QStringLiteral("blobUsed")] = static_cast<qulonglong>(storageBlobUsed_);
+    m[QStringLiteral("blobQuota")] = static_cast<qulonglong>(storageBlobQuota_);
+    m[QStringLiteral("updatedAt")] = storageUpdatedAtMs_;
+    m[QStringLiteral("everFetched")] = (storageUpdatedAtMs_ > 0);
+    return m;
+}
+
 void SessionController::onOpened(const QString& fingerprint, const QString& displayName,
     bool connected, const QString& subscriptionText)
 {
@@ -2258,10 +2422,37 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // A read receipt: the peer read our referenced message (the green state), and
     // by the read high-water everything we sent them before it too. Not shown.
     if (type == "receipt") {
-        const qint64 localId = store_.idForProtocol(message.value("ref").toString());
+        const QString gid = message.value("groupId").toString();
+        const QString ref = message.value("ref").toString();
+        if (!gid.isEmpty()) {
+            // A group read receipt for one of our own messages: record the verified
+            // viewer and turn the bubble green on the first reader.
+            store_.addView(gid, ref, message.value("sender").toString());
+            const qint64 localId = store_.idForProtocol(ref);
+            if (localId != 0) {
+                markGroupMessageDelivered(localId);
+            }
+            ++reactionsRevision_;  // the viewers modal re-queries
+            emit reactionsRevisionChanged();
+            return;
+        }
+        const qint64 localId = store_.idForProtocol(ref);
         if (localId != 0) {
             markOutgoingRead(peer, localId);
         }
+        return;
+    }
+
+    // A reaction (1:1 or group): record the reactor's emoji against the target
+    // message and re-drive the chips. Never a chat bubble. The reactor is the
+    // message's verified sender (bound by the group gsig for a group).
+    if (type == "reaction") {
+        const QString gid = message.value("groupId").toString();
+        const QString convKey = gid.isEmpty() ? peer : gid;
+        store_.setReaction(convKey, message.value("ref").toString(),
+            message.value("sender").toString(), message.value("text").toString());
+        ++reactionsRevision_;
+        emit reactionsRevisionChanged();
         return;
     }
 
@@ -2336,7 +2527,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         if (peer == activePeer_) {
             loadLatestWindow();
         }
-        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, peer != activePeer_);
+        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, false);
+        contacts_.setUnread(peer, store_.unreadCount(peer));
         refreshUnreadTotal();
         return;
     }
@@ -2355,7 +2547,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
         showInActiveView(sys, false);
-        contacts_.touch(gid, gname, sys.text, sys.ts, gid != activePeer_, true);
+        contacts_.touch(gid, gname, sys.text, sys.ts, false, true);
+        contacts_.setUnread(gid, store_.unreadCount(gid));
         return;
     }
     if (type == "group.tokens" || type == "group.roster" || type == "group.leave") {
@@ -2374,7 +2567,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
         showInActiveView(sys, false);
-        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, peer != activePeer_);
+        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, false);
+        contacts_.setUnread(peer, store_.unreadCount(peer));
         return;
     }
 
@@ -2432,11 +2626,14 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         preview = "[" + type + "] " + m.attName;
     }
     if (isGroupMsg) {
-        contacts_.touch(convKey, groupNames_.value(convKey), preview, m.ts,
-            convKey != activePeer_, true);
+        contacts_.touch(convKey, groupNames_.value(convKey), preview, m.ts, false, true);
     } else {
-        contacts_.touch(peer, peerName(peer), preview, m.ts, peer != activePeer_);
+        contacts_.touch(peer, peerName(peer), preview, m.ts, false);
     }
+    // The unread badge is the persistent count of incoming messages past the read
+    // high-water (set when messages actually scroll into view), not a running
+    // increment - so it stays accurate across restarts and partial reads.
+    contacts_.setUnread(convKey, store_.unreadCount(convKey));
     // No receipt is sent on arrival: the green "read" state is reported only when
     // the user actually reads the message (chat open + window focused + the message
     // in view), driven by markReadThroughRow.
@@ -2610,6 +2807,113 @@ void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
     }
 }
 
+void SessionController::markGroupMessageDelivered(qint64 localId)
+{
+    // A group fan-out has no single ack, so the first read receipt (from any member)
+    // turns the bubble green. Idempotent: a later receipt re-sets the same status.
+    if (statusById_.value(localId, 0) == DeliveryStatus::Delivered) {
+        return;
+    }
+    store_.updateStatus(localId, DeliveryStatus::Delivered);
+    statusById_[localId] = DeliveryStatus::Delivered;
+    conversation_.setStatusForId(localId, DeliveryStatus::Delivered);
+}
+
+QString SessionController::reactorName(const QString& fp) const
+{
+    if (fp == fingerprint_) {
+        return QStringLiteral("You");
+    }
+    const QString contact = contactNames_.value(fp);
+    if (!contact.isEmpty()) {
+        return contact;
+    }
+    const QString dn = memberSelfNames_.value(fp);
+    if (!dn.isEmpty()) {
+        return dn;
+    }
+    return shortFingerprint(fp);
+}
+
+void SessionController::react(const QString& protocolId, const QString& emoji)
+{
+    if (activePeer_.isEmpty() || protocolId.isEmpty()) {
+        return;
+    }
+    // Toggle: tapping the emoji we already set removes our reaction.
+    const QString next = (myReaction(protocolId) == emoji) ? QString() : emoji;
+    store_.setReaction(activePeer_, protocolId, fingerprint_, next);
+    if (groupIds_.contains(activePeer_)) {
+        emit requestSendGroupReaction(activePeer_, protocolId, next);
+    } else {
+        emit requestSendReaction(activePeer_, protocolId, next);
+    }
+    ++reactionsRevision_;
+    emit reactionsRevisionChanged();
+}
+
+QString SessionController::myReaction(const QString& protocolId) const
+{
+    for (const Reaction& r : store_.reactionsFor(activePeer_, protocolId)) {
+        if (r.reactor == fingerprint_) {
+            return r.emoji;
+        }
+    }
+    return {};
+}
+
+QVariantList SessionController::reactionSummary(const QString& protocolId) const
+{
+    QVariantList out;
+    if (activePeer_.isEmpty() || protocolId.isEmpty()) {
+        return out;
+    }
+    // Aggregate by emoji, preserving the order each emoji was first seen.
+    QStringList order;
+    QHash<QString, int> counts;
+    QString mine;
+    for (const Reaction& r : store_.reactionsFor(activePeer_, protocolId)) {
+        if (!counts.contains(r.emoji)) {
+            order << r.emoji;
+        }
+        ++counts[r.emoji];
+        if (r.reactor == fingerprint_) {
+            mine = r.emoji;
+        }
+    }
+    for (const QString& e : order) {
+        QVariantMap m;
+        m[QStringLiteral("emoji")] = e;
+        m[QStringLiteral("count")] = counts.value(e);
+        m[QStringLiteral("mine")] = (e == mine);
+        out << m;
+    }
+    return out;
+}
+
+QVariantList SessionController::reactionDetails(const QString& protocolId) const
+{
+    QVariantList out;
+    for (const Reaction& r : store_.reactionsFor(activePeer_, protocolId)) {
+        QVariantMap m;
+        m[QStringLiteral("emoji")] = r.emoji;
+        m[QStringLiteral("name")] = reactorName(r.reactor);
+        out << m;
+    }
+    return out;
+}
+
+QVariantList SessionController::viewers(const QString& protocolId) const
+{
+    QVariantList out;
+    for (const QString& fp : store_.viewersFor(activePeer_, protocolId)) {
+        QVariantMap m;
+        m[QStringLiteral("name")] = reactorName(fp);
+        out << m;
+    }
+    return out;
+}
+
 void SessionController::markReadThroughRow(int row)
 {
     // The user actually read up to `row` (the view is open, focused and scrolled
@@ -2623,11 +2927,32 @@ void SessionController::markReadThroughRow(int row)
     if (!conversation_.newestIncomingThrough(row, id, protocolId)) {
         return;
     }
-    if (id <= lastReadAckedId_.value(activePeer_, 0)) {
+    // Persist the read high-water and refresh the unread badge: the count drops as
+    // messages genuinely scroll into the focused viewport. Monotonic, so re-reading
+    // older history never lowers it.
+    store_.setLastReadId(activePeer_, id);
+    contacts_.setUnread(activePeer_, store_.unreadCount(activePeer_));
+    const qint64 prevAcked = lastReadAckedId_.value(activePeer_, 0);
+    if (id <= prevAcked) {
         return;  // already acknowledged up to here
     }
     lastReadAckedId_[activePeer_] = id;
-    emit requestSendReceipt(activePeer_, protocolId);
+    // Sending a read receipt is opt-in (the "send read receipts" setting). The
+    // unread high-water above is advanced regardless, so unread tracking always
+    // works even with receipts disabled.
+    if (!sendReceipts_) {
+        return;
+    }
+    if (groupIds_.contains(activePeer_)) {
+        // In a group, send one receipt to the author of every message newly crossing
+        // the read high-water, so each author learns we read theirs (bubble greens).
+        for (const ReadTarget& t : conversation_.incomingBetween(prevAcked, id)) {
+            emit requestSendGroupReceipt(activePeer_, t.protocolId, t.sender);
+        }
+    } else {
+        // A one-to-one read sends a delivery receipt so the sender's bubble greens.
+        emit requestSendReceipt(activePeer_, protocolId);
+    }
 }
 
 void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro)

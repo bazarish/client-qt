@@ -203,8 +203,12 @@ Popup {
                         text: memberRow.isContact ? "Chat" : "Add"
                         onClicked: {
                             if (memberRow.isContact) {
-                                root.session.openConversation(memberRow.modelData)
+                                // Close this panel BEFORE switching conversation:
+                                // openConversation clears the active group's member
+                                // list, which destroys this very delegate (and the
+                                // button), so a close() issued afterwards is swallowed.
                                 root.close()
+                                root.session.openConversation(memberRow.modelData)
                             } else {
                                 root.session.addContactFromGroup(memberRow.modelData)
                             }

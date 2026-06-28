@@ -49,6 +49,19 @@ struct I2pDestStatus {
     std::string currency;
 };
 
+// The user's own storage usage on its two backends, polled for the per-profile
+// settings view. Each half has an `ok` flag: a backend that did not answer (e.g.
+// offline) leaves its figures at zero with ok=false, so the UI can show the part
+// that succeeded and mark the rest stale.
+struct StorageUsage {
+    bool mailboxOk = false;
+    std::uint64_t mailboxUsedBytes = 0;
+    std::uint64_t mailboxQuotaBytes = 0;
+    bool blobOk = false;
+    std::uint64_t blobUsedBytes = 0;
+    std::uint64_t blobQuotaBytes = 0;
+};
+
 // Server reply to subscribe/renew: the granted lifecycle plus the serving
 // destination + serving sealing key the certificate now carries.
 struct SubscribeResult {
@@ -168,6 +181,11 @@ public:
     bool sendI2pTransient(const std::string& transientB64, std::int64_t expiresUnix);
     // The per-user i2p-dest status (GET /v1/account/i2p-status).
     I2pDestStatus i2pStatus();
+    // The user's own storage usage: the mailbox (GET /v1/messaging/storage-usage)
+    // and the blob store (GET /v1/storage/usage), both through the same facade. Each
+    // half is fetched independently; a backend that does not answer leaves its half
+    // at zero with ok=false. Never throws - it is a best-effort status poll.
+    StorageUsage storageUsage();
     // Turns the per-user i2p-dest option on or off (POST
     // /v1/account/i2p-dest/setting). Enabling charges a term server-side (or
     // resumes if still paid); returns whether the request was accepted (false

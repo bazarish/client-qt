@@ -140,11 +140,15 @@ Item {
             Layout.fillWidth: true
             property bool isOffline: root.session && !root.session.online
             property bool isConnecting: root.session && root.session.online && !root.session.reachable
+            // Under full privacy mode a profile with no I2P facade cannot connect at
+            // all: surface that as an explicit, emphasised offline error.
+            property bool i2pOnlyBlocked: App.fullPrivacyMode && root.session
+                && root.session.connected && !root.session.hasI2pFacade
             visible: connPlate.isOffline || connPlate.isConnecting
             implicitHeight: plateRow.implicitHeight + 16
             color: Theme.surface
 
-            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.border }
+            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: connPlate.i2pOnlyBlocked ? Theme.danger : Theme.border }
 
             RowLayout {
                 id: plateRow
@@ -157,20 +161,25 @@ Item {
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     implicitWidth: 8; implicitHeight: 8; radius: 4
-                    color: connPlate.isOffline ? Theme.textDim : Theme.warn
+                    color: connPlate.i2pOnlyBlocked ? Theme.danger
+                        : (connPlate.isOffline ? Theme.textDim : Theme.warn)
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
                     Label {
-                        text: connPlate.isOffline ? "Offline" : "Connecting…"
-                        color: connPlate.isOffline ? Theme.textDim : Theme.warn
+                        text: connPlate.i2pOnlyBlocked ? "Offline — no I2P facade"
+                            : (connPlate.isOffline ? "Offline" : "Connecting…")
+                        color: connPlate.i2pOnlyBlocked ? Theme.danger
+                            : (connPlate.isOffline ? Theme.textDim : Theme.warn)
                         font.pixelSize: Theme.fontSmall
-                        font.weight: Font.Medium
+                        font.weight: connPlate.i2pOnlyBlocked ? Font.DemiBold : Font.Medium
                     }
                     Label {
-                        text: connPlate.isOffline ? "This account is not syncing"
-                                                  : "No server connection yet"
+                        text: connPlate.i2pOnlyBlocked
+                            ? "Privacy mode is on but this profile has no I2P facade"
+                            : (connPlate.isOffline ? "This account is not syncing"
+                                                   : "No server connection yet")
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight

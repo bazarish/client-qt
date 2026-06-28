@@ -211,6 +211,48 @@ void testGroupMessageSenderAuth()
     }
 }
 
+// A group reaction/receipt carries a `ref` (the target message) inside its signed
+// body, so a member cannot re-point another member's reaction onto a different
+// message. Exercises the ref binding added to Session::authenticateGroupSender.
+void testReactionRefBinding()
+{
+    const Identity alice = Identity::generate();
+    const std::string groupId = "g-react";
+    const std::int64_t sentAt = 2000;
+    const std::string id = "r1";
+    const std::string ref = "target-msg";
+    const std::string emoji = "\xf0\x9f\x91\x8d";  // a thumbs-up emoji
+
+    std::map<std::string, GroupMember> members;
+    members[alice.fingerprint()] = {};
+
+    const auto signedBody = [&](const std::string& r) {
+        return nlohmann::json{{"type", "reaction"}, {"id", id}, {"from", alice.fingerprint()},
+            {"groupId", groupId}, {"sentAt", sentAt}, {"ref", r}, {"text", emoji}};
+    };
+    const auto inner = [&](const std::string& r, const Bytes& gsig) {
+        return nlohmann::json{{"v", 1}, {"type", "reaction"}, {"id", id},
+            {"from", alice.fingerprint()}, {"sentAt", sentAt}, {"ref", r}, {"text", emoji},
+            {"group", {{"id", groupId}}}, {"gsig", toBase64(gsig)}};
+    };
+
+    // Honest: the signed ref matches the body's ref -> authenticated as alice.
+    {
+        const Bytes gsig = cms::signJsonHybrid(signedBody(ref), alice);
+        const auto from
+            = Session::authenticateGroupSender(inner(ref, gsig), "reaction", id, groupId, &members);
+        CHECK(from.has_value() && *from == alice.fingerprint());
+    }
+    // Re-pointed: a valid signature over ref, but the outer ref was changed to point
+    // at another message -> rejected (the reaction cannot be moved).
+    {
+        const Bytes gsig = cms::signJsonHybrid(signedBody(ref), alice);
+        CHECK(!Session::authenticateGroupSender(
+            inner("other-msg", gsig), "reaction", id, groupId, &members)
+                   .has_value());
+    }
+}
+
 // A connection-less session has no groups, and the group queries are safe on
 // unknown ids.
 void testEmptyGroupApi()
@@ -268,6 +310,7 @@ int main()
     testRosterTrust();
     testTamperedRosterRejected();
     testGroupMessageSenderAuth();
+    testReactionRefBinding();
     testGroupLeaveAuth();
     testEmptyGroupApi();
     std::fprintf(stderr, "TestGroup passed\n");

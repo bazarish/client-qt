@@ -63,7 +63,10 @@ public:
     // list sorted by most-recent.
     void touch(const QString& fingerprint, const QString& name, const QString& lastText,
         qint64 lastTime, bool incrementUnread, bool isGroup = false);
-    void clearUnread(const QString& fingerprint);
+    // Sets a contact's unread badge to an exact count (from the persistent store),
+    // inserting nothing - a no-op for a row not present. Used to keep the badge in
+    // sync with the read high-water rather than a fragile running increment.
+    void setUnread(const QString& fingerprint, int count);
     // Sum of unread counts across all contacts (the account's unread total).
     int totalUnread() const;
 
@@ -71,6 +74,13 @@ private:
     int indexOf(const QString& fingerprint) const;
     void resort();
     QVector<ContactRow> contacts_;
+};
+
+// A loaded incoming message to acknowledge: its protocol id and author. Used to
+// send a group read receipt to each newly-read message's author.
+struct ReadTarget {
+    QString protocolId;
+    QString sender;
 };
 
 // The open conversation's messages.
@@ -104,6 +114,9 @@ public:
     // The id + protocol id of the newest incoming message at or before `row`
     // (for the read high-water). Returns false when there is none.
     bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol) const;
+    // Loaded incoming messages with afterId < id <= throughId, each with its author
+    // (for sending a group read receipt to every newly-read message's author).
+    QVector<ReadTarget> incomingBetween(qint64 afterId, qint64 throughId) const;
     void setStatusForId(qint64 id, int status);
     // Attaches (or, when empty, clears) a delivery-error string for a message,
     // shown inline on a failed outgoing bubble. Session-only; not persisted.

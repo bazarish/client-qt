@@ -38,4 +38,11 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir);
 void setI2pEnabled(bool enabled);
 bool i2pEnabled();
 
+// Process-wide full-privacy flag (default false). When on, the transport refuses
+// every clearnet facade, so all traffic goes over I2P only; a profile whose
+// facades are all clearnet then has nothing reachable and is explicitly offline.
+// Consulted at request time, so it takes effect on the next request.
+void setFullPrivacy(bool enabled);
+bool fullPrivacy();
+
 }  // namespace bazarish::client

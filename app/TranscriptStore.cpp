@@ -177,6 +177,23 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
         migrate.exec("UPDATE messages SET ts = ts * 1000 WHERE orderKey IS NULL");
         migrate.exec("UPDATE messages SET orderKey = id WHERE orderKey IS NULL");
     }
+    // Per-peer read high-water for persistent unread tracking (see read state).
+    if (!query.exec("CREATE TABLE IF NOT EXISTS read_state ("
+                    "peer TEXT PRIMARY KEY, last_read_id INTEGER NOT NULL)")) {
+        return false;
+    }
+    // One reaction per (peer, message, reactor): a new emoji overwrites the old.
+    if (!query.exec("CREATE TABLE IF NOT EXISTS reactions ("
+                    "peer TEXT, target TEXT, reactor TEXT, emoji TEXT,"
+                    " PRIMARY KEY (peer, target, reactor))")) {
+        return false;
+    }
+    // Who has read a (group) message - one row per (peer, message, viewer).
+    if (!query.exec("CREATE TABLE IF NOT EXISTS group_views ("
+                    "peer TEXT, target TEXT, viewer TEXT,"
+                    " PRIMARY KEY (peer, target, viewer))")) {
+        return false;
+    }
     ready_ = true;
     return true;
 }
@@ -586,6 +603,141 @@ qint64 TranscriptStore::lastTime(const QString& peer) const
         return query.value(0).toLongLong();
     }
     return 0;
+}
+
+void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
+{
+    if (peer.isEmpty() || id <= 0) {
+        return;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    // Upsert, but never lower the high-water (a re-read of older history must not
+    // resurrect newer messages as unread).
+    query.prepare("INSERT INTO read_state (peer, last_read_id) VALUES (?, ?)"
+                  " ON CONFLICT(peer) DO UPDATE SET last_read_id = max(last_read_id, excluded.last_read_id)");
+    query.addBindValue(peer);
+    query.addBindValue(id);
+    if (query.exec() && query.numRowsAffected() > 0) {
+        flush();
+    }
+}
+
+qint64 TranscriptStore::lastReadId(const QString& peer) const
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT last_read_id FROM read_state WHERE peer = ? LIMIT 1");
+    query.addBindValue(peer);
+    if (query.exec() && query.next()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
+int TranscriptStore::unreadCount(const QString& peer) const
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    // Incoming messages newer than the read high-water. Only inbound rows count
+    // (our own messages are always "read").
+    query.prepare("SELECT COUNT(*) FROM messages WHERE peer = ? AND outgoing = 0 AND id >"
+                  " (SELECT COALESCE(MAX(last_read_id), 0) FROM read_state WHERE peer = ?)");
+    query.addBindValue(peer);
+    query.addBindValue(peer);
+    if (query.exec() && query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
+}
+
+qint64 TranscriptStore::firstUnreadId(const QString& peer) const
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT MIN(id) FROM messages WHERE peer = ? AND outgoing = 0 AND id >"
+                  " (SELECT COALESCE(MAX(last_read_id), 0) FROM read_state WHERE peer = ?)");
+    query.addBindValue(peer);
+    query.addBindValue(peer);
+    if (query.exec() && query.next() && !query.value(0).isNull()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
+void TranscriptStore::setReaction(
+    const QString& peer, const QString& target, const QString& reactor, const QString& emoji)
+{
+    if (peer.isEmpty() || target.isEmpty() || reactor.isEmpty()) {
+        return;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    if (emoji.isEmpty()) {
+        // An empty emoji clears the reactor's reaction on this message.
+        query.prepare("DELETE FROM reactions WHERE peer = ? AND target = ? AND reactor = ?");
+        query.addBindValue(peer);
+        query.addBindValue(target);
+        query.addBindValue(reactor);
+    } else {
+        query.prepare("INSERT INTO reactions (peer, target, reactor, emoji) VALUES (?, ?, ?, ?)"
+                      " ON CONFLICT(peer, target, reactor) DO UPDATE SET emoji = excluded.emoji");
+        query.addBindValue(peer);
+        query.addBindValue(target);
+        query.addBindValue(reactor);
+        query.addBindValue(emoji);
+    }
+    if (query.exec()) {
+        flush();
+    }
+}
+
+QVector<Reaction> TranscriptStore::reactionsFor(const QString& peer, const QString& target) const
+{
+    QVector<Reaction> result;
+    if (peer.isEmpty() || target.isEmpty()) {
+        return result;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT reactor, emoji FROM reactions WHERE peer = ? AND target = ? ORDER BY rowid");
+    query.addBindValue(peer);
+    query.addBindValue(target);
+    if (!query.exec()) {
+        return result;
+    }
+    while (query.next()) {
+        result.push_back(Reaction{query.value(0).toString(), query.value(1).toString()});
+    }
+    return result;
+}
+
+void TranscriptStore::addView(const QString& peer, const QString& target, const QString& viewer)
+{
+    if (peer.isEmpty() || target.isEmpty() || viewer.isEmpty()) {
+        return;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("INSERT OR IGNORE INTO group_views (peer, target, viewer) VALUES (?, ?, ?)");
+    query.addBindValue(peer);
+    query.addBindValue(target);
+    query.addBindValue(viewer);
+    if (query.exec() && query.numRowsAffected() > 0) {
+        flush();
+    }
+}
+
+QStringList TranscriptStore::viewersFor(const QString& peer, const QString& target) const
+{
+    QStringList result;
+    if (peer.isEmpty() || target.isEmpty()) {
+        return result;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT viewer FROM group_views WHERE peer = ? AND target = ? ORDER BY rowid");
+    query.addBindValue(peer);
+    query.addBindValue(target);
+    if (!query.exec()) {
+        return result;
+    }
+    while (query.next()) {
+        result << query.value(0).toString();
+    }
+    return result;
 }
 
 }  // namespace bazarish::app

@@ -470,6 +470,17 @@ const std::string& Session::displayName() const
     return name_;
 }
 
+void Session::setDisplayName(const std::string& name)
+{
+    if (name == name_) {
+        return;
+    }
+    name_ = name;
+    // Persist to meta.json (stored in the clear, like the creation label). Future
+    // inviteUri() descriptors carry the new name; existing contacts are not told.
+    persistMeta();
+}
+
 const Bytes& Session::avatar() const
 {
     return avatar_;
@@ -896,6 +907,11 @@ void Session::removeContact(const std::string& peerFingerprint)
 I2pDestStatus Session::i2pDestStatus()
 {
     return client_->i2pStatus();
+}
+
+StorageUsage Session::storageUsage()
+{
+    return client_->storageUsage();
 }
 
 bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_t leadSeconds)
@@ -1428,6 +1444,111 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
     sendContent(peerFingerprint, std::move(inner));
 }
 
+void Session::sendReaction(const std::string& peerFingerprint, const std::string& refMessageId,
+    const std::string& emoji)
+{
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "reaction"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"ref", refMessageId},
+        {"text", emoji},
+    };
+    sendContent(peerFingerprint, std::move(inner));
+}
+
+void Session::sendGroupReaction(const std::string& groupId, const std::string& refMessageId,
+    const std::string& emoji)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        throw std::runtime_error("unknown group: " + groupId);
+    }
+    Group& group = found->second;
+    const std::string id = toHex(randomBytes(8));
+    const std::int64_t sentAt = nowMillis();
+    // Sign the reaction the same way as a group text: the gsig binds type/ref/emoji
+    // to us, so a member cannot forge another member's reaction or move it to a
+    // different message (the recipient verifies via authenticateGroupSender).
+    const nlohmann::json gsigBody = {
+        {"type", "reaction"},
+        {"id", id},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"ref", refMessageId},
+        {"text", emoji},
+        {"dn", name_},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    for (const auto& [fp, member] : group.members) {
+        if (member.sendTokens.empty()) {
+            continue;
+        }
+        nlohmann::json inner = {
+            {"v", kMessageFormatVersion},
+            {"type", "reaction"},
+            {"id", id},
+            {"from", fingerprint()},
+            {"sentAt", sentAt},
+            {"ref", refMessageId},
+            {"text", emoji},
+            {"dn", name_},
+            {"group", {{"id", groupId}}},
+            {"gsig", gsig},
+        };
+        try {
+            sendToMemberContent(groupId, fp, std::move(inner));
+        } catch (const std::exception&) {
+        }
+    }
+    persistGroups();  // tokens were spent in the fan-out
+}
+
+void Session::sendGroupReceipt(const std::string& groupId, const std::string& refMessageId,
+    const std::string& authorFingerprint)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        return;
+    }
+    Group& group = found->second;
+    const auto member = group.members.find(authorFingerprint);
+    if (member == group.members.end() || member->second.sendTokens.empty()) {
+        return;  // author unknown or no token to reach them right now
+    }
+    const std::string id = toHex(randomBytes(8));
+    const std::int64_t sentAt = nowMillis();
+    // Signed so the author records exactly the verified viewer (a member cannot
+    // forge "X read it"). Delivered only to the author, never fanned out.
+    const nlohmann::json gsigBody = {
+        {"type", "receipt"},
+        {"id", id},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"ref", refMessageId},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "receipt"},
+        {"id", id},
+        {"from", fingerprint()},
+        {"sentAt", sentAt},
+        {"ref", refMessageId},
+        {"group", {{"id", groupId}}},
+        {"gsig", gsig},
+    };
+    try {
+        sendToMemberContent(groupId, authorFingerprint, std::move(inner));
+    } catch (const std::exception&) {
+    }
+    persistGroups();  // a token was spent
+}
+
 void Session::sendChatClear(const std::string& peerFingerprint)
 {
     nlohmann::json inner = {
@@ -1782,9 +1903,20 @@ std::vector<IncomingMessage> Session::sync()
                 // A receipt: the recipient's client received one of our sent
                 // messages (the green state). Carries the acknowledged message id.
                 // The amber "delivered to the recipient's server" state is reported
-                // by our own server (the send attempt), not by this receipt.
+                // by our own server (the send attempt), not by this receipt. A group
+                // receipt additionally rides a `group` field (authenticated below)
+                // and records a viewer; the UI distinguishes the two by groupId.
                 message.contentType = type;
                 message.refId = body.value("ref", std::string());
+            } else if (type == "reaction") {
+                // A reaction to a message (1:1 or group): `ref` is the target message
+                // id, `text` the emoji (empty removes the reactor's reaction). The
+                // reactor is the message's verified `from` (bound by the group gsig
+                // below for a group). The UI records it against the target message and
+                // never renders it as a chat bubble.
+                message.contentType = type;
+                message.refId = body.value("ref", std::string());
+                message.text = body.value("text", std::string());
             } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
                 || type == "call.end") {
                 // Audio-call signalling: update call state and start/stop media. The
@@ -1988,6 +2120,21 @@ std::vector<IncomingMessage> Session::sync()
                     if (mem != known->second.members.end() && !dn.empty()
                         && mem->second.displayName != dn) {
                         mem->second.displayName = dn;
+                        groupsTouched = true;
+                    }
+                }
+                // A rename by an admin: adopt the new name now. The notice is
+                // admin-signed (just verified), exactly like the roster, so it is an
+                // equally trustworthy name update - and adopting it here makes the
+                // displayed group name change even if the separate, epoch-protected
+                // group.roster broadcast is delayed or lost in this sync. The roster
+                // remains the tiebreak authority (a stale lower-epoch roster cannot
+                // revert it).
+                if (type == "group.rename") {
+                    const std::string newName = body.value("text", std::string());
+                    Group& renamed = groups_[message.groupId];
+                    if (!newName.empty() && renamed.name != newName) {
+                        renamed.name = newName;
                         groupsTouched = true;
                     }
                 }
@@ -2697,6 +2844,10 @@ std::optional<std::string> Session::authenticateGroupSender(const nlohmann::json
             && sb.value("id", std::string()) == messageId
             && sb.value("type", std::string()) == type
             && sb.value("text", std::string()) == body.value("text", std::string())
+            // The target reference (`ref`) is signed too, so an edit/reaction/receipt
+            // cannot be re-pointed at another message. Absent on plain messages
+            // (empty == empty), so this stays backward compatible.
+            && sb.value("ref", std::string()) == body.value("ref", std::string())
             // The sender's own display name (`dn`) is signed too, so a member
             // cannot put a different self-name on another member's message. Absent
             // on older senders (empty == empty), so this stays backward compatible.

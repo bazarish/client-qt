@@ -81,6 +81,23 @@ Item {
                 }
             })
         }
+        // Open-at-first-unread: land on the first unread message (near the top) and
+        // briefly highlight the unread tail, then read what is on screen.
+        function onScrollToUnread(firstUnreadId) {
+            Qt.callLater(function() {
+                pinTimer.stop()  // cancel any pin-to-bottom from the model reset
+                const r = messages.model ? messages.model.rowForId(firstUnreadId) : -1
+                if (r >= 0) {
+                    messages.stickToBottom = false
+                    messages.autoScrolling = true
+                    messages.positionViewAtIndex(r, ListView.Beginning)
+                    messages.autoScrolling = false
+                    messages.unreadFlashFromId = firstUnreadId
+                    unreadFlashTimer.restart()
+                }
+                Qt.callLater(root.markVisibleRead)
+            })
+        }
         function onScrollToBottom() { messages.scrollToEnd() }
     }
     FileDialog {
@@ -92,6 +109,9 @@ Item {
         session: root.session
     }
     Timer { id: highlightTimer; interval: 1800; onTriggered: messages.highlightId = -1 }
+    // Clears the brief unread highlight a couple of seconds after opening at the
+    // first unread message.
+    Timer { id: unreadFlashTimer; interval: 2500; onTriggered: messages.unreadFlashFromId = -1 }
 
     SearchPopup {
         id: searchPopup
@@ -104,6 +124,11 @@ Item {
             }
         }
     }
+
+    // Single shared reaction picker + the reactions/views detail modal, opened by
+    // any bubble with its message's protocol id (so the chat pays no popup per row).
+    ReactionPicker { id: reactionPicker; session: root.session }
+    ReactionsPopup { id: reactionsPopup; session: root.session }
 
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
@@ -210,9 +235,18 @@ Item {
                 model: root.session ? root.session.conversation : null
                 delegate: MessageBubble {
                     session: root.session
-                    highlighted: ListView.view && ListView.view.highlightId === model.msgId
+                    // Highlighted by a search jump, or as part of the unread tail that
+                    // flashes briefly when the chat opens at its first unread message.
+                    highlighted: ListView.view
+                        && (ListView.view.highlightId === model.msgId
+                            || (ListView.view.unreadFlashFromId >= 0 && !model.outgoing
+                                && model.msgId >= ListView.view.unreadFlashFromId))
                     onDeleteRequested: function(msgId, protocolId, outgoing) {
                         root.confirmDeleteMessage(msgId, protocolId, outgoing)
+                    }
+                    onReactRequested: function(protocolId) { reactionPicker.openFor(protocolId) }
+                    onReactionDetailsRequested: function(protocolId) {
+                        reactionsPopup.openFor(protocolId)
                     }
                 }
 
@@ -254,6 +288,9 @@ Item {
                 property bool paging: false
                 // Message id to flash after a search jump (-1 = none).
                 property var highlightId: -1
+                // When >= 0, every unread message (id >= this) is briefly highlighted
+                // right after opening a conversation at its first unread message.
+                property var unreadFlashFromId: -1
 
                 function scrollToEnd() {
                     autoScrolling = true

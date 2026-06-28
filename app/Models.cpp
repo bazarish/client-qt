@@ -131,11 +131,11 @@ void ContactListModel::touch(const QString& fingerprint, const QString& name,
     resort();
 }
 
-void ContactListModel::clearUnread(const QString& fingerprint)
+void ContactListModel::setUnread(const QString& fingerprint, int count)
 {
     const int i = indexOf(fingerprint);
-    if (i >= 0 && contacts_[i].unread != 0) {
-        contacts_[i].unread = 0;
+    if (i >= 0 && contacts_[i].unread != count) {
+        contacts_[i].unread = count;
         const QModelIndex idx = index(i);
         emit dataChanged(idx, idx, {UnreadRole});
     }
@@ -312,6 +312,18 @@ bool ConversationModel::newestIncomingThrough(int row, qint64& outId, QString& o
         }
     }
     return false;
+}
+
+QVector<ReadTarget> ConversationModel::incomingBetween(qint64 afterId, qint64 throughId) const
+{
+    QVector<ReadTarget> out;
+    for (const StoredMessage& m : messages_) {
+        if (!m.outgoing && !m.protocolId.isEmpty() && m.type != "system" && m.id > afterId
+            && m.id <= throughId && !m.sender.isEmpty()) {
+            out.push_back(ReadTarget{m.protocolId, m.sender});
+        }
+    }
+    return out;
 }
 
 void ConversationModel::setStatusForId(qint64 id, int status)

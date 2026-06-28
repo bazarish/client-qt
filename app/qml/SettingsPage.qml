@@ -17,8 +17,48 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
 
-    // Refresh the per-user I2P destination status whenever Settings opens.
-    onOpened: if (session) session.refreshI2pStatus()
+    // Refresh the per-user I2P destination status and storage usage on open.
+    onOpened: if (session) { session.refreshI2pStatus(); session.refreshStorageUsage() }
+
+    // Ticks every few seconds while Settings is open so the storage "updated N ago"
+    // age stays current without the user reopening the page.
+    property int agoTick: 0
+    Timer { running: root.visible; interval: 5000; repeat: true; onTriggered: root.agoTick++ }
+
+    // Human-readable byte count (B / KB / MB / GB).
+    function humanBytes(n) {
+        if (!n || n <= 0) {
+            return "0 B"
+        }
+        const u = ["B", "KB", "MB", "GB", "TB"]
+        var v = n
+        var i = 0
+        while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
+        return (i === 0 ? v : v.toFixed(1)) + " " + u[i]
+    }
+
+    // "updated N ago" from a wall-clock-ms timestamp (0 = never). Reads agoTick so it
+    // re-evaluates as the timer ticks.
+    function agoText(updatedAtMs) {
+        void root.agoTick
+        if (!updatedAtMs || updatedAtMs <= 0) {
+            return "never updated"
+        }
+        var s = Math.max(0, Math.floor((Date.now() - updatedAtMs) / 1000))
+        if (s < 5) {
+            return "updated just now"
+        }
+        if (s < 60) {
+            return "updated " + s + "s ago"
+        }
+        if (s < 3600) {
+            return "updated " + Math.floor(s / 60) + "m ago"
+        }
+        if (s < 86400) {
+            return "updated " + Math.floor(s / 3600) + "h ago"
+        }
+        return "updated " + Math.floor(s / 86400) + "d ago"
+    }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
@@ -64,8 +104,46 @@ Popup {
                         }
                     }
                     MenuButton { Layout.fillWidth: true; text: "Set photo…"; onClicked: avatarDialog.open() }
+                    MenuButton {
+                        Layout.fillWidth: true
+                        text: "Change name…"
+                        onClicked: {
+                            renameSelfField.text = root.session ? root.session.displayName : ""
+                            renameSelfDialog.open()
+                        }
+                    }
                     MenuButton { Layout.fillWidth: true; text: "Show my invite / QR"; onClicked: { root.close(); root.showInvite() } }
                     MenuButton { Layout.fillWidth: true; text: "Sign in with key (portals / sites)"; onClicked: { root.close(); root.showSignWithKey() } }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                // App & privacy — GLOBAL settings, shared by every profile on this
+                // device (the per-profile sections are below).
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label { text: "App & privacy (all profiles)"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Full privacy mode"; color: Theme.text }
+                            Label {
+                                text: "Refuse every clearnet connection — reach servers over I2P only. A profile with no I2P facade goes offline."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Switch {
+                            checked: App.fullPrivacyMode
+                            onToggled: App.setFullPrivacyMode(checked)
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label { text: "I2P engine (libi2pd)"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                        Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
+                    }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -75,14 +153,24 @@ Popup {
                     Layout.margins: 16
                     spacing: 6
                     Label { text: "Server connection"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    // Under full privacy mode a profile with no I2P facade cannot
+                    // reach its server at all (clearnet is refused), so its status is
+                    // an explicit I2P-only offline error rather than a vague "connecting".
+                    readonly property bool i2pOnlyBlocked: App.fullPrivacyMode
+                        && root.session && root.session.connected && !root.session.hasI2pFacade
                     Label {
-                        text: !(root.session && root.session.connected)
-                            ? "No server configured"
-                            : (root.session.reachable
-                                ? "Connected"
-                                : "Not reaching the server — Connect to finish setup")
-                        color: (root.session && root.session.connected && !root.session.reachable)
-                            ? Theme.warn : Theme.text
+                        text: parent.i2pOnlyBlocked
+                            ? "Offline — full privacy mode is on, but this profile has no I2P facade. Add one (or turn privacy mode off) to connect."
+                            : (!(root.session && root.session.connected)
+                                ? "No server configured"
+                                : (root.session.reachable
+                                    ? "Connected"
+                                    : "Not reaching the server — Connect to finish setup"))
+                        color: parent.i2pOnlyBlocked
+                            ? Theme.danger
+                            : ((root.session && root.session.connected && !root.session.reachable)
+                                ? Theme.warn : Theme.text)
+                        font.weight: parent.i2pOnlyBlocked ? Font.DemiBold : Font.Normal
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     RowLayout {
@@ -123,6 +211,77 @@ Popup {
                             text: "I2P router & status…"
                             onClicked: { root.close(); root.showRouterStatus() }
                         }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                // Storage — this profile's usage on its two backends (server-core
+                // mailbox + blob storage), with how long ago the figures were taken
+                // so an offline profile still shows its last-known usage.
+                ColumnLayout {
+                    id: storageSection
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    readonly property var info: root.session ? root.session.storageInfo : ({})
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label { text: "Storage"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                        Label {
+                            text: storageSection.info ? root.agoText(storageSection.info.updatedAt) : ""
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        }
+                    }
+
+                    // One backend's used / free / total with a usage bar. `used`,
+                    // `quota` and `ok` come from storageInfo; quota is the total.
+                    component StorageRow: ColumnLayout {
+                        property string title: ""
+                        property double used: 0
+                        property double quota: 0
+                        property bool ok: false
+                        Layout.fillWidth: true
+                        spacing: 3
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label { text: title; color: Theme.text; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                            Label {
+                                text: ok
+                                    ? (root.humanBytes(used) + " / " + root.humanBytes(quota))
+                                    : "unavailable"
+                                color: ok ? Theme.textDim : Theme.warn
+                                font.pixelSize: Theme.fontSmall
+                            }
+                        }
+                        ProgressBar {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 5
+                            from: 0; to: 1
+                            value: (ok && quota > 0) ? Math.min(1, used / quota) : 0
+                        }
+                        Label {
+                            visible: ok
+                            text: root.humanBytes(Math.max(0, quota - used)) + " free"
+                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                        }
+                    }
+
+                    StorageRow {
+                        title: "Mailbox (server-core)"
+                        used: storageSection.info ? storageSection.info.mailboxUsed : 0
+                        quota: storageSection.info ? storageSection.info.mailboxQuota : 0
+                        ok: storageSection.info ? storageSection.info.mailboxOk : false
+                    }
+                    StorageRow {
+                        title: "Large files (blob storage)"
+                        used: storageSection.info ? storageSection.info.blobUsed : 0
+                        quota: storageSection.info ? storageSection.info.blobQuota : 0
+                        ok: storageSection.info ? storageSection.info.blobOk : false
+                    }
+                    MenuButton {
+                        Layout.alignment: Qt.AlignRight
+                        text: "Refresh"
+                        onClicked: if (root.session) root.session.refreshStorageUsage()
                     }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -294,6 +453,37 @@ Popup {
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)", "All files (*)"]
         onAccepted: if (root.session) root.session.setAvatar(selectedFile)
     }
+    // Change the account's own display name. Local only: it updates this device and
+    // the name carried in future invite descriptors; existing contacts keep the
+    // local name they have for us (it is never sent to them).
+    Dialog {
+        id: renameSelfDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        title: "Change name"
+        onAccepted: if (root.session) root.session.setDisplayName(renameSelfField.text)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label { text: "Change name"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        footer: DialogButtons { acceptText: "Save"; onAccepted: renameSelfDialog.accept(); onRejected: renameSelfDialog.reject() }
+        contentItem: ColumnLayout {
+            spacing: 8
+            TextField {
+                id: renameSelfField
+                Layout.fillWidth: true
+                implicitWidth: 300
+                placeholderText: "Your name"
+                color: Theme.text
+                placeholderTextColor: Theme.textDim
+                onAccepted: renameSelfDialog.accept()
+                background: Rectangle { radius: 8; color: Theme.surface; border.color: renameSelfField.activeFocus ? Theme.accent : Theme.border }
+            }
+            Label {
+                text: "Only updates this device and your invite link. Your contacts keep the name they gave you."
+                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
+            }
+        }
+    }
+
     Dialog {
         id: exportPassDialog
         anchors.centerIn: Overlay.overlay

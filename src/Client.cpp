@@ -150,6 +150,31 @@ I2pDestStatus Client::i2pStatus()
     return status;
 }
 
+StorageUsage Client::storageUsage()
+{
+    StorageUsage usage;
+    // Each backend is polled independently so one being offline does not hide the
+    // other. Both ride the same facade (server-core for /v1/messaging/*, blob
+    // storage for /v1/storage/*).
+    try {
+        const nlohmann::json body = api_.get("/v1/messaging/storage-usage").json();
+        usage.mailboxUsedBytes = body.value("usedBytes", std::uint64_t{0});
+        usage.mailboxQuotaBytes = body.value("quotaBytes", std::uint64_t{0});
+        usage.mailboxOk = true;
+    } catch (const std::exception&) {
+        // Unreachable / unauthorized: leave the mailbox half stale (ok=false).
+    }
+    try {
+        const nlohmann::json body = api_.get("/v1/storage/usage").json();
+        usage.blobUsedBytes = body.value("usedBytes", std::uint64_t{0});
+        usage.blobQuotaBytes = body.value("quotaBytes", std::uint64_t{0});
+        usage.blobOk = true;
+    } catch (const std::exception&) {
+        // Unreachable / unauthorized: leave the blob half stale (ok=false).
+    }
+    return usage;
+}
+
 bool Client::setI2pDestEnabled(const bool enabled)
 {
     const ApiResponse response = api_.postJson("/v1/account/i2p-dest/setting", {{"enabled", enabled}});
