@@ -236,19 +236,28 @@ Popup {
 
             // --- Add members (admin) ---
             Label { visible: root.addMode; text: "Add contacts to the group:"; color: Theme.textDim }
+            // Selectable contact rows in the shared terminal style (solid surface,
+            // neon outline on hover/selection, avatar + readable name + a check on
+            // the right), so the picker matches Settings and New chat - not the stock
+            // CheckDelegate (dark-on-dark text, a too-bright full-row highlight that
+            // swallowed the checkbox).
             ListView {
                 visible: root.addMode
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                spacing: 4
                 model: root.session ? root.session.contacts : null
                 delegate: CheckDelegate {
-                    width: ListView.view.width
+                    id: addRow
+                    width: ListView.view ? ListView.view.width : 0
                     readonly property bool already: root.session
                         && root.session.activeGroupMembers.indexOf(model.fingerprint) >= 0
                     visible: !model.isGroup && !already
-                    height: (model.isGroup || already) ? 0 : 46
-                    text: root.session ? root.session.peerName(model.fingerprint) : model.fingerprint
+                    height: (model.isGroup || already) ? 0 : 52
+                    hoverEnabled: true
+                    leftPadding: 10
+                    rightPadding: 42
                     checked: root.selectedFps.indexOf(model.fingerprint) >= 0
                     onToggled: {
                         var a = root.selectedFps.slice()
@@ -256,6 +265,40 @@ Popup {
                         if (checked && i < 0) a.push(model.fingerprint)
                         else if (!checked && i >= 0) a.splice(i, 1)
                         root.selectedFps = a
+                    }
+                    background: Rectangle {
+                        radius: Theme.radiusSmall
+                        color: addRow.down ? Theme.border2 : (addRow.hovered ? Theme.surfaceAlt : Theme.bg)
+                        border.width: 1
+                        border.color: (addRow.checked || addRow.hovered) ? Theme.green : Theme.border
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
+                    }
+                    indicator: Rectangle {
+                        implicitWidth: 20; implicitHeight: 20
+                        x: addRow.width - width - 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        radius: 4
+                        color: addRow.checked ? Theme.green : "transparent"
+                        border.width: 1
+                        border.color: addRow.checked ? Theme.green : Theme.border2
+                        Label {
+                            anchors.centerIn: parent
+                            visible: addRow.checked
+                            text: "✓"
+                            color: Theme.bg
+                            font.pixelSize: 14
+                        }
+                    }
+                    contentItem: RowLayout {
+                        spacing: 10
+                        Avatar { fingerprint: model.fingerprint; size: 30 }
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.session ? root.session.peerName(model.fingerprint) : model.fingerprint
+                            color: Theme.text
+                            elide: Text.ElideRight
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
                 }
             }

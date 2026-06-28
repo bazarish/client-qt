@@ -1195,6 +1195,11 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"text", text},
+        // Our own self-chosen display name, so the recipient can show a named
+        // friend in their roster from the start - mirroring how we learn their
+        // name from their descriptor. A one-time seed label, not a live name push
+        // (a later rename of ours is never sent; they control the name they keep).
+        {"dn", name_},
         {"bootstrap",
             {
                 {"sealing", sealingPublicB64()},
@@ -1433,6 +1438,17 @@ void Session::sendDelete(const std::string& peerFingerprint, const std::string& 
 
 void Session::sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId)
 {
+    // A read receipt is an automatic background ack, not a deliberate reply. Never
+    // send one to a peer whose incoming contact request we have not accepted yet
+    // (issuedToThem is still false): sendContent would attach our bootstrap and
+    // flip issuedToThem, silently establishing the contact - the request must be
+    // accepted explicitly (the "Agree" button) or implicitly by sending a real
+    // message, never by merely reading it. Suppressing the receipt also avoids
+    // leaking our read status and routing to an un-accepted requester.
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end() || !found->second.issuedToThem) {
+        return;
+    }
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "receipt"},
@@ -1838,6 +1854,19 @@ std::vector<IncomingMessage> Session::sync()
                 establishedPeers.insert(message.fromFingerprint);
             }
 
+            // A contact request carries the requester's self-chosen display name
+            // (`dn`); adopt it as this contact's initial local label so we show a
+            // named friend instead of a bare fingerprint. Only seeds an empty name
+            // (never overwrites a name we already hold or the user later set), so a
+            // peer can never rename themselves in our roster after the fact.
+            if (type == "contact.request") {
+                const std::string dn = body.value("dn", std::string());
+                Contact& requester = contacts_[message.fromFingerprint];
+                if (!dn.empty() && requester.displayName.empty()) {
+                    requester.displayName = dn;
+                }
+            }
+
             // The peer is low on our tokens and asked to be refilled.
             if (body.value("lowStash", false)) {
                 refillPeers.insert(message.fromFingerprint);
@@ -2023,12 +2052,15 @@ std::vector<IncomingMessage> Session::sync()
                 if (leftGroups_.count(message.groupId) == 0) {
                     try {
                         bool shrank = false;
+                        std::vector<std::string> added;
                         applyRoster(message.groupId,
-                            fromBase64(body.at("roster").get<std::string>()), &shrank);
+                            fromBase64(body.at("roster").get<std::string>()), &shrank, false,
+                            &added);
                         groupsTouched = true;
                         if (shrank) {
                             rotateGroups.insert(message.groupId);
                         }
+                        message.groupAddedMembers = std::move(added);
                     } catch (const std::exception&) {
                     }
                 }
@@ -2241,9 +2273,12 @@ void Session::sendTokenRefill(const std::string& peerFingerprint)
     }
     const Contact& contact = found->second;
     // We need a usable route and at least one of the peer's tokens to deliver
-    // the refill; otherwise the peer's own refill of us must arrive first.
-    if (contact.sealingPublicB64.empty() || contact.servingSealingB64.empty()
-        || contact.sendTokens.empty()) {
+    // the refill; otherwise the peer's own refill of us must arrive first. And,
+    // like the automatic avatar push, never auto-refill a peer whose incoming
+    // request we have not accepted yet (issuedToThem still false): that would
+    // attach our bootstrap and silently establish the contact.
+    if (!contact.issuedToThem || contact.sealingPublicB64.empty()
+        || contact.servingSealingB64.empty() || contact.sendTokens.empty()) {
         return;
     }
     nlohmann::json inner = {
@@ -2607,8 +2642,8 @@ bool Session::isRosterUpdateAuthorized(const std::string& signerFingerprint,
     return false;
 }
 
-void Session::applyRoster(
-    const std::string& groupId, const Bytes& rosterDer, bool* membershipShrank, bool bootstrap)
+void Session::applyRoster(const std::string& groupId, const Bytes& rosterDer,
+    bool* membershipShrank, bool bootstrap, std::vector<std::string>* addedMembers)
 {
     // The roster is self-verifying: the embedded signature yields the signer's
     // identity fingerprint.
@@ -2683,6 +2718,17 @@ void Session::applyRoster(
             if (group.members.find(fp) == group.members.end()) {
                 *membershipShrank = true;
                 break;
+            }
+        }
+    }
+
+    // A member present now but absent before is a join: report it so the caller
+    // can surface a "joined the group" notice to the existing members.
+    if (addedMembers != nullptr) {
+        for (const auto& [fp, member] : group.members) {
+            (void)member;
+            if (keptTokens.find(fp) == keptTokens.end()) {
+                addedMembers->push_back(fp);
             }
         }
     }

@@ -152,6 +152,10 @@ struct IncomingMessage {
     // contentType "group.invite" it is the new group's id (and groupName its name).
     std::string groupId;
     std::string groupName;
+    // For contentType "group.roster": fingerprints of members the update added
+    // (joins), so the UI can surface a "joined the group" notice to existing
+    // members. Empty for a roster that only removed members or changed admins.
+    std::vector<std::string> groupAddedMembers;
 
     // Attachment (content types "file"/"photo"/"audio"/"voice"): a
     // content-store reference and the key to decrypt it. attachmentRef is
@@ -823,8 +827,12 @@ private:
     // may declare its own admin set (trust on first use, via the inviting contact).
     // Without this anchoring a member could sign a roster naming themselves admin
     // and take the group over (the "admins" array would otherwise vouch for itself).
+    // When addedMembers is non-null, it is filled with the fingerprints of members
+    // present in the new roster but absent before (joins), so the caller can surface
+    // a "joined the group" service notice.
     void applyRoster(const std::string& groupId, const Bytes& rosterDer,
-        bool* membershipShrank = nullptr, bool bootstrap = false);
+        bool* membershipShrank = nullptr, bool bootstrap = false,
+        std::vector<std::string>* addedMembers = nullptr);
     // Registers a fresh token pool for a group (recording its hashes so it can
     // be revoked later) and returns the raw tokens.
     std::vector<std::string> issueGroupPool(Group& group);

@@ -72,6 +72,28 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 // older/newer step). Keeps even a huge dialog cheap to open and scroll.
 constexpr int kPageSize = 50;
 
+// Joins display names into a human phrase for a group service notice:
+// "A", "A and B", "A, B and C", "A, B and 3 others".
+QString joinNames(const QStringList& names)
+{
+    const int n = names.size();
+    if (n == 0) {
+        return QString();
+    }
+    if (n == 1) {
+        return names.at(0);
+    }
+    if (n == 2) {
+        return names.at(0) + QStringLiteral(" and ") + names.at(1);
+    }
+    if (n == 3) {
+        return names.at(0) + QStringLiteral(", ") + names.at(1)
+            + QStringLiteral(" and ") + names.at(2);
+    }
+    return names.at(0) + QStringLiteral(", ") + names.at(1) + QStringLiteral(" and ")
+        + QString::number(n - 2) + QStringLiteral(" others");
+}
+
 // Loads a picked image and compresses it to a square JPEG within the 500 KB
 // avatar protocol cap (center-crop, downscale to 256, drop quality - then, as a
 // last resort, resolution - until it fits). Returns empty bytes when the file is
@@ -349,6 +371,11 @@ void SessionWorker::sync()
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
         map["groupId"] = QString::fromStdString(m.groupId);
         map["groupName"] = QString::fromStdString(m.groupName);
+        QStringList addedMembers;
+        for (const std::string& fp : m.groupAddedMembers) {
+            addedMembers << QString::fromStdString(fp);
+        }
+        map["addedMembers"] = addedMembers;
         map["sender"] = QString::fromStdString(m.fromFingerprint);
         map["messageId"] = QString::fromStdString(m.messageId);
         map["ref"] = QString::fromStdString(m.refId);
@@ -1778,9 +1805,27 @@ void SessionController::renameContact(const QString& fp, const QString& name)
 
 void SessionController::addGroupMembers(const QString& groupId, const QStringList& fps)
 {
-    if (!fps.isEmpty()) {
-        emit requestAddGroupMembers(groupId, fps);
+    if (fps.isEmpty() || groupId.isEmpty()) {
+        return;
     }
+    emit requestAddGroupMembers(groupId, fps);
+    // Optimistic local "you added X" note, mirroring the group-rename/photo flow, so
+    // the admin who performed the add sees it in the transcript too. The existing
+    // members get their own "joined the group" note from the roster broadcast.
+    QStringList names;
+    for (const QString& fp : fps) {
+        names << peerName(fp);
+    }
+    StoredMessage sys;
+    sys.peer = groupId;
+    sys.type = QStringLiteral("system");
+    sys.text = QStringLiteral("You added ") + joinNames(names) + QStringLiteral(" to the group.");
+    sys.ts = nowMillis();
+    sys.orderKey = sys.ts;
+    sys.status = DeliveryStatus::Received;
+    sys.id = store_.append(sys);
+    showInActiveView(sys, true);
+    contacts_.touch(groupId, groupNames_.value(groupId, groupId), sys.text, sys.ts, false, true);
 }
 
 void SessionController::removeGroupMember(const QString& groupId, const QString& fp)
@@ -2551,7 +2596,33 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         contacts_.setUnread(gid, store_.unreadCount(gid));
         return;
     }
-    if (type == "group.tokens" || type == "group.roster" || type == "group.leave") {
+    // A roster update we received as an existing member. The core already applied
+    // the membership change; if it added members, surface a "joined the group"
+    // service note so the change is visible (otherwise the roster updates silently
+    // and an existing member sees nothing). A roster that only removed members or
+    // changed admins carries no added members and stays quiet.
+    if (type == "group.roster") {
+        const QString gid = message.value("groupId").toString();
+        const QStringList added = message.value("addedMembers").toStringList();
+        if (!gid.isEmpty() && !added.isEmpty()) {
+            QStringList names;
+            for (const QString& fp : added) {
+                names << peerName(fp);
+            }
+            StoredMessage sys;
+            sys.peer = gid;
+            sys.type = QStringLiteral("system");
+            sys.text = joinNames(names) + QStringLiteral(" joined the group.");
+            sys.ts = nowMillis();
+            sys.orderKey = sys.ts;
+            sys.status = DeliveryStatus::Received;
+            sys.id = store_.append(sys);
+            showInActiveView(sys, false);
+            contacts_.touch(gid, groupNames_.value(gid, gid), sys.text, sys.ts, false, true);
+        }
+        return;
+    }
+    if (type == "group.tokens" || type == "group.leave") {
         return;  // group control; the chat list reflects the change
     }
 
