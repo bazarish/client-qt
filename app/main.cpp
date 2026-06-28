@@ -48,6 +48,12 @@ int main(int argc, char** argv)
     // it the application-wide default so every control inherits it.
     QFontDatabase::addApplicationFont(":/fonts/RobotoMono-Regular.ttf");
     QFontDatabase::addApplicationFont(":/fonts/RobotoMono-Bold.ttf");
+    // Bundle a colour-emoji font (Twemoji Mozilla, COLR/CPAL) so reactions render in
+    // colour regardless of the system fonts. Roboto Mono has no emoji glyphs, and a
+    // monochrome fallback would be invisible on the dark theme; the UI selects this
+    // family with Text.NativeRendering where it shows emoji (a colour font needs the
+    // native rasterizer - Qt's default distance-field text is monochrome only).
+    QFontDatabase::addApplicationFont(":/fonts/TwemojiMozilla.ttf");
     QFont baseFont("Roboto Mono");
     baseFont.setStyleHint(QFont::Monospace);
     baseFont.setPixelSize(14);

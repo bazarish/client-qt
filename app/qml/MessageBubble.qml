@@ -568,7 +568,14 @@ Item {
                             id: chipRow
                             anchors.centerIn: parent
                             spacing: 3
-                            Label { text: modelData.emoji; font.pixelSize: 13 }
+                            Label {
+                                text: modelData.emoji
+                                font.pixelSize: 13
+                                // Colour emoji need the bundled emoji font + the
+                                // native renderer (the default is monochrome).
+                                font.family: Theme.emojiFontFamily
+                                renderType: Text.NativeRendering
+                            }
                             Label {
                                 visible: modelData.count > 1
                                 text: modelData.count

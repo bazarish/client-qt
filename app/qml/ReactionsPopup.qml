@@ -75,7 +75,7 @@ Popup {
                         height: 44
                         spacing: 10
                         Item { width: 6 }
-                        Label { text: "👁"; font.pixelSize: 16 }
+                        Label { text: "👁"; font.pixelSize: 16; font.family: Theme.emojiFontFamily; renderType: Text.NativeRendering }
                         Label { text: modelData.name; color: Theme.text; Layout.fillWidth: true; elide: Text.ElideRight }
                     }
                 }
@@ -100,7 +100,7 @@ Popup {
                         height: 44
                         spacing: 10
                         Item { width: 6 }
-                        Label { text: modelData.emoji; font.pixelSize: 18 }
+                        Label { text: modelData.emoji; font.pixelSize: 18; font.family: Theme.emojiFontFamily; renderType: Text.NativeRendering }
                         Label { text: modelData.name; color: Theme.text; Layout.fillWidth: true; elide: Text.ElideRight }
                     }
                 }

@@ -47,7 +47,13 @@ Popup {
                     width: 36; height: 36; radius: 8
                     color: emojiHover.hovered ? Theme.surfaceAlt : Theme.surface
                     border.color: emojiHover.hovered ? Theme.green : Theme.border
-                    Label { anchors.centerIn: parent; text: modelData; font.pixelSize: 18 }
+                    Label {
+                        anchors.centerIn: parent
+                        text: modelData
+                        font.pixelSize: 18
+                        font.family: Theme.emojiFontFamily
+                        renderType: Text.NativeRendering
+                    }
                     HoverHandler { id: emojiHover; cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: root.pick(modelData) }
                 }
@@ -62,6 +68,9 @@ Popup {
                 placeholderText: "Any emoji…"
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
+                // Show the typed emoji in colour too.
+                font.family: Theme.emojiFontFamily
+                renderType: Text.NativeRendering
                 onAccepted: root.pick(customField.text)
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: customField.activeFocus ? Theme.accent : Theme.border }
             }

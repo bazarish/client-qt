@@ -146,6 +146,7 @@ if(Qt6_FOUND)
         FILES
             app/fonts/RobotoMono-Regular.ttf
             app/fonts/RobotoMono-Bold.ttf
+            app/fonts/TwemojiMozilla.ttf
     )
 
     # The brand app icon (rendered from the brand kit's icon.svg) and the brand
