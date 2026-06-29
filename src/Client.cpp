@@ -200,7 +200,8 @@ FetchOutcome Client::relayFetch(
             {"toDest", toDest},
             {"op", op},
             {"sealed", toBase64(sealed)},
-        });
+        },
+        ApiClient::kFetchReadTimeoutSeconds);
     const nlohmann::json body = response.json();
     FetchOutcome outcome;
     outcome.ok = body.at("ok").get<bool>();
@@ -365,6 +366,7 @@ SendStatus Client::pollSend(const std::string& attemptId)
 
     SendStatus result;
     result.status = body.at("status").get<std::string>();
+    result.phase = body.value("phase", std::string());
     if (body.contains("error")) {
         const nlohmann::json& error = body.at("error");
         result.errorCode = errorCodeFromString(error.at("code").get<std::string>());

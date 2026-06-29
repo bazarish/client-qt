@@ -68,12 +68,31 @@ Item {
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
+        // Search the chat list by name (filters the list as you type). Clears when
+        // the field is emptied.
+        TextField {
+            id: chatSearch
+            Layout.fillWidth: true
+            Layout.margins: 8
+            placeholderText: "Search chats…"
+            color: Theme.text
+            placeholderTextColor: Theme.textDim
+            leftPadding: 10
+            selectByMouse: true
+            onTextChanged: if (root.session) { root.session.setChatFilter(text) }
+            background: Rectangle {
+                radius: 8
+                color: Theme.surface
+                border.color: chatSearch.activeFocus ? Theme.green : Theme.border
+            }
+        }
+
         ListView {
             id: list
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: root.session ? root.session.contacts : null
+            model: root.session ? root.session.chatList : null
             delegate: ItemDelegate {
                 id: chatRow
                 width: ListView.view.width
@@ -97,6 +116,13 @@ Item {
                         spacing: 2
                         RowLayout {
                             Layout.fillWidth: true
+                            // Pin marker: a pinned chat stays at the top of the list.
+                            Label {
+                                visible: model.pinned
+                                text: "📌"
+                                font.pixelSize: 11
+                                Layout.alignment: Qt.AlignVCenter
+                            }
                             Label {
                                 Layout.fillWidth: true
                                 text: (model.isGroup ? "👥 " : "")
@@ -126,6 +152,21 @@ Item {
                                 Label { id: badge; anchors.centerIn: parent; text: model.unread; color: Theme.accentText; font.pixelSize: 11 }
                             }
                         }
+                    }
+                }
+                // Pin/unpin via right-click or long-press (a left tap still opens the
+                // chat). Pin state syncs to the account's other devices.
+                TapHandler { acceptedButtons: Qt.RightButton; onTapped: pinMenu.popup() }
+                TapHandler {
+                    acceptedButtons: Qt.LeftButton
+                    longPressThreshold: 0.5
+                    onLongPressed: pinMenu.popup()
+                }
+                Menu {
+                    id: pinMenu
+                    MenuItem {
+                        text: model.pinned ? "Unpin chat" : "Pin to top"
+                        onTriggered: root.session.pinChat(model.fingerprint, !model.pinned)
                     }
                 }
             }

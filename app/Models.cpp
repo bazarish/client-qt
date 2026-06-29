@@ -65,6 +65,7 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
     case LastTimeRole: return c.lastTime;
     case UnreadRole: return c.unread;
     case IsGroupRole: return c.isGroup;
+    case PinnedRole: return c.pinned;
     default: return {};
     }
 }
@@ -72,7 +73,8 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
 QHash<int, QByteArray> ContactListModel::roleNames() const
 {
     return {{FingerprintRole, "fingerprint"}, {NameRole, "name"}, {LastTextRole, "lastText"},
-        {LastTimeRole, "lastTime"}, {UnreadRole, "unread"}, {IsGroupRole, "isGroup"}};
+        {LastTimeRole, "lastTime"}, {UnreadRole, "unread"}, {IsGroupRole, "isGroup"},
+        {PinnedRole, "pinned"}};
 }
 
 void ContactListModel::setContacts(QVector<ContactRow> contacts)
@@ -80,7 +82,13 @@ void ContactListModel::setContacts(QVector<ContactRow> contacts)
     beginResetModel();
     contacts_ = std::move(contacts);
     std::stable_sort(contacts_.begin(), contacts_.end(),
-        [](const ContactRow& a, const ContactRow& b) { return a.lastTime > b.lastTime; });
+        [](const ContactRow& a, const ContactRow& b) {
+            // Pinned chats first, then by most-recent activity.
+            if (a.pinned != b.pinned) {
+                return a.pinned;
+            }
+            return a.lastTime > b.lastTime;
+        });
     endResetModel();
 }
 
@@ -98,7 +106,13 @@ void ContactListModel::resort()
 {
     beginResetModel();
     std::stable_sort(contacts_.begin(), contacts_.end(),
-        [](const ContactRow& a, const ContactRow& b) { return a.lastTime > b.lastTime; });
+        [](const ContactRow& a, const ContactRow& b) {
+            // Pinned chats first, then by most-recent activity.
+            if (a.pinned != b.pinned) {
+                return a.pinned;
+            }
+            return a.lastTime > b.lastTime;
+        });
     endResetModel();
 }
 
@@ -515,6 +529,103 @@ void OpenAccountsModel::setAccounts(QVector<AccountRow> accounts)
     beginResetModel();
     accounts_ = std::move(accounts);
     endResetModel();
+}
+
+int OperationListModel::rowCount(const QModelIndex&) const
+{
+    return static_cast<int>(ops_.size());
+}
+
+QVariant OperationListModel::data(const QModelIndex& index, int role) const
+{
+    if (index.row() < 0 || index.row() >= ops_.size()) {
+        return {};
+    }
+    const OperationRow& o = ops_[index.row()];
+    switch (role) {
+    case OpIdRole: return o.id;
+    case KindRole: return o.kind;
+    case TitleRole: return o.title;
+    case StatusRole: return o.status;
+    case DetailRole: return o.detail;
+    case ProgressRole: return o.progress;
+    case StateRole: return o.state;
+    case StartedAtRole: return o.startedAt;
+    case PeerRole: return o.peer;
+    default: return {};
+    }
+}
+
+QHash<int, QByteArray> OperationListModel::roleNames() const
+{
+    return {{OpIdRole, "opId"}, {KindRole, "kind"}, {TitleRole, "title"}, {StatusRole, "status"},
+        {DetailRole, "detail"}, {ProgressRole, "progress"}, {StateRole, "state"},
+        {StartedAtRole, "startedAt"}, {PeerRole, "peer"}};
+}
+
+int OperationListModel::indexOf(const QString& id) const
+{
+    for (int i = 0; i < ops_.size(); ++i) {
+        if (ops_[i].id == id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void OperationListModel::upsert(const OperationRow& row)
+{
+    const int i = indexOf(row.id);
+    if (i < 0) {
+        // Newest at the top, matching how the panel reads top-to-bottom.
+        beginInsertRows({}, 0, 0);
+        ops_.prepend(row);
+        endInsertRows();
+        return;
+    }
+    ops_[i] = row;
+    const QModelIndex idx = index(i);
+    emit dataChanged(idx, idx);
+}
+
+void OperationListModel::update(const QString& id, const QString& status, const QString& detail,
+    double progress, int state)
+{
+    const int i = indexOf(id);
+    if (i < 0) {
+        return;
+    }
+    OperationRow& o = ops_[i];
+    o.status = status;
+    o.detail = detail;
+    if (progress >= 0.0) {
+        o.progress = progress;
+    }
+    o.state = state;
+    const QModelIndex idx = index(i);
+    emit dataChanged(idx, idx, {StatusRole, DetailRole, ProgressRole, StateRole});
+}
+
+void OperationListModel::remove(const QString& id)
+{
+    const int i = indexOf(id);
+    if (i < 0) {
+        return;
+    }
+    beginRemoveRows({}, i, i);
+    ops_.removeAt(i);
+    endRemoveRows();
+}
+
+int OperationListModel::runningCount() const
+{
+    int n = 0;
+    for (const OperationRow& o : ops_) {
+        if (o.state == eOpRunning) {
+            ++n;
+        }
+    }
+    return n;
 }
 
 }  // namespace bazarish::app

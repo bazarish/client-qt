@@ -170,28 +170,39 @@ Item {
             width: parent.width - 20
             spacing: 4
 
-            // Author of an incoming group message: a name (a local contact name
-            // reads bright/trusted; a sender's own account name reads green) and,
-            // for the latter, the short fingerprint beneath it as the ground truth.
-            ColumnLayout {
+            // Author of an incoming group message: a deterministic avatar (a real one
+            // for a known contact, else the fingerprint-derived identicon - identical
+            // on every client, nothing sent over the wire) beside a name (a local
+            // contact name reads bright/trusted; a sender's own account name reads
+            // green) with the short fingerprint beneath it as the ground truth.
+            RowLayout {
                 visible: delegate.hasSender
-                spacing: 0
+                spacing: 6
                 Layout.fillWidth: true
-                Label {
-                    text: delegate.senderInfo ? delegate.senderInfo.name : ""
-                    color: (delegate.senderInfo && delegate.senderInfo.isContact) ? Theme.accent : Theme.green
-                    font.pixelSize: Theme.fontSmall
-                    font.weight: Font.Medium
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
+                Avatar {
+                    fingerprint: model.sender ? model.sender : ""
+                    size: 26
+                    Layout.alignment: Qt.AlignTop
                 }
-                Label {
-                    visible: delegate.senderInfo && delegate.senderInfo.fpShort.length > 0
-                    text: delegate.senderInfo ? "(" + delegate.senderInfo.fpShort + ")" : ""
-                    color: Theme.textDim
-                    font.pixelSize: 10
-                    elide: Text.ElideRight
+                ColumnLayout {
+                    spacing: 0
                     Layout.fillWidth: true
+                    Label {
+                        text: delegate.senderInfo ? delegate.senderInfo.name : ""
+                        color: (delegate.senderInfo && delegate.senderInfo.isContact) ? Theme.accent : Theme.green
+                        font.pixelSize: Theme.fontSmall
+                        font.weight: Font.Medium
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        visible: delegate.senderInfo && delegate.senderInfo.fpShort.length > 0
+                        text: delegate.senderInfo ? "(" + delegate.senderInfo.fpShort + ")" : ""
+                        color: Theme.textDim
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
                 }
             }
 

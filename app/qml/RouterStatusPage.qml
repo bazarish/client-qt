@@ -92,7 +92,7 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "Show i2p logs"; color: Theme.text }
+                            Label { text: "Show I2P logs"; color: Theme.text }
                             Label {
                                 text: "Surface libi2pd's own logging (debugging). Off by default."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall

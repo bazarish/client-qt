@@ -89,6 +89,11 @@ ApplicationWindow {
         Timer { id: toastTimer; interval: 3500; onTriggered: toast.opacity = 0 }
     }
 
+    // Background-activity overlay: a right-edge handle + slide-out panel listing
+    // in-flight async operations (contact add, sends, transfers, calls) with live
+    // status. Below the error dialog (z 1000), above the app content.
+    OperationsOverlay { anchors.fill: parent; z: 900 }
+
     // Server onboarding / hello (unregistered-key connect): its own top-layer
     // window with copyable links, dismissed only by its button.
     ServerHelloDialog { id: helloDialog }

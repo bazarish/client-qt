@@ -8,6 +8,7 @@
 #include <QSqlDriver>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStringList>
 #include <QVariant>
 
 #include <sqlite3.h>
@@ -192,6 +193,17 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
     if (!query.exec("CREATE TABLE IF NOT EXISTS group_views ("
                     "peer TEXT, target TEXT, viewer TEXT,"
                     " PRIMARY KEY (peer, target, viewer))")) {
+        return false;
+    }
+    // Chats the user pinned to the top of the list (one row per pinned peer/group).
+    if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
+        return false;
+    }
+    // Per-member fan-out outcome for one of our own group messages (the "Sent" view):
+    // ok=1 handed off, 0 not - drives the per-member status and Resend.
+    if (!query.exec("CREATE TABLE IF NOT EXISTS group_delivery ("
+                    "peer TEXT, target TEXT, member TEXT, ok INTEGER,"
+                    " PRIMARY KEY (peer, target, member))")) {
         return false;
     }
     ready_ = true;
@@ -574,6 +586,18 @@ void TranscriptStore::clearPeer(const QString& peer)
     }
 }
 
+QStringList TranscriptStore::conversationPeers() const
+{
+    QStringList peers;
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    if (query.exec("SELECT DISTINCT peer FROM messages")) {
+        while (query.next()) {
+            peers << query.value(0).toString();
+        }
+    }
+    return peers;
+}
+
 QString TranscriptStore::lastText(const QString& peer) const
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));
@@ -631,6 +655,43 @@ qint64 TranscriptStore::lastReadId(const QString& peer) const
         return query.value(0).toLongLong();
     }
     return 0;
+}
+
+void TranscriptStore::setPinned(const QString& peer, bool pinned)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    if (pinned) {
+        query.prepare("INSERT OR IGNORE INTO pinned_chats (peer) VALUES (?)");
+    } else {
+        query.prepare("DELETE FROM pinned_chats WHERE peer = ?");
+    }
+    query.addBindValue(peer);
+    if (query.exec() && query.numRowsAffected() > 0) {
+        flush();
+    }
+}
+
+bool TranscriptStore::isPinned(const QString& peer) const
+{
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT 1 FROM pinned_chats WHERE peer = ? LIMIT 1");
+    query.addBindValue(peer);
+    return query.exec() && query.next();
+}
+
+QStringList TranscriptStore::pinnedPeers() const
+{
+    QStringList peers;
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    if (query.exec("SELECT peer FROM pinned_chats")) {
+        while (query.next()) {
+            peers << query.value(0).toString();
+        }
+    }
+    return peers;
 }
 
 int TranscriptStore::unreadCount(const QString& peer) const
@@ -737,6 +798,47 @@ QStringList TranscriptStore::viewersFor(const QString& peer, const QString& targ
     }
     while (query.next()) {
         result << query.value(0).toString();
+    }
+    return result;
+}
+
+void TranscriptStore::setGroupDelivery(
+    const QString& peer, const QString& target, const QString& member, int status)
+{
+    if (peer.isEmpty() || target.isEmpty() || member.isEmpty()) {
+        return;
+    }
+    // The `ok` column holds the DeliveryStatus int. Last-writer-wins is safe: the
+    // worker emits grey at send then yellow/red once, removing the attempt after, so
+    // no later poll downgrades it.
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("INSERT INTO group_delivery (peer, target, member, ok) VALUES (?, ?, ?, ?)"
+                  " ON CONFLICT(peer, target, member) DO UPDATE SET ok = excluded.ok");
+    query.addBindValue(peer);
+    query.addBindValue(target);
+    query.addBindValue(member);
+    query.addBindValue(status);
+    if (query.exec() && query.numRowsAffected() > 0) {
+        flush();
+    }
+}
+
+QVector<GroupDeliveryRow> TranscriptStore::groupDeliveryFor(
+    const QString& peer, const QString& target) const
+{
+    QVector<GroupDeliveryRow> result;
+    if (peer.isEmpty() || target.isEmpty()) {
+        return result;
+    }
+    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    query.prepare("SELECT member, ok FROM group_delivery WHERE peer = ? AND target = ? ORDER BY rowid");
+    query.addBindValue(peer);
+    query.addBindValue(target);
+    if (!query.exec()) {
+        return result;
+    }
+    while (query.next()) {
+        result.push_back(GroupDeliveryRow{query.value(0).toString(), query.value(1).toInt()});
     }
     return result;
 }

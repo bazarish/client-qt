@@ -75,3 +75,24 @@ Environment variables:
 bazarish-gui <profile>                              # open an existing client
 bazarish-gui <profile> <host> <port> <server-fp>    # create and subscribe a new one
 ```
+
+## Background activity
+
+Long-running async work (adding a contact, sending a message or file, downloading
+an attachment, a live call) is surfaced in a unified **activity panel** so a slow
+operation reads as progress instead of a frozen window. A small translucent handle
+appears on the right edge while anything is running (opaque on hover); clicking it
+slides out a panel listing each operation with a live, human-readable status, a
+determinate progress bar for transfers, and an elapsed-time badge.
+
+For sends the status is the **real server-reported federation phase** - the server
+exposes it on `GET /v1/messaging/send/{attemptId}` as a `phase` field
+(`queued` -> `dialing`/building the tunnel -> `sending` -> `awaiting-ack`), which
+the client maps to human text. Contact-add additionally shows the off-thread card
+resolve (`Resolving recipient over i2p...` with a live timer) before the request is
+sent. See `docs-main/api/ClientApi.md` for the `phase` field.
+
+Implementation: `OperationListModel` (exposed as `App.session.operations` /
+`activeOperations`) is driven by `beginOperation`/`updateOperation`/`finishOperation`
+in `SessionController`; the QML lives in `app/qml/OperationsOverlay.qml` and
+`app/qml/OperationRow.qml`.

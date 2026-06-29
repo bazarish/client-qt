@@ -86,6 +86,17 @@ public:
 // authenticated request with both identity keys.
 class ApiClient {
 public:
+    // Read timeout (seconds) for a normal request. Generous because a send may
+    // relay over I2P synchronously on the server side (tens of seconds).
+    static constexpr int kDefaultReadTimeoutSeconds = 240;
+    // Read timeout for an interactive federated fetch (card / alias resolve): the
+    // server federates to the target synchronously, so this bounds how long the
+    // (now off-thread, see Session::resolveContactCard) background fetch lives.
+    // Set above the server's own federation timeout so a reachable-but-slow peer
+    // still resolves rather than being cut off early; an unreachable one fails
+    // within it and surfaces an error instead of hanging forever.
+    static constexpr int kFetchReadTimeoutSeconds = 70;
+
     // i2pDataDir is the embedded router's data directory; it enables routing
     // facades whose host ends in ".b32.i2p" over I2P. When empty, only clearnet
     // facades are usable (i2p facades are treated as unreachable) - the CLI and
@@ -97,7 +108,11 @@ public:
     // no query string); query, when non-empty, is appended to the URL only.
     // Every non-2xx response throws ApiError.
     ApiResponse get(const std::string& path, const std::string& query = "");
-    ApiResponse postJson(const std::string& path, const nlohmann::json& body);
+    // readTimeoutSeconds bounds how long to wait for the response: the default is
+    // generous for sends; an interactive federated fetch passes the short
+    // kFetchReadTimeoutSeconds so it cannot freeze the worker thread for minutes.
+    ApiResponse postJson(const std::string& path, const nlohmann::json& body,
+        int readTimeoutSeconds = kDefaultReadTimeoutSeconds);
     ApiResponse postBytes(
         const std::string& path, const Bytes& body, const std::string& contentType);
     // Authenticated PUT with extra request headers (e.g. blob retention).
@@ -129,7 +144,8 @@ public:
 private:
     ApiResponse send(const std::string& method, const std::string& path,
         const std::string& query, const Bytes& body, const std::string& contentType,
-        bool authenticate, const std::map<std::string, std::string>& extraHeaders = {});
+        bool authenticate, const std::map<std::string, std::string>& extraHeaders = {},
+        int readTimeoutSeconds = kDefaultReadTimeoutSeconds);
 
     // True if a facade's host ends in ".b32.i2p" (reached over the embedded I2P
     // transport rather than clearnet).

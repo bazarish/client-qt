@@ -43,6 +43,7 @@ struct ContactRow {
     qint64 lastTime = 0;
     int unread = 0;
     bool isGroup = false;
+    bool pinned = false;   // kept at the top of the list, before the recent sort
 };
 
 class ContactListModel : public QAbstractListModel {
@@ -50,7 +51,7 @@ class ContactListModel : public QAbstractListModel {
 public:
     enum Roles {
         FingerprintRole = Qt::UserRole + 1, NameRole, LastTextRole, LastTimeRole, UnreadRole,
-        IsGroupRole
+        IsGroupRole, PinnedRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -196,6 +197,53 @@ public:
 
 private:
     QVector<AccountRow> accounts_;
+};
+
+// A long-running background operation surfaced in the activity panel - a contact
+// add, a message or file send, a download, or a call - with a human-readable
+// status that updates as it progresses. Session-only; never persisted.
+struct OperationRow {
+    QString id;       // stable correlation key, e.g. "send:42" / "contact:<fp>" / "call:<id>"
+    QString kind;     // "contact" | "send" | "file-up" | "file-down" | "call"
+    QString title;    // primary line, e.g. "Adding Alice" / "photo.jpg"
+    QString status;   // human-readable current status
+    QString detail;   // optional secondary line (server phase, elapsed, error)
+    double progress = -1.0;  // 0..1 for a determinate bar (files); < 0 = indeterminate
+    int state = 0;    // 0 running, 1 done, 2 failed
+    qint64 startedAt = 0;
+    QString peer;     // associated contact/group fingerprint, for tap-through (optional)
+};
+
+// kOperationState* mirror OperationRow::state for readable call sites.
+enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
+
+class OperationListModel : public QAbstractListModel {
+    Q_OBJECT
+public:
+    enum Roles {
+        OpIdRole = Qt::UserRole + 1, KindRole, TitleRole, StatusRole, DetailRole, ProgressRole,
+        StateRole, StartedAtRole, PeerRole
+    };
+    using QAbstractListModel::QAbstractListModel;
+
+    int rowCount(const QModelIndex& parent = {}) const override;
+    QVariant data(const QModelIndex& index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override;
+
+    // Insert a new operation at the top, or update the existing one with this id.
+    void upsert(const OperationRow& row);
+    // Update an existing operation's mutable fields (no-op when the id is absent).
+    // A negative progress leaves the current progress unchanged.
+    void update(const QString& id, const QString& status, const QString& detail, double progress,
+        int state);
+    void remove(const QString& id);
+    // Operations still running (drives the floating button's visibility/count).
+    int runningCount() const;
+    // The row of an operation by id, or -1.
+    int indexOf(const QString& id) const;
+
+private:
+    QVector<OperationRow> ops_;
 };
 
 }  // namespace bazarish::app

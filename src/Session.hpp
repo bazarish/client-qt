@@ -84,6 +84,12 @@ struct GroupMember {
     // soft label shown until/unless we have a local name for them; the fingerprint
     // is the ground truth. Empty until that member has sent in the group.
     std::string displayName;
+    // A provisional label supplied by the admin in the signed roster (the admin's
+    // own name for this member, from the admin's contacts at add time). Shown - in
+    // a muted, parenthesised style - for a member who is neither a local contact
+    // nor has spoken yet, so a freshly added member reads as a name instead of a
+    // raw fingerprint. Superseded by `displayName` once that member sends.
+    std::string provisionalName;
 };
 
 // A group as this client knows it: the roster (other members + their routing and
@@ -122,6 +128,12 @@ struct IncomingMessage {
     // The sender's protocol message id (envelope "id"), used to send a
     // delivery receipt back for it.
     std::string messageId;
+    // The server-side pending-blob id this item was fetched as. NOT acked during
+    // sync(): the surfaced item is acked only after the client has durably stored
+    // it (ackPending, driven by the GUI after persistence), so a crash/restart
+    // between fetch and store never loses it. Empty for items the core consumed
+    // itself (acked in sync()).
+    std::string pendingId;
     // The sender's send time (envelope "sentAt", unix milliseconds). The
     // recipient orders by it and shows it as the message time, not the receive
     // time (docs-main Messages.md "Ordering and timestamps"). 0 when absent.
@@ -255,6 +267,11 @@ public:
     // devices (a device.contact-name self-message). No-op for an unknown contact.
     void renameContact(const std::string& peerFingerprint, const std::string& name);
 
+    // Mirrors a chat pin/unpin to the account's other devices (a device.chat-pin
+    // self-message). The pin list itself lives in the GUI's local store; this only
+    // broadcasts the change so every device keeps the same pinned chats.
+    void syncChatPinToSelf(const std::string& peerFingerprint, bool pinned);
+
     // Permanently removes a contact: drops it from the roster, deletes its sealed
     // avatar blob, and persists. Local only and irreversible - the peer is not
     // told. No-op for an unknown contact. The caller wipes the local transcript.
@@ -373,6 +390,54 @@ public:
     // configured in this build.
     std::string addByUsername(const std::string& alias, const std::string& text);
 
+    // --- Asynchronous contact add ------------------------------------------------
+    // addByInvite / addByUsername above are synchronous: they block on a federated
+    // card fetch (the serving server dials the peer over I2P, tens of seconds when
+    // the peer is slow or unreachable). A GUI must never run that on the thread that
+    // also drives sync and the connection, or the whole profile freezes until the
+    // fetch returns. The three steps below split it so the slow fetch runs off the
+    // worker thread on its own transport, and only the fast finalize touches the
+    // session - keeping the connection live throughout.
+
+    // What resolveContactCard needs, snapshotted from the live session so the
+    // (background) resolve depends on nothing the session may mutate or free.
+    struct ContactFetchContext {
+        std::string identityPem;        // unencrypted in-memory private PEM
+        std::string clientId;
+        ServerEndpoint endpoint;
+        std::filesystem::path i2pDataDir;
+        ResolverCoordinate resolver;
+        bool i2pEnabled = false;
+        bazarish::i2p::Privacy blobFetchPrivacy = bazarish::i2p::Privacy::eMax;
+    };
+    // An add to resolve: an invite URI (byUsername=false) or an alias.
+    struct ContactCardRequest {
+        bool byUsername = false;
+        std::string uriOrAlias;
+        std::string introText;
+    };
+    // The outcome of an off-thread resolve, finalized by commitContactAdd. On
+    // failure ok is false and error carries a human-readable reason (no throw).
+    struct ContactCardResolved {
+        bool ok = false;
+        std::string error;
+        std::string fingerprint;
+        ContactInfo info;
+        std::string displayName;
+        std::string introText;
+    };
+
+    // [worker thread] Snapshot the transport context for an off-thread resolve.
+    ContactFetchContext contactFetchContext() const;
+    // [any thread] Resolve and verify a contact card using a PRIVATE throwaway
+    // transport (its own connection, so it never contends with the session's sync
+    // transport). Touches no session state; never throws.
+    static ContactCardResolved resolveContactCard(
+        const ContactFetchContext& context, const ContactCardRequest& request);
+    // [worker thread] Finalize a resolved add: send the contact request and record
+    // the contact. Returns the contact fingerprint. Throws on a delivery failure.
+    std::string commitContactAdd(const ContactCardResolved& resolved);
+
     // Overrides the central resolver coordinate (root fingerprint + destination +
     // serving key). The shipped client bakes one in (defaultResolverCoordinate);
     // this exists for deployments that point at a different resolver and for tests.
@@ -489,6 +554,8 @@ public:
     struct AttemptOutcome {
         std::string status;
         std::string errorMessage;
+        // The server's live federation phase while still pending (empty otherwise).
+        std::string phase;
     };
     // Re-polls a previously submitted send by its server attempt id to resolve a
     // delivery that was still pending when the send call returned. Never throws.
@@ -581,8 +648,18 @@ public:
     // The current call snapshot (state eIdle when there is none).
     CallInfo currentCall() const;
 
-    // Pulls, decrypts, applies (contacts/tokens) and acks all pending items.
-    std::vector<IncomingMessage> sync();
+    // Pulls and decrypts pending items, applies their contact/token side effects,
+    // and acks items the core consumes itself. autoAckSurfaced (default true) acks a
+    // SURFACED item in the loop too - the simple behaviour the CLI and bots want.
+    // The GUI passes false so a surfaced item is NOT acked here (it comes back with a
+    // non-empty pendingId); the GUI acks it via ackPending only after durably
+    // persisting it, so a crash between fetch and store never loses a message.
+    std::vector<IncomingMessage> sync(bool autoAckSurfaced = true);
+
+    // Acks a pending mailbox item by its server-side blob id (IncomingMessage's
+    // pendingId), removing it from the mailbox. Called after the item has been
+    // durably persisted on the client side. Throws if the server is unreachable.
+    void ackPending(const std::string& pendingId);
 
     bool hasContact(const std::string& peerFingerprint) const;
     // Fingerprints of all known contacts, for UI listing.
@@ -605,8 +682,42 @@ public:
     // edit/reply/delete that references it then resolves on every side); empty mints
     // a fresh one. Fan-out is asynchronous (no per-member delivery poll), like a
     // one-to-one send, so it never blocks the worker.
-    void sendGroupMessage(const std::string& groupId, const std::string& text,
+    // Returns the fan-out coverage {membersReached, totalMembers} so the UI can
+    // show "Sent to N/M members" - membersReached counts every member we handed the
+    // message to (a spent token or the tokenless fallback); a member only fails to
+    // count if even the tokenless submit threw.
+    // Per-member fan-out outcome: handed off (a spent token or the tokenless
+    // fallback) plus the server attempt id, so each member's copy can be polled to
+    // the "delivered to recipient's server" (yellow) state like a one-to-one send.
+    struct MemberOutcome {
+        std::string member;
+        bool ok = false;
+        std::string attemptId;
+    };
+    struct GroupFanout {
+        int reached = 0;
+        int total = 0;
+        std::vector<MemberOutcome> members;
+    };
+    GroupFanout sendGroupMessage(const std::string& groupId, const std::string& text,
         const std::string& replyTo = {}, const std::string& messageId = {});
+    // Re-sends one group text to a single member (a targeted Resend from the "Sent"
+    // view): rebuilds the signed payload with the SAME message id and delivers it
+    // (token, else the tokenless fallback). Returns whether it was handed off.
+    bool sendGroupTextToMember(const std::string& groupId, const std::string& memberFp,
+        const std::string& text, const std::string& replyTo, const std::string& messageId,
+        std::string* outAttemptId = nullptr);
+    // Re-sends one group control event to a single member (a targeted Resend from
+    // the Delivery view), reusing the SAME protocol id so the recipient
+    // deduplicates it. Each rebuilds the current authoritative payload (the name,
+    // the photo, the roster) and returns whether it was handed off; outAttemptId
+    // (when set) receives the server attempt id, for per-member delivery polling.
+    bool resendGroupRenameToMember(const std::string& groupId, const std::string& memberFp,
+        const std::string& messageId, std::string* outAttemptId = nullptr);
+    bool resendGroupAvatarToMember(const std::string& groupId, const std::string& memberFp,
+        const std::string& messageId, std::string* outAttemptId = nullptr);
+    bool resendGroupRosterToMember(const std::string& groupId, const std::string& memberFp,
+        const std::string& messageId, std::string* outAttemptId = nullptr);
 
     // Edits one of our own group messages: fans a signed "edit" to every member
     // (like a group text), so an edit works in a group exactly as in a 1:1 chat
@@ -626,6 +737,12 @@ public:
     std::string groupMemberDisplayName(
         const std::string& groupId, const std::string& memberFingerprint) const;
 
+    // A group member's provisional label (the admin's name for them from the signed
+    // roster), shown until that member sends their own name. Empty when none / for
+    // our own or a non-member fingerprint.
+    std::string groupMemberProvisionalName(
+        const std::string& groupId, const std::string& memberFingerprint) const;
+
     // The group photo bytes and mime as last set by any member (both empty when
     // none). Set the group photo (any member may): persists it, surfaces it, and
     // broadcasts a signed "group.avatar" to every member so it appears in the chat
@@ -634,25 +751,36 @@ public:
     Bytes groupAvatar(const std::string& groupId) const;
     std::string groupAvatarMime(const std::string& groupId) const;
     // Sets the group photo. Admin-only: throws if we are not an admin of the group.
-    void setGroupAvatar(const std::string& groupId, const Bytes& data, const std::string& mime);
+    // Returns the per-member fan-out so the photo gets the same per-member Delivery
+    // tracking and Resend as a group text. messageId, when given, is the shared
+    // protocol id of the optimistic bubble.
+    GroupFanout setGroupAvatar(const std::string& groupId, const Bytes& data,
+        const std::string& mime, const std::string& messageId = {});
 
     // Renames the group (admin-only): updates the name, bumps the roster epoch,
     // re-broadcasts the signed roster (the authoritative name) and sends a signed
     // "group.rename" service message so every member shows a rename notice. Throws
     // if we are not an admin.
-    void setGroupName(const std::string& groupId, const std::string& name);
+    // All control events return the per-member fan-out (the roster broadcast for the
+    // membership/admin ones, the signed notice for rename) so each gets the same
+    // per-member Delivery tracking and Resend as a group text. messageId, when given,
+    // is the shared protocol id of the optimistic bubble.
+    GroupFanout setGroupName(
+        const std::string& groupId, const std::string& name, const std::string& messageId = {});
 
     // Adds existing contacts to a group (admin only): bumps the roster epoch,
     // invites the new members, and tells the existing members. Throws if we are
     // not an admin or a listed member is not an established contact.
-    void addGroupMembers(
-        const std::string& groupId, const std::vector<std::string>& memberFingerprints);
+    GroupFanout addGroupMembers(const std::string& groupId,
+        const std::vector<std::string>& memberFingerprints, const std::string& messageId = {});
     // Removes a member from a group (admin only): bumps the epoch, broadcasts the
     // new roster, and rotates the token pool so the removed member's tokens stop
     // working (revoke our old pool, issue and distribute a fresh one).
-    void removeGroupMember(const std::string& groupId, const std::string& memberFingerprint);
+    GroupFanout removeGroupMember(const std::string& groupId,
+        const std::string& memberFingerprint, const std::string& messageId = {});
     // Grants or revokes a member's admin flag (admin only); broadcasts the roster.
-    void setGroupAdmin(const std::string& groupId, const std::string& memberFingerprint, bool admin);
+    GroupFanout setGroupAdmin(const std::string& groupId, const std::string& memberFingerprint,
+        bool admin, const std::string& messageId = {});
     // Leaves a group: notifies the members and drops local state.
     void leaveGroup(const std::string& groupId);
 
@@ -721,9 +849,15 @@ private:
     // blocked on the federation/ack round-trip), and the caller reconciles the
     // delivered/failed outcome on a later sync. (The amber state arrives via the
     // recipient's signed delivered-ack, so the old inline poll is obsolete.)
+    // establishOnFirstReply (default true): on the FIRST content we send to a peer
+    // that wrote to us first, attach our bootstrap (routing + a reply-token batch)
+    // and mark the contact accepted (issuedToThem). A read receipt passes false so
+    // it can confirm a read WITHOUT auto-accepting an un-accepted contact request -
+    // the request is still accepted explicitly (Agree) or by sending a real message.
     bool sendContent(const std::string& peerFingerprint, nlohmann::json inner,
         const std::function<void()>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, bool waitForOutcome = false);
+        std::string* outAttemptId = nullptr, bool waitForOutcome = false,
+        bool establishOnFirstReply = true);
 
     // Sends the user-owned I2P master to the account's other devices: a
     // service content message ("device.i2p-master") sealed to our own sealing
@@ -845,16 +979,25 @@ private:
     // Revokes our old pool and broadcasts a fresh one - used after a removal so a
     // removed member's stash of our tokens is invalidated.
     void rotateGroupPool(const std::string& groupId);
-    // Re-signs the current roster and broadcasts it (group.roster) to all members.
-    void broadcastRoster(const std::string& groupId);
+    // Re-signs the current roster and broadcasts it (group.roster) to all members,
+    // returning the per-member fan-out. messageId, when given, is reused as the
+    // roster's id so a targeted Resend deduplicates at the recipient.
+    GroupFanout broadcastRoster(const std::string& groupId, const std::string& messageId = {});
     // Delivers a built inner payload to one group member over the contact class
     // (tokenless): used for pool distribution.
     void sendToMemberContact(const std::string& memberFp, const GroupMember& member,
-        const nlohmann::json& inner);
+        const nlohmann::json& inner, std::string* outAttemptId = nullptr);
     // Delivers a built inner payload to one group member over the content class,
     // spending one of that member's pool tokens.
-    void sendToMemberContent(
-        const std::string& groupId, const std::string& memberFp, const nlohmann::json& inner);
+    void sendToMemberContent(const std::string& groupId, const std::string& memberFp,
+        const nlohmann::json& inner, std::string* outAttemptId = nullptr);
+    // Delivers a group content payload to one member, choosing the content class
+    // (spends a token) when we hold one or the tokenless contact class otherwise, so
+    // a member whose pool has not reached us yet still receives it. Best-effort:
+    // swallows a per-member failure so the rest of the fan-out proceeds. outAttemptId
+    // (when set) receives the server attempt id, for per-member delivery polling.
+    bool sendGroupContentToMember(const std::string& groupId, const std::string& memberFp,
+        const GroupMember& member, nlohmann::json inner, std::string* outAttemptId = nullptr);
     void persistGroups() const;
     nlohmann::json groupsToJson() const;
     // Persists / loads the left-group tombstone set (groups-left.json, sealed at
@@ -925,6 +1068,19 @@ private:
     // can never resurrect a chat we deleted. Group content/control for a left id
     // is dropped on sync; a genuine re-invite clears the tombstone. Persisted.
     std::set<std::string> leftGroups_;
+    // Group token grants (a member's pool for delivering to them) that could not be
+    // applied when they arrived because the group or that member was not known yet -
+    // e.g. a member's pool reached us before the roster that adds them. Held ACROSS
+    // syncs (not just within one) and retried after every roster apply, so a grant
+    // that comes in an earlier sync than its roster is not lost. Bounded; the oldest
+    // are dropped past the cap. In-memory only (a fresh pool re-broadcast on the next
+    // membership change re-establishes any grant lost to a restart).
+    struct PendingGroupTokens {
+        std::string groupId;
+        std::string from;
+        std::vector<std::string> tokens;
+    };
+    std::vector<PendingGroupTokens> pendingGroupTokens_;
     // Our own serving destination + serving sealing key (SPKI DER, base64),
     // learned on subscribe (GET /v1/messaging/destination) and forwarded to
     // contacts in the E2E bootstrap so they route and seal replies to us.

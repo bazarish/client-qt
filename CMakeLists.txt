@@ -189,6 +189,8 @@ if(Qt6_FOUND)
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml
             app/qml/ServerHelloDialog.qml
+            app/qml/OperationsOverlay.qml
+            app/qml/OperationRow.qml
             app/qml/components/Avatar.qml
             app/qml/components/QrView.qml
             app/qml/components/DialogButtons.qml

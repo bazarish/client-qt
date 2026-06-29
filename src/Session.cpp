@@ -106,7 +106,14 @@ void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap)
     }
     if (bootstrap.contains("replyTokens")) {
         for (const nlohmann::json& token : bootstrap.at("replyTokens")) {
-            contact.sendTokens.push_back(token.get<std::string>());
+            const std::string t = token.get<std::string>();
+            // Dedup: a pending item may be re-fetched before it is acked (acks are
+            // deferred until the client durably stores the item), so applying the
+            // same bootstrap twice must not double the token stash.
+            if (std::find(contact.sendTokens.begin(), contact.sendTokens.end(), t)
+                == contact.sendTokens.end()) {
+                contact.sendTokens.push_back(t);
+            }
         }
     }
 }
@@ -406,6 +413,7 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
                 member.sendTokens = jm.at("sendTokens").get<std::vector<std::string>>();
                 member.admin = jm.value("admin", false);
                 member.displayName = jm.value("displayName", std::string());
+                member.provisionalName = jm.value("provisionalName", std::string());
                 group.members.emplace(fp, std::move(member));
             }
             session.groups_.emplace(groupId, std::move(group));
@@ -815,6 +823,29 @@ void Session::syncContactNameToSelf(const std::string& peerFingerprint, const st
     deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
 }
 
+void Session::syncChatPinToSelf(const std::string& peerFingerprint, bool pinned)
+{
+    if (myDest_.empty() || myServingKeyB64_.empty()) {
+        return;  // our own routing is not known yet
+    }
+    // Mirror a pin/unpin to our own other devices (a purely local list ordering, so
+    // it rides the same self-addressed device-sync channel as a contact rename).
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.chat-pin"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"peer", peerFingerprint},
+        {"pinned", pinned},
+    };
+    const std::string innerText = inner.dump();
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
+    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+}
+
 void Session::maybeSendAvatarToContact(const std::string& peerFingerprint)
 {
     if (avatar_.empty()) {
@@ -1052,16 +1083,16 @@ Session::AttemptOutcome Session::pollAttempt(const std::string& attemptId)
 {
     try {
         const SendStatus status = client_->pollSend(attemptId);
-        return AttemptOutcome{status.status, status.errorMessage};
+        return AttemptOutcome{status.status, status.errorMessage, status.phase};
     } catch (const ApiError& error) {
         // A definite non-200 response means the server no longer knows this
         // attempt (it expired or the server restarted): report "unknown" so the
         // caller stops tracking it. A transport failure with no HTTP status is
         // transient - report "pending" so the next sync retries.
         if (error.httpStatus != 0) {
-            return AttemptOutcome{"unknown", error.what()};
+            return AttemptOutcome{"unknown", error.what(), {}};
         }
-        return AttemptOutcome{"pending", error.what()};
+        return AttemptOutcome{"pending", error.what(), {}};
     }
 }
 
@@ -1119,6 +1150,91 @@ std::string Session::addByInvite(const std::string& inviteUri, const std::string
     // Adopt the name advertised in the invite as this contact's local label.
     requestWithInfo(descriptor.fingerprint, text, info, descriptor.name);
     return descriptor.fingerprint;
+}
+
+Session::ContactFetchContext Session::contactFetchContext() const
+{
+    ContactFetchContext ctx;
+    ctx.identityPem = client_->identity().privatePem();  // unencrypted in memory
+    ctx.clientId = client_->clientId();
+    ctx.endpoint = endpoint();
+    ctx.i2pDataDir = profileDir_.parent_path() / "i2p";
+    ctx.resolver = resolverCoordinate_;
+    ctx.i2pEnabled = i2pEnabled();
+    ctx.blobFetchPrivacy = blobFetchPrivacy_;
+    return ctx;
+}
+
+Session::ContactCardResolved Session::resolveContactCard(
+    const ContactFetchContext& context, const ContactCardRequest& request)
+{
+    ContactCardResolved out;
+    out.introText = request.introText;
+    // This runs on a background thread (the worker thread stays free for sync), so
+    // time it to confirm the connection is never blocked by a slow/unreachable peer.
+    const auto started = std::chrono::steady_clock::now();
+    const auto elapsedMs = [started]() -> long long {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - started)
+            .count();
+    };
+    bazarish::log::info(
+        "contact-add: resolving card off-thread (byUsername={})...", request.byUsername);
+    try {
+        // A private throwaway client with its OWN connection (and its own request
+        // mutex), so this slow federated fetch never contends with the session's
+        // sync transport. Constructing a Client does no network work.
+        Client fetchClient(Identity::fromPrivatePem(context.identityPem), context.clientId,
+            context.endpoint, context.i2pDataDir);
+        // Mirrors Session::fetchTransport, but bound to the throwaway client: direct
+        // over a transient I2P destination when the router is up, else relay the
+        // sealed bytes through our own server.
+        const FetchTransport transport = [&fetchClient, &context](const std::string& toDest,
+                                             const std::string& op,
+                                             const Bytes& sealed) -> FetchOutcome {
+            if (context.i2pEnabled) {
+                bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
+                if (router != nullptr && router->ready()) {
+                    try {
+                        return federationFetchOverI2p(
+                            *router, toDest, op, sealed, context.blobFetchPrivacy);
+                    } catch (const std::exception&) {
+                        // Direct dial failed; fall back to the server relay below.
+                    }
+                }
+            }
+            return fetchClient.relayFetch(toDest, op, sealed);
+        };
+
+        if (request.byUsername) {
+            const Descriptor descriptor = fetchClient.resolveAlias(
+                normalizeAlias(request.uriOrAlias), context.resolver, nowSeconds(), transport);
+            out.info = fetchClient.fetchCard(descriptor, transport);
+            out.fingerprint = descriptor.fingerprint;
+            out.displayName = request.uriOrAlias;  // the alias typed becomes the label
+        } else {
+            const Descriptor descriptor = parseDescriptor(request.uriOrAlias);
+            out.info = fetchClient.fetchCard(descriptor, transport);
+            out.fingerprint = descriptor.fingerprint;
+            out.displayName = descriptor.name;
+        }
+        out.ok = true;
+        bazarish::log::info("contact-add: card resolved off-thread in {} ms", elapsedMs());
+    } catch (const std::exception& error) {
+        out.error = error.what();
+        out.ok = false;
+        bazarish::log::warn(
+            "contact-add: resolve failed off-thread after {} ms: {}", elapsedMs(), error.what());
+    }
+    return out;
+}
+
+std::string Session::commitContactAdd(const ContactCardResolved& resolved)
+{
+    // Fast: register reply tokens, send the request, record the contact. The slow
+    // card fetch already happened off-thread in resolveContactCard.
+    requestWithInfo(resolved.fingerprint, resolved.introText, resolved.info, resolved.displayName);
+    return resolved.fingerprint;
 }
 
 void Session::setResolverCoordinate(ResolverCoordinate coordinate)
@@ -1271,6 +1387,11 @@ void Session::acceptContactRequest(const std::string& peerFingerprint)
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
+        // Our own display name, so the requester can name us in their roster too -
+        // the reverse direction of the requester's `dn` on the contact request. A
+        // one-time seed (only when they hold no name for us yet), so names are
+        // symmetric after a first exchange, including an add via a group roster.
+        {"dn", name_},
     };
     sendContent(peerFingerprint, std::move(inner));
 }
@@ -1438,16 +1559,15 @@ void Session::sendDelete(const std::string& peerFingerprint, const std::string& 
 
 void Session::sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId)
 {
-    // A read receipt is an automatic background ack, not a deliberate reply. Never
-    // send one to a peer whose incoming contact request we have not accepted yet
-    // (issuedToThem is still false): sendContent would attach our bootstrap and
-    // flip issuedToThem, silently establishing the contact - the request must be
-    // accepted explicitly (the "Agree" button) or implicitly by sending a real
-    // message, never by merely reading it. Suppressing the receipt also avoids
-    // leaking our read status and routing to an un-accepted requester.
+    // A read receipt confirms a read; it must NOT auto-accept an un-accepted contact
+    // request. So it is sent with establishOnFirstReply=false: no bootstrap is
+    // attached and issuedToThem is not flipped, so the sender's message can turn
+    // green (read) while the request stays pending until explicit Agree (or a real
+    // reply). Earlier this bailed entirely for un-accepted contacts, which left the
+    // sender stuck on "yellow"; sending without the bootstrap fixes that.
     const auto found = contacts_.find(peerFingerprint);
-    if (found == contacts_.end() || !found->second.issuedToThem) {
-        return;
+    if (found == contacts_.end() || found->second.sendTokens.empty()) {
+        return;  // unknown contact, or no token to deliver the receipt with
     }
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -1457,7 +1577,8 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
         {"sentAt", nowMillis()},
         {"ref", refMessageId},
     };
-    sendContent(peerFingerprint, std::move(inner));
+    sendContent(peerFingerprint, std::move(inner), {}, nullptr, false,
+        /*establishOnFirstReply=*/false);
 }
 
 void Session::sendReaction(const std::string& peerFingerprint, const std::string& refMessageId,
@@ -1592,7 +1713,7 @@ void Session::saveAttachment(const std::string& ref, const std::string& keyB64,
 
 bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
     const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
-    bool waitForOutcome)
+    bool waitForOutcome, bool establishOnFirstReply)
 {
     const auto found = contacts_.find(peerFingerprint);
     if (found == contacts_.end()) {
@@ -1641,8 +1762,10 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     }
 
     // First reply to a peer that wrote to us first: hand them a bootstrap (our
-    // routing + a token batch) so the reverse direction is usable too.
-    if (!contact.issuedToThem) {
+    // routing + a token batch) so the reverse direction is usable too. A read
+    // receipt (establishOnFirstReply=false) skips this, so confirming a read never
+    // auto-accepts an un-accepted contact request.
+    if (establishOnFirstReply && !contact.issuedToThem) {
         inner["bootstrap"] = {
             {"sealing", sealingPublicB64()},
             {"dest", myDest_},
@@ -1789,7 +1912,7 @@ void Session::persistSentBlobs() const
     writeFileText(profileDir_ / "sent-blobs.json", stored.dump(2));
 }
 
-std::vector<IncomingMessage> Session::sync()
+std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
 {
     std::vector<IncomingMessage> result;
     // Peers whose stash of our tokens is running low and who asked for a
@@ -1805,11 +1928,16 @@ std::vector<IncomingMessage> Session::sync()
     // Groups where a member was removed: rotate our pool after the loop so the
     // removed member's stash of our tokens stops working.
     std::set<std::string> rotateGroups;
+    // Groups where a roster added a member: hand that member OUR pool after the
+    // loop. On an add only the admin's pool and the newcomer's own pool flow, so
+    // without this an existing member and the newcomer can never deliver to each
+    // other (the asymmetric "A sees B but B never sees A" silence).
+    std::set<std::string> poolRefreshGroups;
     bool groupsTouched = false;
     // Records the sender's group pool. Returns false when the group or member is
-    // not known yet (e.g. the tokens arrived before the invite this same sync).
+    // not known yet (e.g. the tokens arrived before the invite/roster).
     const auto applyGroupTokens = [this](const std::string& groupId, const std::string& from,
-                                      const nlohmann::json& tokens) -> bool {
+                                      const std::vector<std::string>& tokens) -> bool {
         const auto group = groups_.find(groupId);
         if (group == groups_.end()) {
             return false;
@@ -1818,19 +1946,32 @@ std::vector<IncomingMessage> Session::sync()
         if (member == group->second.members.end()) {
             return false;
         }
-        for (const nlohmann::json& token : tokens) {
-            member->second.sendTokens.push_back(token.get<std::string>());
+        for (const std::string& t : tokens) {
+            // Dedup, like applyBootstrap: a pre-ack re-fetch must not double tokens.
+            if (std::find(member->second.sendTokens.begin(), member->second.sendTokens.end(), t)
+                == member->second.sendTokens.end()) {
+                member->second.sendTokens.push_back(t);
+            }
         }
         return true;
     };
-    // Token grants that did not apply yet (unknown group/member), retried after
-    // the loop so delivery order within a sync does not matter.
-    struct DeferredTokens {
-        std::string groupId;
-        std::string from;
-        nlohmann::json tokens;
+    // Park a token grant that could not be applied yet onto the cross-sync backlog
+    // (deduping a re-delivered grant and bounding the backlog), so a grant that
+    // arrives in an earlier sync than its roster is retried later, not lost.
+    const auto rememberPendingGroupTokens = [this](const std::string& groupId,
+                                                const std::string& from,
+                                                const std::vector<std::string>& tokens) {
+        for (const PendingGroupTokens& p : pendingGroupTokens_) {
+            if (p.groupId == groupId && p.from == from && p.tokens == tokens) {
+                return;
+            }
+        }
+        constexpr std::size_t kMaxPendingGroupTokenGrants = 64;
+        if (pendingGroupTokens_.size() >= kMaxPendingGroupTokenGrants) {
+            pendingGroupTokens_.erase(pendingGroupTokens_.begin());
+        }
+        pendingGroupTokens_.push_back({groupId, from, tokens});
     };
-    std::vector<DeferredTokens> deferredTokens;
     for (const PendingEntry& entry : client_->listPending()) {
         try {
             const Bytes blob = client_->fetchBlob(entry.id);
@@ -1854,16 +1995,18 @@ std::vector<IncomingMessage> Session::sync()
                 establishedPeers.insert(message.fromFingerprint);
             }
 
-            // A contact request carries the requester's self-chosen display name
-            // (`dn`); adopt it as this contact's initial local label so we show a
-            // named friend instead of a bare fingerprint. Only seeds an empty name
-            // (never overwrites a name we already hold or the user later set), so a
-            // peer can never rename themselves in our roster after the fact.
-            if (type == "contact.request") {
+            // A contact request OR its acceptance carries the sender's self-chosen
+            // display name (`dn`); adopt it as this contact's initial local label so
+            // we show a named friend instead of a bare fingerprint - in BOTH
+            // directions (requester names the accepter and vice versa), including an
+            // add via a group roster. Only seeds an empty name (never overwrites a
+            // name we already hold or the user later set), so a peer can never rename
+            // themselves in our roster after the fact.
+            if (type == "contact.request" || type == "contact.accept") {
                 const std::string dn = body.value("dn", std::string());
-                Contact& requester = contacts_[message.fromFingerprint];
-                if (!dn.empty() && requester.displayName.empty()) {
-                    requester.displayName = dn;
+                Contact& peer = contacts_[message.fromFingerprint];
+                if (!dn.empty() && peer.displayName.empty()) {
+                    peer.displayName = dn;
                 }
             }
 
@@ -2004,6 +2147,16 @@ std::vector<IncomingMessage> Session::sync()
                         named->second.displayName = body.value("name", std::string());
                     }
                 }
+            } else if (type == "device.chat-pin") {
+                // A pin/unpin mirrored from another of our devices. The pin list lives
+                // in the client's local store, so surface it (the peer in refId, the
+                // pinned flag in text) for the GUI to apply. Honoured only from us.
+                message.contentType = type;
+                if (message.fromFingerprint == fingerprint()) {
+                    message.refId = body.value("peer", std::string());
+                    message.text
+                        = body.value("pinned", false) ? std::string("1") : std::string("0");
+                }
             } else if (type == "group.invite") {
                 // Added to a group: verify and store the signed roster, then bootstrap
                 // our token pool to its members after the loop.
@@ -2029,17 +2182,21 @@ std::vector<IncomingMessage> Session::sync()
                 }
             } else if (type == "group.tokens") {
                 // A member's token pool for a group; record it so we can deliver to
-                // them. Deferred when the invite has not been applied yet this sync.
+                // them. Held on the cross-sync backlog when the group/member is not
+                // known yet (its invite or roster has not arrived), retried later.
                 message.contentType = type;
                 message.groupId = body.value("groupId", std::string());
                 // A token pool for a group we left must not re-create it.
                 if (leftGroups_.count(message.groupId) == 0) {
-                    const nlohmann::json tokens = body.value("tokens", nlohmann::json::array());
+                    std::vector<std::string> tokens;
+                    for (const auto& token : body.value("tokens", nlohmann::json::array())) {
+                        tokens.push_back(token.get<std::string>());
+                    }
                     if (applyGroupTokens(message.groupId, message.fromFingerprint, tokens)) {
                         groupsTouched = true;
                     } else {
-                        deferredTokens.push_back(
-                            {message.groupId, message.fromFingerprint, tokens});
+                        rememberPendingGroupTokens(
+                            message.groupId, message.fromFingerprint, tokens);
                     }
                 }
             } else if (type == "group.roster") {
@@ -2059,6 +2216,9 @@ std::vector<IncomingMessage> Session::sync()
                         groupsTouched = true;
                         if (shrank) {
                             rotateGroups.insert(message.groupId);
+                        }
+                        if (!added.empty()) {
+                            poolRefreshGroups.insert(message.groupId);
                         }
                         message.groupAddedMembers = std::move(added);
                     } catch (const std::exception&) {
@@ -2198,7 +2358,16 @@ std::vector<IncomingMessage> Session::sync()
                 message.replyTo = body.value("replyTo", std::string());
             }
 
-            client_->ack(entry.id);
+            // Ack now (CLI/bots), or defer to the caller (GUI). Deferring acks a
+            // surfaced item only after the client has durably stored it, so a
+            // crash/restart between fetch and store never loses it. Re-processing on
+            // a pre-ack re-fetch is safe - applyBootstrap/applyGroupTokens dedup
+            // tokens and the GUI dedups by messageId.
+            if (autoAckSurfaced) {
+                client_->ack(entry.id);
+            } else {
+                message.pendingId = entry.id;
+            }
             result.push_back(std::move(message));
         } catch (const std::exception& error) {
             // Isolate a poison item: a single unreadable pending entry must
@@ -2234,11 +2403,20 @@ std::vector<IncomingMessage> Session::sync()
             bazarish::log::warn("sync: token refill failed: {}", error.what());
         }
     }
-    // Re-apply token grants whose group/invite was processed later in this sync.
-    for (const DeferredTokens& deferred : deferredTokens) {
-        if (applyGroupTokens(deferred.groupId, deferred.from, deferred.tokens)) {
-            groupsTouched = true;
+    // Retry parked token grants (their group/roster had not arrived when they
+    // came in). Held ACROSS syncs, so a grant that arrived in an earlier sync than
+    // its roster still lands. Applied grants drop off; the rest wait for a later
+    // roster.
+    if (!pendingGroupTokens_.empty()) {
+        std::vector<PendingGroupTokens> stillPending;
+        for (PendingGroupTokens& parked : pendingGroupTokens_) {
+            if (applyGroupTokens(parked.groupId, parked.from, parked.tokens)) {
+                groupsTouched = true;
+            } else {
+                stillPending.push_back(std::move(parked));
+            }
         }
+        pendingGroupTokens_ = std::move(stillPending);
     }
     // Hand our token pool to the members of any group we were just invited to.
     for (const std::string& groupId : bootstrapGroups) {
@@ -2247,6 +2425,19 @@ std::vector<IncomingMessage> Session::sync()
             broadcastGroupPool(groupId);
         } catch (const std::exception& error) {
             bazarish::log::warn("sync: group pool broadcast failed: {}", error.what());
+        }
+    }
+    // Hand our pool to groups where a roster just added a member (existing-member
+    // side), so the newcomer can deliver to us - the bootstrap broadcast above
+    // already covers a group we were ourselves just invited to.
+    for (const std::string& groupId : poolRefreshGroups) {
+        if (bootstrapGroups.find(groupId) != bootstrapGroups.end()) {
+            continue;
+        }
+        try {
+            broadcastGroupPool(groupId);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("sync: group pool refresh failed: {}", error.what());
         }
     }
     // Rotate our pool for groups where someone was removed (cut them off).
@@ -2263,6 +2454,13 @@ std::vector<IncomingMessage> Session::sync()
         persistGroups();
     }
     return result;
+}
+
+void Session::ackPending(const std::string& pendingId)
+{
+    if (!pendingId.empty()) {
+        client_->ack(pendingId);
+    }
 }
 
 void Session::sendTokenRefill(const std::string& peerFingerprint)
@@ -2566,13 +2764,18 @@ std::string Session::signedRosterB64(const std::string& groupId) const
     nlohmann::json members = nlohmann::json::array();
     nlohmann::json admins = nlohmann::json::array();
 
-    // Our own entry first (with our routing), then every other member.
+    // Our own entry first (with our routing), then every other member. Each entry
+    // carries `dn` - a display name the signer (an admin) supplies for that member:
+    // our own self-chosen name for ourselves, and our local contact name for any
+    // member we know, so a recipient who has neither a contact for them nor a
+    // message from them yet can still show a name. Empty when we have no name.
     members.push_back({
         {"fp", fingerprint()},
         {"sealing", sealingPublicB64()},
         {"dest", myDest_},
         {"servingKey", ownServingKeyB64()},
         {"admin", group.iAmAdmin},
+        {"dn", name_},
     });
     if (group.iAmAdmin) {
         admins.push_back(fingerprint());
@@ -2584,6 +2787,7 @@ std::string Session::signedRosterB64(const std::string& groupId) const
             {"dest", member.dest},
             {"servingKey", member.servingSealingB64},
             {"admin", member.admin},
+            {"dn", contactDisplayName(fp)},
         });
         if (member.admin) {
             admins.push_back(fp);
@@ -2679,10 +2883,17 @@ void Session::applyRoster(const std::string& groupId, const Bytes& rosterDer,
         return;  // stale roster
     }
 
-    // Preserve pool tokens we already hold for members that remain.
+    // Preserve pool tokens and learned names we already hold for members that
+    // remain - the rebuild below clears the roster, so without this a member's own
+    // display name (and any earlier provisional label) would be wiped on every
+    // roster update.
     std::map<std::string, std::vector<std::string>> keptTokens;
+    std::map<std::string, std::string> keptDisplayNames;
+    std::map<std::string, std::string> keptProvisionalNames;
     for (const auto& [fp, member] : group.members) {
         keptTokens[fp] = member.sendTokens;
+        keptDisplayNames[fp] = member.displayName;
+        keptProvisionalNames[fp] = member.provisionalName;
     }
 
     group.name = body.value("name", group.name);
@@ -2706,6 +2917,21 @@ void Session::applyRoster(const std::string& groupId, const Bytes& rosterDer,
         const auto kept = keptTokens.find(fp);
         if (kept != keptTokens.end()) {
             member.sendTokens = kept->second;
+        }
+        const auto keptName = keptDisplayNames.find(fp);
+        if (keptName != keptDisplayNames.end()) {
+            member.displayName = keptName->second;
+        }
+        // The admin's provisional label for this member: a fresh, non-empty one in
+        // the roster overrides; an absent one keeps whatever we already had.
+        const std::string rosterDn = jm.value("dn", std::string());
+        if (!rosterDn.empty()) {
+            member.provisionalName = rosterDn;
+        } else {
+            const auto keptProv = keptProvisionalNames.find(fp);
+            if (keptProv != keptProvisionalNames.end()) {
+                member.provisionalName = keptProv->second;
+            }
         }
         group.members.emplace(fp, std::move(member));
     }
@@ -2734,19 +2960,22 @@ void Session::applyRoster(const std::string& groupId, const Bytes& rosterDer,
     }
 }
 
-void Session::sendToMemberContact(
-    const std::string& memberFp, const GroupMember& member, const nlohmann::json& inner)
+void Session::sendToMemberContact(const std::string& memberFp, const GroupMember& member,
+    const nlohmann::json& inner, std::string* outAttemptId)
 {
     const std::string text = inner.dump();
     const Key memberSealing = Key::fromPublicDer(fromBase64(member.sealingPublicB64));
     const Bytes payload = cms::seal(Bytes(text.begin(), text.end()), memberSealing);
     const Key memberServingKey = Key::fromPublicDer(fromBase64(member.servingSealingB64));
-    // Tokenless contact-class delivery - the standing path into any mailbox.
-    deliver(member.dest, memberServingKey, "contact", memberFp, std::nullopt, payload);
+    // Tokenless contact-class delivery - the standing path into any mailbox. Submit
+    // without blocking on the outcome (store-and-forward federates in the background);
+    // the caller reconciles the attempt to yellow/green/red later.
+    deliver(member.dest, memberServingKey, "contact", memberFp, std::nullopt, payload, {}, nullptr,
+        outAttemptId, /*waitForOutcome=*/false);
 }
 
-void Session::sendToMemberContent(
-    const std::string& groupId, const std::string& memberFp, const nlohmann::json& inner)
+void Session::sendToMemberContent(const std::string& groupId, const std::string& memberFp,
+    const nlohmann::json& inner, std::string* outAttemptId)
 {
     Group& group = groups_.at(groupId);
     GroupMember& member = group.members.at(memberFp);
@@ -2767,7 +2996,26 @@ void Session::sendToMemberContent(
     const std::string token = member.sendTokens.back();
     member.sendTokens.pop_back();
     deliver(member.dest, memberServingKey, "content", memberFp, fromBase64(token), payload, {},
-        nullptr, nullptr, false);
+        nullptr, outAttemptId, false);
+}
+
+bool Session::sendGroupContentToMember(const std::string& groupId, const std::string& memberFp,
+    const GroupMember& member, nlohmann::json inner, std::string* outAttemptId)
+{
+    try {
+        if (!member.sendTokens.empty()) {
+            sendToMemberContent(groupId, memberFp, std::move(inner), outAttemptId);
+        } else {
+            // No token yet (a just-added member before their pool reached us): fall
+            // back to the tokenless contact class so the message is never silently
+            // dropped. Content-class resumes once their pool arrives.
+            sendToMemberContact(memberFp, member, inner, outAttemptId);
+        }
+        return true;
+    } catch (const std::exception&) {
+        // Best-effort per member: a single unreachable member never aborts the rest.
+        return false;
+    }
 }
 
 std::vector<std::string> Session::issueGroupPool(Group& group)
@@ -2907,7 +3155,7 @@ std::optional<std::string> Session::authenticateGroupSender(const nlohmann::json
     return std::nullopt;
 }
 
-void Session::sendGroupMessage(
+Session::GroupFanout Session::sendGroupMessage(
     const std::string& groupId, const std::string& text, const std::string& replyTo,
     const std::string& messageId)
 {
@@ -2936,13 +3184,9 @@ void Session::sendGroupMessage(
         {"dn", name_},
     };
     const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
-    std::vector<std::string> targets;
+    GroupFanout coverage;
+    coverage.total = static_cast<int>(group.members.size());
     for (const auto& [fp, member] : group.members) {
-        if (!member.sendTokens.empty()) {
-            targets.push_back(fp);
-        }
-    }
-    for (const std::string& fp : targets) {
         nlohmann::json inner = {
             {"v", kMessageFormatVersion},
             {"type", "text"},
@@ -2959,14 +3203,175 @@ void Session::sendGroupMessage(
         if (!replyTo.empty()) {
             inner["replyTo"] = replyTo;
         }
-        // Best-effort fan-out: a member we cannot currently reach (pool drained)
-        // is skipped, not allowed to abort delivery to the others.
-        try {
-            sendToMemberContent(groupId, fp, std::move(inner));
-        } catch (const std::exception&) {
+        // Fan out to every member: content class when we hold a token, else the
+        // tokenless contact-class fallback so a just-added member (whose pool has not
+        // reached us yet) is never silently skipped - the admin's first message used
+        // to vanish until that member wrote first. See sendGroupContentToMember.
+        std::string attemptId;
+        const bool ok = sendGroupContentToMember(groupId, fp, member, std::move(inner), &attemptId);
+        coverage.members.push_back(MemberOutcome{fp, ok, attemptId});
+        if (ok) {
+            ++coverage.reached;
         }
     }
     persistGroups();
+    return coverage;
+}
+
+bool Session::sendGroupTextToMember(const std::string& groupId, const std::string& memberFp,
+    const std::string& text, const std::string& replyTo, const std::string& messageId,
+    std::string* outAttemptId)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        throw std::runtime_error("unknown group: " + groupId);
+    }
+    Group& group = found->second;
+    const auto member = group.members.find(memberFp);
+    if (member == group.members.end()) {
+        return false;  // no longer a member
+    }
+    const std::int64_t sentAt = nowMillis();
+    // Re-sign with the SAME id so the recipient's copy (and any edit/reply that
+    // references it) matches the original; the recipient dedups a copy it already has.
+    const nlohmann::json gsigBody = {
+        {"type", "text"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"text", text},
+        {"dn", name_},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "text"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"sentAt", sentAt},
+        {"text", text},
+        {"dn", name_},
+        {"group", {{"id", groupId}}},
+        {"gsig", gsig},
+    };
+    if (!replyTo.empty()) {
+        inner["replyTo"] = replyTo;
+    }
+    const bool ok = sendGroupContentToMember(
+        groupId, memberFp, member->second, std::move(inner), outAttemptId);
+    persistGroups();
+    return ok;
+}
+
+bool Session::resendGroupRenameToMember(const std::string& groupId, const std::string& memberFp,
+    const std::string& messageId, std::string* outAttemptId)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        throw std::runtime_error("unknown group: " + groupId);
+    }
+    Group& group = found->second;
+    const auto member = group.members.find(memberFp);
+    if (member == group.members.end()) {
+        return false;  // no longer a member
+    }
+    const std::string& name = group.name;
+    const std::int64_t sentAt = nowMillis();
+    const nlohmann::json gsigBody = {
+        {"type", "group.rename"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"text", name},
+        {"dn", name_},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "group.rename"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"sentAt", sentAt},
+        {"text", name},
+        {"dn", name_},
+        {"group", {{"id", groupId}}},
+        {"gsig", gsig},
+    };
+    const bool ok = sendGroupContentToMember(
+        groupId, memberFp, member->second, std::move(inner), outAttemptId);
+    persistGroups();
+    return ok;
+}
+
+bool Session::resendGroupAvatarToMember(const std::string& groupId, const std::string& memberFp,
+    const std::string& messageId, std::string* outAttemptId)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        throw std::runtime_error("unknown group: " + groupId);
+    }
+    Group& group = found->second;
+    const auto member = group.members.find(memberFp);
+    if (member == group.members.end()) {
+        return false;  // no longer a member
+    }
+    const std::int64_t sentAt = nowMillis();
+    const nlohmann::json gsigBody = {
+        {"type", "group.avatar"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"text", std::string()},
+        {"dn", name_},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "group.avatar"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"sentAt", sentAt},
+        {"dn", name_},
+        {"avatar", {{"mime", group.avatarMime}, {"data", toBase64(group.avatar)}}},
+        {"group", {{"id", groupId}}},
+        {"gsig", gsig},
+    };
+    const bool ok = sendGroupContentToMember(
+        groupId, memberFp, member->second, std::move(inner), outAttemptId);
+    persistGroups();
+    return ok;
+}
+
+bool Session::resendGroupRosterToMember(const std::string& groupId, const std::string& memberFp,
+    const std::string& messageId, std::string* outAttemptId)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        throw std::runtime_error("unknown group: " + groupId);
+    }
+    Group& group = found->second;
+    const auto member = group.members.find(memberFp);
+    if (member == group.members.end()) {
+        return false;  // no longer a member
+    }
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "group.roster"},
+        {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"groupId", groupId},
+        {"roster", signedRosterB64(groupId)},
+    };
+    try {
+        sendToMemberContact(memberFp, member->second, inner, outAttemptId);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
 }
 
 void Session::sendGroupEdit(
@@ -2993,13 +3398,7 @@ void Session::sendGroupEdit(
         {"dn", name_},
     };
     const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
-    std::vector<std::string> targets;
     for (const auto& [fp, member] : group.members) {
-        if (!member.sendTokens.empty()) {
-            targets.push_back(fp);
-        }
-    }
-    for (const std::string& fp : targets) {
         nlohmann::json inner = {
             {"v", kMessageFormatVersion},
             {"type", "edit"},
@@ -3012,10 +3411,7 @@ void Session::sendGroupEdit(
             {"group", {{"id", groupId}}},
             {"gsig", gsig},
         };
-        try {
-            sendToMemberContent(groupId, fp, std::move(inner));
-        } catch (const std::exception&) {
-        }
+        sendGroupContentToMember(groupId, fp, member, std::move(inner));
     }
     persistGroups();
 }
@@ -3047,8 +3443,9 @@ std::string Session::groupAvatarMime(const std::string& groupId) const
     return found == groups_.end() ? std::string() : found->second.avatarMime;
 }
 
-void Session::setGroupAvatar(
-    const std::string& groupId, const Bytes& data, const std::string& mime)
+Session::GroupFanout Session::setGroupAvatar(
+    const std::string& groupId, const Bytes& data, const std::string& mime,
+    const std::string& messageId)
 {
     if (data.size() > kAvatarMaxBytes) {
         throw std::runtime_error("group photo exceeds the 500 KB protocol limit");
@@ -3067,8 +3464,9 @@ void Session::setGroupAvatar(
     // Broadcast a signed group.avatar so the photo appears in every member's chat
     // as a message from us. Identical shape to a group text (gsig over identifying
     // fields + our self-name) so the recipient authenticates the setter; the image
-    // rides in the sealed inner payload. Best effort, like a group text.
-    const std::string id = toHex(randomBytes(8));
+    // rides in the sealed inner payload. Fan out to every member with the
+    // content-or-contact fallback, collecting per-member outcomes for Delivery.
+    const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
     const std::int64_t sentAt = nowMillis();
     const nlohmann::json gsigBody = {
         {"type", "group.avatar"},
@@ -3080,13 +3478,9 @@ void Session::setGroupAvatar(
         {"dn", name_},
     };
     const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
-    std::vector<std::string> targets;
+    GroupFanout coverage;
+    coverage.total = static_cast<int>(group.members.size());
     for (const auto& [fp, member] : group.members) {
-        if (!member.sendTokens.empty()) {
-            targets.push_back(fp);
-        }
-    }
-    for (const std::string& fp : targets) {
         nlohmann::json inner = {
             {"v", kMessageFormatVersion},
             {"type", "group.avatar"},
@@ -3098,15 +3492,19 @@ void Session::setGroupAvatar(
             {"group", {{"id", groupId}}},
             {"gsig", gsig},
         };
-        try {
-            sendToMemberContent(groupId, fp, std::move(inner));
-        } catch (const std::exception&) {
+        std::string attemptId;
+        const bool ok = sendGroupContentToMember(groupId, fp, member, std::move(inner), &attemptId);
+        coverage.members.push_back(MemberOutcome{fp, ok, attemptId});
+        if (ok) {
+            ++coverage.reached;
         }
     }
     persistGroups();
+    return coverage;
 }
 
-void Session::setGroupName(const std::string& groupId, const std::string& name)
+Session::GroupFanout Session::setGroupName(
+    const std::string& groupId, const std::string& name, const std::string& messageId)
 {
     const auto found = groups_.find(groupId);
     if (found == groups_.end()) {
@@ -3120,12 +3518,16 @@ void Session::setGroupName(const std::string& groupId, const std::string& name)
     group.epoch += 1;
     persistGroups();
     // The roster is the authoritative, epoch-protected name (so a stale roster
-    // cannot revert it and late joiners learn the new name).
+    // cannot revert it and late joiners learn the new name). It rides alongside the
+    // notice; the recipient adopts the name from the notice itself, so the tracked
+    // and Resend-able fan-out below is the visible rename notice.
     broadcastRoster(groupId);
 
     // A signed service message so every member shows a highlighted rename notice
-    // (same fan-out shape as a group text; the name rides in `text`).
-    const std::string id = toHex(randomBytes(8));
+    // (same fan-out shape as a group text; the name rides in `text`). Every member
+    // is covered with the content-or-contact fallback so the per-member Delivery
+    // tracking matches a text.
+    const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
     const std::int64_t sentAt = nowMillis();
     const nlohmann::json gsigBody = {
         {"type", "group.rename"},
@@ -3137,10 +3539,9 @@ void Session::setGroupName(const std::string& groupId, const std::string& name)
         {"dn", name_},
     };
     const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    GroupFanout coverage;
+    coverage.total = static_cast<int>(group.members.size());
     for (const auto& [fp, member] : group.members) {
-        if (member.sendTokens.empty()) {
-            continue;
-        }
         nlohmann::json inner = {
             {"v", kMessageFormatVersion},
             {"type", "group.rename"},
@@ -3152,12 +3553,15 @@ void Session::setGroupName(const std::string& groupId, const std::string& name)
             {"group", {{"id", groupId}}},
             {"gsig", gsig},
         };
-        try {
-            sendToMemberContent(groupId, fp, std::move(inner));
-        } catch (const std::exception&) {
+        std::string attemptId;
+        const bool ok = sendGroupContentToMember(groupId, fp, member, std::move(inner), &attemptId);
+        coverage.members.push_back(MemberOutcome{fp, ok, attemptId});
+        if (ok) {
+            ++coverage.reached;
         }
     }
     persistGroups();
+    return coverage;
 }
 
 void Session::rotateGroupPool(const std::string& groupId)
@@ -3167,24 +3571,40 @@ void Session::rotateGroupPool(const std::string& groupId)
     broadcastGroupPool(groupId);  // issues a fresh pool to the current members
 }
 
-void Session::broadcastRoster(const std::string& groupId)
+Session::GroupFanout Session::broadcastRoster(
+    const std::string& groupId, const std::string& messageId)
 {
     Group& group = groups_.at(groupId);
     const std::string roster = signedRosterB64(groupId);
     const nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "group.roster"},
-        {"id", toHex(randomBytes(8))},
+        {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"groupId", groupId},
         {"roster", roster},
     };
     // Tokenless contact class so a critical roster update never fails on a
-    // drained pool.
+    // drained pool. Each member's outcome is collected so a roster-carried control
+    // event (add/remove/admin) gets the same per-member Delivery tracking as a text.
+    GroupFanout coverage;
+    coverage.total = static_cast<int>(group.members.size());
     for (const auto& [fp, member] : group.members) {
-        sendToMemberContact(fp, member, inner);
+        std::string attemptId;
+        bool ok = false;
+        try {
+            sendToMemberContact(fp, member, inner, &attemptId);
+            ok = true;
+        } catch (const std::exception&) {
+            // Best-effort per member: a single unreachable member never aborts the rest.
+        }
+        coverage.members.push_back(MemberOutcome{fp, ok, attemptId});
+        if (ok) {
+            ++coverage.reached;
+        }
     }
+    return coverage;
 }
 
 bool Session::isGroupAdmin(const std::string& groupId) const
@@ -3204,8 +3624,8 @@ bool Session::isGroupMemberAdmin(
     return member != group->second.members.end() && member->second.admin;
 }
 
-void Session::addGroupMembers(
-    const std::string& groupId, const std::vector<std::string>& memberFingerprints)
+Session::GroupFanout Session::addGroupMembers(const std::string& groupId,
+    const std::vector<std::string>& memberFingerprints, const std::string& messageId)
 {
     Group& group = groups_.at(groupId);
     if (!group.iAmAdmin) {
@@ -3229,7 +3649,7 @@ void Session::addGroupMembers(
         added.push_back(fp);
     }
     if (added.empty()) {
-        return;
+        return {};
     }
     group.epoch += 1;
     persistGroups();
@@ -3248,29 +3668,34 @@ void Session::addGroupMembers(
         };
         sendContent(fp, std::move(invite));
     }
-    broadcastRoster(groupId);     // existing members learn the new roster
+    // The roster broadcast to the existing members is the tracked, Resend-able
+    // fan-out (the "you added X" notice's delivery); the new members also get it.
+    GroupFanout coverage = broadcastRoster(groupId, messageId);
     broadcastGroupPool(groupId);  // hand the new members our pool
     persistGroups();
+    return coverage;
 }
 
-void Session::removeGroupMember(const std::string& groupId, const std::string& memberFingerprint)
+Session::GroupFanout Session::removeGroupMember(
+    const std::string& groupId, const std::string& memberFingerprint, const std::string& messageId)
 {
     Group& group = groups_.at(groupId);
     if (!group.iAmAdmin) {
         throw std::runtime_error("only a group admin can remove members");
     }
     if (group.members.erase(memberFingerprint) == 0) {
-        return;
+        return {};
     }
     group.epoch += 1;
     persistGroups();
-    broadcastRoster(groupId);   // remaining members get the roster without them
+    GroupFanout coverage = broadcastRoster(groupId, messageId);  // remaining members get the roster
     rotateGroupPool(groupId);   // our old pool (which the removed member holds) stops working
     persistGroups();
+    return coverage;
 }
 
-void Session::setGroupAdmin(
-    const std::string& groupId, const std::string& memberFingerprint, bool admin)
+Session::GroupFanout Session::setGroupAdmin(const std::string& groupId,
+    const std::string& memberFingerprint, bool admin, const std::string& messageId)
 {
     Group& group = groups_.at(groupId);
     if (!group.iAmAdmin) {
@@ -3283,7 +3708,7 @@ void Session::setGroupAdmin(
     member->second.admin = admin;
     group.epoch += 1;
     persistGroups();
-    broadcastRoster(groupId);
+    return broadcastRoster(groupId, messageId);
 }
 
 void Session::leaveGroup(const std::string& groupId)
@@ -3367,6 +3792,17 @@ std::string Session::groupMemberDisplayName(
     return member == group->second.members.end() ? std::string() : member->second.displayName;
 }
 
+std::string Session::groupMemberProvisionalName(
+    const std::string& groupId, const std::string& memberFingerprint) const
+{
+    const auto group = groups_.find(groupId);
+    if (group == groups_.end()) {
+        return std::string();
+    }
+    const auto member = group->second.members.find(memberFingerprint);
+    return member == group->second.members.end() ? std::string() : member->second.provisionalName;
+}
+
 nlohmann::json Session::groupsToJson() const
 {
     nlohmann::json out = nlohmann::json::object();
@@ -3380,6 +3816,7 @@ nlohmann::json Session::groupsToJson() const
                 {"sendTokens", member.sendTokens},
                 {"admin", member.admin},
                 {"displayName", member.displayName},
+                {"provisionalName", member.provisionalName},
             };
         }
         out[groupId] = {

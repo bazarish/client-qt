@@ -55,6 +55,14 @@ struct Reaction {
     QString emoji;
 };
 
+// Per-member delivery status for one of our own group messages (the "Delivery"
+// view). status is a DeliveryStatus: 1 at-our-server (grey), 2 at-recipient-server
+// (yellow), 4 failed (red). "Read" (green) is derived separately from group_views.
+struct GroupDeliveryRow {
+    QString member;
+    int status = 0;
+};
+
 // Persistent local message log for one profile. When a passphrase is given the
 // database is never written to disk in the clear: it lives in an in-memory
 // SQLite connection and is persisted as a single CMS PWRI-sealed blob
@@ -128,6 +136,10 @@ public:
     QVector<SearchHit> searchInPeer(const QString& peer, const QString& query) const;
     QString lastText(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
+    // Every distinct conversation key (contact fingerprint or group id) that has at
+    // least one stored message. Lets the chat list surface a conversation whose
+    // contact record was lost, so its transcript is never silently hidden.
+    QStringList conversationPeers() const;
 
     // --- Read state (persistent unread tracking) ---
     // A per-peer high-water of the last locally-read incoming message id. It only
@@ -136,6 +148,11 @@ public:
     // are accurate across sessions.
     void setLastReadId(const QString& peer, qint64 id);
     qint64 lastReadId(const QString& peer) const;
+
+    // --- Pinned chats (kept at the top of the chat list; synced across devices) ---
+    void setPinned(const QString& peer, bool pinned);
+    bool isPinned(const QString& peer) const;
+    QStringList pinnedPeers() const;
     // The number of incoming messages newer than the read high-water (the unread
     // badge count for this conversation).
     int unreadCount(const QString& peer) const;
@@ -156,6 +173,11 @@ public:
     void addView(const QString& peer, const QString& target, const QString& viewer);
     // Every member who has read `target`, for the viewers list and the green status.
     QStringList viewersFor(const QString& peer, const QString& target) const;
+
+    // --- Per-member group send outcome (the "Sent" view + targeted Resend) ---
+    void setGroupDelivery(
+        const QString& peer, const QString& target, const QString& member, int status);
+    QVector<GroupDeliveryRow> groupDeliveryFor(const QString& peer, const QString& target) const;
 
 private:
     // Serializes the in-memory database and writes the sealed blob. No-op when

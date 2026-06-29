@@ -109,6 +109,9 @@ struct PortalInfo {
 // on failure errorCode carries the typed reason when recognized.
 struct SendStatus {
     std::string status;
+    // The server's live federation phase while pending ("queued", "dialing",
+    // "connected", "sending", "awaiting-ack"); empty when not reported / terminal.
+    std::string phase;
     std::optional<ErrorCode> errorCode;
     std::string errorMessage;
 };

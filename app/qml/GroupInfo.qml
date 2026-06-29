@@ -177,9 +177,17 @@ Popup {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 6
+                            // A local contact shows bright; the member's own name
+                            // green; an admin-supplied provisional label is muted and
+                            // parenthesised (it is replaced by the member's own name
+                            // once they send in the group).
                             Label {
-                                text: memberRow.info ? memberRow.info.name : memberRow.modelData
-                                color: (memberRow.info && memberRow.info.isContact) ? Theme.text : Theme.green
+                                readonly property bool provisional:
+                                    memberRow.info && memberRow.info.provisional === true
+                                text: !memberRow.info ? memberRow.modelData
+                                    : (provisional ? "(" + memberRow.info.name + ")" : memberRow.info.name)
+                                color: (memberRow.info && memberRow.info.isContact) ? Theme.text
+                                    : (provisional ? Theme.textDim : Theme.green)
                                 elide: Text.ElideRight; Layout.fillWidth: true
                             }
                             // Highlight an admin member.
@@ -189,9 +197,11 @@ Popup {
                                 color: Theme.green; font.pixelSize: 10; font.weight: Font.Medium
                             }
                         }
+                        // The short fingerprint beneath the name as the ground truth,
+                        // smaller and dim (as in a group message bubble).
                         Label {
                             visible: memberRow.info && memberRow.info.fpShort.length > 0
-                            text: memberRow.info ? "(" + memberRow.info.fpShort + ")" : ""
+                            text: memberRow.info ? memberRow.info.fpShort : ""
                             color: Theme.textDim
                             font.pixelSize: 10
                             elide: Text.ElideRight; Layout.fillWidth: true
@@ -199,8 +209,14 @@ Popup {
                     }
                     // Chat (an existing contact: opens the 1:1 and closes this panel)
                     // or Add (a non-contact: a direct, member-only contact request).
+                    // After Add, the button flashes green "Requested" for a couple of
+                    // seconds so it is clear the request was actually sent (the member
+                    // stays a non-contact until they accept).
                     MenuButton {
-                        text: memberRow.isContact ? "Chat" : "Add"
+                        id: addBtn
+                        property bool requested: false
+                        text: memberRow.isContact ? "Chat" : (addBtn.requested ? "Requested" : "Add")
+                        positive: addBtn.requested
                         onClicked: {
                             if (memberRow.isContact) {
                                 // Close this panel BEFORE switching conversation:
@@ -211,8 +227,11 @@ Popup {
                                 root.session.openConversation(memberRow.modelData)
                             } else {
                                 root.session.addContactFromGroup(memberRow.modelData)
+                                addBtn.requested = true
+                                requestedTimer.restart()
                             }
                         }
+                        Timer { id: requestedTimer; interval: 2500; onTriggered: addBtn.requested = false }
                     }
                     // Admin-only actions (grant/revoke admin, remove) in an overflow menu.
                     IconButton {

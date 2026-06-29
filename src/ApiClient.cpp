@@ -235,10 +235,12 @@ ApiResponse ApiClient::get(const std::string& path, const std::string& query)
     return send("GET", path, query, {}, {}, true);
 }
 
-ApiResponse ApiClient::postJson(const std::string& path, const nlohmann::json& body)
+ApiResponse ApiClient::postJson(
+    const std::string& path, const nlohmann::json& body, const int readTimeoutSeconds)
 {
     const std::string text = body.dump();
-    return send("POST", path, {}, Bytes(text.begin(), text.end()), "application/json", true);
+    return send("POST", path, {}, Bytes(text.begin(), text.end()), "application/json", true, {},
+        readTimeoutSeconds);
 }
 
 ApiResponse ApiClient::postBytes(
@@ -272,7 +274,8 @@ ApiResponse ApiClient::getPublic(const std::string& path, const std::string& que
 
 ApiResponse ApiClient::send(const std::string& method, const std::string& path,
     const std::string& query, const Bytes& body, const std::string& contentType,
-    const bool authenticate, const std::map<std::string, std::string>& extraHeaders)
+    const bool authenticate, const std::map<std::string, std::string>& extraHeaders,
+    const int readTimeoutSeconds)
 {
     const std::lock_guard<std::mutex> lock(netMutex_);
     // The signed canonical path is the server-visible path: no base path and
@@ -314,7 +317,7 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         const auto run = [&](auto& http) -> httplib::Result {
             http.set_keep_alive(false);
             http.set_connection_timeout(30, 0);
-            http.set_read_timeout(240, 0);
+            http.set_read_timeout(readTimeoutSeconds, 0);
             http.set_write_timeout(240, 0);
             if (method == "GET") {
                 return http.Get(url, headers);
