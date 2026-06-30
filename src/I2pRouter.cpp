@@ -1,13 +1,22 @@
 // Bazarish project (c) 2026
 #include "I2pRouter.hpp"
 
+#include "WarmDestPool.hpp"
+
 #include <atomic>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 
 namespace bazarish::client {
 
 namespace {
+// A small, fixed warm pool of single-use throwaway dests (no demand-driven sizing),
+// with a small tunnel quantity - enough to cover the two direct fetches that want a
+// one-time dest (card + resolve) without paying cold tunnel-build latency.
+constexpr std::size_t kWarmPoolSize = 2;
+constexpr int kWarmPoolTunnelQuantity = 3;
+
 std::mutex& routerMutex()
 {
     static std::mutex mutex;
@@ -18,6 +27,37 @@ std::unique_ptr<bazarish::i2p::Router>& routerSlot()
 {
     static std::unique_ptr<bazarish::i2p::Router> router;
     return router;
+}
+
+// Owned in this TU and constructed after routerSlot (its slot is first touched only
+// after the router exists), so at process exit it is destroyed first - its warmer
+// thread is joined while the router is still alive.
+std::unique_ptr<WarmDestPool>& warmPoolSlot()
+{
+    static std::unique_ptr<WarmDestPool> pool;
+    return pool;
+}
+
+// Brings the warm pool up alongside a running router. Call under routerMutex.
+void ensureWarmPool(bazarish::i2p::Router& router)
+{
+    std::unique_ptr<WarmDestPool>& pool = warmPoolSlot();
+    if (!pool) {
+        pool = std::make_unique<WarmDestPool>(
+            router, kWarmPoolSize, kWarmPoolTunnelQuantity, bazarish::i2p::Privacy::eMax);
+        pool->start();
+    }
+}
+
+// Tears the warm pool down (joins its warmer) before the router stops. Call under
+// routerMutex.
+void stopWarmPool()
+{
+    std::unique_ptr<WarmDestPool>& pool = warmPoolSlot();
+    if (pool) {
+        pool->stop();
+        pool.reset();
+    }
 }
 
 std::atomic<bool> g_i2pEnabled{true};
@@ -37,6 +77,7 @@ bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
     } else if (!router->running()) {
         router->start();
     }
+    ensureWarmPool(*router);  // keep a couple of throwaway dests warm for direct fetches
     return *router;
 }
 
@@ -45,6 +86,13 @@ bazarish::i2p::Router* sharedI2pRouterIfRunning()
     const std::lock_guard<std::mutex> lock(routerMutex());
     bazarish::i2p::Router* const router = routerSlot().get();
     return (router != nullptr && router->running()) ? router : nullptr;
+}
+
+std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest()
+{
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    WarmDestPool* const pool = warmPoolSlot().get();
+    return pool != nullptr ? pool->acquire() : nullptr;
 }
 
 void reconcileI2pRouter(const std::filesystem::path& dataDir)
@@ -58,7 +106,9 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
         } else {
             router->start();
         }
+        ensureWarmPool(*router);
     } else if (router) {
+        stopWarmPool();  // join the warmer before the router's network stops
         router->stop();
     }
 }

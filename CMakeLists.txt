@@ -58,6 +58,7 @@ add_library(bazarish_client_lib STATIC
     src/ProfileManager.cpp
     src/Qr.cpp
     src/Session.cpp
+    src/WarmDestPool.cpp
 )
 target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR} ${VPX_INCLUDE_DIR})

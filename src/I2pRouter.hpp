@@ -4,6 +4,7 @@
 #include <bazarish/I2p.hpp>
 
 #include <filesystem>
+#include <memory>
 
 namespace bazarish::client {
 
@@ -22,6 +23,12 @@ bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir);
 // without forcing a heavyweight startup on its (e.g. the GUI) thread, and reports
 // a stopped (disabled) router honestly as not running.
 bazarish::i2p::Router* sharedI2pRouterIfRunning();
+
+// A warm, single-use throwaway destination from the process-wide pool kept ready
+// while the router runs, or nullptr when none is warm yet (the caller then builds a
+// fresh dest cold). Used for the direct federation fetch (card / resolve) so it does
+// not pay cold tunnel-build latency. The endpoint is used once and then dropped.
+std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest();
 
 // Brings the embedded router into line with the current enable flag: starts it
 // (creating it under dataDir on first use) when enabled, stops its network when
