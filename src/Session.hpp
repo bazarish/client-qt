@@ -190,6 +190,11 @@ struct IncomingMessage {
 struct SentBlob {
     std::string blobUrl;
     std::string deleteToken;
+    // The sealed "file" content block ({ptr,size,mime,name}) as JSON, kept for a
+    // group file so a per-member Resend re-sends the SAME stored pointer to a member
+    // without re-uploading the blob (it is uploaded once; only the link is shared).
+    // Empty for a 1:1 file or a non-file blob.
+    std::string fileBlock;
 };
 
 // bookkeeping persisted under a profile directory, layered over the stateless
@@ -701,6 +706,22 @@ public:
     };
     GroupFanout sendGroupMessage(const std::string& groupId, const std::string& text,
         const std::string& replyTo = {}, const std::string& messageId = {});
+    // Sends a file to a group: uploads the encrypted blob ONCE and fans the same
+    // sealed pointer out to every member (each authenticated by the shared gsig,
+    // like a group text), so a group file gets the same per-member Delivery tracking
+    // and Resend. A per-download retention is scaled by the member count so every
+    // member can fetch the blob. Returns the per-member fan-out.
+    GroupFanout sendGroupFile(const std::string& groupId, const std::filesystem::path& path,
+        const std::string& messageId, const UploadProgressFn& onUploadProgress = {},
+        const BlobRetention& retention = {}, const std::string& replyTo = {});
+    // Re-sends a group file to a single member (a targeted Resend from the Delivery
+    // view): delivers the SAME stored sealed pointer with the SAME message id (no
+    // re-upload - the blob is uploaded once), so a member who missed it still gets
+    // the file. Returns whether it was handed off; false when the pointer is no
+    // longer stored (e.g. the file was unsent). outAttemptId receives the attempt id.
+    bool sendGroupFileToMember(const std::string& groupId, const std::string& memberFp,
+        const std::string& messageId, const std::string& replyTo = {},
+        std::string* outAttemptId = nullptr);
     // Re-sends one group text to a single member (a targeted Resend from the "Sent"
     // view): rebuilds the signed payload with the SAME message id and delivers it
     // (token, else the tokenless fallback). Returns whether it was handed off.
@@ -1018,6 +1039,12 @@ private:
     // Deletes an externalized blob (unsend): direct over a transient I2P destination,
     // falling back to the own-server I2P proxy.
     void deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken);
+    // Encrypts and uploads a file as a blob (streamed via a temp ciphertext, never
+    // held whole in memory), records it for unsend under messageId, and returns the
+    // built "file" content block ({ptr, size, mime, name}) ready to drop into a
+    // message inner. Shared by the 1:1 and group file senders.
+    nlohmann::json uploadFileBlock(const std::filesystem::path& path, const std::string& messageId,
+        const BlobRetention& retention, const UploadProgressFn& onUploadProgress);
     // Records / persists the blob externalized for a sent message, so it can be
     // unsent later.
     void recordSentBlob(

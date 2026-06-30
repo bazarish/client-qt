@@ -103,7 +103,7 @@ QString humanFederationPhase(const QString& phase)
         return QStringLiteral("Awaiting delivery confirmation…");
     }
     if (phase.startsWith(QStringLiteral("retry"))) {
-        // "retry 3/24" -> "Retrying delivery (3/24)…"
+        // "retry 3/12" -> "Retrying delivery (3/12)…"
         return QStringLiteral("Retrying delivery (") + phase.mid(6).trimmed() + QStringLiteral(")…");
     }
     return phase;
@@ -698,6 +698,33 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
     }
 }
 
+void SessionWorker::sendGroupFile(const QString& groupId, const QString& localPath, qint64 localId,
+    const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo)
+{
+    try {
+        bazarish::client::BlobRetention retention;
+        retention.ttlSeconds = ttlSeconds;
+        if (downloadCount > 0) {
+            retention.count = static_cast<std::uint32_t>(downloadCount);
+        }
+        // Uploads the blob once and fans the same pointer out to every member; the
+        // upload progress drives the activity row until the fan-out coverage finishes
+        // it, exactly like a 1:1 file but with per-member Delivery.
+        const bazarish::client::Session::GroupFanout coverage = session_->sendGroupFile(
+            groupId.toStdString(), localPath.toStdString(), protocolId.toStdString(),
+            [this, localId](std::uint64_t sent, std::uint64_t total) {
+                emit uploadProgress(localId, static_cast<qint64>(sent), static_cast<qint64>(total));
+            },
+            retention, replyTo.toStdString());
+        emit sendProgress(localId, DeliveryStatus::AtSenderServer);  // grey once handed off
+        emitGroupFanout(groupId, protocolId, localId, coverage);
+        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
+        emit sendResult(localId, true, {});
+    } catch (const std::exception& e) {
+        emit sendResult(localId, false, QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
 {
     const QString op = beginOp(
@@ -918,7 +945,8 @@ void SessionWorker::resendGroupToMember(const QString& groupId, const QString& p
         const std::string pid = protocolId.toStdString();
         // Rebuild the SAME content this event originally sent, so the recipient
         // deduplicates by id: rename re-sends the signed notice, avatar the photo,
-        // a membership/admin change the roster, a text the message.
+        // a membership/admin change the roster, a file the SAME stored pointer (no
+        // re-upload), a text the message.
         bool ok = false;
         if (kind == QStringLiteral("group.rename")) {
             ok = session_->resendGroupRenameToMember(g, mfp, pid, &attemptId);
@@ -926,6 +954,9 @@ void SessionWorker::resendGroupToMember(const QString& groupId, const QString& p
             ok = session_->resendGroupAvatarToMember(g, mfp, pid, &attemptId);
         } else if (kind == QStringLiteral("group.member") || kind == QStringLiteral("group.admin")) {
             ok = session_->resendGroupRosterToMember(g, mfp, pid, &attemptId);
+        } else if (kind == QStringLiteral("file") || kind == QStringLiteral("photo")
+            || kind == QStringLiteral("audio") || kind == QStringLiteral("voice")) {
+            ok = session_->sendGroupFileToMember(g, mfp, pid, replyTo.toStdString(), &attemptId);
         } else {
             ok = session_->sendGroupTextToMember(
                 g, mfp, text.toStdString(), replyTo.toStdString(), pid, &attemptId);
@@ -1552,6 +1583,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
+    connect(this, &SessionController::requestSendGroupFile, worker_, &SessionWorker::sendGroupFile);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
     connect(this, &SessionController::requestSendReaction, worker_, &SessionWorker::sendReaction);
     connect(this, &SessionController::requestSendGroupReaction, worker_,
@@ -2458,6 +2490,14 @@ void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int 
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
+    if (groupIds_.contains(activePeer_)) {
+        // A group file fans the same uploaded pointer out to every member, so its row
+        // is driven by fan-out coverage and it gets per-member Delivery + Resend.
+        groupSendIds_.insert(m.id);
+        emit requestSendGroupFile(
+            activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount, replyTo);
+        return;
+    }
     emit requestSendFile(
         activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount, replyTo);
 }
@@ -3486,6 +3526,15 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     conversation_.setErrorForId(localId, {});
     const FileRetention r = fileRetention_.value(localId);
     const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
+    // A whole-message Resend only fires when the send failed outright; for a group
+    // that means the upload itself failed (a partial fan-out never fails the bubble,
+    // it shows per-member status), so re-uploading here is correct.
+    if (groupIds_.contains(activePeer_)) {
+        groupSendIds_.insert(localId);
+        emit requestSendGroupFile(
+            activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount, replyTo);
+        return;
+    }
     emit requestSendFile(
         activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount, replyTo);
 }

@@ -50,6 +50,8 @@ public slots:
         const QString& protocolId, const QString& replyTo);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
+    void sendGroupFile(const QString& groupId, const QString& localPath, qint64 localId,
+        const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
     void sendReceipt(const QString& peer, const QString& refId);
     // Acks a pending mailbox item (deferred ack): called by the controller after it
     // has durably stored the item, so the server only drops it once it is safe.
@@ -679,6 +681,8 @@ signals:  // to worker
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId, const QString& replyTo);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
+        const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
+    void requestSendGroupFile(const QString& groupId, const QString& localPath, qint64 localId,
         const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);

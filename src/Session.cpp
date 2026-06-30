@@ -1414,14 +1414,12 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
     return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
-bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
-    std::string* outAttemptId, const UploadProgressFn& onUploadProgress,
-    const BlobRetention& retention, const std::string& replyTo)
+nlohmann::json Session::uploadFileBlock(const fs::path& path, const std::string& messageId,
+    const BlobRetention& retention, const UploadProgressFn& onUploadProgress)
 {
     // Encrypt the file under a fresh key straight to a temp ciphertext file and
     // upload it streaming, so a large file is never held whole in memory. The
-    // message carries only a small sealed pointer, so the recipient's mailbox
+    // message carries only this small sealed pointer, so the recipient's mailbox
     // quota is never a factor for large files. (Blob storage hosts rotating
     // encrypted-LeaseSet destinations, served only over I2P.)
     const std::uint64_t plainSize = fs::file_size(path);
@@ -1447,32 +1445,155 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     pointer.blobUrl = uploaded.blobUrl;
     pointer.blobId = uploaded.blobId;
     const std::string pointerJson = blobPointerToJson(pointer).dump();
+    // Remember the blob so the sender can unsend it later.
+    recordSentBlob(messageId, uploaded.blobUrl, uploaded.deleteToken);
+    return {
+        {"ptr", toBase64(Bytes(pointerJson.begin(), pointerJson.end()))},
+        {"size", plainSize},
+        {"mime", guessMime(path)},
+        {"name", path.filename().string()},
+    };
+}
 
+bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
+    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
+    std::string* outAttemptId, const UploadProgressFn& onUploadProgress,
+    const BlobRetention& retention, const std::string& replyTo)
+{
+    const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
+    const nlohmann::json fileBlock = uploadFileBlock(path, id, retention, onUploadProgress);
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "file"},
-        {"id", messageId.empty() ? toHex(randomBytes(8)) : messageId},
+        {"id", id},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
-        {"file",
-            {
-                {"ptr", toBase64(Bytes(pointerJson.begin(), pointerJson.end()))},
-                {"size", plainSize},
-                {"mime", guessMime(path)},
-                {"name", path.filename().string()},
-            }},
+        {"file", fileBlock},
     };
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
-    // Remember the blob so the sender can unsend it later.
-    recordSentBlob(inner.at("id").get<std::string>(), uploaded.blobUrl, uploaded.deleteToken);
     // Do not poll for the outcome: the upload already consumed the time budget, so
     // blocking the worker on a delivery poll on top of it is what made a file send
     // feel like a freeze. The grey state is fired on acceptance; a later sync
     // reconciles the attempt to yellow/green/red.
     return sendContent(
         peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId, false);
+}
+
+Session::GroupFanout Session::sendGroupFile(const std::string& groupId, const fs::path& path,
+    const std::string& messageId, const UploadProgressFn& onUploadProgress,
+    const BlobRetention& retention, const std::string& replyTo)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        throw std::runtime_error("unknown group: " + groupId);
+    }
+    Group& group = found->second;
+
+    // The blob is uploaded ONCE; every member receives the same sealed pointer. A
+    // per-download retention is scaled by the member count so every member can fetch
+    // it (a single shared count would let only the first member through).
+    BlobRetention groupRetention = retention;
+    if (groupRetention.count.has_value() && *groupRetention.count > 0) {
+        const std::size_t members = group.members.empty() ? 1 : group.members.size();
+        groupRetention.count = static_cast<std::uint32_t>(*groupRetention.count * members);
+    }
+    const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
+    const nlohmann::json fileBlock = uploadFileBlock(path, id, groupRetention, onUploadProgress);
+    // Keep the pointer so a per-member Resend re-sends the same link (no re-upload).
+    sentBlobs_[id].fileBlock = fileBlock.dump();
+    persistSentBlobs();
+
+    const std::int64_t sentAt = nowMillis();
+    // gsig binds the sender + identifying fields exactly like a group text; the file
+    // pointer rides in the per-member sealed inner (like replyTo).
+    const nlohmann::json gsigBody = {
+        {"type", "file"},
+        {"id", id},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"text", std::string()},
+        {"dn", name_},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    GroupFanout coverage;
+    coverage.total = static_cast<int>(group.members.size());
+    for (const auto& [fp, member] : group.members) {
+        nlohmann::json inner = {
+            {"v", kMessageFormatVersion},
+            {"type", "file"},
+            {"id", id},
+            {"from", fingerprint()},
+            {"sentAt", sentAt},
+            {"dn", name_},
+            {"file", fileBlock},
+            {"group", {{"id", groupId}}},
+            {"gsig", gsig},
+        };
+        if (!replyTo.empty()) {
+            inner["replyTo"] = replyTo;
+        }
+        std::string attemptId;
+        const bool ok = sendGroupContentToMember(groupId, fp, member, std::move(inner), &attemptId);
+        coverage.members.push_back(MemberOutcome{fp, ok, attemptId});
+        if (ok) {
+            ++coverage.reached;
+        }
+    }
+    persistGroups();
+    return coverage;
+}
+
+bool Session::sendGroupFileToMember(const std::string& groupId, const std::string& memberFp,
+    const std::string& messageId, const std::string& replyTo, std::string* outAttemptId)
+{
+    const auto found = groups_.find(groupId);
+    if (found == groups_.end()) {
+        throw std::runtime_error("unknown group: " + groupId);
+    }
+    Group& group = found->second;
+    const auto member = group.members.find(memberFp);
+    if (member == group.members.end()) {
+        return false;  // no longer a member
+    }
+    // Re-send the SAME stored pointer (the blob was uploaded once); nothing is
+    // re-uploaded. The pointer is gone only if the file was unsent.
+    const auto blob = sentBlobs_.find(messageId);
+    if (blob == sentBlobs_.end() || blob->second.fileBlock.empty()) {
+        return false;
+    }
+    const nlohmann::json fileBlock = nlohmann::json::parse(blob->second.fileBlock);
+    const std::int64_t sentAt = nowMillis();
+    const nlohmann::json gsigBody = {
+        {"type", "file"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"groupId", groupId},
+        {"sentAt", sentAt},
+        {"text", std::string()},
+        {"dn", name_},
+    };
+    const std::string gsig = toBase64(cms::signJsonHybrid(gsigBody, client_->identity()));
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "file"},
+        {"id", messageId},
+        {"from", fingerprint()},
+        {"sentAt", sentAt},
+        {"dn", name_},
+        {"file", fileBlock},
+        {"group", {{"id", groupId}}},
+        {"gsig", gsig},
+    };
+    if (!replyTo.empty()) {
+        inner["replyTo"] = replyTo;
+    }
+    const bool ok
+        = sendGroupContentToMember(groupId, memberFp, member->second, std::move(inner), outAttemptId);
+    persistGroups();
+    return ok;
 }
 
 void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
@@ -1724,7 +1845,13 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
         throw std::runtime_error("contact not established yet: " + peerFingerprint);
     }
     if (contact.sendTokens.empty()) {
-        throw std::runtime_error("no delivery tokens left for contact: " + peerFingerprint);
+        // Out of one-time delivery tokens for this peer: their stash refills when
+        // they come back online (the low-stash signal we sent earlier prompts it),
+        // so this is a recoverable "resend later", not a permanent failure. Surfaced
+        // verbatim on the failed bubble, so keep it human and free of the raw
+        // fingerprint.
+        throw std::runtime_error("Out of delivery tokens for this contact - resend once "
+                                 "they are back online and refill your sending capacity.");
     }
     // Captured before the bootstrap block below: when false here, this very send
     // is our first reply to the peer - the moment we accept/establish the dialog.
@@ -1875,7 +2002,11 @@ void Session::unsend(const std::string& messageId)
 void Session::recordSentBlob(
     const std::string& messageId, const std::string& blobUrl, const std::string& deleteToken)
 {
-    sentBlobs_[messageId] = SentBlob{blobUrl, deleteToken};
+    // Set the unsend handle, preserving any stored file block (a group file's resend
+    // pointer is attached separately, after this records the blob).
+    SentBlob& blob = sentBlobs_[messageId];
+    blob.blobUrl = blobUrl;
+    blob.deleteToken = deleteToken;
     persistSentBlobs();
 }
 
@@ -1890,8 +2021,8 @@ void Session::loadSentBlobs()
         ? nlohmann::json::parse(cms::unsealWithPassword(Bytes(raw.begin(), raw.end()), passphrase_))
         : nlohmann::json::parse(raw);
     for (const auto& [id, entry] : stored.items()) {
-        sentBlobs_[id] = SentBlob{
-            entry.at("url").get<std::string>(), entry.at("token").get<std::string>()};
+        sentBlobs_[id] = SentBlob{entry.at("url").get<std::string>(),
+            entry.at("token").get<std::string>(), entry.value("file", std::string())};
     }
 }
 
@@ -1899,7 +2030,7 @@ void Session::persistSentBlobs() const
 {
     nlohmann::json stored = nlohmann::json::object();
     for (const auto& [id, blob] : sentBlobs_) {
-        stored[id] = {{"url", blob.blobUrl}, {"token", blob.deleteToken}};
+        stored[id] = {{"url", blob.blobUrl}, {"token", blob.deleteToken}, {"file", blob.fileBlock}};
     }
     if (encrypted_) {
         // Delete-tokens are capabilities over our own blobs: seal at rest under
