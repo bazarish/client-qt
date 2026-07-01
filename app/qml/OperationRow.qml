@@ -30,7 +30,6 @@ Item {
         if (k === "file-up") return "↑"
         if (k === "file-down") return "↓"
         if (k === "call") return "☎"
-        if (k === "group") return "⚙"
         if (k === "service") return "✦"
         return "•"
     }

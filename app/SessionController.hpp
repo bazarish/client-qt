@@ -50,37 +50,21 @@ public slots:
         const QString& protocolId, const QString& replyTo);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
-    void sendGroupFile(const QString& groupId, const QString& localPath, qint64 localId,
-        const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
     void sendReceipt(const QString& peer, const QString& refId);
     // Acks a pending mailbox item (deferred ack): called by the controller after it
     // has durably stored the item, so the server only drops it once it is safe.
     void ackPending(const QString& pendingId);
-    // Sets our reaction emoji on a message (1:1 or group); empty emoji removes it.
+    // Sets our reaction emoji on a message; empty emoji removes it.
     void sendReaction(const QString& peer, const QString& refId, const QString& emoji);
-    void sendGroupReaction(const QString& groupId, const QString& refId, const QString& emoji);
-    // Sends a group read receipt for `refId` to its `author` (opt-in, group-only).
-    void sendGroupReceipt(const QString& groupId, const QString& refId, const QString& author);
     void sendCallback(const QString& peer, const QString& data, const QString& ref);
     void sendCommand(const QString& peer, const QString& command, const QString& args);
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
-    // Edits a group message: fans a signed edit to all members (the 1:1 edit path
-    // needs a contact, which a group id is not).
-    void sendGroupEdit(
-        const QString& groupId, const QString& refId, qint64 localId, const QString& text);
     void sendDelete(const QString& peer, const QString& refId);
     // Compresses the picked image to a square avatar within the protocol cap and
     // sets it (persist + distribute to contacts and the account's other devices).
     void setAvatar(const QString& localPath);
     // Changes the account's own display name (local + future invites only).
     void setDisplayName(const QString& name);
-    // Compresses the picked image and sets it as a group's photo (persist + signed
-    // broadcast to every member), so it appears in the chat as a message from us.
-    void setGroupAvatar(
-        const QString& groupId, const QString& localPath, qint64 localId, const QString& protocolId);
-    // Renames a group (admin-only): broadcasts the roster + a rename notice.
-    void setGroupName(
-        const QString& groupId, const QString& name, qint64 localId, const QString& protocolId);
     // Renames a contact locally (mirrored only to the account's other devices).
     void renameContact(const QString& peer, const QString& name);
     // Permanently removes a contact (local + irreversible); the avatar store is
@@ -90,24 +74,8 @@ public slots:
     // Asks the peer to clear the whole conversation with us (chat.clear); their
     // client wipes its transcript on receipt.
     void clearChatForEveryone(const QString& peer);
-    void createGroup(const QString& name, const QStringList& memberFps);
-    void sendGroupText(const QString& groupId, const QString& text, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
-    void resendGroupToMember(const QString& groupId, const QString& protocolId,
-        const QString& member, const QString& kind, const QString& text, const QString& replyTo);
-    void addGroupMembers(
-        const QString& groupId, const QStringList& fps, qint64 localId, const QString& protocolId);
-    void removeGroupMember(
-        const QString& groupId, const QString& fp, qint64 localId, const QString& protocolId);
-    void setGroupAdmin(const QString& groupId, const QString& fp, bool admin, qint64 localId,
-        const QString& protocolId);
-    void leaveGroup(const QString& groupId);
-    void fetchGroupMembers(const QString& groupId);
     void addByInvite(const QString& uri, const QString& intro, const QString& opId);
     void addByUsername(const QString& alias, const QString& intro, const QString& opId);
-    // Requests adding a fellow group member as a contact (direct, member-only).
-    void requestContactFromGroup(
-        const QString& groupId, const QString& memberFp, const QString& intro);
     // Agrees to a received contact request (sends our descriptor back).
     void acceptContact(const QString& peer);
     void requestInvite();
@@ -141,9 +109,9 @@ public slots:
 
 signals:
     // General background-activity stream: every observable worker operation - a
-    // group membership/admin/name/photo change, a contact request, a reaction, a
-    // read receipt, an incoming-mail pull - opens with opBegin and closes with
-    // opDone, so the activity panel shows one uniform, responsive row per operation.
+    // contact request, a reaction, a read receipt, an incoming-mail pull - opens
+    // with opBegin and closes with opDone, so the activity panel shows one uniform,
+    // responsive row per operation.
     // (Message/file sends and calls keep their richer dedicated rows.)
     void opBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
@@ -173,17 +141,6 @@ signals:
     // The server's live federation phase for a still-pending send (queued / dialing
     // / sending / awaiting-ack), so the activity panel shows real delivery progress.
     void sendPhase(qint64 localId, const QString& phase);
-    // Group fan-out coverage: how many of `total` members the message was handed to
-    // (a spent token or the tokenless fallback), so the panel shows "Sent to N/M".
-    void groupSendCoverage(qint64 localId, int reached, int total);
-    // Per-member delivery status of a group send (parallel lists; each status is a
-    // DeliveryStatus int as a string - 1 grey, 2 yellow, 4 red), recorded for the
-    // message's "Delivery" view. Read (green) is derived from group_views.
-    void groupDeliveryRecord(const QString& groupId, const QString& protocolId,
-        const QStringList& members, const QStringList& statuses);
-    // A still-pending per-member group send is in a server retry round: the round
-    // count ("3/12"), so the Delivery screen shows how far the retries have gone.
-    void groupRetryProgress(const QString& protocolId, const QString& member, const QString& detail);
     // Upload progress for an outgoing file (bytes sent so far, total bytes).
     void uploadProgress(qint64 localId, qint64 sent, qint64 total);
     // Download progress for an incoming attachment being saved (token = message
@@ -215,14 +172,6 @@ signals:
     // fingerprint, for the GUI.
     void facadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
-    void groupsRefreshed(const QStringList& ids, const QStringList& names);
-    void groupCreated(const QString& groupId, const QString& name);
-    // The group's members, their self-chosen display names (parallel to members,
-    // empty when unknown), per-member "1"/"0" admin flags (parallel), and whether
-    // we administer it.
-    void groupMembersReady(const QString& groupId, const QStringList& members,
-        const QStringList& selfNames, const QStringList& provNames, const QStringList& adminFlags,
-        bool iAmAdmin);
     // hasKey: a master is set up in the profile. enabled/active: the paid option
     // is on / currently paid-active. address: the personal b32 (empty if none).
     // summary: a one-line human status for the settings page. paidThrough: the
@@ -247,14 +196,8 @@ private:
     // pair it with emit opDone(id, ok, status). One uniform helper so every
     // observable operation is surfaced the same way.
     QString beginOp(const QString& kind, const QString& title, const QString& status);
-    // Emits the monitor coverage row and the per-member Delivery records from one
-    // group fan-out result, and tracks each accepted member for polling. Shared by
-    // group text and every group control event (rename/avatar/add/remove/admin).
-    void emitGroupFanout(const QString& groupId, const QString& protocolId, qint64 localId,
-        const bazarish::client::Session::GroupFanout& coverage);
     int opSeq_ = 0;
     void ensureSyncTimer();
-    void emitGroups();
     void emitFacadeInfo();
     // Emits the current contacts with their display names (parallel lists).
     void emitContacts();
@@ -262,10 +205,6 @@ private:
     // Re-polls sends still in flight after their initial submit window so a late
     // delivery (yellow) or failure (red) reaches the message; run each sync.
     void reconcilePendingSends();
-    // Re-polls each per-member group send still in flight, advancing it to "delivered
-    // to recipient's server" (yellow) or "failed" (red) - the group analogue of
-    // reconcilePendingSends, one entry per member per message. Run each sync.
-    void reconcileGroupAttempts();
     // Starts an asynchronous contact add: snapshots the transport context on this
     // thread, then runs the slow federated card fetch on a detached background
     // thread (its own transport) so sync and the connection are never blocked. The
@@ -284,15 +223,6 @@ private:
     // Outgoing messages accepted by our server but not yet confirmed delivered:
     // local message id -> server attempt id, reconciled on each sync.
     std::map<qint64, std::string> pendingSends_;
-    // Per-member group sends in flight (one per member per message), reconciled to
-    // yellow/red each sync. Bounded so a huge group cannot grow it without limit.
-    struct GroupAttempt {
-        QString groupId;
-        QString protocolId;
-        QString member;
-        QString attemptId;
-    };
-    std::vector<GroupAttempt> groupAttempts_;
     // Set true to abort in-flight downloads (teardown / session switch); the fetch
     // polls it to close a parked read and stop retrying, and queued tasks skip
     // emitting onto a tearing-down session.
@@ -341,7 +271,7 @@ class SessionController : public QObject {
     Q_PROPERTY(int unreadTotal READ unreadTotal NOTIFY unreadTotalChanged)
     Q_PROPERTY(QObject* contacts READ contacts CONSTANT)
     // The chat list as a name-filtered view of `contacts` (drives the search box);
-    // `contacts` itself stays unfiltered for pickers (new chat, add to group).
+    // `contacts` itself stays unfiltered for pickers (new chat).
     Q_PROPERTY(QObject* chatList READ chatList CONSTANT)
     Q_PROPERTY(QObject* conversation READ conversation CONSTANT)
     // The background-activity model + the count of still-running operations (drives
@@ -361,13 +291,9 @@ class SessionController : public QObject {
     // Bumped whenever the contact set/state changes, so a contact-request bubble's
     // "Agree" button re-evaluates contactCanAccept() after an accept.
     Q_PROPERTY(int contactsRevision READ contactsRevision NOTIFY contactsRevisionChanged)
-    // Bumped whenever any reaction or group read receipt changes, so a message
-    // bubble's reaction chips and the who-reacted/viewed modal re-query the store.
+    // Bumped whenever any reaction changes, so a message bubble's reaction chips
+    // and the who-reacted modal re-query the store.
     Q_PROPERTY(int reactionsRevision READ reactionsRevision NOTIFY reactionsRevisionChanged)
-    // The active group's members and whether we administer it (empty/false for a
-    // one-to-one chat), for the group-info panel.
-    Q_PROPERTY(QStringList activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
-    Q_PROPERTY(bool activeGroupAdmin READ activeGroupAdmin NOTIFY activeGroupChanged)
     // Per-user I2P destination status for the settings page.
     Q_PROPERTY(bool i2pHasKey READ i2pHasKey NOTIFY i2pStatusChanged)
     Q_PROPERTY(bool i2pEnabled READ i2pEnabled NOTIFY i2pStatusChanged)
@@ -435,8 +361,6 @@ public:
     QString replyingSender() const { return replyingSender_; }
     int contactsRevision() const { return contactsRevision_; }
     int reactionsRevision() const { return reactionsRevision_; }
-    QStringList activeGroupMembers() const { return activeGroupMembers_; }
-    bool activeGroupAdmin() const { return activeGroupAdmin_; }
     bool i2pHasKey() const { return i2pHasKey_; }
     bool i2pEnabled() const { return i2pEnabled_; }
     bool i2pActive() const { return i2pActive_; }
@@ -502,10 +426,7 @@ public:
     // (reusing the bubble); if that file is gone, emits resendFilePickRequested so
     // the UI can offer to pick a file to send instead.
     Q_INVOKABLE void resendFile(qint64 localId, const QString& protocolId);
-    // Creates a group from selected contacts and opens it.
-    Q_INVOKABLE void createGroup(const QString& name, const QStringList& memberFps);
-    // Whether a chat-list id is a group, and a display name for any peer/group.
-    Q_INVOKABLE bool isGroup(const QString& id) const;
+    // A display name for any peer.
     Q_INVOKABLE QString peerName(const QString& id) const;
     // The contact's stored local display name, empty when unnamed (so a rename
     // field can prefill it and show a fingerprint placeholder otherwise).
@@ -516,25 +437,6 @@ public:
     // device and the name carried in future invite descriptors; contacts are not
     // told (each keeps their own local name for us).
     Q_INVOKABLE void setDisplayName(const QString& name);
-    // Sets the active group's photo from a picked image file (file:// URL). Admin
-    // only. A "set the group photo" bubble appears from us at once.
-    Q_INVOKABLE void setGroupAvatar(const QString& fileUrl);
-    // Renames the active group (admin only). A rename notice appears from us at once.
-    Q_INVOKABLE void setGroupName(const QString& name);
-    // Whether a group member is an admin (for the member-list highlight).
-    Q_INVOKABLE bool memberIsAdmin(const QString& fp) const;
-    // A human list of the active group's admin display names (for non-admins to
-    // see who administers the group). Empty when none/unknown.
-    Q_INVOKABLE QString groupAdminNames() const;
-    // The display info for a group message's author: { name, isContact, fpShort }.
-    // name is the local contact name when we have one (isContact true), else the
-    // sender's self-chosen account name (isContact false) with fpShort the short
-    // fingerprint to show beneath it, falling back to the short fingerprint alone.
-    Q_INVOKABLE QVariantMap groupSenderInfo(const QString& fp) const;
-    // The "Sent" view for one of our own group messages: per member, a name + a
-    // delivered/failed status. resendGroupToMember re-sends one member's copy.
-    Q_INVOKABLE QVariantList groupDelivery(const QString& protocolId) const;
-    Q_INVOKABLE void resendGroupToMember(const QString& protocolId, const QString& member);
     // --- Reactions + read receipts ---
     // Sets our reaction emoji on a message (by its protocol id) in the active chat:
     // optimistic local store + send. Tapping the emoji we already set removes it.
@@ -544,11 +446,6 @@ public:
     // The reaction chips for a message: a list of { emoji, count, mine } aggregated
     // across reactors, in first-seen order.
     Q_INVOKABLE QVariantList reactionSummary(const QString& protocolId) const;
-    // The who-reacted list for a message: { name, emoji } per reactor (for the modal).
-    Q_INVOKABLE QVariantList reactionDetails(const QString& protocolId) const;
-    // The who-viewed list for a message: { name } per member who has read it. Only a
-    // message we authored accrues viewers (read receipts come to the author).
-    Q_INVOKABLE QVariantList viewers(const QString& protocolId) const;
     // Renames a contact locally (mirrored to the account's own other devices).
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     // Clears the active 1:1 conversation. forEveryone also asks the peer to clear
@@ -556,12 +453,6 @@ public:
     Q_INVOKABLE void clearChat(bool forEveryone);
     // Permanently deletes the active contact and its whole chat (irreversible).
     Q_INVOKABLE void deleteContact();
-    // Group membership management (operate on the given group id).
-    Q_INVOKABLE void addGroupMembers(const QString& groupId, const QStringList& fps);
-    Q_INVOKABLE void removeGroupMember(const QString& groupId, const QString& fp);
-    // Grants or revokes a member's admin flag in the active group (admin only).
-    Q_INVOKABLE void setGroupAdmin(const QString& fp, bool admin);
-    Q_INVOKABLE void leaveGroup(const QString& groupId);
     // Inline-keyboard button presses in the active conversation: a callback
     // (button data + the keyboard message's protocol id) or a command button.
     Q_INVOKABLE void sendCallback(const QString& data, const QString& refMsgId);
@@ -587,13 +478,8 @@ public:
     Q_INVOKABLE void copyText(const QString& text) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
-    // Requests adding a fellow group member (from the active group's roster) as a
-    // contact: a direct, member-only request - other members never see it.
-    Q_INVOKABLE void addContactFromGroup(const QString& memberFp);
     // Agrees to the active chat's received contact request (the green "Agree").
     Q_INVOKABLE void acceptContact();
-    // Whether `fp` is already one of our contacts (drives the group "Add" action).
-    Q_INVOKABLE bool isContact(const QString& fp) const;
     // Whether `fp` is a contact that sent us a request we have not yet accepted
     // (drives the "Agree" button on an incoming contact-request bubble).
     Q_INVOKABLE bool contactCanAccept(const QString& fp) const;
@@ -652,7 +538,6 @@ signals:
     void scrollToUnread(qint64 firstUnreadId);
     // Asks the view to scroll to the bottom (jump-to-latest).
     void scrollToBottom();
-    void activeGroupChanged();
     void facadeInfoChanged();
     void sendReceiptsChanged();
     void editingChanged();
@@ -682,49 +567,22 @@ signals:  // to worker
         const QString& protocolId, const QString& replyTo);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
-    void requestSendGroupFile(const QString& groupId, const QString& localPath, qint64 localId,
-        const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
-    void requestSendGroupReaction(
-        const QString& groupId, const QString& refId, const QString& emoji);
-    void requestSendGroupReceipt(
-        const QString& groupId, const QString& refId, const QString& author);
     void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
     void requestSendCommand(const QString& peer, const QString& command, const QString& args);
     void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
         const QString& text);
-    void requestSendGroupEdit(const QString& groupId, const QString& refId, qint64 localId,
-        const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
     void requestSetAvatar(const QString& localPath);
     void requestSetDisplayName(const QString& name);
-    void requestSetGroupAvatar(
-        const QString& groupId, const QString& localPath, qint64 localId, const QString& protocolId);
-    void requestSetGroupName(
-        const QString& groupId, const QString& name, qint64 localId, const QString& protocolId);
     void requestRenameContact(const QString& peer, const QString& name);
     void requestRemoveContact(const QString& peer);
     void requestSyncChatPin(const QString& peer, bool pinned);
     void requestClearChatForEveryone(const QString& peer);
-    void requestCreateGroup(const QString& name, const QStringList& memberFps);
-    void requestSendGroupText(const QString& groupId, const QString& text, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
-    void requestResendGroupToMember(const QString& groupId, const QString& protocolId,
-        const QString& member, const QString& kind, const QString& text, const QString& replyTo);
-    void requestAddGroupMembers(
-        const QString& groupId, const QStringList& fps, qint64 localId, const QString& protocolId);
-    void requestRemoveGroupMember(
-        const QString& groupId, const QString& fp, qint64 localId, const QString& protocolId);
-    void requestSetGroupAdmin(const QString& groupId, const QString& fp, bool admin, qint64 localId,
-        const QString& protocolId);
-    void requestLeaveGroup(const QString& groupId);
-    void requestFetchGroupMembers(const QString& groupId);
     void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId);
     void requestAddByUsername(const QString& alias, const QString& intro, const QString& opId);
-    void requestContactFromGroup(
-        const QString& groupId, const QString& memberFp, const QString& intro);
     void requestAcceptContact(const QString& peer);
     void requestInviteSig();
     void requestSignLoginSig(const QString& challenge);
@@ -770,19 +628,10 @@ private slots:
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSendSettled(qint64 localId, const QString& note);
     void onSendPhase(qint64 localId, const QString& phase);
-    void onGroupSendCoverage(qint64 localId, int reached, int total);
-    void onGroupDeliveryRecord(const QString& groupId, const QString& protocolId,
-        const QStringList& members, const QStringList& statuses);
-    void onGroupRetryProgress(const QString& protocolId, const QString& member, const QString& detail);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);
     void onSyncReachable(bool ok);
     void onFacadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
-    void onGroupsRefreshed(const QStringList& ids, const QStringList& names);
-    void onGroupCreated(const QString& groupId, const QString& name);
-    void onGroupMembersReady(const QString& groupId, const QStringList& members,
-        const QStringList& selfNames, const QStringList& provNames, const QStringList& adminFlags,
-        bool iAmAdmin);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 paidThrough);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota,
@@ -810,12 +659,6 @@ private:
     void updateOperation(const QString& id, const QString& status, const QString& detail = {},
         double progress = -1.0);
     void finishOperation(const QString& id, bool ok, const QString& finalStatus);
-    // Stores an optimistic outgoing group control bubble (rename/avatar/member/admin)
-    // with a fresh protocol id, opens its coverage monitor row and marks it a group
-    // send, so every control event gets the same per-member Delivery + Resend as a
-    // text. Returns the local id; outProtocolId receives the shared protocol id.
-    qint64 beginGroupControl(const QString& groupId, const QString& type, const QString& text,
-        const QString& title, QString& outProtocolId);
 
     QString profileId_;
     QString fingerprint_;
@@ -844,7 +687,7 @@ private:
     // worker; contactsRevision_ bumps on every refresh to re-drive the binding.
     QSet<QString> pendingContacts_;
     int contactsRevision_ = 0;
-    // Bumped on any reaction / group-view change so QML re-queries the store.
+    // Bumped on any reaction change so QML re-queries the store.
     int reactionsRevision_ = 0;
     // Current delivery status per outgoing local id, so a later/lower signal
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
@@ -863,8 +706,8 @@ private:
     QString scrollPeer_;
     int scrollAnchorRow_ = -1;
     bool scrollStick_ = true;
-    // Sets the active peer + clears unread + (re)loads group state, without
-    // touching the message window (the caller chooses which window to load).
+    // Sets the active peer + clears unread, without touching the message window
+    // (the caller chooses which window to load).
     void activateConversation(const QString& peer);
     // Loads the newest page into the model and resets the paging window.
     void loadLatestWindow();
@@ -878,16 +721,10 @@ private:
     // Marks our outgoing messages to peer with id <= uptoId as read (green), in
     // the store and the open window, on receiving a read receipt.
     void markOutgoingRead(const QString& peer, qint64 uptoId);
-    // Marks one of our own group messages (by local id) read (green) on the first
-    // group read receipt; a group fan-out has no single ack, so the first reader wins.
-    void markGroupMessageDelivered(qint64 localId);
-    // A display name for a reactor/viewer: "You" for ourselves, else the local
-    // contact name / the member's own name / the short fingerprint.
-    QString reactorName(const QString& fp) const;
     // Per-peer high-water of the newest incoming message we have already sent a
     // read receipt for, so reading does not re-send receipts on every scroll tick.
     QHash<QString, qint64> lastReadAckedId_;
-    // Groups this account belongs to (id -> name), merged into the chat list.
+    // This account's contact fingerprints, kept in sync from the worker.
     QStringList contactFps_;
     // Per-contact local display names (fingerprint -> name), kept in sync from the
     // worker. Drives peerName() and the chat-list labels.
@@ -900,21 +737,6 @@ private:
     // falls back to the store default.
     struct FileRetention { qint64 ttlSeconds = 0; int downloadCount = 0; };
     QHash<qint64, FileRetention> fileRetention_;
-    QStringList groupIds_;
-    QHash<QString, QString> groupNames_;
-    QStringList activeGroupMembers_;
-    // Self-chosen account display names for the active group's members (fingerprint
-    // -> name, empty when unknown), so a group bubble can show a non-contact
-    // member's own name. Refreshed with the member list.
-    QHash<QString, QString> memberSelfNames_;
-    // Admin-supplied provisional labels for the active group's members (fingerprint
-    // -> name, from the signed roster), shown muted/parenthesised for a member who
-    // is neither a contact nor has spoken yet. Refreshed with the member list.
-    QHash<QString, QString> memberProvisionalNames_;
-    // Fingerprints of the active group's admins (for the member-list highlight and
-    // the admin-name line). Refreshed with the member list.
-    QSet<QString> memberAdmins_;
-    bool activeGroupAdmin_ = false;
     bool i2pHasKey_ = false;
     bool i2pEnabled_ = false;
     bool i2pActive_ = false;
@@ -937,20 +759,12 @@ private:
     // finished when the call goes back to idle, even though the idle signal carries
     // no call id). Empty when there is no active call row.
     QString callOpId_;
-    // Local ids of group sends in flight: their activity row is driven by the
-    // fan-out coverage ("Sent to N/M members"), not the one-to-one delivery wording,
-    // so the generic send-progress handler leaves their row alone.
-    QSet<qint64> groupSendIds_;
-    // Per-member server retry round ("3/12") for a still-pending group send, keyed by
-    // protocol id then member, so the Delivery screen shows "retrying 3/12". Live
-    // only (rebuilt each sync from the attempt poll); not persisted.
-    QHash<QString, QHash<QString, QString>> groupRetryDetail_;
     bool callMuted_ = false;
     bool callVideo_ = false;
     bool callCameraOn_ = true;
     VideoPresenter* localVideo_ = nullptr;
     VideoPresenter* remoteVideo_ = nullptr;
-    // Rebuilds the chat list from the cached contacts + groups.
+    // Rebuilds the chat list from the cached contacts.
     void rebuildChatList();
     int unreadTotal_ = 0;
     // Recomputes unreadTotal_ from the contacts model and notifies on change.

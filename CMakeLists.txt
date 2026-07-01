@@ -178,14 +178,12 @@ if(Qt6_FOUND)
             app/qml/MessageBubble.qml
             app/qml/SearchPopup.qml
             app/qml/ReactionPicker.qml
-            app/qml/ReactionsPopup.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml
-            app/qml/GroupInfo.qml
             app/qml/CallScreen.qml
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml
@@ -220,7 +218,7 @@ bazarish_client_add_test(TestCallMedia)
 bazarish_client_add_test(TestVideoCodec)
 bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
-bazarish_client_add_test(TestGroup)
+bazarish_client_add_test(TestTokenRefill)
 bazarish_client_add_test(TestI2pKeys)
 bazarish_client_add_test(TestBlobTransport)
 bazarish_client_add_test(TestInvite)

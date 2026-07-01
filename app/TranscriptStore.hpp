@@ -13,10 +13,9 @@ namespace bazarish::app {
 // a per-profile SQLite database under the profile directory.
 struct StoredMessage {
     qint64 id = 0;
-    QString peer;          // contact fingerprint, or a group id for group messages
+    QString peer;          // contact fingerprint
     bool outgoing = false;
     QString type;          // content type: text/file/photo/... or "system"
-    QString sender;        // author fingerprint for an incoming group message
     QString protocolId;    // envelope message id (to match delivery receipts)
     QString text;
     QString attName;
@@ -45,7 +44,6 @@ struct SearchHit {
     qint64 ts = 0;
     QString text;
     bool outgoing = false;
-    QString sender;
 };
 
 // One reaction on a message: who reacted (fingerprint) and the emoji. One per
@@ -53,14 +51,6 @@ struct SearchHit {
 struct Reaction {
     QString reactor;
     QString emoji;
-};
-
-// Per-member delivery status for one of our own group messages (the "Delivery"
-// view). status is a DeliveryStatus: 1 at-our-server (grey), 2 at-recipient-server
-// (yellow), 4 failed (red). "Read" (green) is derived separately from group_views.
-struct GroupDeliveryRow {
-    QString member;
-    int status = 0;
 };
 
 // Persistent local message log for one profile. When a passphrase is given the
@@ -104,11 +94,6 @@ public:
     // target of an edit (0 if none). Scoping to incoming-from-peer is the
     // security check: a peer can only edit a message it actually sent.
     qint64 idForIncomingProtocol(const QString& protocolId, const QString& peer) const;
-    // The row id of an incoming group message under `peer` (a group id) with this
-    // protocol id AND this author (0 if none). Scoping to the author is the group
-    // edit/delete security check: a member can only edit a message it actually sent.
-    qint64 idForIncomingGroupProtocol(
-        const QString& protocolId, const QString& peer, const QString& sender) const;
     // The row id of a message under `peer` with this protocol id, either direction
     // (0 if none). Used to resolve a reply reference to a local message to jump to.
     qint64 idForAnyProtocol(const QString& protocolId, const QString& peer) const;
@@ -119,8 +104,8 @@ public:
     void editContent(qint64 id, const QString& text, const QString& keyboard);
     // Permanently removes a message (delete with no trace).
     void removeById(qint64 id);
-    // Permanently removes every message of a conversation (clear chat / a left
-    // group / a deleted contact). The peer key is a contact fingerprint or group id.
+    // Permanently removes every message of a conversation (clear chat / a deleted
+    // contact). The peer key is a contact fingerprint.
     void clearPeer(const QString& peer);
     QVector<StoredMessage> messagesFor(const QString& peer) const;
     // Windowed reads for paging a large conversation: the newest `limit` rows,
@@ -136,9 +121,9 @@ public:
     QVector<SearchHit> searchInPeer(const QString& peer, const QString& query) const;
     QString lastText(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
-    // Every distinct conversation key (contact fingerprint or group id) that has at
-    // least one stored message. Lets the chat list surface a conversation whose
-    // contact record was lost, so its transcript is never silently hidden.
+    // Every distinct conversation key (a contact fingerprint) that has at least one
+    // stored message. Lets the chat list surface a conversation whose contact record
+    // was lost, so its transcript is never silently hidden.
     QStringList conversationPeers() const;
 
     // --- Read state (persistent unread tracking) ---
@@ -167,17 +152,6 @@ public:
         const QString& peer, const QString& target, const QString& reactor, const QString& emoji);
     // Every reaction on a message, for the bubble summary and the who-reacted list.
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
-
-    // --- Group read receipts (who has viewed a message) ---
-    // Records that `viewer` has read `target` under group `peer` (insert-or-ignore).
-    void addView(const QString& peer, const QString& target, const QString& viewer);
-    // Every member who has read `target`, for the viewers list and the green status.
-    QStringList viewersFor(const QString& peer, const QString& target) const;
-
-    // --- Per-member group send outcome (the "Sent" view + targeted Resend) ---
-    void setGroupDelivery(
-        const QString& peer, const QString& target, const QString& member, int status);
-    QVector<GroupDeliveryRow> groupDeliveryFor(const QString& peer, const QString& target) const;
 
 private:
     // Serializes the in-memory database and writes the sealed blob. No-op when

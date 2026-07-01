@@ -132,32 +132,10 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 // older/newer step). Keeps even a huge dialog cheap to open and scroll.
 constexpr int kPageSize = 50;
 
-// Joins display names into a human phrase for a group service notice:
-// "A", "A and B", "A, B and C", "A, B and 3 others".
-QString joinNames(const QStringList& names)
-{
-    const int n = names.size();
-    if (n == 0) {
-        return QString();
-    }
-    if (n == 1) {
-        return names.at(0);
-    }
-    if (n == 2) {
-        return names.at(0) + QStringLiteral(" and ") + names.at(1);
-    }
-    if (n == 3) {
-        return names.at(0) + QStringLiteral(", ") + names.at(1)
-            + QStringLiteral(" and ") + names.at(2);
-    }
-    return names.at(0) + QStringLiteral(", ") + names.at(1) + QStringLiteral(" and ")
-        + QString::number(n - 2) + QStringLiteral(" others");
-}
-
 // Loads a picked image and compresses it to a square JPEG within the 500 KB
 // avatar protocol cap (center-crop, downscale to 256, drop quality - then, as a
 // last resort, resolution - until it fits). Returns empty bytes when the file is
-// not a readable image. Shared by the own-avatar and group-photo paths.
+// not a readable image. Used for the account's own avatar.
 QByteArray compressAvatarJpeg(const QString& localPath)
 {
     const QImage img(localPath);
@@ -272,17 +250,7 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
                         static_cast<int>(av.size())));
             }
         }
-        // Group photos are keyed by group id in the same store.
-        for (const std::string& gid : session_->groupIds()) {
-            const bazarish::Bytes av = session_->groupAvatar(gid);
-            if (!av.empty()) {
-                emit avatarReady(QString::fromStdString(gid),
-                    QByteArray(reinterpret_cast<const char*>(av.data()),
-                        static_cast<int>(av.size())));
-            }
-        }
     }
-    emitGroups();
     emitFacadeInfo();
     if (connected) {
         ensureSyncTimer();
@@ -423,13 +391,6 @@ void SessionWorker::sync()
             ackPending(QString::fromStdString(m.pendingId));
             continue;
         }
-        // A group photo update both refreshes the avatar store (keyed by group id)
-        // and surfaces a "set the group photo" bubble - so it falls through to the
-        // message map below after routing the image to the store.
-        if (m.contentType == "group.avatar" && !m.avatarData.empty()) {
-            emit avatarReady(QString::fromStdString(m.groupId),
-                QByteArray(m.avatarData.data(), static_cast<int>(m.avatarData.size())));
-        }
         QVariantMap map;
         map["peer"] = QString::fromStdString(m.fromFingerprint);
         map["type"] = QString::fromStdString(m.contentType);
@@ -442,28 +403,6 @@ void SessionWorker::sync()
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
-        map["groupId"] = QString::fromStdString(m.groupId);
-        map["groupName"] = QString::fromStdString(m.groupName);
-        QStringList addedMembers;
-        QStringList addedNames;
-        for (const std::string& fp : m.groupAddedMembers) {
-            addedMembers << QString::fromStdString(fp);
-            // Resolve the newcomer's best known name now, where the just-applied
-            // roster (carrying the admin's provisional label) is visible: a local
-            // contact name, else that provisional label, else the member's own
-            // name. Empty when none is known yet (the GUI then shows the fp).
-            std::string name = session_->contactDisplayName(fp);
-            if (name.empty()) {
-                name = session_->groupMemberProvisionalName(m.groupId, fp);
-            }
-            if (name.empty()) {
-                name = session_->groupMemberDisplayName(m.groupId, fp);
-            }
-            addedNames << QString::fromStdString(name);
-        }
-        map["addedMembers"] = addedMembers;
-        map["addedNames"] = addedNames;
-        map["sender"] = QString::fromStdString(m.fromFingerprint);
         map["messageId"] = QString::fromStdString(m.messageId);
         map["ref"] = QString::fromStdString(m.refId);
         map["replyTo"] = QString::fromStdString(m.replyTo);
@@ -474,46 +413,12 @@ void SessionWorker::sync()
         emit messageReceived(map);
     }
     emitContacts();
-    emitGroups();
     emitFacadeInfo();
     // Resolve any sends still in flight from earlier (late delivery or failure).
     reconcilePendingSends();
-    reconcileGroupAttempts();
     // Surface any call state change picked up this sync (a new invite, the peer
     // accepting, or a hang-up) and refresh live media stats.
     emitCallState();
-}
-
-void SessionWorker::reconcileGroupAttempts()
-{
-    if (!session_ || groupAttempts_.empty()) {
-        return;
-    }
-    std::vector<GroupAttempt> still;
-    for (const GroupAttempt& a : groupAttempts_) {
-        const bazarish::client::Session::AttemptOutcome out
-            = session_->pollAttempt(a.attemptId.toStdString());
-        if (out.status == "delivered") {
-            // Yellow: the recipient's server confirmed it stored this member's copy.
-            emit groupDeliveryRecord(a.groupId, a.protocolId, {a.member}, {QStringLiteral("2")});
-        } else if (out.status == "failed") {
-            emit groupDeliveryRecord(a.groupId, a.protocolId, {a.member}, {QStringLiteral("4")});
-        } else if (out.status == "unconfirmed" || out.status == "unknown") {
-            // Stop tracking; the member's copy stays grey (a read receipt can still
-            // turn it green).
-        } else {
-            // Still pending: when the server is in a retry round, surface "retrying"
-            // (status 5) so the Delivery screen shows it, with the round count ("3/12")
-            // so the user sees how far the retries have gone; else leave it grey.
-            if (out.phase.rfind("retry", 0) == 0) {
-                emit groupDeliveryRecord(a.groupId, a.protocolId, {a.member}, {QStringLiteral("5")});
-                emit groupRetryProgress(
-                    a.protocolId, a.member, QString::fromStdString(out.phase).mid(6).trimmed());
-            }
-            still.push_back(a);  // keep for the next sync
-        }
-    }
-    groupAttempts_.swap(still);
 }
 
 void SessionWorker::reconcilePendingSends()
@@ -698,33 +603,6 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
     }
 }
 
-void SessionWorker::sendGroupFile(const QString& groupId, const QString& localPath, qint64 localId,
-    const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo)
-{
-    try {
-        bazarish::client::BlobRetention retention;
-        retention.ttlSeconds = ttlSeconds;
-        if (downloadCount > 0) {
-            retention.count = static_cast<std::uint32_t>(downloadCount);
-        }
-        // Uploads the blob once and fans the same pointer out to every member; the
-        // upload progress drives the activity row until the fan-out coverage finishes
-        // it, exactly like a 1:1 file but with per-member Delivery.
-        const bazarish::client::Session::GroupFanout coverage = session_->sendGroupFile(
-            groupId.toStdString(), localPath.toStdString(), protocolId.toStdString(),
-            [this, localId](std::uint64_t sent, std::uint64_t total) {
-                emit uploadProgress(localId, static_cast<qint64>(sent), static_cast<qint64>(total));
-            },
-            retention, replyTo.toStdString());
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);  // grey once handed off
-        emitGroupFanout(groupId, protocolId, localId, coverage);
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
-    }
-}
-
 void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
 {
     const QString op = beginOp(
@@ -762,35 +640,6 @@ void SessionWorker::sendReaction(const QString& peer, const QString& refId, cons
     } catch (const std::exception&) {
         // Best effort: the local optimistic reaction stands either way.
         emit opDone(op, false, QStringLiteral("Not sent"));
-    }
-}
-
-void SessionWorker::sendGroupReaction(
-    const QString& groupId, const QString& refId, const QString& emoji)
-{
-    const QString op = beginOp(QStringLiteral("service"),
-        emoji.isEmpty() ? QStringLiteral("Removing reaction") : (QStringLiteral("Reaction ") + emoji),
-        QStringLiteral("Sending to members…"));
-    try {
-        session_->sendGroupReaction(
-            groupId.toStdString(), refId.toStdString(), emoji.toStdString());
-        emit opDone(op, true, QStringLiteral("Sent"));
-    } catch (const std::exception&) {
-        emit opDone(op, false, QStringLiteral("Not sent"));
-    }
-}
-
-void SessionWorker::sendGroupReceipt(
-    const QString& groupId, const QString& refId, const QString& author)
-{
-    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Read receipt"),
-        QStringLiteral("Sending…"));
-    try {
-        session_->sendGroupReceipt(
-            groupId.toStdString(), refId.toStdString(), author.toStdString());
-        emit opDone(op, true, QStringLiteral("Receipt sent"));
-    } catch (const std::exception&) {
-        emit opDone(op, false, QStringLiteral("Receipt not sent"));
     }
 }
 
@@ -856,237 +705,11 @@ void SessionWorker::sendDelete(const QString& peer, const QString& refId)
     }
 }
 
-void SessionWorker::emitGroups()
-{
-    if (!session_) {
-        return;
-    }
-    QStringList ids;
-    QStringList names;
-    for (const std::string& id : session_->groupIds()) {
-        ids << QString::fromStdString(id);
-        names << QString::fromStdString(session_->groupName(id));
-    }
-    emit groupsRefreshed(ids, names);
-}
-
-void SessionWorker::createGroup(const QString& name, const QStringList& memberFps)
-{
-    try {
-        std::vector<std::string> members;
-        members.reserve(memberFps.size());
-        for (const QString& fp : memberFps) {
-            members.push_back(fp.toStdString());
-        }
-        const std::string groupId = session_->createGroup(name.toStdString(), members);
-        emit groupCreated(QString::fromStdString(groupId), name);
-        emitGroups();
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::sendGroupText(const QString& groupId, const QString& text, qint64 localId,
-    const QString& protocolId, const QString& replyTo)
-{
-    try {
-        // Grey at once (our own server will accept the fan-out store-and-forward),
-        // so the bubble never hangs on the hollow "sending" ring while the fan-out
-        // runs. The fan-out itself no longer polls per member (see sendGroupMessage),
-        // so it returns fast; treat a clean send as handed off (yellow).
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-        const bazarish::client::Session::GroupFanout coverage = session_->sendGroupMessage(
-            groupId.toStdString(), text.toStdString(), replyTo.toStdString(),
-            protocolId.toStdString());
-        emitGroupFanout(groupId, protocolId, localId, coverage);
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::emitGroupFanout(const QString& groupId, const QString& protocolId,
-    qint64 localId, const bazarish::client::Session::GroupFanout& coverage)
-{
-    // Drive the monitor row (coverage) and the per-member Delivery screen from one
-    // fan-out result: grey (1) for each member our own server accepted - tracked so
-    // a later poll advances it to yellow/red - else red (4) when even the local
-    // submit threw. Shared by group text and every group control event so they all
-    // get identical per-member status and Resend.
-    emit groupSendCoverage(localId, coverage.reached, coverage.total);
-    QStringList members;
-    QStringList statuses;
-    for (const auto& m : coverage.members) {
-        members << QString::fromStdString(m.member);
-        if (m.ok) {
-            statuses << QStringLiteral("1");
-            if (!m.attemptId.empty()) {
-                groupAttempts_.push_back({groupId, protocolId,
-                    QString::fromStdString(m.member), QString::fromStdString(m.attemptId)});
-            }
-        } else {
-            statuses << QStringLiteral("4");
-        }
-    }
-    emit groupDeliveryRecord(groupId, protocolId, members, statuses);
-}
-
-void SessionWorker::resendGroupToMember(const QString& groupId, const QString& protocolId,
-    const QString& member, const QString& kind, const QString& text, const QString& replyTo)
-{
-    if (!session_) {
-        return;
-    }
-    try {
-        std::string attemptId;
-        const std::string g = groupId.toStdString();
-        const std::string mfp = member.toStdString();
-        const std::string pid = protocolId.toStdString();
-        // Rebuild the SAME content this event originally sent, so the recipient
-        // deduplicates by id: rename re-sends the signed notice, avatar the photo,
-        // a membership/admin change the roster, a file the SAME stored pointer (no
-        // re-upload), a text the message.
-        bool ok = false;
-        if (kind == QStringLiteral("group.rename")) {
-            ok = session_->resendGroupRenameToMember(g, mfp, pid, &attemptId);
-        } else if (kind == QStringLiteral("group.avatar")) {
-            ok = session_->resendGroupAvatarToMember(g, mfp, pid, &attemptId);
-        } else if (kind == QStringLiteral("group.member") || kind == QStringLiteral("group.admin")) {
-            ok = session_->resendGroupRosterToMember(g, mfp, pid, &attemptId);
-        } else if (kind == QStringLiteral("file") || kind == QStringLiteral("photo")
-            || kind == QStringLiteral("audio") || kind == QStringLiteral("voice")) {
-            ok = session_->sendGroupFileToMember(g, mfp, pid, replyTo.toStdString(), &attemptId);
-        } else {
-            ok = session_->sendGroupTextToMember(
-                g, mfp, text.toStdString(), replyTo.toStdString(), pid, &attemptId);
-        }
-        if (ok && !attemptId.empty()) {
-            // Re-track this member's copy so it advances to yellow/red again.
-            groupAttempts_.push_back({groupId, protocolId, member, QString::fromStdString(attemptId)});
-        }
-        // Back to grey (at our server) on a successful resubmit, else red.
-        emit groupDeliveryRecord(groupId, protocolId, {member},
-            {ok ? QStringLiteral("1") : QStringLiteral("4")});
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::sendGroupEdit(
-    const QString& groupId, const QString& refId, qint64 localId, const QString& text)
-{
-    try {
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);  // grey at once
-        session_->sendGroupEdit(groupId.toStdString(), refId.toStdString(), text.toStdString());
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::fetchGroupMembers(const QString& groupId)
-{
-    if (!session_) {
-        return;
-    }
-    QStringList members;
-    QStringList selfNames;
-    QStringList provNames;
-    QStringList adminFlags;
-    for (const std::string& fp : session_->groupMemberFingerprints(groupId.toStdString())) {
-        members << QString::fromStdString(fp);
-        selfNames << QString::fromStdString(
-            session_->groupMemberDisplayName(groupId.toStdString(), fp));
-        provNames << QString::fromStdString(
-            session_->groupMemberProvisionalName(groupId.toStdString(), fp));
-        adminFlags << (session_->isGroupMemberAdmin(groupId.toStdString(), fp)
-                ? QStringLiteral("1")
-                : QStringLiteral("0"));
-    }
-    emit groupMembersReady(groupId, members, selfNames, provNames, adminFlags,
-        session_->isGroupAdmin(groupId.toStdString()));
-}
-
 QString SessionWorker::beginOp(const QString& kind, const QString& title, const QString& status)
 {
     const QString opId = QStringLiteral("op:") + QString::number(++opSeq_);
     emit opBegin(opId, kind, title, status);
     return opId;
-}
-
-void SessionWorker::addGroupMembers(
-    const QString& groupId, const QStringList& fps, qint64 localId, const QString& protocolId)
-{
-    try {
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);  // grey at once
-        std::vector<std::string> members;
-        for (const QString& fp : fps) {
-            members.push_back(fp.toStdString());
-        }
-        const bazarish::client::Session::GroupFanout coverage = session_->addGroupMembers(
-            groupId.toStdString(), members, protocolId.toStdString());
-        emitGroupFanout(groupId, protocolId, localId, coverage);
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-        emitGroups();
-        fetchGroupMembers(groupId);
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::removeGroupMember(
-    const QString& groupId, const QString& fp, qint64 localId, const QString& protocolId)
-{
-    try {
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-        const bazarish::client::Session::GroupFanout coverage = session_->removeGroupMember(
-            groupId.toStdString(), fp.toStdString(), protocolId.toStdString());
-        emitGroupFanout(groupId, protocolId, localId, coverage);
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-        emitGroups();
-        fetchGroupMembers(groupId);
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::setGroupAdmin(const QString& groupId, const QString& fp, bool admin,
-    qint64 localId, const QString& protocolId)
-{
-    try {
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-        const bazarish::client::Session::GroupFanout coverage = session_->setGroupAdmin(
-            groupId.toStdString(), fp.toStdString(), admin, protocolId.toStdString());
-        emitGroupFanout(groupId, protocolId, localId, coverage);
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-        emitGroups();
-        fetchGroupMembers(groupId);  // refresh the admin flags shown in the panel
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::leaveGroup(const QString& groupId)
-{
-    const QString op = beginOp(
-        QStringLiteral("group"), QStringLiteral("Leaving group"), QStringLiteral("Notifying members…"));
-    try {
-        session_->leaveGroup(groupId.toStdString());
-        emit actionOk("Left the group.");
-        emit opDone(op, true, QStringLiteral("Left the group"));
-        emitGroups();
-    } catch (const std::exception& e) {
-        emit opDone(op, false, QString::fromUtf8(e.what()));
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
 }
 
 void SessionWorker::addByInvite(const QString& uri, const QString& intro, const QString& opId)
@@ -1186,26 +809,6 @@ void SessionWorker::drainResolvedAdds()
     }
 }
 
-void SessionWorker::requestContactFromGroup(
-    const QString& groupId, const QString& memberFp, const QString& intro)
-{
-    const QString op = beginOp(QStringLiteral("contact"), QStringLiteral("Contact request"),
-        QStringLiteral("Fetching card & sending request over I2P…"));
-    try {
-        const std::string fingerprint = session_->requestContactFromGroup(
-            groupId.toStdString(), memberFp.toStdString(), intro.toStdString());
-        emit actionOk(QString::fromStdString(
-            "Contact request sent. Verify fingerprint: " + fingerprint));
-        emit opDone(op, true, QStringLiteral("Request sent"));
-        emit contactRequestSent(QString::fromStdString(fingerprint), intro);
-        emitContacts();
-        sync();
-    } catch (const std::exception& e) {
-        emit opDone(op, false, QString::fromUtf8(e.what()));
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
 void SessionWorker::acceptContact(const QString& peer)
 {
     try {
@@ -1256,55 +859,6 @@ void SessionWorker::setDisplayName(const QString& name)
         emit renamed(QString::fromStdString(session_->displayName()));
         emit actionOk(QStringLiteral("Name updated."));
     } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::setGroupAvatar(
-    const QString& groupId, const QString& localPath, qint64 localId, const QString& protocolId)
-{
-    if (!session_) {
-        return;
-    }
-    try {
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-        const QByteArray bytes = compressAvatarJpeg(localPath);
-        if (bytes.isEmpty()) {
-            emit sendResult(localId, false, QStringLiteral("Could not read the image"));
-            emit actionFailed(QStringLiteral("Could not read the selected image."));
-            return;
-        }
-        const bazarish::client::Session::GroupFanout coverage
-            = session_->setGroupAvatar(groupId.toStdString(),
-                bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg", protocolId.toStdString());
-        // Update the store at once (keyed by group id) so the photo shows without
-        // waiting for a sync; the chat bubble was already added by the controller.
-        emit avatarReady(groupId, bytes);
-        emitGroupFanout(groupId, protocolId, localId, coverage);
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
-void SessionWorker::setGroupName(
-    const QString& groupId, const QString& name, qint64 localId, const QString& protocolId)
-{
-    if (!session_) {
-        return;
-    }
-    try {
-        emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-        const bazarish::client::Session::GroupFanout coverage = session_->setGroupName(
-            groupId.toStdString(), name.toStdString(), protocolId.toStdString());
-        emitGroups();  // reflect the new name in the chat list / header at once
-        emitGroupFanout(groupId, protocolId, localId, coverage);
-        emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        emit sendResult(localId, true, {});
-    } catch (const std::exception& e) {
-        emit sendResult(localId, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
     }
 }
@@ -1583,47 +1137,22 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
-    connect(this, &SessionController::requestSendGroupFile, worker_, &SessionWorker::sendGroupFile);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
     connect(this, &SessionController::requestSendReaction, worker_, &SessionWorker::sendReaction);
-    connect(this, &SessionController::requestSendGroupReaction, worker_,
-        &SessionWorker::sendGroupReaction);
-    connect(this, &SessionController::requestSendGroupReceipt, worker_,
-        &SessionWorker::sendGroupReceipt);
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
-    connect(
-        this, &SessionController::requestSendGroupEdit, worker_, &SessionWorker::sendGroupEdit);
     connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
     connect(this, &SessionController::requestSetAvatar, worker_, &SessionWorker::setAvatar);
     connect(this, &SessionController::requestSetDisplayName, worker_,
         &SessionWorker::setDisplayName);
-    connect(
-        this, &SessionController::requestSetGroupAvatar, worker_, &SessionWorker::setGroupAvatar);
-    connect(this, &SessionController::requestSetGroupName, worker_, &SessionWorker::setGroupName);
     connect(this, &SessionController::requestRenameContact, worker_, &SessionWorker::renameContact);
     connect(this, &SessionController::requestRemoveContact, worker_, &SessionWorker::removeContact);
     connect(this, &SessionController::requestSyncChatPin, worker_, &SessionWorker::syncChatPin);
     connect(this, &SessionController::requestClearChatForEveryone, worker_,
         &SessionWorker::clearChatForEveryone);
-    connect(this, &SessionController::requestCreateGroup, worker_, &SessionWorker::createGroup);
-    connect(this, &SessionController::requestSendGroupText, worker_, &SessionWorker::sendGroupText);
-    connect(this, &SessionController::requestResendGroupToMember, worker_,
-        &SessionWorker::resendGroupToMember);
-    connect(this, &SessionController::requestAddGroupMembers, worker_,
-        &SessionWorker::addGroupMembers);
-    connect(this, &SessionController::requestRemoveGroupMember, worker_,
-        &SessionWorker::removeGroupMember);
-    connect(this, &SessionController::requestSetGroupAdmin, worker_,
-        &SessionWorker::setGroupAdmin);
-    connect(this, &SessionController::requestLeaveGroup, worker_, &SessionWorker::leaveGroup);
-    connect(this, &SessionController::requestFetchGroupMembers, worker_,
-        &SessionWorker::fetchGroupMembers);
     connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
     connect(this, &SessionController::requestAddByUsername, worker_, &SessionWorker::addByUsername);
-    connect(this, &SessionController::requestContactFromGroup, worker_,
-        &SessionWorker::requestContactFromGroup);
     connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
@@ -1701,21 +1230,11 @@ SessionController::SessionController(QObject* parent)
             emit contactsRevisionChanged();
         });
     connect(worker_, &SessionWorker::avatarReady, this, &SessionController::onAvatarReady);
-    connect(worker_, &SessionWorker::groupsRefreshed, this, &SessionController::onGroupsRefreshed);
-    connect(worker_, &SessionWorker::groupCreated, this, &SessionController::onGroupCreated);
-    connect(worker_, &SessionWorker::groupMembersReady, this,
-        &SessionController::onGroupMembersReady);
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::uploadProgress, this, &SessionController::onUploadProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
     connect(worker_, &SessionWorker::sendSettled, this, &SessionController::onSendSettled);
     connect(worker_, &SessionWorker::sendPhase, this, &SessionController::onSendPhase);
-    connect(worker_, &SessionWorker::groupSendCoverage, this,
-        &SessionController::onGroupSendCoverage);
-    connect(worker_, &SessionWorker::groupDeliveryRecord, this,
-        &SessionController::onGroupDeliveryRecord);
-    connect(worker_, &SessionWorker::groupRetryProgress, this,
-        &SessionController::onGroupRetryProgress);
     connect(worker_, &SessionWorker::contactRequestSent, this,
         &SessionController::onContactRequestSent);
     connect(worker_, &SessionWorker::contactAddStage, this,
@@ -1829,13 +1348,6 @@ void SessionController::activateConversation(const QString& peer)
     // the receipt high-water from the persistent read state so we never re-ack
     // already-read messages after a restart.
     lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
-    // Load the member list for a group conversation (cleared for a 1:1 chat).
-    activeGroupMembers_.clear();
-    activeGroupAdmin_ = false;
-    emit activeGroupChanged();
-    if (groupIds_.contains(peer)) {
-        emit requestFetchGroupMembers(peer);
-    }
 }
 
 void SessionController::loadLatestWindow()
@@ -2011,19 +1523,13 @@ QVariantList SessionController::searchMessages(const QString& query)
     if (activePeer_.isEmpty()) {
         return results;
     }
-    const bool isGroup = groupIds_.contains(activePeer_);
     for (const SearchHit& hit : store_.searchInPeer(activePeer_, query)) {
         QVariantMap row;
         row["id"] = hit.id;
         row["text"] = hit.text;
         row["time"] = hit.ts;
         row["outgoing"] = hit.outgoing;
-        // For a group hit, label the author; a 1:1 hit is "you" or the peer.
-        if (isGroup && !hit.sender.isEmpty()) {
-            row["author"] = shortFingerprint(hit.sender);
-        } else {
-            row["author"] = hit.outgoing ? QStringLiteral("You") : peerName(activePeer_);
-        }
+        row["author"] = hit.outgoing ? QStringLiteral("You") : peerName(activePeer_);
         results.push_back(row);
     }
     return results;
@@ -2035,78 +1541,25 @@ void SessionController::rebuildChatList()
     QSet<QString> known;
     for (const QString& fp : contactFps_) {
         rows.push_back(ContactRow{fp, peerName(fp), store_.lastText(fp), store_.lastTime(fp),
-            store_.unreadCount(fp), false, store_.isPinned(fp)});
+            store_.unreadCount(fp), store_.isPinned(fp)});
         known.insert(fp);
     }
-    for (const QString& gid : groupIds_) {
-        rows.push_back(ContactRow{gid, groupNames_.value(gid, gid), store_.lastText(gid),
-            store_.lastTime(gid), store_.unreadCount(gid), true, store_.isPinned(gid)});
-        known.insert(gid);
-    }
-    // Resilience: surface a conversation whose contact (or group) record is gone but
-    // whose transcript still holds messages, so a chat never silently vanishes while
-    // its history persists on disk - a lost or inconsistent contact must not read as
+    // Resilience: surface a conversation whose contact record is gone but whose
+    // transcript still holds messages, so a chat never silently vanishes while its
+    // history persists on disk - a lost or inconsistent contact must not read as
     // data loss. Shown under the peer's name, or its short fingerprint when unknown.
     for (const QString& peer : store_.conversationPeers()) {
         if (peer.isEmpty() || known.contains(peer)) {
             continue;
         }
         rows.push_back(ContactRow{peer, peerName(peer), store_.lastText(peer),
-            store_.lastTime(peer), store_.unreadCount(peer), false, store_.isPinned(peer)});
+            store_.lastTime(peer), store_.unreadCount(peer), store_.isPinned(peer)});
     }
     contacts_.setContacts(std::move(rows));
 }
 
-void SessionController::onGroupsRefreshed(const QStringList& ids, const QStringList& names)
-{
-    groupIds_ = ids;
-    groupNames_.clear();
-    for (int i = 0; i < ids.size() && i < names.size(); ++i) {
-        groupNames_.insert(ids[i], names[i]);
-    }
-    rebuildChatList();
-    // A renamed group must update the open conversation header too, not just the
-    // chat list (the header binds activePeerName).
-    emit activePeerNameChanged();
-    // If the open group went away (we left it), close the conversation; otherwise
-    // refresh its member list (membership may have changed).
-    if (!activePeer_.isEmpty() && !groupIds_.contains(activePeer_)
-        && !activeGroupMembers_.isEmpty()) {
-        openConversation({});
-    } else if (groupIds_.contains(activePeer_)) {
-        emit requestFetchGroupMembers(activePeer_);
-    }
-}
-
-void SessionController::onGroupCreated(const QString& groupId, const QString& name)
-{
-    if (!groupIds_.contains(groupId)) {
-        groupIds_ << groupId;
-    }
-    groupNames_.insert(groupId, name);
-    rebuildChatList();
-    openConversation(groupId);
-    emit actionOk("Group created.");
-}
-
-void SessionController::createGroup(const QString& name, const QStringList& memberFps)
-{
-    if (name.trimmed().isEmpty() || memberFps.isEmpty()) {
-        return;
-    }
-    emit requestCreateGroup(name.trimmed(), memberFps);
-}
-
-bool SessionController::isGroup(const QString& id) const
-{
-    return groupIds_.contains(id);
-}
-
 QString SessionController::peerName(const QString& id) const
 {
-    if (groupIds_.contains(id)) {
-        return groupNames_.value(id, id);
-    }
     const QString name = contactNames_.value(id);
     if (!name.isEmpty()) {
         return name;  // the local display name (alias / invite name / rename)
@@ -2136,84 +1589,6 @@ void SessionController::setDisplayName(const QString& name)
     emit requestSetDisplayName(trimmed);
 }
 
-void SessionController::setGroupAvatar(const QString& fileUrl)
-{
-    if (activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
-        return;
-    }
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (localPath.isEmpty()) {
-        return;
-    }
-    // An optimistic "set the group photo" bubble (its image refreshes when the bytes
-    // land via avatarReady); the worker compresses, persists and broadcasts the
-    // photo, then drives per-member Delivery exactly like a group text.
-    QString protocolId;
-    const qint64 localId = beginGroupControl(activePeer_, QStringLiteral("group.avatar"),
-        QStringLiteral("set the group photo"), QStringLiteral("Group photo"), protocolId);
-    emit requestSetGroupAvatar(activePeer_, localPath, localId, protocolId);
-}
-
-void SessionController::setGroupName(const QString& name)
-{
-    const QString trimmed = name.trimmed();
-    if (trimmed.isEmpty() || activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
-        return;
-    }
-    if (trimmed == groupNames_.value(activePeer_)) {
-        return;  // no change
-    }
-    // Optimistic local rename + a "renamed the group" notice (Delivery-tracked like a
-    // group text); the worker bumps the epoch, broadcasts the roster (the
-    // authoritative name) and the rename notice to every member.
-    groupNames_.insert(activePeer_, trimmed);
-    QString protocolId;
-    const qint64 localId = beginGroupControl(activePeer_, QStringLiteral("group.rename"),
-        QStringLiteral("changed the group name to \"") + trimmed + QStringLiteral("\""),
-        QStringLiteral("Rename group"), protocolId);
-    rebuildChatList();
-    emit activePeerNameChanged();
-    emit requestSetGroupName(activePeer_, trimmed, localId, protocolId);
-}
-
-QVariantMap SessionController::groupSenderInfo(const QString& fp) const
-{
-    QVariantMap info;
-    // The short fingerprint is shown beneath any real name as the ground truth
-    // (like a group bubble), so set it for every named case below.
-    info[QStringLiteral("fpShort")] = shortFingerprint(fp);
-    info[QStringLiteral("provisional")] = false;
-    // 1) A local contact name we keep takes precedence (and is shown as trusted).
-    const QString contact = contactNames_.value(fp);
-    if (!contact.isEmpty()) {
-        info[QStringLiteral("name")] = contact;
-        info[QStringLiteral("isContact")] = true;
-        return info;
-    }
-    // 2) The member's own account name, learned from their messages (unverified).
-    const QString self = memberSelfNames_.value(fp);
-    if (!self.isEmpty()) {
-        info[QStringLiteral("name")] = self;
-        info[QStringLiteral("isContact")] = false;
-        return info;
-    }
-    // 3) The admin's provisional label from the roster: shown muted/parenthesised
-    //    until that member sends their own name.
-    const QString prov = memberProvisionalNames_.value(fp);
-    if (!prov.isEmpty()) {
-        info[QStringLiteral("name")] = prov;
-        info[QStringLiteral("isContact")] = false;
-        info[QStringLiteral("provisional")] = true;
-        return info;
-    }
-    // 4) Nothing known yet (a silent non-contact member): the short fingerprint
-    //    stands alone as the name, so it is not also repeated beneath it.
-    info[QStringLiteral("name")] = shortFingerprint(fp);
-    info[QStringLiteral("isContact")] = false;
-    info[QStringLiteral("fpShort")] = QString();
-    return info;
-}
-
 void SessionController::renameContact(const QString& fp, const QString& name)
 {
     if (fp.isEmpty()) {
@@ -2232,74 +1607,10 @@ void SessionController::renameContact(const QString& fp, const QString& name)
     emit requestRenameContact(fp, trimmed);
 }
 
-void SessionController::addGroupMembers(const QString& groupId, const QStringList& fps)
-{
-    if (fps.isEmpty() || groupId.isEmpty()) {
-        return;
-    }
-    // Optimistic "you added X" bubble (Delivery-tracked like a group text), so the
-    // admin sees it and can watch / Resend each member's copy. The existing members
-    // get their own "joined the group" note from the roster broadcast.
-    QStringList names;
-    for (const QString& fp : fps) {
-        names << peerName(fp);
-    }
-    QString protocolId;
-    const qint64 localId = beginGroupControl(groupId, QStringLiteral("group.member"),
-        QStringLiteral("You added ") + joinNames(names) + QStringLiteral(" to the group."),
-        QStringLiteral("Add members"), protocolId);
-    emit requestAddGroupMembers(groupId, fps, localId, protocolId);
-}
-
-void SessionController::removeGroupMember(const QString& groupId, const QString& fp)
-{
-    if (groupId.isEmpty() || fp.isEmpty()) {
-        return;
-    }
-    QString protocolId;
-    const qint64 localId = beginGroupControl(groupId, QStringLiteral("group.member"),
-        QStringLiteral("You removed ") + peerName(fp) + QStringLiteral(" from the group."),
-        QStringLiteral("Remove member"), protocolId);
-    emit requestRemoveGroupMember(groupId, fp, localId, protocolId);
-}
-
-void SessionController::setGroupAdmin(const QString& fp, bool admin)
-{
-    if (fp.isEmpty() || activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
-        return;
-    }
-    const QString text = peerName(fp)
-        + (admin ? QStringLiteral(" is now an admin.") : QStringLiteral(" is no longer an admin."));
-    QString protocolId;
-    const qint64 localId = beginGroupControl(
-        activePeer_, QStringLiteral("group.admin"), text, QStringLiteral("Admin change"), protocolId);
-    emit requestSetGroupAdmin(activePeer_, fp, admin, localId, protocolId);
-}
-
-void SessionController::leaveGroup(const QString& groupId)
-{
-    if (groupId.isEmpty()) {
-        return;
-    }
-    // Leave no trace locally: wipe the group's transcript and drop it from the chat
-    // list at once. The worker notifies members, revokes our pool (so no member can
-    // deliver to us in this group again) and tombstones the id so a late item can
-    // never resurrect the chat. Local cleanup is optimistic - leaving is final.
-    store_.clearPeer(groupId);
-    groupIds_.removeAll(groupId);
-    groupNames_.remove(groupId);
-    if (activePeer_ == groupId) {
-        openConversation({});  // close the conversation we just left
-    }
-    rebuildChatList();
-    refreshUnreadTotal();
-    emit requestLeaveGroup(groupId);
-}
-
 void SessionController::clearChat(bool forEveryone)
 {
-    if (activePeer_.isEmpty() || groupIds_.contains(activePeer_)) {
-        return;  // 1:1 conversations only
+    if (activePeer_.isEmpty()) {
+        return;
     }
     const QString peer = activePeer_;
     store_.clearPeer(peer);
@@ -2324,12 +1635,12 @@ void SessionController::clearChat(bool forEveryone)
 
 void SessionController::deleteContact()
 {
-    if (activePeer_.isEmpty() || groupIds_.contains(activePeer_)) {
-        return;  // 1:1 contacts only
+    if (activePeer_.isEmpty()) {
+        return;
     }
     const QString peer = activePeer_;
     // Wipe the chat and drop the contact from the list at once; the worker removes
-    // it from the roster and clears its avatar. Irreversible.
+    // it from the contact list and clears its avatar. Irreversible.
     store_.clearPeer(peer);
     contactFps_.removeAll(peer);
     contactNames_.remove(peer);
@@ -2337,59 +1648,6 @@ void SessionController::deleteContact()
     rebuildChatList();
     refreshUnreadTotal();
     emit requestRemoveContact(peer);
-}
-
-void SessionController::onGroupMembersReady(const QString& groupId, const QStringList& members,
-    const QStringList& selfNames, const QStringList& provNames, const QStringList& adminFlags,
-    bool iAmAdmin)
-{
-    if (groupId == activePeer_) {
-        activeGroupMembers_ = members;
-        memberSelfNames_.clear();
-        memberProvisionalNames_.clear();
-        memberAdmins_.clear();
-        for (int i = 0; i < members.size() && i < selfNames.size(); ++i) {
-            if (!selfNames[i].isEmpty()) {
-                memberSelfNames_.insert(members[i], selfNames[i]);
-            }
-        }
-        for (int i = 0; i < members.size() && i < provNames.size(); ++i) {
-            if (!provNames[i].isEmpty()) {
-                memberProvisionalNames_.insert(members[i], provNames[i]);
-            }
-        }
-        for (int i = 0; i < members.size() && i < adminFlags.size(); ++i) {
-            if (adminFlags[i] == QStringLiteral("1")) {
-                memberAdmins_.insert(members[i]);
-            }
-        }
-        activeGroupAdmin_ = iAmAdmin;
-        emit activeGroupChanged();
-    }
-}
-
-bool SessionController::memberIsAdmin(const QString& fp) const
-{
-    return memberAdmins_.contains(fp);
-}
-
-QString SessionController::groupAdminNames() const
-{
-    // The protocol allows several admins (multi-admin governance, so a group
-    // survives the creator's account loss); today only the creator is one until an
-    // appoint-admin action is wired up. Shown to non-admins, so we never list
-    // ourselves here.
-    QStringList names;
-    for (const QString& fp : memberAdmins_) {
-        const QString contact = contactNames_.value(fp);
-        const QString self = memberSelfNames_.value(fp);
-        const QString prov = memberProvisionalNames_.value(fp);
-        names << (!contact.isEmpty()
-                ? contact
-                : (!self.isEmpty() ? self : (!prov.isEmpty() ? prov : shortFingerprint(fp))));
-    }
-    names.sort();
-    return names.join(QStringLiteral(", "));
 }
 
 QString SessionController_genProtocolId()
@@ -2406,32 +1664,6 @@ void SessionController::sendText(const QString& text)
     const QString replyTo = replying_ ? replyingProtocolId_ : QString();
     if (replying_) {
         cancelReply();
-    }
-    // Group conversation: fan out to all members via the group path.
-    if (groupIds_.contains(activePeer_)) {
-        StoredMessage gm;
-        gm.peer = activePeer_;
-        gm.outgoing = true;
-        gm.type = "text";
-        gm.sender = fingerprint_;
-        gm.protocolId = SessionController_genProtocolId();
-        gm.text = text;
-        gm.replyTo = replyTo;
-        gm.ts = nowMillis();
-        gm.orderKey = gm.ts;
-        gm.status = DeliveryStatus::Sending;
-        gm.id = store_.append(gm);
-        statusById_[gm.id] = DeliveryStatus::Sending;
-        showInActiveView(gm, true);
-        contacts_.touch(activePeer_, groupNames_.value(activePeer_), text, gm.ts, false, true);
-        beginOperation(QStringLiteral("send:") + QString::number(gm.id), QStringLiteral("send"),
-            QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending to members…"),
-            activePeer_);
-        groupSendIds_.insert(gm.id);  // its row is driven by fan-out coverage
-        // Pass our local protocol id as the SHARED message id so the wire copy and
-        // our own copy match (an edit/reply referencing it then resolves everywhere).
-        emit requestSendGroupText(activePeer_, text, gm.id, gm.protocolId, replyTo);
-        return;
     }
     StoredMessage m;
     m.peer = activePeer_;
@@ -2490,14 +1722,6 @@ void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int 
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
-    if (groupIds_.contains(activePeer_)) {
-        // A group file fans the same uploaded pointer out to every member, so its row
-        // is driven by fan-out coverage and it gets per-member Delivery + Resend.
-        groupSendIds_.insert(m.id);
-        emit requestSendGroupFile(
-            activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount, replyTo);
-        return;
-    }
     emit requestSendFile(
         activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount, replyTo);
 }
@@ -2585,8 +1809,6 @@ QVariantMap SessionController::replyPreview(const QString& protocolId) const
     // The author label: "You" for our own, else a contact/self name or short fp.
     if (m.outgoing) {
         info[QStringLiteral("sender")] = QStringLiteral("You");
-    } else if (!m.sender.isEmpty()) {
-        info[QStringLiteral("sender")] = groupSenderInfo(m.sender).value("name").toString();
     } else {
         info[QStringLiteral("sender")] = peerName(activePeer_);
     }
@@ -2613,13 +1835,7 @@ void SessionController::commitEdit(const QString& newText)
         store_.updateStatus(editingLocalId_, DeliveryStatus::Sending);
         conversation_.setStatusForId(editingLocalId_, DeliveryStatus::Sending);
         conversation_.setErrorForId(editingLocalId_, {});
-        // A group edit fans out to members (the 1:1 edit path needs a contact,
-        // which a group id is not - that was the "contact not found" failure).
-        if (groupIds_.contains(activePeer_)) {
-            emit requestSendGroupEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
-        } else {
-            emit requestSendEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
-        }
+        emit requestSendEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
     }
     cancelEdit();
 }
@@ -2641,18 +1857,16 @@ void SessionController::deleteMessage(qint64 localId, const QString& protocolId,
     if (activePeer_.isEmpty() || localId == 0) {
         return;
     }
-    const bool isGroup = groupIds_.contains(activePeer_);
     // Remove our own copy with no trace.
     store_.removeById(localId);
     conversation_.removeById(localId);
     statusById_.remove(localId);
     // Refresh the chat-list preview to whatever the new last message now is.
-    contacts_.touch(activePeer_, isGroup ? groupNames_.value(activePeer_) : QString(),
-        store_.lastText(activePeer_), store_.lastTime(activePeer_), false, isGroup);
-    // Ask the recipient to delete it too, but only for our own one-to-one message:
-    // a peer cannot be told to drop a message we received from them, and a group
-    // fan-out delete is out of scope - those stay local-only.
-    if (outgoing && !isGroup && !protocolId.isEmpty()) {
+    contacts_.touch(activePeer_, {}, store_.lastText(activePeer_), store_.lastTime(activePeer_),
+        false);
+    // Ask the recipient to delete it too, but only for our own message: a peer cannot
+    // be told to drop a message we received from them.
+    if (outgoing && !protocolId.isEmpty()) {
         emit requestSendDelete(activePeer_, protocolId);
     }
 }
@@ -2680,18 +1894,9 @@ void SessionController::addByUsername(const QString& alias, const QString& intro
     emit requestAddByUsername(alias, intro, opId);
 }
 
-void SessionController::addContactFromGroup(const QString& memberFp)
-{
-    if (memberFp.isEmpty() || activePeer_.isEmpty() || !groupIds_.contains(activePeer_)) {
-        return;
-    }
-    // A friendly default intro; the request is a direct, member-only delivery.
-    emit requestContactFromGroup(activePeer_, memberFp, QStringLiteral("Hi, let's connect."));
-}
-
 void SessionController::acceptContact()
 {
-    if (activePeer_.isEmpty() || groupIds_.contains(activePeer_)) {
+    if (activePeer_.isEmpty()) {
         return;
     }
     const QString peer = activePeer_;
@@ -2700,11 +1905,6 @@ void SessionController::acceptContact()
     ++contactsRevision_;
     emit contactsRevisionChanged();
     emit requestAcceptContact(peer);
-}
-
-bool SessionController::isContact(const QString& fp) const
-{
-    return contactFps_.contains(fp);
 }
 
 bool SessionController::contactCanAccept(const QString& fp) const
@@ -2834,34 +2034,6 @@ void SessionController::finishOperation(const QString& id, bool ok, const QStrin
         operations_.remove(id);
         emit operationsChanged();
     });
-}
-
-qint64 SessionController::beginGroupControl(const QString& groupId, const QString& type,
-    const QString& text, const QString& title, QString& outProtocolId)
-{
-    // An optimistic outgoing bubble for the control event, mirroring a group text:
-    // it carries a fresh protocol id so its "Delivery" view shows per-member status,
-    // and its row is driven by fan-out coverage (then Resend-able per member). The
-    // worker drives the status dot via sendProgress, exactly like a text.
-    StoredMessage m;
-    m.peer = groupId;
-    m.outgoing = true;
-    m.type = type;
-    m.sender = fingerprint_;
-    m.protocolId = SessionController_genProtocolId();
-    m.text = text;
-    m.ts = nowMillis();
-    m.orderKey = m.ts;
-    m.status = DeliveryStatus::Sending;
-    m.id = store_.append(m);
-    statusById_[m.id] = DeliveryStatus::Sending;
-    showInActiveView(m, true);
-    contacts_.touch(groupId, groupNames_.value(groupId, groupId), text, m.ts, false, true);
-    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"), title,
-        QStringLiteral("Sending to members…"), groupId);
-    groupSendIds_.insert(m.id);  // its row is driven by fan-out coverage
-    outProtocolId = m.protocolId;
-    return m.id;
 }
 
 void SessionController::generatePersonalKey()
@@ -3045,28 +2217,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // A read receipt: the peer read our referenced message (the green state), and
     // by the read high-water everything we sent them before it too. Not shown.
     if (type == "receipt") {
-        const QString gid = message.value("groupId").toString();
         const QString ref = message.value("ref").toString();
-        if (!gid.isEmpty()) {
-            // A group read receipt for one of our own messages: record the verified
-            // viewer and turn the bubble green on the first reader.
-            const QString reader = message.value("sender").toString();
-            store_.addView(gid, ref, reader);
-            const qint64 localId = store_.idForProtocol(ref);
-            if (localId != 0) {
-                markGroupMessageDelivered(localId);
-            }
-            // Surface the read in the background monitor as a brief event, so a read
-            // receipt is observable like every other background activity.
-            const QString who = groupSenderInfo(reader).value("name").toString();
-            const QString opId = QStringLiteral("read:") + ref + QStringLiteral(":") + reader;
-            beginOperation(opId, QStringLiteral("service"),
-                who + QStringLiteral(" read your message"), QStringLiteral("Read"), gid);
-            finishOperation(opId, true, QStringLiteral("Read ✓"));
-            ++reactionsRevision_;  // the viewers/delivery modal re-queries
-            emit reactionsRevisionChanged();
-            return;
-        }
         const qint64 localId = store_.idForProtocol(ref);
         if (localId != 0) {
             markOutgoingRead(peer, localId);
@@ -3074,14 +2225,11 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
-    // A reaction (1:1 or group): record the reactor's emoji against the target
-    // message and re-drive the chips. Never a chat bubble. The reactor is the
-    // message's verified sender (bound by the group gsig for a group).
+    // A reaction: record the reactor's emoji against the target message and
+    // re-drive the chips. Never a chat bubble. The reactor is the peer who sent it.
     if (type == "reaction") {
-        const QString gid = message.value("groupId").toString();
-        const QString convKey = gid.isEmpty() ? peer : gid;
-        store_.setReaction(convKey, message.value("ref").toString(),
-            message.value("sender").toString(), message.value("text").toString());
+        store_.setReaction(peer, message.value("ref").toString(), peer,
+            message.value("text").toString());
         ++reactionsRevision_;
         emit reactionsRevisionChanged();
         return;
@@ -3091,37 +2239,29 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // where it sits instead of adding a new bubble. Scoped to incoming-from-peer
     // in the store, so a peer can only edit its own messages.
     if (type == "edit") {
-        // A group edit is filed under the group id and scoped to the authoring
-        // member (so a member can only edit its own message); a 1:1 edit is scoped
-        // to incoming-from-peer.
-        const QString gid = message.value("groupId").toString();
-        const bool isGroup = !gid.isEmpty();
-        const QString convKey = isGroup ? gid : peer;
-        const qint64 localId = isGroup
-            ? store_.idForIncomingGroupProtocol(
-                  message.value("ref").toString(), gid, message.value("sender").toString())
-            : store_.idForIncomingProtocol(message.value("ref").toString(), peer);
+        // Scoped to incoming-from-peer in the store, so a peer can only edit its
+        // own messages.
+        const qint64 localId
+            = store_.idForIncomingProtocol(message.value("ref").toString(), peer);
         if (localId != 0) {
             const QString newText = message.value("text").toString();
             const QString newKeyboard = message.value("keyboard").toString();
             store_.editContent(localId, newText, newKeyboard);
-            if (convKey == activePeer_) {
+            if (peer == activePeer_) {
                 conversation_.editById(localId, newText, newKeyboard);
             }
-            // If we had already read this 1:1 message, the edit is read again the
-            // moment it lands in the open chat: re-acknowledge it so the sender's
-            // edited bubble can advance to delivered (green). (Groups have no
-            // receipts.)
-            if (!isGroup && convKey == activePeer_ && sendReceipts_
-                && localId <= lastReadAckedId_.value(convKey, 0)) {
+            // If we had already read this message, the edit is read again the moment
+            // it lands in the open chat: re-acknowledge it so the sender's edited
+            // bubble can advance to delivered (green).
+            if (peer == activePeer_ && sendReceipts_
+                && localId <= lastReadAckedId_.value(peer, 0)) {
                 emit requestSendReceipt(peer, message.value("ref").toString());
             }
             QString preview = newText;
             if (preview.isEmpty() && !newKeyboard.isEmpty()) {
                 preview = "[interactive]";
             }
-            contacts_.touch(convKey, isGroup ? groupNames_.value(convKey) : peerName(convKey),
-                preview, nowMillis(), false, isGroup);
+            contacts_.touch(peer, peerName(peer), preview, nowMillis(), false);
         }
         return;
     }
@@ -3164,61 +2304,6 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
-    // Added to a group: surface a friendly system line; the group itself is
-    // added to the chat list by the group-list refresh.
-    if (type == "group.invite") {
-        const QString gid = message.value("groupId").toString();
-        const QString gname = message.value("groupName").toString();
-        StoredMessage sys;
-        sys.peer = gid;
-        sys.type = "system";
-        sys.text = "You were added to \"" + gname + "\"";
-        sys.ts = nowMillis();
-        sys.orderKey = sys.ts;
-        sys.status = DeliveryStatus::Received;
-        sys.id = store_.append(sys);
-        showInActiveView(sys, false);
-        contacts_.touch(gid, gname, sys.text, sys.ts, false, true);
-        contacts_.setUnread(gid, store_.unreadCount(gid));
-        return;
-    }
-    // A roster update we received as an existing member. The core already applied
-    // the membership change; if it added members, surface a "joined the group"
-    // service note so the change is visible (otherwise the roster updates silently
-    // and an existing member sees nothing). A roster that only removed members or
-    // changed admins carries no added members and stays quiet.
-    if (type == "group.roster") {
-        const QString gid = message.value("groupId").toString();
-        const QStringList added = message.value("addedMembers").toStringList();
-        const QStringList addedNames = message.value("addedNames").toStringList();
-        if (!gid.isEmpty() && !added.isEmpty()) {
-            QStringList names;
-            for (int i = 0; i < added.size(); ++i) {
-                // Prefer the name the worker resolved from the roster (contact /
-                // admin's provisional label / the member's own name); fall back to
-                // peerName (the short fingerprint) only when none was known.
-                const QString resolved
-                    = (i < addedNames.size() && !addedNames[i].isEmpty()) ? addedNames[i]
-                                                                          : peerName(added[i]);
-                names << resolved;
-            }
-            StoredMessage sys;
-            sys.peer = gid;
-            sys.type = QStringLiteral("system");
-            sys.text = joinNames(names) + QStringLiteral(" joined the group.");
-            sys.ts = nowMillis();
-            sys.orderKey = sys.ts;
-            sys.status = DeliveryStatus::Received;
-            sys.id = store_.append(sys);
-            showInActiveView(sys, false);
-            contacts_.touch(gid, groupNames_.value(gid, gid), sys.text, sys.ts, false, true);
-        }
-        return;
-    }
-    if (type == "group.tokens" || type == "group.leave") {
-        return;  // group control; the chat list reflects the change
-    }
-
     // The peer agreed to our contact request: we are now mutual contacts (their
     // descriptor already arrived via the bootstrap in sync). Surface a note.
     if (type == "contact.accept") {
@@ -3236,11 +2321,6 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
-    // A group content message is filed under the group, with its author recorded.
-    const QString groupId = message.value("groupId").toString();
-    const bool isGroupMsg = !groupId.isEmpty();
-    const QString convKey = isGroupMsg ? groupId : peer;
-
     // Idempotent receive. The mailbox is at-least-once: a blob whose ack was lost
     // (or that we processed just before a restart) is legitimately re-offered and
     // arrives here again with the same id. Dedup against the transcript we already
@@ -3248,27 +2328,17 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // this is that redelivery: never store or surface it a second time. (A read
     // receipt is only sent on a real read, handled by markReadThroughRow.)
     const QString incomingId = message.value("messageId").toString();
-    if (!incomingId.isEmpty() && store_.idForIncomingProtocol(incomingId, convKey) != 0) {
+    if (!incomingId.isEmpty() && store_.idForIncomingProtocol(incomingId, peer) != 0) {
         return;
     }
 
     StoredMessage m;
-    m.peer = convKey;
+    m.peer = peer;
     m.outgoing = false;
     m.type = type;
-    m.sender = isGroupMsg ? message.value("sender").toString() : QString();
     m.protocolId = message.value("messageId").toString();
     m.text = message.value("text").toString();
     m.replyTo = message.value("replyTo").toString();
-    // A group photo update carries no text on the wire; render it as a service
-    // line ("<author> set the group photo") shown in the bubble and the preview.
-    if (type == "group.avatar") {
-        m.text = QStringLiteral("set the group photo");
-    }
-    // A group rename carries the new name in `text`; render the notice from it.
-    if (type == "group.rename") {
-        m.text = QStringLiteral("changed the group name to \"") + m.text + QStringLiteral("\"");
-    }
     m.attName = message.value("attName").toString();
     m.attMime = message.value("attMime").toString();
     m.attSize = message.value("attSize").toLongLong();
@@ -3289,15 +2359,11 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (preview.isEmpty() && !m.attName.isEmpty()) {
         preview = "[" + type + "] " + m.attName;
     }
-    if (isGroupMsg) {
-        contacts_.touch(convKey, groupNames_.value(convKey), preview, m.ts, false, true);
-    } else {
-        contacts_.touch(peer, peerName(peer), preview, m.ts, false);
-    }
+    contacts_.touch(peer, peerName(peer), preview, m.ts, false);
     // The unread badge is the persistent count of incoming messages past the read
     // high-water (set when messages actually scroll into view), not a running
     // increment - so it stays accurate across restarts and partial reads.
-    contacts_.setUnread(convKey, store_.unreadCount(convKey));
+    contacts_.setUnread(peer, store_.unreadCount(peer));
     // No receipt is sent on arrival: the green "read" state is reported only when
     // the user actually reads the message (chat open + window focused + the message
     // in view), driven by markReadThroughRow.
@@ -3323,10 +2389,6 @@ void SessionController::bumpStatus(qint64 localId, int status)
 void SessionController::onSendProgress(qint64 localId, int state)
 {
     bumpStatus(localId, state);  // AtSenderServer (our own server accepted it)
-    // A group send's activity row is owned by its fan-out coverage handler; leave it.
-    if (groupSendIds_.contains(localId)) {
-        return;
-    }
     const QString opId = QStringLiteral("send:") + QString::number(localId);
     if (state == DeliveryStatus::AtSenderServer) {
         updateOperation(opId, QStringLiteral("At your server, delivering…"));
@@ -3431,9 +2493,6 @@ void SessionController::showInFolder(const QString& path) const
 
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)
 {
-    // Last signal of a send: a group send's activity row is owned by its coverage
-    // handler (already finished), so just stop treating later signals as a group.
-    const bool wasGroup = groupSendIds_.remove(localId);
     if (ok) {
         // The grey state (and yellow, when the server confirmed the recipient
         // stored it) were already set via sendProgress; a still-pending delivery
@@ -3441,7 +2500,6 @@ void SessionController::onSendResult(qint64 localId, bool ok, const QString& err
         conversation_.setErrorForId(localId, {});
         return;
     }
-    (void)wasGroup;  // a failure finishes the row below either way
     // A delivery failure belongs to one message, not the whole app: mark that
     // bubble failed and attach the reason inline (with a resend affordance in the
     // UI) instead of raising an application-wide error banner.
@@ -3449,25 +2507,6 @@ void SessionController::onSendResult(qint64 localId, bool ok, const QString& err
     conversation_.setErrorForId(localId, error);
     finishOperation(QStringLiteral("send:") + QString::number(localId), false,
         QStringLiteral("Failed: ") + error);
-}
-
-void SessionController::onGroupSendCoverage(qint64 localId, int reached, int total)
-{
-    // Drive the group send's activity row from the fan-out result: "Sent to N/M
-    // members" (a member counts when handed the message - a spent token or the
-    // tokenless fallback). The row finishes here; the later one-to-one progress
-    // signals are ignored for this id (groupSendIds_). The id is cleared in
-    // onSendResult, the last signal of the fan-out.
-    const QString opId = QStringLiteral("send:") + QString::number(localId);
-    if (total > 0 && reached >= total) {
-        finishOperation(opId, true,
-            QStringLiteral("Sent to all %1 member%2").arg(total).arg(total == 1 ? "" : "s"));
-    } else if (reached > 0) {
-        finishOperation(
-            opId, true, QStringLiteral("Sent to %1/%2 members").arg(reached).arg(total));
-    } else {
-        finishOperation(opId, false, QStringLiteral("Not sent (0/%1 members)").arg(total));
-    }
 }
 
 void SessionController::onSendPhase(qint64 localId, const QString& phase)
@@ -3526,15 +2565,6 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     conversation_.setErrorForId(localId, {});
     const FileRetention r = fileRetention_.value(localId);
     const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
-    // A whole-message Resend only fires when the send failed outright; for a group
-    // that means the upload itself failed (a partial fan-out never fails the bubble,
-    // it shows per-member status), so re-uploading here is correct.
-    if (groupIds_.contains(activePeer_)) {
-        groupSendIds_.insert(localId);
-        emit requestSendGroupFile(
-            activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount, replyTo);
-        return;
-    }
     emit requestSendFile(
         activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount, replyTo);
 }
@@ -3552,38 +2582,6 @@ void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
     }
 }
 
-void SessionController::markGroupMessageDelivered(qint64 localId)
-{
-    // A group fan-out has no single ack, so the first read receipt (from any member)
-    // turns the bubble green. Idempotent: a later receipt re-sets the same status.
-    if (statusById_.value(localId, 0) == DeliveryStatus::Delivered) {
-        return;
-    }
-    store_.updateStatus(localId, DeliveryStatus::Delivered);
-    statusById_[localId] = DeliveryStatus::Delivered;
-    conversation_.setStatusForId(localId, DeliveryStatus::Delivered);
-}
-
-QString SessionController::reactorName(const QString& fp) const
-{
-    if (fp == fingerprint_) {
-        return QStringLiteral("You");
-    }
-    const QString contact = contactNames_.value(fp);
-    if (!contact.isEmpty()) {
-        return contact;
-    }
-    const QString dn = memberSelfNames_.value(fp);
-    if (!dn.isEmpty()) {
-        return dn;
-    }
-    const QString prov = memberProvisionalNames_.value(fp);
-    if (!prov.isEmpty()) {
-        return prov;
-    }
-    return shortFingerprint(fp);
-}
-
 void SessionController::react(const QString& protocolId, const QString& emoji)
 {
     if (activePeer_.isEmpty() || protocolId.isEmpty()) {
@@ -3592,11 +2590,7 @@ void SessionController::react(const QString& protocolId, const QString& emoji)
     // Toggle: tapping the emoji we already set removes our reaction.
     const QString next = (myReaction(protocolId) == emoji) ? QString() : emoji;
     store_.setReaction(activePeer_, protocolId, fingerprint_, next);
-    if (groupIds_.contains(activePeer_)) {
-        emit requestSendGroupReaction(activePeer_, protocolId, next);
-    } else {
-        emit requestSendReaction(activePeer_, protocolId, next);
-    }
+    emit requestSendReaction(activePeer_, protocolId, next);
     ++reactionsRevision_;
     emit reactionsRevisionChanged();
 }
@@ -3640,85 +2634,6 @@ QVariantList SessionController::reactionSummary(const QString& protocolId) const
     return out;
 }
 
-QVariantList SessionController::reactionDetails(const QString& protocolId) const
-{
-    QVariantList out;
-    for (const Reaction& r : store_.reactionsFor(activePeer_, protocolId)) {
-        QVariantMap m;
-        m[QStringLiteral("emoji")] = r.emoji;
-        m[QStringLiteral("name")] = reactorName(r.reactor);
-        out << m;
-    }
-    return out;
-}
-
-QVariantList SessionController::viewers(const QString& protocolId) const
-{
-    QVariantList out;
-    for (const QString& fp : store_.viewersFor(activePeer_, protocolId)) {
-        QVariantMap m;
-        m[QStringLiteral("name")] = reactorName(fp);
-        out << m;
-    }
-    return out;
-}
-
-QVariantList SessionController::groupDelivery(const QString& protocolId) const
-{
-    // Each member's status combines the delivery poll (grey/yellow/red) with the read
-    // receipt (green): a member who is a recorded viewer has read it, which outranks
-    // the delivery status.
-    const QStringList readers = store_.viewersFor(activePeer_, protocolId);
-    const QHash<QString, QString> retry = groupRetryDetail_.value(protocolId);
-    QVariantList out;
-    for (const GroupDeliveryRow& row : store_.groupDeliveryFor(activePeer_, protocolId)) {
-        const int status = readers.contains(row.member) ? DeliveryStatus::Delivered : row.status;
-        QVariantMap m;
-        m[QStringLiteral("member")] = row.member;
-        m[QStringLiteral("name")] = groupSenderInfo(row.member).value("name").toString();
-        m[QStringLiteral("status")] = status;  // 1 grey, 2 yellow, 3 read/green, 4 red, 5 retrying
-        // The server retry round ("3/12"), shown only while still retrying (status 5).
-        m[QStringLiteral("detail")] = retry.value(row.member);
-        out << m;
-    }
-    return out;
-}
-
-void SessionController::resendGroupToMember(const QString& protocolId, const QString& member)
-{
-    if (activePeer_.isEmpty() || !groupIds_.contains(activePeer_) || member.isEmpty()) {
-        return;
-    }
-    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
-    if (m.id == 0) {
-        return;  // the message is no longer in local history
-    }
-    // The message type tells the worker what to rebuild (text/rename/avatar/roster).
-    emit requestResendGroupToMember(activePeer_, protocolId, member, m.type, m.text, m.replyTo);
-}
-
-void SessionController::onGroupDeliveryRecord(const QString& groupId, const QString& protocolId,
-    const QStringList& members, const QStringList& statuses)
-{
-    for (int i = 0; i < members.size() && i < statuses.size(); ++i) {
-        store_.setGroupDelivery(groupId, protocolId, members[i], statuses[i].toInt());
-    }
-    // The Delivery view shares the reactions/views modal's revision, so it re-queries.
-    ++reactionsRevision_;
-    emit reactionsRevisionChanged();
-}
-
-void SessionController::onGroupRetryProgress(
-    const QString& protocolId, const QString& member, const QString& detail)
-{
-    // Record the live server retry round ("3/12") for this member's copy so the
-    // Delivery screen shows "retrying 3/12" (the row's status is already 5 via the
-    // record above). Live only - not persisted.
-    groupRetryDetail_[protocolId][member] = detail;
-    ++reactionsRevision_;
-    emit reactionsRevisionChanged();
-}
-
 void SessionController::markReadThroughRow(int row)
 {
     // The user actually read up to `row` (the view is open, focused and scrolled
@@ -3748,16 +2663,8 @@ void SessionController::markReadThroughRow(int row)
     if (!sendReceipts_) {
         return;
     }
-    if (groupIds_.contains(activePeer_)) {
-        // In a group, send one receipt to the author of every message newly crossing
-        // the read high-water, so each author learns we read theirs (bubble greens).
-        for (const ReadTarget& t : conversation_.incomingBetween(prevAcked, id)) {
-            emit requestSendGroupReceipt(activePeer_, t.protocolId, t.sender);
-        }
-    } else {
-        // A one-to-one read sends a delivery receipt so the sender's bubble greens.
-        emit requestSendReceipt(activePeer_, protocolId);
-    }
+    // A read sends a delivery receipt so the sender's bubble greens.
+    emit requestSendReceipt(activePeer_, protocolId);
 }
 
 void SessionController::onContactAddStage(const QString& opId, const QString& status)
@@ -3785,7 +2692,7 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
 {
     // Mirror the request on our own side: store the intro we just sent as an
     // outgoing message and open a chat for the new peer, so adding a contact
-    // produces a visible conversation immediately instead of an empty roster
+    // produces a visible conversation immediately instead of an empty chat-list
     // entry. The contact itself is already persisted by the core session; the
     // following sync() refresh will keep the chat list consistent.
     if (fingerprint.isEmpty()) {

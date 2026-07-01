@@ -13,10 +13,9 @@ Item {
     // Asks the view to confirm and delete this message (irreversible; for one's
     // own one-to-one message it is removed at the recipient too).
     signal deleteRequested(var msgId, string protocolId, bool outgoing)
-    // Asks the view to open the emoji picker / the reactions-and-views modal for
-    // this message (handled by a single shared popup, not one per bubble).
+    // Asks the view to open the emoji picker for this message (handled by a single
+    // shared popup, not one per bubble).
     signal reactRequested(string protocolId)
-    signal reactionDetailsRequested(string protocolId)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
@@ -40,30 +39,10 @@ Item {
             || model.type === "audio"))
     readonly property bool isUnsupported: model.type === "unsupported"
     readonly property bool isSystem: model.type === "system"
-    // A "group photo set" notice: rendered as a normal bubble from the author, but
-    // carrying a service line plus the new group photo and a thin white outline.
-    readonly property bool isGroupAvatar: model.type === "group.avatar"
-    // A "group renamed" notice: a bubble from the author with a thin white outline.
-    readonly property bool isGroupRename: model.type === "group.rename"
-    // Group service notices share the thin white outline.
-    readonly property bool isGroupService: isGroupAvatar || isGroupRename
     // A contact request. Incoming ones render green with an "Agree" button; our own
     // outgoing one is a "request sent" note.
     readonly property bool isContactRequest: model.type === "contact.request"
     readonly property bool isContactRequestIncoming: isContactRequest && !model.outgoing
-    // The author of an incoming group message: { name, isContact, fpShort }. A
-    // local contact name reads as trusted (bright); otherwise the sender's own
-    // account name (green) with the short fingerprint beneath it. Null in 1:1 chats.
-    readonly property var senderInfo: {
-        if (!(model.sender && model.sender.length > 0 && !model.outgoing && delegate.session)) {
-            return null
-        }
-        // Read the member list so this re-resolves when the active group's roster
-        // and member self-names arrive (they land asynchronously after open).
-        void delegate.session.activeGroupMembers
-        return delegate.session.groupSenderInfo(model.sender)
-    }
-    readonly property bool hasSender: senderInfo !== null
 
     // The message this one replies to, resolved against local history:
     // { found, localId, text, sender }. Null when this is not a reply.
@@ -74,14 +53,10 @@ Item {
     // `content`) so the quote Rectangle's visible/height bindings resolve it.
     readonly property bool hasReplyQuote: delegate.replyInfo !== null && delegate.replyInfo.found
 
-    // Whether this is a group chat (the "who reacted / viewed" detail makes sense
-    // only there; a 1:1 chat has a single peer).
-    readonly property bool inGroup: delegate.session
-        && delegate.session.isGroup(delegate.session.activePeer)
     // A real message can carry reactions (not a service notice, request or
     // placeholder, and it must have a protocol id to reference).
     readonly property bool reactable: !delegate.isSystem && !delegate.isUnsupported
-        && !delegate.isGroupService && !delegate.isContactRequest
+        && !delegate.isContactRequest
         && model.protocolId && model.protocolId.length > 0
     // The reaction chips for this message: [{ emoji, count, mine }], re-queried
     // whenever any reaction changes (reactionsRevision drives the binding).
@@ -89,7 +64,7 @@ Item {
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionSummary(model.protocolId) : []
 
-    // Centered system notice (e.g. "added to a group").
+    // Centered system notice (e.g. a cleared-chat note).
     Label {
         id: sysLabel
         visible: delegate.isSystem
@@ -155,11 +130,11 @@ Item {
         height: content.implicitHeight + 14
         radius: 12
         color: model.outgoing ? Theme.bubbleOut : Theme.bubbleIn
-        // Search-jump flash: a brief accent outline on the targeted message. A
-        // group service notice keeps a permanent thin white outline, and an
-        // incoming contact request a green one, so they stand apart.
+        // Search-jump flash: a brief accent outline on the targeted message. An
+        // incoming contact request keeps a permanent thin green outline, so it
+        // stands apart.
         border.width: delegate.highlighted ? 2
-            : ((delegate.isGroupService || delegate.isContactRequestIncoming) ? 1 : 0)
+            : (delegate.isContactRequestIncoming ? 1 : 0)
         border.color: delegate.isContactRequestIncoming ? Theme.green : Theme.accent
         Behavior on border.width { NumberAnimation { duration: 220 } }
 
@@ -169,42 +144,6 @@ Item {
             y: 7
             width: parent.width - 20
             spacing: 4
-
-            // Author of an incoming group message: a deterministic avatar (a real one
-            // for a known contact, else the fingerprint-derived identicon - identical
-            // on every client, nothing sent over the wire) beside a name (a local
-            // contact name reads bright/trusted; a sender's own account name reads
-            // green) with the short fingerprint beneath it as the ground truth.
-            RowLayout {
-                visible: delegate.hasSender
-                spacing: 6
-                Layout.fillWidth: true
-                Avatar {
-                    fingerprint: model.sender ? model.sender : ""
-                    size: 26
-                    Layout.alignment: Qt.AlignTop
-                }
-                ColumnLayout {
-                    spacing: 0
-                    Layout.fillWidth: true
-                    Label {
-                        text: delegate.senderInfo ? delegate.senderInfo.name : ""
-                        color: (delegate.senderInfo && delegate.senderInfo.isContact) ? Theme.accent : Theme.green
-                        font.pixelSize: Theme.fontSmall
-                        font.weight: Font.Medium
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                    Label {
-                        visible: delegate.senderInfo && delegate.senderInfo.fpShort.length > 0
-                        text: delegate.senderInfo ? "(" + delegate.senderInfo.fpShort + ")" : ""
-                        color: Theme.textDim
-                        font.pixelSize: 10
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                }
-            }
 
             // Reply quote: the message this one replies to. Shown ONLY when the
             // original is in local history (then it is a clickable jump to it); a
@@ -299,17 +238,6 @@ Item {
                         rightPadding: 16
                     }
                 }
-            }
-
-            // Group rename notice: a service line in a white-outlined bubble.
-            Label {
-                visible: delegate.isGroupRename
-                text: model.text  // "changed the group name to ..."
-                color: Theme.textDim
-                font.italic: true
-                font.pixelSize: Theme.fontSmall
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
             }
 
             // Attachment card.
@@ -446,27 +374,6 @@ Item {
                 }
             }
 
-            // Group photo set notice: a service line plus the new group photo
-            // (the group's current avatar, keyed by the group id = the active peer).
-            ColumnLayout {
-                visible: delegate.isGroupAvatar
-                Layout.fillWidth: true
-                spacing: 6
-                Label {
-                    text: model.text  // "set the group photo"
-                    color: Theme.textDim
-                    font.italic: true
-                    font.pixelSize: Theme.fontSmall
-                    wrapMode: Text.Wrap
-                    Layout.fillWidth: true
-                }
-                Avatar {
-                    Layout.alignment: Qt.AlignHCenter
-                    fingerprint: delegate.session ? delegate.session.activePeer : ""
-                    size: 140
-                }
-            }
-
             // Unsupported type placeholder (forward compatibility).
             Label {
                 visible: delegate.isUnsupported
@@ -482,8 +389,8 @@ Item {
             // context menu copies the whole message.
             TextEdit {
                 id: bodyText
-                visible: !delegate.isAttachment && !delegate.isUnsupported && !delegate.isGroupAvatar
-                    && !delegate.isGroupRename && !delegate.isContactRequest && model.text.length > 0
+                visible: !delegate.isAttachment && !delegate.isUnsupported
+                    && !delegate.isContactRequest && model.text.length > 0
                 text: model.text
                 color: Theme.text
                 readOnly: true
@@ -600,11 +507,6 @@ Item {
                             onTapped: if (delegate.session) {
                                 delegate.session.react(delegate.msgProtocolId, modelData.emoji)
                             }
-                            // Long-press / right-click a chip opens the who-reacted
-                            // detail in a group chat.
-                            onLongPressed: if (delegate.inGroup) {
-                                delegate.reactionDetailsRequested(delegate.msgProtocolId)
-                            }
                         }
                     }
                 }
@@ -663,13 +565,11 @@ Item {
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
                 }
-                // Resend covers one-to-one text and files (group messages go
-                // through other send paths and have no resend affordance).
+                // Resend covers text and files.
                 Label {
                     id: resendLink
-                    visible: (!model.sender || model.sender.length === 0)
-                        && (model.type === "text" || model.type === "file"
-                            || model.type === "photo" || model.type === "audio")
+                    visible: model.type === "text" || model.type === "file"
+                        || model.type === "photo" || model.type === "audio"
                     text: "Resend"
                     color: Theme.accent
                     font.pixelSize: Theme.fontSmall
@@ -706,14 +606,13 @@ Item {
                 // Any real message (text or attachment) can be replied to; service
                 // notices, requests and unsupported placeholders cannot.
                 visible: !delegate.isSystem && !delegate.isUnsupported
-                    && !delegate.isGroupService && !delegate.isContactRequest
+                    && !delegate.isContactRequest
                     && model.protocolId && model.protocolId.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: {
                     var preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
                     var who = model.outgoing ? "You"
-                        : (delegate.senderInfo ? delegate.senderInfo.name
-                            : (delegate.session ? delegate.session.activePeerName : ""))
+                        : (delegate.session ? delegate.session.activePeerName : "")
                     delegate.session.beginReply(model.protocolId, preview, who)
                 }
             }
@@ -727,18 +626,10 @@ Item {
                 onTriggered: delegate.reactRequested(model.protocolId)
             }
             MenuItem {
-                // Group only: who reacted, and (for our own messages) who has read it.
-                text: "Views"
-                visible: delegate.reactable && delegate.inGroup
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.reactionDetailsRequested(model.protocolId)
-            }
-            MenuItem {
                 text: "Copy all"
-                // Only for text messages: an attachment, a service notice or a
-                // request has nothing to copy.
-                visible: !delegate.isAttachment && !delegate.isGroupService
-                    && !delegate.isContactRequest
+                // Only for text messages: an attachment or a request has nothing
+                // to copy.
+                visible: !delegate.isAttachment && !delegate.isContactRequest
                 height: visible ? implicitHeight : 0
                 enabled: delegate.fullText.length > 0
                 onTriggered: delegate.session.copyText(delegate.fullText)

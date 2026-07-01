@@ -37,12 +37,11 @@ private:
 
 // The chat list: one row per contact, with a last-message preview.
 struct ContactRow {
-    QString fingerprint;   // contact fingerprint, or a group id when isGroup
+    QString fingerprint;   // contact fingerprint
     QString name;
     QString lastText;
     qint64 lastTime = 0;
     int unread = 0;
-    bool isGroup = false;
     bool pinned = false;   // kept at the top of the list, before the recent sort
 };
 
@@ -51,7 +50,7 @@ class ContactListModel : public QAbstractListModel {
 public:
     enum Roles {
         FingerprintRole = Qt::UserRole + 1, NameRole, LastTextRole, LastTimeRole, UnreadRole,
-        IsGroupRole, PinnedRole
+        PinnedRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -63,7 +62,7 @@ public:
     // Bumps a contact's preview/unread, inserting it if new, and keeps the
     // list sorted by most-recent.
     void touch(const QString& fingerprint, const QString& name, const QString& lastText,
-        qint64 lastTime, bool incrementUnread, bool isGroup = false);
+        qint64 lastTime, bool incrementUnread);
     // Sets a contact's unread badge to an exact count (from the persistent store),
     // inserting nothing - a no-op for a row not present. Used to keep the badge in
     // sync with the read high-water rather than a fragile running increment.
@@ -77,13 +76,6 @@ private:
     QVector<ContactRow> contacts_;
 };
 
-// A loaded incoming message to acknowledge: its protocol id and author. Used to
-// send a group read receipt to each newly-read message's author.
-struct ReadTarget {
-    QString protocolId;
-    QString sender;
-};
-
 // The open conversation's messages.
 class ConversationModel : public QAbstractListModel {
     Q_OBJECT
@@ -91,7 +83,7 @@ public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
-        SenderRole, TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
+        TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
         BlobGoneRole, DownloadStageRole, ReplyToRole
     };
@@ -115,9 +107,6 @@ public:
     // The id + protocol id of the newest incoming message at or before `row`
     // (for the read high-water). Returns false when there is none.
     bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol) const;
-    // Loaded incoming messages with afterId < id <= throughId, each with its author
-    // (for sending a group read receipt to every newly-read message's author).
-    QVector<ReadTarget> incomingBetween(qint64 afterId, qint64 throughId) const;
     void setStatusForId(qint64 id, int status);
     // Attaches (or, when empty, clears) a delivery-error string for a message,
     // shown inline on a failed outgoing bubble. Session-only; not persisted.
@@ -211,7 +200,7 @@ struct OperationRow {
     double progress = -1.0;  // 0..1 for a determinate bar (files); < 0 = indeterminate
     int state = 0;    // 0 running, 1 done, 2 failed
     qint64 startedAt = 0;
-    QString peer;     // associated contact/group fingerprint, for tap-through (optional)
+    QString peer;     // associated contact fingerprint, for tap-through (optional)
 };
 
 // kOperationState* mirror OperationRow::state for readable call sites.

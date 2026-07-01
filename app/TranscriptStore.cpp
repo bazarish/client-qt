@@ -54,7 +54,7 @@ void writeFileBytes(const QString& path, const Bytes& bytes)
 
 // Column list shared by every full-row query, so the indices below stay aligned.
 // orderKey is appended last so the existing 0..16 indices are unchanged.
-const char* const kMessageColumns = "id, peer, outgoing, type, sender, protocolId, text, attName,"
+const char* const kMessageColumns = "id, peer, outgoing, type, protocolId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, blobGone, replyTo";
 
@@ -80,23 +80,22 @@ StoredMessage readMessageRow(const QSqlQuery& query)
     m.peer = query.value(1).toString();
     m.outgoing = query.value(2).toInt() != 0;
     m.type = query.value(3).toString();
-    m.sender = query.value(4).toString();
-    m.protocolId = query.value(5).toString();
-    m.text = query.value(6).toString();
-    m.attName = query.value(7).toString();
-    m.attMime = query.value(8).toString();
-    m.attSize = query.value(9).toLongLong();
-    m.attRef = query.value(10).toString();
-    m.attKey = query.value(11).toString();
-    m.attSrcPath = query.value(12).toString();
-    m.keyboard = query.value(13).toString();
-    m.edited = query.value(14).toInt() != 0;
-    m.ts = query.value(15).toLongLong();
-    m.status = query.value(16).toInt();
-    m.orderKey = query.value(17).toLongLong();
-    m.savedPath = query.value(18).toString();
-    m.blobGone = query.value(19).toInt() != 0;
-    m.replyTo = query.value(20).toString();
+    m.protocolId = query.value(4).toString();
+    m.text = query.value(5).toString();
+    m.attName = query.value(6).toString();
+    m.attMime = query.value(7).toString();
+    m.attSize = query.value(8).toLongLong();
+    m.attRef = query.value(9).toString();
+    m.attKey = query.value(10).toString();
+    m.attSrcPath = query.value(11).toString();
+    m.keyboard = query.value(12).toString();
+    m.edited = query.value(13).toInt() != 0;
+    m.ts = query.value(14).toLongLong();
+    m.status = query.value(15).toInt();
+    m.orderKey = query.value(16).toLongLong();
+    m.savedPath = query.value(17).toString();
+    m.blobGone = query.value(18).toInt() != 0;
+    m.replyTo = query.value(19).toString();
     return m;
 }
 
@@ -152,7 +151,7 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS messages ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, sender TEXT, protocolId TEXT,"
+            "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, protocolId TEXT,"
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
@@ -189,21 +188,8 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
                     " PRIMARY KEY (peer, target, reactor))")) {
         return false;
     }
-    // Who has read a (group) message - one row per (peer, message, viewer).
-    if (!query.exec("CREATE TABLE IF NOT EXISTS group_views ("
-                    "peer TEXT, target TEXT, viewer TEXT,"
-                    " PRIMARY KEY (peer, target, viewer))")) {
-        return false;
-    }
-    // Chats the user pinned to the top of the list (one row per pinned peer/group).
+    // Chats the user pinned to the top of the list (one row per pinned peer).
     if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
-        return false;
-    }
-    // Per-member fan-out outcome for one of our own group messages (the "Sent" view):
-    // ok=1 handed off, 0 not - drives the per-member status and Resend.
-    if (!query.exec("CREATE TABLE IF NOT EXISTS group_delivery ("
-                    "peer TEXT, target TEXT, member TEXT, ok INTEGER,"
-                    " PRIMARY KEY (peer, target, member))")) {
         return false;
     }
     ready_ = true;
@@ -230,13 +216,12 @@ qint64 TranscriptStore::append(const StoredMessage& message)
 {
     QSqlQuery query(QSqlDatabase::database(connectionName_));
     query.prepare(
-        "INSERT INTO messages (peer, outgoing, type, sender, protocolId, text, attName, attMime,"
+        "INSERT INTO messages (peer, outgoing, type, protocolId, text, attName, attMime,"
         " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
-    query.addBindValue(message.sender);
     query.addBindValue(message.protocolId);
     query.addBindValue(message.text);
     query.addBindValue(message.attName);
@@ -379,7 +364,7 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
         return hits;
     }
     QSqlQuery sql(QSqlDatabase::database(connectionName_));
-    sql.prepare("SELECT id, ts, text, outgoing, sender, attName FROM messages"
+    sql.prepare("SELECT id, ts, text, outgoing, attName FROM messages"
                 " WHERE peer = ? AND (text <> '' OR attName <> '') ORDER BY id DESC");
     sql.addBindValue(peer);
     if (!sql.exec()) {
@@ -388,7 +373,7 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
     constexpr int kMaxHits = 500;
     while (sql.next() && hits.size() < kMaxHits) {
         const QString text = sql.value(2).toString();
-        const QString attName = sql.value(5).toString();
+        const QString attName = sql.value(4).toString();
         // Match the message text or, for an attachment, its file name.
         if (!text.contains(query, Qt::CaseInsensitive)
             && !attName.contains(query, Qt::CaseInsensitive)) {
@@ -401,7 +386,6 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
         // attachment, so a file hit reads as a file in the results.
         hit.text = !text.isEmpty() ? text : (QStringLiteral("📎 ") + attName);
         hit.outgoing = sql.value(3).toInt() != 0;
-        hit.sender = sql.value(4).toString();
         hits.push_back(hit);
     }
     return hits;
@@ -496,24 +480,6 @@ qint64 TranscriptStore::idForIncomingProtocol(const QString& protocolId, const Q
         "SELECT id FROM messages WHERE protocolId = ? AND peer = ? AND outgoing = 0 LIMIT 1");
     query.addBindValue(protocolId);
     query.addBindValue(peer);
-    if (query.exec() && query.next()) {
-        return query.value(0).toLongLong();
-    }
-    return 0;
-}
-
-qint64 TranscriptStore::idForIncomingGroupProtocol(
-    const QString& protocolId, const QString& peer, const QString& sender) const
-{
-    if (protocolId.isEmpty()) {
-        return 0;
-    }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("SELECT id FROM messages WHERE protocolId = ? AND peer = ? AND sender = ?"
-                  " AND outgoing = 0 LIMIT 1");
-    query.addBindValue(protocolId);
-    query.addBindValue(peer);
-    query.addBindValue(sender);
     if (query.exec() && query.next()) {
         return query.value(0).toLongLong();
     }
@@ -764,81 +730,6 @@ QVector<Reaction> TranscriptStore::reactionsFor(const QString& peer, const QStri
     }
     while (query.next()) {
         result.push_back(Reaction{query.value(0).toString(), query.value(1).toString()});
-    }
-    return result;
-}
-
-void TranscriptStore::addView(const QString& peer, const QString& target, const QString& viewer)
-{
-    if (peer.isEmpty() || target.isEmpty() || viewer.isEmpty()) {
-        return;
-    }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("INSERT OR IGNORE INTO group_views (peer, target, viewer) VALUES (?, ?, ?)");
-    query.addBindValue(peer);
-    query.addBindValue(target);
-    query.addBindValue(viewer);
-    if (query.exec() && query.numRowsAffected() > 0) {
-        flush();
-    }
-}
-
-QStringList TranscriptStore::viewersFor(const QString& peer, const QString& target) const
-{
-    QStringList result;
-    if (peer.isEmpty() || target.isEmpty()) {
-        return result;
-    }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("SELECT viewer FROM group_views WHERE peer = ? AND target = ? ORDER BY rowid");
-    query.addBindValue(peer);
-    query.addBindValue(target);
-    if (!query.exec()) {
-        return result;
-    }
-    while (query.next()) {
-        result << query.value(0).toString();
-    }
-    return result;
-}
-
-void TranscriptStore::setGroupDelivery(
-    const QString& peer, const QString& target, const QString& member, int status)
-{
-    if (peer.isEmpty() || target.isEmpty() || member.isEmpty()) {
-        return;
-    }
-    // The `ok` column holds the DeliveryStatus int. Last-writer-wins is safe: the
-    // worker emits grey at send then yellow/red once, removing the attempt after, so
-    // no later poll downgrades it.
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("INSERT INTO group_delivery (peer, target, member, ok) VALUES (?, ?, ?, ?)"
-                  " ON CONFLICT(peer, target, member) DO UPDATE SET ok = excluded.ok");
-    query.addBindValue(peer);
-    query.addBindValue(target);
-    query.addBindValue(member);
-    query.addBindValue(status);
-    if (query.exec() && query.numRowsAffected() > 0) {
-        flush();
-    }
-}
-
-QVector<GroupDeliveryRow> TranscriptStore::groupDeliveryFor(
-    const QString& peer, const QString& target) const
-{
-    QVector<GroupDeliveryRow> result;
-    if (peer.isEmpty() || target.isEmpty()) {
-        return result;
-    }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
-    query.prepare("SELECT member, ok FROM group_delivery WHERE peer = ? AND target = ? ORDER BY rowid");
-    query.addBindValue(peer);
-    query.addBindValue(target);
-    if (!query.exec()) {
-        return result;
-    }
-    while (query.next()) {
-        result.push_back(GroupDeliveryRow{query.value(0).toString(), query.value(1).toInt()});
     }
     return result;
 }

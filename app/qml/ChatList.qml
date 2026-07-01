@@ -125,8 +125,7 @@ Item {
                             }
                             Label {
                                 Layout.fillWidth: true
-                                text: (model.isGroup ? "👥 " : "")
-                                    + (model.name.length > 14 ? model.name.substring(0, 12) + "…" : model.name)
+                                text: model.name.length > 14 ? model.name.substring(0, 12) + "…" : model.name
                                 color: chatRow.highlighted ? Theme.neon : Theme.text
                                 font.weight: Font.Medium
                                 elide: Text.ElideRight

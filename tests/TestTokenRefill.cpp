@@ -1,0 +1,340 @@
+// Bazarish project (c) 2026
+#include "Client.hpp"
+#include "Session.hpp"
+
+#include <bazarish/Auth.hpp>
+#include <bazarish/Certificates.hpp>
+#include <bazarish/Cms.hpp>
+#include <bazarish/Crypto.hpp>
+#include <bazarish/Tokens.hpp>
+
+#include <httplib/httplib.h>
+#include <nlohmann/json.hpp>
+
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <filesystem>
+#include <map>
+#include <mutex>
+#include <set>
+#include <string>
+#include <thread>
+#include <vector>
+
+#define CHECK(condition)                                                            \
+    do {                                                                            \
+        if (!(condition)) {                                                         \
+            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
+                #condition);                                                        \
+            std::exit(1);                                                           \
+        }                                                                           \
+    } while (false)
+
+using namespace bazarish;
+using namespace bazarish::client;
+
+namespace {
+
+namespace fs = std::filesystem;
+
+std::int64_t nowSeconds()
+{
+    return static_cast<std::int64_t>(std::time(nullptr));
+}
+
+auth::Headers collectAuthHeaders(const httplib::Request& request)
+{
+    auth::Headers headers;
+    for (const char* const name : {auth::kHeaderKeys, auth::kHeaderTimestamp,
+             auth::kHeaderSignatureClassical, auth::kHeaderSignaturePq}) {
+        if (request.has_header(name)) {
+            headers[name] = request.get_header_value(name);
+        }
+    }
+    return headers;
+}
+
+// Verifies the request signature against the real path and returns the caller
+// fingerprint, mirroring the server-side authenticated() wrapper.
+std::string requireCaller(const httplib::Request& request)
+{
+    return auth::verifyRequest(collectAuthHeaders(request), nowSeconds(), request.method,
+        request.path, Bytes(request.body.begin(), request.body.end()));
+}
+
+void respondJson(httplib::Response& response, const nlohmann::json& body)
+{
+    response.set_content(body.dump(), "application/json");
+}
+
+// A minimal but faithful stateful messaging server for two co-located users: it
+// stores per-mailbox blobs, tracks each mailbox's registered token hashes and
+// consumes exactly one on every content delivery (rejecting an unregistered
+// token), and hands back each user's self-signed subscription certificate. Every
+// handler runs on the httplib server thread while the test drives the sessions on
+// the main thread, so all state is guarded by one mutex.
+struct Mock {
+    std::mutex mu;
+    std::string serverFp;
+    Key serverSealing = Key::generateSealing();  // one serving key shared by both dests
+    std::map<std::string, std::string> destFor;  // fingerprint -> serving destination
+    std::map<std::string, std::string> certFor;  // fingerprint -> subscription cert (base64 DER)
+    struct Item {
+        std::string id;
+        std::string cls;
+        Bytes payload;
+    };
+    std::map<std::string, std::vector<Item>> mailbox;         // recipient fp -> stored items
+    std::map<std::string, std::set<std::string>> registered;  // owner fp -> valid token hashes (b64)
+    std::map<std::string, std::set<std::string>> singletons;  // owner fp -> hashes registered 1-at-a-time
+    std::map<std::string, std::set<std::string>> seenIds;     // recipient fp -> admitted messageIds
+    int nextId = 1;
+    // A delivery into this mailbox that spends one of the mailbox owner's OWN
+    // singleton-registered tokens sets the flag: that is exactly the prepaid-token
+    // refill path (a batch token would not be a singleton).
+    std::string watchMailbox;
+    bool refillUsedPrepaid = false;
+};
+
+}  // namespace
+
+int main()
+{
+    const Identity serverIdentity = Identity::generate();
+    Mock m;
+    m.serverFp = serverIdentity.fingerprint();
+
+    httplib::Server server;
+
+    server.Get("/v1/messaging/destination",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            const std::string caller = requireCaller(request);
+            std::lock_guard<std::mutex> lock(m.mu);
+            respondJson(response,
+                {{"dest", m.destFor[caller]}, {"servingKey", toBase64(m.serverSealing.publicDer())}});
+        });
+
+    const auto handleSubscribe
+        = [&](const httplib::Request& request, httplib::Response& response) {
+              const std::string caller = requireCaller(request);
+              const std::string certB64
+                  = nlohmann::json::parse(request.body).at("cert").get<std::string>();
+              // Faithful: verify the client's self-signed cert and keep it verbatim to
+              // hand back on a contact lookup (the routing + prekey a peer needs).
+              const SubscriptionCertificate cert = SubscriptionCertificate::verify(fromBase64(certB64));
+              CHECK(cert.user == caller);
+              CHECK(cert.server == m.serverFp);
+              {
+                  std::lock_guard<std::mutex> lock(m.mu);
+                  m.certFor[caller] = certB64;
+              }
+              respondJson(response,
+                  {{"notAfter", nowSeconds() + 365 * 24 * 3600},
+                      {"quotaBytes", 100u * 1024 * 1024},
+                      {"maxTermSeconds", 365 * 24 * 3600}});
+          };
+    server.Post("/v1/account/subscribe", handleSubscribe);
+    server.Post("/v1/account/renew", handleSubscribe);
+
+    server.Post("/v1/messaging/clients",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            (void)requireCaller(request);
+            respondJson(response, {{"ok", true}});
+        });
+
+    server.Get("/v1/account/contact",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            const std::string user = request.get_param_value("user");
+            std::lock_guard<std::mutex> lock(m.mu);
+            respondJson(response, {{"user", user}, {"subscriptionCert", m.certFor[user]}});
+        });
+
+    server.Post("/v1/messaging/tokens",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            const std::string caller = requireCaller(request);
+            const nlohmann::json hashes = nlohmann::json::parse(request.body).at("hashes");
+            std::lock_guard<std::mutex> lock(m.mu);
+            for (const nlohmann::json& hash : hashes) {
+                m.registered[caller].insert(hash.get<std::string>());
+            }
+            // A one-hash registration is the prepaid token a low-stash request embeds
+            // (issueOneToken); a full batch is 64 hashes.
+            if (hashes.size() == 1) {
+                m.singletons[caller].insert(hashes.at(0).get<std::string>());
+            }
+            respondJson(response, {{"ok", true}});
+        });
+
+    server.Post("/v1/messaging/send",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            (void)requireCaller(request);
+            const nlohmann::json body = nlohmann::json::parse(request.body);
+            const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
+            const nlohmann::json inner = nlohmann::json::parse(cms::unseal(sealed, m.serverSealing));
+            const std::string cls = inner.at("class").get<std::string>();
+            const std::string mailbox = inner.at("mailbox").get<std::string>();
+            const std::string messageId = inner.at("messageId").get<std::string>();
+
+            std::lock_guard<std::mutex> lock(m.mu);
+            const bool fresh = m.seenIds[mailbox].insert(messageId).second;
+            if (cls == "content" && fresh) {
+                // Consume the presented token: it must be one the mailbox owner
+                // registered (else the real server would reject the delivery).
+                const std::string hashB64
+                    = toBase64(deliveryTokenHash(fromBase64(inner.at("token").get<std::string>())));
+                CHECK(m.registered[mailbox].erase(hashB64) == 1);
+                if (mailbox == m.watchMailbox && m.singletons[mailbox].count(hashB64) != 0) {
+                    m.refillUsedPrepaid = true;
+                }
+            }
+            if (fresh) {
+                m.mailbox[mailbox].push_back({"m" + std::to_string(m.nextId++), cls,
+                    fromBase64(body.at("payload").get<std::string>())});
+            }
+            respondJson(response, {{"attemptId", "att" + std::to_string(m.nextId)}});
+        });
+
+    server.Get(R"(/v1/messaging/send/(.+))",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            (void)requireCaller(request);
+            respondJson(response, {{"status", "delivered"}});
+        });
+
+    server.Get("/v1/messaging/pending",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            const std::string caller = requireCaller(request);
+            std::lock_guard<std::mutex> lock(m.mu);
+            nlohmann::json pending = nlohmann::json::array();
+            for (const Mock::Item& item : m.mailbox[caller]) {
+                pending.push_back({{"id", item.id}, {"class", item.cls}});
+            }
+            respondJson(response, {{"pending", pending}});
+        });
+
+    server.Get(R"(/v1/messaging/pending/(.+))",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            const std::string caller = requireCaller(request);
+            const std::string id = request.matches[1];
+            std::lock_guard<std::mutex> lock(m.mu);
+            for (const Mock::Item& item : m.mailbox[caller]) {
+                if (item.id == id) {
+                    response.set_content(std::string(item.payload.begin(), item.payload.end()),
+                        "application/octet-stream");
+                    return;
+                }
+            }
+            response.status = 404;
+        });
+
+    server.Post("/v1/messaging/ack",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            const std::string caller = requireCaller(request);
+            const std::string blobId
+                = nlohmann::json::parse(request.body).at("blobId").get<std::string>();
+            std::lock_guard<std::mutex> lock(m.mu);
+            std::vector<Mock::Item>& box = m.mailbox[caller];
+            box.erase(std::remove_if(box.begin(), box.end(),
+                          [&](const Mock::Item& item) { return item.id == blobId; }),
+                box.end());
+            respondJson(response, {{"ok", true}});
+        });
+
+    const int port = server.bind_to_any_port("127.0.0.1");
+    CHECK(port > 0);
+    std::thread serverThread([&server]() { (void)server.listen_after_bind(); });
+    server.wait_until_ready();
+
+    ServerEndpoint endpoint;
+    endpoint.serverFingerprint = m.serverFp;
+    endpoint.facades = {Facade{false, "127.0.0.1", port, {}}};
+
+    const fs::path aDir = fs::temp_directory_path() / "bz-refill-a";
+    const fs::path bDir = fs::temp_directory_path() / "bz-refill-b";
+    fs::remove_all(aDir);
+    fs::remove_all(bDir);
+
+    Session alice = Session::create(aDir, endpoint, std::string{});
+    Session bob = Session::create(bDir, endpoint, std::string{});
+    {
+        std::lock_guard<std::mutex> lock(m.mu);
+        m.destFor[alice.fingerprint()] = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
+        m.destFor[bob.fingerprint()] = "elkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
+        // Watch Alice's mailbox: the prepaid-token refill is a content delivery into
+        // it that spends one of Alice's own single-registered tokens.
+        m.watchMailbox = alice.fingerprint();
+    }
+
+    alice.subscribe(30);
+    bob.subscribe(30);
+
+    // Establish the contact both ways: Alice requests, Bob accepts. Now Alice holds a
+    // batch of Bob's tokens and Bob holds a batch of Alice's.
+    alice.sendContactRequest(bob.fingerprint(), "hi bob");
+    bob.sync();
+    bob.acceptContactRequest(alice.fingerprint());
+    alice.sync();
+    CHECK(alice.hasContact(bob.fingerprint()));
+    CHECK(bob.hasContact(alice.fingerprint()));
+
+    const auto rejects = [](const auto& fn) {
+        try {
+            fn();
+        } catch (const std::exception&) {
+            return true;
+        }
+        return false;
+    };
+
+    // Drain Bob's stash of Alice's tokens to EMPTY. Alice does NOT sync in between, so
+    // she never sees Bob's low-stash signal and never refills him: Bob ends holding
+    // none of Alice's tokens.
+    int bobSent = 0;
+    while (!rejects([&]() { bob.sendMessage(alice.fingerprint(), "b->a " + std::to_string(bobSent)); })) {
+        ++bobSent;
+    }
+    CHECK(bobSent > 0);
+    // Confirm the stash is truly empty: another send is rejected up front.
+    CHECK(rejects([&]() { bob.sendMessage(alice.fingerprint(), "overflow"); }));
+
+    // Drain Alice's stash too. Her low-stash sends embed a fresh prepaid token each
+    // (registered one-at-a-time with her own server); she ends empty as well.
+    int aliceSent = 0;
+    while (!rejects([&]() { alice.sendMessage(bob.fingerprint(), "a->b " + std::to_string(aliceSent)); })) {
+        ++aliceSent;
+    }
+    CHECK(aliceSent > 0);
+    CHECK(rejects([&]() { alice.sendMessage(bob.fingerprint(), "overflow"); }));
+
+    // Bob syncs: he processes Alice's stream (the tail carries lowStash + refillToken)
+    // and must reply with a token-refill. He holds NONE of Alice's tokens, so the only
+    // way that reply can be delivered is by spending the prepaid token Alice embedded.
+    // Without the prepaid mechanism sendTokenRefill would bail on the empty stash.
+    bob.sync();
+    {
+        std::lock_guard<std::mutex> lock(m.mu);
+        CHECK(m.refillUsedPrepaid);
+    }
+
+    // Alice syncs: she applies Bob's fresh batch, so her stash is replenished.
+    bool gotRefill = false;
+    for (const IncomingMessage& message : alice.sync()) {
+        if (message.contentType == "token-refill") {
+            gotRefill = true;
+        }
+    }
+    CHECK(gotRefill);
+
+    // Proof the refill actually restored Alice's sending capacity: she was empty, yet
+    // can send again now (this would throw "out of delivery tokens" otherwise).
+    alice.sendMessage(bob.fingerprint(), "after refill");
+
+    server.stop();
+    serverThread.join();
+    fs::remove_all(aDir);
+    fs::remove_all(bDir);
+
+    std::fprintf(stderr, "TestTokenRefill passed (bob sent %d, alice sent %d)\n", bobSent, aliceSent);
+    return 0;
+}

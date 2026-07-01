@@ -14,7 +14,6 @@ Popup {
     property string mode: "menu"
     property bool busy: false
     property string errorText: ""
-    property var selectedFps: []
     closePolicy: busy ? Popup.NoAutoClose : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
     onOpened: { mode = "menu"; busy = false; errorText = "" }
 
@@ -117,8 +116,7 @@ Popup {
             Repeater {
                 model: [
                     { t: "🔗  Add by invite link", m: "invite" },
-                    { t: "@  Add by username", m: "username" },
-                    { t: "👥  New group", m: "group" }
+                    { t: "@  Add by username", m: "username" }
                 ]
                 ItemDelegate {
                     id: menuItem
@@ -126,10 +124,7 @@ Popup {
                     height: 48
                     text: modelData.t
                     hoverEnabled: true
-                    onClicked: {
-                        if (modelData.m === "group") { root.selectedFps = []; root.mode = "group" }
-                        else root.mode = modelData.m
-                    }
+                    onClicked: root.mode = modelData.m
                     // A solid surface row that lifts on hover (surfaceAlt + neon
                     // outline), so the choices stand out and react to the cursor.
                     contentItem: Label {
@@ -196,92 +191,5 @@ Popup {
             }
         }
 
-        // --- New group ---
-        ColumnLayout {
-            visible: !root.busy && root.mode === "group"
-            Layout.fillWidth: true
-            spacing: 10
-            FormField { id: groupNameField; label: "Group name" }
-            Label { text: "Pick members:"; color: Theme.textDim }
-            // Selectable contact rows in the shared terminal style (solid surface,
-            // neon outline on hover/selection, avatar + readable name + a check on
-            // the right), so the picker matches Settings and New chat.
-            Frame {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 240
-                padding: 4
-                background: Rectangle { color: Theme.surface; radius: 8; border.color: Theme.border }
-                ListView {
-                    id: memberList
-                    anchors.fill: parent
-                    clip: true
-                    spacing: 4
-                    model: root.session ? root.session.contacts : null
-                    delegate: CheckDelegate {
-                        id: mc
-                        width: ListView.view ? ListView.view.width : 0
-                        visible: !model.isGroup
-                        height: model.isGroup ? 0 : 52
-                        hoverEnabled: true
-                        leftPadding: 10
-                        rightPadding: 42
-                        checked: root.selectedFps.indexOf(model.fingerprint) >= 0
-                        onToggled: {
-                            var arr = root.selectedFps.slice()
-                            var i = arr.indexOf(model.fingerprint)
-                            if (checked && i < 0) arr.push(model.fingerprint)
-                            else if (!checked && i >= 0) arr.splice(i, 1)
-                            root.selectedFps = arr
-                        }
-                        background: Rectangle {
-                            radius: Theme.radiusSmall
-                            color: mc.down ? Theme.border2 : (mc.hovered ? Theme.surfaceAlt : Theme.bg)
-                            border.width: 1
-                            border.color: (mc.checked || mc.hovered) ? Theme.green : Theme.border
-                            Behavior on border.color { ColorAnimation { duration: 120 } }
-                        }
-                        indicator: Rectangle {
-                            implicitWidth: 20; implicitHeight: 20
-                            x: mc.width - width - 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            radius: 4
-                            color: mc.checked ? Theme.green : "transparent"
-                            border.width: 1
-                            border.color: mc.checked ? Theme.green : Theme.border2
-                            Label {
-                                anchors.centerIn: parent
-                                visible: mc.checked
-                                text: "✓"
-                                color: Theme.bg
-                                font.pixelSize: 14
-                            }
-                        }
-                        contentItem: RowLayout {
-                            spacing: 10
-                            Avatar { fingerprint: model.fingerprint; size: 30 }
-                            Label {
-                                Layout.fillWidth: true
-                                text: root.session ? root.session.peerName(model.fingerprint) : model.fingerprint
-                                color: Theme.text
-                                elide: Text.ElideRight
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
-                    }
-                }
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Item { Layout.fillWidth: true }
-                Label { text: root.selectedFps.length + " selected"; color: Theme.textDim }
-                ActionButton {
-                    text: "Create"
-                    enabled: groupNameField.text.trim().length > 0 && root.selectedFps.length > 0
-                    onClicked: root.startRequest(function() {
-                        root.session.createGroup(groupNameField.text.trim(), root.selectedFps)
-                    })
-                }
-            }
-        }
     }
 }

@@ -125,10 +125,9 @@ Item {
         }
     }
 
-    // Single shared reaction picker + the reactions/views detail modal, opened by
-    // any bubble with its message's protocol id (so the chat pays no popup per row).
+    // Single shared reaction picker, opened by any bubble with its message's
+    // protocol id (so the chat pays no popup per row).
     ReactionPicker { id: reactionPicker; session: root.session }
-    ReactionsPopup { id: reactionsPopup; session: root.session }
 
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
@@ -138,7 +137,6 @@ Item {
         modal: true
         width: 360
         readonly property bool forEveryone: root.pendingDeleteOutgoing && root.session
-            && !root.session.isGroup(root.session.activePeer)
         footer: DialogButtons {
             acceptText: "Delete"
             danger: true
@@ -185,7 +183,6 @@ Item {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 6
                 spacing: 10
-                readonly property bool isGroup: root.session && root.session.isGroup(root.session.activePeer)
                 Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38 }
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -198,12 +195,9 @@ Item {
                         Layout.fillWidth: true
                     }
                     // Under the display name: the peer's full fingerprint (the
-                    // identity itself), so it stays visible/verifiable. A group has
-                    // no single fingerprint, so it just reads "group".
+                    // identity itself), so it stays visible/verifiable.
                     Label {
-                        text: parent.parent.isGroup
-                            ? "group"
-                            : (root.session ? root.session.activePeer : "")
+                        text: root.session ? root.session.activePeer : ""
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideMiddle
@@ -211,8 +205,8 @@ Item {
                     }
                 }
                 IconButton { text: "🔍"; onClicked: searchPopup.openSearch() }
-                IconButton { text: "📞"; visible: !parent.isGroup; onClicked: root.callRequested() }
-                IconButton { text: "📹"; visible: !parent.isGroup; onClicked: root.videoCallRequested() }
+                IconButton { text: "📞"; onClicked: root.callRequested() }
+                IconButton { text: "📹"; onClicked: root.videoCallRequested() }
                 IconButton { text: "ⓘ"; onClicked: root.contactInfoRequested() }
             }
         }
@@ -245,12 +239,9 @@ Item {
                         root.confirmDeleteMessage(msgId, protocolId, outgoing)
                     }
                     onReactRequested: function(protocolId) { reactionPicker.openFor(protocolId) }
-                    onReactionDetailsRequested: function(protocolId) {
-                        reactionsPopup.openFor(protocolId)
-                    }
                 }
 
-                // Group messages by calendar day and show a centered date
+                // Section messages by calendar day and show a centered date
                 // separator wherever the day changes (driven by the model's "day"
                 // role; the header text is humanised to Today / Yesterday / a date).
                 section.property: "day"

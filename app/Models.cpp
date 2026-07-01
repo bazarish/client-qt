@@ -64,7 +64,6 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
     case LastTextRole: return c.lastText;
     case LastTimeRole: return c.lastTime;
     case UnreadRole: return c.unread;
-    case IsGroupRole: return c.isGroup;
     case PinnedRole: return c.pinned;
     default: return {};
     }
@@ -73,7 +72,7 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
 QHash<int, QByteArray> ContactListModel::roleNames() const
 {
     return {{FingerprintRole, "fingerprint"}, {NameRole, "name"}, {LastTextRole, "lastText"},
-        {LastTimeRole, "lastTime"}, {UnreadRole, "unread"}, {IsGroupRole, "isGroup"},
+        {LastTimeRole, "lastTime"}, {UnreadRole, "unread"},
         {PinnedRole, "pinned"}};
 }
 
@@ -117,19 +116,18 @@ void ContactListModel::resort()
 }
 
 void ContactListModel::touch(const QString& fingerprint, const QString& name,
-    const QString& lastText, qint64 lastTime, bool incrementUnread, bool isGroup)
+    const QString& lastText, qint64 lastTime, bool incrementUnread)
 {
     const int i = indexOf(fingerprint);
     if (i < 0) {
         beginInsertRows({}, 0, 0);
         contacts_.prepend(ContactRow{fingerprint, name.isEmpty() ? fingerprint : name, lastText,
-            lastTime, incrementUnread ? 1 : 0, isGroup});
+            lastTime, incrementUnread ? 1 : 0});
         endInsertRows();
         resort();
         return;
     }
     ContactRow& c = contacts_[i];
-    c.isGroup = isGroup;
     if (!name.isEmpty()) {
         c.name = name;
     }
@@ -189,7 +187,6 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case KeyboardRole: return m.keyboard;
     case ProtocolIdRole: return m.protocolId;
     case EditedRole: return m.edited;
-    case SenderRole: return m.sender;
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
@@ -219,7 +216,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
     return {{OutgoingRole, "outgoing"}, {TypeRole, "type"}, {TextRole, "text"},
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
-        {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"}, {SenderRole, "sender"},
+        {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"},
         {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"},
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
@@ -326,18 +323,6 @@ bool ConversationModel::newestIncomingThrough(int row, qint64& outId, QString& o
         }
     }
     return false;
-}
-
-QVector<ReadTarget> ConversationModel::incomingBetween(qint64 afterId, qint64 throughId) const
-{
-    QVector<ReadTarget> out;
-    for (const StoredMessage& m : messages_) {
-        if (!m.outgoing && !m.protocolId.isEmpty() && m.type != "system" && m.id > afterId
-            && m.id <= throughId && !m.sender.isEmpty()) {
-            out.push_back(ReadTarget{m.protocolId, m.sender});
-        }
-    }
-    return out;
 }
 
 void ConversationModel::setStatusForId(qint64 id, int status)

@@ -50,12 +50,7 @@ Item {
                         active: root.session && root.session.activePeer.length > 0
                         sourceComponent: ConversationView {
                             session: root.session
-                            onContactInfoRequested: {
-                                if (root.session && root.session.isGroup(root.session.activePeer))
-                                    groupInfo.open()
-                                else
-                                    contactInfo.open()
-                            }
+                            onContactInfoRequested: contactInfo.open()
                             onCallRequested: root.session.startCall("")
                             onVideoCallRequested: root.session.startVideoCall("")
                         }
@@ -76,7 +71,6 @@ Item {
     InviteSheet { id: inviteSheet; session: root.session; onBack: { inviteSheet.close(); settings.open() } }
     SignWithKeySheet { id: signWithKeySheet; session: root.session; onBack: { signWithKeySheet.close(); settings.open() } }
     ContactInfo { id: contactInfo; session: root.session }
-    GroupInfo { id: groupInfo; session: root.session }
     CallScreen { id: callScreen; session: root.session }
     // Open the call overlay whenever a call is live (outgoing, incoming or
     // active), and close it when the call returns to idle.
