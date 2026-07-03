@@ -416,6 +416,11 @@ void SessionWorker::sync()
     emitFacadeInfo();
     // Resolve any sends still in flight from earlier (late delivery or failure).
     reconcilePendingSends();
+    // Advance call ring/answer timeouts so a call never rings forever, then flush any
+    // finished-call chat-history entries (peer hang-ups handled during the pull above,
+    // timeouts here).
+    session_->tickCalls();
+    flushCallLog();
     // Surface any call state change picked up this sync (a new invite, the peer
     // accepting, or a hang-up) and refresh live media stats.
     emitCallState();
@@ -468,6 +473,17 @@ void SessionWorker::emitCallState()
         QString::fromStdString(call.callId), call.muted, call.video, call.cameraOn);
 }
 
+void SessionWorker::flushCallLog()
+{
+    if (!session_) {
+        return;
+    }
+    for (const Session::CompletedCall& call : session_->takeCallLog()) {
+        emit callLogged(QString::fromStdString(call.peer), call.incoming,
+            static_cast<int>(call.outcome), static_cast<qint64>(call.durationSec));
+    }
+}
+
 void SessionWorker::setVideoPresenters(VideoPresenter* local, VideoPresenter* remote)
 {
     localPreview_ = local;
@@ -514,6 +530,7 @@ void SessionWorker::declineCall(const QString& callId)
     } catch (const std::exception&) {
     }
     emitCallState();
+    flushCallLog();
 }
 
 void SessionWorker::endCall()
@@ -526,6 +543,7 @@ void SessionWorker::endCall()
     } catch (const std::exception&) {
     }
     emitCallState();
+    flushCallLog();
 }
 
 void SessionWorker::setCallMuted(const bool muted)
@@ -1254,6 +1272,7 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onStorageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, this,
         &SessionController::onCallStateChanged);
+    connect(worker_, &SessionWorker::callLogged, this, &SessionController::onCallLogged);
 
     // Keep the account-wide unread total in sync with the contacts model, so the
     // switcher badge updates even while this account is in the background.
@@ -2809,6 +2828,45 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
             updateOperation(opId, status);
         }
     }
+}
+
+void SessionController::onCallLogged(
+    const QString& peer, bool incoming, int outcome, qint64 durationSec)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    // Outcome ints mirror Session::CallOutcome: 0 answered, 1 no-answer, 2 declined,
+    // 3 missed, 4 cancelled, 5 busy.
+    const QString dir
+        = incoming ? QStringLiteral("Incoming call") : QStringLiteral("Outgoing call");
+    QString text;
+    switch (outcome) {
+    case 0:
+        text = dir + QStringLiteral(", ") + QString::number(durationSec / 60)
+            + QStringLiteral(":")
+            + QString::number(durationSec % 60).rightJustified(2, QLatin1Char('0'));
+        break;
+    case 1: text = QStringLiteral("Outgoing call, no answer"); break;
+    case 2: text = dir + QStringLiteral(", declined"); break;
+    case 3: text = QStringLiteral("Missed call"); break;
+    case 4: text = QStringLiteral("Outgoing call, cancelled"); break;
+    case 5: text = QStringLiteral("Outgoing call, busy"); break;
+    default: text = dir; break;
+    }
+
+    StoredMessage sys;
+    sys.peer = peer;
+    sys.type = QStringLiteral("system");
+    sys.text = text;
+    sys.ts = nowMillis();
+    sys.orderKey = sys.ts;
+    sys.status = DeliveryStatus::Received;
+    sys.id = store_.append(sys);
+    showInActiveView(sys, false);
+    contacts_.touch(peer, peerName(peer), text, sys.ts, false);
+    contacts_.setUnread(peer, store_.unreadCount(peer));
+    refreshUnreadTotal();
 }
 
 }  // namespace bazarish::app

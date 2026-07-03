@@ -513,6 +513,25 @@ public:
         eActive,    // media is flowing
     };
 
+    // How a finished call ended, for the chat-history record.
+    enum class CallOutcome {
+        eAnswered,   // connected and hung up normally (durationSec is meaningful)
+        eNoAnswer,   // outgoing: the peer never answered before the ring timeout
+        eDeclined,   // explicitly rejected (by the peer for our outgoing call, by us
+                     // for an incoming one)
+        eMissed,     // incoming: we never answered (timeout) or the caller cancelled
+        eCancelled,  // outgoing: we hung up before the peer answered
+        eBusy,       // outgoing: the peer was already in another call
+    };
+
+    // A finished call awaiting a chat-history entry. Drained by takeCallLog().
+    struct CompletedCall {
+        std::string peer;
+        bool incoming = false;
+        CallOutcome outcome = CallOutcome::eMissed;
+        std::int64_t durationSec = 0;  // connected duration; 0 unless eAnswered
+    };
+
     // A snapshot of the current call for the UI / CLI.
     struct CallInfo {
         CallState state = CallState::eIdle;
@@ -573,6 +592,15 @@ public:
 
     // The current call snapshot (state eIdle when there is none).
     CallInfo currentCall() const;
+
+    // Drains the calls that finished since the last call - each needs a chat-history
+    // entry (incoming/outgoing + how it ended). Empty when nothing finished.
+    std::vector<CompletedCall> takeCallLog();
+    // Advances the call's ring/answer timeout so a call never rings forever: an
+    // unanswered outgoing or incoming call is torn down and queued for takeCallLog()
+    // (an outgoing timeout also cancels the peer). Call periodically - the GUI does
+    // so on every sync tick; a no-op when there is no ringing call.
+    void tickCalls();
 
     // Pulls and decrypts pending items, applies their contact/token side effects,
     // and acks items the core consumes itself. autoAckSurfaced (default true) acks a
@@ -697,6 +725,9 @@ private:
     // starting/stopping media as needed. Returns the content type handled.
     void handleCallSignal(const std::string& type, const std::string& from,
         const nlohmann::json& body, IncomingMessage& message);
+    // Queues a chat-history entry for the current call with the given outcome (using
+    // its peer, direction and connected time). Call before clearCall().
+    void logCompletedCall(CallOutcome outcome);
 
     // Seals a delivery envelope to the destination server's sealing key and
     // hands it to our own server, which accepts it at once (store-and-forward)
@@ -774,11 +805,15 @@ private:
         bool video = false;         // true for a video call (audio plus video)
         bool muted = false;
         bool cameraOff = false;     // local camera disabled on a video call
+        std::int64_t startedAtMs = 0;    // invite sent (outgoing) / received (incoming)
+        std::int64_t connectedAtMs = 0;  // became active, for the call duration
         std::shared_ptr<bazarish::i2p::Endpoint> dgram;
         std::unique_ptr<I2pCallTransport> transport;
         std::unique_ptr<CallMedia> media;
     };
     ActiveCall call_;
+    // Calls that finished but whose chat-history entry has not been drained yet.
+    std::vector<CompletedCall> pendingCallLog_;
     std::map<std::string, SentBlob> sentBlobs_;
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;

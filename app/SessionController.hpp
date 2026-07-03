@@ -190,6 +190,10 @@ signals:
     // matching Session::CallState. Emitted after every sync and call action.
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         bool video, bool cameraOn);
+    // A call finished: its peer, direction (incoming), how it ended (a
+    // Session::CallOutcome as an int) and connected duration - for a chat-history
+    // entry. Emitted after sync and after any call action.
+    void callLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
 private:
     // Opens a background-activity row for a worker operation and returns its id;
@@ -202,6 +206,8 @@ private:
     // Emits the current contacts with their display names (parallel lists).
     void emitContacts();
     void emitCallState();
+    // Drains finished calls from the session and emits callLogged for each.
+    void flushCallLog();
     // Re-polls sends still in flight after their initial submit window so a late
     // delivery (yellow) or failure (red) reaches the message; run each sync.
     void reconcilePendingSends();
@@ -638,6 +644,8 @@ private slots:
         bool blobOk, qulonglong blobUsed, qulonglong blobQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         bool video, bool cameraOn);
+    // Appends a finished call to the peer's transcript as a clear system line.
+    void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
 private:
     QThread thread_;

@@ -38,6 +38,11 @@ namespace fs = std::filesystem;
 constexpr int kTokenBatchSize = 64;
 constexpr std::size_t kRefillThreshold = 16;
 
+// How long a call rings before it self-resolves: an unanswered outgoing call
+// becomes "no answer", an unanswered incoming one "missed" - so a ringing call
+// never blocks the UI waiting forever.
+constexpr std::int64_t kRingTimeoutMs = 60000;
+
 // Inner end-to-end payload format version (see docs Messages.md).
 constexpr int kMessageFormatVersion = 1;
 
@@ -2150,6 +2155,8 @@ void Session::clearCall()
     call_.video = false;
     call_.muted = false;
     call_.cameraOff = false;
+    call_.startedAtMs = 0;
+    call_.connectedAtMs = 0;
 }
 
 void Session::sendCallSignal(
@@ -2197,6 +2204,7 @@ void Session::startCall(const std::string& peerFingerprint, const bool video)
     call_.video = video;
     call_.muted = false;
     call_.cameraOff = false;
+    call_.startedAtMs = nowMillis();
     call_.dgram = std::move(dgram);
 }
 
@@ -2221,6 +2229,7 @@ void Session::acceptCall(const std::string& callId)
             {"dest", dgram->routingHost()}});
     call_.dgram = std::move(dgram);
     call_.state = CallState::eActive;
+    call_.connectedAtMs = nowMillis();
     startCallMedia();
 }
 
@@ -2230,6 +2239,7 @@ void Session::declineCall(const std::string& callId)
         throw std::runtime_error("no matching incoming call");
     }
     const std::string peer = call_.peerFingerprint;
+    logCompletedCall(CallOutcome::eDeclined);
     clearCall();
     try {
         sendCallSignal(peer, "call.decline", {{"callId", callId}, {"reason", "declined"}});
@@ -2246,6 +2256,12 @@ void Session::endCall()
     }
     const std::string peer = call_.peerFingerprint;
     const std::string callId = call_.callId;
+    // Active: a normal hang-up (answered). Still ringing: we gave up - outgoing is a
+    // cancel, an incoming one we end is a decline.
+    const CallOutcome outcome = call_.state == CallState::eActive
+        ? CallOutcome::eAnswered
+        : (call_.initiator ? CallOutcome::eCancelled : CallOutcome::eDeclined);
+    logCompletedCall(outcome);
     clearCall();
     try {
         sendCallSignal(peer, "call.end", {{"callId", callId}});
@@ -2299,6 +2315,8 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
                     from, "call.decline", {{"callId", message.callId}, {"reason", "busy"}});
             } catch (const std::exception&) {
             }
+            // We could not take this call: record it as a missed call from that peer.
+            pendingCallLog_.push_back({from, true, CallOutcome::eMissed, 0});
             message.text = "busy";
             return;
         }
@@ -2328,15 +2346,71 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
             && from == call_.peerFingerprint) {
             call_.peerMediaDest = body.value("dest", std::string());
             call_.state = CallState::eActive;
+            call_.connectedAtMs = nowMillis();
             startCallMedia();
         }
         return;
     }
 
-    // call.decline / call.end: tear the call down if it is the one we track.
+    // call.decline / call.end: record the outcome and tear the call down if it is
+    // the one we track.
     if (call_.state != CallState::eIdle && call_.callId == message.callId
         && from == call_.peerFingerprint) {
+        CallOutcome outcome;
+        if (type == "call.decline") {
+            // The peer rejected our outgoing call (busy vs an explicit decline).
+            outcome = body.value("reason", std::string()) == "busy" ? CallOutcome::eBusy
+                                                                     : CallOutcome::eDeclined;
+        } else if (call_.state == CallState::eActive) {
+            outcome = CallOutcome::eAnswered;  // normal hang-up after connecting
+        } else if (call_.state == CallState::eIncoming) {
+            outcome = CallOutcome::eMissed;  // the caller cancelled before we answered
+        } else {
+            outcome = CallOutcome::eDeclined;  // outgoing torn down before it connected
+        }
+        logCompletedCall(outcome);
         clearCall();
+    }
+}
+
+void Session::logCompletedCall(const CallOutcome outcome)
+{
+    if (call_.peerFingerprint.empty()) {
+        return;
+    }
+    const std::int64_t durationSec
+        = (outcome == CallOutcome::eAnswered && call_.connectedAtMs > 0)
+        ? (nowMillis() - call_.connectedAtMs) / 1000
+        : 0;
+    // incoming = we did not initiate; the peer is the other party either way.
+    pendingCallLog_.push_back(
+        CompletedCall{call_.peerFingerprint, !call_.initiator, outcome, durationSec});
+}
+
+std::vector<Session::CompletedCall> Session::takeCallLog()
+{
+    std::vector<CompletedCall> out = std::move(pendingCallLog_);
+    pendingCallLog_.clear();
+    return out;
+}
+
+void Session::tickCalls()
+{
+    if (call_.startedAtMs == 0 || nowMillis() - call_.startedAtMs <= kRingTimeoutMs) {
+        return;  // no ringing call, or still within the ring window (active calls too)
+    }
+    if (call_.state == CallState::eOutgoing) {
+        const std::string peer = call_.peerFingerprint;
+        const std::string callId = call_.callId;
+        logCompletedCall(CallOutcome::eNoAnswer);
+        clearCall();
+        try {
+            sendCallSignal(peer, "call.end", {{"callId", callId}});  // stop the peer ringing
+        } catch (const std::exception&) {
+        }
+    } else if (call_.state == CallState::eIncoming) {
+        logCompletedCall(CallOutcome::eMissed);
+        clearCall();  // the caller times out symmetrically; no signal needed
     }
 }
 
