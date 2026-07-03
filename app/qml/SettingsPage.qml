@@ -91,11 +91,12 @@ Popup {
                     Label { text: "Profile"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     RowLayout {
                         spacing: 12
-                        // Tap the avatar (or the button below) to set a photo.
+                        // Tap the avatar to view it full-size; set a new photo with
+                        // the button below.
                         Avatar {
                             fingerprint: root.session ? root.session.fingerprint : ""
                             size: 56
-                            TapHandler { onTapped: avatarDialog.open() }
+                            enlargeable: true
                         }
                         ColumnLayout {
                             Layout.fillWidth: true

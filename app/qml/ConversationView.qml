@@ -183,7 +183,7 @@ Item {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 6
                 spacing: 10
-                Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38 }
+                Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38; enlargeable: true }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0

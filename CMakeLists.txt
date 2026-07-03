@@ -191,6 +191,7 @@ if(Qt6_FOUND)
             app/qml/OperationsOverlay.qml
             app/qml/OperationRow.qml
             app/qml/components/Avatar.qml
+            app/qml/components/AvatarViewer.qml
             app/qml/components/QrView.qml
             app/qml/components/DialogButtons.qml
             app/qml/components/IconButton.qml

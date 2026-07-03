@@ -36,6 +36,7 @@ Popup {
             Layout.alignment: Qt.AlignHCenter
             fingerprint: root.session ? root.session.activePeer : ""
             size: 88
+            enlargeable: true
         }
         // The contact's display name (the local label, or a short fingerprint).
         Label {
