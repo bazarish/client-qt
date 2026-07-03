@@ -71,16 +71,70 @@ Item {
     InviteSheet { id: inviteSheet; session: root.session; onBack: { inviteSheet.close(); settings.open() } }
     SignWithKeySheet { id: signWithKeySheet; session: root.session; onBack: { signWithKeySheet.close(); settings.open() } }
     ContactInfo { id: contactInfo; session: root.session }
-    CallScreen { id: callScreen; session: root.session }
-    // Open the call overlay whenever a call is live (outgoing, incoming or
-    // active), and close it when the call returns to idle.
+    // A live call opens the full-screen overlay; the user can collapse it to the
+    // compact banner below (root.callMinimized) and keep using the app.
+    property bool callMinimized: false
+    CallScreen {
+        id: callScreen
+        session: root.session
+        onMinimizeRequested: { root.callMinimized = true; callScreen.close() }
+    }
+    // Open the overlay when a call becomes live (unless it was collapsed), and close
+    // it - clearing the collapsed flag - when the call returns to idle.
     Connections {
         target: root.session
         function onCallChanged() {
-            if (root.session.callState === "idle")
+            if (root.session.callState === "idle") {
                 callScreen.close()
-            else if (!callScreen.opened)
+                root.callMinimized = false
+            } else if (!root.callMinimized && !callScreen.opened) {
                 callScreen.open()
+            }
+        }
+    }
+
+    // Minimized-call pill: a live call collapsed to a compact bar so the rest of the
+    // app stays usable. Tap the text to return to the call; the x ends/cancels it.
+    Rectangle {
+        id: callBanner
+        visible: root.session && root.session.callState !== "idle" && root.callMinimized
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.topMargin: 10
+        z: 1000
+        radius: 20
+        height: 40
+        width: bannerRow.implicitWidth + 24
+        color: Theme.surface
+        border.color: Theme.neon  // a live call: the rare neon highlight
+        border.width: 1
+        RowLayout {
+            id: bannerRow
+            anchors.centerIn: parent
+            spacing: 8
+            Label {
+                Layout.leftMargin: 8
+                color: Theme.text
+                font.pixelSize: Theme.fontSmall
+                text: {
+                    if (!root.session) return ""
+                    var who = root.session.callPeerName
+                    switch (root.session.callState) {
+                    case "outgoing": return "Calling " + who + "…"
+                    case "incoming": return "Incoming call · " + who
+                    case "active": return "In call · " + who
+                    }
+                    return ""
+                }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: { root.callMinimized = false; callScreen.open() } }
+            }
+            IconButton {
+                visible: root.session
+                    && (root.session.callState === "outgoing" || root.session.callState === "active")
+                text: "✕"
+                onClicked: root.session.endCall()
+            }
         }
     }
     AccountSwitcher { id: accountSwitcher }

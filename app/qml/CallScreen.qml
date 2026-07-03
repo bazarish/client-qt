@@ -14,6 +14,8 @@ Popup {
     property var session: null
     readonly property string callState: session ? session.callState : "idle"
     readonly property bool isVideo: session ? session.callVideo : false
+    // Emitted when the user collapses the call to MainView's compact banner.
+    signal minimizeRequested()
 
     modal: true
     closePolicy: Popup.NoAutoClose  // dismissed only through call actions
@@ -61,6 +63,18 @@ Popup {
 
     contentItem: Item {
 
+        // Collapse the call to MainView's compact banner (outgoing/active only) so
+        // the app stays usable while ringing or on a call.
+        IconButton {
+            text: "⌄"
+            visible: root.callState === "outgoing" || root.callState === "active"
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 6
+            z: 10
+            onClicked: root.minimizeRequested()
+        }
+
         // --- Audio (or pre-connect) layout: avatar + status + controls. ---
         ColumnLayout {
             anchors.fill: parent
@@ -72,6 +86,7 @@ Popup {
                 Layout.alignment: Qt.AlignHCenter
                 fingerprint: root.session ? root.session.callPeer : ""
                 size: 120
+                enlargeable: true
             }
             Label {
                 Layout.alignment: Qt.AlignHCenter
@@ -117,7 +132,8 @@ Popup {
                     height: 99
                     anchors.top: parent.top
                     anchors.right: parent.right
-                    anchors.margins: 12
+                    anchors.topMargin: 50  // clear the minimize button in the corner
+                    anchors.rightMargin: 12
                     color: Theme.deep
                     border.color: Theme.border
                     radius: 6
