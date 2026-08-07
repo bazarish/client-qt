@@ -55,6 +55,7 @@ add_library(bazarish_client_lib STATIC
     src/I2pRouter.cpp
     src/Invite.cpp
     src/LargeBlob.cpp
+    src/FileTransfer.cpp
     src/ProfileManager.cpp
     src/Qr.cpp
     src/Session.cpp
@@ -220,6 +221,7 @@ bazarish_client_add_test(TestVideoCodec)
 bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestTokenRefill)
+bazarish_client_add_test(TestFileTransfer)
 bazarish_client_add_test(TestI2pKeys)
 bazarish_client_add_test(TestBlobTransport)
 bazarish_client_add_test(TestInvite)
