@@ -1,11 +1,9 @@
 // Bazarish project (c) 2026
 #include "Session.hpp"
 
-#include "BlobTransport.hpp"
 #include "FederationFetch.hpp"
 #include "I2pKeys.hpp"
 #include "I2pRouter.hpp"
-#include "LargeBlob.hpp"
 
 #include <bazarish/Auth.hpp>
 #include <bazarish/Certificates.hpp>
@@ -144,17 +142,6 @@ void writeFileText(const fs::path& path, const std::string& text)
     }
 }
 
-void writeFileBytes(const fs::path& path, const Bytes& data)
-{
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    if (!out) {
-        throw std::runtime_error("failed to open " + path.string());
-    }
-    out.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-    if (!out) {
-        throw std::runtime_error("failed to write " + path.string());
-    }
-}
 
 // Builds the JSON wire form of an inline keyboard: an array of rows, each row
 // an array of buttons. A button carries its label plus a callback "data" or a
@@ -180,6 +167,11 @@ nlohmann::json keyboardToJson(const InlineKeyboard& keyboard)
 
 // A best-effort MIME guess from the extension. Content type rendering is a
 // client concern; the server never sees this.
+// How long a sender keeps a one-time destination up for one request. Long enough
+// for a slow I2P transfer with reconnects, short enough that an abandoned request
+// does not pin tunnels forever.
+constexpr int kServeWindowSeconds = 30 * 60;
+
 std::string guessMime(const fs::path& path)
 {
     const std::string ext = path.extension().string();
@@ -391,7 +383,7 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
     session.name_ = meta.value("name", std::string{});
-    session.loadSentBlobs();
+    session.loadSentFiles();
 
     // Load the user-owned I2P destination, if this profile has one (per-user
     // path). Both blobs are sealed at rest when the profile is encrypted.
@@ -1084,7 +1076,7 @@ FetchTransport Session::fetchTransport() const
             bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
             if (router != nullptr && router->ready()) {
                 try {
-                    return federationFetchOverI2p(*router, toDest, op, sealed, blobFetchPrivacy_);
+                    return federationFetchOverI2p(*router, toDest, op, sealed, transferPrivacy_);
                 } catch (const std::exception&) {
                     // Direct dial failed; fall back to the server proxy below.
                 }
@@ -1124,7 +1116,7 @@ Session::ContactFetchContext Session::contactFetchContext() const
     ctx.i2pDataDir = profileDir_.parent_path() / "i2p";
     ctx.resolver = resolverCoordinate_;
     ctx.i2pEnabled = i2pEnabled();
-    ctx.blobFetchPrivacy = blobFetchPrivacy_;
+    ctx.blobFetchPrivacy = transferPrivacy_;
     return ctx;
 }
 
@@ -1346,71 +1338,37 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
     return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
-nlohmann::json Session::uploadFileBlock(const fs::path& path, const std::string& messageId,
-    const BlobRetention& retention, const UploadProgressFn& onUploadProgress)
-{
-    // Encrypt the file under a fresh key straight to a temp ciphertext file and
-    // upload it streaming, so a large file is never held whole in memory. The
-    // message carries only this small sealed pointer, so the recipient's mailbox
-    // quota is never a factor for large files. (Blob storage hosts rotating
-    // encrypted-LeaseSet destinations, served only over I2P.)
-    const std::uint64_t plainSize = fs::file_size(path);
-    const fs::path ciphertextPath
-        = profileDir_ / ("blob-upload-" + toHex(randomBytes(8)) + ".tmp");
-
-    BlobPointer pointer;
-    BlobUploadResult uploaded;
-    try {
-        const PackedBlobFile packed = packLargeBlobToFile(path, ciphertextPath);
-        uploaded = client_->uploadBlobFromFile(packed, retention, onUploadProgress);
-        pointer.fileKey = packed.fileKey;
-        pointer.sha256 = packed.sha256;
-        pointer.size = packed.size;
-    } catch (...) {
-        std::error_code ec;
-        fs::remove(ciphertextPath, ec);
-        throw;
-    }
-    std::error_code ec;
-    fs::remove(ciphertextPath, ec);
-
-    pointer.blobUrl = uploaded.blobUrl;
-    pointer.blobId = uploaded.blobId;
-    const std::string pointerJson = blobPointerToJson(pointer).dump();
-    // Remember the blob so the sender can unsend it later.
-    recordSentBlob(messageId, uploaded.blobUrl, uploaded.deleteToken);
-    return {
-        {"ptr", toBase64(Bytes(pointerJson.begin(), pointerJson.end()))},
-        {"size", plainSize},
-        {"mime", guessMime(path)},
-        {"name", path.filename().string()},
-    };
-}
-
 bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
-    std::string* outAttemptId, const UploadProgressFn& onUploadProgress,
-    const BlobRetention& retention, const std::string& replyTo)
+    std::string* outAttemptId, const std::string& replyTo)
 {
     const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
-    const nlohmann::json fileBlock = uploadFileBlock(path, id, retention, onUploadProgress);
+    // Only metadata travels. The digest is over the plaintext, so the recipient
+    // can check that what it finally holds is what was announced, independently
+    // of how many transfer attempts it took.
+    const std::uint64_t size = fs::file_size(path);
+    const std::string digest = toHex(sha256File(path));
+    sentFiles_[id] = SentFile{path, digest, size};
+    persistSentFiles();
+
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "file"},
         {"id", id},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
-        {"file", fileBlock},
+        {"file",
+            {
+                {"name", path.filename().string()},
+                {"size", size},
+                {"sha256", digest},
+                {"mime", guessMime(path)},
+            }},
     };
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
-    // Do not poll for the outcome: the upload already consumed the time budget, so
-    // blocking the worker on a delivery poll on top of it is what made a file send
-    // feel like a freeze. The grey state is fired on acceptance; a later sync
-    // reconciles the attempt to yellow/green/red.
-    return sendContent(
-        peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId, false);
+    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
 void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
@@ -1546,17 +1504,159 @@ void Session::sendChatClear(const std::string& peerFingerprint)
     sendContent(peerFingerprint, std::move(inner));
 }
 
-void Session::saveAttachment(const std::string& ref, const std::string& keyB64,
-    const fs::path& dest, const UploadProgressFn& onProgress, const BlobStageFn& onStage,
-    const std::atomic<bool>* cancel)
+void Session::setTransferHandler(TransferEventFn handler)
 {
-    (void)keyB64;  // the decryption key now travels inside the pointer
-    // ref is the base64 sealed blob pointer; fetch the ciphertext over I2P,
-    // verify its digest and decrypt it straight to dest (never whole in RAM).
-    const Bytes pointerBytes = fromBase64(ref);
-    const BlobPointer pointer
-        = blobPointerFromJson(nlohmann::json::parse(pointerBytes.begin(), pointerBytes.end()));
-    fetchLargeBlobToFile(pointer, dest, onProgress, onStage, cancel);
+    const std::lock_guard<std::mutex> lock(transfers_->mutex);
+    transfers_->onEvent = std::move(handler);
+}
+
+void Session::emitTransfer(const std::string& messageId, const TransferState state,
+    const std::uint64_t bytes, const std::uint64_t total, const std::string& error)
+{
+    TransferEventFn handler;
+    {
+        const std::lock_guard<std::mutex> lock(transfers_->mutex);
+        handler = transfers_->onEvent;
+    }
+    if (handler) {
+        handler(TransferEvent{messageId, state, bytes, total, error});
+    }
+}
+
+void Session::requestFile(
+    const std::string& peerFingerprint, const std::string& messageId, const fs::path& dest)
+{
+    {
+        const std::lock_guard<std::mutex> lock(transfers_->mutex);
+        transfers_->pending[messageId]
+            = PendingTransfer{dest, std::make_shared<std::atomic<bool>>(false)};
+    }
+    emitTransfer(messageId, TransferState::eRequested, 0, 0);
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "file.request"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"fileId", messageId},
+    };
+    sendContent(peerFingerprint, std::move(inner));
+}
+
+void Session::cancelTransfer(const std::string& messageId)
+{
+    const std::lock_guard<std::mutex> lock(transfers_->mutex);
+    const auto found = transfers_->pending.find(messageId);
+    if (found != transfers_->pending.end()) {
+        found->second.cancel->store(true);
+        transfers_->pending.erase(found);
+    }
+}
+
+void Session::unsend(const std::string& messageId)
+{
+    // Nothing was ever copied off this machine, so unsending is just forgetting:
+    // a later request is answered "no longer available".
+    if (sentFiles_.erase(messageId) > 0) {
+        persistSentFiles();
+    }
+}
+
+void Session::setTransferPrivacy(const bazarish::i2p::Privacy privacy)
+{
+    transferPrivacy_ = privacy;
+}
+
+void Session::serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId)
+{
+    const auto found = sentFiles_.find(fileId);
+    if (found == sentFiles_.end() || !fs::exists(found->second.path)) {
+        // Either we never announced it or the user moved the file: say so instead
+        // of leaving the recipient waiting on a transfer that can never start.
+        nlohmann::json inner = {
+            {"v", kMessageFormatVersion},
+            {"type", "file.unavailable"},
+            {"id", toHex(randomBytes(8))},
+            {"from", fingerprint()},
+            {"sentAt", nowMillis()},
+            {"fileId", fileId},
+        };
+        sendContent(peerFingerprint, std::move(inner));
+        return;
+    }
+    const fs::path source = found->second.path;
+    const fs::path ciphertextPath
+        = profileDir_ / ("file-serve-" + toHex(randomBytes(8)) + ".tmp");
+
+    std::thread([this, peerFingerprint, fileId, source, ciphertextPath]() {
+        try {
+            const PreparedFile prepared = prepareFile(source, ciphertextPath);
+            bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
+            config.privacy = transferPrivacy_;
+            config.tunnelQuantity = 2;
+            const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
+                = i2pRouter().createEndpoint(config);
+            if (!endpoint->waitReady(std::chrono::seconds(180))) {
+                throw std::runtime_error("could not publish a one-time destination");
+            }
+
+            FileOffer offer;
+            offer.fileId = fileId;
+            offer.host = endpoint->routingHost();
+            offer.key = prepared.key;
+            offer.sha256 = prepared.sha256;
+            offer.size = prepared.size;
+            nlohmann::json inner = {
+                {"v", kMessageFormatVersion},
+                {"type", "file.offer"},
+                {"id", toHex(randomBytes(8))},
+                {"from", fingerprint()},
+                {"sentAt", nowMillis()},
+                {"offer", fileOfferToJson(offer)},
+            };
+            sendContent(peerFingerprint, std::move(inner));
+
+            serveFile(*endpoint, ciphertextPath, std::chrono::seconds(kServeWindowSeconds),
+                [this, fileId](const std::uint64_t sent, const std::uint64_t total) {
+                    emitTransfer(fileId, TransferState::eRunning, sent, total);
+                });
+            emitTransfer(fileId, TransferState::eDone, 0, 0);
+        } catch (const std::exception& error) {
+            emitTransfer(fileId, TransferState::eFailed, 0, 0, error.what());
+        }
+        std::error_code ec;
+        fs::remove(ciphertextPath, ec);
+    }).detach();
+}
+
+void Session::startAnnouncedFetch(const FileOffer& offer)
+{
+    fs::path dest;
+    std::shared_ptr<std::atomic<bool>> cancel;
+    {
+        const std::lock_guard<std::mutex> lock(transfers_->mutex);
+        const auto found = transfers_->pending.find(offer.fileId);
+        if (found == transfers_->pending.end()) {
+            return;  // an offer for something we never asked for
+        }
+        dest = found->second.dest;
+        cancel = found->second.cancel;
+    }
+
+    std::thread([this, offer, dest, cancel]() {
+        try {
+            fetchFileOverI2p(i2pRouter(), offer, dest, transferPrivacy_,
+                [this, &offer](const std::uint64_t got, const std::uint64_t total) {
+                    emitTransfer(offer.fileId, TransferState::eRunning, got, total);
+                },
+                cancel.get());
+            emitTransfer(offer.fileId, TransferState::eDone, offer.size, offer.size);
+        } catch (const std::exception& error) {
+            emitTransfer(offer.fileId, TransferState::eFailed, 0, 0, error.what());
+        }
+        const std::lock_guard<std::mutex> lock(transfers_->mutex);
+        transfers_->pending.erase(offer.fileId);
+    }).detach();
 }
 
 bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
@@ -1586,37 +1686,6 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // Captured before the bootstrap block below: when false here, this very send
     // is our first reply to the peer - the moment we accept/establish the dialog.
     const bool wasIssuedToThem = contact.issuedToThem;
-
-    // Externalize content larger than the threshold: encrypt it under a fresh
-    // key, upload the ciphertext to blob storage, and replace the body with a
-    // small sealed pointer. The messaging server only ever sees the pointer, so
-    // a quota-constrained recipient can receive arbitrarily large content. The
-    // routing fields (id/from) and the bootstrap/lowStash control blocks stay in
-    // the small outer envelope.
-    {
-        const std::string contentText = inner.dump();
-        if (contentText.size() > kLargeBlobThresholdBytes) {
-            const PackedBlob packed
-                = packLargeBlob(Bytes(contentText.begin(), contentText.end()));
-            const BlobUploadResult uploaded = client_->uploadBlob(packed, BlobRetention{});
-            // Remember the blob so the sender can unsend it later.
-            recordSentBlob(
-                inner.value("id", std::string()), uploaded.blobUrl, uploaded.deleteToken);
-            BlobPointer pointer;
-            pointer.blobUrl = uploaded.blobUrl;
-            pointer.blobId = uploaded.blobId;
-            pointer.fileKey = packed.fileKey;
-            pointer.sha256 = packed.sha256;
-            pointer.size = packed.size;
-            inner = {
-                {"v", kMessageFormatVersion},
-                {"type", "blob.pointer"},
-                {"id", inner.value("id", std::string())},
-                {"from", inner.value("from", fingerprint())},
-                {"pointer", blobPointerToJson(pointer)},
-            };
-        }
-    }
 
     // First reply to a peer that wrote to us first: hand them a bootstrap (our
     // routing + a token batch) so the reverse direction is usable too. A read
@@ -1668,83 +1737,10 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     return delivered;
 }
 
-void Session::setBlobFetchPrivacy(const bazarish::i2p::Privacy privacy)
-{
-    blobFetchPrivacy_ = privacy;
-}
 
-Bytes Session::fetchLargeBlob(const BlobPointer& pointer)
+void Session::loadSentFiles()
 {
-    try {
-        // Direct over a fresh transient I2P destination (preferred - our server is
-        // never involved).
-        return fetchBlob(i2pRouter(), pointer, blobFetchPrivacy_);
-    } catch (const std::exception&) {
-        // No I2P transport of our own (or the direct fetch failed): fall back to our
-        // own server proxying the fetch over I2P.
-        return client_->fetchBlobViaProxy(pointer);
-    }
-}
-
-void Session::fetchLargeBlobToFile(const BlobPointer& pointer, const fs::path& dest,
-    const UploadProgressFn& onProgress, const BlobStageFn& onStage,
-    const std::atomic<bool>* cancel)
-{
-    try {
-        // Direct over a fresh transient I2P destination, streamed to disk (preferred
-        // - our server is never involved and the file never sits whole in RAM).
-        fetchBlobToFile(i2pRouter(), pointer, dest, blobFetchPrivacy_, onProgress, onStage, cancel);
-    } catch (const BlobNotFoundError&) {
-        // The blob has aged out of the store (404/410). The own-server proxy hits
-        // the same store and would also 404, so don't bother - surface it at once.
-        throw;
-    } catch (const std::exception&) {
-        // A cancelled fetch (teardown / session switch) must abort, not fall back to
-        // a fresh proxy download.
-        if (cancel && cancel->load()) {
-            throw;
-        }
-        // No I2P transport of our own (or the direct fetch failed): the own-server proxy
-        // relays the whole ciphertext through the facade (buffered fallback).
-        const Bytes plain = client_->fetchBlobViaProxy(pointer);
-        writeFileBytes(dest, plain);
-    }
-}
-
-void Session::deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken)
-{
-    try {
-        deleteBlob(i2pRouter(), blobUrl, deleteToken, blobFetchPrivacy_);  // direct
-    } catch (const std::exception&) {
-        client_->deleteBlobViaProxy(blobUrl, deleteToken);  // own-server proxy fallback
-    }
-}
-
-void Session::unsend(const std::string& messageId)
-{
-    const auto found = sentBlobs_.find(messageId);
-    if (found == sentBlobs_.end()) {
-        throw std::runtime_error("no externalized blob recorded for message: " + messageId);
-    }
-    try {
-        deleteLargeBlob(found->second.blobUrl, found->second.deleteToken);
-    } catch (const std::exception&) {
-        // Best effort: the blob also reclaims via its TTL.
-    }
-    sentBlobs_.erase(found);
-    persistSentBlobs();
-}
-
-void Session::recordSentBlob(
-    const std::string& messageId, const std::string& blobUrl, const std::string& deleteToken)
-{
-    sentBlobs_[messageId] = SentBlob{blobUrl, deleteToken};
-    persistSentBlobs();
-}
-
-void Session::loadSentBlobs()
-{
-    const fs::path path = profileDir_ / "sent-blobs.json";
+    const fs::path path = profileDir_ / "sent-files.json";
     if (!fs::exists(path)) {
         return;
     }
@@ -1753,27 +1749,25 @@ void Session::loadSentBlobs()
         ? nlohmann::json::parse(cms::unsealWithPassword(Bytes(raw.begin(), raw.end()), passphrase_))
         : nlohmann::json::parse(raw);
     for (const auto& [id, entry] : stored.items()) {
-        sentBlobs_[id] = SentBlob{entry.at("url").get<std::string>(),
-            entry.at("token").get<std::string>()};
+        sentFiles_[id] = SentFile{fs::path(entry.at("path").get<std::string>()),
+            entry.value("sha256", std::string()), entry.value("size", std::uint64_t{0})};
     }
 }
 
-void Session::persistSentBlobs() const
+void Session::persistSentFiles() const
 {
     nlohmann::json stored = nlohmann::json::object();
-    for (const auto& [id, blob] : sentBlobs_) {
-        stored[id] = {{"url", blob.blobUrl}, {"token", blob.deleteToken}};
+    for (const auto& [id, file] : sentFiles_) {
+        stored[id] = {
+            {"path", file.path.string()},
+            {"sha256", file.sha256},
+            {"size", file.size},
+        };
     }
-    if (encrypted_) {
-        // Delete-tokens are capabilities over our own blobs: seal at rest under
-        // the profile passphrase (CMS PWRI), like contacts.
-        const std::string text = stored.dump();
-        const Bytes sealed = cms::sealWithPassword(Bytes(text.begin(), text.end()), passphrase_);
-        writeFileText(profileDir_ / "sent-blobs.json", std::string(sealed.begin(), sealed.end()));
-        return;
-    }
-    writeFileText(profileDir_ / "sent-blobs.json", stored.dump(2));
+    const std::string text = stored.dump();
+    persistSealedBlob("sent-files.json", Bytes(text.begin(), text.end()));
 }
+
 
 std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
 {
@@ -1837,36 +1831,41 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                     = body.at("refillToken").get<std::string>();
             }
 
-            // A blob pointer: the real content was externalized to blob storage.
-            // Fetch it over I2P (a fresh transient destination), verify and decrypt
-            // it, then dispatch on the recovered content's real type. Best effort -
-            // a failed fetch surfaces the pointer (the blob persists until its TTL,
-            // so a later sync can retry).
-            if (type == "blob.pointer") {
-                try {
-                    const BlobPointer pointer = blobPointerFromJson(body.at("pointer"));
-                    const Bytes content = fetchLargeBlob(pointer);
-                    body = nlohmann::json::parse(content.begin(), content.end());
-                    type = body.value("type", std::string("text"));
-                } catch (const std::exception&) {
-                    message.contentType = "blob.pointer";
-                    message.text = "[large message — fetch failed; retry later]";
-                }
-            }
-
             // Content dispatch. An unknown type is still acked and surfaced (not
             // dropped) so a newer client could render it; see docs Messages.md.
             if (type == "text" || type == "contact.request") {
                 message.contentType = type;
                 message.text = body.value("text", std::string());
             } else if (type == "file" || type == "photo" || type == "audio" || type == "voice") {
+                // An announcement, not a delivery: the bytes are still on the
+                // sender's disk until we ask for them.
                 message.contentType = type;
                 const nlohmann::json& file = body.at("file");
-                // The base64 sealed blob pointer; the decryption key rides inside it.
-                message.attachmentRef = file.at("ptr").get<std::string>();
+                message.attachmentRef = file.value("sha256", std::string());
                 message.attachmentName = file.value("name", std::string());
                 message.attachmentMime = file.value("mime", std::string());
                 message.attachmentSize = file.value("size", std::uint64_t{0});
+            } else if (type == "file.request") {
+                // Silent: a contact wants a file we announced.
+                message.contentType = type;
+                serveRequestedFile(message.fromFingerprint, body.value("fileId", std::string()));
+            } else if (type == "file.offer") {
+                // Silent: the sender is up and serving; start pulling.
+                message.contentType = type;
+                try {
+                    startAnnouncedFetch(fileOfferFromJson(body.at("offer")));
+                } catch (const std::exception&) {
+                    // Malformed offer: the transfer simply never starts.
+                }
+            } else if (type == "file.unavailable") {
+                message.contentType = type;
+                const std::string fileId = body.value("fileId", std::string());
+                {
+                    const std::lock_guard<std::mutex> lock(transfers_->mutex);
+                    transfers_->pending.erase(fileId);
+                }
+                emitTransfer(fileId, TransferState::eFailed, 0, 0,
+                    "the sender no longer has this file");
             } else if (type == "bot.command") {
                 // A command invocation aimed at a bot: the command name and its
                 // raw argument string. Surfaced as text too, for plain rendering.

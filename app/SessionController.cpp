@@ -593,21 +593,16 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
 void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint64 localId,
     const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo)
 {
+    // ttlSeconds / downloadCount were blob-store retention knobs; a file now lives
+    // on the sender's own disk, so there is nothing to expire.
+    (void)ttlSeconds;
+    (void)downloadCount;
     try {
-        bazarish::client::BlobRetention retention;
-        retention.ttlSeconds = ttlSeconds;
-        if (downloadCount > 0) {
-            retention.count = static_cast<std::uint32_t>(downloadCount);
-        }
         std::string attemptId;
         const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
             protocolId.toStdString(),
             [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
-            &attemptId,
-            [this, localId](std::uint64_t sent, std::uint64_t total) {
-                emit uploadProgress(localId, static_cast<qint64>(sent), static_cast<qint64>(total));
-            },
-            retention, replyTo.toStdString());
+            &attemptId, replyTo.toStdString());
         if (delivered) {
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
@@ -1087,28 +1082,32 @@ void SessionWorker::saveAttachment(
         emit downloadFinished(token, false, QStringLiteral("no open session"));
         return;
     }
-    const std::string refStd = ref.toStdString();
-    const std::string keyStd = key.toStdString();
+    // `ref` is the announcing message's id and `key` its sender: the download is a
+    // request to that peer, not a fetch from a store, so it only completes once
+    // they answer with an offer.
+    const std::string messageId = ref.toStdString();
+    const std::string peer = key.toStdString();
     const std::string destStd = destPath.toStdString();
-    downloadPool_.start([this, session, refStd, keyStd, destStd, token]() {
+    downloadPool_.start([this, session, messageId, peer, destStd, token]() {
         try {
-            session->saveAttachment(
-                refStd, keyStd, destStd,
-                [this, token](std::uint64_t received, std::uint64_t total) {
-                    if (!downloadsCancelled_.load()) {
-                        emit downloadProgress(
-                            token, static_cast<qint64>(received), static_cast<qint64>(total));
+            session->setTransferHandler(
+                [this, token](const bazarish::client::TransferEvent& event) {
+                    if (downloadsCancelled_.load()) {
+                        return;
                     }
-                },
-                [this, token](bazarish::client::BlobFetchStage stage) {
-                    if (!downloadsCancelled_.load()) {
-                        emit downloadStage(token, static_cast<int>(stage));
+                    if (event.state == bazarish::client::TransferState::eRunning) {
+                        emit downloadProgress(token, static_cast<qint64>(event.bytes),
+                            static_cast<qint64>(event.total));
+                    } else if (event.state == bazarish::client::TransferState::eDone) {
+                        emit downloadFinished(token, true, {});
+                    } else if (event.state == bazarish::client::TransferState::eFailed) {
+                        emit downloadFinished(
+                            token, false, QString::fromStdString(event.error));
                     }
-                },
-                &downloadsCancelled_);
-            if (!downloadsCancelled_.load()) {
-                emit downloadFinished(token, true, {});
-            }
+                });
+            // Returns at once: the transfer only starts when the sender answers
+            // with an offer, so completion is reported by the handler above.
+            session->requestFile(peer, messageId, destStd);
         } catch (const std::exception& e) {
             if (!downloadsCancelled_.load()) {
                 emit downloadFinished(token, false, QString::fromUtf8(e.what()));

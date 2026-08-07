@@ -13,6 +13,7 @@
 #include <exception>
 #include <fstream>
 #include <string>
+#include <atomic>
 #include <thread>
 #include <vector>
 
@@ -76,7 +77,7 @@ void printUsage()
         "  bazarish-client send-callback <profile> <peer-fp> <data> [ref]\n"
         "  bazarish-client call <profile> <peer-fp> [seconds] [video]\n"
         "  bazarish-client call-answer <profile> [seconds]\n"
-        "  bazarish-client get-file <profile> <ref> <key-b64> <out>\n"
+        "  bazarish-client get-file <profile> <peer-fp> <message-id> <out>\n"
         "  bazarish-client unsend <profile> <message-id>\n"
         "  bazarish-client sync <profile> [--privacy <minimal|middle|max>]\n"
         "  bazarish-client export <profile> <out-file>\n"
@@ -379,14 +380,42 @@ int runSendCallback(const std::vector<std::string>& args)
 
 int runGetFile(const std::vector<std::string>& args)
 {
-    // get-file <profile> <ref> <key-b64> <out>
+    // get-file <profile> <peer-fp> <message-id> <out>
     if (args.size() != 5) {
         printUsage();
         return 2;
     }
     Session session = Session::open(args[1], keyPassphrase());
-    session.saveAttachment(args[2], args[3], args[4]);
-    std::printf("saved attachment to %s\n", args[4].c_str());
+
+    // The transfer is asynchronous by nature - it needs the sender online and the
+    // offer to come back through a sync - so drive syncs until it settles.
+    std::atomic<bool> finished{false};
+    std::atomic<bool> ok{false};
+    std::string failure;
+    session.setTransferHandler([&](const bazarish::client::TransferEvent& event) {
+        if (event.state == bazarish::client::TransferState::eRunning && event.total > 0) {
+            std::printf("\r%llu / %llu bytes", static_cast<unsigned long long>(event.bytes),
+                static_cast<unsigned long long>(event.total));
+            std::fflush(stdout);
+        } else if (event.state == bazarish::client::TransferState::eDone) {
+            ok = true;
+            finished = true;
+        } else if (event.state == bazarish::client::TransferState::eFailed) {
+            failure = event.error;
+            finished = true;
+        }
+    });
+    session.requestFile(args[2], args[3], args[4]);
+    for (int i = 0; i < 600 && !finished.load(); ++i) {
+        (void)session.sync();
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    if (!ok.load()) {
+        std::fprintf(stderr, "\ntransfer failed: %s\n",
+            failure.empty() ? "timed out waiting for the sender" : failure.c_str());
+        return 1;
+    }
+    std::printf("\nsaved attachment to %s\n", args[4].c_str());
     return 0;
 }
 
@@ -452,7 +481,7 @@ int runSync(const std::vector<std::string>& args)
             printUsage();
             return 2;
         }
-        session.setBlobFetchPrivacy(parsed.value());
+        session.setTransferPrivacy(parsed.value());
     }
     const std::vector<IncomingMessage> messages = session.sync();
     // Keep a personal destination's transient fresh (a no-op for free profiles).
@@ -480,10 +509,10 @@ int runSync(const std::vector<std::string>& args)
         if (message.contentType == "unsupported") {
             body = std::string("(unsupported type '") + message.rawType
                 + "' — update your app)";
-        } else if (!message.attachmentRef.empty()) {
-            // Print the reference and key so `get-file` can download it.
+        } else if (!message.attachmentName.empty()) {
+            // An announcement: `get-file` pulls it straight from the sender.
             body = message.attachmentName + " (" + std::to_string(message.attachmentSize)
-                + " bytes) ref=" + message.attachmentRef + " key=" + message.attachmentKeyB64;
+                + " bytes) id=" + message.messageId;
         } else if (message.contentType == "bot.callback") {
             body = "data=" + message.callbackData + " ref=" + message.refId;
         } else {

@@ -4,6 +4,7 @@
 #include "AudioIo.hpp"
 #include "CallMedia.hpp"
 #include "Client.hpp"
+#include "FileTransfer.hpp"
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
@@ -15,6 +16,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <string>
@@ -135,12 +137,33 @@ struct IncomingMessage {
 };
 
 // The stateful client session: a user identity plus contact and token
-// A blob this client externalized for a message it sent, kept so the sender can
-// unsend it (delete it from blob storage with the delete-token).
-struct SentBlob {
-    std::string blobUrl;
-    std::string deleteToken;
+// A file this client announced in a message it sent. The bytes were never
+// uploaded anywhere, so serving a later request means reading this path again -
+// which is also why the sender can "unsend" simply by forgetting it.
+struct SentFile {
+    std::filesystem::path path;
+    std::string sha256;  // plaintext digest, as announced in the message
+    std::uint64_t size = 0;
 };
+
+// What a direct transfer is doing, so the message block can show it honestly
+// instead of pretending the file is already delivered.
+enum class TransferState {
+    eRequested,  // we asked; waiting for the sender to come up
+    eRunning,
+    eDone,
+    eFailed,
+};
+
+struct TransferEvent {
+    std::string messageId;
+    TransferState state = TransferState::eRequested;
+    std::uint64_t bytes = 0;
+    std::uint64_t total = 0;
+    std::string error;  // set when state == eFailed
+};
+
+using TransferEventFn = std::function<void(const TransferEvent&)>;
 
 // bookkeeping persisted under a profile directory, layered over the stateless
 // Client API wrappers. This is the logic a GUI or CLI front-end drives.
@@ -407,20 +430,14 @@ public:
         const std::function<void()>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, const std::string& replyTo = {});
 
-    // Sends a file as a "file" content message: the bytes are encrypted with a
-    // fresh key and uploaded to the content store; the message carries the
-    // reference and key end-to-end. The server never sees the content type.
-    // onUploadProgress, when set, is called as the ciphertext streams out (bytes
-    // sent, total), so the sender can show real upload progress.
-    // retention sets how long the encrypted blob lives on the store: a TTL
-    // backstop and, optionally, a download count that reclaims it the moment that
-    // many recipients have fetched it (whichever comes first). Defaulted retention
-    // means the store's default TTL with no download cap.
+    // Announces a file as a "file" content message: name, size and digest only.
+    // The bytes never leave this machine until the recipient asks for them, so
+    // the send itself is instant regardless of file size - and the file must
+    // still be at this path, and this client online, when they do.
     bool sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, const UploadProgressFn& onUploadProgress = {},
-        const BlobRetention& retention = {}, const std::string& replyTo = {});
+        std::string* outAttemptId = nullptr, const std::string& replyTo = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.
@@ -487,21 +504,29 @@ public:
     // delivery that was still pending when the send call returned. Never throws.
     AttemptOutcome pollAttempt(const std::string& attemptId);
 
-    // Downloads a blob attachment (from a received message) over I2P, verifies
-    // and decrypts it to dest. ref is the message's base64 sealed blob pointer
-    // (keyB64 is unused - the key rides inside the pointer).
-    void saveAttachment(const std::string& ref, const std::string& keyB64,
-        const std::filesystem::path& dest, const UploadProgressFn& onProgress = {},
-        const BlobStageFn& onStage = {}, const std::atomic<bool>* cancel = nullptr);
+    // Asks the sender of an announced file to serve it, and downloads it to dest
+    // when the sealed offer comes back. Returns at once: the transfer runs in the
+    // background and reports through the transfer handler, because it depends on
+    // the other side being online and can take as long as I2P takes.
+    void requestFile(const std::string& peerFingerprint, const std::string& messageId,
+        const std::filesystem::path& dest);
 
-    // Sender unsend: deletes the blob this client externalized for a message it
-    // sent (gated by the stored delete-token), over I2P. Best effort - the blob
-    // also reclaims via its TTL. Throws if no blob was recorded for messageId.
+    // Abandons a running or requested transfer.
+    void cancelTransfer(const std::string& messageId);
+
+    // Where transfer progress and outcomes are reported. One handler for the
+    // whole session; events carry the message id they belong to.
+    void setTransferHandler(TransferEventFn handler);
+
+    // Sender unsend: forgets the file announced for a message we sent, so a later
+    // request from the recipient is answered "no longer available". Nothing has
+    // to be deleted anywhere else - the bytes were never copied off this machine.
     void unsend(const std::string& messageId);
 
-    // Selects the I2P tunnel privacy profile used when fetching externalized
-    // large blobs over a throwaway destination. Defaults to the most private.
-    void setBlobFetchPrivacy(bazarish::i2p::Privacy privacy);
+    // Selects the I2P tunnel privacy profile used for direct transfers (both
+    // serving and fetching, always over one-time destinations). Defaults to the
+    // most private.
+    void setTransferPrivacy(bazarish::i2p::Privacy privacy);
 
     // --- Audio calls (client-to-client; signalling over E2E, media over I2P) ---
 
@@ -752,35 +777,21 @@ private:
 
 
     std::filesystem::path profileDir_;
-    // Fetches an externalized blob: direct over a transient I2P destination, falling
-    // back to the own-server I2P proxy when this client has no I2P transport of its own.
-    Bytes fetchLargeBlob(const BlobPointer& pointer);
-    // Same, but streams the blob straight to dest so a large attachment never
-    // sits whole in memory. The direct path is streamed; the proxy fallback
-    // (clients with no I2P transport) still buffers the ciphertext through the facade.
-    void fetchLargeBlobToFile(const BlobPointer& pointer, const std::filesystem::path& dest,
-        const UploadProgressFn& onProgress = {}, const BlobStageFn& onStage = {},
-        const std::atomic<bool>* cancel = nullptr);
-    // Deletes an externalized blob (unsend): direct over a transient I2P destination,
-    // falling back to the own-server I2P proxy.
-    void deleteLargeBlob(const std::string& blobUrl, const std::string& deleteToken);
-    // Encrypts and uploads a file as a blob (streamed via a temp ciphertext, never
-    // held whole in memory), records it for unsend under messageId, and returns the
-    // built "file" content block ({ptr, size, mime, name}) ready to drop into a
-    // message inner.
-    nlohmann::json uploadFileBlock(const std::filesystem::path& path, const std::string& messageId,
-        const BlobRetention& retention, const UploadProgressFn& onUploadProgress);
-    // Records / persists the blob externalized for a sent message, so it can be
-    // unsent later.
-    void recordSentBlob(
-        const std::string& messageId, const std::string& blobUrl, const std::string& deleteToken);
-    void loadSentBlobs();
-    void persistSentBlobs() const;
+    // A peer asked for a file we announced: encrypt it to a temp ciphertext, raise
+    // a one-time destination, seal the offer back and serve until the window
+    // closes. Runs on its own thread - building tunnels takes tens of seconds.
+    void serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId);
+    // A sealed offer came back for a file we asked for: fetch it. Also threaded.
+    void startAnnouncedFetch(const FileOffer& offer);
+    void emitTransfer(const std::string& messageId, TransferState state, std::uint64_t bytes,
+        std::uint64_t total, const std::string& error = {});
+    void loadSentFiles();
+    void persistSentFiles() const;
 
     std::unique_ptr<Client> client_;
     // The central alias resolver this profile resolves usernames against.
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
-    bazarish::i2p::Privacy blobFetchPrivacy_ = bazarish::i2p::Privacy::eMax;
+    bazarish::i2p::Privacy transferPrivacy_ = bazarish::i2p::Privacy::eMax;
     // The embedded I2P router is process-global (the i2pd engine allows only one
     // per process), so every profile shares the one instance (see sharedI2pRouter).
     // It is started lazily on first transport use, so offline operations and tests
@@ -814,7 +825,21 @@ private:
     ActiveCall call_;
     // Calls that finished but whose chat-history entry has not been drained yet.
     std::vector<CompletedCall> pendingCallLog_;
-    std::map<std::string, SentBlob> sentBlobs_;
+    std::map<std::string, SentFile> sentFiles_;
+    // Transfers this client is driving, by message id: a pending entry is created
+    // by requestFile and consumed when the offer arrives. Held behind a shared
+    // pointer because the transfer threads outlive any particular Session object
+    // (the session is movable, a mutex is not).
+    struct PendingTransfer {
+        std::filesystem::path dest;
+        std::shared_ptr<std::atomic<bool>> cancel;
+    };
+    struct TransferRegistry {
+        std::mutex mutex;
+        std::map<std::string, PendingTransfer> pending;
+        TransferEventFn onEvent;
+    };
+    std::shared_ptr<TransferRegistry> transfers_ = std::make_shared<TransferRegistry>();
     Key sealingKey_;
     std::map<std::string, Contact> contacts_;
     // Our own serving destination + serving sealing key (SPKI DER, base64),

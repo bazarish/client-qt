@@ -46,7 +46,6 @@ add_library(bazarish_client_lib STATIC
     src/AudioIo.cpp
     src/Bot.cpp
     src/Client.cpp
-    src/BlobTransport.cpp
     src/CallMedia.cpp
     src/VideoCodec.cpp
     src/VideoIo.cpp
@@ -54,7 +53,6 @@ add_library(bazarish_client_lib STATIC
     src/I2pKeys.cpp
     src/I2pRouter.cpp
     src/Invite.cpp
-    src/LargeBlob.cpp
     src/FileTransfer.cpp
     src/ProfileManager.cpp
     src/Qr.cpp
@@ -223,9 +221,7 @@ bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestTokenRefill)
 bazarish_client_add_test(TestFileTransfer)
 bazarish_client_add_test(TestI2pKeys)
-bazarish_client_add_test(TestBlobTransport)
 bazarish_client_add_test(TestInvite)
-bazarish_client_add_test(TestLargeBlob)
 bazarish_client_add_test(TestLogin)
 bazarish_client_add_test(TestProfile)
 

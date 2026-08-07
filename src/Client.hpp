@@ -2,7 +2,6 @@
 #pragma once
 
 #include "ApiClient.hpp"
-#include "BlobTransport.hpp"
 #include "ResolverConfig.hpp"
 
 #include <bazarish/Bytes.hpp>
@@ -236,24 +235,6 @@ public:
     std::string submitSend(const std::string& toDest, const Bytes& sealed, const Bytes& payload,
         const std::string& messageId = {});
     SendStatus pollSend(const std::string& attemptId);
-
-    // --- Large media: blob storage (rotating encrypted-LeaseSet, I2P) ---
-
-    // Uploads a packed large blob's ciphertext to blob storage (PUT
-    // /v1/storage/blob via the facade) with the given retention; returns the
-    // capability fields for the sealed pointer.
-    BlobUploadResult uploadBlob(const PackedBlob& packed, const BlobRetention& retention);
-    // Streamed counterpart: uploads the ciphertext from a temp file without
-    // holding it in memory (the large-file path).
-    BlobUploadResult uploadBlobFromFile(const PackedBlobFile& packed,
-        const BlobRetention& retention, const UploadProgressFn& onProgress = {});
-
-    // Fetches a blob through our own server's I2P proxy (the fallback when this
-    // client has no I2P transport of its own), verifying and decrypting it.
-    Bytes fetchBlobViaProxy(const BlobPointer& pointer);
-
-    // Deletes a blob (sender unsend) through our own server's I2P proxy.
-    void deleteBlobViaProxy(const std::string& blobUrl, const std::string& deleteToken);
 
 private:
     SubscribeResult submitSubscription(const std::string& path, std::int64_t issuedAt,

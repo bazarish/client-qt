@@ -375,25 +375,8 @@ SendStatus Client::pollSend(const std::string& attemptId)
     return result;
 }
 
-BlobUploadResult Client::uploadBlob(const PackedBlob& packed, const BlobRetention& retention)
-{
-    return bazarish::client::uploadBlob(api_, packed, retention);
-}
 
-BlobUploadResult Client::uploadBlobFromFile(
-    const PackedBlobFile& packed, const BlobRetention& retention, const UploadProgressFn& onProgress)
-{
-    return bazarish::client::uploadBlobFromFile(api_, packed, retention, onProgress);
-}
 
-Bytes Client::fetchBlobViaProxy(const BlobPointer& pointer)
-{
-    return bazarish::client::fetchBlobViaProxy(api_, pointer);
-}
 
-void Client::deleteBlobViaProxy(const std::string& blobUrl, const std::string& deleteToken)
-{
-    bazarish::client::deleteBlobViaProxy(api_, blobUrl, deleteToken);
-}
 
 }  // namespace bazarish::client
