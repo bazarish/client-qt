@@ -2094,12 +2094,6 @@ void Session::setAudioBackend(AudioSourceFactory sourceFactory, AudioSinkFactory
     audioSinkFactory_ = std::move(sinkFactory);
 }
 
-void Session::setVideoBackend(VideoSourceFactory sourceFactory, VideoSinkFactory sinkFactory)
-{
-    videoSourceFactory_ = std::move(sourceFactory);
-    videoSinkFactory_ = std::move(sinkFactory);
-}
-
 std::shared_ptr<bazarish::i2p::Endpoint> Session::openCallMediaSession()
 {
     // Call media rides a one-time encrypted-LS (b33) destination on the embedded
@@ -2120,20 +2114,10 @@ void Session::startCallMedia()
         = audioSourceFactory_ ? audioSourceFactory_() : std::make_unique<SineAudioSource>();
     std::unique_ptr<AudioSink> audioSink
         = audioSinkFactory_ ? audioSinkFactory_() : std::make_unique<CapturingAudioSink>();
-    // Video backends are wired only on a video call; null source/sink leave the
-    // engine audio-only.
-    std::unique_ptr<VideoSource> videoSource;
-    std::unique_ptr<VideoSink> videoSink;
-    if (call_.video) {
-        videoSource
-            = videoSourceFactory_ ? videoSourceFactory_() : std::make_unique<PatternVideoSource>();
-        videoSink = videoSinkFactory_ ? videoSinkFactory_() : std::make_unique<CapturingVideoSink>();
-    }
     call_.media = std::make_unique<CallMedia>(*call_.transport, std::move(audioSource),
-        std::move(audioSink), std::move(videoSource), std::move(videoSink), call_.mediaKey,
+        std::move(audioSink), call_.mediaKey,
         call_.initiator ? CallRole::eCaller : CallRole::eCallee);
     call_.media->setMuted(call_.muted);
-    call_.media->setCameraEnabled(!call_.cameraOff);
     call_.media->start();
 }
 
@@ -2151,9 +2135,7 @@ void Session::clearCall()
     call_.peerMediaDest.clear();
     call_.mediaKey.clear();
     call_.initiator = false;
-    call_.video = false;
     call_.muted = false;
-    call_.cameraOff = false;
     call_.startedAtMs = 0;
     call_.connectedAtMs = 0;
 }
@@ -2174,7 +2156,7 @@ void Session::sendCallSignal(
     sendContent(peerFingerprint, std::move(inner));
 }
 
-void Session::startCall(const std::string& peerFingerprint, const bool video)
+void Session::startCall(const std::string& peerFingerprint)
 {
     if (call_.state != CallState::eIdle) {
         throw std::runtime_error("a call is already in progress");
@@ -2189,9 +2171,8 @@ void Session::startCall(const std::string& peerFingerprint, const bool video)
     sendCallSignal(peerFingerprint, "call.invite",
         {
             {"callId", callId},
-            {"media", video ? "video" : "audio"},
+            {"media", "audio"},
             {"codec", "opus"},
-            {"video", video ? "vp8" : ""},
             {"dest", dgram->routingHost()},
             {"key", toBase64(mediaKey)},
         });
@@ -2200,21 +2181,14 @@ void Session::startCall(const std::string& peerFingerprint, const bool video)
     call_.peerFingerprint = peerFingerprint;
     call_.mediaKey = mediaKey;
     call_.initiator = true;
-    call_.video = video;
     call_.muted = false;
-    call_.cameraOff = false;
     call_.startedAtMs = nowMillis();
     call_.dgram = std::move(dgram);
 }
 
 void Session::startAudioCall(const std::string& peerFingerprint)
 {
-    startCall(peerFingerprint, false);
-}
-
-void Session::startVideoCall(const std::string& peerFingerprint)
-{
-    startCall(peerFingerprint, true);
+    startCall(peerFingerprint);
 }
 
 void Session::acceptCall(const std::string& callId)
@@ -2224,7 +2198,7 @@ void Session::acceptCall(const std::string& callId)
     }
     auto dgram = openCallMediaSession();
     sendCallSignal(call_.peerFingerprint, "call.accept",
-        {{"callId", callId}, {"media", call_.video ? "video" : "audio"},
+        {{"callId", callId}, {"media", "audio"},
             {"dest", dgram->routingHost()}});
     call_.dgram = std::move(dgram);
     call_.state = CallState::eActive;
@@ -2276,23 +2250,13 @@ void Session::setCallMuted(const bool muted)
     }
 }
 
-void Session::setCameraEnabled(const bool enabled)
-{
-    call_.cameraOff = !enabled;
-    if (call_.media) {
-        call_.media->setCameraEnabled(enabled);
-    }
-}
-
 Session::CallInfo Session::currentCall() const
 {
     CallInfo info;
     info.state = call_.state;
     info.callId = call_.callId;
     info.peerFingerprint = call_.peerFingerprint;
-    info.video = call_.video;
     info.muted = call_.muted;
-    info.cameraOn = !call_.cameraOff;
     if (call_.media) {
         info.packetsSent = call_.media->packetsSent();
         info.packetsReceived = call_.media->packetsReceived();
@@ -2334,10 +2298,8 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
         call_.peerMediaDest = body.value("dest", std::string());
         call_.mediaKey = std::move(key);
         call_.initiator = false;
-        call_.video = body.value("media", std::string("audio")) == "video";
         call_.muted = false;
-        call_.cameraOff = false;
-        return;
+            return;
     }
 
     if (type == "call.accept") {

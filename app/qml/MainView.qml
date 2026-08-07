@@ -52,7 +52,6 @@ Item {
                             session: root.session
                             onContactInfoRequested: contactInfo.open()
                             onCallRequested: root.session.startCall("")
-                            onVideoCallRequested: root.session.startVideoCall("")
                         }
                     }
                     Label {

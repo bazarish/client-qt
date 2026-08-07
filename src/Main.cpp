@@ -75,7 +75,7 @@ void printUsage()
         "  bazarish-client send-file <profile> <peer-fp> <file>\n"
         "  bazarish-client send-command <profile> <peer-fp> <command> [args]\n"
         "  bazarish-client send-callback <profile> <peer-fp> <data> [ref]\n"
-        "  bazarish-client call <profile> <peer-fp> [seconds] [video]\n"
+        "  bazarish-client call <profile> <peer-fp> [seconds]\n"
         "  bazarish-client call-answer <profile> [seconds]\n"
         "  bazarish-client get-file <profile> <peer-fp> <message-id> <out>\n"
         "  bazarish-client unsend <profile> <message-id>\n"
@@ -538,27 +538,18 @@ int runSync(const std::vector<std::string>& args)
 // working transport startAudioCall throws a readable error and nothing is dialled.
 int runCall(const std::vector<std::string>& args)
 {
-    // call <profile-dir> <peer-fp> [seconds] [video]
-    if (args.size() < 3 || args.size() > 5) {
+    // call <profile-dir> <peer-fp> [seconds]
+    if (args.size() < 3 || args.size() > 4) {
         printUsage();
         return 2;
     }
     int seconds = 30;
-    bool video = false;
     for (std::size_t i = 3; i < args.size(); ++i) {
-        if (args[i] == "video") {
-            video = true;
-        } else {
-            seconds = std::atoi(args[i].c_str());
-        }
+        seconds = std::atoi(args[i].c_str());
     }
     Session session = Session::open(args[1], keyPassphrase());
-    if (video) {
-        session.startVideoCall(args[2]);
-    } else {
-        session.startAudioCall(args[2]);
-    }
-    std::printf("calling %s (%s)...\n", args[2].c_str(), video ? "video" : "audio");
+    session.startAudioCall(args[2]);
+    std::printf("calling %s (audio)...\n", args[2].c_str());
     const std::int64_t deadline = static_cast<std::int64_t>(std::time(nullptr)) + seconds;
     bool connected = false;
     while (static_cast<std::int64_t>(std::time(nullptr)) < deadline) {
@@ -600,7 +591,7 @@ int runCallAnswer(const std::vector<std::string>& args)
         session.sync();
         const Session::CallInfo call = session.currentCall();
         if (!accepted && call.state == Session::CallState::eIncoming) {
-            std::printf("incoming %s call from %s; accepting\n", call.video ? "video" : "audio",
+            std::printf("incoming call from %s; accepting\n",
                 call.peerFingerprint.c_str());
             session.acceptCall(call.callId);
             accepted = true;

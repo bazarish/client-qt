@@ -29,12 +29,6 @@ find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
 find_library(OPUS_LIBRARY NAMES opus REQUIRED)
 find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 
-# libvpx encodes call video (VP8, low-resolution realtime). Like the audio codec
-# this is only the codec and stays private to the core lib; video frames ride the
-# same I2P datagram transport, fragmented to fit.
-find_library(VPX_LIBRARY NAMES vpx REQUIRED)
-find_path(VPX_INCLUDE_DIR NAMES vpx/vpx_codec.h REQUIRED)
-
 # I2P key material + transport now come from common's bazarish::i2p (the embedded
 # libi2pd), so the previously-vendored trimmed libi2pd "keys" lib and the i2pd
 # submodule are gone. OpenSSL is still needed for httplib's TLS client below.
@@ -47,8 +41,6 @@ add_library(bazarish_client_lib STATIC
     src/Bot.cpp
     src/Client.cpp
     src/CallMedia.cpp
-    src/VideoCodec.cpp
-    src/VideoIo.cpp
     src/FederationFetch.cpp
     src/I2pKeys.cpp
     src/I2pRouter.cpp
@@ -60,9 +52,9 @@ add_library(bazarish_client_lib STATIC
     src/WarmDestPool.cpp
 )
 target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR} ${VPX_INCLUDE_DIR})
+target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR})
 target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
-target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY} ${VPX_LIBRARY})
+target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY})
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 # HTTPS facades: enable httplib's TLS client. Defined PUBLIC and OpenSSL::SSL
 # linked PUBLIC so every client-side target that includes httplib (CLI, bot,
@@ -116,8 +108,6 @@ if(Qt6_FOUND)
         app/TranscriptStore.hpp
         app/QtAudioIo.cpp
         app/QtAudioIo.hpp
-        app/QtVideoIo.cpp
-        app/QtVideoIo.hpp
         app/Identicon.cpp
         app/Identicon.hpp
         app/AvatarStore.cpp
@@ -215,7 +205,6 @@ endfunction()
 bazarish_client_add_test(TestApiClient)
 bazarish_client_add_test(TestBot)
 bazarish_client_add_test(TestCallMedia)
-bazarish_client_add_test(TestVideoCodec)
 bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestTokenRefill)

@@ -2,8 +2,6 @@
 #include "AudioCodec.hpp"
 #include "AudioIo.hpp"
 #include "CallMedia.hpp"
-#include "VideoCodec.hpp"
-#include "VideoIo.hpp"
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
@@ -140,9 +138,9 @@ int main()
         CapturingAudioSink* const calleeSinkRaw = calleeSink.get();
 
         CallMedia caller(callerTransport, std::make_unique<SineAudioSource>(440.0),
-            std::move(callerSink), nullptr, nullptr, key, CallRole::eCaller);
+            std::move(callerSink), key, CallRole::eCaller);
         CallMedia callee(calleeTransport, std::make_unique<SineAudioSource>(660.0),
-            std::move(calleeSink), nullptr, nullptr, key, CallRole::eCallee);
+            std::move(calleeSink), key, CallRole::eCallee);
 
         caller.start();
         callee.start();
@@ -174,9 +172,9 @@ int main()
         CapturingAudioSink* const calleeSinkRaw = calleeSink.get();
 
         CallMedia caller(callerTransport, std::make_unique<SineAudioSource>(440.0),
-            std::make_unique<CapturingAudioSink>(), nullptr, nullptr, callerKey, CallRole::eCaller);
+            std::make_unique<CapturingAudioSink>(), callerKey, CallRole::eCaller);
         CallMedia callee(calleeTransport, std::make_unique<SineAudioSource>(440.0),
-            std::move(calleeSink), nullptr, nullptr, calleeKey, CallRole::eCallee);
+            std::move(calleeSink), calleeKey, CallRole::eCallee);
 
         caller.start();
         callee.start();
@@ -187,46 +185,6 @@ int main()
         CHECK(caller.packetsSent() >= 5);       // datagrams really were sent
         CHECK(calleeSinkRaw->frameCount() == 0);  // none opened with the wrong key
         CHECK(callee.packetsReceived() == 0);
-    }
-
-    // 4) Full audio+video pipeline over loopback: both sides also capture video,
-    //    fragment each VP8 frame across datagrams, and the peer reassembles,
-    //    decodes and renders frames of the right geometry.
-    {
-        LoopbackChannel aToB;
-        LoopbackChannel bToA;
-        LoopbackTransport callerTransport(aToB, bToA);
-        LoopbackTransport calleeTransport(bToA, aToB);
-
-        const Bytes key(kAeadKeyBytes, 0x33);
-        auto callerVideoSink = std::make_unique<CapturingVideoSink>(true);
-        auto calleeVideoSink = std::make_unique<CapturingVideoSink>(true);
-        CapturingVideoSink* const callerVideoRaw = callerVideoSink.get();
-        CapturingVideoSink* const calleeVideoRaw = calleeVideoSink.get();
-
-        CallMedia caller(callerTransport, std::make_unique<SineAudioSource>(440.0),
-            std::make_unique<CapturingAudioSink>(), std::make_unique<PatternVideoSource>(),
-            std::move(callerVideoSink), key, CallRole::eCaller);
-        CallMedia callee(calleeTransport, std::make_unique<SineAudioSource>(660.0),
-            std::make_unique<CapturingAudioSink>(), std::make_unique<PatternVideoSource>(),
-            std::move(calleeVideoSink), key, CallRole::eCallee);
-        CHECK(caller.hasVideo());
-        CHECK(callee.hasVideo());
-
-        caller.start();
-        callee.start();
-        std::this_thread::sleep_for(std::chrono::milliseconds(900));
-        caller.stop();
-        callee.stop();
-
-        // ~13 video frames each way at 15 fps in 900 ms; allow generous slack.
-        CHECK(callerVideoRaw->frameCount() >= 3);
-        CHECK(calleeVideoRaw->frameCount() >= 3);
-        const VideoFrame received = calleeVideoRaw->lastFrame();
-        CHECK(received.valid());
-        CHECK(received.width == kCallVideoWidth);
-        CHECK(received.height == kCallVideoHeight);
-        CHECK(received.i420.size() == i420Size(kCallVideoWidth, kCallVideoHeight));
     }
 
     std::printf("TestCallMedia OK\n");

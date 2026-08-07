@@ -9,7 +9,6 @@ Item {
     property var session: null
     signal contactInfoRequested()
     signal callRequested()
-    signal videoCallRequested()
 
     // The message awaiting delete confirmation (set when a bubble asks to delete).
     property var pendingDeleteId: null
@@ -206,7 +205,6 @@ Item {
                 }
                 IconButton { text: "🔍"; onClicked: searchPopup.openSearch() }
                 IconButton { text: "📞"; onClicked: root.callRequested() }
-                IconButton { text: "📹"; onClicked: root.videoCallRequested() }
                 IconButton { text: "ⓘ"; onClicked: root.contactInfoRequested() }
             }
         }

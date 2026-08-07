@@ -1,46 +1,25 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtMultimedia
 import Bazarish
 
-// Call overlay (audio or video). Driven entirely by the controller's callState;
-// opened and closed by MainView as the state leaves/returns to "idle". On a video
-// call the remote stream fills the surface with the local camera shown picture-in-
-// picture; the VideoOutputs' sinks are handed to the controller's presenters, which
-// the call engine renders decoded frames into from its worker threads.
+// Call overlay. Driven entirely by the controller's callState; opened and closed
+// by MainView as the state leaves/returns to "idle".
 Popup {
     id: root
     property var session: null
     readonly property string callState: session ? session.callState : "idle"
-    readonly property bool isVideo: session ? session.callVideo : false
     // Emitted when the user collapses the call to MainView's compact banner.
     signal minimizeRequested()
 
     modal: true
     closePolicy: Popup.NoAutoClose  // dismissed only through call actions
     anchors.centerIn: Overlay.overlay
-    width: isVideo ? 520 : 360
-    height: isVideo ? 600 : 440
-    padding: isVideo ? 0 : 18
+    width: 360
+    height: 440
+    padding: 18
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-
-    // Hands each VideoOutput's sink to the matching presenter so engine frames
-    // render. Safe to call repeatedly (idempotent on the same sink).
-    function bindSinks() {
-        if (!session || !isVideo) {
-            return;
-        }
-        session.remoteVideo.videoSink = remoteOut.videoSink;
-        session.localVideo.videoSink = localOut.videoSink;
-    }
-
-    Component.onCompleted: bindSinks()
-    Connections {
-        target: root.session
-        function onCallChanged() { root.bindSinks() }
-    }
 
     // A round, coloured action button.
     component CallButton: Button {
@@ -80,7 +59,6 @@ Popup {
             anchors.fill: parent
             anchors.margins: 18
             spacing: 16
-            visible: !root.isVideo
             Item { Layout.fillHeight: true }
             Avatar {
                 Layout.alignment: Qt.AlignHCenter
@@ -108,80 +86,6 @@ Popup {
             CallControls { }
         }
 
-        // --- Video layout: remote fills, local picture-in-picture, overlaid
-        //     status and controls. ---
-        Item {
-            anchors.fill: parent
-            visible: root.isVideo
-
-            Rectangle {
-                anchors.fill: parent
-                radius: Theme.radius
-                color: "black"
-                clip: true
-
-                VideoOutput {
-                    id: remoteOut
-                    anchors.fill: parent
-                    fillMode: VideoOutput.PreserveAspectCrop
-                }
-
-                // Local self-view, picture-in-picture in the top-right corner.
-                Rectangle {
-                    width: 132
-                    height: 99
-                    anchors.top: parent.top
-                    anchors.right: parent.right
-                    anchors.topMargin: 50  // clear the minimize button in the corner
-                    anchors.rightMargin: 12
-                    color: Theme.deep
-                    border.color: Theme.border
-                    radius: 6
-                    clip: true
-                    VideoOutput {
-                        id: localOut
-                        anchors.fill: parent
-                        fillMode: VideoOutput.PreserveAspectCrop
-                    }
-                    Label {
-                        anchors.centerIn: parent
-                        visible: root.session && !root.session.callCameraOn
-                        text: "Camera off"
-                        color: Theme.textDim
-                        font.pixelSize: Theme.fontSmall
-                    }
-                }
-
-                // Peer name + status, top-left.
-                ColumnLayout {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.margins: 14
-                    spacing: 2
-                    Label {
-                        text: root.session ? root.session.callPeerName : ""
-                        color: "white"
-                        font.pixelSize: Theme.fontTitle
-                    }
-                    Label {
-                        color: Theme.text
-                        text: root.callState === "outgoing" ? "Calling..."
-                            : root.callState === "incoming" ? "Incoming video call"
-                            : root.callState === "active" ? "In call" : ""
-                    }
-                }
-
-                // Controls pinned to the bottom over the video.
-                Item {
-                    anchors.bottom: parent.bottom
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottomMargin: 18
-                    width: parent.width
-                    height: 56
-                    CallControls { anchors.centerIn: parent }
-                }
-            }
-        }
     }
 
     // Shared control row, state-driven; used by both layouts.
@@ -200,18 +104,12 @@ Popup {
             onClicked: root.session.acceptCall()
         }
 
-        // Active: mute, camera (video only), end.
+        // Active: mute, end.
         CallButton {
             visible: root.callState === "active"
             text: (root.session && root.session.callMuted) ? "Unmute" : "Mute"
             fill: Theme.surface; label: Theme.text
             onClicked: root.session.setCallMuted(!root.session.callMuted)
-        }
-        CallButton {
-            visible: root.callState === "active" && root.isVideo
-            text: (root.session && root.session.callCameraOn) ? "Camera off" : "Camera on"
-            fill: Theme.surface; label: Theme.text
-            onClicked: root.session.setCameraEnabled(!root.session.callCameraOn)
         }
         CallButton {
             visible: root.callState === "active"
