@@ -164,14 +164,6 @@ StorageUsage Client::storageUsage()
     } catch (const std::exception&) {
         // Unreachable / unauthorized: leave the mailbox half stale (ok=false).
     }
-    try {
-        const nlohmann::json body = api_.get("/v1/storage/usage").json();
-        usage.blobUsedBytes = body.value("usedBytes", std::uint64_t{0});
-        usage.blobQuotaBytes = body.value("quotaBytes", std::uint64_t{0});
-        usage.blobOk = true;
-    } catch (const std::exception&) {
-        // Unreachable / unauthorized: leave the blob half stale (ok=false).
-    }
     return usage;
 }
 
@@ -339,6 +331,16 @@ Bytes Client::fetchBlob(const std::string& blobId)
 {
     const ApiResponse response = api_.get("/v1/messaging/pending/" + blobId);
     return response.body;
+}
+
+std::vector<Bytes> Client::fetchReseed()
+{
+    const nlohmann::json body = api_.get("/v1/messaging/reseed").json();
+    std::vector<Bytes> routers;
+    for (const nlohmann::json& entry : body.at("routers")) {
+        routers.push_back(fromBase64(entry.get<std::string>()));
+    }
+    return routers;
 }
 
 void Client::ack(const std::string& blobId)

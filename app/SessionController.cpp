@@ -952,8 +952,7 @@ void SessionWorker::refreshStorageUsage()
     }
     const bazarish::client::StorageUsage u = session_->storageUsage();
     emit storageUsageReady(u.mailboxOk, static_cast<qulonglong>(u.mailboxUsedBytes),
-        static_cast<qulonglong>(u.mailboxQuotaBytes), u.blobOk,
-        static_cast<qulonglong>(u.blobUsedBytes), static_cast<qulonglong>(u.blobQuotaBytes));
+        static_cast<qulonglong>(u.mailboxQuotaBytes));
 }
 
 void SessionWorker::generatePersonalKey()
@@ -2064,27 +2063,18 @@ void SessionController::refreshStorageUsage()
     emit requestRefreshStorageUsage();
 }
 
-void SessionController::onStorageUsageReady(const bool mailboxOk, const qulonglong mailboxUsed,
-    const qulonglong mailboxQuota, const bool blobOk, const qulonglong blobUsed,
-    const qulonglong blobQuota)
+void SessionController::onStorageUsageReady(
+    const bool mailboxOk, const qulonglong mailboxUsed, const qulonglong mailboxQuota)
 {
-    // Only overwrite a half that actually answered, so a backend that is momentarily
-    // offline keeps its last-known figures (the UI marks the whole view by its age).
-    if (mailboxOk) {
-        storageMailboxOk_ = true;
-        storageMailboxUsed_ = mailboxUsed;
-        storageMailboxQuota_ = mailboxQuota;
+    // A failed poll leaves the last-known figures and the previous "updated N
+    // ago" standing, so a momentarily offline server does not blank the view.
+    if (!mailboxOk) {
+        return;
     }
-    if (blobOk) {
-        storageBlobOk_ = true;
-        storageBlobUsed_ = blobUsed;
-        storageBlobQuota_ = blobQuota;
-    }
-    // Stamp the age only when at least one half refreshed (a fully failed poll
-    // leaves the previous "updated N ago" standing).
-    if (mailboxOk || blobOk) {
-        storageUpdatedAtMs_ = nowMillis();
-    }
+    storageMailboxOk_ = true;
+    storageMailboxUsed_ = mailboxUsed;
+    storageMailboxQuota_ = mailboxQuota;
+    storageUpdatedAtMs_ = nowMillis();
     emit storageChanged();
 }
 
@@ -2094,9 +2084,6 @@ QVariantMap SessionController::storageInfo() const
     m[QStringLiteral("mailboxOk")] = storageMailboxOk_;
     m[QStringLiteral("mailboxUsed")] = static_cast<qulonglong>(storageMailboxUsed_);
     m[QStringLiteral("mailboxQuota")] = static_cast<qulonglong>(storageMailboxQuota_);
-    m[QStringLiteral("blobOk")] = storageBlobOk_;
-    m[QStringLiteral("blobUsed")] = static_cast<qulonglong>(storageBlobUsed_);
-    m[QStringLiteral("blobQuota")] = static_cast<qulonglong>(storageBlobQuota_);
     m[QStringLiteral("updatedAt")] = storageUpdatedAtMs_;
     m[QStringLiteral("everFetched")] = (storageUpdatedAtMs_ > 0);
     return m;

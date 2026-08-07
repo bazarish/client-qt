@@ -233,7 +233,11 @@ bazarish::i2p::Router& Session::i2pRouter() const
     // all profiles. Its state nests under the profiles root (the parent of this
     // profile's directory) so it is reused regardless of which profile starts it
     // first. Started lazily on first transport use; client role (notransit).
-    return sharedI2pRouter(profileDir_.parent_path() / "i2p");
+    const fs::path dataDir = profileDir_.parent_path() / "i2p";
+    // On a first-ever start, take the netDb from our own server over the clearnet
+    // facade rather than announcing an I2P bootstrap to a public reseed host.
+    seedRouterOnce(dataDir, [this]() { return client_->fetchReseed(); });
+    return sharedI2pRouter(dataDir);
 }
 
 Session Session::create(

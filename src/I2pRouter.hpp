@@ -3,8 +3,12 @@
 
 #include <bazarish/I2p.hpp>
 
+#include <bazarish/Bytes.hpp>
+
 #include <filesystem>
+#include <functional>
 #include <memory>
+#include <vector>
 
 namespace bazarish::client {
 
@@ -35,6 +39,15 @@ std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest();
 // disabled. Reads the flag itself, so concurrent toggles converge on the final
 // state. Heavyweight (start/stop join engine threads); call off the GUI thread.
 void reconcileI2pRouter(const std::filesystem::path& dataDir);
+
+// Installs a private reseed for a router data directory that has no netDb yet:
+// the routers are written straight into the netDb the engine loads at start, so
+// a first I2P start never reaches for a public reseed host. A no-op once the
+// directory has a netDb (the router reseeds itself from what it knows), and
+// harmless if it fails - the built-in reseeds remain the fallback. Must run
+// before the router for dataDir is created.
+void seedRouterOnce(
+    const std::filesystem::path& dataDir, const std::function<std::vector<Bytes>()>& fetch);
 
 // Process-wide I2P enable flag (default true). When turned off the transport
 // treats every i2p facade as unreachable, so the network runs on clearnet

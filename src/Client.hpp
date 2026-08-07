@@ -56,9 +56,6 @@ struct StorageUsage {
     bool mailboxOk = false;
     std::uint64_t mailboxUsedBytes = 0;
     std::uint64_t mailboxQuotaBytes = 0;
-    bool blobOk = false;
-    std::uint64_t blobUsedBytes = 0;
-    std::uint64_t blobQuotaBytes = 0;
 };
 
 // Server reply to subscribe/renew: the granted lifecycle plus the serving
@@ -228,6 +225,10 @@ public:
     void deleteTokenHashes(const std::vector<Bytes>& hashes);
     std::vector<PendingEntry> listPending();
     Bytes fetchBlob(const std::string& blobId);
+    // A slice of the server's netDb, for starting I2P without touching a public
+    // reseed host (GET /v1/messaging/reseed). Unauthenticated on the server side:
+    // this runs before the client has any transport at all.
+    std::vector<Bytes> fetchReseed();
     void ack(const std::string& blobId);
     // messageId is the delivery id (also sealed inside the envelope): sent in the
     // clear so our own server can correlate the recipient's signed delivered-ack

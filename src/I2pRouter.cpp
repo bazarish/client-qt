@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "I2pRouter.hpp"
 
+#include <bazarish/Log.hpp>
+
 #include "WarmDestPool.hpp"
 
 #include <atomic>
@@ -66,6 +68,30 @@ std::atomic<bool> g_i2pEnabled{true};
 // explicitly offline). Consulted at request time, like g_i2pEnabled.
 std::atomic<bool> g_fullPrivacy{false};
 }  // namespace
+
+void seedRouterOnce(
+    const std::filesystem::path& dataDir, const std::function<std::vector<Bytes>()>& fetch)
+{
+    if (!fetch) {
+        return;
+    }
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    if (routerSlot()) {
+        return;  // the engine has already loaded its netDb
+    }
+    std::error_code ec;
+    const std::filesystem::path netDb = dataDir / "netDb";
+    if (std::filesystem::exists(netDb, ec) && !std::filesystem::is_empty(netDb, ec)) {
+        return;
+    }
+    try {
+        const std::size_t written = bazarish::i2p::seedRouterInfos(dataDir, fetch());
+        bazarish::log::info("private reseed: {} routers", written);
+    } catch (const std::exception& error) {
+        // The built-in reseeds stay as the fallback, so this is not fatal.
+        bazarish::log::info("private reseed unavailable: {}", error.what());
+    }
+}
 
 bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
 {

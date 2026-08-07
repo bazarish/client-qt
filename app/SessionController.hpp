@@ -175,8 +175,7 @@ signals:
         const QString& summary, qint64 paidThrough);
     // The user's storage usage (mailbox + blob), each with an `ok` flag (a backend
     // that did not answer keeps its last figures and is marked stale by the UI).
-    void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota,
-        bool blobOk, qulonglong blobUsed, qulonglong blobQuota);
+    void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     // The serving server's onboarding info, shown when a connect/subscribe is
     // refused because this key is not registered: the refusal reason, the
     // server's message and its registration link(s).
@@ -302,7 +301,7 @@ class SessionController : public QObject {
     // the settings page can show an expiry date or the phrase "Inactive".
     Q_PROPERTY(qint64 i2pPaidThrough READ i2pPaidThrough NOTIFY i2pStatusChanged)
     // This profile's storage usage for the settings view: a map with mailboxOk,
-    // mailboxUsed, mailboxQuota, blobOk, blobUsed, blobQuota (bytes), updatedAt (the
+    // mailboxUsed, mailboxQuota (bytes), updatedAt (the
     // unix-ms time it was last fetched, 0 if never) and everFetched. The figures
     // persist for the session, so an offline profile still shows its last-known
     // usage with a "updated N ago" age.
@@ -620,8 +619,7 @@ private slots:
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 paidThrough);
-    void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota,
-        bool blobOk, qulonglong blobUsed, qulonglong blobQuota);
+    void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted);
     // Appends a finished call to the peer's transcript as a clear system line.
     void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
@@ -735,9 +733,6 @@ private:
     bool storageMailboxOk_ = false;
     quint64 storageMailboxUsed_ = 0;
     quint64 storageMailboxQuota_ = 0;
-    bool storageBlobOk_ = false;
-    quint64 storageBlobUsed_ = 0;
-    quint64 storageBlobQuota_ = 0;
     qint64 storageUpdatedAtMs_ = 0;
     QString callState_ = QStringLiteral("idle");
     QString callPeer_;

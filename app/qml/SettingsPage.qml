@@ -217,7 +217,7 @@ Popup {
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 // Storage — this profile's usage on its two backends (server-core
-                // mailbox + blob storage), with how long ago the figures were taken
+                // with how long ago the figures were taken
                 // so an offline profile still shows its last-known usage.
                 ColumnLayout {
                     id: storageSection
@@ -268,16 +268,10 @@ Popup {
                     }
 
                     StorageRow {
-                        title: "Mailbox (server-core)"
+                        title: "Mailbox"
                         used: storageSection.info ? storageSection.info.mailboxUsed : 0
                         quota: storageSection.info ? storageSection.info.mailboxQuota : 0
                         ok: storageSection.info ? storageSection.info.mailboxOk : false
-                    }
-                    StorageRow {
-                        title: "Large files (blob storage)"
-                        used: storageSection.info ? storageSection.info.blobUsed : 0
-                        quota: storageSection.info ? storageSection.info.blobQuota : 0
-                        ok: storageSection.info ? storageSection.info.blobOk : false
                     }
                     MenuButton {
                         Layout.alignment: Qt.AlignRight
