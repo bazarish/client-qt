@@ -81,7 +81,7 @@ public slots:
     // Signs a portal/third-party login challenge with this profile's key. Local
     // only - no server is contacted - so it works before a server is connected.
     void signLogin(const QString& challenge);
-    void saveAttachment(const QString& ref, const QString& key, const QString& destPath, qint64 token);
+    void saveAttachment(const QString& peer, const QString& messageId, const QString& destPath, qint64 token);
     void exportProfile(const QString& path, const QString& password);
     // Per-user I2P destination: set up the master (generate or load a .dat),
     // turn the paid option on/off, and report the current status.
@@ -475,11 +475,13 @@ public:
     // Signs a sign-in-with-key challenge with this profile's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
-    Q_INVOKABLE void saveAttachment(const QString& ref, const QString& key, const QString& fileUrl);
+    Q_INVOKABLE void saveAttachment(const QString& peer, const QString& messageId, const QString& fileUrl);
     // Saves a received attachment to the file the user picked in the native Save
     // dialog (which already resolved any name conflict), reporting byte progress
     // and the outcome back onto the message identified by token.
-    Q_INVOKABLE void saveAttachmentToFile(const QString& ref, const QString& key,
+    // A file is fetched from the peer that announced it, by the announcing
+    // message's protocol id - there is no store to fetch it from.
+    Q_INVOKABLE void saveAttachmentToFile(const QString& peer, const QString& messageId,
         const QString& fileUrl, qint64 token);
     // A suggested save location (the Downloads folder joined with fileName) as a
     // file URL, used to pre-fill the native Save dialog's name and folder.

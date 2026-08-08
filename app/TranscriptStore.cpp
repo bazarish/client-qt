@@ -158,25 +158,6 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             " blobGone INTEGER, replyTo TEXT)")) {
         return false;
     }
-    // Migrate a database created before attSrcPath existed: ALTER fails harmlessly
-    // (duplicate column) on a schema that already has it, so its result is ignored.
-    query.exec("ALTER TABLE messages ADD COLUMN attSrcPath TEXT");
-    // Migrate a database created before savedPath existed (same harmless ALTER).
-    query.exec("ALTER TABLE messages ADD COLUMN savedPath TEXT");
-    // Migrate a database created before blobGone existed (same harmless ALTER).
-    query.exec("ALTER TABLE messages ADD COLUMN blobGone INTEGER");
-    // Migrate a database created before replyTo existed (same harmless ALTER).
-    query.exec("ALTER TABLE messages ADD COLUMN replyTo TEXT");
-    // Migrate a pre-reordering database: when the orderKey column is newly added,
-    // every existing row has it NULL. Promote the old seconds-unit ts to
-    // milliseconds (new rows store ms) and seed orderKey from id, which preserves
-    // the old insertion order and sits below any real ms timestamp, so migrated
-    // history stays above newly received messages.
-    if (query.exec("ALTER TABLE messages ADD COLUMN orderKey INTEGER")) {
-        QSqlQuery migrate(db);
-        migrate.exec("UPDATE messages SET ts = ts * 1000 WHERE orderKey IS NULL");
-        migrate.exec("UPDATE messages SET orderKey = id WHERE orderKey IS NULL");
-    }
     // Per-peer read high-water for persistent unread tracking (see read state).
     if (!query.exec("CREATE TABLE IF NOT EXISTS read_state ("
                     "peer TEXT PRIMARY KEY, last_read_id INTEGER NOT NULL)")) {

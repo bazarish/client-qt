@@ -1035,27 +1035,24 @@ void SessionWorker::disablePersonalDest()
 }
 
 void SessionWorker::saveAttachment(
-    const QString& ref, const QString& key, const QString& destPath, qint64 token)
+    const QString& peer, const QString& messageId, const QString& destPath, qint64 token)
 {
-    // Run the download off the worker thread (on the pool) so a long or stalled
-    // fetch never blocks sends, uploads or sync. The direct fetch uses its own
-    // throwaway I2P endpoints; only the rare proxy fallback touches the (now
-    // thread-safe) facade client. The task captures `this`, session_ and the
-    // cancel flag, all kept alive until the pool is drained (see the destructor
-    // and openProfile). Emits are skipped once cancelled, so a tearing-down
-    // session is never signalled.
+    // Run the request off the worker thread (on the pool) so waiting on the peer
+    // never blocks sends or sync; the transfer itself uses its own one-time I2P
+    // endpoints. The task captures `this`, session_ and the cancel flag, all kept
+    // alive until the pool is drained (see the destructor and openProfile). Emits
+    // are skipped once cancelled, so a tearing-down session is never signalled.
     Session* const session = session_.get();
     if (session == nullptr) {
         emit downloadFinished(token, false, QStringLiteral("no open session"));
         return;
     }
-    // `ref` is the announcing message's id and `key` its sender: the download is a
-    // request to that peer, not a fetch from a store, so it only completes once
-    // they answer with an offer.
-    const std::string messageId = ref.toStdString();
-    const std::string peer = key.toStdString();
+    // The download is a request to the peer that announced the file, not a fetch
+    // from a store, so it only completes once they answer with an offer.
+    const std::string messageIdStd = messageId.toStdString();
+    const std::string peerStd = peer.toStdString();
     const std::string destStd = destPath.toStdString();
-    downloadPool_.start([this, session, messageId, peer, destStd, token]() {
+    downloadPool_.start([this, session, messageIdStd, peerStd, destStd, token]() {
         try {
             session->setTransferHandler(
                 [this, token](const bazarish::client::TransferEvent& event) {
@@ -1074,7 +1071,7 @@ void SessionWorker::saveAttachment(
                 });
             // Returns at once: the transfer only starts when the sender answers
             // with an offer, so completion is reported by the handler above.
-            session->requestFile(peer, messageId, destStd);
+            session->requestFile(peerStd, messageIdStd, destStd);
         } catch (const std::exception& e) {
             if (!downloadsCancelled_.load()) {
                 emit downloadFinished(token, false, QString::fromUtf8(e.what()));
@@ -1900,15 +1897,15 @@ void SessionController::signLogin(const QString& challenge)
 }
 
 void SessionController::saveAttachment(
-    const QString& ref, const QString& key, const QString& fileUrl)
+    const QString& peer, const QString& messageId, const QString& fileUrl)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (!localPath.isEmpty()) {
-        emit requestSaveAttachment(ref, key, localPath, 0);
+        emit requestSaveAttachment(peer, messageId, localPath, 0);
     }
 }
 
-void SessionController::saveAttachmentToFile(const QString& ref, const QString& key,
+void SessionController::saveAttachmentToFile(const QString& peer, const QString& messageId,
     const QString& fileUrl, qint64 token)
 {
     const QString dest = QUrl(fileUrl).toLocalFile();
@@ -1925,7 +1922,7 @@ void SessionController::saveAttachmentToFile(const QString& ref, const QString& 
     pendingSavePath_.insert(token, dest);
     beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
         QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_);
-    emit requestSaveAttachment(ref, key, dest, token);
+    emit requestSaveAttachment(peer, messageId, dest, token);
 }
 
 QUrl SessionController::defaultSaveUrl(const QString& fileName) const

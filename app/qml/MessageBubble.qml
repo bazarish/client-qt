@@ -34,7 +34,7 @@ Item {
     // An attachment card is shown both for an incoming message (which carries a
     // content-store ref) and for one's own outgoing file (which has the type set
     // locally before the upload finishes, so the ref is not there yet).
-    readonly property bool isAttachment: (model.attRef && model.attRef.length > 0)
+    readonly property bool isAttachment: (model.attName && model.attName.length > 0)
         || (model.outgoing && (model.type === "file" || model.type === "photo"
             || model.type === "audio"))
     readonly property bool isUnsupported: model.type === "unsupported"
@@ -363,8 +363,8 @@ Item {
                         // currentFile (not selectedFile) is what pre-fills the
                         // suggested name in SaveFile mode here - matching the export
                         // backup dialog, which is the pattern that actually pre-fills.
-                        saveDialog.attRef = model.attRef
-                        saveDialog.attKey = model.attKey
+                        saveDialog.peer = delegate.session.activePeer
+                        saveDialog.messageId = model.protocolId
                         saveDialog.token = model.msgId
                         saveDialog.currentFile = delegate.session.defaultSaveUrl(model.attName)
                         saveDialog.open()
@@ -649,19 +649,19 @@ Item {
 
     // Native Save dialog: the OS file picker pre-filled with the message's file
     // name, so it resolves any name conflict itself. On accept the download runs in
-    // the background with its byte progress shown on this bubble. attRef/attKey/token
+    // the background with its byte progress shown on this bubble. peer/messageId/token
     // are snapshotted on open so a recycled delegate cannot misroute the result.
     FileDialog {
         id: saveDialog
-        property string attRef: ""
-        property string attKey: ""
+        property string peer: ""
+        property string messageId: ""
         property var token: 0
         title: "Save file"
         fileMode: FileDialog.SaveFile
         onAccepted: {
             if (delegate.session) {
                 delegate.session.saveAttachmentToFile(
-                    saveDialog.attRef, saveDialog.attKey, "" + saveDialog.selectedFile,
+                    saveDialog.peer, saveDialog.messageId, "" + saveDialog.selectedFile,
                     saveDialog.token)
             }
         }
