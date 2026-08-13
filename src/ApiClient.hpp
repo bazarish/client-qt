@@ -96,6 +96,11 @@ public:
     // still resolves rather than being cut off early; an unreachable one fails
     // within it and surfaces an error instead of hanging forever.
     static constexpr int kFetchReadTimeoutSeconds = 70;
+    // Connecting is local (the facade is one TCP hop away), so a connect that
+    // takes this long is a dead facade, not a slow one. Writing gets the same
+    // budget as reading: an upload streams for as long as a response may take.
+    static constexpr int kConnectTimeoutSeconds = 30;
+    static constexpr int kWriteTimeoutSeconds = kDefaultReadTimeoutSeconds;
 
     // i2pDataDir is the embedded router's data directory; it enables routing
     // facades whose host ends in ".b32.i2p" over I2P. When empty, only clearnet

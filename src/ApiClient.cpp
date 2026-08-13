@@ -316,9 +316,9 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         }
         const auto run = [&](auto& http) -> httplib::Result {
             http.set_keep_alive(false);
-            http.set_connection_timeout(30, 0);
+            http.set_connection_timeout(kConnectTimeoutSeconds, 0);
             http.set_read_timeout(readTimeoutSeconds, 0);
-            http.set_write_timeout(240, 0);
+            http.set_write_timeout(kWriteTimeoutSeconds, 0);
             if (method == "GET") {
                 return http.Get(url, headers);
             }
@@ -397,8 +397,15 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         }
         const httplib::Result result = clearnetAttempt(facade);
         if (!result) {
-            lastError = "transport failure: " + httplib::to_string(result.error());
-            continue;  // facade unreachable - try the next
+            // A read timeout is not an unreachable facade: the request arrived and
+            // the server is still working on it (a federated fetch dials the peer
+            // over I2P, which is slow on a cold router). Say which of the two it
+            // was, or the next reader goes looking at the facade for nothing.
+            lastError = result.error() == httplib::Error::Read
+                ? "no response within " + std::to_string(readTimeoutSeconds)
+                    + "s: " + facade.host
+                : "transport failure: " + httplib::to_string(result.error());
+            continue;  // try the next facade
         }
         activeFacade_ = index;  // remember the working facade for next time
 
@@ -417,7 +424,7 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         }
         return response;
     }
-    throw ApiError(std::nullopt, 0, "all facades unreachable: " + lastError);
+    throw ApiError(std::nullopt, 0, "no facade answered: " + lastError);
 }
 
 ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::path& filePath,
@@ -482,9 +489,9 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         };
         const auto run = [&](auto& http) -> httplib::Result {
             http.set_keep_alive(false);
-            http.set_connection_timeout(30, 0);
-            http.set_read_timeout(240, 0);
-            http.set_write_timeout(240, 0);
+            http.set_connection_timeout(kConnectTimeoutSeconds, 0);
+            http.set_read_timeout(kDefaultReadTimeoutSeconds, 0);
+            http.set_write_timeout(kWriteTimeoutSeconds, 0);
             return http.Put(url, headers, static_cast<std::size_t>(length), provider, contentType);
         };
         if (facade.tls) {
@@ -558,8 +565,15 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         }
         const httplib::Result result = clearnetAttempt(facade);
         if (!result) {
-            lastError = "transport failure: " + httplib::to_string(result.error());
-            continue;  // facade unreachable - try the next
+            // A read timeout is not an unreachable facade: the request arrived and
+            // the server is still working on it (a federated fetch dials the peer
+            // over I2P, which is slow on a cold router). Say which of the two it
+            // was, or the next reader goes looking at the facade for nothing.
+            lastError = result.error() == httplib::Error::Read
+                ? "no response within " + std::to_string(kDefaultReadTimeoutSeconds)
+                    + "s: " + facade.host
+                : "transport failure: " + httplib::to_string(result.error());
+            continue;  // try the next facade
         }
         activeFacade_ = index;
 
@@ -578,7 +592,7 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         }
         return response;
     }
-    throw ApiError(std::nullopt, 0, "all facades unreachable: " + lastError);
+    throw ApiError(std::nullopt, 0, "no facade answered: " + lastError);
 }
 
 }  // namespace bazarish::client
