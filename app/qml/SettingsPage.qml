@@ -286,9 +286,9 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    Label { text: "Personal I2P destination"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: "Your I2P destination"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     Label {
-                        text: "Off by default, you share a fixed address from the server pool. Turn this on to be served on your own stable destination — portable across servers, kept even if you move. Trade-off: a unique, lasting address across all your contacts (less crowd-blending than the shared pool). Billed per term, renewed from your balance."
+                        text: "Your account is reached at a destination of its own — the key is yours, so the address stays the same if you move to another server. Your server only ever holds a short delegation, re-issued in the background; publishing hands it your card so contacts can route to you."
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     // Status block. "Refresh" re-polls the server and briefly tints
@@ -364,7 +364,8 @@ Popup {
                             onClicked: { if (root.session) root.session.refreshI2pStatus(); i2pFlash.restart() }
                         }
                     }
-                    // Permanently drop the personal master key (reverts to the pool).
+                    // Permanently drop this profile's master key: nobody can reach it again
+                    // until a fresh destination is published.
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey
                         Layout.fillWidth: true
@@ -572,8 +573,8 @@ Popup {
         header: Label { text: "Delete personal I2P key"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "The old key will be permanently deleted and cannot be recovered. "
-                + "You will fall back to the shared pool address; enabling a personal "
-                + "destination again later would create a new, different address."
+                + "Nobody can reach you until you publish a new destination, and that "
+                + "one would be a new, different address."
             color: Theme.text
             wrapMode: Text.Wrap
         }
