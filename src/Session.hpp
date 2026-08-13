@@ -251,16 +251,26 @@ public:
     void removeContact(const std::string& peerFingerprint);
 
     // Subscribes to the configured server for the given number of days and
-    // registers this client ID. Stores the returned server card.
+    // registers this client ID. Mints this profile's own I2P destination if it
+    // has none and publishes the routing (see publishRouting), so the contact
+    // card is reachable as soon as the destination's tunnels are up.
     void subscribe(std::int64_t days);
+
+    // Hands the serving server a fresh transient for this profile's destination
+    // and re-issues the contact card with the routing folded in, inside the term
+    // already held (so it grants nothing and consumes no registration grant).
+    // Called by subscribe; call it again after a moderated server approves the
+    // account, which is the one case where subscribe leaves routing unpublished.
+    // Raises ApiError(eAccountPendingApproval) while approval is outstanding.
+    void publishRouting();
 
     // The serving server's onboarding info (message + registration links),
     // shown when a connect/subscribe is refused because this key is not
     // registered yet. Requires a configured server (facades).
     PortalInfo serverPortalInfo();
 
-    // User-owned I2P destination (the per-user / "paid" path). Free profiles
-    // route through the server's address pool and never call these.
+    // This profile's own I2P destination - every account has one, it is how the
+    // account is reachable at all.
     // ensureI2pDestination mints the permanent ("master") key the first time
     // and persists it sealed at rest, returning the stable base32 address;
     // subsequent calls are idempotent. The master never leaves the client.
@@ -274,18 +284,13 @@ public:
     // The stable base32 address (without the ".b32.i2p" suffix), or empty.
     std::string i2pAddress() const;
     // Permanently removes the user-owned master (and any transient) from this
-    // profile, reverting to the shared pool address. The deleted key is gone for
-    // good; enabling again later would mint a fresh, different address.
+    // profile. The deleted key is gone for good; publishing again later would
+    // mint a fresh, different address.
     void deleteI2pDestination();
 
-    // Turns the per-user i2p-dest option on: requires a master in the profile
-    // (generate or load one first), enables it server-side (charging a term),
-    // then issues and uploads a fresh transient so the personal destination
-    // comes up. Returns false if the server refused (e.g. insufficient balance).
-    bool enableI2pDest(std::int64_t now);
-    // Turns it off server-side: the personal destination is revoked and the user
-    // falls back to their fixed pool address. The master stays in the profile so
-    // re-enabling later restores the same address.
+    // Revokes the destination server-side (an empty delegation): the server
+    // tears it down and holds nothing. The master stays in the profile, so
+    // publishRouting later restores the same address.
     void disableI2pDest();
     // The per-user i2p-dest status from the server (for display and decisions).
     I2pDestStatus i2pDestStatus();
@@ -633,6 +638,12 @@ private:
     Session(std::filesystem::path profileDir, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);
 
+    // Persists a subscribe/renew result: the card we just signed and the routing
+    // it carries.
+    void storeSubscription(const SubscribeResult& result);
+    // This profile's own destination as a routing host, empty without a master.
+    std::string ownRoutingHost() const;
+
     // Generates a token batch for ourselves: registers the hashes with our
     // server and returns the raw tokens (base64) to hand to the peer.
     std::vector<std::string> issueTokenBatch();
@@ -844,9 +855,9 @@ private:
     // (delivery tokens) can be re-sealed on every change. Empty when the
     // profile is unencrypted.
     std::string passphrase_;
-    // User-owned I2P destination (per-user / portable address path). Empty when
-    // the profile uses the server's address pool instead. The master private
-    // key (i2p-master.dat) is the user's long-term routing identity; the active
+    // This profile's own I2P destination, empty until it is minted (subscribing
+    // mints one). The master private key (i2p-master.dat) is the user's
+    // long-term routing identity; the active
     // transient (i2p-transient.dat) is the time-boxed delegation for the
     // current serving server. Both are sealed at rest when the profile is
     // encrypted.

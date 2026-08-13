@@ -49,6 +49,9 @@ constexpr int kMessageFormatVersion = 1;
 // re-issues a fresh one well before it lapses (see refreshI2pTransientIfDue).
 constexpr std::int64_t kI2pTransientValiditySeconds = 7 * 24 * 3600;
 
+// Host form of a standard-LeaseSet I2P address (the per-user destination).
+constexpr const char* kI2pHostSuffix = ".b32.i2p";
+
 std::int64_t nowSeconds()
 {
     return static_cast<std::int64_t>(std::time(nullptr));
@@ -560,33 +563,73 @@ PortalInfo Session::serverPortalInfo()
 void Session::subscribe(const std::int64_t days)
 {
     const std::int64_t now = nowSeconds();
+    const std::int64_t notAfter = now + days * 24 * 3600;
     // Publish our sealing key as a prekey so contacts can encrypt their very
     // first message to us before any token exchange.
     const SubscribeResult result
-        = client_->subscribe(now, now + days * 24 * 3600, sealingKey_.publicDer());
+        = client_->subscribe(now, notAfter, sealingKey_.publicDer(), ownRoutingHost());
+    storeSubscription(result);
+    client_->registerThisClient();
+
+    // Every account routes through a destination of its own, so mint the master
+    // if this profile has none. The delegation can only be handed over once the
+    // account exists, which is what the subscribe above created - hence the
+    // second, routing-carrying certificate published right after it.
+    ensureI2pDestination();
+    try {
+        publishRouting();
+    } catch (const ApiError& error) {
+        // A moderated server withholds the destination until an operator
+        // approves the account. That is the one refusal that is not a failure:
+        // the subscription stands and the routing is published by a later
+        // publishRouting() call, once approved.
+        if (error.code != ErrorCode::eAccountPendingApproval) {
+            throw;
+        }
+        bazarish::log::info("account awaiting operator approval: no routing published yet");
+    }
+}
+
+void Session::publishRouting()
+{
+    if (!hasI2pDestination()) {
+        throw std::runtime_error("no user-owned I2P destination to publish");
+    }
+    if (subscriptionCertB64_.empty()) {
+        throw std::runtime_error("not subscribed: nothing to publish routing into");
+    }
+    const SubscriptionCertificate held
+        = SubscriptionCertificate::verify(fromBase64(subscriptionCertB64_));
+    // The transient is a time-boxed capability that lets the server operate our
+    // destination; it never outlives the subscription it belongs to.
+    renewI2pTransient(held.notAfter);
+    client_->sendI2pTransient(i2pTransientBase64(), held.notAfter);
+    // Re-issue the card inside the term already held: same window, so the
+    // service node treats it as a re-publish and grants nothing.
+    storeSubscription(client_->renew(
+        nowSeconds(), held.notAfter, sealingKey_.publicDer(), ownRoutingHost()));
+    // Hand the master to this account's other devices so they keep the same
+    // address and can re-issue transients. Best effort: our own routing is
+    // published either way, and the sync needs it to be.
+    try {
+        syncI2pMasterToSelf();
+    } catch (const std::exception& error) {
+        bazarish::log::info("master not synced to this account's other devices: {}", error.what());
+    }
+}
+
+void Session::storeSubscription(const SubscribeResult& result)
+{
     subscriptionCertB64_ = toBase64(result.subscriptionCertDer);
     myDest_ = result.dest;
     myServingKeyB64_
         = result.servingSealingKeyDer.empty() ? std::string() : toBase64(result.servingSealingKeyDer);
     persistMeta();
-    client_->registerThisClient();
+}
 
-    // For a user-owned destination, refresh the transient delegation handed to
-    // the serving server so it can operate the destination for this period.
-    // The transient expiry tracks the subscription window (kept short - the
-    // server only ever holds a time-boxed capability, never the master).
-    if (hasI2pDestination()) {
-        const std::int64_t expiresUnix = now + days * 24 * 3600;
-        renewI2pTransient(expiresUnix);
-        // Best effort: hand the serving server the transient so it can operate
-        // the personal destination for this window. Requires a paid i2pDest
-        // entitlement; a failure (no entitlement, server down) must not fail the
-        // subscription itself.
-        try {
-            client_->sendI2pTransient(i2pTransientBase64(), expiresUnix);
-        } catch (const std::exception&) {
-        }
-    }
+std::string Session::ownRoutingHost() const
+{
+    return i2pAddress_.empty() ? std::string() : i2pAddress_ + kI2pHostSuffix;
 }
 
 void Session::persistSealedBlob(const std::string& filename, const Bytes& blob) const
@@ -665,31 +708,15 @@ std::string Session::loadI2pDestination(const Bytes& privateKeysDat)
     return i2pAddress_;
 }
 
-bool Session::enableI2pDest(const std::int64_t now)
-{
-    if (i2pMaster_.empty()) {
-        throw std::runtime_error("no user-owned I2P destination — generate or load one first");
-    }
-    if (!client_->setI2pDestEnabled(true)) {
-        return false;  // server refused (e.g. insufficient balance to charge a term)
-    }
-    const std::int64_t expiresUnix = now + kI2pTransientValiditySeconds;
-    renewI2pTransient(expiresUnix);
-    if (!client_->sendI2pTransient(i2pTransientBase64(), expiresUnix)) {
-        return false;
-    }
-    // Back the master up to the account's other devices so they keep the same
-    // address. Best effort - failure must not fail enabling.
-    try {
-        syncI2pMasterToSelf();
-    } catch (const std::exception&) {
-    }
-    return true;
-}
-
 void Session::disableI2pDest()
 {
-    client_->setI2pDestEnabled(false);
+    // Revoking is an empty delegation: the server tears the destination down and
+    // holds nothing. The master stays in the profile, so publishing again later
+    // restores the same address.
+    client_->sendI2pTransient(std::string(), 0);
+    i2pTransient_.clear();
+    // fs::remove returns false (no throw) when the file is already absent.
+    fs::remove(profileDir_ / "i2p-transient.dat");
 }
 
 void Session::syncI2pMasterToSelf()
@@ -910,8 +937,8 @@ bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_
         return false;
     }
     const I2pDestStatus status = client_->i2pStatus();
-    if (!status.enabled || !status.active) {
-        return false;  // off or unpaid -> the personal destination is offline; do not issue
+    if (!status.approved()) {
+        return false;  // no account here, or not approved yet: no destination to keep alive
     }
     // Poll-before-issue: the status read above is the check. If the server still
     // holds a transient comfortably in date, another of the user's devices has
@@ -921,7 +948,8 @@ bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_
     }
     const std::int64_t expiresUnix = now + kI2pTransientValiditySeconds;
     renewI2pTransient(expiresUnix);
-    return client_->sendI2pTransient(i2pTransientBase64(), expiresUnix);
+    client_->sendI2pTransient(i2pTransientBase64(), expiresUnix);
+    return true;
 }
 
 std::string Session::signLogin(const std::string& challenge) const

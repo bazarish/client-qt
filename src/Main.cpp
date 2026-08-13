@@ -62,7 +62,7 @@ void printUsage()
         "  bazarish-client subscribe <profile> [days]\n"
         "  bazarish-client whoami <profile>\n"
         "  bazarish-client i2p-enable <profile> [keyfile.dat]\n"
-        "  bazarish-client i2p-buy <profile>\n"
+        "  bazarish-client i2p-publish <profile>\n"
         "  bazarish-client i2p-cancel <profile>\n"
         "  bazarish-client i2p-status <profile>\n"
         "  bazarish-client sign-login <profile> <challenge>\n"
@@ -174,34 +174,32 @@ int runI2pEnable(const std::vector<std::string>& args)
     return 0;
 }
 
-int runI2pBuy(const std::vector<std::string>& args)
+int runI2pPublish(const std::vector<std::string>& args)
 {
-    // i2p-buy <profile>: turn on the paid per-user destination (charges a term,
-    // issues and uploads a transient, and backs the master up to other devices).
+    // i2p-publish <profile>: delegate a fresh transient and re-issue the contact
+    // card with the routing in it. Subscribing does this already; it is needed
+    // again only after a moderated server approves the account.
     if (args.size() != 2) {
         printUsage();
         return 2;
     }
     Session session = Session::open(args[1], keyPassphrase());
-    if (!session.enableI2pDest(static_cast<std::int64_t>(std::time(nullptr)))) {
-        std::fprintf(stderr, "could not enable: insufficient balance (top up on the portal)\n");
-        return 1;
-    }
-    std::printf("personal I2P destination enabled: %s.b32.i2p\n", session.i2pAddress().c_str());
+    session.publishRouting();
+    std::printf("routing published: %s.b32.i2p\n", session.i2pAddress().c_str());
     return 0;
 }
 
 int runI2pCancel(const std::vector<std::string>& args)
 {
-    // i2p-cancel <profile>: turn the paid per-user destination off (falls back to
-    // the fixed pool address). The master stays in the profile.
+    // i2p-cancel <profile>: revoke the destination server-side. The master stays
+    // in the profile, so i2p-publish later restores the same address.
     if (args.size() != 2) {
         printUsage();
         return 2;
     }
     Session session = Session::open(args[1], keyPassphrase());
     session.disableI2pDest();
-    std::printf("personal I2P destination disabled; back on the shared pool address\n");
+    std::printf("I2P destination revoked; the profile keeps its master key\n");
     return 0;
 }
 
@@ -214,15 +212,15 @@ int runI2pStatus(const std::vector<std::string>& args)
     }
     Session session = Session::open(args[1], keyPassphrase());
     const bazarish::client::I2pDestStatus s = session.i2pDestStatus();
-    std::printf("enabled: %s\nactive: %s\npaidThrough: %lld\nprojectedShutoff: %lld\n"
-                "transientExpires: %lld\nstorageQuotaBytes: %llu\nstorageActive: %s\n"
-                "storageProjectedShutoff: %lld\nbalance: %s %s\n",
-        s.enabled ? "yes" : "no", s.active ? "yes" : "no",
-        static_cast<long long>(s.paidThrough), static_cast<long long>(s.projectedShutoff),
+    std::printf("address: %s\napproval: %s\ntransientExpires: %lld\n"
+                "transientUpdatedAt: %lld\n",
+        session.i2pAddress().empty() ? "(none)" : (session.i2pAddress() + ".b32.i2p").c_str(),
+        s.approval.empty() ? "(unknown)" : s.approval.c_str(),
         static_cast<long long>(s.transientExpires),
-        static_cast<unsigned long long>(s.storageQuotaBytes), s.storageActive ? "yes" : "no",
-        static_cast<long long>(s.storageProjectedShutoff), s.balanceAtomic.c_str(),
-        s.currency.c_str());
+        static_cast<long long>(s.transientUpdatedAt));
+    if (!s.registrationMessage.empty()) {
+        std::printf("message: %s\n", s.registrationMessage.c_str());
+    }
     return 0;
 }
 
@@ -648,8 +646,8 @@ int main(const int argc, const char** argv)
         if (command == "i2p-enable") {
             return runI2pEnable(args);
         }
-        if (command == "i2p-buy") {
-            return runI2pBuy(args);
+        if (command == "i2p-publish") {
+            return runI2pPublish(args);
         }
         if (command == "i2p-cancel") {
             return runI2pCancel(args);

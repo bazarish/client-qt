@@ -58,16 +58,21 @@ bool Client::activeFacadeIsI2p() const
 }
 
 SubscribeResult Client::submitSubscription(const std::string& path,
-    const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer)
+    const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer,
+    const std::string& ownDest)
 {
     // Ask the messaging server which destination + serving sealing key it has
     // assigned us, then fold them into the user-signed certificate (our contact
     // card) alongside the sealing prekey. The server fingerprint is kept as the
     // lifecycle anchor the service node checks, but routing is by destination.
+    // While the destination is still building the server reports no address yet,
+    // so the card carries ours: the destination is ours, and its address is the
+    // master b32 we already hold.
     const DestinationInfo destination = myDestination();
+    const std::string dest = destination.dest.empty() ? ownDest : destination.dest;
     const Bytes cert
         = SubscriptionCertificate::issue(identity_, api_.endpoint().serverFingerprint, issuedAt,
-            notAfter, sealingPrekeyDer, destination.dest, destination.servingSealingKeyDer);
+            notAfter, sealingPrekeyDer, dest, destination.servingSealingKeyDer);
     const ApiResponse response = api_.postJson(path, {{"cert", toBase64(cert)}});
     const nlohmann::json body = response.json();
 
@@ -76,21 +81,22 @@ SubscribeResult Client::submitSubscription(const std::string& path,
     result.notAfter = body.at("notAfter").get<std::int64_t>();
     result.quotaBytes = body.at("quotaBytes").get<std::uint64_t>();
     result.maxTermSeconds = body.at("maxTermSeconds").get<std::int64_t>();
-    result.dest = destination.dest;
+    result.dest = dest;
     result.servingSealingKeyDer = destination.servingSealingKeyDer;
     return result;
 }
 
-SubscribeResult Client::subscribe(
-    const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer)
+SubscribeResult Client::subscribe(const std::int64_t issuedAt, const std::int64_t notAfter,
+    const Bytes& sealingPrekeyDer, const std::string& ownDest)
 {
-    return submitSubscription("/v1/account/subscribe", issuedAt, notAfter, sealingPrekeyDer);
+    return submitSubscription(
+        "/v1/account/subscribe", issuedAt, notAfter, sealingPrekeyDer, ownDest);
 }
 
-SubscribeResult Client::renew(
-    const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer)
+SubscribeResult Client::renew(const std::int64_t issuedAt, const std::int64_t notAfter,
+    const Bytes& sealingPrekeyDer, const std::string& ownDest)
 {
-    return submitSubscription("/v1/account/renew", issuedAt, notAfter, sealingPrekeyDer);
+    return submitSubscription("/v1/account/renew", issuedAt, notAfter, sealingPrekeyDer, ownDest);
 }
 
 Subscription Client::subscriptionStatus()
@@ -124,11 +130,13 @@ PortalInfo Client::fetchPortalInfo()
     return info;
 }
 
-bool Client::sendI2pTransient(const std::string& transientB64, const std::int64_t expiresUnix)
+void Client::sendI2pTransient(const std::string& transientB64, const std::int64_t expiresUnix)
 {
-    const ApiResponse response = api_.postJson(
+    // Raises on refusal (a moderated server withholds the destination until an
+    // operator approves the account), which the caller must not hide: without a
+    // delegation the user has no routing at all.
+    api_.postJson(
         "/v1/account/i2p-dest", {{"transient", transientB64}, {"expiresUnix", expiresUnix}});
-    return response.status == 200;
 }
 
 I2pDestStatus Client::i2pStatus()
@@ -136,17 +144,10 @@ I2pDestStatus Client::i2pStatus()
     const ApiResponse response = api_.get("/v1/account/i2p-status");
     const nlohmann::json body = response.json();
     I2pDestStatus status;
-    status.enabled = body.value("enabled", false);
-    status.active = body.value("active", false);
-    status.paidThrough = body.value("paidThrough", std::int64_t{0});
-    status.projectedShutoff = body.value("projectedShutoff", std::int64_t{0});
+    status.approval = body.value("approval", std::string());
+    status.registrationMessage = body.value("registrationMessage", std::string());
     status.transientExpires = body.value("transientExpires", std::int64_t{0});
     status.transientUpdatedAt = body.value("transientUpdatedAt", std::int64_t{0});
-    status.storageQuotaBytes = body.value("storageQuotaBytes", std::uint64_t{0});
-    status.storageActive = body.value("storageActive", false);
-    status.storageProjectedShutoff = body.value("storageProjectedShutoff", std::int64_t{0});
-    status.balanceAtomic = body.value("balanceAtomic", std::string());
-    status.currency = body.value("currency", std::string());
     return status;
 }
 
@@ -165,12 +166,6 @@ StorageUsage Client::storageUsage()
         // Unreachable / unauthorized: leave the mailbox half stale (ok=false).
     }
     return usage;
-}
-
-bool Client::setI2pDestEnabled(const bool enabled)
-{
-    const ApiResponse response = api_.postJson("/v1/account/i2p-dest/setting", {{"enabled", enabled}});
-    return response.status == 200;
 }
 
 ContactInfo Client::lookupContact(const std::string& peerFingerprint)

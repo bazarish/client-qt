@@ -320,10 +320,10 @@ Popup {
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                             Label {
-                                text: root.session && root.session.i2pActive && root.session.i2pPaidThrough > 0
-                                    ? ("Active until " + Qt.formatDate(new Date(root.session.i2pPaidThrough * 1000), "yyyy-MM-dd"))
-                                    : "Inactive"
-                                color: (root.session && root.session.i2pActive && root.session.i2pPaidThrough > 0)
+                                text: root.session && root.session.i2pActive && root.session.i2pTransientExpires > 0
+                                    ? ("Delegated until " + Qt.formatDate(new Date(root.session.i2pTransientExpires * 1000), "yyyy-MM-dd"))
+                                    : "Not published"
+                                color: (root.session && root.session.i2pActive && root.session.i2pTransientExpires > 0)
                                     ? Theme.success : Theme.warn
                                 font.pixelSize: Theme.fontSmall
                             }
@@ -347,14 +347,14 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && !root.session.i2pEnabled
-                            text: "Turn on"
+                            text: "Publish"
                             enabled: root.session && root.session.connected
-                            onClicked: root.session.enablePersonalDest()
+                            onClicked: root.session.publishPersonalDest()
                         }
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && root.session.i2pEnabled
-                            text: "Turn off"
+                            text: "Revoke"
                             onClicked: root.session.disablePersonalDest()
                         }
                         // Re-poll the server status and flash the box for ~1s.

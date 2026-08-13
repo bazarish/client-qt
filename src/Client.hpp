@@ -24,28 +24,27 @@ namespace bazarish::client {
 struct DestinationInfo {
     std::string dest;
     Bytes servingSealingKeyDer;
-    // Serving mode/state: "home", "pool", or for a personal destination
-    // "building" / "active" / "expired" (see server-core PerUserDestinations).
-    // The client only publishes a personal address while it is "active".
+    // Destination state: "building" / "active" / "expired" (see server-core
+    // PerUserDestinations), empty when the user delegated none.
     std::string state;
 };
 
-// The per-user i2p-dest status the client polls (GET /v1/account/i2p-status):
-// whether the option is on and paid-active, the recorded transient validity (so
-// any of the user's devices knows when to re-issue), the effective storage
-// quota, and honest projected shutoff dates from the prepaid balance.
+// The destination status the client polls (GET /v1/account/i2p-status): whether
+// this node has an approved account for us, and the recorded validity of the
+// delegation it holds (so any of the user's devices knows when to re-issue).
 struct I2pDestStatus {
-    bool enabled = false;
-    bool active = false;
-    std::int64_t paidThrough = 0;
-    std::int64_t projectedShutoff = 0;
+    // "none" (this node knows no such account), "pending" (a moderated node has
+    // not approved it yet, so no destination is raised) or "approved".
+    std::string approval;
+    // What a moderated node tells a user still awaiting approval.
+    std::string registrationMessage;
+    // Validity of the delegation this account currently has with the server; 0
+    // when it delegated none. The client re-issues before this lapses, or the
+    // destination goes down.
     std::int64_t transientExpires = 0;
     std::int64_t transientUpdatedAt = 0;
-    std::uint64_t storageQuotaBytes = 0;
-    bool storageActive = false;
-    std::int64_t storageProjectedShutoff = 0;
-    std::string balanceAtomic;  // signed, as a string
-    std::string currency;
+
+    bool approved() const { return approval == "approved"; }
 };
 
 // The user's own storage usage on its two backends, polled for the per-profile
@@ -163,11 +162,14 @@ public:
     // --- Account (service node) ---
 
     // sealingPrekeyDer, when non-empty, is published in the subscription
-    // certificate so contacts can E2E-encrypt their first message.
-    SubscribeResult subscribe(
-        std::int64_t issuedAt, std::int64_t notAfter, const Bytes& sealingPrekeyDer = {});
-    SubscribeResult renew(
-        std::int64_t issuedAt, std::int64_t notAfter, const Bytes& sealingPrekeyDer = {});
+    // certificate so contacts can E2E-encrypt their first message. ownDest is
+    // this profile's own destination host: the certificate carries it while the
+    // server has not published the destination yet (tunnels take minutes), since
+    // the address is the user's master b32 either way.
+    SubscribeResult subscribe(std::int64_t issuedAt, std::int64_t notAfter,
+        const Bytes& sealingPrekeyDer = {}, const std::string& ownDest = {});
+    SubscribeResult renew(std::int64_t issuedAt, std::int64_t notAfter,
+        const Bytes& sealingPrekeyDer = {}, const std::string& ownDest = {});
     Subscription subscriptionStatus();
     void unsubscribe();
     // Onboarding discovery (GET /v1/account/portal): the server's message and
@@ -175,9 +177,10 @@ public:
     // not registered yet. Unauthenticated on the server; safe to call any time.
     PortalInfo fetchPortalInfo();
     // Hands the serving server a fresh offline transient (I2P-base64) so it can
-    // operate the user's personal destination for the subscription window.
-    // Requires an active i2pDest entitlement server-side; returns acceptance.
-    bool sendI2pTransient(const std::string& transientB64, std::int64_t expiresUnix);
+    // operate the user's destination for the subscription window. An empty
+    // transient revokes. Raises on refusal - a moderated node withholds the
+    // destination until an operator approves the account.
+    void sendI2pTransient(const std::string& transientB64, std::int64_t expiresUnix);
     // The per-user i2p-dest status (GET /v1/account/i2p-status).
     I2pDestStatus i2pStatus();
     // The user's own storage usage: the mailbox (GET /v1/messaging/storage-usage)
@@ -185,11 +188,6 @@ public:
     // half is fetched independently; a backend that does not answer leaves its half
     // at zero with ok=false. Never throws - it is a best-effort status poll.
     StorageUsage storageUsage();
-    // Turns the per-user i2p-dest option on or off (POST
-    // /v1/account/i2p-dest/setting). Enabling charges a term server-side (or
-    // resumes if still paid); returns whether the request was accepted (false
-    // when enabling failed for an insufficient balance).
-    bool setI2pDestEnabled(bool enabled);
     // Looks up a user by fingerprint: their subscription certificate (sealing
     // prekey + routing). Verified.
     ContactInfo lookupContact(const std::string& peerFingerprint);
@@ -239,7 +237,7 @@ public:
 
 private:
     SubscribeResult submitSubscription(const std::string& path, std::int64_t issuedAt,
-        std::int64_t notAfter, const Bytes& sealingPrekeyDer);
+        std::int64_t notAfter, const Bytes& sealingPrekeyDer, const std::string& ownDest);
 
     const Identity identity_;
     ApiClient api_;

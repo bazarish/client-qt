@@ -918,31 +918,32 @@ void SessionWorker::refreshI2pStatus()
     const bool hasKey = session_->hasI2pDestination();
     const QString address
         = hasKey ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p") : QString();
-    bool enabled = false;
-    bool active = false;
-    qint64 paidThrough = 0;
+    bool delegated = false;
+    bool live = false;
+    qint64 transientExpires = 0;
     QString summary;
     try {
         const bazarish::client::I2pDestStatus s = session_->i2pDestStatus();
-        enabled = s.enabled;
-        active = s.active;
-        paidThrough = static_cast<qint64>(s.paidThrough);
-        if (enabled && active) {
-            summary = QStringLiteral("On — your personal destination is live.");
-        } else if (enabled) {
-            summary = QStringLiteral(
-                "On but offline — top up to restore it, or turn it off to use the pool.");
+        transientExpires = static_cast<qint64>(s.transientExpires);
+        delegated = transientExpires != 0;
+        live = s.approved() && delegated;
+        if (live) {
+            summary = QStringLiteral("Published — your destination is live.");
+        } else if (s.approval == "pending") {
+            summary = s.registrationMessage.empty()
+                ? QStringLiteral("Awaiting operator approval — no destination until then.")
+                : QString::fromStdString(s.registrationMessage);
         } else if (hasKey) {
-            summary = QStringLiteral("Off — using the shared pool address (personal key ready).");
+            summary = QStringLiteral("Not published — nobody can reach you yet.");
         } else {
-            summary = QStringLiteral("Off — using the shared pool address.");
+            summary = QStringLiteral("No destination key yet.");
         }
     } catch (const std::exception&) {
-        // Not connected (or the node lacks the endpoint): show what we know.
-        summary = hasKey ? QStringLiteral("Personal key ready; connect to manage it.")
-                         : QStringLiteral("Using the shared pool address.");
+        // Not connected: show what we know without the server.
+        summary = hasKey ? QStringLiteral("Destination key ready; connect to publish it.")
+                         : QStringLiteral("No destination key yet.");
     }
-    emit i2pStatus(hasKey, enabled, active, address, summary, paidThrough);
+    emit i2pStatus(hasKey, delegated, live, address, summary, transientExpires);
 }
 
 void SessionWorker::refreshStorageUsage()
@@ -1003,17 +1004,14 @@ void SessionWorker::deletePersonalKey()
     refreshI2pStatus();
 }
 
-void SessionWorker::enablePersonalDest()
+void SessionWorker::publishPersonalDest()
 {
     if (!session_) {
         return;
     }
     try {
-        if (session_->enableI2pDest(static_cast<std::int64_t>(std::time(nullptr)))) {
-            emit actionOk("Personal I2P destination enabled.");
-        } else {
-            emit actionFailed("Insufficient balance — top up on the portal first.");
-        }
+        session_->publishRouting();
+        emit actionOk("Routing published: your card now carries this destination.");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1027,7 +1025,7 @@ void SessionWorker::disablePersonalDest()
     }
     try {
         session_->disableI2pDest();
-        emit actionOk("Personal I2P destination disabled.");
+        emit actionOk("I2P destination revoked.");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1148,8 +1146,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::loadPersonalKey);
     connect(this, &SessionController::requestDeletePersonalKey, worker_,
         &SessionWorker::deletePersonalKey);
-    connect(this, &SessionController::requestEnablePersonalDest, worker_,
-        &SessionWorker::enablePersonalDest);
+    connect(this, &SessionController::requestPublishPersonalDest, worker_,
+        &SessionWorker::publishPersonalDest);
     connect(this, &SessionController::requestDisablePersonalDest, worker_,
         &SessionWorker::disablePersonalDest);
     connect(this, &SessionController::requestRefreshI2pStatus, worker_,
@@ -2028,9 +2026,9 @@ void SessionController::deletePersonalKey()
     emit requestDeletePersonalKey();
 }
 
-void SessionController::enablePersonalDest()
+void SessionController::publishPersonalDest()
 {
-    emit requestEnablePersonalDest();
+    emit requestPublishPersonalDest();
 }
 
 void SessionController::disablePersonalDest()
@@ -2043,15 +2041,15 @@ void SessionController::refreshI2pStatus()
     emit requestRefreshI2pStatus();
 }
 
-void SessionController::onI2pStatus(const bool hasKey, const bool enabled, const bool active,
-    const QString& address, const QString& summary, const qint64 paidThrough)
+void SessionController::onI2pStatus(const bool hasKey, const bool delegated, const bool live,
+    const QString& address, const QString& summary, const qint64 transientExpires)
 {
     i2pHasKey_ = hasKey;
-    i2pEnabled_ = enabled;
-    i2pActive_ = active;
+    i2pEnabled_ = delegated;
+    i2pActive_ = live;
     i2pAddress_ = address;
     i2pStatusText_ = summary;
-    i2pPaidThrough_ = paidThrough;
+    i2pTransientExpires_ = transientExpires;
     emit i2pStatusChanged();
 }
 

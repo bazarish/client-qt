@@ -88,7 +88,7 @@ public slots:
     void generatePersonalKey();
     void loadPersonalKey(const QString& path);
     void deletePersonalKey();
-    void enablePersonalDest();
+    void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
     // Polls the user's own storage usage (mailbox + blob backends) and reports it.
@@ -167,12 +167,13 @@ signals:
     // fingerprint, for the GUI.
     void facadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
-    // hasKey: a master is set up in the profile. enabled/active: the paid option
-    // is on / currently paid-active. address: the personal b32 (empty if none).
-    // summary: a one-line human status for the settings page. paidThrough: the
-    // unix second the current term is paid through (0 when inactive).
-    void i2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
-        const QString& summary, qint64 paidThrough);
+    // hasKey: a master is set up in the profile. delegated: the server holds a
+    // delegation for it. live: delegated and the account is approved, so the
+    // destination is being served. address: the b32 (empty if none). summary: a
+    // one-line human status for the settings page. transientExpires: when the
+    // current delegation lapses (0 when there is none).
+    void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
+        const QString& summary, qint64 transientExpires);
     // The user's storage usage (mailbox + blob), each with an `ok` flag (a backend
     // that did not answer keeps its last figures and is marked stale by the UI).
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
@@ -299,7 +300,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString i2pStatusText READ i2pStatusText NOTIFY i2pStatusChanged)
     // Unix second the personal destination is paid through (0 when inactive), so
     // the settings page can show an expiry date or the phrase "Inactive".
-    Q_PROPERTY(qint64 i2pPaidThrough READ i2pPaidThrough NOTIFY i2pStatusChanged)
+    Q_PROPERTY(qint64 i2pTransientExpires READ i2pTransientExpires NOTIFY i2pStatusChanged)
     // This profile's storage usage for the settings view: a map with mailboxOk,
     // mailboxUsed, mailboxQuota (bytes), updatedAt (the
     // unix-ms time it was last fetched, 0 if never) and everFetched. The figures
@@ -359,7 +360,7 @@ public:
     QString i2pAddress() const { return i2pAddress_; }
     QString i2pStatusText() const { return i2pStatusText_; }
     QVariantMap storageInfo() const;
-    qint64 i2pPaidThrough() const { return i2pPaidThrough_; }
+    qint64 i2pTransientExpires() const { return i2pTransientExpires_; }
     QString callState() const { return callState_; }
     QString callPeer() const { return callPeer_; }
     QString callPeerName() const { return peerName(callPeer_); }
@@ -497,7 +498,7 @@ public:
     Q_INVOKABLE void generatePersonalKey();
     Q_INVOKABLE void loadPersonalKey(const QString& fileUrl);
     Q_INVOKABLE void deletePersonalKey();
-    Q_INVOKABLE void enablePersonalDest();
+    Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
     // Triggers a fresh poll of this profile's storage usage (mailbox + blob). The
@@ -582,7 +583,7 @@ signals:  // to worker
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);
     void requestDeletePersonalKey();
-    void requestEnablePersonalDest();
+    void requestPublishPersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
     void requestRefreshStorageUsage();
@@ -620,7 +621,7 @@ private slots:
     void onFacadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
-        const QString& summary, qint64 paidThrough);
+        const QString& summary, qint64 transientExpires);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted);
     // Appends a finished call to the peer's transcript as a clear system line.
@@ -729,7 +730,7 @@ private:
     bool i2pActive_ = false;
     QString i2pAddress_;
     QString i2pStatusText_;
-    qint64 i2pPaidThrough_ = 0;
+    qint64 i2pTransientExpires_ = 0;
     // Last-fetched storage usage (session-scoped), with the wall-clock ms it was
     // taken so the settings view can show "updated N ago" even while offline.
     bool storageMailboxOk_ = false;

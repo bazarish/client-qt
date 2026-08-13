@@ -138,6 +138,15 @@ int main()
     server.Post("/v1/account/subscribe", handleSubscribe);
     server.Post("/v1/account/renew", handleSubscribe);
 
+    // Subscribing delegates this profile's offline transient before republishing
+    // the card with its routing, so the account API must take one.
+    server.Post("/v1/account/i2p-dest",
+        [&](const httplib::Request& request, httplib::Response& response) {
+            (void)requireCaller(request);
+            CHECK(!nlohmann::json::parse(request.body).at("transient").get<std::string>().empty());
+            respondJson(response, {{"ok", true}});
+        });
+
     server.Post("/v1/messaging/clients",
         [&](const httplib::Request& request, httplib::Response& response) {
             (void)requireCaller(request);
