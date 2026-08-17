@@ -272,11 +272,38 @@ ApiResponse ApiClient::getPublic(const std::string& path, const std::string& que
     return send("GET", path, query, {}, {}, false);
 }
 
+ApiResponse ApiClient::getClearnet(const std::string& path, const std::string& query)
+{
+    return send("GET", path, query, {}, {}, false, {}, kDefaultReadTimeoutSeconds, true);
+}
+
+void ApiClient::seedRouterFromServer()
+{
+    if (i2pDataDir_.empty() || !i2pEnabled()) {
+        return;  // no embedded transport to bootstrap
+    }
+    seedRouterOnce(i2pDataDir_, [this]() {
+        // Clearnet by construction: this call bootstraps the transport itself.
+        const nlohmann::json body = getClearnet("/v1/messaging/reseed").json();
+        std::vector<Bytes> routers;
+        for (const nlohmann::json& entry : body.at("routers")) {
+            routers.push_back(fromBase64(entry.get<std::string>()));
+        }
+        return routers;
+    });
+}
+
 ApiResponse ApiClient::send(const std::string& method, const std::string& path,
     const std::string& query, const Bytes& body, const std::string& contentType,
     const bool authenticate, const std::map<std::string, std::string>& extraHeaders,
-    const int readTimeoutSeconds)
+    const int readTimeoutSeconds, const bool clearnetOnly)
 {
+    // Before the request lock: a call that may go over I2P must not start the
+    // router unseeded. A clearnet-only call skips it - it cannot start the
+    // router, and the seeding fetch is itself one of those.
+    if (!clearnetOnly) {
+        seedRouterFromServer();
+    }
     const std::lock_guard<std::mutex> lock(netMutex_);
     // The signed canonical path is the server-visible path: no base path and
     // no query string (the facade strips the base path before forwarding and
@@ -359,6 +386,11 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
         const Facade& facade = facades[index];
 
         if (facadeIsI2p(facade)) {
+            if (clearnetOnly) {
+                // The caller bootstraps the I2P transport itself; it cannot use it.
+                lastError = "clearnet-only request: " + facade.host;
+                continue;
+            }
             if (!i2pEnabled()) {
                 // I2P turned off in settings: use clearnet facades only. With no
                 // reachable clearnet facade the loop ends in an explicit error.
@@ -431,6 +463,9 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
     const std::string& bodySha256Hex, const std::string& contentType,
     const std::map<std::string, std::string>& extraHeaders, const UploadProgressFn& onProgress)
 {
+    // Before the request lock: a call that may go over I2P must not start the
+    // router unseeded, and the seeding is itself a (clearnet) request.
+    seedRouterFromServer();
     const std::lock_guard<std::mutex> lock(netMutex_);
     const std::uintmax_t length = std::filesystem::file_size(filePath);
 

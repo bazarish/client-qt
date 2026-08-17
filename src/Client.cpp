@@ -330,7 +330,8 @@ Bytes Client::fetchBlob(const std::string& blobId)
 
 std::vector<Bytes> Client::fetchReseed()
 {
-    const nlohmann::json body = api_.get("/v1/messaging/reseed").json();
+    // Clearnet only: this is what bootstraps the I2P transport (see getClearnet).
+    const nlohmann::json body = api_.getClearnet("/v1/messaging/reseed").json();
     std::vector<Bytes> routers;
     for (const nlohmann::json& entry : body.at("routers")) {
         routers.push_back(fromBase64(entry.get<std::string>()));

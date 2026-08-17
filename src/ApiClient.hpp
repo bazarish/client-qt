@@ -136,6 +136,11 @@ public:
 
     // Unauthenticated GET (alias resolution is findable by design).
     ApiResponse getPublic(const std::string& path, const std::string& query = "");
+    // Unauthenticated GET pinned to a CLEARNET facade. Its one caller is the
+    // private reseed, which bootstraps the very transport an I2P facade needs:
+    // routing it over I2P would ask the router to start before it has a netDb,
+    // and would deadlock outright - the reseed runs while the router lock is held.
+    ApiResponse getClearnet(const std::string& path, const std::string& query = "");
 
     const std::string& clientId() const;
     const ServerEndpoint& endpoint() const;
@@ -147,10 +152,16 @@ public:
     bool activeFacadeIsI2p() const;
 
 private:
+    // Seeds the embedded router's netDb from our own server before it is ever
+    // started, so a first start never falls back to a public reseed host. Every
+    // path that starts the router goes through here, because an I2P facade
+    // request would otherwise start it with an empty netDb.
+    void seedRouterFromServer();
+
     ApiResponse send(const std::string& method, const std::string& path,
         const std::string& query, const Bytes& body, const std::string& contentType,
         bool authenticate, const std::map<std::string, std::string>& extraHeaders = {},
-        int readTimeoutSeconds = kDefaultReadTimeoutSeconds);
+        int readTimeoutSeconds = kDefaultReadTimeoutSeconds, bool clearnetOnly = false);
 
     // True if a facade's host ends in ".b32.i2p" (reached over the embedded I2P
     // transport rather than clearnet).

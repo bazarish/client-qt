@@ -58,7 +58,7 @@ void printUsage()
         "A stateful command-line messenger client.\n"
         "\n"
         "Usage:\n"
-        "  bazarish-client init <profile> <facade-url> <server-fp>\n"
+        "  bazarish-client init <profile> <facade-url[,facade-url...]> <server-fp>\n"
         "  bazarish-client subscribe <profile> [days]\n"
         "  bazarish-client whoami <profile>\n"
         "  bazarish-client i2p-enable <profile> [keyfile.dat]\n"
@@ -100,13 +100,31 @@ void printUsage()
 
 int runInit(const std::vector<std::string>& args)
 {
-    // init <profile> <facade-url> <server-fp>
+    // init <profile> <facade-url[,facade-url...]> <server-fp>
     if (args.size() != 4) {
         printUsage();
         return 2;
     }
     ServerEndpoint endpoint;
-    endpoint.facades = {bazarish::client::parseFacadeUrl(args[2])};
+    // A server publishes several facades - its I2P one(s) first, clearnet beside
+    // them - and the client fails over across the list in the order given, I2P
+    // preferred once it has a transport. Comma-separated, as in the descriptor.
+    for (std::size_t start = 0; start <= args[2].size();) {
+        const std::size_t comma = args[2].find(',', start);
+        const std::string url = args[2].substr(
+            start, comma == std::string::npos ? std::string::npos : comma - start);
+        if (!url.empty()) {
+            endpoint.facades.push_back(bazarish::client::parseFacadeUrl(url));
+        }
+        if (comma == std::string::npos) {
+            break;
+        }
+        start = comma + 1;
+    }
+    if (endpoint.facades.empty()) {
+        std::fprintf(stderr, "no facade URL given\n");
+        return 2;
+    }
     endpoint.serverFingerprint = args[3];
     const Session session = Session::create(args[1], endpoint, keyPassphrase());
     std::printf("created client\nfingerprint: %s\n", session.fingerprint().c_str());

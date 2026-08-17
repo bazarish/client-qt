@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <stdexcept>
+#include <filesystem>
 #include <thread>
 
 #define CHECK(condition)                                                            \
@@ -109,6 +110,13 @@ int main()
             response.set_content("internal boom", "text/plain");
         });
 
+    // The private reseed: unauthenticated, and the one call that must stay on
+    // clearnet because it is what bootstraps the I2P transport.
+    server.Get("/v1/messaging/reseed",
+        [](const httplib::Request&, httplib::Response& response) {
+            response.set_content(R"({"routers":["cm91dGVy"]})", "application/json");
+        });
+
     const int port = server.bind_to_any_port("127.0.0.1");
     CHECK(port > 0);
     std::thread serverThread([&server]() { (void)server.listen_after_bind(); });
@@ -168,6 +176,24 @@ int main()
             CHECK(!error.code.has_value());
         }
         CHECK(threw);
+    }
+
+    // The reseed bootstraps the I2P transport itself, so it must never be routed
+    // over an I2P facade - which would ask the router to start before it has a
+    // netDb, while the reseed already holds the router lock. With an I2P facade
+    // configured and preferred, getClearnet still lands on the clearnet one.
+    {
+        ServerEndpoint mixed;
+        mixed.serverFingerprint = endpoint.serverFingerprint;
+        mixed.facades = {Facade{false, "pgb6a4qhbfqx6mrxxjvhpxbsyf7hlpvxsl7hkeutqxvxpv4fzbaa.b32.i2p",
+                             80, {}},
+            endpoint.facades[0]};
+        // A non-empty data dir is what makes I2P facades preferred.
+        ApiClient api(alice, "abc123", mixed, std::filesystem::temp_directory_path() / "bz-i2p");
+        const ApiResponse response = api.getClearnet("/v1/messaging/reseed");
+        CHECK(response.status == 200);
+        CHECK(response.json().at("routers").size() == 1);
+        CHECK(!api.activeFacadeIsI2p());
     }
 
     server.stop();
