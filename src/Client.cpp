@@ -57,6 +57,31 @@ bool Client::activeFacadeIsI2p() const
     return api_.activeFacadeIsI2p();
 }
 
+void Client::setI2pProven(const bool proven)
+{
+    api_.setI2pProven(proven);
+}
+
+bool Client::i2pProven() const
+{
+    return api_.i2pProven();
+}
+
+void Client::setAllowClearnet(const bool allow)
+{
+    api_.setAllowClearnet(allow);
+}
+
+bool Client::allowClearnet() const
+{
+    return api_.allowClearnet();
+}
+
+void Client::setOnI2pProven(std::function<void()> callback)
+{
+    api_.setOnI2pProven(std::move(callback));
+}
+
 SubscribeResult Client::submitSubscription(const std::string& path,
     const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer,
     const std::string& ownDest)

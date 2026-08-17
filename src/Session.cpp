@@ -52,6 +52,9 @@ constexpr std::int64_t kI2pTransientValiditySeconds = 7 * 24 * 3600;
 // Host form of a standard-LeaseSet I2P address (the per-user destination).
 constexpr const char* kI2pHostSuffix = ".b32.i2p";
 
+// Applied to every profile opened afterwards (the CLI's BAZARISH_ALLOW_CLEARNET).
+std::atomic<bool> g_allowClearnetDefault{false};
+
 std::int64_t nowSeconds()
 {
     return static_cast<std::int64_t>(std::time(nullptr));
@@ -376,6 +379,9 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     auto client = std::make_unique<Client>(
         std::move(identity), clientId, endpoint, profileDir.parent_path() / "i2p");
     Session session(profileDir, std::move(client), std::move(sealing), std::move(contacts));
+    session.client_->setI2pProven(meta.value("i2pProven", false));
+    session.client_->setAllowClearnet(
+        meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
     session.subscriptionCertB64_ = meta.value("subscriptionCert", std::string{});
     // Our own routing (dest + serving sealing key) lives in our self-signed
     // subscription certificate; recover it for invites and contact bootstraps.
@@ -519,6 +525,10 @@ void Session::persistMeta() const
         {"subscriptionCert", subscriptionCertB64_},
         {"encrypted", encrypted_},
         {"avatarMime", avatarMime_},
+        // Sticky I2P: once this profile has reached its server over I2P it keeps
+        // refusing clearnet across restarts, unless the user allowed it again.
+        {"i2pProven", client_->i2pProven()},
+        {"allowClearnet", client_->allowClearnet()},
     };
     writeFileText(profileDir_ / "meta.json", meta.dump(2));
 }
@@ -558,6 +568,22 @@ void Session::persistContacts() const
 PortalInfo Session::serverPortalInfo()
 {
     return client_->fetchPortalInfo();
+}
+
+void Session::setAllowClearnetDefault(const bool allow)
+{
+    g_allowClearnetDefault.store(allow);
+}
+
+void Session::setAllowClearnet(const bool allow)
+{
+    client_->setAllowClearnet(allow);
+    persistMeta();
+}
+
+bool Session::allowClearnet() const
+{
+    return client_->allowClearnet();
 }
 
 void Session::subscribe(const std::int64_t days)

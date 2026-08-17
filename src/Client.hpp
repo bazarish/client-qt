@@ -159,6 +159,14 @@ public:
     // Whether that facade is an I2P facade (for the account list marking).
     bool activeFacadeIsI2p() const;
 
+    // Sticky I2P (see ApiClient): this profile refuses clearnet once it has
+    // reached its server over I2P, until the user allows it again.
+    void setI2pProven(bool proven);
+    bool i2pProven() const;
+    void setAllowClearnet(bool allow);
+    bool allowClearnet() const;
+    void setOnI2pProven(std::function<void()> callback);
+
     // --- Account (service node) ---
 
     // sealingPrekeyDer, when non-empty, is published in the subscription

@@ -250,6 +250,14 @@ public:
     // told. No-op for an unknown contact. The caller wipes the local transcript.
     void removeContact(const std::string& peerFingerprint);
 
+    // Sticky I2P: once a profile has reached its server over I2P it refuses
+    // clearnet facades, so a flaky link cannot quietly move the user onto the
+    // clearnet. This is the deliberate way back, per profile and persisted; the
+    // process-wide default is applied to every profile opened afterwards.
+    void setAllowClearnet(bool allow);
+    bool allowClearnet() const;
+    static void setAllowClearnetDefault(bool allow);
+
     // Subscribes to the configured server for the given number of days and
     // registers this client ID. Mints this profile's own I2P destination if it
     // has none and publishes the routing (see publishRouting), so the contact

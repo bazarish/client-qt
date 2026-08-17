@@ -151,7 +151,19 @@ public:
     // for the account list's positive "connected over I2P" marking.
     bool activeFacadeIsI2p() const;
 
+    // Sticky-I2P state (see i2pProven_). The session persists it per profile and
+    // restores it on open; the user can allow clearnet again explicitly.
+    void setI2pProven(bool proven);
+    bool i2pProven() const;
+    void setAllowClearnet(bool allow);
+    bool allowClearnet() const;
+    // Invoked once when this client first completes a request over I2P.
+    void setOnI2pProven(std::function<void()> callback);
+
 private:
+    // Records that a request has completed over I2P (sticky from then on).
+    void markI2pProven();
+
     // Seeds the embedded router's netDb from our own server before it is ever
     // started, so a first start never falls back to a public reseed host. Every
     // path that starts the router goes through here, because an I2P facade
@@ -162,6 +174,7 @@ private:
         const std::string& query, const Bytes& body, const std::string& contentType,
         bool authenticate, const std::map<std::string, std::string>& extraHeaders = {},
         int readTimeoutSeconds = kDefaultReadTimeoutSeconds, bool clearnetOnly = false);
+
 
     // True if a facade's host ends in ".b32.i2p" (reached over the embedded I2P
     // transport rather than clearnet).
@@ -189,6 +202,15 @@ private:
     std::shared_ptr<bazarish::i2p::Endpoint> i2pOut_;
     // Index of the last facade that worked; the GUI "connected via" reads it.
     std::size_t activeFacade_ = 0;
+    // Sticky I2P: once a request has actually gone over an I2P facade, this
+    // profile refuses clearnet ones. Otherwise a flaky I2P link quietly moves the
+    // user onto the clearnet - binding their account to an IP at the server -
+    // exactly when the network is being interfered with. Cleared only by the user
+    // (allowClearnet), never automatically.
+    bool i2pProven_ = false;
+    bool allowClearnet_ = false;
+    // Called once when i2pProven_ flips, so the session can persist it.
+    std::function<void()> onI2pProven_;
     // Serializes the two network entry points (send / putFile) so the client is
     // safe to call from more than one thread: a blob download running off the main
     // worker thread may take the own-server proxy fallback, which goes through this

@@ -182,6 +182,43 @@ const ServerEndpoint& ApiClient::endpoint() const
     return endpoint_;
 }
 
+void ApiClient::markI2pProven()
+{
+    if (i2pProven_) {
+        return;
+    }
+    i2pProven_ = true;
+    bazarish::log::info("this profile now reaches its server over I2P; clearnet is refused");
+    if (onI2pProven_) {
+        onI2pProven_();
+    }
+}
+
+void ApiClient::setI2pProven(const bool proven)
+{
+    i2pProven_ = proven;
+}
+
+bool ApiClient::i2pProven() const
+{
+    return i2pProven_;
+}
+
+void ApiClient::setAllowClearnet(const bool allow)
+{
+    allowClearnet_ = allow;
+}
+
+bool ApiClient::allowClearnet() const
+{
+    return allowClearnet_;
+}
+
+void ApiClient::setOnI2pProven(std::function<void()> callback)
+{
+    onI2pProven_ = std::move(callback);
+}
+
 std::string ApiClient::activeFacadeUrl() const
 {
     if (endpoint_.facades.empty()) {
@@ -455,17 +492,30 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
                 continue;
             }
             activeFacade_ = index;
+            markI2pProven();
             if (response->status < 200 || response->status >= 300) {
                 raiseFromResponse(response->status, response->body);
             }
             return *response;
         }
 
-        if (fullPrivacy()) {
-            // Full privacy mode: never touch a clearnet facade. With no reachable
-            // I2P facade the loop ends in an explicit error and the profile is offline.
-            lastError = "full privacy mode (I2P only): " + facade.host;
-            continue;
+        // The reseed is the one clearnet request that stays allowed: it carries no
+        // identity, and it is what makes I2P possible at all - refusing it would
+        // leave a fresh profile with no way to ever reach an I2P facade.
+        if (!clearnetOnly) {
+            if (fullPrivacy()) {
+                // Full privacy mode: never touch a clearnet facade. With no reachable
+                // I2P facade the loop ends in an explicit error and the profile is offline.
+                lastError = "full privacy mode (I2P only): " + facade.host;
+                continue;
+            }
+            if (i2pProven_ && !allowClearnet_) {
+                // This profile has already talked over I2P, so a clearnet request
+                // now would be a silent downgrade, not a first connection.
+                lastError = "this profile reaches its server over I2P; clearnet refused: "
+                    + facade.host;
+                continue;
+            }
         }
         const httplib::Result result = clearnetAttempt(facade);
         if (!result) {
@@ -649,6 +699,11 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
         if (fullPrivacy()) {
             // Full privacy mode: never touch a clearnet facade (see send()).
             lastError = "full privacy mode (I2P only): " + facade.host;
+            continue;
+        }
+        if (i2pProven_ && !allowClearnet_) {
+            lastError = "this profile reaches its server over I2P; clearnet refused: "
+                + facade.host;
             continue;
         }
         const httplib::Result result = clearnetAttempt(facade);

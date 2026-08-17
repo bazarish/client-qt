@@ -252,6 +252,10 @@ class SessionController : public QObject {
     // full privacy mode is on and this is false, the profile cannot reach its server
     // (clearnet is refused), so its status reads as an explicit I2P-only offline error.
     Q_PROPERTY(bool hasI2pFacade READ hasI2pFacade NOTIFY facadeInfoChanged)
+    // Whether traffic is currently leaving over I2P. False while connected on a
+    // clearnet facade - which the chat view says out loud, because it is a
+    // downgrade the user did not ask for.
+    Q_PROPERTY(bool onI2p READ onI2p NOTIFY facadeInfoChanged)
     // The configured server's fingerprint, so the connection editor can prefill it.
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
@@ -327,6 +331,7 @@ public:
     QString activeFacade() const { return activeFacade_; }
     QStringList configuredFacades() const { return configuredFacades_; }
     bool hasI2pFacade() const;
+    bool onI2p() const { return activeFacade_.contains(QStringLiteral(".b32.i2p")); }
     QString serverFingerprint() const { return serverFp_; }
     QString activePeer() const { return activePeer_; }
     QString activePeerName() const { return peerName(activePeer_); }
