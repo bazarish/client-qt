@@ -88,6 +88,7 @@ public slots:
     void generatePersonalKey();
     void loadPersonalKey(const QString& path);
     void deletePersonalKey();
+    void allowClearnet(bool allow);
     void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
@@ -256,6 +257,7 @@ class SessionController : public QObject {
     // clearnet facade - which the chat view says out loud, because it is a
     // downgrade the user did not ask for.
     Q_PROPERTY(bool onI2p READ onI2p NOTIFY facadeInfoChanged)
+    Q_PROPERTY(bool clearnetAllowed READ clearnetAllowed NOTIFY facadeInfoChanged)
     // The configured server's fingerprint, so the connection editor can prefill it.
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
@@ -332,6 +334,7 @@ public:
     QStringList configuredFacades() const { return configuredFacades_; }
     bool hasI2pFacade() const;
     bool onI2p() const { return activeFacade_.contains(QStringLiteral(".b32.i2p")); }
+    bool clearnetAllowed() const { return clearnetAllowed_; }
     QString serverFingerprint() const { return serverFp_; }
     QString activePeer() const { return activePeer_; }
     QString activePeerName() const { return peerName(activePeer_); }
@@ -503,6 +506,9 @@ public:
     Q_INVOKABLE void generatePersonalKey();
     Q_INVOKABLE void loadPersonalKey(const QString& fileUrl);
     Q_INVOKABLE void deletePersonalKey();
+    // Sticky I2P's escape hatch: this profile has reached its server over I2P and
+    // refuses clearnet since; allowing it again is the user's call, never automatic.
+    Q_INVOKABLE void allowClearnet(bool allow);
     Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
@@ -588,6 +594,7 @@ signals:  // to worker
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);
     void requestDeletePersonalKey();
+    void requestAllowClearnet(bool allow);
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
@@ -730,6 +737,7 @@ private:
     // falls back to the store default.
     struct FileRetention { qint64 ttlSeconds = 0; int downloadCount = 0; };
     QHash<qint64, FileRetention> fileRetention_;
+    bool clearnetAllowed_ = false;
     bool i2pHasKey_ = false;
     bool i2pEnabled_ = false;
     bool i2pActive_ = false;

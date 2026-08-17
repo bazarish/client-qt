@@ -1004,6 +1004,20 @@ void SessionWorker::deletePersonalKey()
     refreshI2pStatus();
 }
 
+void SessionWorker::allowClearnet(const bool allow)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setAllowClearnet(allow);
+        emit actionOk(allow ? "Clearnet allowed again for this profile."
+                            : "This profile is back to I2P only.");
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::publishPersonalDest()
 {
     if (!session_) {
@@ -1148,6 +1162,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::deletePersonalKey);
     connect(this, &SessionController::requestPublishPersonalDest, worker_,
         &SessionWorker::publishPersonalDest);
+    connect(this, &SessionController::requestAllowClearnet, worker_,
+        &SessionWorker::allowClearnet);
     connect(this, &SessionController::requestDisablePersonalDest, worker_,
         &SessionWorker::disablePersonalDest);
     connect(this, &SessionController::requestRefreshI2pStatus, worker_,
@@ -2024,6 +2040,13 @@ void SessionController::loadPersonalKey(const QString& fileUrl)
 void SessionController::deletePersonalKey()
 {
     emit requestDeletePersonalKey();
+}
+
+void SessionController::allowClearnet(const bool allow)
+{
+    clearnetAllowed_ = allow;
+    emit requestAllowClearnet(allow);
+    emit facadeInfoChanged();
 }
 
 void SessionController::publishPersonalDest()

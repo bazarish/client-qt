@@ -140,6 +140,27 @@ Popup {
                             onToggled: App.setFullPrivacyMode(checked)
                         }
                     }
+                    // Sticky I2P: once this profile has reached its server over I2P it
+                    // refuses clearnet, so a flaky link cannot move it back silently.
+                    // This is the deliberate way back.
+                    RowLayout {
+                        visible: root.session && root.session.hasI2pFacade
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Allow clearnet for this profile"; color: Theme.text }
+                            Label {
+                                text: root.session && root.session.clearnetAllowed
+                                    ? "This profile may fall back to a clearnet facade — your server then sees this device's address."
+                                    : "This profile reaches its server over I2P and refuses clearnet. Turn on only if you accept being seen by address."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Switch {
+                            checked: root.session && root.session.clearnetAllowed
+                            onToggled: root.session.allowClearnet(checked)
+                        }
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         Label { text: "I2P engine (libi2pd)"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
