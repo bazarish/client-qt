@@ -30,6 +30,11 @@ std::int64_t nowSeconds()
     return static_cast<std::int64_t>(std::time(nullptr));
 }
 
+// How long to wait for our own outbound destination's tunnels on a cold start,
+// and how long a dial to a facade may take once they are up.
+constexpr int kOutboundReadySeconds = 180;
+constexpr int kFacadeDialSeconds = 60;
+
 // Turns a non-2xx response into a typed ApiError. A recognized error
 // envelope yields its code and message; anything else keeps the raw body.
 [[noreturn]] void raiseFromResponse(const int status, const Bytes& body)
@@ -205,8 +210,15 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
             bazarish::i2p::Privacy::eMax, bazarish::i2p::kDefaultTunnelQuantity, false});
     }
+    // A dial from a destination whose tunnels are still building fails for a
+    // reason that has nothing to do with the facade, and would be reported as an
+    // unreachable one. Wait for our own side first; only then is a failure the
+    // facade's.
+    if (!i2pOut_->waitReady(std::chrono::seconds(kOutboundReadySeconds))) {
+        return std::nullopt;
+    }
     std::unique_ptr<bazarish::i2p::Stream> stream
-        = i2pOut_->connect(facade.host, std::chrono::seconds(60));
+        = i2pOut_->connect(facade.host, std::chrono::seconds(kFacadeDialSeconds));
     if (!stream) {
         return std::nullopt;  // facade unreachable - try the next
     }
