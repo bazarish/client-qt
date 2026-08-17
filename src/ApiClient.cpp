@@ -479,6 +479,19 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
                 : "transport failure: " + httplib::to_string(result.error());
             continue;  // try the next facade
         }
+        // A request that leaves over clearnet binds this account's keys to this
+        // IP at the server, and shows an on-path observer which server the user
+        // talks to. It is a downgrade, so say it out loud rather than let a flaky
+        // I2P link move a user onto the clearnet unannounced.
+        if (index != activeFacade_ && !endpoint_.facades.empty() && i2pDataDir_.empty() == false) {
+            const bool i2pConfigured = std::any_of(endpoint_.facades.begin(),
+                endpoint_.facades.end(), [](const Facade& f) { return facadeIsI2p(f); });
+            if (i2pConfigured) {
+                bazarish::log::warn(
+                    "falling back to the clearnet facade {}: this request leaves I2P",
+                    facade.host);
+            }
+        }
         activeFacade_ = index;  // remember the working facade for next time
 
         ApiResponse response;

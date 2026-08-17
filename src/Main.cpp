@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "Qr.hpp"
+#include "I2pRouter.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -90,6 +91,8 @@ void printUsage()
         "link; add-user resolves a username (trusts the resolver for the mapping).\n"
         "\n"
         "Environment:\n"
+        "  BAZARISH_I2P_ONLY=1       refuse clearnet facades (I2P only)\n"
+        "  BAZARISH_NO_I2P=1         clearnet facades only (no embedded router)\n"
         "  BAZARISH_PASSPHRASE       encrypts/decrypts the key PEMs at rest\n"
         "  BAZARISH_EXPORT_PASSWORD  protects the export/import bundle (required)\n"
         "  BAZARISH_RESOLVER_ROOT    central resolver root fingerprint (overrides built-in)\n"
@@ -632,8 +635,25 @@ int runCallAnswer(const std::vector<std::string>& args)
 
 }  // namespace
 
+// Reads the process-wide privacy switches from the environment, so a CLI user can
+// refuse clearnet the way the GUI's "full privacy mode" does. Without this the
+// CLI always falls back to a clearnet facade when I2P is unreachable, which is a
+// downgrade the user never asked for.
+void applyPrivacyEnv()
+{
+    const char* const i2pOnly = std::getenv("BAZARISH_I2P_ONLY");
+    if (i2pOnly != nullptr && std::string(i2pOnly) != "0") {
+        bazarish::client::setFullPrivacy(true);
+    }
+    const char* const noI2p = std::getenv("BAZARISH_NO_I2P");
+    if (noI2p != nullptr && std::string(noI2p) != "0") {
+        bazarish::client::setI2pEnabled(false);
+    }
+}
+
 int main(const int argc, const char** argv)
 {
+    applyPrivacyEnv();
     bazarish::log::setComponent("client");
     if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
         std::printf("bazarish-client %s\n", kVersion);
