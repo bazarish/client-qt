@@ -63,33 +63,36 @@ void stopWarmPool()
 }
 
 std::atomic<bool> g_i2pEnabled{true};
+// Strict by default: the netDb comes from our own server, not a public host.
+std::atomic<bool> g_publicReseedAllowed{false};
 // Full privacy mode (default off): when on, the transport refuses every clearnet
 // facade, so all traffic runs over I2P (and a profile with no I2P facade is
 // explicitly offline). Consulted at request time, like g_i2pEnabled.
 std::atomic<bool> g_fullPrivacy{false};
 }  // namespace
 
-void seedRouterOnce(
+bool seedRouterOnce(
     const std::filesystem::path& dataDir, const std::function<std::vector<Bytes>()>& fetch)
 {
     if (!fetch) {
-        return;
+        return false;
     }
     const std::lock_guard<std::mutex> lock(routerMutex());
     if (routerSlot()) {
-        return;  // the engine has already loaded its netDb
+        return true;  // the engine has already loaded its netDb
     }
     std::error_code ec;
     const std::filesystem::path netDb = dataDir / "netDb";
     if (std::filesystem::exists(netDb, ec) && !std::filesystem::is_empty(netDb, ec)) {
-        return;
+        return true;
     }
     try {
         const std::size_t written = bazarish::i2p::seedRouterInfos(dataDir, fetch());
         bazarish::log::info("private reseed: {} routers", written);
+        return written > 0;
     } catch (const std::exception& error) {
-        // The built-in reseeds stay as the fallback, so this is not fatal.
         bazarish::log::info("private reseed unavailable: {}", error.what());
+        return false;
     }
 }
 
@@ -99,7 +102,8 @@ bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
     std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
     if (!router) {
         router = std::make_unique<bazarish::i2p::Router>(
-            bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient});
+            bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient,
+                g_publicReseedAllowed.load()});
     } else if (!router->running()) {
         router->start();
     }
@@ -128,7 +132,8 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
     if (g_i2pEnabled.load()) {
         if (!router) {
             router = std::make_unique<bazarish::i2p::Router>(
-                bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient});
+                bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient,
+                g_publicReseedAllowed.load()});
         } else {
             router->start();
         }
@@ -137,6 +142,16 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
         stopWarmPool();  // join the warmer before the router's network stops
         router->stop();
     }
+}
+
+void setPublicReseedAllowed(bool allowed)
+{
+    g_publicReseedAllowed.store(allowed);
+}
+
+bool publicReseedAllowed()
+{
+    return g_publicReseedAllowed.load();
 }
 
 void setI2pEnabled(bool enabled)

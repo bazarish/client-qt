@@ -43,11 +43,20 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir);
 // Installs a private reseed for a router data directory that has no netDb yet:
 // the routers are written straight into the netDb the engine loads at start, so
 // a first I2P start never reaches for a public reseed host. A no-op once the
-// directory has a netDb (the router reseeds itself from what it knows), and
-// harmless if it fails - the built-in reseeds remain the fallback. Must run
-// before the router for dataDir is created.
-void seedRouterOnce(
+// directory has a netDb (the router reseeds itself from what it knows) or once
+// the router is running. Must run before the router for dataDir is created.
+// Returns whether the router will start with a netDb of its own - false means
+// the fetch failed and there is nothing to start from.
+bool seedRouterOnce(
     const std::filesystem::path& dataDir, const std::function<std::vector<Bytes>()>& fetch);
+
+// Whether the embedded router may bootstrap from i2pd's built-in reseed hosts.
+// Default FALSE: the netDb comes from the user's own server over its clearnet
+// facade, and contacting a public reseed host would announce the bootstrap to a
+// third party. It is turned on only for the one case where there is nobody to
+// ask - the server descriptor carries no clearnet facade, or none answered.
+void setPublicReseedAllowed(bool allowed);
+bool publicReseedAllowed();
 
 // Process-wide I2P enable flag (default true). When turned off the transport
 // treats every i2p facade as unreachable, so the network runs on clearnet

@@ -295,7 +295,7 @@ void ApiClient::seedRouterFromServer()
     if (i2pDataDir_.empty() || !i2pEnabled()) {
         return;  // no embedded transport to bootstrap
     }
-    seedRouterOnce(i2pDataDir_, [this]() {
+    const bool seeded = seedRouterOnce(i2pDataDir_, [this]() {
         // Clearnet by construction: this call bootstraps the transport itself.
         const nlohmann::json body = getClearnet("/v1/messaging/reseed").json();
         std::vector<Bytes> routers;
@@ -304,6 +304,21 @@ void ApiClient::seedRouterFromServer()
         }
         return routers;
     });
+    // i2pd's own reseed hosts are the last resort, and only when there is nobody
+    // to ask: no clearnet facade in this server's descriptor, or none answered.
+    // Otherwise the bootstrap stays between the user and their own server.
+    if (!seeded) {
+        const bool haveClearnetFacade = std::any_of(endpoint_.facades.begin(),
+            endpoint_.facades.end(), [](const Facade& f) { return !facadeIsI2p(f); });
+        setPublicReseedAllowed(true);
+        if (haveClearnetFacade) {
+            bazarish::log::warn(
+                "no clearnet facade answered the reseed: falling back to public reseed hosts");
+        } else {
+            bazarish::log::warn(
+                "this server publishes no clearnet facade: falling back to public reseed hosts");
+        }
+    }
 }
 
 ApiResponse ApiClient::send(const std::string& method, const std::string& path,
