@@ -4,6 +4,7 @@
 #include "I2pRouter.hpp"
 
 #include <bazarish/Auth.hpp>
+#include <bazarish/Log.hpp>
 #include <bazarish/I2pHttp.hpp>
 
 #include <httplib/httplib.h>
@@ -219,7 +220,19 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
     // The request carries Content-Length and the facade closes after responding
     // (Connection: close), so reading to EOF yields the whole response. `auto`
     // avoids clashing with bazarish::client::I2pHttpResponse declared elsewhere.
-    const auto parsed = readI2pHttpResponse(*stream);
+    // A framing failure here is worth naming: the request went out over I2P and
+    // something came back that the reader could not frame, which reads very
+    // differently from an unreachable facade.
+    bazarish::i2p::Stream& responseStream = *stream;
+    const auto parsed = [&responseStream, &facade]() {
+        try {
+            return readI2pHttpResponse(responseStream);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("i2p facade {} answered unframed: {}",
+                facade.host.substr(0, 12), error.what());
+            throw;
+        }
+    }();
     ApiResponse response;
     response.status = parsed.status;
     response.body = Bytes(parsed.body.begin(), parsed.body.end());
