@@ -241,8 +241,10 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
     const std::string& fullPath, const std::map<std::string, std::string>& headers,
     const std::size_t bodyLen, const std::function<void(bazarish::i2p::Stream&)>& writeBody)
 {
+    reportConnectProgress(30, "Starting the I2P router");
     bazarish::i2p::Router& router = sharedI2pRouter(i2pDataDir_);
     if (!i2pOut_) {
+        reportConnectProgress(40, "Building your I2P tunnels");
         i2pOut_ = router.createEndpoint(bazarish::i2p::EndpointConfig{
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
             bazarish::i2p::Privacy::eMax, bazarish::i2p::kDefaultTunnelQuantity, false});
@@ -252,13 +254,16 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
     // unreachable one. Wait for our own side first; only then is a failure the
     // facade's.
     if (!i2pOut_->waitReady(std::chrono::seconds(kOutboundReadySeconds))) {
+        reportConnectProgress(40, "I2P tunnels are still building");
         return std::nullopt;
     }
+    reportConnectProgress(55, "Looking up the server's I2P address");
     std::unique_ptr<bazarish::i2p::Stream> stream
         = i2pOut_->connect(facade.host, std::chrono::seconds(kFacadeDialSeconds));
     if (!stream) {
         return std::nullopt;  // facade unreachable - try the next
     }
+    reportConnectProgress(65, "Connected to the server over I2P");
 
     const std::string head = buildI2pHttpRequest(method, facade.host, fullPath, headers, bodyLen);
     stream->writeAll(head.data(), head.size());
@@ -345,6 +350,7 @@ void ApiClient::seedRouterFromServer()
         return;  // no embedded transport to bootstrap
     }
     const bool seeded = seedRouterOnce(i2pDataDir_, [this]() {
+        reportConnectProgress(10, "Asking your server for the I2P network database");
         // Clearnet by construction: this call bootstraps the transport itself.
         const nlohmann::json body = getClearnet("/v1/messaging/reseed").json();
         std::vector<Bytes> routers;
@@ -356,10 +362,14 @@ void ApiClient::seedRouterFromServer()
     // i2pd's own reseed hosts are the last resort, and only when there is nobody
     // to ask: no clearnet facade in this server's descriptor, or none answered.
     // Otherwise the bootstrap stays between the user and their own server.
+    if (seeded) {
+        reportConnectProgress(25, "Network database ready");
+    }
     if (!seeded) {
         const bool haveClearnetFacade = std::any_of(endpoint_.facades.begin(),
             endpoint_.facades.end(), [](const Facade& f) { return !facadeIsI2p(f); });
         setPublicReseedAllowed(true);
+        reportConnectProgress(25, "Your server did not answer: bootstrapping from public reseeds");
         if (haveClearnetFacade) {
             bazarish::log::warn(
                 "no clearnet facade answered the reseed: falling back to public reseed hosts");

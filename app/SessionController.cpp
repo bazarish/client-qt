@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
+#include "I2pRouter.hpp"
+
 #include "AvatarStore.hpp"
 #include "DeliveryStatus.hpp"
 #include "Invite.hpp"
@@ -281,6 +283,13 @@ void SessionWorker::connectAndSubscribe(
         return;
     }
     try {
+        emit connectProgress(5, "Preparing");
+        // The core reports its own milestones (reseed, router, tunnels, dial)
+        // while the calls below block; forward them to the connect dialog.
+        bazarish::client::setConnectProgressSink(
+            [this](const int percent, const std::string& text) {
+                emit connectProgress(percent, QString::fromStdString(text));
+            });
         ServerEndpoint endpoint;
         endpoint.serverFingerprint = serverFp.toStdString();
         for (const QString& url : facadeUrls) {
@@ -293,9 +302,19 @@ void SessionWorker::connectAndSubscribe(
         if (endpoint.facades.empty()) {
             throw std::runtime_error("enter at least one facade URL");
         }
+        // Over an I2P facade the first call builds tunnels first, so this is
+        // minutes, not seconds. Say what is happening at each step.
+        const bool overI2p = std::any_of(endpoint.facades.begin(), endpoint.facades.end(),
+            [](const bazarish::client::Facade& f) {
+                return f.host.size() > 8 && f.host.rfind(".b32.i2p") == f.host.size() - 8;
+            });
+        emit connectProgress(overI2p ? 8 : 20,
+            overI2p ? "Connecting over I2P — the first call builds tunnels, this takes minutes"
+                    : "Connecting to the server");
         session_->connectServer(endpoint);
         session_->subscribe(days);
     } catch (const std::exception& e) {
+        bazarish::client::setConnectProgressSink({});
         const QString reason = QString::fromUtf8(e.what());
         emit connectionChanged(false, reason);
         // A refused subscribe is usually "this key is not registered yet". Fetch
@@ -318,6 +337,8 @@ void SessionWorker::connectAndSubscribe(
         emit actionFailed(reason);
         return;
     }
+    emit connectProgress(100, "Connected");
+    bazarish::client::setConnectProgressSink({});
     emit connectionChanged(true, "active");
     emit actionOk("Connected.");
     emitFacadeInfo();
@@ -1122,6 +1143,7 @@ SessionController::SessionController(QObject* parent)
     // Commands -> worker (queued across threads).
     connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openProfile);
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
+    connect(worker_, &SessionWorker::connectProgress, this, &SessionController::onConnectProgress);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
@@ -1232,7 +1254,15 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
-    connect(worker_, &SessionWorker::actionFailed, this, &SessionController::actionFailed);
+    connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
+        if (connecting_) {
+            connecting_ = false;
+            connectPhase_.clear();
+            connectError_ = reason;
+            emit connectStateChanged();
+        }
+        emit actionFailed(reason);
+    });
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
     connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
     connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
@@ -1285,7 +1315,25 @@ void SessionController::open(const QString& dir, const QString& profileId, const
 
 void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp)
 {
+    connecting_ = true;
+    connectPercent_ = 0;
+    connectPhase_ = QStringLiteral("Starting…");
+    connectError_.clear();
+    emit connectStateChanged();
     emit requestConnect(facadeUrls, serverFp, 14);
+}
+
+void SessionController::onConnectProgress(const int percent, const QString& phase)
+{
+    // Never walk backwards: the steps can repeat (every later request re-reports
+    // the reseed milestone, say) and a bar or a caption that jumps back reads as
+    // a fault. A repeat of the milestone we are already on still refreshes it.
+    if (percent < connectPercent_) {
+        return;
+    }
+    connectPercent_ = percent;
+    connectPhase_ = phase;
+    emit connectStateChanged();
 }
 
 bool SessionController::hasI2pFacade() const
@@ -2125,6 +2173,14 @@ void SessionController::onOpened(const QString& fingerprint, const QString& disp
 
 void SessionController::onConnectionChanged(bool connected, const QString& subscriptionText)
 {
+    // Any outcome ends the connect: success clears the screen's busy state,
+    // failure leaves the reason on it instead of a silent button.
+    if (connecting_) {
+        connecting_ = false;
+        connectPhase_.clear();
+        connectError_ = connected ? QString() : subscriptionText;
+        emit connectStateChanged();
+    }
     connected_ = connected;
     subscriptionText_ = subscriptionText;
     emit connectedChanged();

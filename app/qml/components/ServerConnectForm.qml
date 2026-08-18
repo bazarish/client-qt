@@ -184,9 +184,10 @@ ColumnLayout {
 
         Button {
             Layout.fillWidth: true
-            text: form.actionText
+            text: (form.session && form.session.connecting) ? "Connecting…" : form.actionText
             hoverEnabled: true
-            enabled: form.session && form.facadeList().length > 0 && fpField.text.trim().length > 0
+            enabled: form.session && !form.session.connecting
+                && form.facadeList().length > 0 && fpField.text.trim().length > 0
             onClicked: {
                 form.session.connectServer(form.facadeList(), fpField.text.trim())
                 form.submitted()

@@ -594,6 +594,9 @@ void Session::subscribe(const std::int64_t days)
     // first message to us before any token exchange.
     const SubscribeResult result
         = client_->subscribe(now, notAfter, sealingKey_.publicDer(), ownRoutingHost());
+    // Reported here, not on entry: the call above is what brings the transport
+    // up, so its own milestones (reseed, router, dial) come first.
+    reportConnectProgress(70, "Subscribed; registering this device");
     storeSubscription(result);
     client_->registerThisClient();
 
@@ -602,6 +605,7 @@ void Session::subscribe(const std::int64_t days)
     // account exists, which is what the subscribe above created - hence the
     // second, routing-carrying certificate published right after it.
     ensureI2pDestination();
+    reportConnectProgress(85, "Publishing your own destination");
     try {
         publishRouting();
     } catch (const ApiError& error) {

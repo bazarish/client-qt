@@ -119,6 +119,9 @@ signals:
     void renamed(const QString& newName);
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& subscriptionText);
+    // Coarse progress while connectAndSubscribe runs: it is several network round
+    // trips and, over I2P, minutes - the connect screen must see it move.
+    void connectProgress(int percent, const QString& phase);
     void messageReceived(const QVariantMap& message);
     // The current contacts, their local display names, and per-contact "1"/"0"
     // pending flags (a contact we received a request from but have not yet
@@ -258,6 +261,12 @@ class SessionController : public QObject {
     // downgrade the user did not ask for.
     Q_PROPERTY(bool onI2p READ onI2p NOTIFY facadeInfoChanged)
     Q_PROPERTY(bool clearnetAllowed READ clearnetAllowed NOTIFY facadeInfoChanged)
+    // Connect-in-flight state for the connect screen: whether a connect is
+    // running, what it is doing, and why the last one failed.
+    Q_PROPERTY(bool connecting READ connecting NOTIFY connectStateChanged)
+    Q_PROPERTY(QString connectPhase READ connectPhase NOTIFY connectStateChanged)
+    Q_PROPERTY(int connectPercent READ connectPercent NOTIFY connectStateChanged)
+    Q_PROPERTY(QString connectError READ connectError NOTIFY connectStateChanged)
     // The configured server's fingerprint, so the connection editor can prefill it.
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
@@ -335,6 +344,10 @@ public:
     bool hasI2pFacade() const;
     bool onI2p() const { return activeFacade_.contains(QStringLiteral(".b32.i2p")); }
     bool clearnetAllowed() const { return clearnetAllowed_; }
+    bool connecting() const { return connecting_; }
+    QString connectPhase() const { return connectPhase_; }
+    int connectPercent() const { return connectPercent_; }
+    QString connectError() const { return connectError_; }
     QString serverFingerprint() const { return serverFp_; }
     QString activePeer() const { return activePeer_; }
     QString activePeerName() const { return peerName(activePeer_); }
@@ -539,6 +552,7 @@ signals:
     // Asks the view to scroll to the bottom (jump-to-latest).
     void scrollToBottom();
     void facadeInfoChanged();
+    void connectStateChanged();
     void sendReceiptsChanged();
     void editingChanged();
     void replyingChanged();
@@ -630,6 +644,7 @@ private slots:
     void onSendPhase(qint64 localId, const QString& phase);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);
     void onSyncReachable(bool ok);
+    void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
@@ -738,6 +753,10 @@ private:
     struct FileRetention { qint64 ttlSeconds = 0; int downloadCount = 0; };
     QHash<qint64, FileRetention> fileRetention_;
     bool clearnetAllowed_ = false;
+    bool connecting_ = false;
+    QString connectPhase_;
+    int connectPercent_ = 0;
+    QString connectError_;
     bool i2pHasKey_ = false;
     bool i2pEnabled_ = false;
     bool i2pActive_ = false;

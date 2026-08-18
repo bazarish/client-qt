@@ -58,6 +58,16 @@ bool seedRouterOnce(
 void setPublicReseedAllowed(bool allowed);
 bool publicReseedAllowed();
 
+// Connect progress: the core reports named milestones of a connect (reseed,
+// router start, tunnel build, dial, subscribe) so the UI can show what is
+// actually happening during the minutes a first I2P connect takes. percent is a
+// coarse 0..100 for a progress bar; text is one short human-readable line. The
+// sink is process-wide, set by whoever drives a connect and cleared afterwards;
+// it is called from worker threads, so the implementation must be thread-safe.
+using ConnectProgressFn = std::function<void(int percent, const std::string& text)>;
+void setConnectProgressSink(ConnectProgressFn sink);
+void reportConnectProgress(int percent, const std::string& text);
+
 // Process-wide I2P enable flag (default true). When turned off the transport
 // treats every i2p facade as unreachable, so the network runs on clearnet
 // facades only (and fails explicitly when none is reachable), and the embedded

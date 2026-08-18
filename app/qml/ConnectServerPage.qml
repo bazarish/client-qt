@@ -18,6 +18,8 @@ Item {
     }
 
     SignWithKeySheet { id: signSheet; session: root.session }
+    // Connecting is minutes of real work over I2P: show it, with steps.
+    ConnectProgressDialog { session: root.session }
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -75,6 +77,15 @@ Item {
             Layout.fillWidth: true
             session: root.session
             actionText: "Connect"
+        }
+
+        Label {
+            visible: root.session && root.session.connectError.length > 0
+            text: root.session ? root.session.connectError : ""
+            color: Theme.danger
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
     }
 

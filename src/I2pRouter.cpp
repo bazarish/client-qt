@@ -65,6 +65,18 @@ void stopWarmPool()
 std::atomic<bool> g_i2pEnabled{true};
 // Strict by default: the netDb comes from our own server, not a public host.
 std::atomic<bool> g_publicReseedAllowed{false};
+
+std::mutex& progressMutex()
+{
+    static std::mutex mutex;
+    return mutex;
+}
+
+ConnectProgressFn& progressSink()
+{
+    static ConnectProgressFn sink;
+    return sink;
+}
 // Full privacy mode (default off): when on, the transport refuses every clearnet
 // facade, so all traffic runs over I2P (and a profile with no I2P facade is
 // explicitly offline). Consulted at request time, like g_i2pEnabled.
@@ -141,6 +153,24 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
     } else if (router) {
         stopWarmPool();  // join the warmer before the router's network stops
         router->stop();
+    }
+}
+
+void setConnectProgressSink(ConnectProgressFn sink)
+{
+    const std::lock_guard<std::mutex> lock(progressMutex());
+    progressSink() = std::move(sink);
+}
+
+void reportConnectProgress(const int percent, const std::string& text)
+{
+    ConnectProgressFn sink;
+    {
+        const std::lock_guard<std::mutex> lock(progressMutex());
+        sink = progressSink();
+    }
+    if (sink) {
+        sink(percent, text);
     }
 }
 
