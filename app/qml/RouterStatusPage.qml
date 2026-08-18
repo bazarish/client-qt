@@ -167,8 +167,10 @@ Popup {
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: "Each address has its own tunnels, in and out, and knows the peers "
-                            + "it has looked up — that last number is what shows real use."
+                        text: "Each address has its own tunnels, in and out, and holds the "
+                            + "leasesets it has looked up — that last number is what shows real "
+                            + "use. An encrypted address counts twice there: the blinded "
+                            + "leaseset and the one inside it."
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -209,18 +211,21 @@ Popup {
                                 // Its own line: the counts do not fit beside a name that
                                 // may already carry a profile prefix.
                                 Label {
-                                    // Known leasesets are the activity tell: tunnels stand
-                                    // up on their own, peers do not.
+                                    // LeaseSets, not peers: one encrypted address costs two
+                                    // of them, so the count is not a headcount of who is on
+                                    // the other side.
                                     text: modelData.state + " · tunnels " + modelData.tunnelsIn
                                         + " in / " + modelData.tunnelsOut + " out · "
-                                        + modelData.leaseSets + " peers"
+                                        + modelData.leaseSets + " leasesets"
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     wrapMode: Text.Wrap; Layout.fillWidth: true
                                 }
                                 Label {
+                                    // One line, shortened: the head identifies the address
+                                    // and a wrapped 56-character base32 dwarfs the row.
                                     text: modelData.host
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                    wrapMode: Text.WrapAnywhere; Layout.fillWidth: true
+                                    elide: Text.ElideRight; Layout.fillWidth: true
                                 }
                             }
                         }
