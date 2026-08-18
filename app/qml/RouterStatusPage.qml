@@ -236,8 +236,9 @@ Popup {
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: "Routers this one is talking to directly. \"outgoing\" means we dialed "
-                            + "them; behind a NAT that is every connection there is."
+                        text: "Routers this one is talking to directly. Sessions another router "
+                            + "opened to us are marked \"incoming\"; the rest this router dialed "
+                            + "itself, which behind a NAT is all of them."
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
