@@ -1276,23 +1276,12 @@ void SessionWorker::saveAttachment(
     const std::string destStd = destPath.toStdString();
     downloadPool_.start([this, session, messageIdStd, peerStd, destStd, token]() {
         try {
-            session->setTransferHandler(
-                [this, token](const bazarish::client::TransferEvent& event) {
-                    if (downloadsCancelled_.load()) {
-                        return;
-                    }
-                    if (event.state == bazarish::client::TransferState::eRunning) {
-                        emit downloadProgress(token, static_cast<qint64>(event.bytes),
-                            static_cast<qint64>(event.total));
-                    } else if (event.state == bazarish::client::TransferState::eDone) {
-                        emit downloadFinished(token, true, {});
-                    } else if (event.state == bazarish::client::TransferState::eFailed) {
-                        emit downloadFinished(
-                            token, false, QString::fromStdString(event.error));
-                    }
-                });
+            // The handler installed when the profile opened reports every transfer,
+            // in both directions, keyed by peer and file id. Replacing it here left
+            // the receiving side with no stages and pointed a concurrent send's
+            // events at this one download.
             // Returns at once: the transfer only starts when the sender answers
-            // with an offer, so completion is reported by the handler above.
+            // with an offer, so completion is reported by that handler.
             session->requestFile(peerStd, messageIdStd, destStd);
         } catch (const std::exception& e) {
             if (!downloadsCancelled_.load()) {
@@ -2775,6 +2764,13 @@ void SessionController::onServedFinished(
     transfers_.remove(protocolId);
     const StoredMessage m = store_.messageByProtocol(protocolId, peer);
     if (m.id == 0) {
+        return;
+    }
+    if (!m.outgoing) {
+        // An incoming transfer ends where a download ends: the saved path, the
+        // bubble's own state and its row, all keyed by the message id.
+        conversation_.setTransferStageForId(m.id, {});
+        onDownloadFinished(m.id, ok, error);
         return;
     }
     if (peer == activePeer_) {

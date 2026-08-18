@@ -307,7 +307,10 @@ Item {
                 // byte arrives.
                 ColumnLayout {
                     id: dlProgress
-                    visible: model.downloading || model.transferStage.length > 0
+                    // Incoming only: an outgoing file has its own block above, and
+                    // showing both put two bars in the sender's bubble.
+                    visible: !model.outgoing
+                        && (model.downloading || model.transferStage.length > 0)
                     Layout.fillWidth: true
                     Layout.minimumWidth: stageMetrics.width
                     spacing: 2

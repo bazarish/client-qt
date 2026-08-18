@@ -1731,13 +1731,20 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Waiting for them",
                 peerFingerprint);
 
-            serveFile(*endpoint, ciphertextPath, std::chrono::seconds(kServeWindowSeconds),
-                [this, fileId, peerFingerprint](const std::uint64_t sent,
-                    const std::uint64_t total) {
-                    emitTransfer(
-                        fileId, TransferState::eRunning, sent, total, {}, "Sending", peerFingerprint);
-                },
-                cancel.get());
+            const bool served
+                = serveFile(*endpoint, ciphertextPath, std::chrono::seconds(kServeWindowSeconds),
+                    [this, fileId, peerFingerprint](const std::uint64_t sent,
+                        const std::uint64_t total) {
+                        emitTransfer(fileId, TransferState::eRunning, sent, total, {}, "Sending",
+                            peerFingerprint);
+                    },
+                    cancel.get());
+            // The window closing with nothing served is not a completed transfer.
+            // Reporting it as done cleared the bubble as if the file had gone.
+            if (!served) {
+                throw std::runtime_error(
+                    cancel->load() ? "transfer stopped" : "your contact never connected");
+            }
             emitTransfer(fileId, TransferState::eDone, 0, 0, {}, {}, peerFingerprint);
             {
                 const std::lock_guard<std::mutex> lock(transfers_->mutex);
@@ -1746,6 +1753,17 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
         } catch (const std::exception& error) {
             emitTransfer(
                 fileId, TransferState::eFailed, 0, 0, error.what(), {}, peerFingerprint);
+            // Tell the other side too: without this the requester waits on an
+            // offer that will never come, with nothing to explain the silence.
+            try {
+                sendContent(peerFingerprint,
+                    nlohmann::json{{"v", kMessageFormatVersion}, {"type", "file.unavailable"},
+                        {"id", toHex(randomBytes(8))}, {"from", fingerprint()},
+                        {"sentAt", nowMillis()}, {"fileId", fileId}});
+            } catch (const std::exception& tellError) {
+                bazarish::log::warn("could not tell {} the transfer failed: {}",
+                    bazarish::log::redact(peerFingerprint), tellError.what());
+            }
         }
         std::error_code ec;
         fs::remove(ciphertextPath, ec);
@@ -1992,7 +2010,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                     transfers_->pending.erase(fileId);
                 }
                 emitTransfer(fileId, TransferState::eFailed, 0, 0,
-                    "the sender no longer has this file");
+                    "the sender could not send this file", {}, message.fromFingerprint);
             } else if (type == "bot.command") {
                 // A command invocation aimed at a bot: the command name and its
                 // raw argument string. Surfaced as text too, for plain rendering.
