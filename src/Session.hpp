@@ -346,6 +346,10 @@ public:
     // sealing key the server answers card fetches with). False means no invite
     // can be formed yet, however healthy the destination looks server-side.
     bool hasOwnRouting() const;
+    // What the messaging server reports about this account's destination: the
+    // address it operates and its state ("none" / "building" / "active"). The
+    // delegation is what the node holds; this is whether it is actually up.
+    DestinationInfo serverDestination();
     // Re-issues our own card inside the term already held, picking up the serving
     // destination and key the server has assigned since the last issue. Cheap
     // (one request, no delegation, no grant) and the repair for a card that was

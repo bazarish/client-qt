@@ -180,7 +180,7 @@ signals:
     // one-line human status for the settings page. transientExpires: when the
     // current delegation lapses (0 when there is none).
     void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
-        const QString& summary, qint64 transientExpires);
+        const QString& summary, qint64 transientExpires, const QString& serverState);
     // The half that needs no server: whether this profile holds a destination key
     // and at what address. Emitted as soon as it is known, so the view never waits
     // on a server poll to say whether a key exists at all.
@@ -324,6 +324,9 @@ class SessionController : public QObject {
     Q_PROPERTY(bool i2pActive READ i2pActive NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pStatusText READ i2pStatusText NOTIFY i2pStatusChanged)
+    // What the messaging server says about the destination itself: "active",
+    // "building", "none", or empty when it has not been asked yet.
+    Q_PROPERTY(QString i2pServerState READ i2pServerState NOTIFY i2pStatusChanged)
     // Unix second the personal destination is paid through (0 when inactive), so
     // the settings page can show an expiry date or the phrase "Inactive".
     Q_PROPERTY(qint64 i2pTransientExpires READ i2pTransientExpires NOTIFY i2pStatusChanged)
@@ -392,6 +395,7 @@ public:
     bool i2pActive() const { return i2pActive_; }
     QString i2pAddress() const { return i2pAddress_; }
     QString i2pStatusText() const { return i2pStatusText_; }
+    QString i2pServerState() const { return i2pServerState_; }
     QVariantMap storageInfo() const;
     qint64 i2pTransientExpires() const { return i2pTransientExpires_; }
     QString callState() const { return callState_; }
@@ -665,7 +669,7 @@ private slots:
     void onFacadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
-        const QString& summary, qint64 transientExpires);
+        const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted);
@@ -781,6 +785,7 @@ private:
     bool i2pActive_ = false;
     QString i2pAddress_;
     QString i2pStatusText_;
+    QString i2pServerState_;
     qint64 i2pTransientExpires_ = 0;
     // Last-fetched storage usage (session-scoped), with the wall-clock ms it was
     // taken so the settings view can show "updated N ago" even while offline.

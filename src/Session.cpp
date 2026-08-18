@@ -2475,6 +2475,11 @@ void Session::tickCalls()
     }
 }
 
+DestinationInfo Session::serverDestination()
+{
+    return client_->myDestination();
+}
+
 bool Session::hasOwnRouting() const
 {
     return !myDest_.empty() && !myServingKeyB64_.empty();

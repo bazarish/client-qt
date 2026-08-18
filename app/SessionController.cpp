@@ -1051,12 +1051,22 @@ void SessionWorker::refreshI2pStatus()
     bool live = false;
     qint64 transientExpires = 0;
     QString summary;
+    QString serverState;
     try {
         const bazarish::client::I2pDestStatus s = session_->i2pDestStatus();
+        // The node holds the delegation; the messaging server is where the
+        // destination is actually up or not. Both, or the status says nothing.
+        try {
+            serverState = QString::fromStdString(session_->serverDestination().state);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("destination state unavailable: {}", error.what());
+        }
         transientExpires = static_cast<qint64>(s.transientExpires);
         delegated = transientExpires != 0;
         live = s.approved() && delegated;
-        if (live) {
+        if (live && serverState == QStringLiteral("building")) {
+            summary = QStringLiteral("Delegated — your server is bringing the destination up.");
+        } else if (live) {
             summary = QStringLiteral("Published — your destination is live.");
         } else if (s.approval == "pending") {
             summary = s.registrationMessage.empty()
@@ -1075,7 +1085,7 @@ void SessionWorker::refreshI2pStatus()
                          : QStringLiteral("No destination key yet.");
     }
     op.succeed(summary);
-    emit i2pStatus(hasKey, delegated, live, address, summary, transientExpires);
+    emit i2pStatus(hasKey, delegated, live, address, summary, transientExpires, serverState);
 }
 
 void SessionWorker::refreshStorageUsage()
@@ -2298,8 +2308,10 @@ void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
 }
 
 void SessionController::onI2pStatus(const bool hasKey, const bool delegated, const bool live,
-    const QString& address, const QString& summary, const qint64 transientExpires)
+    const QString& address, const QString& summary, const qint64 transientExpires,
+    const QString& serverState)
 {
+    i2pServerState_ = serverState;
     i2pHasKey_ = hasKey;
     i2pEnabled_ = delegated;
     i2pActive_ = live;

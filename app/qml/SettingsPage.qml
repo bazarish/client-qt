@@ -361,13 +361,32 @@ Popup {
                                 color: (root.session && root.session.i2pActive) ? Theme.success : Theme.text
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
+                            // Two facts, not one verdict: what the server holds (the
+                            // delegation, with its term) and whether the destination
+                            // is actually up. "Not published" said neither.
                             Label {
-                                text: root.session && root.session.i2pActive && root.session.i2pTransientExpires > 0
-                                    ? ("Delegated until " + Qt.formatDate(new Date(root.session.i2pTransientExpires * 1000), "yyyy-MM-dd"))
-                                    : "Not published"
-                                color: (root.session && root.session.i2pActive && root.session.i2pTransientExpires > 0)
-                                    ? Theme.success : Theme.warn
+                                readonly property bool delegated: root.session
+                                    && root.session.i2pTransientExpires > 0
+                                readonly property string serverState: root.session
+                                    ? root.session.i2pServerState : ""
+                                text: (delegated
+                                        ? "Delegated until " + Qt.formatDate(
+                                            new Date(root.session.i2pTransientExpires * 1000),
+                                            "yyyy-MM-dd")
+                                        : "No delegation handed to your server yet")
+                                    + " · " + (serverState === "active"
+                                        ? "destination up"
+                                        : (serverState === "building"
+                                            ? "destination coming up (minutes)"
+                                            : (serverState === "expired"
+                                                ? "delegation expired"
+                                                : (serverState.length > 0
+                                                    ? "no destination on the server"
+                                                    : "server not asked yet"))))
+                                color: serverState === "active" ? Theme.success : Theme.warn
                                 font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
                             }
                             // The address is the answer to "do I even have a key",
                             // so it is shown whenever there is one - published or not.
