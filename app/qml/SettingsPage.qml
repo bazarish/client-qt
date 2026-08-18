@@ -369,10 +369,18 @@ Popup {
                                     ? Theme.success : Theme.warn
                                 font.pixelSize: Theme.fontSmall
                             }
+                            // The address is the answer to "do I even have a key",
+                            // so it is shown whenever there is one - published or not.
                             Label {
                                 visible: root.session && root.session.i2pAddress.length > 0
                                 text: root.session ? root.session.i2pAddress : ""
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle; Layout.fillWidth: true
+                            }
+                            Label {
+                                visible: root.session && !root.session.i2pHasKey
+                                text: "No destination key on this profile yet."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                         }
                     }
@@ -380,7 +388,8 @@ Popup {
                     RowLayout {
                         visible: root.session && !root.session.i2pHasKey
                         Layout.fillWidth: true; spacing: 8
-                        MenuButton { Layout.fillWidth: true; text: "Generate key"; onClicked: root.session.generatePersonalKey() }
+                        MenuButton { Layout.fillWidth: true; text: "Generate key"
+                            onClicked: { root.session.generatePersonalKey(); i2pFlash.restart() } }
                         MenuButton { Layout.fillWidth: true; text: "Load .dat…"; onClicked: i2pKeyDialog.open() }
                     }
                     RowLayout {

@@ -11,6 +11,13 @@
 
 #include <bazarish/Descriptor.hpp>
 
+// Qt makes `emit` a macro and the log header declares a function of that name,
+// so the keyword is stood down for the length of this include.
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
+
 #include <QBuffer>
 #include <QByteArray>
 #include <QClipboard>
@@ -375,9 +382,12 @@ void SessionWorker::sync()
         // durably stored it (ackPending via ackAfterReceive), so a crash/restart
         // between fetch and store never loses a message.
         messages = session_->sync(false);
-        emit syncReachable(true);
-    } catch (const std::exception&) {
-        emit syncReachable(false);
+        emit syncReachable(true, {});
+    } catch (const std::exception& error) {
+        // Never swallowed: an account that sits at "Connecting" with no reason is
+        // undiagnosable, and the reason is often nothing to do with reachability.
+        bazarish::log::warn("sync failed: {}", error.what());
+        emit syncReachable(false, QString::fromUtf8(error.what()));
         return;  // transient (server momentarily unreachable); next tick retries
     }
     // Finalize any contact-card resolutions that completed off-thread. Done here
@@ -984,11 +994,14 @@ void SessionWorker::refreshI2pStatus()
     if (!session_) {
         return;
     }
-    WorkerOp op(this, QStringLiteral("i2p-status"), QStringLiteral("status"),
-        QStringLiteral("Checking your destination"), QStringLiteral("Asking your server…"));
     const bool hasKey = session_->hasI2pDestination();
     const QString address
         = hasKey ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p") : QString();
+    // Local facts first: the poll below can wait on a server (or on this thread
+    // finishing something slow), and "is there a key" must not wait with it.
+    emit i2pKeyState(hasKey, address);
+    WorkerOp op(this, QStringLiteral("i2p-status"), QStringLiteral("status"),
+        QStringLiteral("Checking your destination"), QStringLiteral("Asking your server…"));
     bool delegated = false;
     bool live = false;
     qint64 transientExpires = 0;
@@ -1043,11 +1056,19 @@ void SessionWorker::generatePersonalKey()
     if (!session_) {
         return;
     }
-    try {
-        session_->ensureI2pDestination();
-        emit actionOk("Personal I2P key created.");
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+    {
+        WorkerOp op(this, QStringLiteral("dest-key"), QStringLiteral("dest"),
+            QStringLiteral("Creating your destination key"), QStringLiteral("Generating…"));
+        try {
+            const QString address
+                = QString::fromStdString(session_->ensureI2pDestination() + ".b32.i2p");
+            emit i2pKeyState(true, address);
+            op.succeed(address);
+            emit actionOk("Personal I2P key created.");
+        } catch (const std::exception& e) {
+            op.fail(QString::fromUtf8(e.what()));
+            emit actionFailed(QString::fromUtf8(e.what()));
+        }
     }
     refreshI2pStatus();
 }
@@ -1338,6 +1359,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
     connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
+    connect(worker_, &SessionWorker::i2pKeyState, this, &SessionController::onI2pKeyState);
     connect(worker_, &SessionWorker::storageUsageReady, this,
         &SessionController::onStorageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, this,
@@ -2215,6 +2237,13 @@ void SessionController::refreshI2pStatus()
     emit requestRefreshI2pStatus();
 }
 
+void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
+{
+    i2pHasKey_ = hasKey;
+    i2pAddress_ = address;
+    emit i2pStatusChanged();
+}
+
 void SessionController::onI2pStatus(const bool hasKey, const bool delegated, const bool live,
     const QString& address, const QString& summary, const qint64 transientExpires)
 {
@@ -2317,10 +2346,12 @@ void SessionController::goOffline()
     emit requestSetSync(false);
 }
 
-void SessionController::onSyncReachable(bool ok)
+void SessionController::onSyncReachable(const bool ok, const QString& reason)
 {
-    if (reachable_ != ok) {
+    const QString error = ok ? QString() : reason;
+    if (reachable_ != ok || syncError_ != error) {
         reachable_ = ok;
+        syncError_ = error;
         emit reachableChanged();
     }
 }

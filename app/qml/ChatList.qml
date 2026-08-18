@@ -228,7 +228,9 @@ Item {
                             : (connPlate.clearnetDowngrade
                                 ? "Not over I2P — your server sees this device's address"
                                 : (connPlate.isOffline ? "This account is not syncing"
-                                                       : "No server connection yet"))
+                                    : (root.session && root.session.syncError.length > 0
+                                        ? root.session.syncError
+                                        : "No server connection yet")))
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight

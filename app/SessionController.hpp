@@ -167,7 +167,9 @@ signals:
     // The signed login blob for a challenge (sign-in-with-key result).
     void loginSigned(const QString& blob);
     // Whether the last sync reached the facade (true) or failed (false).
-    void syncReachable(bool ok);
+    // reason carries why a failed sync failed, so an account stuck at
+    // "Connecting" can say what is wrong instead of only that it is not right.
+    void syncReachable(bool ok, const QString& reason);
     // The facade currently in use, the configured facade list, and the server
     // fingerprint, for the GUI.
     void facadeInfo(
@@ -179,6 +181,10 @@ signals:
     // current delegation lapses (0 when there is none).
     void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
         const QString& summary, qint64 transientExpires);
+    // The half that needs no server: whether this profile holds a destination key
+    // and at what address. Emitted as soon as it is known, so the view never waits
+    // on a server poll to say whether a key exists at all.
+    void i2pKeyState(bool hasKey, const QString& address);
     // The user's storage usage (mailbox + blob), each with an `ok` flag (a backend
     // that did not answer keeps its last figures and is marked stale by the UI).
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
@@ -249,6 +255,8 @@ class SessionController : public QObject {
     // connection status shown in the account list.
     Q_PROPERTY(bool online READ online NOTIFY onlineChanged)
     Q_PROPERTY(bool reachable READ reachable NOTIFY reachableChanged)
+    // Why the last sync failed, empty while it is succeeding.
+    Q_PROPERTY(QString syncError READ syncError NOTIFY reachableChanged)
     // The facade the transport is connected/connecting through, and the full
     // configured facade list (for the connection editor and status display).
     Q_PROPERTY(QString activeFacade READ activeFacade NOTIFY facadeInfoChanged)
@@ -340,6 +348,7 @@ public:
     QString subscriptionText() const { return subscriptionText_; }
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
+    QString syncError() const { return syncError_; }
     QString activeFacade() const { return activeFacade_; }
     QStringList configuredFacades() const { return configuredFacades_; }
     bool hasI2pFacade() const;
@@ -649,12 +658,13 @@ private slots:
     void onSendSettled(qint64 localId, const QString& note);
     void onSendPhase(qint64 localId, const QString& phase);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);
-    void onSyncReachable(bool ok);
+    void onSyncReachable(bool ok, const QString& reason);
     void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 transientExpires);
+    void onI2pKeyState(bool hasKey, const QString& address);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted);
     // Appends a finished call to the peer's transcript as a clear system line.
@@ -687,6 +697,7 @@ private:
     bool connected_ = false;
     bool online_ = false;
     bool reachable_ = false;
+    QString syncError_;
     QString subscriptionText_;
     QString activePeer_;
     QString activeFacade_;

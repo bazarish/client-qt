@@ -133,7 +133,9 @@ Popup {
         Button {
             Layout.fillWidth: true
             Layout.margins: 12
-            text: "➕  Add account"
+            // The picker behind this button also opens, removes and imports
+            // profiles, so it is not an "add" button.
+            text: "⚙  Manage"
             hoverEnabled: true
             onClicked: { root.close(); App.requestAddAccount() }
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
