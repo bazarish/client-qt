@@ -25,6 +25,13 @@ Popup {
         ignoreUnknownSignals: true
         function onInviteReady(u) { root.uri = u; root.unavailable = "" }
         function onInviteUnavailable(reason) { root.uri = ""; root.unavailable = reason }
+        // Publishing takes minutes and reports through the destination status:
+        // retry the invite on every status change until there is one to show.
+        function onI2pStatusChanged() {
+            if (root.unavailable.length > 0 && root.session) {
+                root.session.requestInvite()
+            }
+        }
     }
 
     contentItem: ColumnLayout {
