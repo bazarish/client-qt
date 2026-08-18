@@ -53,6 +53,11 @@ FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::st
             bazarish::i2p::kDefaultTunnelQuantity, false, "Contact lookup", owner});
     }
     bazarish::i2p::Endpoint& endpoint = warm ? *warm : *fresh;
+    if (warm) {
+        // A spare belongs to nobody while it waits; from here it is this
+        // profile's lookup, and the status view should say so.
+        router.retagEndpoint(endpoint, "Contact lookup", owner);
+    }
     auto stream = endpoint.connect(dest, std::chrono::seconds(60));
     if (!stream) {
         throw std::runtime_error("federation fetch: cannot reach " + dest);

@@ -9,6 +9,12 @@ Popup {
     property string uri: ""
     // Why there is no invite yet, when the routing is not published.
     property string unavailable: ""
+    // What the copy field holds. The full invite when there is one; otherwise the
+    // fingerprint, which this profile knows with or without a server and which is
+    // enough to be added by someone whose server can look this account up.
+    readonly property string fingerprint: session ? session.fingerprint : ""
+    readonly property bool hasInvite: uri.length > 0
+    readonly property string copyText: hasInvite ? uri : fingerprint
     // Return to the page this opened from (Settings); the close button exits.
     signal back()
 
@@ -85,18 +91,26 @@ Popup {
         // and the link side by side (scan or copy).
         QrView {
             Layout.alignment: Qt.AlignHCenter
-            visible: root.uri.length > 0
-            text: root.uri
+            visible: root.copyText.length > 0
+            text: root.copyText
+        }
+        Label {
+            visible: !root.hasInvite && root.fingerprint.length > 0
+            text: "Your fingerprint — always yours, server or not. It is enough for someone "
+                + "whose server can look you up; the full invite also carries where to reach you."
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
         ScrollView {
-            visible: root.uri.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: 110
+            Layout.preferredHeight: root.hasInvite ? 110 : 56
             TextArea {
                 id: linkArea
                 readOnly: true
                 wrapMode: TextArea.WrapAnywhere
-                text: root.uri
+                text: root.copyText
                 color: Theme.text
                 selectByMouse: true
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
@@ -107,8 +121,8 @@ Popup {
             hoverEnabled: true
             property bool copied: false
             Layout.fillWidth: true
-            text: copied ? "Copied ✓" : "Copy link"
-            enabled: root.uri.length > 0
+            text: copied ? "Copied ✓" : (root.hasInvite ? "Copy link" : "Copy fingerprint")
+            enabled: root.copyText.length > 0
             onClicked: {
                 linkArea.selectAll(); linkArea.copy(); linkArea.deselect()
                 copied = true; copiedTimer.restart()
