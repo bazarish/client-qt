@@ -221,17 +221,21 @@ Item {
                     visible: delegate.isContactRequestIncoming && delegate.session
                         && delegate.session.contactsRevision >= 0
                         && delegate.session.contactCanAccept(delegate.session.activePeer)
-                    text: "Agree"
+                    readonly property bool inFlight: delegate.session
+                        && delegate.session.acceptingContact === delegate.session.activePeer
+                    text: inFlight ? "Agreeing…" : "Agree"
+                    enabled: !inFlight
                     hoverEnabled: true
                     onClicked: if (delegate.session) { delegate.session.acceptContact() }
                     background: Rectangle {
                         radius: 8
-                        color: agreeButton.down ? Qt.darker(Theme.green, 1.2)
-                            : (agreeButton.hovered ? Qt.darker(Theme.green, 1.1) : Theme.green)
+                        color: !agreeButton.enabled ? Theme.surfaceAlt
+                            : (agreeButton.down ? Qt.darker(Theme.green, 1.2)
+                            : (agreeButton.hovered ? Qt.darker(Theme.green, 1.1) : Theme.green))
                     }
                     contentItem: Label {
                         text: agreeButton.text
-                        color: Theme.bg
+                        color: agreeButton.enabled ? Theme.bg : Theme.textDim
                         font.weight: Font.Medium
                         horizontalAlignment: Text.AlignHCenter
                         leftPadding: 16

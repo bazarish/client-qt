@@ -1384,6 +1384,15 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
 
 void Session::acceptContactRequest(const std::string& peerFingerprint)
 {
+    // Agreeing twice sends the requester a second "accepted your request": the
+    // reply carries a fresh id, so nothing downstream can collapse the pair. Once
+    // we have replied (issuedToThem), there is nothing left to agree to.
+    const auto existing = contacts_.find(peerFingerprint);
+    if (existing != contacts_.end() && existing->second.issuedToThem) {
+        bazarish::log::info("contact request from {} was already agreed to",
+            bazarish::log::redact(peerFingerprint));
+        return;
+    }
     // Agreeing is simply our first reply to the requester: sendContent attaches our
     // bootstrap (our routing + a reply-token batch) because issuedToThem is still
     // false, which is exactly the descriptor the requester needs to finish the add.

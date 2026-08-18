@@ -162,6 +162,8 @@ signals:
     // controller at start): a stage update, then a terminal done (ok + final text).
     void contactAddStage(const QString& opId, const QString& status);
     void contactAddDone(const QString& opId, bool ok, const QString& status);
+    // A contact request we agreed to: the peer, and whether it went through.
+    void contactAccepted(const QString& peer, bool ok, const QString& reason);
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
     // The signed login blob for a challenge (sign-in-with-key result).
@@ -327,6 +329,10 @@ class SessionController : public QObject {
     // What the messaging server says about the destination itself: "active",
     // "building", "none", or empty when it has not been asked yet.
     Q_PROPERTY(QString i2pServerState READ i2pServerState NOTIFY i2pStatusChanged)
+    // The contact request currently being agreed to, empty when none is in
+    // flight. Accepting is a server round trip, so the button says so instead of
+    // vanishing and coming back.
+    Q_PROPERTY(QString acceptingContact READ acceptingContact NOTIFY acceptingContactChanged)
     // Unix second the personal destination is paid through (0 when inactive), so
     // the settings page can show an expiry date or the phrase "Inactive".
     Q_PROPERTY(qint64 i2pTransientExpires READ i2pTransientExpires NOTIFY i2pStatusChanged)
@@ -396,6 +402,7 @@ public:
     QString i2pAddress() const { return i2pAddress_; }
     QString i2pStatusText() const { return i2pStatusText_; }
     QString i2pServerState() const { return i2pServerState_; }
+    QString acceptingContact() const { return acceptingContact_; }
     QVariantMap storageInfo() const;
     qint64 i2pTransientExpires() const { return i2pTransientExpires_; }
     QString callState() const { return callState_; }
@@ -582,6 +589,7 @@ signals:
     void operationsChanged();
     void onlineChanged();
     void reachableChanged();
+    void acceptingContactChanged();
     void i2pStatusChanged();
     void storageChanged();
     void callChanged();
@@ -652,6 +660,7 @@ private slots:
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onContactAddStage(const QString& opId, const QString& status);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
+    void onContactAccepted(const QString& peer, bool ok, const QString& reason);
     void onOpBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
     void onOpDone(const QString& opId, bool ok, const QString& status);
@@ -786,6 +795,7 @@ private:
     QString i2pAddress_;
     QString i2pStatusText_;
     QString i2pServerState_;
+    QString acceptingContact_;
     qint64 i2pTransientExpires_ = 0;
     // Last-fetched storage usage (session-scoped), with the wall-clock ms it was
     // taken so the settings view can show "updated N ago" even while offline.

@@ -902,11 +902,17 @@ void SessionWorker::drainResolvedAdds()
 
 void SessionWorker::acceptContact(const QString& peer)
 {
+    WorkerOp op(this, QStringLiteral("accept:") + peer, QStringLiteral("contact"),
+        QStringLiteral("Agreeing to a contact request"), QStringLiteral("Telling your server…"));
     try {
         session_->acceptContactRequest(peer.toStdString());
+        op.succeed(QStringLiteral("Agreed"));
+        emit contactAccepted(peer, true, {});
         emitContacts();  // issuedToThem flipped: the contact is no longer pending
         sync();
     } catch (const std::exception& e) {
+        op.fail(QString::fromUtf8(e.what()));
+        emit contactAccepted(peer, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
     }
 }
@@ -1395,6 +1401,8 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::contactAddStage, this,
         &SessionController::onContactAddStage);
     connect(worker_, &SessionWorker::contactAddDone, this, &SessionController::onContactAddDone);
+    connect(worker_, &SessionWorker::contactAccepted, this,
+        &SessionController::onContactAccepted);
     connect(worker_, &SessionWorker::opBegin, this, &SessionController::onOpBegin);
     connect(worker_, &SessionWorker::opDone, this, &SessionController::onOpDone);
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
@@ -2119,10 +2127,14 @@ void SessionController::acceptContact()
         return;
     }
     const QString peer = activePeer_;
-    // Hide the "Agree" button at once; the worker confirms via contactsRefreshed.
-    pendingContacts_.remove(peer);
-    ++contactsRevision_;
-    emit contactsRevisionChanged();
+    if (acceptingContact_ == peer) {
+        return;  // already in flight
+    }
+    // The button stays where it is and says what it is doing: agreeing is a
+    // server round trip, and hiding it on the press made it blink back when the
+    // contact list refreshed before the request had finished.
+    acceptingContact_ = peer;
+    emit acceptingContactChanged();
     emit requestAcceptContact(peer);
 }
 
@@ -2921,6 +2933,22 @@ void SessionController::onOpBegin(
 void SessionController::onOpDone(const QString& opId, bool ok, const QString& status)
 {
     finishOperation(opId, ok, status);
+}
+
+void SessionController::onContactAccepted(const QString& peer, const bool ok,
+    const QString& reason)
+{
+    if (acceptingContact_ == peer) {
+        acceptingContact_.clear();
+        emit acceptingContactChanged();
+    }
+    if (!ok) {
+        bazarish::log::warn("agreeing to {} failed: {}", peer.toStdString(), reason.toStdString());
+        return;  // the button comes back enabled; the failure is on screen already
+    }
+    pendingContacts_.remove(peer);
+    ++contactsRevision_;
+    emit contactsRevisionChanged();
 }
 
 void SessionController::onContactAddDone(const QString& opId, bool ok, const QString& status)
