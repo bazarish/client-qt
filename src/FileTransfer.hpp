@@ -97,6 +97,7 @@ bool serveFile(bazarish::i2p::Endpoint& endpoint, const std::filesystem::path& c
 void fetchFileOverI2p(bazarish::i2p::Router& router, const FileOffer& offer,
     const std::filesystem::path& destPath,
     bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax,
-    const TransferProgressFn& onProgress = {}, const std::atomic<bool>* cancel = nullptr);
+    const TransferProgressFn& onProgress = {}, const std::atomic<bool>* cancel = nullptr,
+    const std::string& owner = {});
 
 }  // namespace bazarish::client

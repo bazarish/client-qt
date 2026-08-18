@@ -166,6 +166,8 @@ public:
     void setAllowClearnet(bool allow);
     bool allowClearnet() const;
     void setOnI2pProven(std::function<void()> callback);
+    // Names this profile on the destinations this client creates (status view).
+    void setDestinationOwner(std::string owner);
 
     // --- Account (service node) ---
 

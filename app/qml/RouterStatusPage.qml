@@ -200,7 +200,10 @@ Popup {
                                         Layout.fillWidth: true; elide: Text.ElideRight
                                     }
                                     Label {
-                                        text: modelData.state + " · " + modelData.tunnels + " in"
+                                        // Known leasesets are the activity tell: tunnels
+                                        // stand up on their own, peers do not.
+                                        text: modelData.state + " · " + modelData.tunnels + " in · "
+                                            + modelData.leaseSets + " peers"
                                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     }
                                 }

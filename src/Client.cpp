@@ -82,6 +82,11 @@ void Client::setOnI2pProven(std::function<void()> callback)
     api_.setOnI2pProven(std::move(callback));
 }
 
+void Client::setDestinationOwner(std::string owner)
+{
+    api_.setDestinationOwner(std::move(owner));
+}
+
 SubscribeResult Client::submitSubscription(const std::string& path,
     const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer,
     const std::string& ownDest)

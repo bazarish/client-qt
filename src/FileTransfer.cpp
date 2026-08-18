@@ -254,17 +254,19 @@ bool serveFile(bazarish::i2p::Endpoint& endpoint, const fs::path& ciphertextPath
 
 void fetchFileOverI2p(bazarish::i2p::Router& router, const FileOffer& offer,
     const fs::path& destPath, const bazarish::i2p::Privacy privacy,
-    const TransferProgressFn& onProgress, const std::atomic<bool>* cancel)
+    const TransferProgressFn& onProgress, const std::atomic<bool>* cancel,
+    const std::string& owner)
 {
     // Each attempt dials from a fresh one-time destination, so a resumed transfer
     // is not linkable to the attempt it continues.
     const FetchAttemptFn fetch
-        = [&router, &offer, privacy](const std::uint64_t offset, TransferSink& sink) {
+        = [&router, &offer, privacy, &owner](const std::uint64_t offset, TransferSink& sink) {
               bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
               config.privacy = privacy;
               config.tunnelQuantity = 2;
               config.published = false;
               config.label = "File download";
+              config.owner = owner;
               const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                   = router.createEndpoint(config);
               const std::unique_ptr<bazarish::i2p::Stream> stream

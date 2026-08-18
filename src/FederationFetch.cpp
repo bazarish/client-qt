@@ -38,7 +38,8 @@ std::string readHeaderLine(bazarish::i2p::Stream& stream)
 }  // namespace
 
 FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::string& dest,
-    const std::string& op, const Bytes& sealed, const bazarish::i2p::Privacy privacy)
+    const std::string& op, const Bytes& sealed, const bazarish::i2p::Privacy privacy,
+    const std::string& owner)
 {
     // A warm, pre-built throwaway dest from the pool when one is ready (no cold
     // tunnel-build latency), else a fresh one built cold. Either way the dest is
@@ -49,7 +50,7 @@ FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::st
     if (!warm) {
         fresh = router.createEndpoint(bazarish::i2p::EndpointConfig{
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
-            bazarish::i2p::kDefaultTunnelQuantity, false, "Contact lookup"});
+            bazarish::i2p::kDefaultTunnelQuantity, false, "Contact lookup", owner});
     }
     bazarish::i2p::Endpoint& endpoint = warm ? *warm : *fresh;
     auto stream = endpoint.connect(dest, std::chrono::seconds(60));

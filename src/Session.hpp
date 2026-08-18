@@ -342,6 +342,10 @@ public:
     // (subscription certificate + server card). A contact can verify it and
     // reach us with no trust in any server. Requires an active subscription.
     std::string inviteUri() const;
+    // How this profile names itself on the destinations it creates, so a router
+    // shared by several profiles says whose is whose: the profile name, or the
+    // head of its fingerprint when it has none.
+    std::string destinationOwner() const;
 
     // Accepts a received contact request: sends a "contact.accept" back, which (as
     // our first reply) carries our descriptor and a reply-token batch, so the
@@ -384,6 +388,7 @@ public:
         ResolverCoordinate resolver;
         bool i2pEnabled = false;
         bazarish::i2p::Privacy blobFetchPrivacy = bazarish::i2p::Privacy::eMax;
+        std::string destinationOwner;   // profile name, for the router status view
     };
     // An add to resolve: an invite URI (byUsername=false) or an alias.
     struct ContactCardRequest {

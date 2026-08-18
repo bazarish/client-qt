@@ -21,6 +21,7 @@ namespace bazarish::client {
 // malformed frame) so the caller can fall back to the proxy.
 FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::string& dest,
     const std::string& op, const Bytes& sealed,
-    bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax);
+    bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax,
+    const std::string& owner = {});
 
 }  // namespace bazarish::client

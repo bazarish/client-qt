@@ -159,6 +159,9 @@ public:
     bool allowClearnet() const;
     // Invoked once when this client first completes a request over I2P.
     void setOnI2pProven(std::function<void()> callback);
+    // Names this profile on the destinations this client creates, so a router
+    // shared by several profiles says whose dialer is whose.
+    void setDestinationOwner(std::string owner);
 
 private:
     // Records that a request has completed over I2P (sticky from then on).
@@ -196,6 +199,8 @@ private:
     // The embedded router's data dir (empty -> no I2P transport; i2p facades are
     // then unreachable).
     const std::filesystem::path i2pDataDir_;
+    // Profile name carried onto this client's destinations (status view only).
+    std::string destinationOwner_;
     // A persistent unpublished outbound destination that dials I2P facades; its
     // tunnels stay warm across requests (a fresh transient per call would rebuild
     // a destination on every poll). Created lazily on first I2P facade use.

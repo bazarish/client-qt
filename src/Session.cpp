@@ -284,6 +284,7 @@ Session Session::create(
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
     session.name_ = name;
+    session.client_->setDestinationOwner(session.destinationOwner());
     return session;
 }
 
@@ -396,6 +397,7 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
     session.name_ = meta.value("name", std::string{});
+    session.client_->setDestinationOwner(session.destinationOwner());
     session.loadSentFiles();
 
     // Load the user-owned I2P destination, if this profile has one (per-user
@@ -452,6 +454,7 @@ void Session::setDisplayName(const std::string& name)
         return;
     }
     name_ = name;
+    client_->setDestinationOwner(destinationOwner());
     // Persist to meta.json (stored in the clear, like the creation label). Future
     // inviteUri() descriptors carry the new name; existing contacts are not told.
     persistMeta();
@@ -1147,7 +1150,8 @@ FetchTransport Session::fetchTransport() const
             bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
             if (router != nullptr && router->ready()) {
                 try {
-                    return federationFetchOverI2p(*router, toDest, op, sealed, transferPrivacy_);
+                    return federationFetchOverI2p(
+                        *router, toDest, op, sealed, transferPrivacy_, destinationOwner());
                 } catch (const std::exception&) {
                     // Direct dial failed; fall back to the server proxy below.
                 }
@@ -1188,6 +1192,7 @@ Session::ContactFetchContext Session::contactFetchContext() const
     ctx.resolver = resolverCoordinate_;
     ctx.i2pEnabled = i2pEnabled();
     ctx.blobFetchPrivacy = transferPrivacy_;
+    ctx.destinationOwner = destinationOwner();
     return ctx;
 }
 
@@ -1222,8 +1227,8 @@ Session::ContactCardResolved Session::resolveContactCard(
                 bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
                 if (router != nullptr && router->ready()) {
                     try {
-                        return federationFetchOverI2p(
-                            *router, toDest, op, sealed, context.blobFetchPrivacy);
+                        return federationFetchOverI2p(*router, toDest, op, sealed,
+                            context.blobFetchPrivacy, context.destinationOwner);
                     } catch (const std::exception&) {
                         // Direct dial failed; fall back to the server relay below.
                     }
@@ -1670,6 +1675,7 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             config.privacy = transferPrivacy_;
             config.tunnelQuantity = 2;
             config.label = "File upload";
+            config.owner = destinationOwner();
             const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                 = i2pRouter().createEndpoint(config);
             if (!endpoint->waitReady(std::chrono::seconds(180))) {
@@ -1725,7 +1731,7 @@ void Session::startAnnouncedFetch(const FileOffer& offer)
                 [this, &offer](const std::uint64_t got, const std::uint64_t total) {
                     emitTransfer(offer.fileId, TransferState::eRunning, got, total);
                 },
-                cancel.get());
+                cancel.get(), destinationOwner());
             emitTransfer(offer.fileId, TransferState::eDone, offer.size, offer.size);
         } catch (const std::exception& error) {
             emitTransfer(offer.fileId, TransferState::eFailed, 0, 0, error.what());
@@ -2181,7 +2187,7 @@ std::shared_ptr<bazarish::i2p::Endpoint> Session::openCallMediaSession()
     return i2pRouter().createEndpoint(bazarish::i2p::EndpointConfig{
         bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
         bazarish::i2p::Privacy::eMinimal, bazarish::i2p::kDefaultTunnelQuantity, true,
-        "Call media"});
+        "Call media", destinationOwner()});
 }
 
 void Session::startCallMedia()
@@ -2450,6 +2456,13 @@ void Session::tickCalls()
         logCompletedCall(CallOutcome::eMissed);
         clearCall();  // the caller times out symmetrically; no signal needed
     }
+}
+
+std::string Session::destinationOwner() const
+{
+    // Enough of a fingerprint to tell two unnamed profiles apart at a glance.
+    constexpr std::size_t kOwnerFingerprintChars = 8;
+    return name_.empty() ? fingerprint().substr(0, kOwnerFingerprintChars) : name_;
 }
 
 std::string Session::inviteUri() const

@@ -129,16 +129,22 @@ void I2pController::refresh()
             transports << row;
         }
         transports.sort();
+        // One router serves every open profile, so a destination says whose it is
+        // as soon as there is more than one profile to confuse it with.
+        const bool manyProfiles = client::ProfileManager(profilesRoot()).list().size() > 1;
         for (const bazarish::i2p::LocalDestination& dest : router->localDestinations()) {
             QVariantMap row;
-            row[QStringLiteral("label")] = dest.label.empty()
-                ? QStringLiteral("Destination")
-                : QString::fromStdString(dest.label);
+            const QString what = dest.label.empty() ? QStringLiteral("Destination")
+                                                    : QString::fromStdString(dest.label);
+            row[QStringLiteral("label")] = (manyProfiles && !dest.owner.empty())
+                ? (QString::fromStdString(dest.owner) + QStringLiteral(": ") + what)
+                : what;
             row[QStringLiteral("host")] = QString::fromStdString(dest.host);
             row[QStringLiteral("state")] = dest.ready
                 ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
                 : QStringLiteral("building");
             row[QStringLiteral("tunnels")] = dest.inboundTunnels;
+            row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;
             destinations << row;
         }
     }
