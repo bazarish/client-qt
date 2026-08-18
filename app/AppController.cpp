@@ -5,6 +5,13 @@
 
 #include <bazarish/I2p.hpp>
 
+// Qt makes `emit` a macro and the log header declares a function of that name,
+// so the keyword is stood down for the length of this include.
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
+
 #include <QUrl>
 
 #include <nlohmann/json.hpp>
@@ -112,8 +119,10 @@ void AppController::loadSettings()
             in >> j;
             fullPrivacy_ = j.value("fullPrivacyMode", false);
         }
-    } catch (const std::exception&) {
-        // A missing or malformed settings file just means defaults.
+    } catch (const std::exception& error) {
+        // A missing or malformed settings file just means defaults - but silently
+        // reverting privacy mode to off is exactly what must not go unsaid.
+        bazarish::log::warn("settings not read, using defaults: {}", error.what());
     }
     client::setFullPrivacy(fullPrivacy_);
 }
@@ -185,8 +194,9 @@ void AppController::refreshProfiles()
                 QString::fromStdString(info.name), QString::fromStdString(info.fingerprint),
                 info.encrypted, info.connected});
         }
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
         // A malformed profile dir should not break the picker.
+        bazarish::log::warn("profile list incomplete: {}", error.what());
     }
     haveProfiles_ = !rows.isEmpty();
     profiles_.setProfiles(std::move(rows));
@@ -201,8 +211,9 @@ void AppController::refreshAccounts()
     std::vector<client::ProfileInfo> infos;
     try {
         infos = manager_->list();
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
         infos.clear();
+        bazarish::log::warn("account list unavailable: {}", error.what());
     }
     for (const client::ProfileInfo& info : infos) {
         const QString id = QString::fromStdString(info.id);
@@ -266,8 +277,10 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
                     return;
                 }
             }
-        } catch (const std::exception&) {
+        } catch (const std::exception& error) {
             // fall through and attempt the open
+            bazarish::log::warn("could not tell whether the profile is encrypted: {}",
+                error.what());
         }
     }
 
@@ -311,7 +324,8 @@ void AppController::openAllProfiles()
     std::vector<client::ProfileInfo> infos;
     try {
         infos = manager_->list();
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
+        bazarish::log::warn("no profiles opened at start: {}", error.what());
         return;
     }
     for (const client::ProfileInfo& info : infos) {
@@ -390,8 +404,9 @@ void AppController::deleteProfile(const QString& id)
     }
     try {
         manager_->remove(id.toStdString());
-    } catch (const std::exception&) {
-        // best effort
+    } catch (const std::exception& error) {
+        // What is left behind is on disk, and the user must be able to find out.
+        bazarish::log::warn("profile directory not removed: {}", error.what());
     }
     refreshProfiles();
     refreshAccounts();

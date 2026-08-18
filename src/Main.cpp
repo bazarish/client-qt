@@ -513,7 +513,10 @@ int runSync(const std::vector<std::string>& args)
         const std::int64_t jitter
             = static_cast<std::int64_t>(bazarish::randomBytes(1)[0]) * 6 * 3600 / 255;
         session.refreshI2pTransientIfDue(now, 5 * 24 * 3600 - jitter);
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
+        // A lapsed delegation takes the destination down, so a failed renewal is
+        // worth saying out loud even though the sync itself succeeded.
+        bazarish::log::warn("delegation renewal check failed: {}", error.what());
     }
     if (messages.empty()) {
         std::printf("(nothing pending)\n");

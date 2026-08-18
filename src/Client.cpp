@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "Client.hpp"
 
+#include <bazarish/Log.hpp>
 #include <bazarish/Cms.hpp>
 #include <bazarish/I2pAddress.hpp>
 #include <bazarish/Resolve.hpp>
@@ -192,8 +193,9 @@ StorageUsage Client::storageUsage()
         usage.mailboxUsedBytes = body.value("usedBytes", std::uint64_t{0});
         usage.mailboxQuotaBytes = body.value("quotaBytes", std::uint64_t{0});
         usage.mailboxOk = true;
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
         // Unreachable / unauthorized: leave the mailbox half stale (ok=false).
+        bazarish::log::warn("storage usage unavailable: {}", error.what());
     }
     return usage;
 }

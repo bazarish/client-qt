@@ -396,8 +396,9 @@ void SessionWorker::connectAndSubscribe(
                 emit serverHello(reason, QString::fromStdString(info.message), links);
                 return;
             }
-        } catch (const std::exception&) {
+        } catch (const std::exception& error) {
             // No portal info reachable; fall through to the plain error.
+            bazarish::log::warn("portal info unavailable: {}", error.what());
         }
         emit actionFailed(reason);
         return;
@@ -609,7 +610,8 @@ void SessionWorker::declineCall(const QString& callId)
     }
     try {
         session_->declineCall(callId.toStdString());
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
+        bazarish::log::warn("decline failed: {}", error.what());
     }
     emitCallState();
     flushCallLog();
@@ -622,7 +624,8 @@ void SessionWorker::endCall()
     }
     try {
         session_->endCall();
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
+        bazarish::log::warn("hang-up failed: {}", error.what());
     }
     emitCallState();
     flushCallLog();
@@ -709,9 +712,10 @@ void SessionWorker::ackPending(const QString& pendingId)
     }
     try {
         session_->ackPending(pendingId.toStdString());
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
         // The server was momentarily unreachable: leave the item un-acked so the
         // next sync re-offers it (the GUI dedups by messageId, so no duplicate).
+        bazarish::log::warn("pending item not acked: {}", error.what());
     }
 }
 
@@ -781,9 +785,10 @@ void SessionWorker::sendDelete(const QString& peer, const QString& refId)
         // the peer to drop the message, so a deleted attachment leaves no trace.
         try {
             session_->unsend(refId.toStdString());
-        } catch (const std::exception&) {
+        } catch (const std::exception& error) {
             // No blob recorded for this id (a plain text message), or the reclaim
             // failed: the blob also reclaims via its TTL. Not fatal to the delete.
+            bazarish::log::debug("unsend before delete did nothing: {}", error.what());
         }
         session_->sendDelete(peer.toStdString(), refId.toStdString());
     } catch (const std::exception& e) {
@@ -982,8 +987,9 @@ void SessionWorker::syncChatPin(const QString& peer, bool pinned)
     }
     try {
         session_->syncChatPinToSelf(peer.toStdString(), pinned);
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
         // Best-effort device sync; the local pin already took effect.
+        bazarish::log::warn("pin not synced to this account's other devices: {}", error.what());
     }
 }
 
@@ -1502,8 +1508,9 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
             facades << QString::fromStdString(url);
         }
         result["facades"] = facades;
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
         // Malformed link: return an empty map (the caller checks).
+        bazarish::log::debug("server link not parsed: {}", error.what());
     }
     return result;
 }

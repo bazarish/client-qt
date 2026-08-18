@@ -1152,8 +1152,9 @@ FetchTransport Session::fetchTransport() const
                 try {
                     return federationFetchOverI2p(
                         *router, toDest, op, sealed, transferPrivacy_, destinationOwner());
-                } catch (const std::exception&) {
+                } catch (const std::exception& error) {
                     // Direct dial failed; fall back to the server proxy below.
+                    bazarish::log::debug("direct fetch failed, relaying: {}", error.what());
                 }
             }
         }
@@ -1229,8 +1230,9 @@ Session::ContactCardResolved Session::resolveContactCard(
                     try {
                         return federationFetchOverI2p(*router, toDest, op, sealed,
                             context.blobFetchPrivacy, context.destinationOwner);
-                    } catch (const std::exception&) {
+                    } catch (const std::exception& error) {
                         // Direct dial failed; fall back to the server relay below.
+                        bazarish::log::debug("direct fetch failed, relaying: {}", error.what());
                     }
                 }
             }
@@ -1936,8 +1938,9 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.contentType = type;
                 try {
                     startAnnouncedFetch(fileOfferFromJson(body.at("offer")));
-                } catch (const std::exception&) {
+                } catch (const std::exception& error) {
                     // Malformed offer: the transfer simply never starts.
+                    bazarish::log::warn("file offer ignored: {}", error.what());
                 }
             } else if (type == "file.unavailable") {
                 message.contentType = type;
@@ -2006,8 +2009,11 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 if (message.fromFingerprint == fingerprint() && i2pMaster_.empty()) {
                     try {
                         loadI2pDestination(fromBase64(body.at("i2pMaster").get<std::string>()));
-                    } catch (const std::exception&) {
-                        // Malformed, wrong key type, or already configured: ignore.
+                    } catch (const std::exception& error) {
+                        // Malformed, wrong key type, or already configured. This device
+                        // then keeps an address of its own, which is worth knowing.
+                        bazarish::log::warn("master key from another device rejected: {}",
+                            error.what());
                     }
                 }
             } else if (type == "avatar") {
@@ -2021,8 +2027,9 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                     storeContactAvatar(
                         message.fromFingerprint, data, av.value("mime", std::string()));
                     message.avatarData = std::string(data.begin(), data.end());
-                } catch (const std::exception&) {
+                } catch (const std::exception& error) {
                     // Malformed avatar payload: ignore.
+                    bazarish::log::warn("contact avatar ignored: {}", error.what());
                 }
             } else if (type == "device.avatar") {
                 // Our own avatar from another of our devices: adopt it. Silent.
@@ -2033,8 +2040,10 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                         const Bytes data = fromBase64(av.value("data", std::string()));
                         storeOwnAvatar(data, av.value("mime", std::string()));
                         message.avatarData = std::string(data.begin(), data.end());
-                    } catch (const std::exception&) {
+                    } catch (const std::exception& error) {
                         // Malformed avatar payload: ignore.
+                        bazarish::log::warn("own avatar from another device ignored: {}",
+                            error.what());
                     }
                 }
             } else if (type == "device.contact-name") {
@@ -2299,9 +2308,10 @@ void Session::declineCall(const std::string& callId)
     clearCall();
     try {
         sendCallSignal(peer, "call.decline", {{"callId", callId}, {"reason", "declined"}});
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
         // The local call is already cleared; a failed signal only leaves the
         // caller to time out on its own.
+        bazarish::log::warn("decline signal not delivered: {}", error.what());
     }
 }
 
@@ -2321,7 +2331,9 @@ void Session::endCall()
     clearCall();
     try {
         sendCallSignal(peer, "call.end", {{"callId", callId}});
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
+        // The call is over locally either way; the peer falls back to its timeout.
+        bazarish::log::warn("end signal not delivered: {}", error.what());
     }
 }
 
@@ -2359,7 +2371,8 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
             try {
                 sendCallSignal(
                     from, "call.decline", {{"callId", message.callId}, {"reason", "busy"}});
-            } catch (const std::exception&) {
+            } catch (const std::exception& error) {
+                bazarish::log::warn("busy signal not delivered: {}", error.what());
             }
             // We could not take this call: record it as a missed call from that peer.
             pendingCallLog_.push_back({from, true, CallOutcome::eMissed, 0});
@@ -2450,7 +2463,8 @@ void Session::tickCalls()
         clearCall();
         try {
             sendCallSignal(peer, "call.end", {{"callId", callId}});  // stop the peer ringing
-        } catch (const std::exception&) {
+        } catch (const std::exception& error) {
+            bazarish::log::warn("end signal not delivered: {}", error.what());
         }
     } else if (call_.state == CallState::eIncoming) {
         logCompletedCall(CallOutcome::eMissed);

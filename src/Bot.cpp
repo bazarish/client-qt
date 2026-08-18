@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Bot.hpp"
 
+#include <bazarish/Log.hpp>
+
 #include <chrono>
 #include <thread>
 #include <utility>
@@ -146,8 +148,9 @@ std::size_t Bot::poll()
         if (warrantsReceipt(update.contentType) && !update.messageId.empty()) {
             try {
                 session_.sendReceipt(update.fromFingerprint, update.messageId);
-            } catch (const std::exception&) {
+            } catch (const std::exception& error) {
                 // Non-fatal: the sender simply stays at the "yellow" state.
+                bazarish::log::warn("bot: receipt not sent: {}", error.what());
             }
         }
     }
@@ -159,9 +162,10 @@ void Bot::run(const int intervalMs)
     while (true) {
         try {
             poll();
-        } catch (const std::exception&) {
+        } catch (const std::exception& error) {
             // Transient (server momentarily unreachable, a handler throwing):
             // skip this round and try again. A bot must not die on one bad poll.
+            bazarish::log::warn("bot: poll failed: {}", error.what());
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(intervalMs));
     }
