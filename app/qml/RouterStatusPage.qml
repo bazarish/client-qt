@@ -154,6 +154,67 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
+                // The destinations this router serves right now. The tunnel counts
+                // above are router-wide, so without this it is impossible to tell
+                // whether they belong to one address or to six.
+                ColumnLayout {
+                    visible: I2p.enabled && I2p.running
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label {
+                        text: "Local destinations (" + I2p.destinations.length + ")"
+                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                    }
+                    Label {
+                        visible: I2p.destinations.length === 0
+                        text: "No destination is being served — the router is only warming up."
+                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                    Repeater {
+                        model: I2p.destinations
+                        delegate: Rectangle {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            radius: Theme.radiusSmall
+                            color: Theme.surface
+                            border.color: Theme.border
+                            implicitHeight: destCol.implicitHeight + 12
+                            ColumnLayout {
+                                id: destCol
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 2
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
+                                    Rectangle {
+                                        Layout.alignment: Qt.AlignVCenter
+                                        implicitWidth: 8; implicitHeight: 8; radius: 4
+                                        color: modelData.state === "building" ? Theme.warn : Theme.success
+                                    }
+                                    Label {
+                                        text: modelData.label
+                                        color: Theme.text; font.weight: Font.Medium
+                                        Layout.fillWidth: true; elide: Text.ElideRight
+                                    }
+                                    Label {
+                                        text: modelData.state + " · " + modelData.tunnels + " in"
+                                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                    }
+                                }
+                                Label {
+                                    text: modelData.host
+                                    color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                    wrapMode: Text.WrapAnywhere; Layout.fillWidth: true
+                                }
+                            }
+                        }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
                 // Active direct transport connections (NTCP2 / SSU2 sessions).
                 ColumnLayout {
                     visible: I2p.enabled && I2p.running

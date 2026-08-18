@@ -7,6 +7,8 @@ Popup {
     id: root
     property var session: null
     property string uri: ""
+    // Why there is no invite yet, when the routing is not published.
+    property string unavailable: ""
     // Return to the page this opened from (Settings); the close button exits.
     signal back()
 
@@ -14,14 +16,15 @@ Popup {
     anchors.centerIn: Overlay.overlay
     width: 460
     padding: 18
-    onOpened: { uri = ""; if (session) session.requestInvite() }
+    onOpened: { uri = ""; unavailable = ""; if (session) session.requestInvite() }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
     Connections {
         target: root.session
         ignoreUnknownSignals: true
-        function onInviteReady(u) { root.uri = u }
+        function onInviteReady(u) { root.uri = u; root.unavailable = "" }
+        function onInviteUnavailable(reason) { root.uri = ""; root.unavailable = reason }
     }
 
     contentItem: ColumnLayout {
@@ -39,6 +42,38 @@ Popup {
             wrapMode: Text.Wrap
             Layout.fillWidth: true
         }
+        // An invite with no routing in it would not be reachable, so say what is
+        // missing and offer the one action that fixes it, instead of a blank box.
+        ColumnLayout {
+            visible: root.unavailable.length > 0
+            Layout.fillWidth: true
+            spacing: 8
+            Label {
+                text: "No invite yet: " + root.unavailable + "."
+                color: Theme.warn
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Label {
+                text: "Your server operates your destination on your behalf. Publishing hands it "
+                    + "a time-boxed delegation; it can take a few minutes to come up."
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Button {
+                text: "Publish my destination"
+                Layout.fillWidth: true
+                onClicked: if (root.session) { root.session.publishPersonalDest(); root.unavailable = "Publishing — this can take a few minutes" }
+                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.green }
+                contentItem: Label {
+                    text: parent.text; color: Theme.green
+                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                }
+            }
+        }
+
         // The invite is a compact descriptor, so it fits one QR: show the code
         // and the link side by side (scan or copy).
         QrView {
@@ -47,6 +82,7 @@ Popup {
             text: root.uri
         }
         ScrollView {
+            visible: root.uri.length > 0
             Layout.fillWidth: true
             Layout.preferredHeight: 110
             TextArea {

@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QStringList>
+#include <QVariantList>
 
 #include <filesystem>
 
@@ -33,6 +34,10 @@ class I2pController : public QObject {
     // Active direct transport connections, one display string each (e.g.
     // "NTCP2 · out · abcd1234"), for a scrollable list.
     Q_PROPERTY(QStringList transports READ transports NOTIFY statusChanged)
+    // The destinations this router operates right now: one map per row with
+    // "label", "host", "state" and "tunnels". Tunnel counts are per destination,
+    // unlike the router-wide counts above.
+    Q_PROPERTY(QVariantList destinations READ destinations NOTIFY statusChanged)
 public:
     explicit I2pController(QObject* parent = nullptr);
 
@@ -47,6 +52,7 @@ public:
     int inboundTunnels() const { return inboundTunnels_; }
     int outboundTunnels() const { return outboundTunnels_; }
     QStringList transports() const { return transports_; }
+    QVariantList destinations() const { return destinations_; }
 
     // Re-reads the router diagnostics (a no-op when it is not running). Cheap;
     // the status window calls it on a timer while open.
@@ -74,6 +80,7 @@ private:
     int inboundTunnels_ = 0;
     int outboundTunnels_ = 0;
     QStringList transports_;
+    QVariantList destinations_;
 };
 
 }  // namespace bazarish::app

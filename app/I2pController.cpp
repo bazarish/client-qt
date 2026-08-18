@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "I2pController.hpp"
 
+#include <QVariantMap>
+
 #include "I2pRouter.hpp"
 #include "ProfileManager.hpp"
 
@@ -110,6 +112,7 @@ void I2pController::refresh()
     int inboundTunnels = 0;
     int outboundTunnels = 0;
     QStringList transports;
+    QVariantList destinations;
     if (running) {
         ready = router->ready();
         knownRouters = router->knownRouters();
@@ -126,10 +129,23 @@ void I2pController::refresh()
             transports << row;
         }
         transports.sort();
+        for (const bazarish::i2p::LocalDestination& dest : router->localDestinations()) {
+            QVariantMap row;
+            row[QStringLiteral("label")] = dest.label.empty()
+                ? QStringLiteral("Destination")
+                : QString::fromStdString(dest.label);
+            row[QStringLiteral("host")] = QString::fromStdString(dest.host);
+            row[QStringLiteral("state")] = dest.ready
+                ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
+                : QStringLiteral("building");
+            row[QStringLiteral("tunnels")] = dest.inboundTunnels;
+            destinations << row;
+        }
     }
     if (running == running_ && ready == ready_ && knownRouters == knownRouters_
         && floodfills == floodfills_ && inboundTunnels == inboundTunnels_
-        && outboundTunnels == outboundTunnels_ && transports == transports_) {
+        && outboundTunnels == outboundTunnels_ && transports == transports_
+        && destinations == destinations_) {
         return;
     }
     running_ = running;
@@ -139,6 +155,7 @@ void I2pController::refresh()
     inboundTunnels_ = inboundTunnels;
     outboundTunnels_ = outboundTunnels;
     transports_ = transports;
+    destinations_ = destinations;
     emit statusChanged();
 }
 

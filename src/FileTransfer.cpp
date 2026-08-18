@@ -264,6 +264,7 @@ void fetchFileOverI2p(bazarish::i2p::Router& router, const FileOffer& offer,
               config.privacy = privacy;
               config.tunnelQuantity = 2;
               config.published = false;
+              config.label = "File download";
               const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                   = router.createEndpoint(config);
               const std::unique_ptr<bazarish::i2p::Stream> stream

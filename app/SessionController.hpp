@@ -163,6 +163,7 @@ signals:
     void contactAddStage(const QString& opId, const QString& status);
     void contactAddDone(const QString& opId, bool ok, const QString& status);
     void inviteReady(const QString& uri);
+    void inviteUnavailable(const QString& reason);
     // The signed login blob for a challenge (sign-in-with-key result).
     void loginSigned(const QString& blob);
     // Whether the last sync reached the facade (true) or failed (false).
@@ -569,6 +570,7 @@ signals:
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);
+    void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
     // A failed file's saved source is gone: the UI should offer to pick a file.
     void resendFilePickRequested();

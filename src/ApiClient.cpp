@@ -247,7 +247,8 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
         reportConnectProgress(40, "Building your I2P tunnels");
         i2pOut_ = router.createEndpoint(bazarish::i2p::EndpointConfig{
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
-            bazarish::i2p::Privacy::eMax, bazarish::i2p::kDefaultTunnelQuantity, false});
+            bazarish::i2p::Privacy::eMax, bazarish::i2p::kDefaultTunnelQuantity, false,
+            "Server dialer"});
     }
     // A dial from a destination whose tunnels are still building fails for a
     // reason that has nothing to do with the facade, and would be reported as an

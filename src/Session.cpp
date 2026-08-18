@@ -633,7 +633,9 @@ void Session::publishRouting()
     // The transient is a time-boxed capability that lets the server operate our
     // destination; it never outlives the subscription it belongs to.
     renewI2pTransient(held.notAfter);
+    reportConnectProgress(88, "Delegating your destination to the server");
     client_->sendI2pTransient(i2pTransientBase64(), held.notAfter);
+    reportConnectProgress(92, "Publishing your contact card");
     // Re-issue the card inside the term already held: same window, so the
     // service node treats it as a re-publish and grants nothing.
     storeSubscription(client_->renew(
@@ -641,6 +643,7 @@ void Session::publishRouting()
     // Hand the master to this account's other devices so they keep the same
     // address and can re-issue transients. Best effort: our own routing is
     // published either way, and the sync needs it to be.
+    reportConnectProgress(96, "Syncing your address to your other devices");
     try {
         syncI2pMasterToSelf();
     } catch (const std::exception& error) {
@@ -1066,8 +1069,14 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
         // the next sync reconcile the attempt to yellow/green/red.
         return false;
     }
-    constexpr int kPollAttempts = 150;  // ~15 s at 100 ms
-    for (int poll = 0; poll < kPollAttempts; ++poll) {
+    // Bounded by the clock, not by a poll count: over I2P one poll is seconds,
+    // not the 100 ms a request count silently assumes, and the "bounded" window
+    // becomes minutes of a caller waiting on a best-effort outcome.
+    constexpr int kOutcomeWaitSeconds = 15;
+    constexpr int kOutcomePollMillis = 100;
+    const std::chrono::steady_clock::time_point deadline
+        = std::chrono::steady_clock::now() + std::chrono::seconds(kOutcomeWaitSeconds);
+    while (std::chrono::steady_clock::now() < deadline) {
         try {
             const SendStatus status = client_->pollSend(attemptId);
             if (status.status == "delivered") {
@@ -1091,7 +1100,7 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
             // failing the message.
             return false;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(kOutcomePollMillis));
     }
     return false;  // accepted, still being delivered in the background
 }
@@ -1268,7 +1277,11 @@ std::string Session::aliasBuyArtifacts(const std::string& alias) const
     // POSTing this JSON to /portal/buy - the signing key never leaves the client,
     // the resolver only verifies the signature against the descriptor fingerprint.
     if (myDest_.empty() || myServingKeyB64_.empty()) {
-        throw std::runtime_error("subscribe first: no serving destination to publish");
+        // The card can only carry routing once the server operates this account's
+        // destination, which happens when the delegation is published - not at
+        // subscribe time. Name that, so the caller can offer the fix.
+        throw std::runtime_error(
+            "your destination is not published yet, so an invite would not be reachable");
     }
     const std::string normalized = normalizeAlias(alias);
     const Bytes aliasCert
@@ -1656,6 +1669,7 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
             config.privacy = transferPrivacy_;
             config.tunnelQuantity = 2;
+            config.label = "File upload";
             const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                 = i2pRouter().createEndpoint(config);
             if (!endpoint->waitReady(std::chrono::seconds(180))) {
@@ -2166,7 +2180,8 @@ std::shared_ptr<bazarish::i2p::Endpoint> Session::openCallMediaSession()
     // destination, so a short tunnel never weakens identity anonymity.
     return i2pRouter().createEndpoint(bazarish::i2p::EndpointConfig{
         bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
-        bazarish::i2p::Privacy::eMinimal, bazarish::i2p::kDefaultTunnelQuantity, true});
+        bazarish::i2p::Privacy::eMinimal, bazarish::i2p::kDefaultTunnelQuantity, true,
+        "Call media"});
 }
 
 void Session::startCallMedia()

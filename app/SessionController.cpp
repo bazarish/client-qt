@@ -62,6 +62,11 @@ using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
 namespace {
+// The background-activity row for a connect: the user can hide the progress
+// dialog and still watch the connect finish in the activity panel.
+const QString kConnectOperationId = QStringLiteral("connect");
+constexpr double kPercentFull = 100.0;
+
 // Unix milliseconds: the message display/order clock (sentAt is in ms).
 qint64 nowMillis()
 {
@@ -827,7 +832,9 @@ void SessionWorker::requestInvite()
     try {
         emit inviteReady(QString::fromStdString(session_->inviteUri()));
     } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+        // An invite with no routing in it is useless, so the sheet shows the
+        // reason and the way out (publish the destination) instead of a blank.
+        emit inviteUnavailable(QString::fromUtf8(e.what()));
     }
 }
 
@@ -931,11 +938,51 @@ void SessionWorker::signLogin(const QString& challenge)
     }
 }
 
+namespace {
+
+// One background-activity row around a worker call: every server request the
+// user triggers shows up in the activity panel instead of looking like a button
+// that did nothing. The row ends when the scope does, whatever the exit path.
+class WorkerOp {
+public:
+    WorkerOp(SessionWorker* const worker, const QString& id, const QString& kind,
+        const QString& title, const QString& status)
+        : worker_(worker)
+        , id_(id)
+    {
+        emit worker_->opBegin(id_, kind, title, status);
+    }
+    WorkerOp(const WorkerOp&) = delete;
+    WorkerOp& operator=(const WorkerOp&) = delete;
+    ~WorkerOp() { emit worker_->opDone(id_, ok_, status_); }
+
+    void succeed(const QString& status)
+    {
+        ok_ = true;
+        status_ = status;
+    }
+    void fail(const QString& status)
+    {
+        ok_ = false;
+        status_ = status;
+    }
+
+private:
+    SessionWorker* const worker_;
+    const QString id_;
+    bool ok_ = false;
+    QString status_ = QStringLiteral("Failed");
+};
+
+}  // namespace
+
 void SessionWorker::refreshI2pStatus()
 {
     if (!session_) {
         return;
     }
+    WorkerOp op(this, QStringLiteral("i2p-status"), QStringLiteral("status"),
+        QStringLiteral("Checking your destination"), QStringLiteral("Asking your server…"));
     const bool hasKey = session_->hasI2pDestination();
     const QString address
         = hasKey ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p") : QString();
@@ -964,6 +1011,7 @@ void SessionWorker::refreshI2pStatus()
         summary = hasKey ? QStringLiteral("Destination key ready; connect to publish it.")
                          : QStringLiteral("No destination key yet.");
     }
+    op.succeed(summary);
     emit i2pStatus(hasKey, delegated, live, address, summary, transientExpires);
 }
 
@@ -972,7 +1020,17 @@ void SessionWorker::refreshStorageUsage()
     if (!session_) {
         return;
     }
+    WorkerOp op(this, QStringLiteral("storage-usage"), QStringLiteral("status"),
+        QStringLiteral("Checking your mailbox"), QStringLiteral("Asking your server…"));
+    // storageUsage never throws: a backend that did not answer comes back with
+    // ok=false, which is exactly what the row must say.
     const bazarish::client::StorageUsage u = session_->storageUsage();
+    if (u.mailboxOk) {
+        op.succeed(QStringLiteral("Mailbox: ") + humanBytes(static_cast<qint64>(u.mailboxUsedBytes))
+            + QStringLiteral(" of ") + humanBytes(static_cast<qint64>(u.mailboxQuotaBytes)));
+    } else {
+        op.fail(QStringLiteral("Your server did not answer"));
+    }
     emit storageUsageReady(u.mailboxOk, static_cast<qulonglong>(u.mailboxUsedBytes),
         static_cast<qulonglong>(u.mailboxQuotaBytes));
 }
@@ -1044,11 +1102,18 @@ void SessionWorker::publishPersonalDest()
     if (!session_) {
         return;
     }
-    try {
-        session_->publishRouting();
-        emit actionOk("Routing published: your card now carries this destination.");
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+    {
+        WorkerOp op(this, QStringLiteral("publish-dest"), QStringLiteral("dest"),
+            QStringLiteral("Publishing your destination"),
+            QStringLiteral("Delegating it to your server…"));
+        try {
+            session_->publishRouting();
+            op.succeed(QStringLiteral("Published"));
+            emit actionOk("Routing published: your card now carries this destination.");
+        } catch (const std::exception& e) {
+            op.fail(QString::fromUtf8(e.what()));
+            emit actionFailed(QString::fromUtf8(e.what()));
+        }
     }
     refreshI2pStatus();
 }
@@ -1259,11 +1324,14 @@ SessionController::SessionController(QObject* parent)
             connecting_ = false;
             connectPhase_.clear();
             connectError_ = reason;
+            finishOperation(kConnectOperationId, false, reason);
             emit connectStateChanged();
         }
         emit actionFailed(reason);
     });
     connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
+    connect(worker_, &SessionWorker::inviteUnavailable, this,
+        &SessionController::inviteUnavailable);
     connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
     connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
@@ -1319,6 +1387,8 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
     connectPercent_ = 0;
     connectPhase_ = QStringLiteral("Starting…");
     connectError_.clear();
+    beginOperation(kConnectOperationId, QStringLiteral("connect"),
+        QStringLiteral("Connecting this account"), connectPhase_);
     emit connectStateChanged();
     emit requestConnect(facadeUrls, serverFp, 14);
 }
@@ -1333,6 +1403,7 @@ void SessionController::onConnectProgress(const int percent, const QString& phas
     }
     connectPercent_ = percent;
     connectPhase_ = phase;
+    updateOperation(kConnectOperationId, phase, {}, percent / kPercentFull);
     emit connectStateChanged();
 }
 
@@ -2179,6 +2250,8 @@ void SessionController::onConnectionChanged(bool connected, const QString& subsc
         connecting_ = false;
         connectPhase_.clear();
         connectError_ = connected ? QString() : subscriptionText;
+        finishOperation(kConnectOperationId, connected,
+            connected ? QStringLiteral("Connected") : subscriptionText);
         emit connectStateChanged();
     }
     connected_ = connected;

@@ -19,7 +19,7 @@ Item {
 
     SignWithKeySheet { id: signSheet; session: root.session }
     // Connecting is minutes of real work over I2P: show it, with steps.
-    ConnectProgressDialog { session: root.session }
+    ConnectProgressDialog { id: connectDialog; session: root.session }
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -77,6 +77,20 @@ Item {
             Layout.fillWidth: true
             session: root.session
             actionText: "Connect"
+        }
+
+        // The dialog can be hidden while the connect runs; this is the way back.
+        Label {
+            visible: root.session && root.session.connecting && connectDialog.suppressed
+            text: "Connecting (" + (root.session ? root.session.connectPercent : 0) + "%) — show progress"
+            color: Theme.accent
+            font.pixelSize: Theme.fontSmall
+            Layout.alignment: Qt.AlignHCenter
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: { connectDialog.suppressed = false; connectDialog.open() }
+            }
         }
 
         Label {

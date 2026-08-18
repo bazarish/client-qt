@@ -12,8 +12,14 @@ Dialog {
     id: root
     property var session: null
 
+    // Hiding does not cancel: the connect keeps running and is watchable in the
+    // background-activity panel, so the dialog must not pop back up on the next
+    // milestone. The suppression lasts until this attempt ends.
+    property bool suppressed: false
+
     modal: true
-    closePolicy: Popup.NoAutoClose
+    closePolicy: Popup.CloseOnEscape
+    onClosed: if (root.session && root.session.connecting) { root.suppressed = true }
     anchors.centerIn: Overlay.overlay
     width: Math.min(parent ? parent.width - 48 : 420, 460)
     padding: 0
@@ -23,8 +29,11 @@ Dialog {
         target: root.session
         function onConnectStateChanged() {
             if (root.session.connecting) {
-                root.open()
+                if (!root.suppressed) {
+                    root.open()
+                }
             } else {
+                root.suppressed = false
                 root.close()
             }
         }
@@ -80,6 +89,29 @@ Dialog {
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            Label {
+                text: "Hiding keeps it running — watch it in the activity panel on the right."
+                color: Theme.textFaint
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Button {
+                text: "Hide"
+                onClicked: root.close()
+                background: Rectangle { radius: 8; color: Theme.surfaceAlt; border.color: Theme.border }
+                contentItem: Label {
+                    text: parent.text; color: Theme.text
+                    leftPadding: 12; rightPadding: 12
+                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                }
             }
         }
 

@@ -288,16 +288,37 @@ Popup {
                         }
                     }
 
-                    StorageRow {
-                        title: "Mailbox"
-                        used: storageSection.info ? storageSection.info.mailboxUsed : 0
-                        quota: storageSection.info ? storageSection.info.mailboxQuota : 0
-                        ok: storageSection.info ? storageSection.info.mailboxOk : false
+                    // Flashed on refresh: figures that come back unchanged are the
+                    // common case, so without it the button reads as a no-op.
+                    Rectangle {
+                        id: storageBox
+                        Layout.fillWidth: true
+                        radius: Theme.radiusSmall
+                        color: "transparent"
+                        implicitHeight: mailboxRow.implicitHeight + 12
+                        SequentialAnimation {
+                            id: storageFlash
+                            PropertyAction { target: storageBox; property: "color"; value: Qt.rgba(0.12, 0.48, 0.08, 0.5) }
+                            PauseAnimation { duration: 550 }
+                            ColorAnimation { target: storageBox; property: "color"; to: "transparent"; duration: 500 }
+                        }
+                        StorageRow {
+                            id: mailboxRow
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            title: "Mailbox"
+                            used: storageSection.info ? storageSection.info.mailboxUsed : 0
+                            quota: storageSection.info ? storageSection.info.mailboxQuota : 0
+                            ok: storageSection.info ? storageSection.info.mailboxOk : false
+                        }
                     }
                     MenuButton {
                         Layout.alignment: Qt.AlignRight
                         text: "Refresh"
-                        onClicked: if (root.session) root.session.refreshStorageUsage()
+                        onClicked: { if (root.session) root.session.refreshStorageUsage(); storageFlash.restart() }
                     }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
