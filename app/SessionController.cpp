@@ -667,12 +667,8 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
 }
 
 void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint64 localId,
-    const QString& protocolId, qint64 ttlSeconds, int downloadCount, const QString& replyTo)
+    const QString& protocolId, const QString& replyTo)
 {
-    // ttlSeconds / downloadCount were blob-store retention knobs; a file now lives
-    // on the sender's own disk, so there is nothing to expire.
-    (void)ttlSeconds;
-    (void)downloadCount;
     try {
         std::string attemptId;
         const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
@@ -1882,7 +1878,7 @@ void SessionController::sendText(const QString& text)
     emit requestSendText(activePeer_, text, m.id, m.protocolId, replyTo);
 }
 
-void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int downloadCount)
+void SessionController::sendFile(const QString& fileUrl)
 {
     if (activePeer_.isEmpty()) {
         return;
@@ -1915,13 +1911,11 @@ void SessionController::sendFile(const QString& fileUrl, qint64 ttlSeconds, int 
     m.status = 0;
     m.id = store_.append(m);
     statusById_[m.id] = 0;
-    fileRetention_.insert(m.id, FileRetention{ttlSeconds, downloadCount});
     showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
-    emit requestSendFile(
-        activePeer_, localPath, m.id, m.protocolId, ttlSeconds, downloadCount, replyTo);
+    emit requestSendFile(activePeer_, localPath, m.id, m.protocolId, replyTo);
 }
 
 void SessionController::sendCallback(const QString& data, const QString& refMsgId)
@@ -2815,10 +2809,8 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     store_.updateStatus(localId, DeliveryStatus::Sending);
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
-    const FileRetention r = fileRetention_.value(localId);
     const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
-    emit requestSendFile(
-        activePeer_, srcPath, localId, protocolId, r.ttlSeconds, r.downloadCount, replyTo);
+    emit requestSendFile(activePeer_, srcPath, localId, protocolId, replyTo);
 }
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
