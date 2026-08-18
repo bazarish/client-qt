@@ -64,10 +64,11 @@ Dialog {
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Layout.bottomMargin: 12
-            text: "Sent straight to this contact over a one-time I2P address, encrypted with a "
-                + "key only they have. Your server only carries the offer — the name, the size "
-                + "and where to fetch it. Keep the app open until the transfer finishes: it is "
-                + "device to device, so nothing holds the file for them in the meantime."
+            text: "The file never touches a server. Your contact asks for it when they want "
+                + "it, this device answers with a one-time I2P address, and they stream it "
+                + "straight from here. What goes through the servers is an ordinary "
+                + "end-to-end encrypted message, which they cannot read. Keep the app open "
+                + "until the transfer finishes — nothing is holding the file for them."
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

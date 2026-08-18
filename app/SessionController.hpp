@@ -145,6 +145,11 @@ signals:
     // Download progress for an incoming attachment being saved (token = message
     // id): received/total ciphertext bytes.
     void downloadProgress(qint64 token, qint64 received, qint64 total);
+    // Bytes leaving this device for a file we are serving, by the announced file
+    // id (the outgoing message's protocol id): the sender watches the transfer in
+    // the bubble it sent, not in a panel somewhere else.
+    void servedProgress(const QString& protocolId, qint64 sent, qint64 total);
+    void servedFinished(const QString& protocolId, bool ok, const QString& error);
     // Download stage for an incoming attachment (token = message id): the int is a
     // bazarish::client::BlobFetchStage (0 connecting, 1 downloading, 2 reconnecting),
     // so a stalled transfer reads as "reconnecting" rather than a frozen bar.
@@ -667,6 +672,8 @@ private slots:
     void onSendProgress(qint64 localId, int state);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onDownloadProgress(qint64 token, qint64 received, qint64 total);
+    void onServedProgress(const QString& protocolId, qint64 sent, qint64 total);
+    void onServedFinished(const QString& protocolId, bool ok, const QString& error);
     void onDownloadStage(qint64 token, int stage);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void onSendResult(qint64 localId, bool ok, const QString& error);

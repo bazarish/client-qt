@@ -300,6 +300,27 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
         }
     }
     emitFacadeInfo();
+    // Serving a file is the sender's half of a transfer, and it reports through
+    // the same channel as a download. Installed once, for as long as the profile
+    // is open; the download path re-points it at itself while it runs.
+    session_->setTransferHandler([this](const bazarish::client::TransferEvent& event) {
+        const QString id = QString::fromStdString(event.messageId);
+        switch (event.state) {
+        case bazarish::client::TransferState::eRunning:
+            emit servedProgress(id, static_cast<qint64>(event.bytes),
+                static_cast<qint64>(event.total));
+            break;
+        case bazarish::client::TransferState::eDone:
+            emit servedFinished(id, true, {});
+            break;
+        case bazarish::client::TransferState::eFailed:
+            emit servedFinished(id, false, QString::fromStdString(event.error));
+            break;
+        case bazarish::client::TransferState::eRequested:
+            emit servedProgress(id, 0, 0);  // asked for; nothing on the wire yet
+            break;
+        }
+    });
     // Local facts, before anything that touches a server: whether this profile
     // holds a destination key and at what address.
     emit i2pKeyState(session_->hasI2pDestination(),
@@ -481,6 +502,15 @@ void SessionWorker::sync()
             continue;
         }
         if (m.contentType == "device.contact-name" || m.contentType == "device.i2p-master") {
+            ackPending(QString::fromStdString(m.pendingId));
+            continue;
+        }
+        // The file transfer's own handshake: a request for a file we announced,
+        // the offer that answers it, and the "gone" reply. The core acts on all
+        // three the moment it parses them; surfacing them here put empty bubbles
+        // in the conversation, one per step.
+        if (m.contentType == "file.request" || m.contentType == "file.offer"
+            || m.contentType == "file.unavailable") {
             ackPending(QString::fromStdString(m.pendingId));
             continue;
         }
@@ -1318,6 +1348,8 @@ SessionController::SessionController(QObject* parent)
     // Download progress / outcome land on the message via the conversation model.
     connect(worker_, &SessionWorker::downloadProgress, this,
         &SessionController::onDownloadProgress);
+    connect(worker_, &SessionWorker::servedProgress, this, &SessionController::onServedProgress);
+    connect(worker_, &SessionWorker::servedFinished, this, &SessionController::onServedFinished);
     connect(worker_, &SessionWorker::downloadStage, this,
         &SessionController::onDownloadStage);
     connect(worker_, &SessionWorker::downloadFinished, this,
@@ -2662,6 +2694,37 @@ void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64
         QStringLiteral("Downloading…"),
         total > 0 ? humanBytes(received) + QStringLiteral(" / ") + humanBytes(total) : QString(),
         fraction);
+}
+
+void SessionController::onServedProgress(const QString& protocolId, qint64 sent, qint64 total)
+{
+    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    if (m.id == 0) {
+        return;  // not a message of the open conversation
+    }
+    const double fraction
+        = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : -1.0;
+    conversation_.setUploadProgressForId(m.id, fraction);
+    updateOperation(QStringLiteral("send:") + QString::number(m.id),
+        total > 0 ? QStringLiteral("Sending to your contact…")
+                  : QStringLiteral("Preparing a one-time address…"),
+        total > 0 ? humanBytes(sent) + QStringLiteral(" / ") + humanBytes(total) : QString(),
+        fraction);
+}
+
+void SessionController::onServedFinished(
+    const QString& protocolId, const bool ok, const QString& error)
+{
+    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    if (m.id == 0) {
+        return;
+    }
+    conversation_.setUploadProgressForId(m.id, -1.0);
+    if (!ok) {
+        conversation_.setErrorForId(m.id, error);
+    }
+    finishOperation(QStringLiteral("send:") + QString::number(m.id), ok,
+        ok ? QStringLiteral("Sent to your contact") : error);
 }
 
 void SessionController::onDownloadStage(qint64 token, int stage)
