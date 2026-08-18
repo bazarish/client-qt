@@ -205,14 +205,17 @@ Popup {
                                         color: Theme.text; font.weight: Font.Medium
                                         Layout.fillWidth: true; elide: Text.ElideRight
                                     }
-                                    Label {
-                                        // Known leasesets are the activity tell: tunnels
-                                        // stand up on their own, peers do not.
-                                        text: modelData.state + " · tunnels " + modelData.tunnelsIn
-                                            + " in / " + modelData.tunnelsOut + " out · "
-                                            + modelData.leaseSets + " peers"
-                                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                    }
+                                }
+                                // Its own line: the counts do not fit beside a name that
+                                // may already carry a profile prefix.
+                                Label {
+                                    // Known leasesets are the activity tell: tunnels stand
+                                    // up on their own, peers do not.
+                                    text: modelData.state + " · tunnels " + modelData.tunnelsIn
+                                        + " in / " + modelData.tunnelsOut + " out · "
+                                        + modelData.leaseSets + " peers"
+                                    color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                    wrapMode: Text.Wrap; Layout.fillWidth: true
                                 }
                                 Label {
                                     text: modelData.host
@@ -236,9 +239,10 @@ Popup {
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: "Routers this one is talking to directly. Sessions another router "
-                            + "opened to us are marked \"incoming\"; the rest this router dialed "
-                            + "itself, which behind a NAT is all of them."
+                        text: "Routers this one is talking to directly. It relays no transit "
+                            + "traffic and is no floodfill, so nothing has a reason to dial it: "
+                            + "every session here is one it opened itself. Any that is not is "
+                            + "marked \"incoming\"."
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }

@@ -120,9 +120,9 @@ void I2pController::refresh()
         inboundTunnels = router->inboundTunnels();
         outboundTunnels = router->outboundTunnels();
         for (const bazarish::i2p::TransportPeer& peer : router->transportPeers()) {
-            // Only the exception is marked. A router behind NAT dials every session
-            // itself, so labelling all of them "outgoing" said nothing; a session
-            // another router opened to us is the part worth seeing.
+            // Only the exception is marked. This router relays no transit and is no
+            // floodfill, so nothing has a reason to dial it and every session is
+            // one it opened: labelling them all "outgoing" said nothing.
             QString row = QString::fromStdString(peer.transport)
                 + (peer.outbound ? " · " : " · incoming · ");
             if (!peer.endpoint.empty()) {
