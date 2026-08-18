@@ -72,6 +72,40 @@ using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
 namespace {
+// One background-activity row around a worker call: every server request the
+// user triggers shows up in the activity panel instead of looking like a button
+// that did nothing. The row ends when the scope does, whatever the exit path.
+class WorkerOp {
+public:
+    WorkerOp(SessionWorker* const worker, const QString& id, const QString& kind,
+        const QString& title, const QString& status)
+        : worker_(worker)
+        , id_(id)
+    {
+        emit worker_->opBegin(id_, kind, title, status);
+    }
+    WorkerOp(const WorkerOp&) = delete;
+    WorkerOp& operator=(const WorkerOp&) = delete;
+    ~WorkerOp() { emit worker_->opDone(id_, ok_, status_); }
+
+    void succeed(const QString& status)
+    {
+        ok_ = true;
+        status_ = status;
+    }
+    void fail(const QString& status)
+    {
+        ok_ = false;
+        status_ = status;
+    }
+
+private:
+    SessionWorker* const worker_;
+    const QString id_;
+    bool ok_ = false;
+    QString status_ = QStringLiteral("Failed");
+};
+
 // The background-activity row for a connect: the user can hide the progress
 // dialog and still watch the connect finish in the activity panel.
 const QString kConnectOperationId = QStringLiteral("connect");
@@ -256,6 +290,12 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
         }
     }
     emitFacadeInfo();
+    // Local facts, before anything that touches a server: whether this profile
+    // holds a destination key and at what address.
+    emit i2pKeyState(session_->hasI2pDestination(),
+        session_->hasI2pDestination()
+            ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p")
+            : QString());
     if (connected) {
         ensureSyncTimer();
         sync();
@@ -843,6 +883,17 @@ void SessionWorker::acceptContact(const QString& peer)
 void SessionWorker::requestInvite()
 {
     try {
+        if (!session_->hasOwnRouting()) {
+            // The card was stored before the server had raised this account's
+            // destination, so it carries no routing even though the destination
+            // is up now. One grant-free re-issue picks it up.
+            WorkerOp op(this, QStringLiteral("refresh-card"), QStringLiteral("dest"),
+                QStringLiteral("Refreshing your contact card"),
+                QStringLiteral("Asking your server for your destination…"));
+            session_->refreshOwnCard();
+            op.succeed(session_->hasOwnRouting() ? QStringLiteral("Card updated")
+                                                 : QStringLiteral("Destination not up yet"));
+        }
         emit inviteReady(QString::fromStdString(session_->inviteUri()));
     } catch (const std::exception& e) {
         // An invite with no routing in it is useless, so the sheet shows the
@@ -950,44 +1001,6 @@ void SessionWorker::signLogin(const QString& challenge)
         emit actionFailed(QString::fromUtf8(e.what()));
     }
 }
-
-namespace {
-
-// One background-activity row around a worker call: every server request the
-// user triggers shows up in the activity panel instead of looking like a button
-// that did nothing. The row ends when the scope does, whatever the exit path.
-class WorkerOp {
-public:
-    WorkerOp(SessionWorker* const worker, const QString& id, const QString& kind,
-        const QString& title, const QString& status)
-        : worker_(worker)
-        , id_(id)
-    {
-        emit worker_->opBegin(id_, kind, title, status);
-    }
-    WorkerOp(const WorkerOp&) = delete;
-    WorkerOp& operator=(const WorkerOp&) = delete;
-    ~WorkerOp() { emit worker_->opDone(id_, ok_, status_); }
-
-    void succeed(const QString& status)
-    {
-        ok_ = true;
-        status_ = status;
-    }
-    void fail(const QString& status)
-    {
-        ok_ = false;
-        status_ = status;
-    }
-
-private:
-    SessionWorker* const worker_;
-    const QString id_;
-    bool ok_ = false;
-    QString status_ = QStringLiteral("Failed");
-};
-
-}  // namespace
 
 void SessionWorker::refreshI2pStatus()
 {
@@ -2199,6 +2212,11 @@ void SessionController::finishOperation(const QString& id, bool ok, const QStrin
 
 void SessionController::generatePersonalKey()
 {
+    // The worker may be minutes deep in a publish or a slow sync, so the row is
+    // opened here, on the GUI thread: the press is acknowledged at once and the
+    // worker finishes the same row when it gets to it.
+    beginOperation(QStringLiteral("dest-key"), QStringLiteral("dest"),
+        QStringLiteral("Creating your destination key"), QStringLiteral("Queued…"));
     emit requestGeneratePersonalKey();
 }
 

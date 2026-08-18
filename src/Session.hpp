@@ -342,6 +342,15 @@ public:
     // (subscription certificate + server card). A contact can verify it and
     // reach us with no trust in any server. Requires an active subscription.
     std::string inviteUri() const;
+    // Whether this profile's own card carries routing (destination + the serving
+    // sealing key the server answers card fetches with). False means no invite
+    // can be formed yet, however healthy the destination looks server-side.
+    bool hasOwnRouting() const;
+    // Re-issues our own card inside the term already held, picking up the serving
+    // destination and key the server has assigned since the last issue. Cheap
+    // (one request, no delegation, no grant) and the repair for a card that was
+    // stored before the server had raised the destination.
+    void refreshOwnCard();
     // How this profile names itself on the destinations it creates, so a router
     // shared by several profiles says whose is whose: the profile name, or the
     // head of its fingerprint when it has none.

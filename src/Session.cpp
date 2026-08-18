@@ -2458,6 +2458,24 @@ void Session::tickCalls()
     }
 }
 
+bool Session::hasOwnRouting() const
+{
+    return !myDest_.empty() && !myServingKeyB64_.empty();
+}
+
+void Session::refreshOwnCard()
+{
+    if (subscriptionCertB64_.empty()) {
+        throw std::runtime_error("not subscribed: nothing to refresh");
+    }
+    const SubscriptionCertificate held
+        = SubscriptionCertificate::verify(fromBase64(subscriptionCertB64_));
+    // Same term, so the service node treats this as a re-publish and consumes no
+    // grant; the point is the routing the server now has and our card does not.
+    storeSubscription(client_->renew(
+        nowSeconds(), held.notAfter, sealingKey_.publicDer(), ownRoutingHost()));
+}
+
 std::string Session::destinationOwner() const
 {
     // Enough of a fingerprint to tell two unnamed profiles apart at a glance.
