@@ -1067,8 +1067,10 @@ void SessionWorker::refreshI2pStatus()
         } else {
             summary = QStringLiteral("No destination key yet.");
         }
-    } catch (const std::exception&) {
-        // Not connected: show what we know without the server.
+    } catch (const std::exception& error) {
+        // Not connected: show what we know without the server. The status line is
+        // about the destination, so the transport failure goes to the log.
+        bazarish::log::warn("destination status poll failed: {}", error.what());
         summary = hasKey ? QStringLiteral("Destination key ready; connect to publish it.")
                          : QStringLiteral("No destination key yet.");
     }

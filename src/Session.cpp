@@ -2382,8 +2382,11 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
         Bytes key;
         try {
             key = fromBase64(body.value("key", std::string()));
-        } catch (const std::exception&) {
-            return;  // malformed invite: surface the event but do not ring
+        } catch (const std::exception& error) {
+            // Surface the event but do not ring: a call we cannot key is a call we
+            // cannot take, and a silent one looks like the peer never called.
+            bazarish::log::warn("call invite dropped, key unreadable: {}", error.what());
+            return;
         }
         if (key.size() != kAeadKeyBytes) {
             return;

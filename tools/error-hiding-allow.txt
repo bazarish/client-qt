@@ -1,0 +1,3 @@
+# Sites where a catch legitimately reports nothing, one per line, with the reason.
+# Format: <path>:<line> <reason>
+src/ApiClient.cpp:49 the body was not an error envelope; the generic ApiError thrown right after carries it
