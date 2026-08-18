@@ -9,6 +9,8 @@
 #include "QtAudioIo.hpp"
 #include "Session.hpp"
 
+#include <bazarish/Descriptor.hpp>
+
 #include <QBuffer>
 #include <QByteArray>
 #include <QClipboard>
@@ -21,6 +23,7 @@
 #include <QMimeDatabase>
 #include <QRandomGenerator>
 #include <QStandardPaths>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QUrl>
 
@@ -1985,8 +1988,37 @@ void SessionController::copyText(const QString& text) const
     }
 }
 
+QString SessionController::inviteProblem(const QString& uri) const
+{
+    const QString trimmed = uri.trimmed();
+    if (trimmed.isEmpty()) {
+        return QStringLiteral("Paste an invite link.");
+    }
+    try {
+        const bazarish::Descriptor descriptor = bazarish::parseDescriptor(trimmed.toStdString());
+        if (descriptor.srv.empty()) {
+            return QStringLiteral("This invite carries no address to reach that account.");
+        }
+    } catch (const std::exception&) {
+        // The most common paste by far, and the one that reads as "nothing
+        // happened" if it is allowed through: a bare fingerprint.
+        static const QRegularExpression fingerprint(QStringLiteral("^[a-z2-7]{52}$"));
+        if (fingerprint.match(trimmed).hasMatch()) {
+            return QStringLiteral("That is a fingerprint, not an invite. An invite starts with "
+                                  "bazarish://invite? and also carries where to reach the account.");
+        }
+        return QStringLiteral("Not a bazarish://invite link.");
+    }
+    return {};
+}
+
 void SessionController::addByInvite(const QString& uri, const QString& intro)
 {
+    const QString problem = inviteProblem(uri);
+    if (!problem.isEmpty()) {
+        emit actionFailed(problem);
+        return;  // no background row for something that cannot be attempted
+    }
     const QString opId = QStringLiteral("contact:") + SessionController_genProtocolId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding contact"),
         QStringLiteral("Preparing…"));

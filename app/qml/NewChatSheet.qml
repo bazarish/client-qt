@@ -156,13 +156,26 @@ Popup {
                 TextArea { id: inviteText; wrapMode: TextArea.WrapAnywhere; color: Theme.text
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border } }
             }
+            // Checked as it is typed: a paste that cannot work is refused here,
+            // not by a background operation that dials I2P before finding out.
+            Label {
+                id: inviteCheck
+                readonly property string problem: (root.session && inviteText.text.trim().length > 0)
+                    ? root.session.inviteProblem(inviteText.text) : ""
+                visible: problem.length > 0
+                text: problem
+                color: Theme.warn
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
             FormField { id: inviteIntro; label: "Introduction"; text: "Hi, found your invite!" }
             RowLayout {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }
                 ActionButton {
                     text: "Send request"
-                    enabled: inviteText.text.trim().length > 0
+                    enabled: inviteText.text.trim().length > 0 && inviteCheck.problem.length === 0
                     onClicked: root.startRequest(function() {
                         root.session.addByInvite(inviteText.text.trim(), inviteIntro.text)
                     })

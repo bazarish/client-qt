@@ -9,12 +9,7 @@ Popup {
     property string uri: ""
     // Why there is no invite yet, when the routing is not published.
     property string unavailable: ""
-    // What the copy field holds. The full invite when there is one; otherwise the
-    // fingerprint, which this profile knows with or without a server and which is
-    // enough to be added by someone whose server can look this account up.
-    readonly property string fingerprint: session ? session.fingerprint : ""
     readonly property bool hasInvite: uri.length > 0
-    readonly property string copyText: hasInvite ? uri : fingerprint
     // Return to the page this opened from (Settings); the close button exits.
     signal back()
 
@@ -68,8 +63,9 @@ Popup {
                 Layout.fillWidth: true
             }
             Label {
-                text: "Your server operates your destination on your behalf. Publishing hands it "
-                    + "a time-boxed delegation; it can take a few minutes to come up."
+                text: "An invite carries where to reach you and the key your server answers card "
+                    + "fetches with, so it cannot be formed before your destination is up. "
+                    + "Publishing hands your server a time-boxed delegation; it takes a few minutes."
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
@@ -91,18 +87,11 @@ Popup {
         // and the link side by side (scan or copy).
         QrView {
             Layout.alignment: Qt.AlignHCenter
-            visible: root.copyText.length > 0
-            text: root.copyText
+            visible: root.hasInvite
+            text: root.uri
         }
-        Label {
-            visible: !root.hasInvite && root.fingerprint.length > 0
-            text: "Your fingerprint — always yours, server or not. It is enough for someone "
-                + "whose server can look you up; the full invite also carries where to reach you."
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-        }
+        // The box stays even with nothing in it: an invite that is not ready yet
+        // is a state to explain, not a control to make disappear.
         ScrollView {
             Layout.fillWidth: true
             Layout.preferredHeight: root.hasInvite ? 110 : 56
@@ -110,7 +99,8 @@ Popup {
                 id: linkArea
                 readOnly: true
                 wrapMode: TextArea.WrapAnywhere
-                text: root.copyText
+                text: root.uri
+                placeholderText: "No invite yet — publish your destination first."
                 color: Theme.text
                 selectByMouse: true
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
@@ -121,8 +111,8 @@ Popup {
             hoverEnabled: true
             property bool copied: false
             Layout.fillWidth: true
-            text: copied ? "Copied ✓" : (root.hasInvite ? "Copy link" : "Copy fingerprint")
-            enabled: root.copyText.length > 0
+            text: copied ? "Copied ✓" : "Copy link"
+            enabled: root.hasInvite
             onClicked: {
                 linkArea.selectAll(); linkArea.copy(); linkArea.deselect()
                 copied = true; copiedTimer.restart()

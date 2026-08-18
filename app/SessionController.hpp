@@ -487,6 +487,10 @@ public:
     Q_INVOKABLE void deleteMessage(qint64 localId, const QString& protocolId, bool outgoing);
     // Copies arbitrary text (a whole message) to the system clipboard.
     Q_INVOKABLE void copyText(const QString& text) const;
+    // Why this text is not a usable invite, or empty when it parses. Local and
+    // instant: a paste that cannot work must be refused at the field, not by a
+    // background operation that dials I2P first.
+    Q_INVOKABLE QString inviteProblem(const QString& uri) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
     // Agrees to the active chat's received contact request (the green "Agree").
