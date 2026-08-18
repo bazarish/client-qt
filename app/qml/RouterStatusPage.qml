@@ -167,6 +167,12 @@ Popup {
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
+                        text: "Each address has its own tunnels, in and out, and knows the peers "
+                            + "it has looked up — that last number is what shows real use."
+                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                    Label {
                         visible: I2p.destinations.length === 0
                         text: "No destination is being served — the router is only warming up."
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
@@ -202,7 +208,8 @@ Popup {
                                     Label {
                                         // Known leasesets are the activity tell: tunnels
                                         // stand up on their own, peers do not.
-                                        text: modelData.state + " · " + modelData.tunnels + " in · "
+                                        text: modelData.state + " · tunnels " + modelData.tunnelsIn
+                                            + " in / " + modelData.tunnelsOut + " out · "
                                             + modelData.leaseSets + " peers"
                                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     }
@@ -227,6 +234,12 @@ Popup {
                     Label {
                         text: "Direct connections (" + I2p.transports.length + ")"
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                    }
+                    Label {
+                        text: "Routers this one is talking to directly. \"outgoing\" means we dialed "
+                            + "them; behind a NAT that is every connection there is."
+                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     Label {
                         visible: I2p.transports.length === 0

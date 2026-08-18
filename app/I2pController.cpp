@@ -120,8 +120,10 @@ void I2pController::refresh()
         inboundTunnels = router->inboundTunnels();
         outboundTunnels = router->outboundTunnels();
         for (const bazarish::i2p::TransportPeer& peer : router->transportPeers()) {
+            // "outgoing"/"incoming" spelled out: this is who dialed whom, not the
+            // tunnel directions shown for a destination.
             QString row = QString::fromStdString(peer.transport)
-                + (peer.outbound ? " · out · " : " · in · ");
+                + (peer.outbound ? " · outgoing · " : " · incoming · ");
             if (!peer.endpoint.empty()) {
                 row += QString::fromStdString(peer.endpoint) + " · ";
             }
@@ -143,7 +145,8 @@ void I2pController::refresh()
             row[QStringLiteral("state")] = dest.ready
                 ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
                 : QStringLiteral("building");
-            row[QStringLiteral("tunnels")] = dest.inboundTunnels;
+            row[QStringLiteral("tunnelsIn")] = dest.inboundTunnels;
+            row[QStringLiteral("tunnelsOut")] = dest.outboundTunnels;
             row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;
             destinations << row;
         }
