@@ -157,6 +157,9 @@ enum class TransferState {
 
 struct TransferEvent {
     std::string messageId;
+    // Whose transfer this is. Carried so the view can keep a transfer's state
+    // while the user is looking at another conversation, or none.
+    std::string peer;
     TransferState state = TransferState::eRequested;
     std::uint64_t bytes = 0;
     std::uint64_t total = 0;
@@ -808,10 +811,11 @@ private:
     // closes. Runs on its own thread - building tunnels takes tens of seconds.
     void serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId);
     // A sealed offer came back for a file we asked for: fetch it. Also threaded.
-    void startAnnouncedFetch(const FileOffer& offer);
+    void startAnnouncedFetch(const FileOffer& offer, const std::string& peer);
     void emitTransfer(const std::string& messageId, TransferState state, std::uint64_t bytes,
         std::uint64_t total, const std::string& error = {},
-        const std::string& stage = {});
+        const std::string& stage = {},
+        const std::string& peer = {});
     void loadSentFiles();
     void persistSentFiles() const;
 
@@ -860,6 +864,8 @@ private:
     struct TransferRegistry {
         std::mutex mutex;
         std::map<std::string, PendingTransfer> pending;
+        // Files this side is serving right now, with the flag that stops each.
+        std::map<std::string, std::shared_ptr<std::atomic<bool>>> serving;
         TransferEventFn onEvent;
     };
     std::shared_ptr<TransferRegistry> transfers_ = std::make_shared<TransferRegistry>();

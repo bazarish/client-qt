@@ -206,6 +206,9 @@ struct OperationRow {
     int state = 0;    // 0 running, 1 done, 2 failed
     qint64 startedAt = 0;
     QString peer;     // associated contact fingerprint, for tap-through (optional)
+    // The transfer this row can stop, by the file's protocol id. Empty when the
+    // operation cannot be interrupted.
+    QString cancelId;
 };
 
 // kOperationState* mirror OperationRow::state for readable call sites.
@@ -216,7 +219,7 @@ class OperationListModel : public QAbstractListModel {
 public:
     enum Roles {
         OpIdRole = Qt::UserRole + 1, KindRole, TitleRole, StatusRole, DetailRole, ProgressRole,
-        StateRole, StartedAtRole, PeerRole
+        StateRole, StartedAtRole, PeerRole, CancelIdRole
     };
     using QAbstractListModel::QAbstractListModel;
 

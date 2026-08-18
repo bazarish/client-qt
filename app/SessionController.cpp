@@ -305,19 +305,20 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     // is open; the download path re-points it at itself while it runs.
     session_->setTransferHandler([this](const bazarish::client::TransferEvent& event) {
         const QString id = QString::fromStdString(event.messageId);
+        const QString peer = QString::fromStdString(event.peer);
         if (!event.stage.empty()) {
-            emit transferStage(id, QString::fromStdString(event.stage));
+            emit transferStage(peer, id, QString::fromStdString(event.stage));
         }
         switch (event.state) {
         case bazarish::client::TransferState::eRunning:
-            emit servedProgress(id, static_cast<qint64>(event.bytes),
+            emit servedProgress(peer, id, static_cast<qint64>(event.bytes),
                 static_cast<qint64>(event.total));
             break;
         case bazarish::client::TransferState::eDone:
-            emit servedFinished(id, true, {});
+            emit servedFinished(peer, id, true, {});
             break;
         case bazarish::client::TransferState::eFailed:
-            emit servedFinished(id, false, QString::fromStdString(event.error));
+            emit servedFinished(peer, id, false, QString::fromStdString(event.error));
             break;
         case bazarish::client::TransferState::eRequested:
             break;  // a stage, not bytes: the line above is the whole report
@@ -1212,6 +1213,14 @@ void SessionWorker::allowClearnet(const bool allow)
     }
 }
 
+void SessionWorker::cancelTransfer(const QString& protocolId)
+{
+    if (!session_) {
+        return;
+    }
+    session_->cancelTransfer(protocolId.toStdString());
+}
+
 void SessionWorker::publishPersonalDest()
 {
     if (!session_) {
@@ -1359,6 +1368,8 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onDownloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
+    connect(this, &SessionController::requestCancelTransfer, worker_,
+        &SessionWorker::cancelTransfer);
     connect(this, &SessionController::requestGeneratePersonalKey, worker_,
         &SessionWorker::generatePersonalKey);
     connect(this, &SessionController::requestLoadPersonalKey, worker_,
@@ -1589,6 +1600,7 @@ void SessionController::loadLatestWindow()
     hasMoreOlder_ = !msgs.isEmpty() && store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
     hasMoreNewer_ = false;  // the latest page is, by definition, at the newest
     conversation_.setMessages(msgs);
+    replayTransfersForActivePeer();
     emit pagingChanged();
 }
 
@@ -1647,6 +1659,7 @@ void SessionController::openWindowAtUnread(const QString& peer, qint64 firstUnre
     hasMoreOlder_ = store_.hasMessagesBefore(peer, oldestLoadedId_);
     hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
     conversation_.setMessages(win);
+    replayTransfersForActivePeer();
     emit pagingChanged();
     emit scrollToUnread(firstUnread);
 }
@@ -1683,6 +1696,7 @@ void SessionController::openConversationAtMessage(const QString& peer, qint64 me
     hasMoreOlder_ = !win.isEmpty() && store_.hasMessagesBefore(peer, oldestLoadedId_);
     hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
     conversation_.setMessages(win);
+    replayTransfersForActivePeer();
     emit pagingChanged();
     emit scrollToMessage(messageId);
 }
@@ -2260,7 +2274,7 @@ bool SessionController::isChatPinned(const QString& peer) const
 }
 
 void SessionController::beginOperation(const QString& id, const QString& kind, const QString& title,
-    const QString& status, const QString& peer)
+    const QString& status, const QString& peer, const QString& cancelId)
 {
     OperationRow row;
     row.id = id;
@@ -2270,6 +2284,7 @@ void SessionController::beginOperation(const QString& id, const QString& kind, c
     row.state = eOpRunning;
     row.startedAt = nowMillis();
     row.peer = peer;
+    row.cancelId = cancelId;
     operations_.upsert(row);
     emit operationsChanged();
 }
@@ -2699,49 +2714,106 @@ void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64
         fraction);
 }
 
-void SessionController::onTransferStage(const QString& protocolId, const QString& stage)
+void SessionController::onTransferStage(
+    const QString& peer, const QString& protocolId, const QString& stage)
 {
-    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    TransferProgress& progress = transfers_[protocolId];
+    progress.peer = peer;
+    progress.stage = stage;
+    const StoredMessage m = store_.messageByProtocol(protocolId, peer);
     if (m.id == 0) {
         return;
     }
-    conversation_.setTransferStageForId(m.id, stage);
-    // The same words in the activity panel, under whichever row this transfer has.
+    // A transfer runs long and can be stopped, so it gets a row of its own the
+    // moment it starts - a send row from an hour ago is not that row.
+    const QString opId = (m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
+        + QString::number(m.id);
+    if (operations_.indexOf(opId) < 0) {
+        beginOperation(opId, m.outgoing ? QStringLiteral("file-up") : QStringLiteral("file-down"),
+            m.attName.isEmpty() ? QStringLiteral("file") : m.attName, stage, peer, protocolId);
+    }
+    // The row exists whether or not this conversation is on screen; the model
+    // only has it while it is, and replayTransfersForActivePeer puts it back.
+    if (peer == activePeer_) {
+        conversation_.setTransferStageForId(m.id, stage);
+    }
     updateOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
             + QString::number(m.id),
         stage);
 }
 
-void SessionController::onServedProgress(const QString& protocolId, qint64 sent, qint64 total)
+void SessionController::onServedProgress(
+    const QString& peer, const QString& protocolId, qint64 sent, qint64 total)
 {
-    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    TransferProgress& progress = transfers_[protocolId];
+    progress.peer = peer;
+    progress.sent = sent;
+    progress.total = total;
+    const StoredMessage m = store_.messageByProtocol(protocolId, peer);
     if (m.id == 0) {
-        return;  // not a message of the open conversation
+        return;
     }
     const double fraction
         = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : -1.0;
-    conversation_.setUploadProgressForId(m.id, fraction);
-    updateOperation(QStringLiteral("send:") + QString::number(m.id),
-        total > 0 ? QStringLiteral("Sending to your contact…")
-                  : QStringLiteral("Preparing a one-time address…"),
+    if (peer == activePeer_) {
+        if (m.outgoing) {
+            conversation_.setUploadProgressForId(m.id, fraction);
+        } else {
+            conversation_.setDownloadProgressForId(m.id, sent, total);
+        }
+    }
+    updateOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
+            + QString::number(m.id),
+        progress.stage,
         total > 0 ? humanBytes(sent) + QStringLiteral(" / ") + humanBytes(total) : QString(),
         fraction);
 }
 
 void SessionController::onServedFinished(
-    const QString& protocolId, const bool ok, const QString& error)
+    const QString& peer, const QString& protocolId, const bool ok, const QString& error)
 {
-    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    transfers_.remove(protocolId);
+    const StoredMessage m = store_.messageByProtocol(protocolId, peer);
     if (m.id == 0) {
         return;
     }
-    conversation_.setUploadProgressForId(m.id, -1.0);
-    conversation_.setTransferStageForId(m.id, {});
-    if (!ok) {
-        conversation_.setErrorForId(m.id, error);
+    if (peer == activePeer_) {
+        conversation_.setUploadProgressForId(m.id, -1.0);
+        conversation_.setTransferStageForId(m.id, {});
+        if (!ok) {
+            conversation_.setErrorForId(m.id, error);
+        }
     }
-    finishOperation(QStringLiteral("send:") + QString::number(m.id), ok,
-        ok ? QStringLiteral("Sent to your contact") : error);
+    finishOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
+            + QString::number(m.id),
+        ok, ok ? QStringLiteral("Transferred") : error);
+}
+
+void SessionController::cancelTransfer(const QString& protocolId)
+{
+    emit requestCancelTransfer(protocolId);
+}
+
+void SessionController::replayTransfersForActivePeer()
+{
+    for (auto it = transfers_.constBegin(); it != transfers_.constEnd(); ++it) {
+        if (it.value().peer != activePeer_) {
+            continue;
+        }
+        const StoredMessage m = store_.messageByProtocol(it.key(), activePeer_);
+        if (m.id == 0) {
+            continue;
+        }
+        conversation_.setTransferStageForId(m.id, it.value().stage);
+        if (it.value().total > 0) {
+            if (m.outgoing) {
+                conversation_.setUploadProgressForId(m.id,
+                    static_cast<double>(it.value().sent) / static_cast<double>(it.value().total));
+            } else {
+                conversation_.setDownloadProgressForId(m.id, it.value().sent, it.value().total);
+            }
+        }
+    }
 }
 
 void SessionController::onDownloadStage(qint64 token, int stage)

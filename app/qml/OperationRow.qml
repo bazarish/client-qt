@@ -18,6 +18,8 @@ Item {
     required property double progress
     required property int state
     required property double startedAt
+    // Non-empty when this operation can be stopped (a file transfer).
+    required property string cancelId
 
     implicitHeight: col.implicitHeight + 18
 
@@ -99,6 +101,27 @@ Item {
                     color: Theme.green
                     Behavior on width { NumberAnimation { duration: 120 } }
                 }
+            }
+        }
+
+        // Stop, for the operations that can be stopped: a running file transfer.
+        Button {
+            id: stopButton
+            visible: row.state === 0 && row.cancelId.length > 0
+            hoverEnabled: true
+            implicitWidth: 26
+            implicitHeight: 22
+            onClicked: if (App.session) { App.session.cancelTransfer(row.cancelId) }
+            background: Rectangle {
+                radius: 6
+                color: stopButton.hovered ? Theme.surfaceAlt : "transparent"
+                border.color: Theme.border
+            }
+            contentItem: Label {
+                text: "✕"
+                color: Theme.textDim
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
         }
 

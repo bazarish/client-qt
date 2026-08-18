@@ -89,6 +89,7 @@ public slots:
     void loadPersonalKey(const QString& path);
     void deletePersonalKey();
     void allowClearnet(bool allow);
+    void cancelTransfer(const QString& protocolId);
     void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
@@ -148,10 +149,11 @@ signals:
     // Bytes leaving this device for a file we are serving, by the announced file
     // id (the outgoing message's protocol id): the sender watches the transfer in
     // the bubble it sent, not in a panel somewhere else.
-    void servedProgress(const QString& protocolId, qint64 sent, qint64 total);
+    void servedProgress(const QString& peer, const QString& protocolId, qint64 sent, qint64 total);
     // What the transfer is doing before (and between) bytes, for the bubble.
-    void transferStage(const QString& protocolId, const QString& stage);
-    void servedFinished(const QString& protocolId, bool ok, const QString& error);
+    void transferStage(const QString& peer, const QString& protocolId, const QString& stage);
+    void servedFinished(const QString& peer, const QString& protocolId, bool ok,
+        const QString& error);
     // Download stage for an incoming attachment (token = message id): the int is a
     // bazarish::client::BlobFetchStage (0 connecting, 1 downloading, 2 reconnecting),
     // so a stalled transfer reads as "reconnecting" rather than a frozen bar.
@@ -556,6 +558,9 @@ public:
     // Sticky I2P's escape hatch: this profile has reached its server over I2P and
     // refuses clearnet since; allowing it again is the user's call, never automatic.
     Q_INVOKABLE void allowClearnet(bool allow);
+    // Stops a file transfer in either direction, by the file's protocol id (the
+    // activity panel offers this on a running transfer).
+    Q_INVOKABLE void cancelTransfer(const QString& protocolId);
     Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
@@ -641,6 +646,7 @@ signals:  // to worker
     void requestExport(const QString& path, const QString& password);
     void requestOpen(const QString& dir, const QString& passphrase);
     void requestSetSync(bool on);
+    void requestCancelTransfer(const QString& protocolId);
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);
     void requestDeletePersonalKey();
@@ -674,9 +680,11 @@ private slots:
     void onSendProgress(qint64 localId, int state);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onDownloadProgress(qint64 token, qint64 received, qint64 total);
-    void onServedProgress(const QString& protocolId, qint64 sent, qint64 total);
-    void onTransferStage(const QString& protocolId, const QString& stage);
-    void onServedFinished(const QString& protocolId, bool ok, const QString& error);
+    void onServedProgress(const QString& peer, const QString& protocolId, qint64 sent,
+        qint64 total);
+    void onTransferStage(const QString& peer, const QString& protocolId, const QString& stage);
+    void onServedFinished(const QString& peer, const QString& protocolId, bool ok,
+        const QString& error);
     void onDownloadStage(qint64 token, int stage);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void onSendResult(qint64 localId, bool ok, const QString& error);
@@ -711,7 +719,8 @@ private:
     // marks it done/failed and schedules its removal. operationsChanged fires
     // whenever the running count may have changed (button visibility).
     void beginOperation(const QString& id, const QString& kind, const QString& title,
-        const QString& status, const QString& peer = {});
+        const QString& status, const QString& peer = {},
+        const QString& cancelId = {});
     void updateOperation(const QString& id, const QString& status, const QString& detail = {},
         double progress = -1.0);
     void finishOperation(const QString& id, bool ok, const QString& finalStatus);
@@ -804,6 +813,18 @@ private:
     QString i2pStatusText_;
     QString i2pServerState_;
     QString acceptingContact_;
+    // Transfers in flight, by the file's protocol id. Kept here rather than only
+    // in the conversation model, which is rebuilt whenever the user opens another
+    // chat: a transfer must not lose its state because nobody was looking.
+    struct TransferProgress {
+        QString peer;
+        QString stage;
+        qint64 sent = 0;
+        qint64 total = 0;
+    };
+    QHash<QString, TransferProgress> transfers_;
+    // Puts the transfers of the open conversation back on their bubbles.
+    void replayTransfersForActivePeer();
     qint64 i2pTransientExpires_ = 0;
     // Last-fetched storage usage (session-scoped), with the wall-clock ms it was
     // taken so the settings view can show "updated N ago" even while offline.

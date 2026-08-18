@@ -256,6 +256,14 @@ Item {
                 // interrupted send is demoted to Failed on load). Shows the real
                 // byte percentage once known, falling back to an indeterminate bar
                 // before the first progress callback arrives.
+                // The stages differ in length, so the block is sized once for the
+                // longest of them: a bubble that resizes on every step is unreadable.
+                TextMetrics {
+                    id: stageMetrics
+                    font.pixelSize: Theme.fontSmall
+                    text: "Publishing the address"
+                }
+
                 ColumnLayout {
                     // A file is served on demand, so this block also carries the
                     // steps before any byte moves: the request arriving, the
@@ -264,6 +272,7 @@ Item {
                         && (model.status === DeliveryStatus.Sending
                             || model.transferStage.length > 0)
                     Layout.fillWidth: true
+                    Layout.minimumWidth: stageMetrics.width
                     spacing: 2
                     RowLayout {
                         Layout.fillWidth: true
@@ -298,8 +307,9 @@ Item {
                 // byte arrives.
                 ColumnLayout {
                     id: dlProgress
-                    visible: model.downloading
+                    visible: model.downloading || model.transferStage.length > 0
                     Layout.fillWidth: true
+                    Layout.minimumWidth: stageMetrics.width
                     spacing: 2
                     // downloadStage: 0 connecting, 1 downloading, 2 reconnecting.
                     readonly property bool reconnecting: model.downloadStage === 2

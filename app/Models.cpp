@@ -557,6 +557,7 @@ QVariant OperationListModel::data(const QModelIndex& index, int role) const
     case StateRole: return o.state;
     case StartedAtRole: return o.startedAt;
     case PeerRole: return o.peer;
+    case CancelIdRole: return o.cancelId;
     default: return {};
     }
 }
@@ -565,7 +566,7 @@ QHash<int, QByteArray> OperationListModel::roleNames() const
 {
     return {{OpIdRole, "opId"}, {KindRole, "kind"}, {TitleRole, "title"}, {StatusRole, "status"},
         {DetailRole, "detail"}, {ProgressRole, "progress"}, {StateRole, "state"},
-        {StartedAtRole, "startedAt"}, {PeerRole, "peer"}};
+        {StartedAtRole, "startedAt"}, {PeerRole, "peer"}, {CancelIdRole, "cancelId"}};
 }
 
 int OperationListModel::indexOf(const QString& id) const

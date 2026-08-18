@@ -1603,7 +1603,7 @@ void Session::setTransferHandler(TransferEventFn handler)
 
 void Session::emitTransfer(const std::string& messageId, const TransferState state,
     const std::uint64_t bytes, const std::uint64_t total, const std::string& error,
-    const std::string& stage)
+    const std::string& stage, const std::string& peer)
 {
     TransferEventFn handler;
     {
@@ -1611,7 +1611,7 @@ void Session::emitTransfer(const std::string& messageId, const TransferState sta
         handler = transfers_->onEvent;
     }
     if (handler) {
-        handler(TransferEvent{messageId, state, bytes, total, error, stage});
+        handler(TransferEvent{messageId, peer, state, bytes, total, error, stage});
     }
 }
 
@@ -1623,8 +1623,8 @@ void Session::requestFile(
         transfers_->pending[messageId]
             = PendingTransfer{dest, std::make_shared<std::atomic<bool>>(false)};
     }
-    emitTransfer(messageId, TransferState::eRequested, 0, 0, {},
-        "Asking the sender for a one-time address");
+    emitTransfer(messageId, TransferState::eRequested, 0, 0, {}, "Asking the sender",
+        peerFingerprint);
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "file.request"},
@@ -1643,6 +1643,13 @@ void Session::cancelTransfer(const std::string& messageId)
     if (found != transfers_->pending.end()) {
         found->second.cancel->store(true);
         transfers_->pending.erase(found);
+    }
+    // The same id on the other side of a transfer: we are serving this file and
+    // the user wants it stopped. The serve loop checks the flag between chunks.
+    const auto serving = transfers_->serving.find(messageId);
+    if (serving != transfers_->serving.end()) {
+        serving->second->store(true);
+        transfers_->serving.erase(serving);
     }
 }
 
@@ -1681,12 +1688,18 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
     const fs::path ciphertextPath
         = profileDir_ / ("file-serve-" + toHex(randomBytes(8)) + ".tmp");
 
-    std::thread([this, peerFingerprint, fileId, source, ciphertextPath]() {
+    const std::shared_ptr<std::atomic<bool>> cancel = std::make_shared<std::atomic<bool>>(false);
+    {
+        const std::lock_guard<std::mutex> lock(transfers_->mutex);
+        transfers_->serving[fileId] = cancel;
+    }
+    std::thread([this, peerFingerprint, fileId, source, ciphertextPath, cancel]() {
         try {
-            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Encrypting a copy to send");
-            const PreparedFile prepared = prepareFile(source, ciphertextPath);
             emitTransfer(
-                fileId, TransferState::eRequested, 0, 0, {}, "Creating a one-time address");
+                fileId, TransferState::eRequested, 0, 0, {}, "Encrypting", peerFingerprint);
+            const PreparedFile prepared = prepareFile(source, ciphertextPath);
+            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Making an address",
+                peerFingerprint);
             bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
             config.privacy = transferPrivacy_;
             config.tunnelQuantity = 2;
@@ -1694,8 +1707,8 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             config.owner = destinationOwner();
             const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                 = i2pRouter().createEndpoint(config);
-            emitTransfer(fileId, TransferState::eRequested, 0, 0, {},
-                "Publishing the one-time address (building tunnels)");
+            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Publishing the address",
+                peerFingerprint);
             if (!endpoint->waitReady(std::chrono::seconds(180))) {
                 throw std::runtime_error("could not publish a one-time destination");
             }
@@ -1715,23 +1728,31 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
                 {"offer", fileOfferToJson(offer)},
             };
             sendContent(peerFingerprint, std::move(inner));
-            emitTransfer(fileId, TransferState::eRequested, 0, 0, {},
-                "Address sent; waiting for your contact to connect");
+            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Waiting for them",
+                peerFingerprint);
 
             serveFile(*endpoint, ciphertextPath, std::chrono::seconds(kServeWindowSeconds),
-                [this, fileId](const std::uint64_t sent, const std::uint64_t total) {
-                    emitTransfer(fileId, TransferState::eRunning, sent, total);
-                });
-            emitTransfer(fileId, TransferState::eDone, 0, 0);
+                [this, fileId, peerFingerprint](const std::uint64_t sent,
+                    const std::uint64_t total) {
+                    emitTransfer(
+                        fileId, TransferState::eRunning, sent, total, {}, "Sending", peerFingerprint);
+                },
+                cancel.get());
+            emitTransfer(fileId, TransferState::eDone, 0, 0, {}, {}, peerFingerprint);
+            {
+                const std::lock_guard<std::mutex> lock(transfers_->mutex);
+                transfers_->serving.erase(fileId);
+            }
         } catch (const std::exception& error) {
-            emitTransfer(fileId, TransferState::eFailed, 0, 0, error.what());
+            emitTransfer(
+                fileId, TransferState::eFailed, 0, 0, error.what(), {}, peerFingerprint);
         }
         std::error_code ec;
         fs::remove(ciphertextPath, ec);
     }).detach();
 }
 
-void Session::startAnnouncedFetch(const FileOffer& offer)
+void Session::startAnnouncedFetch(const FileOffer& offer, const std::string& peer)
 {
     fs::path dest;
     std::shared_ptr<std::atomic<bool>> cancel;
@@ -1745,18 +1766,18 @@ void Session::startAnnouncedFetch(const FileOffer& offer)
         cancel = found->second.cancel;
     }
 
-    std::thread([this, offer, dest, cancel]() {
+    std::thread([this, offer, dest, cancel, peer]() {
         try {
-            emitTransfer(offer.fileId, TransferState::eRequested, 0, 0, {},
-                "Connecting to the sender's one-time address");
+            emitTransfer(offer.fileId, TransferState::eRequested, 0, 0, {}, "Connecting", peer);
             fetchFileOverI2p(i2pRouter(), offer, dest, transferPrivacy_,
-                [this, &offer](const std::uint64_t got, const std::uint64_t total) {
-                    emitTransfer(offer.fileId, TransferState::eRunning, got, total);
+                [this, &offer, &peer](const std::uint64_t got, const std::uint64_t total) {
+                    emitTransfer(
+                        offer.fileId, TransferState::eRunning, got, total, {}, "Receiving", peer);
                 },
                 cancel.get(), destinationOwner());
-            emitTransfer(offer.fileId, TransferState::eDone, offer.size, offer.size);
+            emitTransfer(offer.fileId, TransferState::eDone, offer.size, offer.size, {}, {}, peer);
         } catch (const std::exception& error) {
-            emitTransfer(offer.fileId, TransferState::eFailed, 0, 0, error.what());
+            emitTransfer(offer.fileId, TransferState::eFailed, 0, 0, error.what(), {}, peer);
         }
         const std::lock_guard<std::mutex> lock(transfers_->mutex);
         transfers_->pending.erase(offer.fileId);
@@ -1957,7 +1978,8 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 // Silent: the sender is up and serving; start pulling.
                 message.contentType = type;
                 try {
-                    startAnnouncedFetch(fileOfferFromJson(body.at("offer")));
+                    startAnnouncedFetch(
+                        fileOfferFromJson(body.at("offer")), message.fromFingerprint);
                 } catch (const std::exception& error) {
                     // Malformed offer: the transfer simply never starts.
                     bazarish::log::warn("file offer ignored: {}", error.what());
