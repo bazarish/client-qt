@@ -252,6 +252,11 @@ bool serveFile(bazarish::i2p::Endpoint& endpoint, const fs::path& ciphertextPath
     return false;
 }
 
+// A fetch dials from a one-time destination built for the attempt, so it waits
+// for its own tunnels before deciding the sender is unreachable.
+constexpr int kOwnTunnelsSeconds = 180;
+constexpr int kDialSeconds = 90;
+
 void fetchFileOverI2p(bazarish::i2p::Router& router, const FileOffer& offer,
     const fs::path& destPath, const bazarish::i2p::Privacy privacy,
     const TransferProgressFn& onProgress, const std::atomic<bool>* cancel,
@@ -269,8 +274,14 @@ void fetchFileOverI2p(bazarish::i2p::Router& router, const FileOffer& offer,
               config.owner = owner;
               const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                   = router.createEndpoint(config);
+              // Our own tunnels first. Dialing from a destination that is still
+              // building them fails for a reason that has nothing to do with the
+              // sender, and was reported as "cannot reach the sender".
+              if (!endpoint->waitReady(std::chrono::seconds(kOwnTunnelsSeconds))) {
+                  throw std::runtime_error("this device could not build I2P tunnels");
+              }
               const std::unique_ptr<bazarish::i2p::Stream> stream
-                  = endpoint->connect(offer.host, std::chrono::seconds(60));
+                  = endpoint->connect(offer.host, std::chrono::seconds(kDialSeconds));
               if (!stream) {
                   throw std::runtime_error("cannot reach the sender");
               }

@@ -37,6 +37,11 @@ std::string readHeaderLine(bazarish::i2p::Stream& stream)
 
 }  // namespace
 
+// A cold dest needs its own tunnels before it can dial; a warm one already has
+// them. Separate from the dial timeout, which is about reaching the far side.
+constexpr int kOwnTunnelsSeconds = 180;
+constexpr int kDialSeconds = 90;
+
 FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::string& dest,
     const std::string& op, const Bytes& sealed, const bazarish::i2p::Privacy privacy,
     const std::string& owner)
@@ -57,8 +62,12 @@ FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::st
         // A spare belongs to nobody while it waits; from here it is this
         // profile's lookup, and the status view should say so.
         router.retagEndpoint(endpoint, "Contact lookup", owner);
+    } else if (!endpoint.waitReady(std::chrono::seconds(kOwnTunnelsSeconds))) {
+        // A dest built for this call has no tunnels yet. Dialing anyway fails in a
+        // way that reads as "the peer is unreachable", which it is not.
+        throw std::runtime_error("federation fetch: this device has no I2P tunnels yet");
     }
-    auto stream = endpoint.connect(dest, std::chrono::seconds(60));
+    auto stream = endpoint.connect(dest, std::chrono::seconds(kDialSeconds));
     if (!stream) {
         throw std::runtime_error("federation fetch: cannot reach " + dest);
     }
