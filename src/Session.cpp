@@ -1602,7 +1602,8 @@ void Session::setTransferHandler(TransferEventFn handler)
 }
 
 void Session::emitTransfer(const std::string& messageId, const TransferState state,
-    const std::uint64_t bytes, const std::uint64_t total, const std::string& error)
+    const std::uint64_t bytes, const std::uint64_t total, const std::string& error,
+    const std::string& stage)
 {
     TransferEventFn handler;
     {
@@ -1610,7 +1611,7 @@ void Session::emitTransfer(const std::string& messageId, const TransferState sta
         handler = transfers_->onEvent;
     }
     if (handler) {
-        handler(TransferEvent{messageId, state, bytes, total, error});
+        handler(TransferEvent{messageId, state, bytes, total, error, stage});
     }
 }
 
@@ -1622,7 +1623,8 @@ void Session::requestFile(
         transfers_->pending[messageId]
             = PendingTransfer{dest, std::make_shared<std::atomic<bool>>(false)};
     }
-    emitTransfer(messageId, TransferState::eRequested, 0, 0);
+    emitTransfer(messageId, TransferState::eRequested, 0, 0, {},
+        "Asking the sender for a one-time address");
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "file.request"},
@@ -1681,7 +1683,10 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
 
     std::thread([this, peerFingerprint, fileId, source, ciphertextPath]() {
         try {
+            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Encrypting a copy to send");
             const PreparedFile prepared = prepareFile(source, ciphertextPath);
+            emitTransfer(
+                fileId, TransferState::eRequested, 0, 0, {}, "Creating a one-time address");
             bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
             config.privacy = transferPrivacy_;
             config.tunnelQuantity = 2;
@@ -1689,6 +1694,8 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             config.owner = destinationOwner();
             const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                 = i2pRouter().createEndpoint(config);
+            emitTransfer(fileId, TransferState::eRequested, 0, 0, {},
+                "Publishing the one-time address (building tunnels)");
             if (!endpoint->waitReady(std::chrono::seconds(180))) {
                 throw std::runtime_error("could not publish a one-time destination");
             }
@@ -1708,6 +1715,8 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
                 {"offer", fileOfferToJson(offer)},
             };
             sendContent(peerFingerprint, std::move(inner));
+            emitTransfer(fileId, TransferState::eRequested, 0, 0, {},
+                "Address sent; waiting for your contact to connect");
 
             serveFile(*endpoint, ciphertextPath, std::chrono::seconds(kServeWindowSeconds),
                 [this, fileId](const std::uint64_t sent, const std::uint64_t total) {
@@ -1738,6 +1747,8 @@ void Session::startAnnouncedFetch(const FileOffer& offer)
 
     std::thread([this, offer, dest, cancel]() {
         try {
+            emitTransfer(offer.fileId, TransferState::eRequested, 0, 0, {},
+                "Connecting to the sender's one-time address");
             fetchFileOverI2p(i2pRouter(), offer, dest, transferPrivacy_,
                 [this, &offer](const std::uint64_t got, const std::uint64_t total) {
                     emitTransfer(offer.fileId, TransferState::eRunning, got, total);

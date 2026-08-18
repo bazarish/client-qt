@@ -305,6 +305,9 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     // is open; the download path re-points it at itself while it runs.
     session_->setTransferHandler([this](const bazarish::client::TransferEvent& event) {
         const QString id = QString::fromStdString(event.messageId);
+        if (!event.stage.empty()) {
+            emit transferStage(id, QString::fromStdString(event.stage));
+        }
         switch (event.state) {
         case bazarish::client::TransferState::eRunning:
             emit servedProgress(id, static_cast<qint64>(event.bytes),
@@ -317,8 +320,7 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
             emit servedFinished(id, false, QString::fromStdString(event.error));
             break;
         case bazarish::client::TransferState::eRequested:
-            emit servedProgress(id, 0, 0);  // asked for; nothing on the wire yet
-            break;
+            break;  // a stage, not bytes: the line above is the whole report
         }
     });
     // Local facts, before anything that touches a server: whether this profile
@@ -1349,6 +1351,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::downloadProgress, this,
         &SessionController::onDownloadProgress);
     connect(worker_, &SessionWorker::servedProgress, this, &SessionController::onServedProgress);
+    connect(worker_, &SessionWorker::transferStage, this, &SessionController::onTransferStage);
     connect(worker_, &SessionWorker::servedFinished, this, &SessionController::onServedFinished);
     connect(worker_, &SessionWorker::downloadStage, this,
         &SessionController::onDownloadStage);
@@ -2696,6 +2699,19 @@ void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64
         fraction);
 }
 
+void SessionController::onTransferStage(const QString& protocolId, const QString& stage)
+{
+    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    if (m.id == 0) {
+        return;
+    }
+    conversation_.setTransferStageForId(m.id, stage);
+    // The same words in the activity panel, under whichever row this transfer has.
+    updateOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
+            + QString::number(m.id),
+        stage);
+}
+
 void SessionController::onServedProgress(const QString& protocolId, qint64 sent, qint64 total)
 {
     const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
@@ -2720,6 +2736,7 @@ void SessionController::onServedFinished(
         return;
     }
     conversation_.setUploadProgressForId(m.id, -1.0);
+    conversation_.setTransferStageForId(m.id, {});
     if (!ok) {
         conversation_.setErrorForId(m.id, error);
     }

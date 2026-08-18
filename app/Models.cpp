@@ -197,6 +197,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case DownloadTotalRole: return downloadTotalById_.value(m.id, 0);
     case DownloadErrorRole: return downloadErrorById_.value(m.id);
     case DownloadStageRole: return downloadStageById_.value(m.id, 0);
+    case TransferStageRole: return transferStageById_.value(m.id);
     case SavedPathRole: return m.savedPath;
     case BlobGoneRole: return m.blobGone;
     case ReplyToRole: return m.replyTo;
@@ -222,7 +223,8 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
         {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
         {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"},
-        {DownloadStageRole, "downloadStage"}, {ReplyToRole, "replyTo"}};
+        {DownloadStageRole, "downloadStage"}, {TransferStageRole, "transferStage"},
+        {ReplyToRole, "replyTo"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)
@@ -235,6 +237,7 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
     downloadTotalById_.clear();
     downloadErrorById_.clear();
     downloadStageById_.clear();
+    transferStageById_.clear();
     endResetModel();
 }
 
@@ -392,11 +395,28 @@ void ConversationModel::setDownloadStageForId(qint64 id, int stage)
     }
 }
 
+void ConversationModel::setTransferStageForId(const qint64 id, const QString& stage)
+{
+    if (stage.isEmpty()) {
+        transferStageById_.remove(id);
+    } else {
+        transferStageById_.insert(id, stage);
+    }
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {TransferStageRole});
+            return;
+        }
+    }
+}
+
 void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& error)
 {
     downloadReceivedById_.remove(id);
     downloadTotalById_.remove(id);
     downloadStageById_.remove(id);
+    transferStageById_.remove(id);
     if (ok || error.isEmpty()) {
         downloadErrorById_.remove(id);
     } else {

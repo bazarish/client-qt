@@ -161,6 +161,11 @@ struct TransferEvent {
     std::uint64_t bytes = 0;
     std::uint64_t total = 0;
     std::string error;  // set when state == eFailed
+    // What this side is doing right now, in the user's words. A direct transfer
+    // spends most of its time before the first byte - asking, building a one-time
+    // address, publishing it - and a single "connecting" for all of it is what
+    // makes a working transfer look stuck.
+    std::string stage;
 };
 
 using TransferEventFn = std::function<void(const TransferEvent&)>;
@@ -805,7 +810,8 @@ private:
     // A sealed offer came back for a file we asked for: fetch it. Also threaded.
     void startAnnouncedFetch(const FileOffer& offer);
     void emitTransfer(const std::string& messageId, TransferState state, std::uint64_t bytes,
-        std::uint64_t total, const std::string& error = {});
+        std::uint64_t total, const std::string& error = {},
+        const std::string& stage = {});
     void loadSentFiles();
     void persistSentFiles() const;
 

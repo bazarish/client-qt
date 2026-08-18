@@ -256,24 +256,40 @@ Item {
                 // interrupted send is demoted to Failed on load). Shows the real
                 // byte percentage once known, falling back to an indeterminate bar
                 // before the first progress callback arrives.
-                RowLayout {
-                    visible: model.outgoing && model.status === DeliveryStatus.Sending
+                ColumnLayout {
+                    // A file is served on demand, so this block also carries the
+                    // steps before any byte moves: the request arriving, the
+                    // one-time address being built and published.
+                    visible: model.outgoing
+                        && (model.status === DeliveryStatus.Sending
+                            || model.transferStage.length > 0)
                     Layout.fillWidth: true
-                    spacing: 6
-                    ProgressBar {
+                    spacing: 2
+                    RowLayout {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 4
-                        from: 0
-                        to: 1
-                        indeterminate: model.uploadProgress < 0
-                        value: model.uploadProgress >= 0 ? model.uploadProgress : 0
+                        spacing: 6
+                        ProgressBar {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 4
+                            from: 0
+                            to: 1
+                            indeterminate: model.uploadProgress < 0
+                            value: model.uploadProgress >= 0 ? model.uploadProgress : 0
+                        }
+                        Label {
+                            text: model.uploadProgress >= 0
+                                ? Math.round(model.uploadProgress * 100) + "%"
+                                : ""
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSmall
+                        }
                     }
                     Label {
-                        text: model.uploadProgress >= 0
-                            ? Math.round(model.uploadProgress * 100) + "%"
-                            : "Uploading…"
+                        Layout.fillWidth: true
+                        text: model.transferStage.length > 0 ? model.transferStage : "Sending…"
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
+                        elide: Text.ElideRight
                     }
                 }
                 // Download progress for an incoming attachment being saved: a real
@@ -319,7 +335,9 @@ Item {
                             : (model.downloadTotal > 0
                                 ? (delegate.humanSize(model.downloadReceived) + " / "
                                     + delegate.humanSize(model.downloadTotal))
-                                : "Connecting over I2P…")
+                                : (model.transferStage.length > 0
+                                    ? model.transferStage
+                                    : "Connecting over I2P…"))
                         color: dlProgress.reconnecting ? Theme.warn : Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight

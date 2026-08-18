@@ -85,7 +85,7 @@ public:
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
-        BlobGoneRole, DownloadStageRole, ReplyToRole
+        BlobGoneRole, DownloadStageRole, TransferStageRole, ReplyToRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -121,6 +121,10 @@ public:
     // 1 downloading, 2 reconnecting), so a stalled transfer reads as "reconnecting"
     // rather than a frozen bar. Session-only.
     void setDownloadStageForId(qint64 id, int stage);
+    // What a direct transfer is doing right now, in the user's words (empty
+    // clears it). Most of a transfer happens before the first byte, so the bubble
+    // says which step it is on instead of one long "connecting". Session-only.
+    void setTransferStageForId(qint64 id, const QString& stage);
     // Marks a download finished: ok clears the progress; otherwise records an
     // inline error and clears the progress. Session-only.
     void finishDownloadForId(qint64 id, bool ok, const QString& error);
@@ -148,6 +152,7 @@ private:
     QHash<qint64, qint64> downloadTotalById_;
     QHash<qint64, QString> downloadErrorById_;
     QHash<qint64, int> downloadStageById_;
+    QHash<qint64, QString> transferStageById_;
 };
 
 // One account in the unified account list. Covers every on-disk profile, with

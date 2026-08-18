@@ -149,6 +149,8 @@ signals:
     // id (the outgoing message's protocol id): the sender watches the transfer in
     // the bubble it sent, not in a panel somewhere else.
     void servedProgress(const QString& protocolId, qint64 sent, qint64 total);
+    // What the transfer is doing before (and between) bytes, for the bubble.
+    void transferStage(const QString& protocolId, const QString& stage);
     void servedFinished(const QString& protocolId, bool ok, const QString& error);
     // Download stage for an incoming attachment (token = message id): the int is a
     // bazarish::client::BlobFetchStage (0 connecting, 1 downloading, 2 reconnecting),
@@ -673,6 +675,7 @@ private slots:
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onDownloadProgress(qint64 token, qint64 received, qint64 total);
     void onServedProgress(const QString& protocolId, qint64 sent, qint64 total);
+    void onTransferStage(const QString& protocolId, const QString& stage);
     void onServedFinished(const QString& protocolId, bool ok, const QString& error);
     void onDownloadStage(qint64 token, int stage);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
