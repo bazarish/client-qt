@@ -9,6 +9,7 @@
 #include "QtAudioIo.hpp"
 #include "Session.hpp"
 
+#include <bazarish/Crypto.hpp>
 #include <bazarish/Descriptor.hpp>
 
 // Qt makes `emit` a macro and the log header declares a function of that name,
@@ -105,6 +106,15 @@ private:
     bool ok_ = false;
     QString status_ = QStringLiteral("Failed");
 };
+
+// Keeping this profile's delegation alive. The transient the server operates the
+// destination with lasts 7 days, so it is re-issued about 2 days early, with a
+// few hours of per-device jitter so several devices do not all issue at once
+// (the poll-before-issue inside stands the losers down). Checked at most hourly:
+// the check itself is a server call, and the sync tick is seconds.
+constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
+constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
+constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 
 // The background-activity row for a connect: the user can hide the progress
 // dialog and still watch the connect finish in the activity panel.
@@ -429,6 +439,22 @@ void SessionWorker::sync()
         bazarish::log::warn("sync failed: {}", error.what());
         emit syncReachable(false, QString::fromUtf8(error.what()));
         return;  // transient (server momentarily unreachable); next tick retries
+    }
+    // A destination whose delegation lapses goes dark, and nothing else in the app
+    // renews it: the CLI had this loop, the GUI did not.
+    if (nowMillis() - lastTransientCheckMs_ >= kTransientCheckIntervalMs) {
+        lastTransientCheckMs_ = nowMillis();
+        try {
+            const qint64 jitter
+                = static_cast<qint64>(bazarish::randomBytes(1)[0]) * kTransientJitterSeconds / 255;
+            if (session_->refreshI2pTransientIfDue(
+                    QDateTime::currentSecsSinceEpoch(), kTransientRenewLeadSeconds - jitter)) {
+                bazarish::log::info("delegation re-issued for this profile");
+                refreshI2pStatus();
+            }
+        } catch (const std::exception& error) {
+            bazarish::log::warn("delegation renewal check failed: {}", error.what());
+        }
     }
     // Finalize any contact-card resolutions that completed off-thread. Done here
     // (the server is reachable, having just answered the sync above) so the

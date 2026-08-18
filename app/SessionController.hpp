@@ -229,6 +229,8 @@ private:
     // Completed off-thread contact resolutions awaiting finalize (see above).
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
     QTimer* syncTimer_ = nullptr;
+    // When the delegation renewal was last considered (never = 0).
+    qint64 lastTransientCheckMs_ = 0;
     // Outgoing messages accepted by our server but not yet confirmed delivered:
     // local message id -> server attempt id, reconciled on each sync.
     std::map<qint64, std::string> pendingSends_;

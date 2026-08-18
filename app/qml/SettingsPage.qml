@@ -398,6 +398,10 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && !root.session.i2pEnabled
+                            // Not the normal path: connecting publishes on its own and
+                            // the delegation is re-issued in the background. This is for
+                            // a key loaded from elsewhere, a revoked destination, or a
+                            // publish that did not finish.
                             text: "Publish"
                             enabled: root.session && root.session.connected
                             onClicked: root.session.publishPersonalDest()
