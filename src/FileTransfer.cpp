@@ -318,16 +318,24 @@ void fetchFileOverI2p(bazarish::i2p::Router& router, const FileOffer& offer,
               encodeBigEndian64(offset, header);
               stream->writeAll(header.data(), header.size());
               stream->readExact(header.data(), header.size());
-              sink.total(decodeBigEndian64(header));
+              const std::uint64_t declared = decodeBigEndian64(header);
+              sink.total(declared);
 
+              // Stop at the length the sender declared rather than waiting for it
+              // to close: it is waiting for US to close, so that nothing is torn
+              // down with bytes still queued. Both sides waiting is a deadlock
+              // that ends only when one of the timeouts does.
               std::vector<std::uint8_t> buffer(kChunkBytes);
-              while (true) {
+              std::uint64_t received = offset;
+              while (declared == 0 || received < declared) {
                   const std::size_t got = stream->readSome(buffer.data(), buffer.size());
                   if (got == 0) {
-                      break;
+                      break;  // the sender ended the attempt; the driver resumes
                   }
                   sink.append(buffer.data(), got);
+                  received += got;
               }
+              stream->close();
           };
     receiveFile(fetch, offer, destPath, onProgress, cancel);
 }
