@@ -10,7 +10,6 @@ Popup {
     signal showInvite()
     signal showSignWithKey()
     signal showRouterStatus()
-    signal showAppSettings()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -89,7 +88,6 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    Label { text: "This profile"; color: Theme.neon; font.pixelSize: Theme.fontSmall; font.weight: Font.DemiBold }
                     RowLayout {
                         spacing: 12
                         // Tap the avatar to view it full-size; set a new photo with
@@ -458,16 +456,6 @@ Popup {
                 // Session
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    MenuButton {
-                        Layout.fillWidth: true
-                        text: "Settings for all profiles…"
-                        onClicked: { root.close(); root.showAppSettings() }
-                    }
-                }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 ColumnLayout {

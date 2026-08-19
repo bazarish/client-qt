@@ -10,7 +10,7 @@ import Bazarish
 Item {
     id: root
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
-    // refresh, edit, more, plus, check, up, down, forward, dot, stop, send.
+    // refresh, edit, more, plus, check, up, down, forward, dot, stop, send, sliders.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -48,11 +48,6 @@ Item {
                     case "plus":    return "M 12 5 L 12 19 M 5 12 L 19 12"
                     case "search":  return "M 11 4 A 7 7 0 1 1 10.99 4 M 16 16 L 20 20"
                     case "refresh": return "M 20 12 A 8 8 0 1 1 17 5.7 M 17 2.5 L 17 6.5 L 13 6.5"
-                    case "gear":    return "M 12 8.5 A 3.5 3.5 0 1 1 11.99 8.5 "
-                                         + "M 12 2.5 L 12 5 M 12 19 L 12 21.5 "
-                                         + "M 21.5 12 L 19 12 M 5 12 L 2.5 12 "
-                                         + "M 18.7 5.3 L 16.9 7.1 M 7.1 16.9 L 5.3 18.7 "
-                                         + "M 18.7 18.7 L 16.9 16.9 M 7.1 7.1 L 5.3 5.3"
                     case "info":    return "M 12 3 A 9 9 0 1 1 11.99 3 M 12 11 L 12 17 M 12 7.5 L 12 8"
                     case "call":    return "M 6 3 L 9.5 3 L 11 8 L 8.5 9.5 "
                                          + "A 11 11 0 0 0 14.5 15.5 L 16 13 L 21 14.5 L 21 18 "
@@ -64,6 +59,10 @@ Item {
                     case "copy":    return "M 9 9 L 20 9 L 20 20 L 9 20 Z M 5 15 L 4 15 L 4 4 L 15 4 L 15 5"
                     case "edit":    return "M 4 20 L 4 16 L 16 4 L 20 8 L 8 20 Z M 14 6 L 18 10"
                     case "stop":    return "M 7 7 L 17 7 L 17 17 L 7 17 Z"
+                    case "sliders": return "M 4 7 L 20 7 M 4 12 L 20 12 M 4 17 L 20 17 "
+                                         + "M 9 7 A 2.2 2.2 0 1 1 8.99 7 "
+                                         + "M 15 12 A 2.2 2.2 0 1 1 14.99 12 "
+                                         + "M 10 17 A 2.2 2.2 0 1 1 9.99 17"
                     case "send":    return "M 3 12 L 21 4 L 14 21 L 11.5 13.5 Z M 11.5 13.5 L 21 4"
                     default:        return ""
                     }
@@ -74,7 +73,10 @@ Item {
         // Filled shapes: the few that are solid rather than drawn.
         ShapePath {
             strokeColor: "transparent"
-            fillColor: root.name === "more" || root.name === "dot" ? root.color : "transparent"
+            fillColor: root.name === "more" || root.name === "dot" || root.name === "gear"
+                ? root.color
+                : "transparent"
+            fillRule: ShapePath.OddEvenFill
             PathSvg {
                 path: {
                     switch (root.name) {
@@ -82,6 +84,16 @@ Item {
                                       + "M 12 10.4 A 1.6 1.6 0 1 1 11.99 10.4 Z "
                                       + "M 12 16.8 A 1.6 1.6 0 1 1 11.99 16.8 Z"
                     case "dot":  return "M 12 8 A 4 4 0 1 1 11.99 8 Z"
+                    case "gear": return "M 18.5 9.5 L 21.4 10.0 L 21.4 14.0 L 18.5 14.5 "
+                                      + "L 18.4 14.8 L 20.1 17.2 L 17.2 20.1 L 14.8 18.4 "
+                                      + "L 14.5 18.5 L 14.0 21.4 L 10.0 21.4 L 9.5 18.5 "
+                                      + "L 9.2 18.4 L 6.8 20.1 L 3.9 17.2 L 5.6 14.8 "
+                                      + "L 5.5 14.5 L 2.6 14.0 L 2.6 10.0 L 5.5 9.5 "
+                                      + "L 5.6 9.2 L 3.9 6.8 L 6.8 3.9 L 9.2 5.6 "
+                                      + "L 9.5 5.5 L 10.0 2.6 L 14.0 2.6 L 14.5 5.5 "
+                                      + "L 14.8 5.6 L 17.2 3.9 L 20.1 6.8 L 18.4 9.2 Z "
+                                      + "M 15.1 12 A 3.1 3.1 0 1 0 8.9 12 "
+                                      + "A 3.1 3.1 0 1 0 15.1 12 Z"
                     default:     return ""
                     }
                 }

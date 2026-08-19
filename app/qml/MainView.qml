@@ -39,6 +39,7 @@ Item {
                     Layout.fillHeight: true
                     onNewChatRequested: newChat.open()
                     onSettingsRequested: settings.open()
+                    onAppSettingsRequested: appSettings.open()
                     onAccountsRequested: accountSwitcher.open()
                 }
                 Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
@@ -149,7 +150,6 @@ Item {
         onShowInvite: inviteSheet.open()
         onShowSignWithKey: signWithKeySheet.open()
         onShowRouterStatus: routerStatus.open()
-        onShowAppSettings: appSettings.open()
     }
 
     // Unlock prompt for an encrypted account the user brings online/switches to.

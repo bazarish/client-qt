@@ -16,7 +16,8 @@ Popup {
     modal: true
     anchors.centerIn: Overlay.overlay
     width: 460
-    height: Math.min(parent ? parent.height - 40 : 520, 480)
+    // As tall as what it holds, not a fixed box: there are two settings here.
+    height: Math.min(parent ? parent.height - 40 : 520, body.implicitHeight + 60)
     padding: 0
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
@@ -43,6 +44,7 @@ Popup {
             Layout.fillHeight: true
             contentWidth: availableWidth
             ColumnLayout {
+                id: body
                 width: root.width
                 spacing: 14
 

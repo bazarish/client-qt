@@ -8,6 +8,7 @@ Item {
     property var session: null
     signal newChatRequested()
     signal settingsRequested()
+    signal appSettingsRequested()
     signal accountsRequested()
 
     function formatTime(ts) {
@@ -62,8 +63,6 @@ Item {
                     }
                     TapHandler { onTapped: root.accountsRequested() }
                 }
-                IconButton { iconName: "edit"; onClicked: root.newChatRequested() }
-                IconButton { iconName: "gear"; onClicked: root.settingsRequested() }
             }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -245,6 +244,67 @@ Item {
                 }
             }
             TapHandler { onTapped: root.settingsRequested() }
+        }
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: 52
+            color: Theme.surface
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                spacing: 4
+                BarButton {
+                    iconName: "edit"
+                    label: "New chat"
+                    onTapped: root.newChatRequested()
+                }
+                BarButton {
+                    iconName: "gear"
+                    label: "Profile"
+                    onTapped: root.settingsRequested()
+                }
+                BarButton {
+                    iconName: "sliders"
+                    label: "App"
+                    onTapped: root.appSettingsRequested()
+                }
+            }
+        }
+    }
+    // A bar action: the icon says it at a glance, the word says it exactly.
+    component BarButton: Item {
+        id: barButton
+        property string iconName: ""
+        property string label: ""
+        signal tapped()
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 4
+            radius: 8
+            color: tap.pressed ? Theme.border2 : (hover.hovered ? Theme.surfaceAlt : "transparent")
+            ColumnLayout {
+                anchors.centerIn: parent
+                spacing: 2
+                Icon {
+                    Layout.alignment: Qt.AlignHCenter
+                    name: barButton.iconName
+                    color: hover.hovered ? Theme.text : Theme.textDim
+                    size: 17
+                }
+                Label {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: barButton.label
+                    color: hover.hovered ? Theme.text : Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                }
+            }
+            HoverHandler { id: hover }
+            TapHandler { id: tap; onTapped: barButton.tapped() }
         }
     }
 }
