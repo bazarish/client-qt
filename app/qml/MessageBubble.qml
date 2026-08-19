@@ -250,7 +250,7 @@ Item {
                 spacing: 2
                 Layout.fillWidth: true
                 Label { text: "📎 " + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
-                Label { visible: model.attSize > 0; text: (model.attSize / 1024).toFixed(1) + " KB"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                Label { visible: model.attSize > 0; text: delegate.humanSize(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                 // Upload feedback on one's own file while it is actively being
                 // sent (status stays Sending only during the live upload; an
                 // interrupted send is demoted to Failed on load). Shows the real
