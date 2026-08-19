@@ -12,6 +12,8 @@ Popup {
     anchors.centerIn: Overlay.overlay
     width: 420
     height: Math.min(parent ? parent.height - 80 : 560, 560)
+    // Wide enough for the widest count the badge draws.
+    readonly property int unreadSlotWidth: 34
     padding: 0
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
@@ -112,18 +114,21 @@ Popup {
                             }
                         }
                     }
-                    Rectangle {
-                        visible: model.unread > 0
-                        radius: height / 2
-                        color: Theme.accent
-                        implicitHeight: 20
-                        implicitWidth: Math.max(20, ub.implicitWidth + 10)
-                        Label { id: ub; anchors.centerIn: parent; text: model.unread; color: Theme.accentText; font.pixelSize: 11 }
-                    }
                     // Per-account online/offline toggle.
                     Switch {
                         checked: model.online
                         onToggled: App.setOnline(model.accountId, checked)
+                    }
+                    // The count sits in a slot of its own at the right edge, so
+                    // arriving or clearing messages never shift the switch.
+                    Item {
+                        Layout.preferredWidth: root.unreadSlotWidth
+                        Layout.fillHeight: true
+                        UnreadBadge {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            count: model.unread
+                        }
                     }
                 }
             }
