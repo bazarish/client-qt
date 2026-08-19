@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <thread>
 #include <stdexcept>
 #include <utility>
 
@@ -159,19 +160,42 @@ void CallMedia::sealAndSend(
     packetsSent_.fetch_add(1, std::memory_order_relaxed);
 }
 
+// How long a call may go without sending anything before a silence packet goes
+// out: it keeps the path alive and, more importantly, proves to both ends that
+// media flows even when nobody is speaking and even with no microphone.
+constexpr int kKeepAliveMs = 500;
+constexpr int kIdlePollMs = 20;
+
 void CallMedia::audioCaptureLoop()
 {
     audioSource_->start();
+    auto lastSent = std::chrono::steady_clock::now();
+    const auto keepAlive = [&]() {
+        // An empty payload decodes as concealment silence on the other side. It
+        // keeps the media path proven when there is nothing to say - muted, or no
+        // microphone at all - which is also what tells both ends the call is up.
+        sealAndSend(kTrackAudio, sendSeqAudio_, Bytes{});
+        lastSent = std::chrono::steady_clock::now();
+    };
     while (running_.load()) {
         const std::vector<std::int16_t> frame = audioSource_->readFrame();
-        if (frame.size() != static_cast<std::size_t>(kCallSamplesPerFrame)) {
-            continue;  // stop signalled (empty) or a partial frame: skip
+        const bool haveAudio
+            = frame.size() == static_cast<std::size_t>(kCallSamplesPerFrame) && !muted_.load();
+        if (haveAudio) {
+            const Bytes opus = encoder_.encode(frame.data(), static_cast<int>(frame.size()));
+            sealAndSend(kTrackAudio, sendSeqAudio_, opus);
+            lastSent = std::chrono::steady_clock::now();
+            continue;
         }
-        if (muted_.load()) {
-            continue;  // transmit nothing while muted
+        if (std::chrono::steady_clock::now() - lastSent
+            >= std::chrono::milliseconds(kKeepAliveMs)) {
+            keepAlive();
         }
-        const Bytes opus = encoder_.encode(frame.data(), static_cast<int>(frame.size()));
-        sealAndSend(kTrackAudio, sendSeqAudio_, opus);
+        if (frame.empty()) {
+            // No audio backend at all: without this the loop spins on an empty
+            // read and burns a core.
+            std::this_thread::sleep_for(std::chrono::milliseconds(kIdlePollMs));
+        }
     }
 }
 

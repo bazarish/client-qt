@@ -205,7 +205,8 @@ signals:
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
     // Call lifecycle: state is 0 idle / 1 outgoing / 2 incoming / 3 active,
     // matching Session::CallState. Emitted after every sync and call action.
-    void callStateChanged(int state, const QString& peer, const QString& callId, bool muted);
+    void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
+        const QString& stage, qint64 connectedAtMs);
     // A call finished: its peer, direction (incoming), how it ended (a
     // Session::CallOutcome as an int) and connected duration - for a chat-history
     // entry. Emitted after sync and after any call action.
@@ -354,6 +355,10 @@ class SessionController : public QObject {
     // Audio call state for the call screen: "idle"/"outgoing"/"incoming"/"active",
     // the peer fingerprint, a display name, and the local mute flag.
     Q_PROPERTY(QString callState READ callState NOTIFY callChanged)
+    // What the caller is waiting on (delivering the invitation, ringing, opening
+    // the audio path); empty once the call is running. And when it started.
+    Q_PROPERTY(QString callStage READ callStage NOTIFY callChanged)
+    Q_PROPERTY(qint64 callConnectedAtMs READ callConnectedAtMs NOTIFY callChanged)
     Q_PROPERTY(QString callPeer READ callPeer NOTIFY callChanged)
     Q_PROPERTY(QString callPeerName READ callPeerName NOTIFY callChanged)
     Q_PROPERTY(bool callMuted READ callMuted NOTIFY callChanged)
@@ -415,6 +420,8 @@ public:
     QVariantMap storageInfo() const;
     qint64 i2pTransientExpires() const { return i2pTransientExpires_; }
     QString callState() const { return callState_; }
+    QString callStage() const { return callStage_; }
+    qint64 callConnectedAtMs() const { return callConnectedAtMs_; }
     QString callPeer() const { return callPeer_; }
     QString callPeerName() const { return peerName(callPeer_); }
     bool callMuted() const { return callMuted_; }
@@ -699,7 +706,8 @@ private slots:
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
-    void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted);
+    void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
+        const QString& stage, qint64 connectedAtMs);
     // Appends a finished call to the peer's transcript as a clear system line.
     void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
@@ -839,6 +847,8 @@ private:
     quint64 storageMailboxQuota_ = 0;
     qint64 storageUpdatedAtMs_ = 0;
     QString callState_ = QStringLiteral("idle");
+    QString callStage_;
+    qint64 callConnectedAtMs_ = 0;
     QString callPeer_;
     QString callId_;
     // The activity-panel operation id for the call currently in progress (so it is

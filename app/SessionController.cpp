@@ -596,7 +596,8 @@ void SessionWorker::emitCallState()
     }
     const Session::CallInfo call = session_->currentCall();
     emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
-        QString::fromStdString(call.callId), call.muted);
+        QString::fromStdString(call.callId), call.muted, QString::fromStdString(call.stage),
+        static_cast<qint64>(call.connectedAtMs));
 }
 
 void SessionWorker::flushCallLog()
@@ -3188,14 +3189,17 @@ void SessionController::setCallMuted(const bool muted)
 }
 
 void SessionController::onCallStateChanged(const int state, const QString& peer,
-    const QString& callId, const bool muted)
+    const QString& callId, const bool muted, const QString& stage, const qint64 connectedAtMs)
 {
     static const char* const kNames[] = {"idle", "outgoing", "incoming", "active"};
     const QString name = (state >= 0 && state <= 3) ? QString::fromLatin1(kNames[state])
                                                     : QStringLiteral("idle");
-    if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted) {
+    if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted
+        && callStage_ == stage && callConnectedAtMs_ == connectedAtMs) {
         return;
     }
+    callStage_ = stage;
+    callConnectedAtMs_ = connectedAtMs;
     callState_ = name;
     callPeer_ = peer;
     callId_ = callId;

@@ -39,6 +39,10 @@ constexpr std::size_t kRefillThreshold = 16;
 // How long a call rings before it self-resolves: an unanswered outgoing call
 // becomes "no answer", an unanswered incoming one "missed" - so a ringing call
 // never blocks the UI waiting forever.
+// Two different waits, with two different meanings. Until the peer's server has
+// taken the invitation there is nobody ringing yet - that is delivery, and it
+// travels the federation. Only once it lands does the peer's phone ring.
+constexpr std::int64_t kInviteDeliveryTimeoutMs = 120000;
 constexpr std::int64_t kRingTimeoutMs = 60000;
 
 // Inner end-to-end payload format version (see docs Messages.md).
@@ -2277,6 +2281,7 @@ void Session::startCallMedia()
     call_.media->setOnFirstPacket([this]() {
         if (call_.connectedAtMs == 0) {
             call_.connectedAtMs = nowMillis();
+            call_.stage.clear();  // talking: no stage to report any more
         }
     });
     call_.media->start();
@@ -2301,7 +2306,7 @@ void Session::clearCall()
     call_.connectedAtMs = 0;
 }
 
-void Session::sendCallSignal(
+bool Session::sendCallSignal(
     const std::string& peerFingerprint, const std::string& type, nlohmann::json extra)
 {
     nlohmann::json inner = {
@@ -2314,7 +2319,9 @@ void Session::sendCallSignal(
     for (const auto& field : extra.items()) {
         inner[field.key()] = field.value();
     }
-    sendContent(peerFingerprint, std::move(inner));
+    // The return says the peer's server stored it, which for an invitation is the
+    // difference between "still on its way" and "their phone is ringing".
+    return sendContent(peerFingerprint, std::move(inner));
 }
 
 void Session::startCall(const std::string& peerFingerprint)
@@ -2326,10 +2333,11 @@ void Session::startCall(const std::string& peerFingerprint)
         throw std::runtime_error("unknown contact: " + peerFingerprint);
     }
     // Build the media destination first (strict I2P); only then announce the call.
+    call_.stage = "Preparing your call address";
     auto dgram = openCallMediaSession();
     const std::string callId = toHex(randomBytes(8));
     const Bytes mediaKey = randomBytes(kAeadKeyBytes);
-    sendCallSignal(peerFingerprint, "call.invite",
+    const bool delivered = sendCallSignal(peerFingerprint, "call.invite",
         {
             {"callId", callId},
             {"media", "audio"},
@@ -2344,7 +2352,15 @@ void Session::startCall(const std::string& peerFingerprint)
     call_.initiator = true;
     call_.muted = false;
     call_.startedAtMs = nowMillis();
+    call_.invitedAtMs = call_.startedAtMs;
+    call_.deliveredAtMs = 0;
     call_.dgram = std::move(dgram);
+    if (delivered) {
+        call_.deliveredAtMs = nowMillis();
+        call_.stage = "Ringing";
+    } else {
+        call_.stage = "Delivering the invitation";
+    }
 }
 
 void Session::startAudioCall(const std::string& peerFingerprint)
@@ -2420,6 +2436,8 @@ Session::CallInfo Session::currentCall() const
     info.callId = call_.callId;
     info.peerFingerprint = call_.peerFingerprint;
     info.muted = call_.muted;
+    info.stage = call_.stage;
+    info.connectedAtMs = call_.connectedAtMs;
     if (call_.media) {
         info.packetsSent = call_.media->packetsSent();
         info.packetsReceived = call_.media->packetsReceived();
@@ -2481,6 +2499,7 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
             && from == call_.peerFingerprint) {
             call_.peerMediaDest = body.value("dest", std::string());
             call_.state = CallState::eActive;
+            call_.stage = "Answered; opening the audio path";
             startCallMedia();
         }
         return;
@@ -2530,8 +2549,26 @@ std::vector<Session::CompletedCall> Session::takeCallLog()
 
 void Session::tickCalls()
 {
-    if (call_.startedAtMs == 0 || nowMillis() - call_.startedAtMs <= kRingTimeoutMs) {
-        return;  // no ringing call, or still within the ring window (active calls too)
+    if (call_.startedAtMs == 0) {
+        return;  // no call
+    }
+    if (call_.state == CallState::eOutgoing && call_.deliveredAtMs == 0) {
+        // Still trying to hand the invitation over: retry through the normal
+        // delivery path so a momentary outage does not end the call.
+        if (nowMillis() - call_.invitedAtMs <= kInviteDeliveryTimeoutMs) {
+            return;
+        }
+        const std::string peer = call_.peerFingerprint;
+        logCompletedCall(CallOutcome::eNoAnswer);
+        clearCall();
+        bazarish::log::warn("call invitation to {} never reached their server",
+            bazarish::log::redact(peer));
+        return;
+    }
+    const std::int64_t since
+        = call_.deliveredAtMs > 0 ? call_.deliveredAtMs : call_.startedAtMs;
+    if (nowMillis() - since <= kRingTimeoutMs) {
+        return;  // still ringing (active calls sit here too, which is intended)
     }
     if (call_.state == CallState::eOutgoing) {
         const std::string peer = call_.peerFingerprint;

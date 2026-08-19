@@ -9,6 +9,11 @@ Popup {
     id: root
     property var session: null
     readonly property string callState: session ? session.callState : "idle"
+    // The action asked for and not yet reflected in the state ("", "accepting",
+    // "declining", "ending", "muting"). Every call button is a request that has
+    // to travel to the other side, so it says so instead of looking ignored.
+    property string pending: ""
+    onCallStateChanged: root.pending = ""
     // Emitted when the user collapses the call to MainView's compact banner.
     signal minimizeRequested()
 
@@ -27,14 +32,17 @@ Popup {
         property color label: "white"
         background: Rectangle {
             radius: 24
-            color: parent.down ? Qt.darker(parent.fill, 1.2) : parent.fill
+            // A request in flight dims its button, so a press that is already
+            // being carried out does not look like one that was ignored.
+            color: !parent.enabled ? Theme.surfaceAlt
+                : (parent.down ? Qt.darker(parent.fill, 1.2) : parent.fill)
             border.color: Theme.border
             implicitWidth: 120
             implicitHeight: 48
         }
         contentItem: Label {
             text: parent.text
-            color: parent.label
+            color: parent.enabled ? parent.label : Theme.textDim
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
@@ -76,10 +84,18 @@ Popup {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 color: Theme.textDim
-                text: root.callState === "outgoing" ? "Calling..."
+                text: root.pending === "accepting" ? "Accepting…"
+                    : root.pending === "declining" ? "Declining…"
+                    : root.pending === "ending" ? "Ending the call…"
+                    : root.callState === "outgoing"
+                        ? (root.session && root.session.callStage.length > 0
+                            ? root.session.callStage : "Calling…")
                     : root.callState === "incoming" ? "Incoming audio call"
                     : root.callState === "active"
-                        ? ((root.session && root.session.callMuted) ? "In call (muted)" : "In call")
+                        ? (root.session && root.session.callStage.length > 0
+                            ? root.session.callStage
+                            : ((root.session && root.session.callMuted)
+                                ? "In call (muted)" : "In call"))
                     : ""
             }
             Item { Layout.fillHeight: true }
@@ -96,12 +112,14 @@ Popup {
         CallButton {
             visible: root.callState === "incoming"
             text: "Decline"; fill: Theme.danger
-            onClicked: root.session.declineCall()
+            enabled: root.pending.length === 0
+            onClicked: { root.pending = "declining"; root.session.declineCall() }
         }
         CallButton {
             visible: root.callState === "incoming"
             text: "Accept"; fill: Theme.accent; label: Theme.accentInk
-            onClicked: root.session.acceptCall()
+            enabled: root.pending.length === 0
+            onClicked: { root.pending = "accepting"; root.session.acceptCall() }
         }
 
         // Active: mute, end.
@@ -114,14 +132,16 @@ Popup {
         CallButton {
             visible: root.callState === "active"
             text: "End"; fill: Theme.danger
-            onClicked: root.session.endCall()
+            enabled: root.pending.length === 0
+            onClicked: { root.pending = "ending"; root.session.endCall() }
         }
 
         // Outgoing: cancel.
         CallButton {
             visible: root.callState === "outgoing"
             text: "Cancel"; fill: Theme.danger
-            onClicked: root.session.endCall()
+            enabled: root.pending.length === 0
+            onClicked: { root.pending = "ending"; root.session.endCall() }
         }
     }
 }

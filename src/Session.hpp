@@ -604,6 +604,11 @@ public:
         bool muted = false;
         std::uint64_t packetsSent = 0;
         std::uint64_t packetsReceived = 0;
+        // What the caller is waiting on: the invitation being delivered, then the
+        // peer answering, then media. Empty once the call is running.
+        std::string stage;
+        // Unix ms when media first arrived; 0 while the call is not yet running.
+        std::int64_t connectedAtMs = 0;
     };
 
     // Audio device backends are injected so the core stays Qt-free: the GUI sets
@@ -773,7 +778,8 @@ private:
     // Stops media, closes the datagram session, and resets to the idle state.
     void clearCall();
     // Sends a call.* signalling content message (E2E, content class) to a peer.
-    void sendCallSignal(
+    // Returns whether the peer's server took it (see the call stages).
+    bool sendCallSignal(
         const std::string& peerFingerprint, const std::string& type, nlohmann::json extra);
     // Dispatches a decrypted call.* signal during sync(), updating call state and
     // starting/stopping media as needed. Returns the content type handled.
@@ -846,6 +852,11 @@ private:
         std::int64_t startedAtMs = 0;    // invite sent (outgoing) / received (incoming)
         // When media first arrived from the peer - the call'''s real start, and
         // the only moment both sides agree on within a round trip.
+        // When the invitation was handed to our server, and when the peer's server
+        // took it. Delivery and ringing are different waits with different limits.
+        std::int64_t invitedAtMs = 0;
+        std::int64_t deliveredAtMs = 0;
+        std::string stage;
         std::int64_t connectedAtMs = 0;
         std::shared_ptr<bazarish::i2p::Endpoint> dgram;
         std::unique_ptr<I2pCallTransport> transport;
