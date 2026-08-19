@@ -189,12 +189,14 @@ Item {
                     visible: root.narrow
                     iconName: "back"
                     onClicked: if (root.session) { root.session.closeConversation() }
-                    // What is waiting back in the list, which the chat is covering.
+                    // Everything this chat is covering: the account's other
+                    // conversations and the other accounts, whose switcher is
+                    // behind the list too.
                     UnreadBadge {
                         anchors.right: parent.right
                         anchors.top: parent.top
                         anchors.margins: 2
-                        count: root.session ? root.session.unreadTotal : 0
+                        count: (root.session ? root.session.unreadTotal : 0) + App.unreadElsewhere
                     }
                 }
                 Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38; enlargeable: true }
