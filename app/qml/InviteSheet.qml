@@ -40,9 +40,9 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
+            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
             Label { text: "My invite"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { text: "✕"; onClicked: root.close() }
+            IconButton { iconName: "close"; onClicked: root.close() }
         }
         Label {
             text: "Anyone with this can verify and reach you with no trust in any server."
@@ -111,7 +111,7 @@ Popup {
             hoverEnabled: true
             property bool copied: false
             Layout.fillWidth: true
-            text: copied ? "Copied ✓" : "Copy link"
+            text: copied ? "Copied" : "Copy link"
             enabled: root.hasInvite
             onClicked: {
                 linkArea.selectAll(); linkArea.copy(); linkArea.deselect()

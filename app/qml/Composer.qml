@@ -87,7 +87,7 @@ Rectangle {
                 font.weight: Font.Medium
                 verticalAlignment: Text.AlignVCenter
             }
-            IconButton { text: "✕"; onClicked: root.session.cancelEdit() }
+            IconButton { iconName: "close"; onClicked: root.session.cancelEdit() }
         }
 
         // Reply banner (shown while composing a reply): the quoted author + preview.
@@ -120,7 +120,7 @@ Rectangle {
                     Layout.fillWidth: true
                 }
             }
-            IconButton { text: "✕"; onClicked: root.session.cancelReply() }
+            IconButton { iconName: "close"; onClicked: root.session.cancelReply() }
         }
 
         // Resize grip: drag up to enlarge the composer, down to shrink it.
@@ -158,7 +158,7 @@ Rectangle {
             spacing: 6
 
             IconButton {
-                text: "📎"
+                iconName: "attach"
                 visible: !root.editing
                 Layout.alignment: Qt.AlignBottom
                 onClicked: fileDialog.open()
@@ -213,7 +213,7 @@ Rectangle {
             }
 
             IconButton {
-                text: root.editing ? "✓" : "➤"
+                iconName: root.editing ? "check" : "send"
                 tint: Theme.accent
                 Layout.alignment: Qt.AlignBottom
                 onClicked: root.send()

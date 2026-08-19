@@ -43,11 +43,11 @@ Item {
             anchors.centerIn: parent
             spacing: 3
             // A small activity glyph over the running count.
-            Label {
+            Icon {
                 Layout.alignment: Qt.AlignHCenter
-                text: "⟳"
+                name: "refresh"
                 color: Theme.green
-                font.pixelSize: 16
+                size: 16
             }
             Label {
                 Layout.alignment: Qt.AlignHCenter
@@ -105,7 +105,7 @@ Item {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
-                IconButton { text: "✕"; onClicked: overlay.open = false }
+                IconButton { iconName: "close"; onClicked: overlay.open = false }
             }
             Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 

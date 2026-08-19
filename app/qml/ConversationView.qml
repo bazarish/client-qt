@@ -203,9 +203,9 @@ Item {
                         Layout.fillWidth: true
                     }
                 }
-                IconButton { text: "🔍"; onClicked: searchPopup.openSearch() }
-                IconButton { text: "📞"; onClicked: root.callRequested() }
-                IconButton { text: "ⓘ"; onClicked: root.contactInfoRequested() }
+                IconButton { iconName: "search"; onClicked: searchPopup.openSearch() }
+                IconButton { iconName: "call"; onClicked: root.callRequested() }
+                IconButton { iconName: "info"; onClicked: root.contactInfoRequested() }
             }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -449,7 +449,6 @@ Item {
                 // Semi-transparent at rest, fully opaque on hover.
                 opacity: jumpButton.hovered ? 1.0 : 0.45
                 Behavior on opacity { NumberAnimation { duration: 120 } }
-                text: "⌄"
                 width: 40
                 height: 40
                 anchors.right: parent.right
@@ -461,12 +460,10 @@ Item {
                     color: Theme.surface
                     border.color: Theme.border
                 }
-                contentItem: Label {
-                    text: "⌄"
+                contentItem: Icon {
+                    name: "chevron"
                     color: Theme.accent
-                    font.pixelSize: 20
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                    size: 18
                 }
             }
         }

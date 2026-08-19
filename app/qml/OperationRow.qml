@@ -26,14 +26,14 @@ Item {
     readonly property color stateColor: state === 2 ? Theme.danger
         : state === 1 ? Theme.green : Theme.textDim
 
-    function glyphFor(k) {
-        if (k === "contact") return "＋"
-        if (k === "send") return "→"
-        if (k === "file-up") return "↑"
-        if (k === "file-down") return "↓"
-        if (k === "call") return "☎"
-        if (k === "service") return "✦"
-        return "•"
+    function iconFor(k) {
+        if (k === "contact") return "plus"
+        if (k === "send") return "forward"
+        if (k === "file-up") return "up"
+        if (k === "file-down") return "down"
+        if (k === "call") return "call"
+        if (k === "service") return "gear"
+        return "dot"
     }
 
     // Live elapsed seconds while running (drives the badge below).
@@ -60,11 +60,11 @@ Item {
             width: 26; height: 26; radius: 6
             color: Theme.surface
             border.color: Theme.border
-            Label {
+            Icon {
                 anchors.centerIn: parent
-                text: row.glyphFor(row.kind)
+                name: row.iconFor(row.kind)
                 color: row.state === 2 ? Theme.danger : Theme.green
-                font.pixelSize: 14
+                size: 14
             }
         }
 
@@ -117,22 +117,28 @@ Item {
                 color: stopButton.hovered ? Theme.surfaceAlt : "transparent"
                 border.color: Theme.border
             }
-            contentItem: Label {
-                text: "✕"
+            contentItem: Icon {
+                name: "close"
                 color: Theme.textDim
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
+                size: 12
             }
         }
 
         // State badge: ticking elapsed while running, else a terminal mark.
         Label {
+            visible: row.state === 0
             Layout.alignment: Qt.AlignVCenter
-            text: row.state === 0 ? (row.elapsed + "s")
-                : row.state === 1 ? "✓" : "✕"
+            text: row.elapsed + "s"
             color: row.stateColor
-            font.pixelSize: row.state === 0 ? Theme.fontSmall : Theme.fontBody
+            font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold
+        }
+        Icon {
+            visible: row.state !== 0
+            Layout.alignment: Qt.AlignVCenter
+            name: row.state === 1 ? "check" : "close"
+            color: row.stateColor
+            size: 14
         }
     }
 

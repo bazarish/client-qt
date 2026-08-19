@@ -55,9 +55,9 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             // Back to the menu page, shown left of the title while on a sub-page.
-            IconButton { text: "‹"; font.pixelSize: 26; visible: !root.busy && root.mode !== "menu"; onClicked: root.mode = "menu" }
+            IconButton { iconName: "back"; font.pixelSize: 26; visible: !root.busy && root.mode !== "menu"; onClicked: root.mode = "menu" }
             Label { text: "New chat"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { text: "✕"; visible: !root.busy; onClicked: root.close() }
+            IconButton { iconName: "close"; visible: !root.busy; onClicked: root.close() }
         }
 
         // --- Sending (immediate feedback while the worker does the request) ---

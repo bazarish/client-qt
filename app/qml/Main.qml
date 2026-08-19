@@ -118,7 +118,7 @@ ApplicationWindow {
                     color: Theme.danger; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                     Layout.fillWidth: true
                 }
-                IconButton { text: "✕"; onClicked: errorDialog.close() }
+                IconButton { iconName: "close"; onClicked: errorDialog.close() }
             }
             ScrollView {
                 Layout.fillWidth: true

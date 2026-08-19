@@ -29,7 +29,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Label { text: "Contact"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { text: "✕"; onClicked: root.close() }
+            IconButton { iconName: "close"; onClicked: root.close() }
         }
 
         Avatar {

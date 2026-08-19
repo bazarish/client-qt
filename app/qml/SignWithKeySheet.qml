@@ -34,7 +34,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
+            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
             Label {
                 text: "Sign in with your key"
                 color: Theme.green
@@ -42,7 +42,7 @@ Popup {
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
             }
-            IconButton { text: "✕"; onClicked: root.close() }
+            IconButton { iconName: "close"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -141,7 +141,7 @@ Popup {
                         hoverEnabled: true
                         property bool copied: false
                         Layout.fillWidth: true
-                        text: copied ? "Copied ✓" : "Copy signature"
+                        text: copied ? "Copied" : "Copy signature"
                         enabled: blobArea.text.length > 0
                         onClicked: {
                             blobArea.selectAll(); blobArea.copy(); blobArea.deselect()

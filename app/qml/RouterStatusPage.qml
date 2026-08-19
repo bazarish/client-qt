@@ -41,9 +41,9 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            IconButton { text: "‹"; font.pixelSize: 26; onClicked: root.back() }
+            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
             Label { text: "I2P router"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { text: "✕"; onClicked: root.close() }
+            IconButton { iconName: "close"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 

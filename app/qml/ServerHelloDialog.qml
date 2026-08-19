@@ -106,7 +106,7 @@ Popup {
                         selectByMouse: true
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
                     }
-                    IconButton { text: "⧉"; onClicked: root.copyText(modelData) }
+                    IconButton { iconName: "copy"; onClicked: root.copyText(modelData) }
                     Button {
                         text: "Open"
                         onClicked: Qt.openUrlExternally(modelData)

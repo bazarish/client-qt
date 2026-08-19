@@ -53,7 +53,7 @@ Popup {
         // Collapse the call to MainView's compact banner (outgoing/active only) so
         // the app stays usable while ringing or on a call.
         IconButton {
-            text: "⌄"
+            iconName: "chevron"
             visible: root.callState === "outgoing" || root.callState === "active"
             anchors.top: parent.top
             anchors.right: parent.right

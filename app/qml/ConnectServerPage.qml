@@ -9,7 +9,7 @@ Item {
 
     // Back to the profile list (no server needed to switch/create a profile).
     IconButton {
-        text: "‹"
+        iconName: "back"
         font.pixelSize: 26
         anchors.left: parent.left
         anchors.top: parent.top

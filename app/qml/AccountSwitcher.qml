@@ -41,7 +41,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             Label { text: "Accounts"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { text: "✕"; onClicked: root.close() }
+            IconButton { iconName: "close"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -135,11 +135,17 @@ Popup {
             Layout.margins: 12
             // The picker behind this button also opens, removes and imports
             // profiles, so it is not an "add" button.
-            text: "⚙  Manage"
+            text: "Manage"
             hoverEnabled: true
             onClicked: { root.close(); App.requestAddAccount() }
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
-            contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            contentItem: RowLayout {
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                Icon { name: "gear"; color: Theme.accentText; size: 15 }
+                Label { text: "Manage"; color: Theme.accentText }
+                Item { Layout.fillWidth: true }
+            }
         }
     }
 }

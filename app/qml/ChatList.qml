@@ -58,12 +58,12 @@ Item {
                             elide: Text.ElideRight
                             Layout.maximumWidth: 180
                         }
-                        Label { text: "⌄"; color: Theme.textDim }
+                        Icon { name: "chevron"; color: Theme.textDim; size: 14 }
                     }
                     TapHandler { onTapped: root.accountsRequested() }
                 }
-                IconButton { text: "✎"; onClicked: root.newChatRequested() }
-                IconButton { text: "⚙"; onClicked: root.settingsRequested() }
+                IconButton { iconName: "edit"; onClicked: root.newChatRequested() }
+                IconButton { iconName: "gear"; onClicked: root.settingsRequested() }
             }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -117,10 +117,11 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             // Pin marker: a pinned chat stays at the top of the list.
-                            Label {
+                            Icon {
                                 visible: model.pinned
-                                text: "📌"
-                                font.pixelSize: 11
+                                name: "pin"
+                                color: Theme.textDim
+                                size: 12
                                 Layout.alignment: Qt.AlignVCenter
                             }
                             Label {
@@ -237,10 +238,10 @@ Item {
                         Layout.fillWidth: true
                     }
                 }
-                Label {
-                    text: "⚙"
+                Icon {
+                    name: "gear"
                     color: Theme.textDim
-                    font.pixelSize: Theme.fontBody
+                    size: 15
                 }
             }
             TapHandler { onTapped: root.settingsRequested() }

@@ -10,6 +10,7 @@ Popup {
     signal showInvite()
     signal showSignWithKey()
     signal showRouterStatus()
+    signal showAppSettings()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -71,7 +72,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             Label { text: "Settings"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { text: "✕"; onClicked: root.close() }
+            IconButton { iconName: "close"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -178,11 +179,6 @@ Popup {
                             Layout.fillWidth: true
                             text: "Server connection…"
                             onClicked: connectionDialog.open()
-                        }
-                        MenuButton {
-                            Layout.fillWidth: true
-                            text: "I2P router & status…"
-                            onClicked: { root.close(); root.showRouterStatus() }
                         }
                     }
                 }
@@ -466,26 +462,10 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    Label { text: "All profiles"; color: Theme.neon; font.pixelSize: Theme.fontSmall; font.weight: Font.DemiBold }
-                    RowLayout {
+                    MenuButton {
                         Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: "I2P only, every profile"; color: Theme.text }
-                            Label {
-                                text: "Refuses every clearnet connection in the whole app. A profile whose server publishes no I2P address goes offline while this is on — it overrides the per-profile switch above."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Switch {
-                            checked: App.fullPrivacyMode
-                            onToggled: App.setFullPrivacyMode(checked)
-                        }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label { text: "Embedded I2P router version"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
-                        Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
+                        text: "Settings for all profiles…"
+                        onClicked: { root.close(); root.showAppSettings() }
                     }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -597,7 +577,7 @@ Popup {
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: RowLayout {
             spacing: 4
-            IconButton { text: "‹"; font.pixelSize: 26; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
+            IconButton { iconName: "back"; font.pixelSize: 26; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
             Label {
                 text: "Server connection"
                 color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold

@@ -131,19 +131,25 @@ Item {
             IconButton {
                 visible: root.session
                     && (root.session.callState === "outgoing" || root.session.callState === "active")
-                text: "✕"
+                iconName: "close"
                 onClicked: root.session.endCall()
             }
         }
     }
     AccountSwitcher { id: accountSwitcher }
-    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); settings.open() } }
+    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    AppSettingsPage {
+        id: appSettings
+        onBack: { appSettings.close(); settings.open() }
+        onShowRouterStatus: routerStatus.open()
+    }
     SettingsPage {
         id: settings
         session: root.session
         onShowInvite: inviteSheet.open()
         onShowSignWithKey: signWithKeySheet.open()
         onShowRouterStatus: routerStatus.open()
+        onShowAppSettings: appSettings.open()
     }
 
     // Unlock prompt for an encrypted account the user brings online/switches to.

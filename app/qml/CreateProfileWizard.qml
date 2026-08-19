@@ -12,7 +12,7 @@ Item {
     property string pendingBackupFile: ""
 
     IconButton {
-        text: "‹"
+        iconName: "back"
         font.pixelSize: 26
         anchors.left: parent.left
         anchors.top: parent.top

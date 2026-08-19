@@ -54,7 +54,7 @@ Popup {
                     border.color: field.activeFocus ? Theme.accent : Theme.border
                 }
             }
-            IconButton { text: "✕"; onClicked: popup.close() }
+            IconButton { iconName: "close"; onClicked: popup.close() }
         }
 
         Label {

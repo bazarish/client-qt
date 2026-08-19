@@ -96,7 +96,7 @@ Item {
                         // Copy fingerprint and delete live in an overflow menu to
                         // keep the row clean at any width.
                         IconButton {
-                            text: "⋮"
+                            iconName: "more"
                             onClicked: {
                                 root.rowFingerprint = model.fingerprint
                                 root.pendingDeleteId = model.profileId

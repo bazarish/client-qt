@@ -55,7 +55,7 @@ Dialog {
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Layout.topMargin: 4
-            text: "📎  " + root.fileName
+            text: root.fileName
             color: Theme.text
             elide: Text.ElideMiddle
         }

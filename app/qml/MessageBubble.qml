@@ -249,7 +249,7 @@ Item {
                 visible: delegate.isAttachment
                 spacing: 2
                 Layout.fillWidth: true
-                Label { text: "📎 " + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
+                Label { text: "" + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
                 Label { visible: model.attSize > 0; text: delegate.humanSize(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                 // Upload feedback on one's own file while it is actively being
                 // sent (status stays Sending only during the live upload; an

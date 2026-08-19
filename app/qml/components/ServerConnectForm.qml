@@ -168,7 +168,7 @@ ColumnLayout {
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: parent.activeFocus ? Theme.accent : Theme.border }
                 }
                 IconButton {
-                    text: "✕"
+                    iconName: "close"
                     visible: facadeModel.count > 1
                     onClicked: facadeModel.remove(index)
                 }
@@ -176,7 +176,7 @@ ColumnLayout {
         }
         MenuButton {
             Layout.fillWidth: true
-            text: "＋ Add another facade"
+            text: "Add another facade"
             onClicked: facadeModel.append({ url: "" })
         }
 

@@ -183,6 +183,7 @@ if(Qt6_FOUND)
             app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml
             app/qml/CallScreen.qml
+            app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml
             app/qml/ServerHelloDialog.qml
@@ -192,6 +193,7 @@ if(Qt6_FOUND)
             app/qml/components/AvatarViewer.qml
             app/qml/components/QrView.qml
             app/qml/components/DialogButtons.qml
+            app/qml/components/Icon.qml
             app/qml/components/IconButton.qml
             app/qml/components/MenuButton.qml
             app/qml/components/FormField.qml
