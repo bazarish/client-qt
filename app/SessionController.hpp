@@ -127,8 +127,10 @@ signals:
     // The current contacts, their local display names, and per-contact "1"/"0"
     // pending flags (a contact we received a request from but have not yet
     // accepted) - all parallel lists.
+    // links carries each contact's shareable descriptor, empty where none is
+    // known yet - it is built from routing the session already holds.
     void contactsRefreshed(const QStringList& fingerprints, const QStringList& names,
-        const QStringList& pending);
+        const QStringList& pending, const QStringList& links);
     // A real avatar became available for an identity (own or a contact): the GUI
     // feeds it to the shared avatar store. Empty data clears it.
     void avatarReady(const QString& fingerprint, const QByteArray& data);
@@ -504,6 +506,10 @@ public:
     Q_INVOKABLE QVariantList reactionSummary(const QString& protocolId) const;
     // Renames a contact locally (mirrored to the account's own other devices).
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
+    // A shareable link for a contact we hold: the same artifact as our own
+    // invite, built from what they already gave us. Empty while we hold no
+    // routing for them.
+    Q_INVOKABLE QString contactInvite(const QString& fp) const;
     // Clears the active 1:1 conversation. forEveryone also asks the peer to clear
     // their copy (chat.clear); the chat row itself remains.
     Q_INVOKABLE void clearChat(bool forEveryone);
@@ -810,6 +816,7 @@ private:
     // Per-contact local display names (fingerprint -> name), kept in sync from the
     // worker. Drives peerName() and the chat-list labels.
     QHash<QString, QString> contactNames_;
+    QHash<QString, QString> contactLinks_;
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.
     QHash<qint64, QString> pendingSavePath_;

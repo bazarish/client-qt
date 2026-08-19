@@ -53,7 +53,7 @@ Popup {
                     Layout.margins: 16
                     spacing: 10
                     Label {
-                        text: "These apply to every profile in this app, open or not."
+                        text: "These apply to every account in this app, open or not."
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -61,11 +61,13 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "I2P only, every profile"; color: Theme.text }
+                            Label { text: "I2P only, every account"; color: Theme.text }
                             Label {
-                                text: "Refuses every clearnet connection in the whole app. A profile whose "
-                                    + "server publishes no I2P address goes offline while this is on — it "
-                                    + "overrides each profile's own clearnet switch."
+                                text: "Refuses clearnet for every account, whatever each one allows on its "
+                                    + "own - this switch wins. An account whose server publishes no I2P "
+                                    + "address goes offline while it is on. Fetching the I2P network "
+                                    + "database stays allowed either way: it carries no identity, and "
+                                    + "without it there is no I2P to use."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }

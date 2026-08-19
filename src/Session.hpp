@@ -350,6 +350,12 @@ public:
     // (subscription certificate + server card). A contact can verify it and
     // reach us with no trust in any server. Requires an active subscription.
     std::string inviteUri() const;
+    // A shareable descriptor for a contact we already hold: the same artifact as
+    // our own invite, built from what they gave us. Passing a contact on is not
+    // theirs to consent to, but the routing is already public to anyone they
+    // wrote to, and the alternative is retyping a fingerprint that reaches
+    // nobody. Throws when we hold no routing for them yet.
+    std::string contactInviteUri(const std::string& peerFingerprint) const;
     // Whether this profile's own card carries routing (destination + the serving
     // sealing key the server answers card fetches with). False means no invite
     // can be formed yet, however healthy the destination looks server-side.

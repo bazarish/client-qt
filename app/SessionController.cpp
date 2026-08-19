@@ -425,12 +425,23 @@ void SessionWorker::emitContacts()
     QStringList fps;
     QStringList names;
     QStringList pending;
+    QStringList links;
     for (const std::string& fp : session_->contactFingerprints()) {
         fps << QString::fromStdString(fp);
         names << QString::fromStdString(session_->contactDisplayName(fp));
         pending << (session_->contactIsPending(fp) ? QStringLiteral("1") : QStringLiteral("0"));
+        // Built here because this is where the routing is; it is the contact's
+        // own card, so nothing is computed that they did not already hand over.
+        try {
+            links << QString::fromStdString(session_->contactInviteUri(fp));
+        } catch (const std::exception&) {
+            // error-hiding: allowed - a contact whose routing we have not been
+            // given yet is the normal early state, and the empty entry is what
+            // the card reads to say there is nothing to share.
+            links << QString();
+        }
     }
-    emit contactsRefreshed(fps, names, pending);
+    emit contactsRefreshed(fps, names, pending, links);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -1486,13 +1497,20 @@ SessionController::SessionController(QObject* parent)
         &SessionController::ackAfterReceive);
     connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
-        [this](const QStringList& fps, const QStringList& names, const QStringList& pending) {
+        [this](const QStringList& fps, const QStringList& names, const QStringList& pending,
+            const QStringList& links) {
             contactFps_ = fps;
             contactNames_.clear();
+            contactLinks_.clear();
             pendingContacts_.clear();
             for (int i = 0; i < fps.size() && i < names.size(); ++i) {
                 if (!names[i].isEmpty()) {
                     contactNames_.insert(fps[i], names[i]);
+                }
+            }
+            for (int i = 0; i < fps.size() && i < links.size(); ++i) {
+                if (!links[i].isEmpty()) {
+                    contactLinks_.insert(fps[i], links[i]);
                 }
             }
             for (int i = 0; i < fps.size() && i < pending.size(); ++i) {
@@ -1904,6 +1922,11 @@ void SessionController::setDisplayName(const QString& name)
         return;
     }
     emit requestSetDisplayName(trimmed);
+}
+
+QString SessionController::contactInvite(const QString& fp) const
+{
+    return contactLinks_.value(fp);
 }
 
 void SessionController::renameContact(const QString& fp, const QString& name)

@@ -6,6 +6,9 @@ import Bazarish
 Popup {
     id: root
     property var session: null
+    readonly property string shareLink: (session && session.activePeer.length > 0)
+        ? session.contactInvite(session.activePeer) : ""
+    property bool shareCopied: false
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -84,6 +87,55 @@ Popup {
             selectByMouse: true
             background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
         }
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
+
+        // Passing this contact on: the fingerprint alone reaches nobody, so what
+        // is offered is the same card they gave us - who they are and where to
+        // reach them. Absent while we hold no routing for them yet.
+        Label {
+            text: "Share this contact:"
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+        }
+        Label {
+            visible: shareLink.length === 0
+            Layout.fillWidth: true
+            text: "Nothing to share yet — you hold no address for them."
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+        }
+        QrView {
+            Layout.alignment: Qt.AlignHCenter
+            visible: shareLink.length > 0
+            text: root.shareLink
+        }
+        ScrollView {
+            visible: shareLink.length > 0
+            Layout.fillWidth: true
+            Layout.preferredHeight: 84
+            TextArea {
+                id: shareArea
+                readOnly: true
+                wrapMode: TextArea.WrapAnywhere
+                text: root.shareLink
+                color: Theme.text
+                font.pixelSize: Theme.fontSmall
+                selectByMouse: true
+                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+            }
+        }
+        MenuButton {
+            visible: shareLink.length > 0
+            Layout.fillWidth: true
+            text: shareCopied ? "Copied" : "Copy contact link"
+            onClicked: {
+                shareArea.selectAll(); shareArea.copy(); shareArea.deselect()
+                root.shareCopied = true; shareCopiedTimer.restart()
+            }
+        }
+        Timer { id: shareCopiedTimer; interval: 1500; onTriggered: root.shareCopied = false }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
 

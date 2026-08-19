@@ -2651,6 +2651,23 @@ void Session::refreshOwnCard()
         nowSeconds(), held.notAfter, sealingKey_.publicDer(), ownRoutingHost()));
 }
 
+std::string Session::contactInviteUri(const std::string& peerFingerprint) const
+{
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end()) {
+        throw std::runtime_error("not a contact");
+    }
+    if (found->second.dest.empty() || found->second.servingSealingB64.empty()) {
+        throw std::runtime_error("no routing held for this contact yet");
+    }
+    Descriptor descriptor;
+    descriptor.fingerprint = peerFingerprint;
+    descriptor.srv = found->second.dest;
+    descriptor.srvKeyDer = fromBase64(found->second.servingSealingB64);
+    descriptor.name = found->second.displayName;
+    return encodeDescriptor(descriptor);
+}
+
 std::string Session::destinationOwner() const
 {
     // Enough of a fingerprint to tell two unnamed profiles apart at a glance.
