@@ -53,6 +53,12 @@ QtObject {
     readonly property int radius: 10
     readonly property int radiusSmall: 6
     readonly property int avatar: 44
+    // The action bar under the chat list and the composer beside it are one
+    // horizontal line across the window, so they share a resting height.
+    readonly property int barHeight: 48
+    // Below this the two panes cannot both be useful, so the actions collapse
+    // into one menu and the window shows a single pane.
+    readonly property int narrowWidth: 560
 
     readonly property int fontSmall: 12
     readonly property int fontBody: 14

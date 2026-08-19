@@ -10,7 +10,8 @@ import Bazarish
 Item {
     id: root
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
-    // refresh, edit, more, plus, check, up, down, forward, dot, stop, send, sliders.
+    // refresh, edit, more, plus, check, up, down, forward, dot, stop, send, sliders,
+    // burger.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -59,6 +60,7 @@ Item {
                     case "copy":    return "M 9 9 L 20 9 L 20 20 L 9 20 Z M 5 15 L 4 15 L 4 4 L 15 4 L 15 5"
                     case "edit":    return "M 4 20 L 4 16 L 16 4 L 20 8 L 8 20 Z M 14 6 L 18 10"
                     case "stop":    return "M 7 7 L 17 7 L 17 17 L 7 17 Z"
+                    case "burger":  return "M 4 7 L 20 7 M 4 12 L 20 12 M 4 17 L 20 17"
                     case "sliders": return "M 4 7 L 20 7 M 4 12 L 20 12 M 4 17 L 20 17 "
                                          + "M 9 7 A 2.2 2.2 0 1 1 8.99 7 "
                                          + "M 15 12 A 2.2 2.2 0 1 1 14.99 12 "

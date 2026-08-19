@@ -17,7 +17,16 @@ Popup {
     anchors.centerIn: Overlay.overlay
     width: 460
     padding: 18
-    onOpened: { uri = ""; unavailable = ""; if (session) session.requestInvite() }
+    onOpened: {
+        // Straight from what this profile stores - no request, works offline.
+        uri = session ? session.ownInvite : ""
+        unavailable = ""
+        // Only when there is nothing stored is anything asked of the server: that
+        // means the card never picked up the serving key.
+        if (session && uri.length === 0) {
+            session.requestInvite()
+        }
+    }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 

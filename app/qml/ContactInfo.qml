@@ -8,11 +8,15 @@ Popup {
     property var session: null
     readonly property string shareLink: (session && session.activePeer.length > 0)
         ? session.contactInvite(session.activePeer) : ""
-    property bool shareCopied: false
+    signal shareRequested()
 
     modal: true
     anchors.centerIn: Overlay.overlay
     width: 420
+    // As tall as it needs, capped by the screen, and scrolling inside that cap -
+    // it used to size past the bottom of a short screen with no way to reach the
+    // rest.
+    height: Math.min(parent ? parent.height - 40 : 620, body.implicitHeight + 36)
     padding: 18
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
@@ -26,7 +30,11 @@ Popup {
         }
     }
 
-    contentItem: ColumnLayout {
+    contentItem: ScrollView {
+        contentWidth: availableWidth
+        ColumnLayout {
+        id: body
+        width: root.width - 36
         spacing: 12
 
         RowLayout {
@@ -90,52 +98,15 @@ Popup {
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
 
-        // Passing this contact on: the fingerprint alone reaches nobody, so what
-        // is offered is the same card they gave us - who they are and where to
-        // reach them. Absent while we hold no routing for them yet.
-        Label {
-            text: "Share this contact:"
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-        }
-        Label {
-            visible: shareLink.length === 0
-            Layout.fillWidth: true
-            text: "Nothing to share yet — you hold no address for them."
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            wrapMode: Text.Wrap
-        }
-        QrView {
-            Layout.alignment: Qt.AlignHCenter
-            visible: shareLink.length > 0
-            text: root.shareLink
-        }
-        ScrollView {
-            visible: shareLink.length > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: 84
-            TextArea {
-                id: shareArea
-                readOnly: true
-                wrapMode: TextArea.WrapAnywhere
-                text: root.shareLink
-                color: Theme.text
-                font.pixelSize: Theme.fontSmall
-                selectByMouse: true
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-            }
-        }
+
         MenuButton {
-            visible: shareLink.length > 0
             Layout.fillWidth: true
-            text: shareCopied ? "Copied" : "Copy contact link"
-            onClicked: {
-                shareArea.selectAll(); shareArea.copy(); shareArea.deselect()
-                root.shareCopied = true; shareCopiedTimer.restart()
-            }
+            enabled: root.shareLink.length > 0
+            text: root.shareLink.length > 0
+                ? "Share this contact…"
+                : "Nothing to share yet — no address held for them"
+            onClicked: { root.close(); root.shareRequested() }
         }
-        Timer { id: shareCopiedTimer; interval: 1500; onTriggered: root.shareCopied = false }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
 
@@ -242,6 +213,7 @@ Popup {
             wrapMode: Text.Wrap
             color: Theme.text
             text: "This permanently removes this contact and your entire chat history with them from this device. This cannot be undone."
+        }
         }
     }
 }

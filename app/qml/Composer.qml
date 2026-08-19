@@ -154,7 +154,8 @@ Rectangle {
             Layout.fillWidth: true
             Layout.leftMargin: 8
             Layout.rightMargin: 8
-            Layout.bottomMargin: 8
+            Layout.topMargin: (Theme.barHeight - root.minInputH) / 2
+            Layout.bottomMargin: (Theme.barHeight - root.minInputH) / 2
             spacing: 6
 
             IconButton {

@@ -510,6 +510,12 @@ public:
     // invite, built from what they already gave us. Empty while we hold no
     // routing for them.
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
+    // Our own invite, from what this profile already holds: the fingerprint and
+    // the address are ours, and the server's serving key has been in the stored
+    // certificate since the destination was first published. Empty only while
+    // that has never happened.
+    Q_PROPERTY(QString ownInvite READ ownInvite NOTIFY ownInviteChanged)
+    QString ownInvite() const { return ownInvite_; }
     // Clears the active 1:1 conversation. forEveryone also asks the peer to clear
     // their copy (chat.clear); the chat row itself remains.
     Q_INVOKABLE void clearChat(bool forEveryone);
@@ -622,6 +628,7 @@ signals:
     void onlineChanged();
     void reachableChanged();
     void acceptingContactChanged();
+    void ownInviteChanged();
     void i2pStatusChanged();
     void storageChanged();
     void callChanged();
@@ -817,6 +824,7 @@ private:
     // worker. Drives peerName() and the chat-list labels.
     QHash<QString, QString> contactNames_;
     QHash<QString, QString> contactLinks_;
+    QString ownInvite_;
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.
     QHash<qint64, QString> pendingSavePath_;

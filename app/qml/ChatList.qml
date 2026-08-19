@@ -9,6 +9,8 @@ Item {
     signal newChatRequested()
     signal settingsRequested()
     signal appSettingsRequested()
+    // Too narrow for two panes and a row of labelled actions: one menu instead.
+    readonly property bool narrow: width < 300
     signal accountsRequested()
 
     function formatTime(ts) {
@@ -65,8 +67,21 @@ Item {
                 }
                 Item { Layout.fillWidth: true }
                 IconButton {
+                    visible: !root.narrow
                     iconName: "sliders"
                     onClicked: root.appSettingsRequested()
+                }
+                IconButton {
+                    visible: root.narrow
+                    iconName: "burger"
+                    onClicked: narrowMenu.open()
+                    Menu {
+                        id: narrowMenu
+                        y: parent.height
+                        MenuItem { text: "New chat"; onTriggered: root.newChatRequested() }
+                        MenuItem { text: "Account"; onTriggered: root.settingsRequested() }
+                        MenuItem { text: "Global settings"; onTriggered: root.appSettingsRequested() }
+                    }
                 }
             }
         }
@@ -251,10 +266,11 @@ Item {
             TapHandler { onTapped: root.settingsRequested() }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; visible: !root.narrow }
         Rectangle {
+            visible: !root.narrow
             Layout.fillWidth: true
-            implicitHeight: 52
+            implicitHeight: Theme.barHeight
             color: Theme.surface
             RowLayout {
                 anchors.fill: parent

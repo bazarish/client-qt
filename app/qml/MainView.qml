@@ -32,18 +32,31 @@ Item {
             RowLayout {
                 anchors.fill: parent
                 spacing: 0
+                // Below the narrow threshold this is the only pane until a chat
+                // is opened, and the conversation replaces it rather than sharing
+                // a width neither can use.
+                readonly property bool narrow: width < Theme.narrowWidth
+                readonly property bool chatOpen: root.session
+                    && root.session.activePeer.length > 0
                 ChatList {
                     id: chatList
                     session: root.session
-                    Layout.preferredWidth: 320
+                    visible: !parent.narrow || !parent.chatOpen
+                    Layout.preferredWidth: parent.narrow ? parent.width : 320
                     Layout.fillHeight: true
                     onNewChatRequested: newChat.open()
                     onSettingsRequested: settings.open()
                     onAppSettingsRequested: appSettings.open()
                     onAccountsRequested: accountSwitcher.open()
                 }
-                Rectangle { Layout.fillHeight: true; width: 1; color: Theme.border }
+                Rectangle {
+                    visible: !parent.narrow
+                    Layout.fillHeight: true
+                    width: 1
+                    color: Theme.border
+                }
                 Item {
+                    visible: !parent.narrow || parent.chatOpen
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Loader {
@@ -70,7 +83,16 @@ Item {
     // These three open from Settings; their back button returns there.
     InviteSheet { id: inviteSheet; session: root.session; onBack: { inviteSheet.close(); settings.open() } }
     SignWithKeySheet { id: signWithKeySheet; session: root.session; onBack: { signWithKeySheet.close(); settings.open() } }
-    ContactInfo { id: contactInfo; session: root.session }
+    ContactInfo {
+        id: contactInfo
+        session: root.session
+        onShareRequested: contactShare.open()
+    }
+    ContactShareSheet {
+        id: contactShare
+        session: root.session
+        onBack: { contactShare.close(); contactInfo.open() }
+    }
     // A live call opens the full-screen overlay; the user can collapse it to the
     // compact banner below (root.callMinimized) and keep using the app.
     property bool callMinimized: false

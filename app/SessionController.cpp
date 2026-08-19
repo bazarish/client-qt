@@ -407,6 +407,13 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     });
     // Local facts, before anything that touches a server: whether this profile
     // holds a destination key and at what address.
+    // The invite is data this profile already holds; hand it over at open so the
+    // sheet has something to show without a request.
+    try {
+        emit inviteReady(QString::fromStdString(session_->inviteUri()));
+    } catch (const std::exception& error) {
+        bazarish::log::info("no invite yet: {}", error.what());
+    }
     emit i2pKeyState(session_->hasI2pDestination(),
         session_->hasI2pDestination()
             ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p")
@@ -1552,7 +1559,13 @@ SessionController::SessionController(QObject* parent)
         }
         emit actionFailed(reason);
     });
-    connect(worker_, &SessionWorker::inviteReady, this, &SessionController::inviteReady);
+    connect(worker_, &SessionWorker::inviteReady, this, [this](const QString& uri) {
+        if (ownInvite_ != uri) {
+            ownInvite_ = uri;
+            emit ownInviteChanged();
+        }
+        emit inviteReady(uri);
+    });
     connect(worker_, &SessionWorker::inviteUnavailable, this,
         &SessionController::inviteUnavailable);
     connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
