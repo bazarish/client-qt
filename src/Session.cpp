@@ -2270,6 +2270,15 @@ void Session::startCallMedia()
         std::move(audioSink), call_.mediaKey,
         call_.initiator ? CallRole::eCaller : CallRole::eCallee);
     call_.media->setMuted(call_.muted);
+    // Both sides start counting from the first datagram they receive, which they
+    // see within a round trip of each other. Counting from "accepted" instead put
+    // the two timers tens of seconds apart, because the accept signal travels the
+    // federation while the callee has already started.
+    call_.media->setOnFirstPacket([this]() {
+        if (call_.connectedAtMs == 0) {
+            call_.connectedAtMs = nowMillis();
+        }
+    });
     call_.media->start();
 }
 
@@ -2354,7 +2363,6 @@ void Session::acceptCall(const std::string& callId)
             {"dest", dgram->routingHost()}});
     call_.dgram = std::move(dgram);
     call_.state = CallState::eActive;
-    call_.connectedAtMs = nowMillis();
     startCallMedia();
 }
 
@@ -2466,7 +2474,6 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
             && from == call_.peerFingerprint) {
             call_.peerMediaDest = body.value("dest", std::string());
             call_.state = CallState::eActive;
-            call_.connectedAtMs = nowMillis();
             startCallMedia();
         }
         return;

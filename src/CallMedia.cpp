@@ -130,6 +130,11 @@ std::uint64_t CallMedia::packetsSent() const
     return packetsSent_.load(std::memory_order_relaxed);
 }
 
+void CallMedia::setOnFirstPacket(std::function<void()> callback)
+{
+    onFirstPacket_ = std::move(callback);
+}
+
 std::uint64_t CallMedia::packetsReceived() const
 {
     return packetsReceived_.load(std::memory_order_relaxed);
@@ -214,7 +219,9 @@ void CallMedia::handleAudioPacket(const std::uint64_t sequence, const Bytes& opu
     audioSink_->writeFrame(decoder_.decode(opus));
     lastPlayed = sequence;
     havePlayed = true;
-    packetsReceived_.fetch_add(1, std::memory_order_relaxed);
+    if (packetsReceived_.fetch_add(1, std::memory_order_relaxed) == 0 && onFirstPacket_) {
+        onFirstPacket_();  // media is flowing: this is where the call really starts
+    }
 }
 
 

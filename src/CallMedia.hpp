@@ -7,6 +7,7 @@
 #include <bazarish/I2p.hpp>
 
 #include <atomic>
+#include <functional>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -76,6 +77,11 @@ public:
 
     std::uint64_t packetsSent() const;
     std::uint64_t packetsReceived() const;
+    // Called once, from the receive loop, when the first datagram from the peer
+    // opens. Both sides see it within a round trip of each other, which is what
+    // makes it the moment a call actually started - unlike accepting, which each
+    // side learns at a different time.
+    void setOnFirstPacket(std::function<void()> callback);
 
 private:
     void audioCaptureLoop();
@@ -97,6 +103,7 @@ private:
     std::atomic<std::uint64_t> sendSeqAudio_;
     std::atomic<std::uint64_t> packetsSent_;
     std::atomic<std::uint64_t> packetsReceived_;
+    std::function<void()> onFirstPacket_;
 
     std::mutex sendMutex_;
 

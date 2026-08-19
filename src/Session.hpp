@@ -844,7 +844,9 @@ private:
         bool initiator = false;     // true on the caller side (nonce role prefix)
         bool muted = false;
         std::int64_t startedAtMs = 0;    // invite sent (outgoing) / received (incoming)
-        std::int64_t connectedAtMs = 0;  // became active, for the call duration
+        // When media first arrived from the peer - the call'''s real start, and
+        // the only moment both sides agree on within a round trip.
+        std::int64_t connectedAtMs = 0;
         std::shared_ptr<bazarish::i2p::Endpoint> dgram;
         std::unique_ptr<I2pCallTransport> transport;
         std::unique_ptr<CallMedia> media;
