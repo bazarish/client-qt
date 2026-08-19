@@ -88,7 +88,7 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    Label { text: "Profile"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: "This profile"; color: Theme.neon; font.pixelSize: Theme.fontSmall; font.weight: Font.DemiBold }
                     RowLayout {
                         spacing: 12
                         // Tap the avatar to view it full-size; set a new photo with
@@ -113,62 +113,13 @@ Popup {
                             renameSelfDialog.open()
                         }
                     }
-                    MenuButton { Layout.fillWidth: true; text: "Show my invite / QR"; onClicked: { root.close(); root.showInvite() } }
-                    MenuButton { Layout.fillWidth: true; text: "Sign in with key (portals / sites)"; onClicked: { root.close(); root.showSignWithKey() } }
+                    MenuButton { Layout.fillWidth: true; text: "My invite link and QR…"; onClicked: { root.close(); root.showInvite() } }
+                    MenuButton { Layout.fillWidth: true; text: "Sign in to a site with this key…"; onClicked: { root.close(); root.showSignWithKey() } }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 // App & privacy — GLOBAL settings, shared by every profile on this
                 // device (the per-profile sections are below).
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    Label { text: "App & privacy (all profiles)"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: "Full privacy mode"; color: Theme.text }
-                            Label {
-                                text: "Refuse every clearnet connection — reach servers over I2P only. A profile with no I2P facade goes offline."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Switch {
-                            checked: App.fullPrivacyMode
-                            onToggled: App.setFullPrivacyMode(checked)
-                        }
-                    }
-                    // Sticky I2P: once this profile has reached its server over I2P it
-                    // refuses clearnet, so a flaky link cannot move it back silently.
-                    // This is the deliberate way back.
-                    RowLayout {
-                        visible: root.session && root.session.hasI2pFacade
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: "Allow clearnet for this profile"; color: Theme.text }
-                            Label {
-                                text: root.session && root.session.clearnetAllowed
-                                    ? "This profile may fall back to a clearnet facade — your server then sees this device's address."
-                                    : "This profile reaches its server over I2P and refuses clearnet. Turn on only if you accept being seen by address."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Switch {
-                            checked: root.session && root.session.clearnetAllowed
-                            onToggled: root.session.allowClearnet(checked)
-                        }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label { text: "I2P engine (libi2pd)"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
-                        Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
-                    }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
                 // Connection
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -248,7 +199,7 @@ Popup {
                     readonly property var info: root.session ? root.session.storageInfo : ({})
                     RowLayout {
                         Layout.fillWidth: true
-                        Label { text: "Storage"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                        Label { text: "Mailbox on your server"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
                         Label {
                             text: storageSection.info ? root.agoText(storageSection.info.updatedAt) : ""
                             color: Theme.textDim; font.pixelSize: Theme.fontSmall
@@ -309,7 +260,7 @@ Popup {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.leftMargin: 6
                             anchors.rightMargin: 6
-                            title: "Mailbox"
+                            title: "Waiting to be delivered"
                             used: storageSection.info ? storageSection.info.mailboxUsed : 0
                             quota: storageSection.info ? storageSection.info.mailboxQuota : 0
                             ok: storageSection.info ? storageSection.info.mailboxOk : false
@@ -407,9 +358,9 @@ Popup {
                     RowLayout {
                         visible: root.session && !root.session.i2pHasKey
                         Layout.fillWidth: true; spacing: 8
-                        MenuButton { Layout.fillWidth: true; text: "Generate key"
+                        MenuButton { Layout.fillWidth: true; text: "Create address"
                             onClicked: { root.session.generatePersonalKey(); i2pFlash.restart() } }
-                        MenuButton { Layout.fillWidth: true; text: "Load .dat…"; onClicked: i2pKeyDialog.open() }
+                        MenuButton { Layout.fillWidth: true; text: "Load an existing key…"; onClicked: i2pKeyDialog.open() }
                     }
                     RowLayout {
                         visible: root.session && root.session.i2pHasKey
@@ -421,14 +372,14 @@ Popup {
                             // the delegation is re-issued in the background. This is for
                             // a key loaded from elsewhere, a revoked destination, or a
                             // publish that did not finish.
-                            text: "Publish"
+                            text: "Publish address"
                             enabled: root.session && root.session.connected
                             onClicked: root.session.publishPersonalDest()
                         }
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && root.session.i2pEnabled
-                            text: "Revoke"
+                            text: "Take offline"
                             onClicked: root.session.disablePersonalDest()
                         }
                         // Re-poll the server status and flash the box for ~1s.
@@ -443,7 +394,7 @@ Popup {
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey
                         Layout.fillWidth: true
-                        text: "Delete key"
+                        text: "Delete address"
                         danger: true
                         onClicked: deleteKeyDialog.open()
                     }
@@ -451,20 +402,39 @@ Popup {
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 // Backup
+                // What this profile alone does. The switches above are the app's;
+                // these follow the profile wherever it is opened.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    Label { text: "Backup"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    MenuButton { Layout.fillWidth: true; text: "Export encrypted backup…"; onClicked: exportDialog.open() }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
-                // Session
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
+                    Label { text: "Privacy for this profile"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    // Sticky I2P: once this profile has reached its server over I2P it
+                    // refuses clearnet, so a flaky link cannot move it back silently.
+                    // This is the deliberate way back.
+                    RowLayout {
+                        visible: root.session && root.session.hasI2pFacade
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Allow clearnet for this profile"; color: Theme.text }
+                            Label {
+                                visible: App.fullPrivacyMode
+                                text: "Has no effect while \"I2P only, every profile\" is on."
+                                color: Theme.warn; font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                text: root.session && root.session.clearnetAllowed
+                                    ? "This profile may fall back to a clearnet facade — your server then sees this device's address."
+                                    : "This profile reaches its server over I2P and refuses clearnet. Turn on only if you accept being seen by address."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Switch {
+                            checked: root.session && root.session.clearnetAllowed
+                            onToggled: root.session.allowClearnet(checked)
+                        }
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -477,6 +447,53 @@ Popup {
                             onToggled: if (root.session) root.session.sendReceipts = checked
                         }
                     }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label { text: "Backup"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    MenuButton { Layout.fillWidth: true; text: "Export encrypted backup…"; onClicked: exportDialog.open() }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                // Session
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label { text: "All profiles"; color: Theme.neon; font.pixelSize: Theme.fontSmall; font.weight: Font.DemiBold }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "I2P only, every profile"; color: Theme.text }
+                            Label {
+                                text: "Refuses every clearnet connection in the whole app. A profile whose server publishes no I2P address goes offline while this is on — it overrides the per-profile switch above."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Switch {
+                            checked: App.fullPrivacyMode
+                            onToggled: App.setFullPrivacyMode(checked)
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label { text: "Embedded I2P router version"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                        Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
