@@ -181,6 +181,10 @@ nlohmann::json keyboardToJson(const InlineKeyboard& keyboard)
 // for a slow I2P transfer with reconnects, short enough that an abandoned request
 // does not pin tunnels forever.
 constexpr int kServeWindowSeconds = 30 * 60;
+// How long a file request is worth answering. The requester waits live on the
+// other side, so one that arrives from a mailbox after a restart is answered to
+// an empty room - and costs a published destination to find that out.
+constexpr std::int64_t kFileRequestFreshnessMs = 5 * 60 * 1000;
 
 std::string guessMime(const fs::path& path)
 {
@@ -396,6 +400,7 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
         session.myDest_ = cert.dest;
         if (!cert.servingSealingKeyDer.empty()) {
             session.myServingKeyB64_ = toBase64(cert.servingSealingKeyDer);
+            session.client_->setSessionSealingKey(cert.servingSealingKeyDer);
         }
     }
     session.encrypted_ = encrypted;
@@ -664,6 +669,9 @@ void Session::storeSubscription(const SubscribeResult& result)
     myDest_ = result.dest;
     myServingKeyB64_
         = result.servingSealingKeyDer.empty() ? std::string() : toBase64(result.servingSealingKeyDer);
+    // With a serving key in hand the client can open a session and stop signing
+    // every request; without one it keeps signing, which still works.
+    client_->setSessionSealingKey(result.servingSealingKeyDer);
     persistMeta();
 }
 
@@ -1198,6 +1206,9 @@ Session::ContactFetchContext Session::contactFetchContext() const
     ctx.i2pEnabled = i2pEnabled();
     ctx.blobFetchPrivacy = transferPrivacy_;
     ctx.destinationOwner = destinationOwner();
+    if (!myServingKeyB64_.empty()) {
+        ctx.servingSealingKeyDer = fromBase64(myServingKeyB64_);
+    }
     return ctx;
 }
 
@@ -1209,6 +1220,9 @@ std::unique_ptr<Client> Session::makeEventClient(const ContactFetchContext& cont
         Identity::fromPrivatePem(context.identityPem), context.clientId, context.endpoint,
         context.i2pDataDir);
     waiter->setDestinationOwner(context.destinationOwner);
+    if (!context.servingSealingKeyDer.empty()) {
+        waiter->setSessionSealingKey(context.servingSealingKeyDer);
+    }
     return waiter;
 }
 
@@ -1638,6 +1652,7 @@ void Session::emitTransfer(const std::string& messageId, const TransferState sta
 void Session::requestFile(
     const std::string& peerFingerprint, const std::string& messageId, const fs::path& dest)
 {
+
     {
         const std::lock_guard<std::mutex> lock(transfers_->mutex);
         transfers_->pending[messageId]
@@ -2009,9 +2024,20 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.attachmentMime = file.value("mime", std::string());
                 message.attachmentSize = file.value("size", std::uint64_t{0});
             } else if (type == "file.request") {
-                // Silent: a contact wants a file we announced.
+                // Silent: a contact wants a file we announced. Only if they are
+                // still waiting, though - a request is answered by building a
+                // one-time destination and holding it open, and after a restart
+                // the asking side remembers nothing. An old one is dropped rather
+                // than served to nobody; the user asks again if they still want it.
                 message.contentType = type;
-                serveRequestedFile(message.fromFingerprint, body.value("fileId", std::string()));
+                const std::int64_t askedAt = body.value("sentAt", std::int64_t{0});
+                if (askedAt != 0 && nowMillis() - askedAt > kFileRequestFreshnessMs) {
+                    bazarish::log::info("file request from {} is stale, not serving",
+                        bazarish::log::redact(message.fromFingerprint));
+                } else {
+                    serveRequestedFile(
+                        message.fromFingerprint, body.value("fileId", std::string()));
+                }
             } else if (type == "file.offer") {
                 // Silent: the sender is up and serving; start pulling.
                 message.contentType = type;

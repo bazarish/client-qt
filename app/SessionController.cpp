@@ -32,6 +32,7 @@
 #include <QRandomGenerator>
 #include <QStandardPaths>
 #include <QRegularExpression>
+#include <chrono>
 #include <QTimer>
 #include <QUrl>
 
@@ -123,6 +124,9 @@ constexpr int kHeartbeatIntervalMs = 30000;
 // How long the server is asked to hold a request. Its own cap is lower; asking
 // for more than it allows is answered sooner, which costs nothing.
 constexpr int kEventWaitSeconds = 30;
+// The floor between two waits. Without it a mailbox that still has something in
+// it answers instantly every time, and the loop becomes a spin.
+constexpr int kEventSettleMs = 1000;
 
 // The background-activity row for a connect: the user can hide the progress
 // dialog and still watch the connect finish in the activity panel.
@@ -306,6 +310,10 @@ void SessionWorker::startEventWaiter()
             // Something is waiting (or the server's window closed): sync now, on
             // the worker thread where every other session call runs.
             QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
+            // A wait that returns at once - the mailbox still holds something the
+            // sync has not drained yet - would otherwise spin here and bury the
+            // worker thread in syncs, which is what a send then queues behind.
+            std::this_thread::sleep_for(std::chrono::milliseconds(kEventSettleMs));
         }
     });
     // With a waiter in place the timer is only a heartbeat: it catches what the

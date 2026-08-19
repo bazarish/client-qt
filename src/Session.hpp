@@ -410,6 +410,7 @@ public:
         bool i2pEnabled = false;
         bazarish::i2p::Privacy blobFetchPrivacy = bazarish::i2p::Privacy::eMax;
         std::string destinationOwner;   // profile name, for the router status view
+        Bytes servingSealingKeyDer;     // what a session secret is sealed to
     };
     // An add to resolve: an invite URI (byUsername=false) or an alias.
     struct ContactCardRequest {

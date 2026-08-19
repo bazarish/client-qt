@@ -88,6 +88,11 @@ void Client::setDestinationOwner(std::string owner)
     api_.setDestinationOwner(std::move(owner));
 }
 
+void Client::setSessionSealingKey(Bytes servingSealingKeyDer)
+{
+    api_.setSessionSealingKey(std::move(servingSealingKeyDer));
+}
+
 SubscribeResult Client::submitSubscription(const std::string& path,
     const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer,
     const std::string& ownDest)

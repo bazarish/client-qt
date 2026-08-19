@@ -4,6 +4,7 @@
 #include "I2pRouter.hpp"
 
 #include <bazarish/Auth.hpp>
+#include <bazarish/Cms.hpp>
 #include <bazarish/Log.hpp>
 #include <bazarish/I2pHttp.hpp>
 
@@ -34,6 +35,11 @@ std::int64_t nowSeconds()
 // and how long a dial to a facade may take once they are up.
 constexpr int kOutboundReadySeconds = 180;
 constexpr int kFacadeDialSeconds = 60;
+// The secret a session key is derived from.
+constexpr std::size_t kSessionSecretBytes = 32;
+// The session id is local to each side (it fixes the MAC key together with the
+// secret); only handles derived from the secret ever travel.
+constexpr std::size_t kSessionIdChars = 32;
 
 // Turns a non-2xx response into a typed ApiError. A recognized error
 // envelope yields its code and message; anything else keeps the raw body.
@@ -47,7 +53,8 @@ constexpr int kFacadeDialSeconds = 60;
             throw ApiError(parsed->code, status, parsed->message);
         }
     } catch (const nlohmann::json::exception&) {
-        // Body was not JSON; fall through to the generic error below.
+        // error-hiding: allowed - the body was not an error envelope, and the
+        // ApiError thrown right below carries the status and the raw text.
     }
     throw ApiError(std::nullopt, status, text);
 }
@@ -212,6 +219,84 @@ void ApiClient::setAllowClearnet(const bool allow)
 bool ApiClient::allowClearnet() const
 {
     return allowClearnet_;
+}
+
+bool ApiClient::ensureSessionLocked()
+{
+    // Renewed before it lapses, not after: the server tells us when it expires
+    // exactly so a client never has to learn it from a refused request.
+    constexpr std::int64_t kRenewLeadSeconds = 300;
+    // How long we keep signing after a session was refused out of hand. Without
+    // it, a server that answers every session with 401 would have us open one per
+    // request forever.
+    constexpr std::int64_t kBlockedForSeconds = 900;
+
+    const std::int64_t now = nowSeconds();
+    if (!sessionId_.empty() && now + kRenewLeadSeconds < sessionUntil_) {
+        return true;
+    }
+    if (sessionSealingKeyDer_.empty() || now < sessionBlockedUntil_) {
+        return false;  // nothing to seal to, or we are in the cooldown
+    }
+    sessionId_.clear();
+    try {
+        // Sealed to this user's serving key: only the server that operates the
+        // destination can open it, so the facade in between carries a blob.
+        const Bytes secret = randomBytes(kSessionSecretBytes);
+        // A one-time key for the answer, carried inside the sealed envelope: the
+        // facade must not learn the session's lifetime any more than its secret.
+        const Key replyKey = Key::generateSealing();
+        const nlohmann::json inner = {
+            {"secret", toBase64(secret)},
+            {"replyKey", toBase64(replyKey.publicDer())},
+        };
+        const std::string innerText = inner.dump();
+        const Key servingKey = Key::fromPublicDer(sessionSealingKeyDer_);
+        const nlohmann::json body = {{"sealed",
+            toBase64(cms::seal(Bytes(innerText.begin(), innerText.end()), servingKey))}};
+        const std::string text = body.dump();
+        const auth::Headers signed_ = auth::signRequest(identity_, now, "POST",
+            "/v1/auth/session", Bytes(text.begin(), text.end()));
+        std::map<std::string, std::string> headers(signed_.begin(), signed_.end());
+        headers.emplace("X-Bazarish-Client", clientId_);
+        const ApiResponse response
+            = transmitLocked("POST", "/v1/auth/session", {}, Bytes(text.begin(), text.end()),
+                "application/json", headers, kDefaultReadTimeoutSeconds, false);
+        const nlohmann::json reply = response.json();
+        const Bytes opened
+            = cms::unseal(fromBase64(reply.at("sealed").get<std::string>()), replyKey);
+        const nlohmann::json answer = nlohmann::json::parse(opened.begin(), opened.end());
+        // The id never travels: both sides derive it, and what goes on the wire
+        // is a different handle per request.
+        sessionSecret_ = secret;
+        sessionId_ = toHex(sha256(secret)).substr(0, kSessionIdChars);
+        sessionKey_ = auth::deriveSessionKey(secret, sessionId_);
+        sessionUntil_ = answer.at("expiresUnix").get<std::int64_t>();
+        sessionSeq_ = 0;
+        sessionRefusals_ = 0;
+        bazarish::log::info("session open for {} s", sessionUntil_ - now);
+        return true;
+    } catch (const std::exception& error) {
+        // Anything at all: no session face, no destination yet, a refusal. Keep
+        // signing, and do not ask again for a while.
+        sessionId_.clear();
+        sessionBlockedUntil_ = now + kBlockedForSeconds;
+        bazarish::log::info("no session, signing each request: {}", error.what());
+        return false;
+    }
+}
+
+void ApiClient::setSessionSealingKey(Bytes servingSealingKeyDer)
+{
+    const std::lock_guard<std::mutex> lock(netMutex_);
+    if (servingSealingKeyDer == sessionSealingKeyDer_) {
+        return;
+    }
+    // A different serving key means a different destination: the old session was
+    // opened against something that no longer applies.
+    sessionSealingKeyDer_ = std::move(servingSealingKeyDer);
+    sessionId_.clear();
+    sessionBlockedUntil_ = 0;
 }
 
 void ApiClient::setDestinationOwner(std::string owner)
@@ -411,11 +496,23 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
     // no query string (the facade strips the base path before forwarding and
     // the server verifies the query-less path). The signature is therefore the
     // same across facades, so it is computed once.
-    httplib::Headers headers;
+    // A session is held with the messaging server, which issued it against a key
+    // only it has. The service node behind /v1/account/* never saw that exchange,
+    // so those calls keep presenting the signature.
+    const bool sessionRoute = path.rfind("/v1/messaging/", 0) == 0;
+    std::map<std::string, std::string> headers;
     if (authenticate) {
-        const auth::Headers signedHeaders
-            = auth::signRequest(identity_, nowSeconds(), method, path, body);
-        headers = httplib::Headers(signedHeaders.begin(), signedHeaders.end());
+        // A session MAC when we hold one, the full hybrid signature otherwise -
+        // which is also what opens the session in the first place.
+        auth::Headers authHeaders;
+        if (sessionRoute && ensureSessionLocked()) {
+            const std::uint64_t seq = ++sessionSeq_;
+            authHeaders = auth::macRequest(auth::sessionHandle(sessionSecret_, seq), sessionKey_,
+                seq, nowSeconds(), method, path, body);
+        } else {
+            authHeaders = auth::signRequest(identity_, nowSeconds(), method, path, body);
+        }
+        headers = std::map<std::string, std::string>(authHeaders.begin(), authHeaders.end());
         headers.emplace("X-Bazarish-Client", clientId_);
     }
     // Extra headers ride outside the signature (e.g. blob retention, which is
@@ -424,6 +521,44 @@ ApiResponse ApiClient::send(const std::string& method, const std::string& path,
     for (const auto& [key, value] : extraHeaders) {
         headers.emplace(key, value);
     }
+    try {
+        return transmitLocked(
+            method, path, query, body, contentType, headers, readTimeoutSeconds, clearnetOnly);
+    } catch (const ApiError& error) {
+        // A refused session is answered by opening a new one and trying once
+        // more, with a signature this time - never by retrying the same way,
+        // which is how a server stuck on 401 would spin a client forever.
+        if (error.code != ErrorCode::eSessionInvalid || sessionId_.empty() || !sessionRoute) {
+            throw;
+        }
+        constexpr int kRefusalsBeforeGivingUp = 3;
+        constexpr std::int64_t kBlockedAfterRefusalsSeconds = 900;
+        bazarish::log::info("session refused mid-request; signing this one");
+        sessionId_.clear();
+        if (++sessionRefusals_ >= kRefusalsBeforeGivingUp) {
+            sessionRefusals_ = 0;
+            sessionBlockedUntil_ = nowSeconds() + kBlockedAfterRefusalsSeconds;
+            bazarish::log::warn("sessions keep being refused; signing every request for now");
+        }
+        const auth::Headers signedHeaders
+            = auth::signRequest(identity_, nowSeconds(), method, path, body);
+        std::map<std::string, std::string> retryHeaders(
+            signedHeaders.begin(), signedHeaders.end());
+        retryHeaders.emplace("X-Bazarish-Client", clientId_);
+        for (const auto& [key, value] : extraHeaders) {
+            retryHeaders.emplace(key, value);
+        }
+        return transmitLocked(method, path, query, body, contentType, retryHeaders,
+            readTimeoutSeconds, clearnetOnly);
+    }
+}
+
+ApiResponse ApiClient::transmitLocked(const std::string& method, const std::string& path,
+    const std::string& query, const Bytes& body, const std::string& contentType,
+    const std::map<std::string, std::string>& headerMap, const int readTimeoutSeconds,
+    const bool clearnetOnly)
+{
+    const httplib::Headers headers(headerMap.begin(), headerMap.end());
 
     // The same headers as a plain map for the I2P transport (which writes them
     // verbatim; Host / Content-Length / Connection are added by the builder).

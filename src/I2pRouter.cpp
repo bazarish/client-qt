@@ -146,16 +146,14 @@ std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
             bazarish::i2p::kDefaultTunnelQuantity, /*published=*/false, "Facade link", owner});
     };
-    if (owner.empty()) {
-        return build();  // nothing to share it with
-    }
-    const std::lock_guard<std::mutex> lock(linksMutex);
-    if (const std::shared_ptr<bazarish::i2p::Endpoint> existing = links[owner].lock()) {
-        return existing;
-    }
-    const std::shared_ptr<bazarish::i2p::Endpoint> link = build();
-    links[owner] = link;
-    return link;
+    // Deliberately one per caller, not one per profile. Sharing looked tidier in
+    // the status view, and it cost correctness: the poller holds a stream open for
+    // thirty seconds while sends and syncs dial from the same destination, and
+    // those replies came back unframed. Streams multiplex in principle; this pair
+    // does not survive it in practice.
+    (void)linksMutex;
+    (void)links;
+    return build();
 }
 
 std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest()

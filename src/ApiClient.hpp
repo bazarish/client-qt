@@ -166,6 +166,13 @@ public:
     // Names this profile on the destinations this client creates, so a router
     // shared by several profiles says whose dialer is whose.
     void setDestinationOwner(std::string owner);
+
+    // The session this client authenticates with, when it has one. Opening it
+    // costs one signed request; every request after that carries a MAC instead of
+    // an ~8.3 KB hybrid signature. The caller supplies the sealing key the secret
+    // is sealed to (this user's serving key, whose private half the server holds)
+    // and the key to unseal nothing with - the server only answers with an id.
+    void setSessionSealingKey(Bytes servingSealingKeyDer);
     // What this client's outbound destination is called in the router status
     // view. A profile keeps two: the one its session dials with, and the one that
     // holds the long poll open (they are separate so a wait never blocks a send).
@@ -184,6 +191,13 @@ private:
         const std::string& query, const Bytes& body, const std::string& contentType,
         bool authenticate, const std::map<std::string, std::string>& extraHeaders = {},
         int readTimeoutSeconds = kDefaultReadTimeoutSeconds, bool clearnetOnly = false);
+    // The transport half of send: everything from the request lock onward, with
+    // the headers already decided. Opening a session reuses it while the lock is
+    // held, which is why it is separate.
+    ApiResponse transmitLocked(const std::string& method, const std::string& path,
+        const std::string& query, const Bytes& body, const std::string& contentType,
+        const std::map<std::string, std::string>& headers, int readTimeoutSeconds,
+        bool clearnetOnly);
 
 
     // True if a facade's host ends in ".b32.i2p" (reached over the embedded I2P
@@ -208,6 +222,25 @@ private:
     const std::filesystem::path i2pDataDir_;
     // Profile name carried onto this client's destinations (status view only).
     std::string destinationOwner_;
+
+    // Session authentication. sessionUntil_ is what the server told us, so a
+    // client renews before it lapses rather than after a refusal. sessionBlocked_
+    // is the loop guard: a server that refuses a freshly issued session is not
+    // arguing about this session, so we stop asking for a while and keep signing.
+    Bytes sessionSealingKeyDer_;
+    std::string sessionId_;
+    Bytes sessionSecret_;
+    Bytes sessionKey_;
+    std::int64_t sessionUntil_ = 0;
+    std::uint64_t sessionSeq_ = 0;
+    std::int64_t sessionBlockedUntil_ = 0;
+    // Consecutive sessions refused on their first use. A server that issues
+    // sessions and then rejects them is not going to be argued out of it, so the
+    // client stops opening them for a while instead of one per request.
+    int sessionRefusals_ = 0;
+    // Opens a session if one is due and possible. Returns whether a usable one is
+    // in hand. Called with netMutex_ held.
+    bool ensureSessionLocked();
     // A persistent unpublished outbound destination that dials I2P facades; its
     // tunnels stay warm across requests (a fresh transient per call would rebuild
     // a destination on every poll). Created lazily on first I2P facade use.
