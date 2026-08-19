@@ -26,11 +26,15 @@ Popup {
 
     function privacyText(level) {
         if (level === 0) {
-            return "1 hop each way. Fastest, and not real anonymity: a single "
-                + "router - anyone may run one - carries your tunnel and learns "
-                + "your address along with the timing of everything through it. "
-                + "It does not see who you talk to or what you send, but one "
-                + "operator is all it takes to start linking traffic to you."
+            return "1 hop each way. Fastest, and the weakest anonymity offered "
+                + "here: one router carries your tunnel and learns your address. "
+                + "It still cannot read what you send or see who you are talking "
+                + "to \u2014 to get that far it would have to already know which "
+                + "address to watch, fetch that address's leaseset and match its "
+                + "gateways against what it forwards, and every tunnel is rebuilt "
+                + "through a new random router every few minutes. So: weak, but "
+                + "not remotely comparable to a VPN, where one company sees every "
+                + "connection you make, all the time, by design."
         }
         if (level === 1) {
             return "1 or 2 hops each way, picked per tunnel."
