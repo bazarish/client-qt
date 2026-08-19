@@ -190,6 +190,10 @@ void receiveFile(const FetchAttemptFn& fetch, const FileOffer& offer, const fs::
     fs::remove(partPath, ec);
 }
 
+// How long the serving side waits for the receiver to close after the last byte
+// is written, so nothing is torn down with data still queued.
+constexpr int kDrainSeconds = 120;
+
 bool serveFile(bazarish::i2p::Endpoint& endpoint, const fs::path& ciphertextPath,
     const std::chrono::seconds window, const TransferProgressFn& onProgress,
     const std::atomic<bool>* cancel)
@@ -240,10 +244,23 @@ bool serveFile(bazarish::i2p::Endpoint& endpoint, const fs::path& ciphertextPath
                     onProgress(sent, total);
                 }
             }
-            stream->close();
+            // Closing straight after the last write throws away whatever i2pd has
+            // not put on the wire yet - with a file that is the whole transfer.
+            // Wait for the receiver to close its side (it does when it has the
+            // bytes), which is the only signal that they arrived.
             if (sent >= total) {
+                std::array<char, 64> drain{};
+                const auto until = std::chrono::steady_clock::now()
+                    + std::chrono::seconds(kDrainSeconds);
+                while (std::chrono::steady_clock::now() < until) {
+                    if (stream->readSome(drain.data(), drain.size()) == 0) {
+                        break;  // the receiver closed: everything was delivered
+                    }
+                }
+                stream->close();
                 return true;
             }
+            stream->close();
         } catch (const std::exception& error) {
             // A dropped peer is normal: it reconnects with the next offset.
             log::debug("file-serve: attempt failed: {}", error.what());

@@ -821,6 +821,12 @@ private:
         QString stage;
         qint64 sent = 0;
         qint64 total = 0;
+        // A finished transfer is kept until the conversation it belongs to is
+        // opened: a failure that lands while the user is in another chat has to
+        // reach the bubble eventually, not vanish with the live state.
+        bool finished = false;
+        bool ok = false;
+        QString error;
     };
     QHash<QString, TransferProgress> transfers_;
     // Puts the transfers of the open conversation back on their bubbles.

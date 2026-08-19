@@ -2761,11 +2761,27 @@ void SessionController::onServedProgress(
 void SessionController::onServedFinished(
     const QString& peer, const QString& protocolId, const bool ok, const QString& error)
 {
-    transfers_.remove(protocolId);
     const StoredMessage m = store_.messageByProtocol(protocolId, peer);
-    if (m.id == 0) {
+    if (m.id == 0 || peer != activePeer_) {
+        // Nobody is looking at this conversation: remember the outcome so opening
+        // it shows what happened, instead of a bubble that quietly lost its bar.
+        TransferProgress& kept = transfers_[protocolId];
+        kept.peer = peer;
+        kept.stage.clear();
+        kept.finished = true;
+        kept.ok = ok;
+        kept.error = error;
+        if (!ok) {
+            emit actionFailed(error);  // and say it now, wherever the user is
+        }
+        if (m.id != 0) {
+            finishOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
+                    + QString::number(m.id),
+                ok, ok ? QStringLiteral("Transferred") : error);
+        }
         return;
     }
+    transfers_.remove(protocolId);
     if (!m.outgoing) {
         // An incoming transfer ends where a download ends: the saved path, the
         // bubble's own state and its row, all keyed by the message id.
@@ -2792,12 +2808,27 @@ void SessionController::cancelTransfer(const QString& protocolId)
 
 void SessionController::replayTransfersForActivePeer()
 {
+    QStringList settled;
     for (auto it = transfers_.constBegin(); it != transfers_.constEnd(); ++it) {
         if (it.value().peer != activePeer_) {
             continue;
         }
         const StoredMessage m = store_.messageByProtocol(it.key(), activePeer_);
         if (m.id == 0) {
+            continue;
+        }
+        if (it.value().finished) {
+            // The outcome arrived while this conversation was closed.
+            conversation_.setTransferStageForId(m.id, {});
+            if (m.outgoing) {
+                conversation_.setUploadProgressForId(m.id, -1.0);
+                if (!it.value().ok) {
+                    conversation_.setErrorForId(m.id, it.value().error);
+                }
+            } else {
+                conversation_.finishDownloadForId(m.id, it.value().ok, it.value().error);
+            }
+            settled << it.key();
             continue;
         }
         conversation_.setTransferStageForId(m.id, it.value().stage);
@@ -2809,6 +2840,9 @@ void SessionController::replayTransfersForActivePeer()
                 conversation_.setDownloadProgressForId(m.id, it.value().sent, it.value().total);
             }
         }
+    }
+    for (const QString& id : settled) {
+        transfers_.remove(id);
     }
 }
 
