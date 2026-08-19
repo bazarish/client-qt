@@ -3046,6 +3046,11 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     conversation_.setErrorForId(localId, {});
     // Preserve the original reply reference on a resend.
     const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
+    // A resend is a send: it travels the same way and takes the same time, so it
+    // belongs in the activity panel like the first attempt did.
+    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
+        QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending again…"),
+        activePeer_);
     emit requestSendText(activePeer_, text, localId, protocolId, replyTo);
 }
 
@@ -3069,6 +3074,10 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
     const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
+    const StoredMessage stored = store_.messageByProtocol(protocolId, activePeer_);
+    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
+        stored.attName.isEmpty() ? QStringLiteral("file") : stored.attName,
+        QStringLiteral("Sending again…"), activePeer_);
     emit requestSendFile(activePeer_, srcPath, localId, protocolId, replyTo);
 }
 

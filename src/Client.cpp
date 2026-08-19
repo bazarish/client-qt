@@ -88,11 +88,6 @@ void Client::setDestinationOwner(std::string owner)
     api_.setDestinationOwner(std::move(owner));
 }
 
-void Client::setDestinationLabel(std::string label)
-{
-    api_.setDestinationLabel(std::move(label));
-}
-
 SubscribeResult Client::submitSubscription(const std::string& path,
     const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer,
     const std::string& ownDest)

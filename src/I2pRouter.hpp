@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace bazarish::client {
@@ -33,6 +34,15 @@ bazarish::i2p::Router* sharedI2pRouterIfRunning();
 // fresh dest cold). Used for the direct federation fetch (card / resolve) so it does
 // not pay cold tunnel-build latency. The endpoint is used once and then dropped.
 std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest();
+
+// The one outbound destination a profile talks to its facade through, shared by
+// everything that dials for it: the session's transport and the request that
+// waits for news each keep their own request queue (a wait must never sit in
+// front of a send), but a destination multiplexes streams, so one is enough.
+// Kept alive by its users; `owner` is the profile it belongs to, and an empty
+// one gets a destination of its own rather than sharing a nameless bucket.
+std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
+    const std::string& owner, bazarish::i2p::Privacy privacy);
 
 // Brings the embedded router into line with the current enable flag: starts it
 // (creating it under dataDir on first use) when enabled, stops its network when

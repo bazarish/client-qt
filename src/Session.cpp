@@ -1209,7 +1209,6 @@ std::unique_ptr<Client> Session::makeEventClient(const ContactFetchContext& cont
         Identity::fromPrivatePem(context.identityPem), context.clientId, context.endpoint,
         context.i2pDataDir);
     waiter->setDestinationOwner(context.destinationOwner);
-    waiter->setDestinationLabel("Waiting for news");
     return waiter;
 }
 

@@ -168,10 +168,6 @@ public:
     void setDestinationOwner(std::string owner);
     // What this client's outbound destination is called in the router status
     // view. A profile keeps two: the one its session dials with, and the one that
-    // holds the long poll open (separate, so a wait never blocks a send).
-    void setDestinationLabel(std::string label);
-    // What this client's outbound destination is called in the router status
-    // view. A profile keeps two: the one its session dials with, and the one that
     // holds the long poll open (they are separate so a wait never blocks a send).
 
 private:
@@ -212,7 +208,6 @@ private:
     const std::filesystem::path i2pDataDir_;
     // Profile name carried onto this client's destinations (status view only).
     std::string destinationOwner_;
-    std::string destinationLabel_ = "Server dialer";
     // A persistent unpublished outbound destination that dials I2P facades; its
     // tunnels stay warm across requests (a fresh transient per call would rebuild
     // a destination on every poll). Created lazily on first I2P facade use.

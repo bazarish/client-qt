@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cstddef>
 #include <memory>
+#include <map>
 #include <mutex>
 
 namespace bazarish::client {
@@ -128,6 +129,33 @@ bazarish::i2p::Router* sharedI2pRouterIfRunning()
     const std::lock_guard<std::mutex> lock(routerMutex());
     bazarish::i2p::Router* const router = routerSlot().get();
     return (router != nullptr && router->running()) ? router : nullptr;
+}
+
+std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
+    const std::string& owner, const bazarish::i2p::Privacy privacy)
+{
+    static std::mutex linksMutex;
+    static std::map<std::string, std::weak_ptr<bazarish::i2p::Endpoint>> links;
+
+    bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
+    if (router == nullptr) {
+        return nullptr;  // the caller starts the router first
+    }
+    const auto build = [router, &owner, privacy]() {
+        return router->createEndpoint(bazarish::i2p::EndpointConfig{
+            bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
+            bazarish::i2p::kDefaultTunnelQuantity, /*published=*/false, "Facade link", owner});
+    };
+    if (owner.empty()) {
+        return build();  // nothing to share it with
+    }
+    const std::lock_guard<std::mutex> lock(linksMutex);
+    if (const std::shared_ptr<bazarish::i2p::Endpoint> existing = links[owner].lock()) {
+        return existing;
+    }
+    const std::shared_ptr<bazarish::i2p::Endpoint> link = build();
+    links[owner] = link;
+    return link;
 }
 
 std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest()

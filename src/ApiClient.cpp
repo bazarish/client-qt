@@ -219,11 +219,6 @@ void ApiClient::setDestinationOwner(std::string owner)
     destinationOwner_ = std::move(owner);
 }
 
-void ApiClient::setDestinationLabel(std::string label)
-{
-    destinationLabel_ = std::move(label);
-}
-
 void ApiClient::setOnI2pProven(std::function<void()> callback)
 {
     onI2pProven_ = std::move(callback);
@@ -252,13 +247,16 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
     const std::size_t bodyLen, const std::function<void(bazarish::i2p::Stream&)>& writeBody)
 {
     reportConnectProgress(30, "Starting the I2P router");
-    bazarish::i2p::Router& router = sharedI2pRouter(i2pDataDir_);
+    sharedI2pRouter(i2pDataDir_);  // started here if it is not up yet
     if (!i2pOut_) {
         reportConnectProgress(40, "Building your I2P tunnels");
-        i2pOut_ = router.createEndpoint(bazarish::i2p::EndpointConfig{
-            bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
-            bazarish::i2p::Privacy::eMax, bazarish::i2p::kDefaultTunnelQuantity, false,
-            destinationLabel_, destinationOwner_});
+        // One destination per profile, shared with everything else that dials its
+        // facade: streams multiplex over it, so a second one would only mean a
+        // second set of tunnels.
+        i2pOut_ = facadeLinkFor(destinationOwner_, bazarish::i2p::Privacy::eMax);
+        if (!i2pOut_) {
+            return std::nullopt;  // no router yet: the caller falls back or retries
+        }
     }
     // A dial from a destination whose tunnels are still building fails for a
     // reason that has nothing to do with the facade, and would be reported as an
