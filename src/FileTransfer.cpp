@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <thread>
 #include <stdexcept>
 
 namespace bazarish::client {
@@ -204,6 +205,21 @@ void receiveFile(const FetchAttemptFn& fetch, const FileOffer& offer, const fs::
 // How long the serving side waits for the receiver to close after the last byte
 // is written, so nothing is torn down with data still queued.
 constexpr int kDrainSeconds = 120;
+// How much of the file may sit in the router's send queue at once. A write
+// returns as soon as the bytes are queued, so without this the whole file is
+// "sent" in milliseconds and the sender's progress bar is a lie that sits at
+// 100% for the length of the transfer.
+constexpr std::size_t kMaxQueuedBytes = 128 * 1024;
+constexpr int kQueuePollMillis = 100;
+
+namespace {
+// Bytes that have actually left the device. The queue also holds the framing
+// this counter never saw, so the subtraction saturates instead of wrapping.
+std::uint64_t onTheWire(const std::uint64_t written, const std::size_t queued)
+{
+    return written > queued ? written - queued : 0;
+}
+}  // namespace
 
 bool serveFile(bazarish::i2p::Endpoint& endpoint, const fs::path& ciphertextPath,
     const std::chrono::seconds window, const TransferProgressFn& onProgress,
@@ -251,8 +267,19 @@ bool serveFile(bazarish::i2p::Endpoint& endpoint, const fs::path& ciphertextPath
                 }
                 stream->writeAll(buffer.data(), static_cast<std::size_t>(got));
                 sent += static_cast<std::uint64_t>(got);
+                // Wait for the queue to drain below the cap before reading more,
+                // so progress follows what has actually left the device.
+                while (stream->pendingBytes() > kMaxQueuedBytes) {
+                    if (cancel != nullptr && cancel->load()) {
+                        return false;
+                    }
+                    if (onProgress) {
+                        onProgress(onTheWire(sent, stream->pendingBytes()), total);
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(kQueuePollMillis));
+                }
                 if (onProgress) {
-                    onProgress(sent, total);
+                    onProgress(onTheWire(sent, stream->pendingBytes()), total);
                 }
             }
             // Closing straight after the last write throws away whatever i2pd has
@@ -260,13 +287,21 @@ bool serveFile(bazarish::i2p::Endpoint& endpoint, const fs::path& ciphertextPath
             // Wait for the receiver to close its side (it does when it has the
             // bytes), which is the only signal that they arrived.
             if (sent >= total) {
+                // Everything is written; what is left is the queue emptying and
+                // the receiver closing. Keep reporting the real figure.
                 std::array<char, 64> drain{};
                 const auto until = std::chrono::steady_clock::now()
                     + std::chrono::seconds(kDrainSeconds);
                 while (std::chrono::steady_clock::now() < until) {
+                    if (onProgress) {
+                        onProgress(onTheWire(sent, stream->pendingBytes()), total);
+                    }
                     if (stream->readSome(drain.data(), drain.size()) == 0) {
                         break;  // the receiver closed: everything was delivered
                     }
+                }
+                if (onProgress) {
+                    onProgress(total, total);
                 }
                 stream->close();
                 return true;
