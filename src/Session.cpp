@@ -2434,6 +2434,13 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
     message.callId = body.value("callId", std::string());
 
     if (type == "call.invite") {
+        if (call_.state != CallState::eIdle && call_.callId == message.callId) {
+            // The same invite again - a redelivery, not a second caller. Declining
+            // it told the caller "busy" for the very call this side had already
+            // taken, so one side sat in the call while the other showed busy.
+            bazarish::log::info("duplicate call invite ignored");
+            return;
+        }
         if (call_.state != CallState::eIdle) {
             // Already busy: decline so the caller is not left ringing.
             try {
