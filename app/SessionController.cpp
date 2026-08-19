@@ -282,9 +282,18 @@ void SessionWorker::startEventWaiter()
     // The loop owns a copy of everything it touches and a shared flag, so closing
     // the profile can leave it to finish on its own.
     eventWaiter_ = std::thread([this, context, running = eventWaiterRunning_]() {
+        // One client for the whole loop: each one raises an outbound destination,
+        // and building a fresh one per wait meant a new dialer every time.
+        std::unique_ptr<bazarish::client::Client> waiter;
+        try {
+            waiter = bazarish::client::Session::makeEventClient(context);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("no event waiter: {}", error.what());
+            return;
+        }
         while (running->load()) {
             try {
-                bazarish::client::Session::waitForEvents(context, kEventWaitSeconds);
+                bazarish::client::Session::waitForEvents(*waiter, kEventWaitSeconds);
             } catch (const std::exception& error) {
                 // No event face, or it went away: fall back to the timer, which
                 // has been polling all along.

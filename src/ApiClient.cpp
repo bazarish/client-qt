@@ -219,6 +219,11 @@ void ApiClient::setDestinationOwner(std::string owner)
     destinationOwner_ = std::move(owner);
 }
 
+void ApiClient::setDestinationLabel(std::string label)
+{
+    destinationLabel_ = std::move(label);
+}
+
 void ApiClient::setOnI2pProven(std::function<void()> callback)
 {
     onI2pProven_ = std::move(callback);
@@ -253,7 +258,7 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
         i2pOut_ = router.createEndpoint(bazarish::i2p::EndpointConfig{
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
             bazarish::i2p::Privacy::eMax, bazarish::i2p::kDefaultTunnelQuantity, false,
-            "Server dialer", destinationOwner_});
+            destinationLabel_, destinationOwner_});
     }
     // A dial from a destination whose tunnels are still building fails for a
     // reason that has nothing to do with the facade, and would be reported as an

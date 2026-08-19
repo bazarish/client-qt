@@ -1201,12 +1201,20 @@ Session::ContactFetchContext Session::contactFetchContext() const
     return ctx;
 }
 
-bool Session::waitForEvents(const ContactFetchContext& context, const int waitSeconds)
+std::unique_ptr<Client> Session::makeEventClient(const ContactFetchContext& context)
 {
-    // Its own client, its own connection: the session's transport keeps serving
-    // sends and syncs while this one sits waiting.
-    Client waiter(Identity::fromPrivatePem(context.identityPem), context.clientId,
-        context.endpoint, context.i2pDataDir);
+    // Its own connection, so the session's transport keeps serving sends and
+    // syncs while this one sits waiting - but one connection for the whole loop.
+    std::unique_ptr<Client> waiter = std::make_unique<Client>(
+        Identity::fromPrivatePem(context.identityPem), context.clientId, context.endpoint,
+        context.i2pDataDir);
+    waiter->setDestinationOwner(context.destinationOwner);
+    waiter->setDestinationLabel("Waiting for news");
+    return waiter;
+}
+
+bool Session::waitForEvents(Client& waiter, const int waitSeconds)
+{
     return !waiter.waitForPending(waitSeconds).empty();
 }
 

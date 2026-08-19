@@ -168,6 +168,7 @@ public:
     void setOnI2pProven(std::function<void()> callback);
     // Names this profile on the destinations this client creates (status view).
     void setDestinationOwner(std::string owner);
+    void setDestinationLabel(std::string label);
 
     // --- Account (service node) ---
 

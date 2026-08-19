@@ -439,7 +439,11 @@ public:
     // own connection so a long wait never blocks the session's own transport.
     // Throws when the server has no event face, so the caller can go back to
     // polling.
-    static bool waitForEvents(const ContactFetchContext& context, int waitSeconds);
+    // The client the waiter loop keeps: built once, because every Client raises an
+    // outbound I2P destination of its own, and rebuilding it per wait left a
+    // trail of half-built dialers in the router.
+    static std::unique_ptr<Client> makeEventClient(const ContactFetchContext& context);
+    static bool waitForEvents(Client& waiter, int waitSeconds);
 
     static ContactCardResolved resolveContactCard(
         const ContactFetchContext& context, const ContactCardRequest& request);
