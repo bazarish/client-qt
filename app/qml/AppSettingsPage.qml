@@ -29,7 +29,7 @@ Popup {
             Layout.margins: 14
             IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
             Label {
-                text: "All profiles"
+                text: "Global settings"
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold

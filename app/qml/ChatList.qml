@@ -63,6 +63,11 @@ Item {
                     }
                     TapHandler { onTapped: root.accountsRequested() }
                 }
+                Item { Layout.fillWidth: true }
+                IconButton {
+                    iconName: "sliders"
+                    onClicked: root.appSettingsRequested()
+                }
             }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -263,13 +268,8 @@ Item {
                 }
                 BarButton {
                     iconName: "gear"
-                    label: "Profile"
+                    label: "Account"
                     onTapped: root.settingsRequested()
-                }
-                BarButton {
-                    iconName: "sliders"
-                    label: "App"
-                    onTapped: root.appSettingsRequested()
                 }
             }
         }
