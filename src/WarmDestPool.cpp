@@ -5,6 +5,7 @@
 
 #include <bazarish/Log.hpp>
 
+#include <algorithm>
 #include <vector>
 
 namespace bazarish::client {
@@ -52,6 +53,16 @@ std::shared_ptr<bazarish::i2p::Endpoint> WarmDestPool::acquire()
     return dest;
 }
 
+void WarmDestPool::flush()
+{
+    {
+        const std::lock_guard<std::mutex> lock(mutex_);
+        ready_.clear();
+        ++generation_;
+    }
+    cv_.notify_all();
+}
+
 void WarmDestPool::warmerLoop()
 {
     // Destinations still warming, owned by this loop until ready or abandoned.
@@ -59,8 +70,13 @@ void WarmDestPool::warmerLoop()
 
     while (running_.load()) {
         std::size_t toCreate = 0;
+        std::size_t generation = 0;
         {
             const std::lock_guard<std::mutex> lock(mutex_);
+            generation = generation_;
+            std::erase_if(building, [generation](const Building& item) {
+                return item.generation != generation;
+            });
             const std::size_t have = ready_.size() + building.size();
             toCreate = size_ > have ? size_ - have : 0;
         }
@@ -76,7 +92,8 @@ void WarmDestPool::warmerLoop()
                     tunnelPrivacy(), tunnelQuantity_, /*published=*/false,
                     "Spare one-time address"});
                 if (endpoint) {
-                    building.push_back({std::move(endpoint), std::chrono::steady_clock::now()});
+                    building.push_back(
+                        {std::move(endpoint), std::chrono::steady_clock::now(), generation});
                 }
             } catch (const std::exception& error) {
                 bazarish::log::warn("warm-pool: createEndpoint failed: {}", error.what());

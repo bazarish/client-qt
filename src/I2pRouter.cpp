@@ -231,6 +231,14 @@ bazarish::i2p::Privacy tunnelPrivacy()
     return g_tunnelPrivacy.load();
 }
 
+void flushWarmDests()
+{
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    if (WarmDestPool* const pool = warmPoolSlot().get(); pool != nullptr) {
+        pool->flush();
+    }
+}
+
 void setFullPrivacy(bool enabled)
 {
     g_fullPrivacy.store(enabled);

@@ -551,6 +551,21 @@ void SessionWorker::setSyncEnabled(bool on)
     }
 }
 
+void SessionWorker::rebuildI2pLinks()
+{
+    // The waiter holds a destination of its own inside its thread; it ends once
+    // its outstanding request returns and takes that destination with it. An
+    // account that is offline keeps its links released rather than raising new
+    // ones nobody asked for.
+    stopEventWaiter();
+    if (session_) {
+        session_->releaseI2pLinks();
+    }
+    if (syncTimer_ != nullptr && syncTimer_->isActive()) {
+        startEventWaiter();
+    }
+}
+
 void SessionWorker::sync()
 {
     if (!session_ || !session_->isConnected()) {
@@ -1463,6 +1478,7 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onDownloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
+    connect(this, &SessionController::requestRebuildI2p, worker_, &SessionWorker::rebuildI2pLinks);
     connect(this, &SessionController::requestCancelTransfer, worker_,
         &SessionWorker::cancelTransfer);
     connect(this, &SessionController::requestGeneratePersonalKey, worker_,
@@ -2576,6 +2592,11 @@ void SessionController::goOnline()
         emit onlineChanged();
     }
     emit requestSetSync(true);
+}
+
+void SessionController::rebuildI2pLinks()
+{
+    emit requestRebuildI2p();
 }
 
 void SessionController::goOffline()

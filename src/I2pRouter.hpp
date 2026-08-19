@@ -102,4 +102,8 @@ bool fullPrivacy();
 void setTunnelPrivacy(bazarish::i2p::Privacy privacy);
 bazarish::i2p::Privacy tunnelPrivacy();
 
+// Throws away the warm spares (built at whatever profile was in force) so the
+// pool refills at the current one.
+void flushWarmDests();
+
 }  // namespace bazarish::client

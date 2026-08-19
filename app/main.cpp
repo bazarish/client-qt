@@ -96,6 +96,11 @@ int main(int argc, char** argv)
     // startup so a previously-disabled router stays off before any session use).
     bazarish::app::I2pController i2pController;
     engine.rootContext()->setContextProperty("I2p", &i2pController);
+    // Changing the tunnel profile tears down the destinations already up: left
+    // alone they would keep serving at the old hop length for as long as they
+    // live, and the setting would look like it had done nothing.
+    QObject::connect(&i2pController, &bazarish::app::I2pController::privacyLevelChanged,
+        &controller, &bazarish::app::AppController::rebuildI2pLinks);
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,

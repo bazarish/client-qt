@@ -18,16 +18,25 @@ Popup {
     padding: 0
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
+    // The slider is drawn small: the stock handle is a touch target and swamped
+    // a settings row.
+    readonly property int kSliderHandle: 14
+    readonly property int kSliderTrackHeight: 4
+    readonly property int kSliderHeight: 18
+
     function privacyText(level) {
         if (level === 0) {
-            return "1 hop each way. Fastest, and the routers next to you see both "
-                + "ends of your tunnel."
+            return "1 hop each way. Fastest, and not real anonymity: a single "
+                + "router - anyone may run one - carries your tunnel and learns "
+                + "your address along with the timing of everything through it. "
+                + "It does not see who you talk to or what you send, but one "
+                + "operator is all it takes to start linking traffic to you."
         }
         if (level === 1) {
             return "1 or 2 hops each way, picked per tunnel."
         }
-        return "3 hops each way — the I2P default depth. Slowest to build and to "
-            + "answer."
+        return "3 hops each way - the depth I2P itself defaults to. Slowest to "
+            + "build and to answer."
     }
 
     // Poll the router diagnostics while the window is open.
@@ -127,15 +136,45 @@ Popup {
                         Slider {
                             id: privacySlider
                             Layout.fillWidth: true
+                            Layout.topMargin: 2
+                            implicitHeight: root.kSliderHeight
                             from: 0
                             to: 2
                             stepSize: 1
                             snapMode: Slider.SnapAlways
                             value: I2p.privacyLevel
                             onMoved: I2p.privacyLevel = value
+                            background: Rectangle {
+                                x: privacySlider.leftPadding
+                                y: privacySlider.topPadding
+                                    + (privacySlider.availableHeight - height) / 2
+                                width: privacySlider.availableWidth
+                                height: root.kSliderTrackHeight
+                                radius: height / 2
+                                color: Theme.deep
+                                border.color: Theme.border2
+                                border.width: 1
+                                Rectangle {
+                                    width: privacySlider.visualPosition * parent.width
+                                    height: parent.height
+                                    radius: height / 2
+                                    color: Theme.green
+                                }
+                            }
+                            handle: Rectangle {
+                                x: privacySlider.leftPadding + privacySlider.visualPosition
+                                    * (privacySlider.availableWidth - width)
+                                y: privacySlider.topPadding
+                                    + (privacySlider.availableHeight - height) / 2
+                                implicitWidth: root.kSliderHandle
+                                implicitHeight: root.kSliderHandle
+                                radius: width / 2
+                                color: Theme.text
+                            }
                         }
                         RowLayout {
                             Layout.fillWidth: true
+                            Layout.topMargin: -4
                             Label {
                                 text: "Min"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
                             }

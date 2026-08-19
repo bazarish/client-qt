@@ -453,6 +453,16 @@ void AppController::setOnline(const QString& id, bool on)
     }
 }
 
+void AppController::rebuildI2pLinks()
+{
+    client::flushWarmDests();
+    for (SessionController* const session : sessions_) {
+        if (session != nullptr) {
+            session->rebuildI2pLinks();
+        }
+    }
+}
+
 void AppController::requestAddAccount()
 {
     emit showPicker();

@@ -45,6 +45,7 @@ public slots:
     void sync();
     // Starts or stops background syncing (the account going online/offline).
     void setSyncEnabled(bool on);
+    void rebuildI2pLinks();
     void sendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId, const QString& replyTo);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
@@ -448,6 +449,9 @@ public:
     // without unloading it).
     Q_INVOKABLE void goOnline();
     Q_INVOKABLE void goOffline();
+    // Drops the I2P destinations this account holds so they are built again with
+    // the tunnel profile now in force.
+    void rebuildI2pLinks();
     Q_INVOKABLE void openConversation(const QString& peer);
     // Leaves the open conversation without opening another: on a narrow window
     // the chat is the whole window, so there has to be a way back to the list.
@@ -676,6 +680,7 @@ signals:  // to worker
     void requestExport(const QString& path, const QString& password);
     void requestOpen(const QString& dir, const QString& passphrase);
     void requestSetSync(bool on);
+    void requestRebuildI2p();
     void requestCancelTransfer(const QString& protocolId);
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);

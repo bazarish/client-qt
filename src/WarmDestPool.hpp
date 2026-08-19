@@ -33,6 +33,11 @@ public:
     void start();
     void stop();
 
+    // Drops every spare, warm or still building, and builds the pool again. Used
+    // when the tunnel profile changes: a spare built at the old hop length would
+    // otherwise be handed out long after the user asked for a different one.
+    void flush();
+
     // A warm, single-use endpoint, or nullptr when none is ready (the caller then
     // builds a fresh dest cold). The returned endpoint must be used once and dropped
     // - never returned to the pool.
@@ -45,6 +50,7 @@ private:
     struct Building {
         std::shared_ptr<bazarish::i2p::Endpoint> endpoint;
         std::chrono::steady_clock::time_point startedAt;
+        std::size_t generation = 0;
     };
 
     bazarish::i2p::Router& router_;
@@ -56,6 +62,9 @@ private:
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     std::deque<std::shared_ptr<bazarish::i2p::Endpoint>> ready_;  // warm, unused
+    // Bumped by flush(). A destination that was already building under an older
+    // generation is dropped rather than promoted.
+    std::size_t generation_ = 0;
     std::atomic<bool> running_{false};
     std::thread warmer_;
 };

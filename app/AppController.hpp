@@ -62,6 +62,10 @@ public:
     // independently of which account is active. Bringing an encrypted, unopened
     // account online emits needPassphrase.
     Q_INVOKABLE void setOnline(const QString& id, bool on);
+    // Rebuilds every open account's I2P destinations, so a change of tunnel
+    // profile reaches destinations that are already up instead of only the next
+    // one built.
+    void rebuildI2pLinks();
     // Asks the UI to show the picker so another account can be added, without
     // closing the open ones.
     Q_INVOKABLE void requestAddAccount();
