@@ -158,7 +158,18 @@ void receiveFile(const FetchAttemptFn& fetch, const FileOffer& offer, const fs::
             }
             const std::uint64_t before = part.size();
             PartialSink sink(part, onProgress);
-            fetch(before, sink);
+            try {
+                fetch(before, sink);
+            } catch (const std::exception& error) {
+                // A dropped stream is what this loop exists for: the next attempt
+                // resumes from the bytes already on disk. Only a run of attempts
+                // that moves nothing at all ends the transfer.
+                log::warn("file-fetch: attempt failed: {}", error.what());
+                if (++stalled >= kMaxStalledAttempts) {
+                    throw;
+                }
+                continue;
+            }
             if (sink.declaredTotal != 0 && sink.declaredTotal != offer.size) {
                 throw std::runtime_error("sender declares a different size than it offered");
             }
