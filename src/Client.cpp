@@ -88,6 +88,11 @@ void Client::setDestinationOwner(std::string owner)
     api_.setDestinationOwner(std::move(owner));
 }
 
+void Client::releaseI2pLink()
+{
+    api_.releaseI2pLink();
+}
+
 void Client::setSessionSealingKey(Bytes servingSealingKeyDer)
 {
     api_.setSessionSealingKey(std::move(servingSealingKeyDer));

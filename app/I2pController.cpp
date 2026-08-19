@@ -8,6 +8,7 @@
 
 #include <bazarish/I2p.hpp>
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <string>
@@ -24,6 +25,15 @@ std::filesystem::path profilesRoot()
         return std::filesystem::path(env);
     }
     return client::ProfileManager::defaultRoot();
+}
+
+bazarish::i2p::Privacy privacyToProfile(const int level)
+{
+    switch (level) {
+        case kMinimalPrivacyLevel: return bazarish::i2p::Privacy::eMinimal;
+        case kMiddlePrivacyLevel:  return bazarish::i2p::Privacy::eMiddle;
+        default:                   return bazarish::i2p::Privacy::eMax;
+    }
 }
 }  // namespace
 
@@ -45,8 +55,17 @@ I2pController::I2pController(QObject* parent)
         std::getline(in, value);
         loggingEnabled_ = value == "1";
     }
+    // Tunnel hop length. Absent => the most private profile.
+    {
+        std::ifstream in(privacyPath());
+        std::string value;
+        std::getline(in, value);
+        const int level = value.empty() ? kMaxPrivacyLevel : std::atoi(value.c_str());
+        privacyLevel_ = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
+    }
     client::setI2pEnabled(enabled_);
     bazarish::i2p::setI2pLogging(loggingEnabled_);
+    client::setTunnelPrivacy(privacyToProfile(privacyLevel_));
     // When enabled, bring the embedded router up at launch so it passively learns
     // the network (routers + floodfills) even before any session uses it; when
     // disabled it stays down.
@@ -62,6 +81,11 @@ std::filesystem::path I2pController::settingPath() const
 std::filesystem::path I2pController::loggingPath() const
 {
     return profilesRoot() / ".i2p-logging";
+}
+
+std::filesystem::path I2pController::privacyPath() const
+{
+    return profilesRoot() / ".i2p-privacy";
 }
 
 void I2pController::reconcileRouter()
@@ -98,6 +122,19 @@ void I2pController::setLoggingEnabled(bool on)
     std::ofstream out(loggingPath(), std::ios::trunc);
     out << (on ? "1" : "0");
     emit loggingChanged();
+}
+
+void I2pController::setPrivacyLevel(const int level)
+{
+    const int wanted = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
+    if (privacyLevel_ == wanted) {
+        return;
+    }
+    privacyLevel_ = wanted;
+    client::setTunnelPrivacy(privacyToProfile(wanted));
+    std::ofstream out(privacyPath(), std::ios::trunc);
+    out << wanted;
+    emit privacyLevelChanged();
 }
 
 void I2pController::refresh()

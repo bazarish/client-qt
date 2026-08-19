@@ -47,7 +47,7 @@ void ensureWarmPool(bazarish::i2p::Router& router)
     std::unique_ptr<WarmDestPool>& pool = warmPoolSlot();
     if (!pool) {
         pool = std::make_unique<WarmDestPool>(
-            router, kWarmPoolSize, kWarmPoolTunnelQuantity, bazarish::i2p::Privacy::eMax);
+            router, kWarmPoolSize, kWarmPoolTunnelQuantity);
         pool->start();
     }
 }
@@ -64,6 +64,7 @@ void stopWarmPool()
 }
 
 std::atomic<bool> g_i2pEnabled{true};
+std::atomic<bazarish::i2p::Privacy> g_tunnelPrivacy{bazarish::i2p::Privacy::eMax};
 // Strict by default: the netDb comes from our own server, not a public host.
 std::atomic<bool> g_publicReseedAllowed{false};
 
@@ -218,6 +219,16 @@ void setI2pEnabled(bool enabled)
 bool i2pEnabled()
 {
     return g_i2pEnabled.load();
+}
+
+void setTunnelPrivacy(const bazarish::i2p::Privacy privacy)
+{
+    g_tunnelPrivacy.store(privacy);
+}
+
+bazarish::i2p::Privacy tunnelPrivacy()
+{
+    return g_tunnelPrivacy.load();
 }
 
 void setFullPrivacy(bool enabled)

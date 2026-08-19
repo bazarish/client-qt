@@ -166,6 +166,10 @@ public:
     // Names this profile on the destinations this client creates, so a router
     // shared by several profiles says whose dialer is whose.
     void setDestinationOwner(std::string owner);
+    // Drops this client's I2P destination, tearing down its tunnels. The next
+    // request over an I2P facade builds a fresh one. Used when an account goes
+    // offline: an account that is not talking should not be holding tunnels open.
+    void releaseI2pLink();
 
     // The session this client authenticates with, when it has one. Opening it
     // costs one signed request; every request after that carries a MAC instead of

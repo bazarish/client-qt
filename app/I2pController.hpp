@@ -18,11 +18,20 @@ namespace bazarish::app {
 // is stopped and traffic runs on clearnet facades only. The client never relays
 // transit traffic (the router runs notransit), so no transit-tunnel count is
 // reported.
+
+// Slider positions for the tunnel privacy profile, lowest hop count first.
+inline constexpr int kMinimalPrivacyLevel = 0;
+inline constexpr int kMiddlePrivacyLevel = 1;
+inline constexpr int kMaxPrivacyLevel = 2;
+
 class I2pController : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
     // libi2pd's own logging. OFF by default (fully suppressed); a debugging aid.
     Q_PROPERTY(bool loggingEnabled READ loggingEnabled WRITE setLoggingEnabled NOTIFY loggingChanged)
+    // Tunnel hop length for every destination this app builds: 0 minimal, 1
+    // middle, 2 maximum. Calls always run minimal whatever this says.
+    Q_PROPERTY(int privacyLevel READ privacyLevel WRITE setPrivacyLevel NOTIFY privacyLevelChanged)
     // Whether the embedded router is currently running (it starts at launch when
     // enabled and stops when disabled); the counts below are meaningful only then.
     Q_PROPERTY(bool running READ running NOTIFY statusChanged)
@@ -44,6 +53,8 @@ public:
     bool enabled() const { return enabled_; }
     void setEnabled(bool on);
     bool loggingEnabled() const { return loggingEnabled_; }
+    int privacyLevel() const { return privacyLevel_; }
+    void setPrivacyLevel(int level);
     void setLoggingEnabled(bool on);
     bool running() const { return running_; }
     bool ready() const { return ready_; }
@@ -61,11 +72,13 @@ public:
 signals:
     void enabledChanged();
     void loggingChanged();
+    void privacyLevelChanged();
     void statusChanged();
 
 private:
     std::filesystem::path settingPath() const;
     std::filesystem::path loggingPath() const;
+    std::filesystem::path privacyPath() const;
     // Brings the shared router into line with the enable flag off the GUI thread:
     // starts it (warming the netDb even with no active session) when enabled, stops
     // its network when disabled.
@@ -73,6 +86,7 @@ private:
 
     bool enabled_ = true;
     bool loggingEnabled_ = false;
+    int privacyLevel_ = kMaxPrivacyLevel;
     bool running_ = false;
     bool ready_ = false;
     int knownRouters_ = 0;

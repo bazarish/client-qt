@@ -1,18 +1,18 @@
 // Bazarish project (c) 2026
 #include "WarmDestPool.hpp"
 
+#include "I2pRouter.hpp"
+
 #include <bazarish/Log.hpp>
 
 #include <vector>
 
 namespace bazarish::client {
 
-WarmDestPool::WarmDestPool(bazarish::i2p::Router& router, std::size_t size, int tunnelQuantity,
-    bazarish::i2p::Privacy privacy)
+WarmDestPool::WarmDestPool(bazarish::i2p::Router& router, std::size_t size, int tunnelQuantity)
     : router_(router)
     , size_(size)
     , tunnelQuantity_(tunnelQuantity)
-    , privacy_(privacy)
 {
 }
 
@@ -73,7 +73,8 @@ void WarmDestPool::warmerLoop()
             try {
                 auto endpoint = router_.createEndpoint(bazarish::i2p::EndpointConfig{
                     bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
-                    privacy_, tunnelQuantity_, /*published=*/false, "Spare one-time address"});
+                    tunnelPrivacy(), tunnelQuantity_, /*published=*/false,
+                    "Spare one-time address"});
                 if (endpoint) {
                     building.push_back({std::move(endpoint), std::chrono::steady_clock::now()});
                 }

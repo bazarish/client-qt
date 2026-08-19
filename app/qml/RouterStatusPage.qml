@@ -18,6 +18,18 @@ Popup {
     padding: 0
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
+    function privacyText(level) {
+        if (level === 0) {
+            return "1 hop each way. Fastest, and the routers next to you see both "
+                + "ends of your tunnel."
+        }
+        if (level === 1) {
+            return "1 or 2 hops each way, picked per tunnel."
+        }
+        return "3 hops each way — the I2P default depth. Slowest to build and to "
+            + "answer."
+    }
+
     // Poll the router diagnostics while the window is open.
     Timer {
         interval: 2000
@@ -102,6 +114,50 @@ Popup {
                         Toggle {
                             checked: I2p.loggingEnabled
                             onToggled: I2p.loggingEnabled = checked
+                        }
+                    }
+                    // Tunnel hop length. Each hop is another router that has to be
+                    // subverted to trace a connection, and another leg of latency.
+                    ColumnLayout {
+                        enabled: I2p.enabled
+                        opacity: I2p.enabled ? 1 : 0.5
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Label { text: "Tunnel length"; color: Theme.text; font.weight: Font.Medium }
+                        Slider {
+                            id: privacySlider
+                            Layout.fillWidth: true
+                            from: 0
+                            to: 2
+                            stepSize: 1
+                            snapMode: Slider.SnapAlways
+                            value: I2p.privacyLevel
+                            onMoved: I2p.privacyLevel = value
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Min"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                text: "Middle"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: "Max"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            }
+                        }
+                        Label {
+                            text: root.privacyText(I2p.privacyLevel)
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                        Label {
+                            text: "Voice calls always use Min: longer tunnels would put "
+                                + "audible delay into a live call."
+                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                     }
                 }

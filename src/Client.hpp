@@ -168,6 +168,9 @@ public:
     void setOnI2pProven(std::function<void()> callback);
     // Names this profile on the destinations this client creates (status view).
     void setDestinationOwner(std::string owner);
+    // Drops the destination this client dials through; the next request builds a
+    // fresh one.
+    void releaseI2pLink();
     // The key a session secret is sealed to: this user's serving sealing key,
     // whose private half the serving server holds. Without it the client keeps
     // signing every request.

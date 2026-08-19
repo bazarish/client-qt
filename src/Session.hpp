@@ -581,10 +581,17 @@ public:
     // to be deleted anywhere else - the bytes were never copied off this machine.
     void unsend(const std::string& messageId);
 
-    // Selects the I2P tunnel privacy profile used for direct transfers (both
-    // serving and fetching, always over one-time destinations). Defaults to the
-    // most private.
+    // Overrides the I2P tunnel privacy profile used for direct transfers (both
+    // serving and fetching, always over one-time destinations). Unset, transfers
+    // follow the process-wide profile.
     void setTransferPrivacy(bazarish::i2p::Privacy privacy);
+
+    // Lets go of the I2P destinations this profile holds open, tearing down their
+    // tunnels. Called when the account goes offline: it is no longer reachable
+    // and no longer sending, so keeping tunnels alive only announces to the
+    // network that somebody is there. The next request builds a fresh
+    // destination. A call in progress keeps its own media destination.
+    void releaseI2pLinks();
 
     // --- Audio calls (client-to-client; signalling over E2E, media over I2P) ---
 
@@ -847,7 +854,10 @@ private:
     std::unique_ptr<Client> client_;
     // The central alias resolver this profile resolves usernames against.
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
-    bazarish::i2p::Privacy transferPrivacy_ = bazarish::i2p::Privacy::eMax;
+    // The profile in force for a transfer: the override if one was set, else the
+    // process-wide profile.
+    bazarish::i2p::Privacy transferPrivacy() const;
+    std::optional<bazarish::i2p::Privacy> transferPrivacy_;
     // The embedded I2P router is process-global (the i2pd engine allows only one
     // per process), so every profile shares the one instance (see sharedI2pRouter).
     // It is started lazily on first transport use, so offline operations and tests

@@ -94,4 +94,12 @@ bool i2pEnabled();
 void setFullPrivacy(bool enabled);
 bool fullPrivacy();
 
+// Process-wide tunnel privacy profile (default eMax), the hop length every
+// destination this process builds is given. Read when a destination is created,
+// so a change applies to the next one built and never disturbs tunnels already
+// carrying traffic. Call media is the one exception and always runs eMinimal:
+// three hops each way would put audible delay into a live call.
+void setTunnelPrivacy(bazarish::i2p::Privacy privacy);
+bazarish::i2p::Privacy tunnelPrivacy();
+
 }  // namespace bazarish::client

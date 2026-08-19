@@ -1163,7 +1163,7 @@ FetchTransport Session::fetchTransport() const
             if (router != nullptr && router->ready()) {
                 try {
                     return federationFetchOverI2p(
-                        *router, toDest, op, sealed, transferPrivacy_, destinationOwner());
+                        *router, toDest, op, sealed, transferPrivacy(), destinationOwner());
                 } catch (const std::exception& error) {
                     // Direct dial failed; fall back to the server proxy below.
                     bazarish::log::debug("direct fetch failed, relaying: {}", error.what());
@@ -1204,7 +1204,7 @@ Session::ContactFetchContext Session::contactFetchContext() const
     ctx.i2pDataDir = profileDir_.parent_path() / "i2p";
     ctx.resolver = resolverCoordinate_;
     ctx.i2pEnabled = i2pEnabled();
-    ctx.blobFetchPrivacy = transferPrivacy_;
+    ctx.blobFetchPrivacy = transferPrivacy();
     ctx.destinationOwner = destinationOwner();
     if (!myServingKeyB64_.empty()) {
         ctx.servingSealingKeyDer = fromBase64(myServingKeyB64_);
@@ -1697,6 +1697,16 @@ void Session::unsend(const std::string& messageId)
     }
 }
 
+void Session::releaseI2pLinks()
+{
+    client_->releaseI2pLink();
+}
+
+bazarish::i2p::Privacy Session::transferPrivacy() const
+{
+    return transferPrivacy_.value_or(tunnelPrivacy());
+}
+
 void Session::setTransferPrivacy(const bazarish::i2p::Privacy privacy)
 {
     transferPrivacy_ = privacy;
@@ -1736,7 +1746,7 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Making an address",
                 peerFingerprint);
             bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
-            config.privacy = transferPrivacy_;
+            config.privacy = transferPrivacy();
             config.tunnelQuantity = 2;
             config.label = "File upload";
             config.owner = destinationOwner();
@@ -1822,7 +1832,7 @@ void Session::startAnnouncedFetch(const FileOffer& offer, const std::string& pee
     std::thread([this, offer, dest, cancel, peer]() {
         try {
             emitTransfer(offer.fileId, TransferState::eRequested, 0, 0, {}, "Connecting", peer);
-            fetchFileOverI2p(i2pRouter(), offer, dest, transferPrivacy_,
+            fetchFileOverI2p(i2pRouter(), offer, dest, transferPrivacy(),
                 [this, &offer, &peer](const std::uint64_t got, const std::uint64_t total) {
                     emitTransfer(
                         offer.fileId, TransferState::eRunning, got, total, {}, "Receiving", peer);

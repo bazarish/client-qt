@@ -304,6 +304,12 @@ void ApiClient::setDestinationOwner(std::string owner)
     destinationOwner_ = std::move(owner);
 }
 
+void ApiClient::releaseI2pLink()
+{
+    const std::lock_guard<std::mutex> lock(netMutex_);
+    i2pOut_.reset();
+}
+
 void ApiClient::setOnI2pProven(std::function<void()> callback)
 {
     onI2pProven_ = std::move(callback);
@@ -338,7 +344,7 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
         // One destination per profile, shared with everything else that dials its
         // facade: streams multiplex over it, so a second one would only mean a
         // second set of tunnels.
-        i2pOut_ = facadeLinkFor(destinationOwner_, bazarish::i2p::Privacy::eMax);
+        i2pOut_ = facadeLinkFor(destinationOwner_, tunnelPrivacy());
         if (!i2pOut_) {
             return std::nullopt;  // no router yet: the caller falls back or retries
         }

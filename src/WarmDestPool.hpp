@@ -27,8 +27,7 @@ namespace bazarish::client {
 // acquire(), which just returns nullptr so the caller builds a fresh dest cold.
 class WarmDestPool {
 public:
-    WarmDestPool(bazarish::i2p::Router& router, std::size_t size, int tunnelQuantity,
-        bazarish::i2p::Privacy privacy);
+    WarmDestPool(bazarish::i2p::Router& router, std::size_t size, int tunnelQuantity);
     ~WarmDestPool();
 
     void start();
@@ -51,7 +50,6 @@ private:
     bazarish::i2p::Router& router_;
     const std::size_t size_;
     const int tunnelQuantity_;
-    const bazarish::i2p::Privacy privacy_;
     // How long a freshly created dest is given to warm before it is abandoned.
     const std::chrono::seconds buildTimeout_{120};
 

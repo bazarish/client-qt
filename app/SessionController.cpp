@@ -545,6 +545,9 @@ void SessionWorker::setSyncEnabled(bool on)
         if (syncTimer_ != nullptr) {
             syncTimer_->stop();
         }
+        if (session_) {
+            session_->releaseI2pLinks();
+        }
     }
 }
 
@@ -2735,6 +2738,20 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         showInActiveView(sys, false);
         contacts_.touch(peer, peerName(peer), sys.text, sys.ts, false);
         contacts_.setUnread(peer, store_.unreadCount(peer));
+        return;
+    }
+
+    // Control content with nothing to show. A token refill (the peer topping up
+    // our capacity to write to their mailbox) carries no text, and neither does a
+    // button press or a type a newer client sends that this one cannot render.
+    // Stored, each became an empty bubble that also counted as unread. The item is
+    // still acked - ackAfterReceive runs off the same signal - so it does not come
+    // back.
+    if (message.value("text").toString().isEmpty()
+        && message.value("attName").toString().isEmpty()
+        && message.value("attRef").toString().isEmpty()
+        && message.value("keyboard").toString().isEmpty()) {
+        bazarish::log::info("silent control message ({}) not shown", type.toStdString());
         return;
     }
 
