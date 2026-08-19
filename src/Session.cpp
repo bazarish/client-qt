@@ -1201,6 +1201,15 @@ Session::ContactFetchContext Session::contactFetchContext() const
     return ctx;
 }
 
+bool Session::waitForEvents(const ContactFetchContext& context, const int waitSeconds)
+{
+    // Its own client, its own connection: the session's transport keeps serving
+    // sends and syncs while this one sits waiting.
+    Client waiter(Identity::fromPrivatePem(context.identityPem), context.clientId,
+        context.endpoint, context.i2pDataDir);
+    return !waiter.waitForPending(waitSeconds).empty();
+}
+
 Session::ContactCardResolved Session::resolveContactCard(
     const ContactFetchContext& context, const ContactCardRequest& request)
 {

@@ -113,6 +113,10 @@ public:
     // no query string); query, when non-empty, is appended to the URL only.
     // Every non-2xx response throws ApiError.
     ApiResponse get(const std::string& path, const std::string& query = "");
+    // A GET the server is expected to hold open (the event face). The read
+    // timeout has to outlast the wait the server was asked for, or the client
+    // would tear down its own long poll.
+    ApiResponse getWaiting(const std::string& path, const std::string& query, int readTimeoutSeconds);
     // readTimeoutSeconds bounds how long to wait for the response: the default is
     // generous for sends; an interactive federated fetch passes the short
     // kFetchReadTimeoutSeconds so it cannot freeze the worker thread for minutes.

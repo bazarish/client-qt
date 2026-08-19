@@ -341,6 +341,22 @@ void Client::deleteTokenHashes(const std::vector<Bytes>& hashes)
     api_.del("/v1/messaging/tokens", {{"hashes", encoded}});
 }
 
+std::vector<PendingEntry> Client::waitForPending(const int waitSeconds)
+{
+    // The read timeout outlasts the wait: the answer comes when the wait ends,
+    // and the transport must not give up first.
+    constexpr int kReadSlackSeconds = 20;
+    const ApiResponse response = api_.getWaiting(
+        "/v1/messaging/events", "wait=" + std::to_string(waitSeconds), waitSeconds + kReadSlackSeconds);
+    const nlohmann::json body = response.json();
+    std::vector<PendingEntry> entries;
+    for (const nlohmann::json& entry : body.at("pending")) {
+        entries.push_back(
+            {entry.at("id").get<std::string>(), entry.at("class").get<std::string>()});
+    }
+    return entries;
+}
+
 std::vector<PendingEntry> Client::listPending()
 {
     const ApiResponse response = api_.get("/v1/messaging/pending");

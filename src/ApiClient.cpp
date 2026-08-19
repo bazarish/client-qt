@@ -308,6 +308,12 @@ ApiResponse ApiClient::get(const std::string& path, const std::string& query)
     return send("GET", path, query, {}, {}, true);
 }
 
+ApiResponse ApiClient::getWaiting(
+    const std::string& path, const std::string& query, const int readTimeoutSeconds)
+{
+    return send("GET", path, query, {}, {}, true, {}, readTimeoutSeconds);
+}
+
 ApiResponse ApiClient::postJson(
     const std::string& path, const nlohmann::json& body, const int readTimeoutSeconds)
 {

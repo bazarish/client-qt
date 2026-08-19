@@ -116,6 +116,14 @@ constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 
+// How often the client asks its server for news when it has to poll, and how
+// often it checks in when the server holds the request open for it instead.
+constexpr int kPollIntervalMs = 3000;
+constexpr int kHeartbeatIntervalMs = 30000;
+// How long the server is asked to hold a request. Its own cap is lower; asking
+// for more than it allows is answered sooner, which costs nothing.
+constexpr int kEventWaitSeconds = 30;
+
 // The background-activity row for a connect: the user can hide the progress
 // dialog and still watch the connect finish in the activity panel.
 const QString kConnectOperationId = QStringLiteral("connect");
@@ -240,17 +248,73 @@ SessionWorker::~SessionWorker()
     // then wait for the pool to drain.
     downloadsCancelled_.store(true);
     downloadPool_.waitForDone();
+    // The long-poll thread holds only copies and a shared flag, so it is left to
+    // finish its request on its own once the flag is down.
+    stopEventWaiter();
 }
 
 void SessionWorker::ensureSyncTimer()
 {
     if (syncTimer_ == nullptr) {
         syncTimer_ = new QTimer(this);
-        syncTimer_->setInterval(3000);
+        syncTimer_->setInterval(kPollIntervalMs);
         connect(syncTimer_, &QTimer::timeout, this, &SessionWorker::sync);
     }
     if (!syncTimer_->isActive()) {
         syncTimer_->start();
+    }
+    startEventWaiter();
+}
+
+void SessionWorker::startEventWaiter()
+{
+    if (eventWaiter_.joinable() || !session_) {
+        return;
+    }
+    bazarish::client::Session::ContactFetchContext context;
+    try {
+        context = session_->contactFetchContext();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("no event waiter: {}", error.what());
+        return;
+    }
+    eventWaiterRunning_ = std::make_shared<std::atomic<bool>>(true);
+    // The loop owns a copy of everything it touches and a shared flag, so closing
+    // the profile can leave it to finish on its own.
+    eventWaiter_ = std::thread([this, context, running = eventWaiterRunning_]() {
+        while (running->load()) {
+            try {
+                bazarish::client::Session::waitForEvents(context, kEventWaitSeconds);
+            } catch (const std::exception& error) {
+                // No event face, or it went away: fall back to the timer, which
+                // has been polling all along.
+                bazarish::log::info("event face unavailable, polling instead: {}", error.what());
+                return;
+            }
+            if (!running->load()) {
+                return;
+            }
+            // Something is waiting (or the server's window closed): sync now, on
+            // the worker thread where every other session call runs.
+            QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
+        }
+    });
+    // With a waiter in place the timer is only a heartbeat: it catches what the
+    // event face cannot report (our own outgoing state, the delegation check).
+    syncTimer_->setInterval(kHeartbeatIntervalMs);
+}
+
+void SessionWorker::stopEventWaiter()
+{
+    if (eventWaiterRunning_) {
+        eventWaiterRunning_->store(false);
+    }
+    if (eventWaiter_.joinable()) {
+        eventWaiter_.detach();  // it ends on its own once its request returns
+    }
+    eventWaiterRunning_.reset();
+    if (syncTimer_ != nullptr) {
+        syncTimer_->setInterval(kPollIntervalMs);
     }
 }
 
@@ -441,8 +505,11 @@ void SessionWorker::setSyncEnabled(bool on)
     if (on) {
         ensureSyncTimer();
         sync();
-    } else if (syncTimer_ != nullptr) {
-        syncTimer_->stop();
+    } else {
+        stopEventWaiter();
+        if (syncTimer_ != nullptr) {
+            syncTimer_->stop();
+        }
     }
 }
 

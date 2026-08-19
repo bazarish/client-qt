@@ -433,6 +433,14 @@ public:
     // [any thread] Resolve and verify a contact card using a PRIVATE throwaway
     // transport (its own connection, so it never contends with the session's sync
     // transport). Touches no session state; never throws.
+    // Holds a request open on the server's event face until something arrives for
+    // this profile (or the wait passes), then returns whether anything is
+    // pending. Static and context-based like resolveContactCard: it runs on its
+    // own connection so a long wait never blocks the session's own transport.
+    // Throws when the server has no event face, so the caller can go back to
+    // polling.
+    static bool waitForEvents(const ContactFetchContext& context, int waitSeconds);
+
     static ContactCardResolved resolveContactCard(
         const ContactFetchContext& context, const ContactCardRequest& request);
     // [worker thread] Finalize a resolved add: send the contact request and record

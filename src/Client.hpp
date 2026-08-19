@@ -232,6 +232,10 @@ public:
     void registerTokenHashes(const std::vector<Bytes>& hashes);
     void deleteTokenHashes(const std::vector<Bytes>& hashes);
     std::vector<PendingEntry> listPending();
+    // Asks the server to hold the request until something arrives for this client
+    // (or waitSeconds passes), and returns what is pending then. Throws with a 404
+    // when the server has no event face, so the caller can fall back to polling.
+    std::vector<PendingEntry> waitForPending(int waitSeconds);
     Bytes fetchBlob(const std::string& blobId);
     // A slice of the server's netDb, for starting I2P without touching a public
     // reseed host (GET /v1/messaging/reseed). Unauthenticated on the server side:

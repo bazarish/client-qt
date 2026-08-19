@@ -241,6 +241,13 @@ private:
     // Completed off-thread contact resolutions awaiting finalize (see above).
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
     QTimer* syncTimer_ = nullptr;
+    // The long-poll loop: its own thread, because the request is meant to hang.
+    // While it works the sync timer only heartbeats; if the server has no event
+    // face it stops and the timer goes back to its short interval.
+    std::thread eventWaiter_;
+    std::shared_ptr<std::atomic<bool>> eventWaiterRunning_;
+    void startEventWaiter();
+    void stopEventWaiter();
     // When the delegation renewal was last considered (never = 0).
     qint64 lastTransientCheckMs_ = 0;
     // Outgoing messages accepted by our server but not yet confirmed delivered:
