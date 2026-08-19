@@ -34,6 +34,15 @@ find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 # submodule are gone. OpenSSL is still needed for httplib's TLS client below.
 find_package(OpenSSL 3.0 REQUIRED)
 
+# Sanitizer build (address / undefined), for chasing a crash rather than for
+# shipping: BAZARISH_SANITIZE=address. It also drops -Werror, because under a
+# sanitizer GCC raises maybe-uninitialized inside libstdc++ headers.
+set(BAZARISH_SANITIZE "" CACHE STRING "Build with a sanitizer: address | undefined | address,undefined")
+if(BAZARISH_SANITIZE)
+    add_compile_options(-fsanitize=${BAZARISH_SANITIZE} -fno-omit-frame-pointer -g -Wno-error)
+    add_link_options(-fsanitize=${BAZARISH_SANITIZE})
+endif()
+
 add_library(bazarish_client_lib STATIC
     src/ApiClient.cpp
     src/AudioCodec.cpp
