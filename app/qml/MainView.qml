@@ -35,14 +35,19 @@ Item {
                 // Below the narrow threshold this is the only pane until a chat
                 // is opened, and the conversation replaces it rather than sharing
                 // a width neither can use.
+                id: panes
                 readonly property bool narrow: width < Theme.narrowWidth
                 readonly property bool chatOpen: root.session
                     && root.session.activePeer.length > 0
                 ChatList {
                     id: chatList
                     session: root.session
-                    visible: !parent.narrow || !parent.chatOpen
-                    Layout.preferredWidth: parent.narrow ? parent.width : 320
+                    visible: !panes.narrow || !panes.chatOpen
+                    // Never wider than its share: the conversation used to be
+                    // squeezed narrower than the list it sits beside.
+                    Layout.preferredWidth: panes.narrow
+                        ? panes.width
+                        : Math.min(320, Math.round(panes.width * 0.38))
                     Layout.fillHeight: true
                     onNewChatRequested: newChat.open()
                     onSettingsRequested: settings.open()
@@ -50,13 +55,16 @@ Item {
                     onAccountsRequested: accountSwitcher.open()
                 }
                 Rectangle {
-                    visible: !parent.narrow
+                    visible: !panes.narrow
                     Layout.fillHeight: true
                     width: 1
                     color: Theme.border
                 }
                 Item {
-                    visible: !parent.narrow || parent.chatOpen
+                    id: chatPane
+                    readonly property bool narrow: panes.narrow
+                    visible: !panes.narrow || panes.chatOpen
+                    clip: true
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Loader {
@@ -64,12 +72,20 @@ Item {
                         active: root.session && root.session.activePeer.length > 0
                         sourceComponent: ConversationView {
                             session: root.session
+                            narrow: chatPane.narrow
                             onContactInfoRequested: contactInfo.open()
                             onCallRequested: root.session.startCall("")
                         }
                     }
                     Label {
                         anchors.centerIn: parent
+                        // Bounded and wrapped: unbounded, it drew past its pane and
+                        // over the list whenever the window left it little room.
+                        width: Math.max(0, parent.width - 32)
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                        elide: Text.ElideRight
+                        maximumLineCount: 2
                         visible: !root.session || root.session.activePeer.length === 0
                         text: "Select a chat or start a new one"
                         color: Theme.textDim

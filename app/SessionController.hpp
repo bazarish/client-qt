@@ -449,6 +449,9 @@ public:
     Q_INVOKABLE void goOnline();
     Q_INVOKABLE void goOffline();
     Q_INVOKABLE void openConversation(const QString& peer);
+    // Leaves the open conversation without opening another: on a narrow window
+    // the chat is the whole window, so there has to be a way back to the list.
+    Q_INVOKABLE void closeConversation();
     // Opens a conversation positioned at a specific message (a search hit): loads
     // a window ending at it and asks the view to scroll there.
     Q_INVOKABLE void openConversationAtMessage(const QString& peer, qint64 messageId);

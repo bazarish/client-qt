@@ -7,6 +7,8 @@ import Bazarish
 Item {
     id: root
     property var session: null
+    // Set by the window when the chat is the only pane.
+    property bool narrow: false
     signal contactInfoRequested()
     signal callRequested()
 
@@ -179,9 +181,15 @@ Item {
             color: Theme.surface
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
+                anchors.leftMargin: root.narrow ? 2 : 12
                 anchors.rightMargin: 6
                 spacing: 10
+                // The only pane on a narrow window, so this is the way back.
+                IconButton {
+                    visible: root.narrow
+                    iconName: "back"
+                    onClicked: if (root.session) { root.session.closeConversation() }
+                }
                 Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38; enlargeable: true }
                 ColumnLayout {
                     Layout.fillWidth: true

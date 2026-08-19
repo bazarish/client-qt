@@ -1730,6 +1730,17 @@ void SessionController::showInActiveView(const StoredMessage& m, bool isOwn)
     newestLoadedId_ = m.id;
 }
 
+void SessionController::closeConversation()
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    activePeer_.clear();
+    conversation_.setMessages({});
+    emit activePeerChanged();
+    emit activePeerNameChanged();
+}
+
 void SessionController::openConversation(const QString& peer)
 {
     activateConversation(peer);
