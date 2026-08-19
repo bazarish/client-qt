@@ -439,7 +439,7 @@ Popup {
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                         }
-                        Switch {
+                        Toggle {
                             id: clearnetSwitch
                             enabled: !App.fullPrivacyMode
                             checked: root.session && root.session.clearnetAllowed
@@ -453,7 +453,7 @@ Popup {
                             Label { text: "Send read receipts"; color: Theme.text }
                             Label { text: "Lets contacts see a green tick when you receive."; color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
                         }
-                        Switch {
+                        Toggle {
                             checked: root.session ? root.session.sendReceipts : true
                             onToggled: if (root.session) root.session.sendReceipts = checked
                         }

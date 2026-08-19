@@ -182,6 +182,7 @@ if(Qt6_FOUND)
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml
+            app/qml/ContactShareSheet.qml
             app/qml/CallScreen.qml
             app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml
@@ -192,6 +193,8 @@ if(Qt6_FOUND)
             app/qml/components/Avatar.qml
             app/qml/components/AvatarViewer.qml
             app/qml/components/QrView.qml
+            app/qml/components/Toggle.qml
+            app/qml/components/UnreadBadge.qml
             app/qml/components/DialogButtons.qml
             app/qml/components/Icon.qml
             app/qml/components/IconButton.qml

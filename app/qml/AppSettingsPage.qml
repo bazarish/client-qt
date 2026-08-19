@@ -72,7 +72,7 @@ Popup {
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                         }
-                        Switch {
+                        Toggle {
                             checked: App.fullPrivacyMode
                             onToggled: App.setFullPrivacyMode(checked)
                         }

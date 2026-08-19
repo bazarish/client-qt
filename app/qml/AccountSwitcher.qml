@@ -114,21 +114,21 @@ Popup {
                             }
                         }
                     }
-                    // Per-account online/offline toggle.
-                    Switch {
-                        checked: model.online
-                        onToggled: App.setOnline(model.accountId, checked)
-                    }
-                    // The count sits in a slot of its own at the right edge, so
-                    // arriving or clearing messages never shift the switch.
+                    // The count sits in a slot of its own, so arriving or
+                    // clearing messages never shift the switch beside it.
                     Item {
                         Layout.preferredWidth: root.unreadSlotWidth
                         Layout.fillHeight: true
                         UnreadBadge {
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.centerIn: parent
                             count: model.unread
                         }
+                    }
+                    // Per-account online/offline toggle, last in the row.
+                    Toggle {
+                        Layout.alignment: Qt.AlignVCenter
+                        checked: model.online
+                        onToggled: App.setOnline(model.accountId, checked)
                     }
                 }
             }

@@ -73,7 +73,7 @@ Popup {
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                         }
-                        Switch {
+                        Toggle {
                             checked: I2p.enabled
                             onToggled: I2p.enabled = checked
                         }
@@ -99,7 +99,7 @@ Popup {
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                         }
-                        Switch {
+                        Toggle {
                             checked: I2p.loggingEnabled
                             onToggled: I2p.loggingEnabled = checked
                         }
