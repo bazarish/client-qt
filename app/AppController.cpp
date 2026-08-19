@@ -257,6 +257,17 @@ void AppController::setActive(const QString& id)
     refreshAccounts();
 }
 
+int AppController::unreadElsewhere() const
+{
+    int total = 0;
+    for (const SessionController* const session : sessions_) {
+        if (session != nullptr && session->accountId() != activeId_) {
+            total += session->unreadTotal();
+        }
+    }
+    return total;
+}
+
 void AppController::openSession(const QString& id, const QString& passphrase, bool makeActive)
 {
     // Already open: just focus it (or do nothing for a background request).

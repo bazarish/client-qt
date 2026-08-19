@@ -189,6 +189,13 @@ Item {
                     visible: root.narrow
                     iconName: "back"
                     onClicked: if (root.session) { root.session.closeConversation() }
+                    // What is waiting back in the list, which the chat is covering.
+                    UnreadBadge {
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 2
+                        count: root.session ? root.session.unreadTotal : 0
+                    }
                 }
                 Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38; enlargeable: true }
                 ColumnLayout {

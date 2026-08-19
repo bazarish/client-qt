@@ -26,6 +26,9 @@ class AppController : public QObject {
     Q_PROPERTY(QObject* session READ session NOTIFY sessionChanged)
     Q_PROPERTY(bool hasProfiles READ hasProfiles NOTIFY profilesChanged)
     Q_PROPERTY(bool hasOpenAccounts READ hasOpenAccounts NOTIFY accountsChanged)
+    // Unread waiting in accounts other than the one on screen: the switcher is
+    // the only place they would ever be noticed.
+    Q_PROPERTY(int unreadElsewhere READ unreadElsewhere NOTIFY accountsChanged)
     // --- Global (app-wide) settings, shared by every profile ---
     // Full privacy mode: forbid connecting through any clearnet client-facade, so
     // all traffic runs over I2P only. Persisted across runs and applied process-wide.
@@ -38,6 +41,7 @@ public:
 
     QObject* profiles() { return &profiles_; }
     QObject* accounts() { return &accounts_; }
+    int unreadElsewhere() const;
     QObject* session();
     bool hasProfiles() const { return haveProfiles_; }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }

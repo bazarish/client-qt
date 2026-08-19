@@ -62,6 +62,9 @@ Item {
                             Layout.maximumWidth: 180
                         }
                         Icon { name: "chevron"; color: Theme.textDim; size: 14 }
+                        // Unread in the accounts that are not on screen: this is
+                        // the control that leads to them.
+                        UnreadBadge { count: App.unreadElsewhere }
                     }
                     TapHandler { onTapped: root.accountsRequested() }
                 }
