@@ -163,7 +163,10 @@ QString humanFederationPhase(const QString& phase)
         return QStringLiteral("Queued at your server…");
     }
     if (phase == QStringLiteral("dialing")) {
-        return QStringLiteral("Building tunnel over I2P…");
+        // The server is finding the recipient's server on I2P and opening a
+        // stream to it. Its own tunnels are usually already up, so naming this
+        // "building tunnels" described the rare case and misread the common one.
+        return QStringLiteral("Reaching the recipient's server…");
     }
     if (phase == QStringLiteral("connected")) {
         return QStringLiteral("Connected, sending…");
