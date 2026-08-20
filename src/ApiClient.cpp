@@ -33,6 +33,8 @@ std::int64_t nowSeconds()
 
 // How long to wait for our own outbound destination's tunnels on a cold start,
 // and how long a dial to a facade may take once they are up.
+// One dial, plus one more if the connection we kept had already been closed.
+constexpr int kKeepAliveAttempts = 2;
 constexpr int kOutboundReadySeconds = 180;
 constexpr int kFacadeDialSeconds = 60;
 // The secret a session key is derived from.
@@ -307,6 +309,7 @@ void ApiClient::setDestinationOwner(std::string owner)
 void ApiClient::releaseI2pLink()
 {
     const std::lock_guard<std::mutex> lock(netMutex_);
+    i2pStream_.reset();
     i2pOut_.reset();
 }
 
@@ -357,44 +360,57 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
         reportConnectProgress(40, "I2P tunnels are still building");
         return std::nullopt;
     }
-    reportConnectProgress(55, "Looking up the server's I2P address");
-    std::unique_ptr<bazarish::i2p::Stream> stream
-        = i2pOut_->connect(facade.host, std::chrono::seconds(kFacadeDialSeconds));
-    if (!stream) {
-        return std::nullopt;  // facade unreachable - try the next
-    }
-    reportConnectProgress(65, "Connected to the server over I2P");
-
-    const std::string head = buildI2pHttpRequest(method, facade.host, fullPath, headers, bodyLen);
-    stream->writeAll(head.data(), head.size());
-    if (bodyLen > 0 && writeBody) {
-        writeBody(*stream);
-    }
-
-    // The request carries Content-Length and the facade closes after responding
-    // (Connection: close), so reading to EOF yields the whole response. `auto`
-    // avoids clashing with bazarish::client::I2pHttpResponse declared elsewhere.
-    // A framing failure here is worth naming: the request went out over I2P and
-    // something came back that the reader could not frame, which reads very
-    // differently from an unreachable facade.
-    bazarish::i2p::Stream& responseStream = *stream;
-    const auto parsed = [&responseStream, &facade]() {
+    // The connection is kept between requests. A destination carries the stream's
+    // tunnels; what a fresh stream costs is its own opening bytes (the identity
+    // and signature ride the first packet) and a socket the facade opens for it,
+    // not a round trip - the request travels on the very packet that opens the
+    // stream. Reusing it saves that per-request weight, and stops each request
+    // being a connection of its own to anyone counting them.
+    for (int attempt = 0; attempt < kKeepAliveAttempts; ++attempt) {
+        const bool reused = static_cast<bool>(i2pStream_);
+        if (!reused) {
+            reportConnectProgress(55, "Looking up the server's I2P address");
+            i2pStream_ = i2pOut_->connect(facade.host, std::chrono::seconds(kFacadeDialSeconds));
+            if (!i2pStream_) {
+                return std::nullopt;  // facade unreachable - try the next
+            }
+        }
+        reportConnectProgress(65, "Connected to the server over I2P");
         try {
-            return readI2pHttpResponse(responseStream);
+            const std::string head = buildI2pHttpRequest(
+                method, facade.host, fullPath, headers, bodyLen, /*keepAlive=*/true);
+            i2pStream_->writeAll(head.data(), head.size());
+            if (bodyLen > 0 && writeBody) {
+                writeBody(*i2pStream_);
+            }
+            const bazarish::I2pHttpResponse parsed = readI2pHttpResponse(*i2pStream_);
+            if (const auto it = parsed.headers.find("connection");
+                it != parsed.headers.end() && it->second.find("close") != std::string::npos) {
+                i2pStream_.reset();  // the server is done with this one
+            }
+            ApiResponse response;
+            response.status = parsed.status;
+            response.body = Bytes(parsed.body.begin(), parsed.body.end());
+            if (const auto it = parsed.headers.find("content-type"); it != parsed.headers.end()) {
+                response.contentType = it->second;
+            }
+            response.headers = parsed.headers;  // already lowercased by the parser
+            return response;
         } catch (const std::exception& error) {
+            i2pStream_.reset();
+            // A connection the server had already closed fails on its next use, and
+            // that is not the facade misbehaving: dial again and ask once more.
+            // Both body writers replay from their source, so the repeat is whole.
+            if (reused) {
+                bazarish::log::info("kept connection was already closed; dialling again");
+                continue;
+            }
             bazarish::log::warn("i2p facade {} answered unframed: {}",
                 facade.host.substr(0, 12), error.what());
             throw;
         }
-    }();
-    ApiResponse response;
-    response.status = parsed.status;
-    response.body = Bytes(parsed.body.begin(), parsed.body.end());
-    if (const auto it = parsed.headers.find("content-type"); it != parsed.headers.end()) {
-        response.contentType = it->second;
     }
-    response.headers = parsed.headers;  // already lowercased by the parser
-    return response;
+    return std::nullopt;
 }
 
 ApiResponse ApiClient::get(const std::string& path, const std::string& query)

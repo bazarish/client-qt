@@ -86,7 +86,7 @@ private:
 
     bool enabled_ = true;
     bool loggingEnabled_ = false;
-    int privacyLevel_ = kMaxPrivacyLevel;
+    int privacyLevel_ = kMinimalPrivacyLevel;
     bool running_ = false;
     bool ready_ = false;
     int knownRouters_ = 0;

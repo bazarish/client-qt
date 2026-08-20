@@ -27,7 +27,10 @@ Item {
                 ? "image://avatar/" + root.fingerprint + "?r=" + Avatars.revision : ""
             sourceSize: Qt.size(parent.width, parent.height)
             smooth: true
-            cache: false
+            asynchronous: true
+            // Cached: the revision in the URL is what busts it, so a face already
+            // drawn is reused instead of being redrawn every time a list rebinds.
+            cache: true
         }
     }
 

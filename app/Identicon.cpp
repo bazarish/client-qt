@@ -49,7 +49,11 @@ QImage renderIdenticon(const QString& id, const int dim)
 }
 
 IdenticonProvider::IdenticonProvider()
-    : QQuickImageProvider(QQuickImageProvider::Image)
+    // Asynchronous: drawing a face is cheap, but a list rebuilding after a profile
+    // switch asks for every visible one at once, and on the GUI thread that is the
+    // click that does not answer. The store behind them is lock-guarded, and an
+    // identicon is derived from its fingerprint alone, so both are safe off-thread.
+    : QQuickImageProvider(QQuickImageProvider::Image, QQuickImageProvider::ForceAsynchronousImageLoading)
 {
 }
 
@@ -64,7 +68,7 @@ QImage IdenticonProvider::requestImage(
 }
 
 AvatarProvider::AvatarProvider()
-    : QQuickImageProvider(QQuickImageProvider::Image)
+    : QQuickImageProvider(QQuickImageProvider::Image, QQuickImageProvider::ForceAsynchronousImageLoading)
 {
 }
 

@@ -70,7 +70,7 @@ void stopWarmPool()
 }
 
 std::atomic<bool> g_i2pEnabled{true};
-std::atomic<bazarish::i2p::Privacy> g_tunnelPrivacy{bazarish::i2p::Privacy::eMax};
+std::atomic<bazarish::i2p::Privacy> g_tunnelPrivacy{bazarish::i2p::Privacy::eMinimal};
 // Strict by default: the netDb comes from our own server, not a public host.
 std::atomic<bool> g_publicReseedAllowed{false};
 

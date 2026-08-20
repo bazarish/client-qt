@@ -55,12 +55,14 @@ I2pController::I2pController(QObject* parent)
         std::getline(in, value);
         loggingEnabled_ = value == "1";
     }
-    // Tunnel hop length. Absent => the most private profile.
+    // Tunnel hop length. Absent => the shortest tunnels: the app has to be usable
+    // before it can be anything else, and the page says plainly what one hop does
+    // and does not hide.
     {
         std::ifstream in(privacyPath());
         std::string value;
         std::getline(in, value);
-        const int level = value.empty() ? kMaxPrivacyLevel : std::atoi(value.c_str());
+        const int level = value.empty() ? kMinimalPrivacyLevel : std::atoi(value.c_str());
         privacyLevel_ = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
     }
     client::setI2pEnabled(enabled_);

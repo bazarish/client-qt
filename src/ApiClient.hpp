@@ -249,6 +249,10 @@ private:
     // tunnels stay warm across requests (a fresh transient per call would rebuild
     // a destination on every poll). Created lazily on first I2P facade use.
     std::shared_ptr<bazarish::i2p::Endpoint> i2pOut_;
+    // The connection to the facade, kept between requests. Every request of this
+    // client is serialized on netMutex_, so one is enough; a stale one is dropped
+    // and redialled on its next use.
+    std::unique_ptr<bazarish::i2p::Stream> i2pStream_;
     // Index of the last facade that worked; the GUI "connected via" reads it.
     std::size_t activeFacade_ = 0;
     // Sticky I2P: once a request has actually gone over an I2P facade, this
