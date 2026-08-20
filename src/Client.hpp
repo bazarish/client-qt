@@ -235,6 +235,13 @@ public:
     // --- Messaging (server) ---
 
     void registerThisClient();
+    // This account's registered devices, and which one is us. Mail is deleted
+    // only when every one of them has acked it.
+    struct DeviceEntry {
+        std::string clientId;
+        bool current = false;
+    };
+    std::vector<DeviceEntry> listClients();
     void retireClient(const std::string& clientId);
     void registerTokenHashes(const std::vector<Bytes>& hashes);
     void deleteTokenHashes(const std::vector<Bytes>& hashes);

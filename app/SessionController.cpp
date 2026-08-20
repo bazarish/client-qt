@@ -649,6 +649,7 @@ void SessionWorker::sync()
         }
         QVariantMap map;
         map["peer"] = QString::fromStdString(m.fromFingerprint);
+        map["sentByUs"] = m.sentByUs;
         map["type"] = QString::fromStdString(m.contentType);
         map["text"] = QString::fromStdString(m.text);
         map["rawType"] = QString::fromStdString(m.rawType);
@@ -2810,7 +2811,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
 
     StoredMessage m;
     m.peer = peer;
-    m.outgoing = false;
+    // Another device of ours sent this; it belongs on our side of the chat.
+    m.outgoing = message.value("sentByUs").toBool();
     m.type = type;
     m.protocolId = message.value("messageId").toString();
     m.text = message.value("text").toString();
@@ -2827,7 +2829,9 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     const Placement placement = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
     m.ts = placement.displayTs;
     m.orderKey = placement.orderKey;
-    m.status = DeliveryStatus::Received;  // incoming; no indicator rendered
+    // An echo carries no delivery state of its own: the device that sent it owns
+    // that, and a receipt from the contact will still arrive here.
+    m.status = m.outgoing ? DeliveryStatus::AtSenderServer : DeliveryStatus::Received;
     m.id = store_.append(m);
 
     showInActiveView(m, false);

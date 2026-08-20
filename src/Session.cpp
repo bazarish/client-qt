@@ -105,7 +105,11 @@ constexpr std::size_t kAvatarMaxBytes = 500 * 1024;
 // Applies a bootstrap block (the peer's sealing prekey, serving destination +
 // serving sealing key, and a fresh token batch) carried by a contact request, a
 // first reply or a token refill. Orthogonal to the message's content type.
-void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap)
+// thisDevice is the client id of the device applying the bootstrap. A token batch
+// addressed to another device is left alone: the peer's devices share a mailbox,
+// so every one of them sees this message, and taking a batch meant for one of
+// them is how two devices come to spend the same one-time token.
+void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap, const std::string& thisDevice)
 {
     if (bootstrap.contains("sealing")) {
         contact.sealingPublicB64 = bootstrap.at("sealing").get<std::string>();
@@ -117,7 +121,8 @@ void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap)
     if (bootstrap.contains("servingKey")) {
         contact.servingSealingB64 = bootstrap.at("servingKey").get<std::string>();
     }
-    if (bootstrap.contains("replyTokens")) {
+    const std::string forDevice = bootstrap.value("forDevice", std::string());
+    if (bootstrap.contains("replyTokens") && (forDevice.empty() || forDevice == thisDevice)) {
         for (const nlohmann::json& token : bootstrap.at("replyTokens")) {
             const std::string t = token.get<std::string>();
             // Dedup: a pending item may be re-fetched before it is acked (acks are
@@ -1460,6 +1465,14 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
+    // The other devices of this account see what was sent from here. Done before
+    // the send so a message that fails to reach the contact still reads the same
+    // on every device of ours; it is our own mailbox, and costs no token.
+    try {
+        echoSentToSelf(peerFingerprint, inner);
+    } catch (const std::exception& error) {
+        bazarish::log::warn("could not echo a sent message to our own devices: {}", error.what());
+    }
     return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
@@ -1863,6 +1876,15 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // token-refill reply), so an empty stash is not an error on that path.
     const bool useOverrideToken = !overrideToken.empty();
     if (!useOverrideToken && contact.sendTokens.empty()) {
+        // This device is out of capacity for them. Ask for a batch of our own -
+        // tokenless, so an empty stash can still speak - and tell the user to try
+        // again rather than silently dropping what they wrote.
+        try {
+            sendTokenRequest(peerFingerprint);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("could not ask {} for delivery tokens: {}",
+                bazarish::log::redact(peerFingerprint), error.what());
+        }
         // Out of one-time delivery tokens for this peer: their stash refills when
         // they come back online (the low-stash signal we sent earlier prompts it),
         // so this is a recoverable "resend later", not a permanent failure. Surfaced
@@ -1895,6 +1917,7 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // ours. Skipped when we spend a caller-supplied token (the refill reply itself).
     if (!useOverrideToken && contact.sendTokens.size() - 1 <= kRefillThreshold) {
         inner["lowStash"] = true;
+        inner["device"] = client_->clientId();  // the batch comes back to this device
         inner["refillToken"] = issueOneToken();
     }
 
@@ -1968,7 +1991,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
     std::vector<IncomingMessage> result;
     // Peers whose stash of our tokens is running low and who asked for a
     // refill; topped up after the fetch loop so we never write mid-iteration.
-    std::set<std::string> refillPeers;
+    std::set<std::pair<std::string, std::string>> refillPeers;  // peer, device
     // A fresh token each low-stash requester embedded to prepay our refill reply, by
     // peer fingerprint: we spend exactly it to deliver the batch (so the reply lands
     // even when we hold none of their tokens) and never fold it into our stash.
@@ -1987,6 +2010,21 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
 
             IncomingMessage message;
             message.deliveryClass = entry.deliveryClass;
+            // An echo of what another device of ours sent: unwrap it and let the
+            // ordinary dispatch below read it, so a sent file or reply arrives here
+            // exactly as it did there. The conversation is the peer it went to, and
+            // the device that sent it ignores its own echo.
+            if (body.value("type", std::string()) == "device.message"
+                && body.value("from", std::string()) == fingerprint()) {
+                if (body.value("device", std::string()) == client_->clientId()) {
+                    client_->ack(entry.id);
+                    continue;
+                }
+                const std::string peer = body.value("peer", std::string());
+                body = body.at("message");
+                body["from"] = peer;  // the conversation this belongs to
+                message.sentByUs = true;
+            }
             message.fromFingerprint = body.at("from").get<std::string>();
             message.messageId = body.value("id", std::string());
             message.sentAt = body.value("sentAt", static_cast<std::int64_t>(0));
@@ -2014,7 +2052,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             // Bootstrap may ride with any content type; apply it before dispatch
             // so a new or migrated contact is established regardless of type.
             if (body.contains("bootstrap")) {
-                applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"));
+                applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"), client_->clientId());
                 message.establishedContact = true;
                 establishedPeers.insert(message.fromFingerprint);
             }
@@ -2037,7 +2075,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             // The peer is low on our tokens and asked to be refilled; their request
             // prepays our reply with a fresh token, held only for that refill.
             if (body.value("lowStash", false)) {
-                refillPeers.insert(message.fromFingerprint);
+                refillPeers.insert({message.fromFingerprint, body.value("device", std::string())});
             }
             if (body.contains("refillToken")) {
                 prepaidRefillTokens[message.fromFingerprint]
@@ -2138,6 +2176,13 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 // Audio-call signalling: update call state and start/stop media. The
                 // media itself never touches the server (it rides I2P datagrams).
                 handleCallSignal(type, message.fromFingerprint, body, message);
+            } else if (type == "token-request") {
+                // One of their devices has no capacity to write to us. Answer it
+                // by name; the reply rides the contact channel when we hold none
+                // of their tokens either, which is the usual case right after a
+                // new device appears.
+                message.contentType = type;
+                refillPeers.insert({message.fromFingerprint, body.value("device", std::string())});
             } else if (type == "token-refill") {
                 // The fresh tokens already arrived via the bootstrap block.
                 message.contentType = type;
@@ -2268,13 +2313,13 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
 
     // Refill peers that ran low (a fresh token batch, sent as a token-refill).
     // Done after the loop so the outbound send never races the fetch loop.
-    for (const std::string& peer : refillPeers) {
+    for (const auto& [peer, device] : refillPeers) {
         // Best-effort: a peer we cannot route to right now must not fail the
         // whole sync (which would read as "server unreachable"); retry next tick.
         try {
             const auto pre = prepaidRefillTokens.find(peer);
-            sendTokenRefill(
-                peer, pre != prepaidRefillTokens.end() ? pre->second : std::string());
+            sendTokenRefill(peer, device,
+                pre != prepaidRefillTokens.end() ? pre->second : std::string());
         } catch (const std::exception& error) {
             bazarish::log::warn("sync: token refill failed: {}", error.what());
         }
@@ -2289,7 +2334,8 @@ void Session::ackPending(const std::string& pendingId)
     }
 }
 
-void Session::sendTokenRefill(const std::string& peerFingerprint, const std::string& prepaidToken)
+void Session::sendTokenRefill(const std::string& peerFingerprint, const std::string& forDevice,
+    const std::string& prepaidToken)
 {
     const auto found = contacts_.find(peerFingerprint);
     if (found == contacts_.end()) {
@@ -2303,8 +2349,7 @@ void Session::sendTokenRefill(const std::string& peerFingerprint, const std::str
     // even when we hold none of their tokens; without one we spend one of ours, so an
     // empty stash means the peer's own refill of us must arrive first.
     if (!contact.issuedToThem || contact.sealingPublicB64.empty()
-        || contact.servingSealingB64.empty()
-        || (prepaidToken.empty() && contact.sendTokens.empty())) {
+        || contact.servingSealingB64.empty()) {
         return;
     }
     nlohmann::json inner = {
@@ -2313,9 +2358,83 @@ void Session::sendTokenRefill(const std::string& peerFingerprint, const std::str
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
-        {"bootstrap", {{"replyTokens", issueTokenBatch()}}},
+        {"bootstrap", {{"replyTokens", issueTokenBatch()}, {"forDevice", forDevice}}},
+        {"routing", {{"dest", myDest_}, {"servingKey", myServingKeyB64_}}},
     };
-    sendContent(peerFingerprint, std::move(inner), {}, nullptr, false, true, prepaidToken);
+    if (!prepaidToken.empty() || !contact.sendTokens.empty()) {
+        sendContent(peerFingerprint, std::move(inner), {}, nullptr, false, true, prepaidToken);
+        return;
+    }
+    // Neither side has capacity for the other: their device asked because it had
+    // nothing, and we have nothing of theirs to spend on the answer. The tokenless
+    // contact channel exists for exactly this - otherwise the two of them would
+    // wait on each other forever.
+    const std::string innerText = inner.dump();
+    const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
+    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), peerSealing);
+    const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
+    deliver(contact.dest, peerServingKey, "contact", peerFingerprint, std::nullopt, payload);
+}
+
+std::vector<Client::DeviceEntry> Session::devices()
+{
+    return client_->listClients();
+}
+
+void Session::retireDevice(const std::string& clientId)
+{
+    client_->retireClient(clientId);
+}
+
+void Session::echoSentToSelf(const std::string& peerFingerprint, const nlohmann::json& inner)
+{
+    if (myDest_.empty() || myServingKeyB64_.empty()) {
+        return;  // our own routing is not known yet
+    }
+    const nlohmann::json echo = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.message"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"peer", peerFingerprint},
+        {"device", client_->clientId()},
+        {"message", inner},
+    };
+    const std::string innerText = echo.dump();
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
+    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+}
+
+void Session::sendTokenRequest(const std::string& peerFingerprint)
+{
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end()) {
+        return;
+    }
+    const Contact& contact = found->second;
+    if (contact.sealingPublicB64.empty() || contact.servingSealingB64.empty()) {
+        return;  // no descriptor yet: nothing to ask, and nowhere to ask it
+    }
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "token-request"},
+        {"id", toHex(randomBytes(8))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"device", client_->clientId()},
+        {"routing", {{"dest", myDest_}, {"servingKey", myServingKeyB64_}}},
+    };
+    const std::string innerText = inner.dump();
+    const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
+    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), peerSealing);
+    const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
+    // Tokenless, over the contact channel: this device has nothing left to spend,
+    // which is the whole reason it is asking. The channel is capped and rate
+    // limited, and one request per empty stash is well inside that.
+    deliver(contact.dest, peerServingKey, "contact", peerFingerprint, std::nullopt, payload);
 }
 
 // ============================ Audio calls ============================

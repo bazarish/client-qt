@@ -82,6 +82,10 @@ struct IncomingMessage {
     std::string text;
     // Server-visible delivery class this arrived under ("content"/"contact").
     std::string deliveryClass;
+    // True when this is another device of ours echoing a message WE sent: the
+    // content is the message as sent, and fromFingerprint is the contact it went
+    // to, so it belongs in that conversation as an outgoing line.
+    bool sentByUs = false;
     // True when this item carried bootstrap (the peer's sealing key, serving
     // server and a fresh token batch) - a new or refreshed contact.
     bool establishedContact = false;
@@ -766,7 +770,29 @@ private:
     // non-empty, is a fresh token the peer embedded in its low-stash request: the
     // refill is delivered by spending exactly it, so the reply always lands even when
     // we hold none of the peer's own tokens (the refill round-trip funds itself).
-    void sendTokenRefill(const std::string& peerFingerprint, const std::string& prepaidToken = {});
+    // Sends a batch of our tokens to one DEVICE of a peer. A user's devices share
+    // one mailbox, so an unaddressed batch would be taken by all of them and they
+    // would then spend the same one-time tokens against each other; a batch names
+    // the device that asked, and the others leave it alone and ask for their own.
+    void sendTokenRefill(const std::string& peerFingerprint, const std::string& forDevice,
+        const std::string& prepaidToken = {});
+
+    // Asks a contact for a batch of their tokens for THIS device. Rides the
+    // tokenless contact channel, because a device with an empty stash has no
+    // other way to speak to them.
+    void sendTokenRequest(const std::string& peerFingerprint);
+
+    // Echoes a message this device just sent to the account's other devices, so
+    // the conversation reads the same everywhere. Rides our own mailbox like the
+    // other device.* service messages; best effort, and never a chat bubble on
+    // the device that sent it.
+    void echoSentToSelf(const std::string& peerFingerprint, const nlohmann::json& inner);
+
+    // The devices registered on this account, and dropping one. A device that is
+    // gone for good keeps every message in the mailbox until the server's
+    // retention window expires, because deletion waits for all of them.
+    std::vector<Client::DeviceEntry> devices();
+    void retireDevice(const std::string& clientId);
 
     // Pushes our own avatar to a contact as an "avatar" service message, once,
     // when the dialog is mutually established (we have engaged with them) and we

@@ -328,6 +328,18 @@ void Client::registerThisClient()
     api_.postJson("/v1/messaging/clients", {{"clientId", api_.clientId()}});
 }
 
+std::vector<Client::DeviceEntry> Client::listClients()
+{
+    const ApiResponse response = api_.get("/v1/messaging/clients");
+    const nlohmann::json body = nlohmann::json::parse(response.body.begin(), response.body.end());
+    std::vector<DeviceEntry> devices;
+    for (const nlohmann::json& entry : body.at("clients")) {
+        devices.push_back(
+            DeviceEntry{entry.at("clientId").get<std::string>(), entry.value("current", false)});
+    }
+    return devices;
+}
+
 void Client::retireClient(const std::string& clientId)
 {
     api_.del("/v1/messaging/clients/" + clientId);
