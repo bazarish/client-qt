@@ -66,6 +66,16 @@ public:
     // profile reaches destinations that are already up instead of only the next
     // one built.
     void rebuildI2pLinks();
+
+    // Portable mode: everything this app keeps lives beside the executable
+    // instead of in the user's data directory. Switching moves the data, and the
+    // embedded I2P router holds its directory for the life of the process, so the
+    // app has to be started again afterwards.
+    Q_PROPERTY(bool portable READ portable NOTIFY portableChanged)
+    bool portable() const;
+    Q_PROPERTY(QString dataLocation READ dataLocation NOTIFY portableChanged)
+    QString dataLocation() const;
+    Q_INVOKABLE void setPortable(bool on);
     // Asks the UI to show the picker so another account can be added, without
     // closing the open ones.
     Q_INVOKABLE void requestAddAccount();
@@ -73,6 +83,9 @@ public:
     Q_INVOKABLE void closeProfile();
 
 signals:
+    void portableChanged();
+    // The data moved; the app must be started again to use it.
+    void restartRequired(const QString& message);
     void profilesChanged();
     void accountsChanged();
     void sessionChanged();
@@ -98,6 +111,9 @@ private:
     // signal); otherwise the controller is destroyed synchronously, so its
     // transcript is flushed and closed before any on-disk removal.
     void removeSession(SessionController* ctrl, bool deferred);
+    // Closes every open account, joining their workers - so nothing is holding a
+    // transcript open while the data directory moves.
+    void closeAllSessions();
     void refreshAccounts();
     void setActive(const QString& id);
     // The last active account is remembered across runs (a file under the

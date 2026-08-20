@@ -76,14 +76,53 @@ ProfileInfo readInfo(const std::string& id, const fs::path& dir)
 
 }  // namespace
 
-fs::path ProfileManager::defaultRoot()
+fs::path ProfileManager::globalRoot()
 {
     if (const char* const xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != '\0') {
-        return fs::path(xdg) / "bazarish" / "profiles";
+        return fs::path(xdg) / "bazarish";
     }
     const char* const home = std::getenv("HOME");
     const fs::path base = home != nullptr ? fs::path(home) : fs::current_path();
-    return base / ".local" / "share" / "bazarish" / "profiles";
+    return base / ".local" / "share" / "bazarish";
+}
+
+namespace {
+
+// The directory the running executable lives in. Read from the process itself
+// rather than argv[0], which a caller can set to anything.
+fs::path executableDir()
+{
+    std::error_code error;
+    const fs::path self = fs::read_symlink("/proc/self/exe", error);
+    return error ? fs::current_path() : self.parent_path();
+}
+
+}  // namespace
+
+fs::path ProfileManager::portableMarker()
+{
+    return executableDir() / ".bazarish.portable";
+}
+
+fs::path ProfileManager::portableRoot()
+{
+    return executableDir() / "bazarish_data";
+}
+
+bool ProfileManager::portable()
+{
+    std::error_code ignored;
+    return fs::exists(portableMarker(), ignored);
+}
+
+fs::path ProfileManager::dataRoot()
+{
+    return portable() ? portableRoot() : globalRoot();
+}
+
+fs::path ProfileManager::defaultRoot()
+{
+    return dataRoot() / "profiles";
 }
 
 ProfileManager::ProfileManager(fs::path root)

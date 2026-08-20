@@ -29,6 +29,19 @@ struct ProfileInfo {
 class ProfileManager {
 public:
     // Default location: $XDG_DATA_HOME/bazarish/profiles (or ~/.local/share).
+    // Where this installation keeps everything: profiles, the I2P router's state,
+    // the global settings. Normally the user's data directory; when a file named
+    // ".bazarish.portable" sits beside the executable, a "bazarish_data" folder
+    // beside it instead, so a copy on a stick carries its own data.
+    static std::filesystem::path dataRoot();
+    // Whether this installation is running portable (the marker file is present).
+    static bool portable();
+    // The marker itself, and the portable data folder - so a caller can move
+    // between the two modes.
+    static std::filesystem::path portableMarker();
+    static std::filesystem::path portableRoot();
+    static std::filesystem::path globalRoot();
+
     static std::filesystem::path defaultRoot();
 
     explicit ProfileManager(std::filesystem::path root);

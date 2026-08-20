@@ -30,8 +30,11 @@ Popup {
     // Matches the protocol's cap; the field cannot hold more, and a longer one
     // would be dropped by the other side anyway.
     readonly property int kMaxChars: 4
-    // The grid unit the chips are built from.
+    // The grid the chips are built on: a cell, and the gap between cells. A wide
+    // chip spans two cells AND the gap they sit either side of, or it would come
+    // up short of the column next to it.
     readonly property int kChipSize: 36
+    readonly property int kChipSpacing: 6
 
     function pick(emoji) {
         const e = ("" + emoji).trim()
@@ -46,7 +49,7 @@ Popup {
         Label { text: "React"; color: Theme.green; font.weight: Font.DemiBold }
         Flow {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: root.kChipSpacing
             Repeater {
                 model: root.common
                 Rectangle {
@@ -70,7 +73,7 @@ Popup {
         // Reactions this user has used before that are not in the set above.
         Flow {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: root.kChipSpacing
             visible: root.recent.length > 0
             Repeater {
                 model: root.recent
@@ -81,7 +84,7 @@ Popup {
                     // does not fit the square an emoji sits in. Two sizes only, so
                     // the row still reads as a grid: one square, or two.
                     width: recentLabel.implicitWidth + 12 > root.kChipSize
-                        ? root.kChipSize * 2 : root.kChipSize
+                        ? root.kChipSize * 2 + root.kChipSpacing : root.kChipSize
                     height: root.kChipSize
                     radius: 8
                     clip: true

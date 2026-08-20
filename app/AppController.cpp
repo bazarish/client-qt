@@ -464,6 +464,65 @@ void AppController::setOnline(const QString& id, bool on)
     }
 }
 
+bool AppController::portable() const
+{
+    return client::ProfileManager::portable();
+}
+
+QString AppController::dataLocation() const
+{
+    return QString::fromStdString(client::ProfileManager::dataRoot().string());
+}
+
+void AppController::setPortable(const bool on)
+{
+    namespace fs = std::filesystem;
+    if (on == portable()) {
+        return;
+    }
+    const fs::path from = on ? client::ProfileManager::globalRoot()
+                             : client::ProfileManager::portableRoot();
+    const fs::path to = on ? client::ProfileManager::portableRoot()
+                           : client::ProfileManager::globalRoot();
+    // Close everything first: profiles hold their transcripts open, and moving a
+    // directory out from under them would be moving files that are being written.
+    closeAllSessions();
+    std::error_code error;
+    if (fs::exists(from, error) && !fs::is_empty(from, error)) {
+        if (fs::exists(to, error) && !fs::is_empty(to, error)) {
+            emit createFailed(QStringLiteral("There is already data at ")
+                + QString::fromStdString(to.string()) + QStringLiteral(" - move or remove it "
+                    "first, so nothing is overwritten."));
+            return;
+        }
+        fs::create_directories(to.parent_path(), error);
+        fs::rename(from, to, error);
+        if (error) {
+            // Across devices rename fails; copy then remove, which is the same
+            // thing at a cost.
+            error.clear();
+            fs::copy(from, to, fs::copy_options::recursive, error);
+            if (error) {
+                emit createFailed(QStringLiteral("Could not move the data: ")
+                    + QString::fromStdString(error.message()));
+                return;
+            }
+            fs::remove_all(from, error);
+        }
+    }
+    if (on) {
+        std::ofstream marker(client::ProfileManager::portableMarker(), std::ios::trunc);
+        marker << "bazarish keeps its data in bazarish_data beside this file\n";
+    } else {
+        fs::remove(client::ProfileManager::portableMarker(), error);
+    }
+    emit portableChanged();
+    emit restartRequired(on
+            ? QStringLiteral("Your data now lives beside the app. Start Bazarish again to use it.")
+            : QStringLiteral("Your data moved back to your user folder. Start Bazarish again to "
+                             "use it."));
+}
+
 void AppController::rebuildI2pLinks()
 {
     client::flushWarmDests();
@@ -477,6 +536,15 @@ void AppController::rebuildI2pLinks()
 void AppController::requestAddAccount()
 {
     emit showPicker();
+}
+
+void AppController::closeAllSessions()
+{
+    const QVector<SessionController*> open = sessions_;
+    for (SessionController* const ctrl : open) {
+        removeSession(ctrl, /*deferred=*/false);
+    }
+    refreshAccounts();
 }
 
 void AppController::closeProfile()

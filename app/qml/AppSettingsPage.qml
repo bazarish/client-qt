@@ -52,11 +52,6 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 10
-                    Label {
-                        text: "These apply to every account in this app, open or not."
-                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap; Layout.fillWidth: true
-                    }
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -75,6 +70,39 @@ Popup {
                         Toggle {
                             checked: App.fullPrivacyMode
                             onToggled: App.setFullPrivacyMode(checked)
+                        }
+                    }
+
+                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Keep data beside the app"; color: Theme.text }
+                            Label {
+                                text: "Profiles, history and the I2P router's state live in a "
+                                    + "bazarish_data folder next to the program instead of your user "
+                                    + "folder, so a copy on a stick carries everything with it. "
+                                    + "Switching moves what is already there, closes every account "
+                                    + "and needs the app started again."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            Label {
+                                text: "Now at: " + App.dataLocation
+                                color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Toggle {
+                            checked: App.portable
+                            onToggled: {
+                                portableConfirm.turningOn = checked
+                                // Put the switch back until the move is agreed to.
+                                checked = App.portable
+                                portableConfirm.open()
+                            }
                         }
                     }
                 }
@@ -103,6 +131,36 @@ Popup {
                     }
                 }
             }
+        }
+    }
+
+    // Moving the data is not something to do on a stray tap.
+    Dialog {
+        id: portableConfirm
+        property bool turningOn: false
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(360, parent ? parent.width - 24 : 360)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label {
+            text: portableConfirm.turningOn ? "Move data beside the app?" : "Move data back?"
+            color: Theme.text
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Move"
+            onAccepted: portableConfirm.accept()
+            onRejected: portableConfirm.reject()
+        }
+        onAccepted: App.setPortable(portableConfirm.turningOn)
+        contentItem: Label {
+            wrapMode: Text.Wrap
+            color: Theme.textDim
+            padding: 14
+            text: "Every account closes, the data is moved, and Bazarish has to be started "
+                + "again. Nothing is deleted."
         }
     }
 }

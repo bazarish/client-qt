@@ -50,6 +50,9 @@ ApplicationWindow {
         target: App
         function onProfileOpened() { stack.replace(null, mainComponent) }
         function onProfileOpenFailed(error) { window.showToast(error) }
+        // The data moved: the embedded router holds its directory for the life of
+        // the process, so there is nothing to do here but say so and stand down.
+        function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
         // "Add account": show the picker over the running session(s).
         function onShowPicker() {
@@ -140,6 +143,36 @@ ApplicationWindow {
                 background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
                 contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
             }
+        }
+    }
+
+    Dialog {
+        id: restartDialog
+        property string message: ""
+        function show(text) { message = text; open() }
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        width: Math.min(360, parent ? parent.width - 24 : 360)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        header: Label {
+            text: "Restart Bazarish"
+            color: Theme.neon
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Quit"
+            onAccepted: restartDialog.accept()
+            onRejected: restartDialog.reject()
+        }
+        onAccepted: Qt.quit()
+        contentItem: Label {
+            wrapMode: Text.Wrap
+            color: Theme.text
+            padding: 14
+            text: restartDialog.message
         }
     }
 }
