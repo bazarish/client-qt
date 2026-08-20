@@ -218,6 +218,16 @@ constexpr int kPageSize = 20;
 // How many reactions outside the standard set the picker remembers.
 constexpr int kRecentReactions = 10;
 
+// The reactions offered without being asked for. Anything else a user reaches
+// for - typed, or tapped on someone else's chip - is theirs, and is remembered.
+const QStringList kStandardReactions = {QStringLiteral("\U0001F44D"),
+    QStringLiteral("\u2764\uFE0F"), QStringLiteral("\U0001F602"),
+    QStringLiteral("\U0001F389"), QStringLiteral("\U0001F525"), QStringLiteral("\U0001F62E"),
+    QStringLiteral("\U0001F622"), QStringLiteral("\U0001F64F"), QStringLiteral("\U0001F440"),
+    QStringLiteral("\u2705"), QStringLiteral("\U0001F4AF"), QStringLiteral("\U0001F680"),
+    QStringLiteral("\U0001F621"), QStringLiteral("\U0001F44F"), QStringLiteral("\U0001F914"),
+    QStringLiteral("\U0001F973"), QStringLiteral("\U0001F91D"), QStringLiteral("\U0001F529")};
+
 // Loads a picked image and compresses it to a square JPEG within the 500 KB
 // avatar protocol cap (center-crop, downscale to 256, drop quality - then, as a
 // last resort, resolution - until it fits). Returns empty bytes when the file is
@@ -3280,6 +3290,11 @@ void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
     }
 }
 
+QStringList SessionController::standardReactions() const
+{
+    return kStandardReactions;
+}
+
 void SessionController::rememberReaction(const QString& emoji)
 {
     const QString trimmed = emoji.trimmed();
@@ -3312,6 +3327,11 @@ void SessionController::react(const QString& protocolId, const QString& emoji)
     }
     // Toggle: tapping the emoji we already set removes our reaction.
     const QString next = (myReaction(protocolId) == emoji) ? QString() : emoji;
+    // Setting one they reached for outside the standard set - typed, or tapped on
+    // somebody else's chip - puts it in their recents. Removing one does not.
+    if (!next.isEmpty() && !kStandardReactions.contains(next)) {
+        rememberReaction(next);
+    }
     store_.setReaction(activePeer_, protocolId, fingerprint_, next);
     emit requestSendReaction(activePeer_, protocolId, next);
     ++reactionsRevision_;

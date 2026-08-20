@@ -22,9 +22,9 @@ Popup {
         root.open()
     }
 
-    // A curated set covering the common cases; anything else can be typed below.
-    readonly property var common: ["👍", "❤️", "😂", "🎉", "🔥", "😮", "😢", "🙏",
-        "👀", "✅", "💯", "🚀", "😡", "👏", "🤔", "🥳", "🤝", "🔩"]
+    // The set comes from the session, which also decides what counts as one of
+    // the user's own - the two must not drift apart.
+    readonly property var common: root.session ? root.session.standardReactions : []
     // What this user reached for that is not in that set, newest first.
     readonly property var recent: root.session ? root.session.recentReactions : []
     // Matches the protocol's cap; the field cannot hold more, and a longer one
@@ -35,9 +35,6 @@ Popup {
         const e = ("" + emoji).trim()
         if (root.session && root.target.length > 0 && e.length > 0) {
             root.session.react(root.target, e)
-            if (root.common.indexOf(e) < 0) {
-                root.session.rememberReaction(e)
-            }
         }
         root.close()
     }

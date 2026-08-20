@@ -517,6 +517,11 @@ public:
     Q_INVOKABLE void react(const QString& protocolId, const QString& emoji);
     // Reactions this user reached for that are not in the standard set, newest
     // first. Kept per profile so the picker offers what this person actually uses.
+    // The set the picker offers by default. Held here because it also decides
+    // what counts as "one of this user's own" for the recents below, and that
+    // decision has to be the same wherever a reaction is set from.
+    Q_PROPERTY(QStringList standardReactions READ standardReactions CONSTANT)
+    QStringList standardReactions() const;
     Q_PROPERTY(QStringList recentReactions READ recentReactions NOTIFY recentReactionsChanged)
     QStringList recentReactions() const { return recentReactions_; }
     Q_INVOKABLE void rememberReaction(const QString& emoji);
