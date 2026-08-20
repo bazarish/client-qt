@@ -24,7 +24,7 @@ Popup {
 
     // A curated set covering the common cases; anything else can be typed below.
     readonly property var common: ["👍", "❤️", "😂", "🎉", "🔥", "😮", "😢", "🙏",
-        "👀", "✅", "💯", "🚀", "😡", "👏", "🤔", "🥳", "🤝", "⚡"]
+        "👀", "✅", "💯", "🚀", "😡", "👏", "🤔", "🥳", "🤝", "🔩"]
     // What this user reached for that is not in that set, newest first.
     readonly property var recent: root.session ? root.session.recentReactions : []
     // Matches the protocol's cap; the field cannot hold more, and a longer one
