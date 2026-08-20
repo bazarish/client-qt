@@ -1,6 +1,12 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
+#include <QFile>
+
+#include <QJsonDocument>
+
+#include <QJsonArray>
+
 #include "I2pRouter.hpp"
 
 #include "AvatarStore.hpp"
@@ -208,6 +214,9 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 // screen, not what the chat has ever held, and the rest arrives as the user
 // scrolls into it.
 constexpr int kPageSize = 20;
+
+// How many reactions outside the standard set the picker remembers.
+constexpr int kRecentReactions = 10;
 
 // Loads a picked image and compresses it to a square JPEG within the 500 KB
 // avatar protocol cap (center-crop, downscale to 256, drop quality - then, as a
@@ -1682,6 +1691,15 @@ SessionController::~SessionController()
 void SessionController::open(const QString& dir, const QString& profileId, const QString& passphrase)
 {
     profileId_ = profileId;
+    recentReactionsPath_ = dir + "/recent-reactions.json";
+    QFile recents(recentReactionsPath_);
+    if (recents.open(QIODevice::ReadOnly)) {
+        const QJsonDocument document = QJsonDocument::fromJson(recents.readAll());
+        for (const QJsonValue& entry : document.array()) {
+            recentReactions_ << entry.toString();
+        }
+        emit recentReactionsChanged();
+    }
     // The passphrase that unlocks the keys also seals the transcript at rest.
     store_.open(profileId, dir + "/transcript.db", passphrase);
     // There is no persistent outbound queue, so any outgoing message still at
@@ -3260,6 +3278,31 @@ void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
             statusById_[id] = DeliveryStatus::Delivered;
         }
     }
+}
+
+void SessionController::rememberReaction(const QString& emoji)
+{
+    const QString trimmed = emoji.trimmed();
+    if (trimmed.isEmpty()) {
+        return;
+    }
+    recentReactions_.removeAll(trimmed);
+    recentReactions_.prepend(trimmed);
+    while (recentReactions_.size() > kRecentReactions) {
+        recentReactions_.removeLast();
+    }
+    QJsonArray array;
+    for (const QString& entry : recentReactions_) {
+        array.append(entry);
+    }
+    QFile file(recentReactionsPath_);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        file.write(QJsonDocument(array).toJson(QJsonDocument::Compact));
+    } else {
+        bazarish::log::warn("could not keep the recent reactions: {}",
+            file.errorString().toStdString());
+    }
+    emit recentReactionsChanged();
 }
 
 void SessionController::react(const QString& protocolId, const QString& emoji)

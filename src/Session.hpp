@@ -871,7 +871,11 @@ private:
     // A peer asked for a file we announced: encrypt it to a temp ciphertext, raise
     // a one-time destination, seal the offer back and serve until the window
     // closes. Runs on its own thread - building tunnels takes tens of seconds.
-    void serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId);
+    // Answers one device's request for a file we announced: a one-time
+    // destination of its own, named in the offer so their other devices know it
+    // is not for them.
+    void serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId,
+        const std::string& forDevice);
     // A sealed offer came back for a file we asked for: fetch it. Also threaded.
     void startAnnouncedFetch(const FileOffer& offer, const std::string& peer);
     void emitTransfer(const std::string& messageId, TransferState state, std::uint64_t bytes,

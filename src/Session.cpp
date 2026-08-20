@@ -11,6 +11,7 @@
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Errors.hpp>
 #include <bazarish/Log.hpp>
+#include <bazarish/Reactions.hpp>
 #include <bazarish/I2pAddress.hpp>
 #include <bazarish/Tokens.hpp>
 
@@ -1618,6 +1619,10 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
 void Session::sendReaction(const std::string& peerFingerprint, const std::string& refMessageId,
     const std::string& emoji)
 {
+    if (!reactionWithinLimits(emoji)) {
+        throw std::runtime_error("a reaction is at most "
+            + std::to_string(kMaxReactionChars) + " characters");
+    }
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "reaction"},
@@ -1680,6 +1685,10 @@ void Session::requestFile(
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"fileId", messageId},
+        // Which of our devices is waiting. Their devices all see the answer, and
+        // the one-time address in it belongs to this one; the others leave it and
+        // ask for their own copy if they want the file.
+        {"device", client_->clientId()},
     };
     sendContent(peerFingerprint, std::move(inner));
 }
@@ -1725,10 +1734,17 @@ void Session::setTransferPrivacy(const bazarish::i2p::Privacy privacy)
     transferPrivacy_ = privacy;
 }
 
-void Session::serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId)
+void Session::serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId,
+    const std::string& forDevice)
 {
     const auto found = sentFiles_.find(fileId);
-    if (found == sentFiles_.end() || !fs::exists(found->second.path)) {
+    if (found == sentFiles_.end()) {
+        // Another device of ours announced this file and holds the bytes; it will
+        // answer. Saying "unavailable" from here would cancel a transfer that is
+        // about to work.
+        return;
+    }
+    if (!fs::exists(found->second.path)) {
         // Either we never announced it or the user moved the file: say so instead
         // of leaving the recipient waiting on a transfer that can never start.
         nlohmann::json inner = {
@@ -1746,17 +1762,22 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
     const fs::path ciphertextPath
         = profileDir_ / ("file-serve-" + toHex(randomBytes(8)) + ".tmp");
 
+    // One serve per asking device: two devices of theirs can pull the same file at
+    // once, each over its own one-time address, and each needs its own cancel
+    // handle and its own progress.
+    const std::string serveId = forDevice.empty() ? fileId : fileId + "@" + forDevice;
     const std::shared_ptr<std::atomic<bool>> cancel = std::make_shared<std::atomic<bool>>(false);
     {
         const std::lock_guard<std::mutex> lock(transfers_->mutex);
-        transfers_->serving[fileId] = cancel;
+        transfers_->serving[serveId] = cancel;
     }
-    std::thread([this, peerFingerprint, fileId, source, ciphertextPath, cancel]() {
+    std::thread([this, peerFingerprint, fileId, serveId, forDevice, source, ciphertextPath,
+                    cancel]() {
         try {
             emitTransfer(
                 fileId, TransferState::eRequested, 0, 0, {}, "Encrypting", peerFingerprint);
             const PreparedFile prepared = prepareFile(source, ciphertextPath);
-            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Making an address",
+            emitTransfer(serveId, TransferState::eRequested, 0, 0, {}, "Making an address",
                 peerFingerprint);
             bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
             config.privacy = transferPrivacy();
@@ -1765,7 +1786,7 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             config.owner = destinationOwner();
             const std::shared_ptr<bazarish::i2p::Endpoint> endpoint
                 = i2pRouter().createEndpoint(config);
-            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Publishing the address",
+            emitTransfer(serveId, TransferState::eRequested, 0, 0, {}, "Publishing the address",
                 peerFingerprint);
             if (!endpoint->waitReady(std::chrono::seconds(180))) {
                 throw std::runtime_error("could not publish a one-time destination");
@@ -1784,16 +1805,17 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
                 {"from", fingerprint()},
                 {"sentAt", nowMillis()},
                 {"offer", fileOfferToJson(offer)},
+                {"forDevice", forDevice},
             };
             sendContent(peerFingerprint, std::move(inner));
-            emitTransfer(fileId, TransferState::eRequested, 0, 0, {}, "Waiting for them",
+            emitTransfer(serveId, TransferState::eRequested, 0, 0, {}, "Waiting for them",
                 peerFingerprint);
 
             const bool served
                 = serveFile(*endpoint, ciphertextPath, std::chrono::seconds(kServeWindowSeconds),
-                    [this, fileId, peerFingerprint](const std::uint64_t sent,
+                    [this, serveId, peerFingerprint](const std::uint64_t sent,
                         const std::uint64_t total) {
-                        emitTransfer(fileId, TransferState::eRunning, sent, total, {}, "Sending",
+                        emitTransfer(serveId, TransferState::eRunning, sent, total, {}, "Sending",
                             peerFingerprint);
                     },
                     cancel.get());
@@ -1803,7 +1825,7 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
                 throw std::runtime_error(
                     cancel->load() ? "transfer stopped" : "your contact never connected");
             }
-            emitTransfer(fileId, TransferState::eDone, 0, 0, {}, {}, peerFingerprint);
+            emitTransfer(serveId, TransferState::eDone, 0, 0, {}, {}, peerFingerprint);
             {
                 const std::lock_guard<std::mutex> lock(transfers_->mutex);
                 transfers_->serving.erase(fileId);
@@ -2108,12 +2130,21 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                     bazarish::log::info("file request from {} is stale, not serving",
                         bazarish::log::redact(message.fromFingerprint));
                 } else {
-                    serveRequestedFile(
-                        message.fromFingerprint, body.value("fileId", std::string()));
+                    serveRequestedFile(message.fromFingerprint,
+                        body.value("fileId", std::string()),
+                        body.value("device", std::string()));
                 }
             } else if (type == "file.offer") {
                 // Silent: the sender is up and serving; start pulling.
                 message.contentType = type;
+                // The one-time address in it may have been raised for another
+                // device of ours: then it is theirs to pull, and this device
+                // asks for its own copy if the user wants the file here too.
+                const std::string offerFor = body.value("forDevice", std::string());
+                if (!offerFor.empty() && offerFor != client_->clientId()) {
+                    client_->ack(entry.id);
+                    continue;
+                }
                 try {
                     startAnnouncedFetch(
                         fileOfferFromJson(body.at("offer")), message.fromFingerprint);
@@ -2171,6 +2202,14 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.contentType = type;
                 message.refId = body.value("ref", std::string());
                 message.text = body.value("text", std::string());
+                // Their client is not ours to trust: a reaction past the limits is
+                // dropped rather than rendered as a paragraph on someone's message.
+                if (!reactionWithinLimits(message.text)) {
+                    bazarish::log::info("oversized reaction from {} ignored",
+                        bazarish::log::redact(message.fromFingerprint));
+                    client_->ack(entry.id);
+                    continue;
+                }
             } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
                 || type == "call.end") {
                 // Audio-call signalling: update call state and start/stop media. The

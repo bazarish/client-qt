@@ -515,6 +515,11 @@ public:
     // Sets our reaction emoji on a message (by its protocol id) in the active chat:
     // optimistic local store + send. Tapping the emoji we already set removes it.
     Q_INVOKABLE void react(const QString& protocolId, const QString& emoji);
+    // Reactions this user reached for that are not in the standard set, newest
+    // first. Kept per profile so the picker offers what this person actually uses.
+    Q_PROPERTY(QStringList recentReactions READ recentReactions NOTIFY recentReactionsChanged)
+    QStringList recentReactions() const { return recentReactions_; }
+    Q_INVOKABLE void rememberReaction(const QString& emoji);
     // Our current reaction emoji on a message (empty when none) - for the toggle.
     Q_INVOKABLE QString myReaction(const QString& protocolId) const;
     // The reaction chips for a message: a list of { emoji, count, mine } aggregated
@@ -622,6 +627,7 @@ public:
     Q_INVOKABLE void setCallMuted(bool muted);
 
 signals:
+    void recentReactionsChanged();
     void avatarChanged();
     void identityChanged();
     void connectedChanged();
@@ -848,6 +854,8 @@ private:
     QHash<QString, QString> contactLinks_;
     // Sending capacity per contact: their tokens this device still holds.
     QHash<QString, int> sendCapacities_;
+    QStringList recentReactions_;
+    QString recentReactionsPath_;
     QString ownInvite_;
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.

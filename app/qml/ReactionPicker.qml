@@ -22,14 +22,22 @@ Popup {
         root.open()
     }
 
-    // A curated set covering the common cases; any other emoji can be typed below.
+    // A curated set covering the common cases; anything else can be typed below.
     readonly property var common: ["👍", "❤️", "😂", "🎉", "🔥", "😮", "😢", "🙏",
-        "👀", "✅", "💯", "🚀", "😡", "👏", "🤔", "🥳"]
+        "👀", "✅", "💯", "🚀", "😡", "👏", "🤔", "🥳", "🤝", "⚡"]
+    // What this user reached for that is not in that set, newest first.
+    readonly property var recent: root.session ? root.session.recentReactions : []
+    // Matches the protocol's cap; the field cannot hold more, and a longer one
+    // would be dropped by the other side anyway.
+    readonly property int kMaxChars: 4
 
     function pick(emoji) {
         const e = ("" + emoji).trim()
         if (root.session && root.target.length > 0 && e.length > 0) {
             root.session.react(root.target, e)
+            if (root.common.indexOf(e) < 0) {
+                root.session.rememberReaction(e)
+            }
         }
         root.close()
     }
@@ -50,11 +58,37 @@ Popup {
                     Label {
                         anchors.centerIn: parent
                         text: modelData
+                        color: Theme.text
                         font.pixelSize: 18
                         font.family: Theme.emojiFontFamily
                         renderType: Text.NativeRendering
                     }
                     HoverHandler { id: emojiHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: root.pick(modelData) }
+                }
+            }
+        }
+        // Reactions this user has used before that are not in the set above.
+        Flow {
+            Layout.fillWidth: true
+            spacing: 6
+            visible: root.recent.length > 0
+            Repeater {
+                model: root.recent
+                Rectangle {
+                    required property var modelData
+                    width: 36; height: 36; radius: 8
+                    color: recentHover.hovered ? Theme.surfaceAlt : Theme.surface
+                    border.color: recentHover.hovered ? Theme.green : Theme.border
+                    Label {
+                        anchors.centerIn: parent
+                        text: modelData
+                        color: Theme.text
+                        font.pixelSize: 18
+                        font.family: Theme.emojiFontFamily
+                        renderType: Text.NativeRendering
+                    }
+                    HoverHandler { id: recentHover; cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: root.pick(modelData) }
                 }
             }
@@ -65,7 +99,8 @@ Popup {
             TextField {
                 id: customField
                 Layout.fillWidth: true
-                placeholderText: "Any emoji…"
+                maximumLength: root.kMaxChars
+                placeholderText: "Any unicode…"
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 // Show the typed emoji in colour too.

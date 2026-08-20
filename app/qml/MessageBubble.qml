@@ -531,6 +531,10 @@ Item {
                             spacing: 3
                             Label {
                                 text: modelData.emoji
+                                // A reaction can be any glyph, and a plain
+                                // character renders as text: without a colour it
+                                // came out black on a dark bubble.
+                                color: Theme.text
                                 font.pixelSize: 13
                                 // Colour emoji need the bundled emoji font + the
                                 // native renderer (the default is monochrome).
