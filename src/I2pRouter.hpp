@@ -42,7 +42,7 @@ std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest();
 // Kept alive by its users; `owner` is the profile it belongs to, and an empty
 // one gets a destination of its own rather than sharing a nameless bucket.
 std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
-    const std::string& owner, bazarish::i2p::Privacy privacy);
+    const std::string& owner, bazarish::i2p::Privacy privacy, const std::string& label);
 
 // Brings the embedded router into line with the current enable flag: starts it
 // (creating it under dataDir on first use) when enabled, stops its network when

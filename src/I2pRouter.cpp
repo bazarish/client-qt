@@ -133,7 +133,7 @@ bazarish::i2p::Router* sharedI2pRouterIfRunning()
 }
 
 std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
-    const std::string& owner, const bazarish::i2p::Privacy privacy)
+    const std::string& owner, const bazarish::i2p::Privacy privacy, const std::string& label)
 {
     static std::mutex linksMutex;
     static std::map<std::string, std::weak_ptr<bazarish::i2p::Endpoint>> links;
@@ -142,10 +142,10 @@ std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
     if (router == nullptr) {
         return nullptr;  // the caller starts the router first
     }
-    const auto build = [router, &owner, privacy]() {
+    const auto build = [router, &owner, privacy, &label]() {
         return router->createEndpoint(bazarish::i2p::EndpointConfig{
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
-            bazarish::i2p::kDefaultTunnelQuantity, /*published=*/false, "Facade link", owner});
+            bazarish::i2p::kDefaultTunnelQuantity, /*published=*/false, label, owner});
     };
     // Deliberately one per caller, not one per profile. Sharing looked tidier in
     // the status view, and it cost correctness: the poller holds a stream open for

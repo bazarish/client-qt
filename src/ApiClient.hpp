@@ -170,6 +170,10 @@ public:
     // request over an I2P facade builds a fresh one. Used when an account goes
     // offline: an account that is not talking should not be holding tunnels open.
     void releaseI2pLink();
+    // Names this client's destination in the router status view. A profile runs
+    // more than one - the transport and the request parked waiting for news each
+    // dial from their own - and they are only tellable apart by this.
+    void setDestinationLabel(std::string label);
 
     // The session this client authenticates with, when it has one. Opening it
     // costs one signed request; every request after that carries a MAC instead of
@@ -249,6 +253,7 @@ private:
     // tunnels stay warm across requests (a fresh transient per call would rebuild
     // a destination on every poll). Created lazily on first I2P facade use.
     std::shared_ptr<bazarish::i2p::Endpoint> i2pOut_;
+    std::string destinationLabel_ = "Facade link";
     // Index of the last facade that worked; the GUI "connected via" reads it.
     std::size_t activeFacade_ = 0;
     // Sticky I2P: once a request has actually gone over an I2P facade, this
