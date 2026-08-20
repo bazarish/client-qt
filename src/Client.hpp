@@ -171,8 +171,6 @@ public:
     // Drops the destination this client dials through; the next request builds a
     // fresh one.
     void releaseI2pLink();
-    // Names this client's destination in the router status view.
-    void setDestinationLabel(std::string label);
     // The key a session secret is sealed to: this user's serving sealing key,
     // whose private half the serving server holds. Without it the client keeps
     // signing every request.

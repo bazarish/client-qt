@@ -133,7 +133,7 @@ bazarish::i2p::Router* sharedI2pRouterIfRunning()
 }
 
 std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
-    const std::string& owner, const bazarish::i2p::Privacy privacy, const std::string& label)
+    const std::string& owner, const bazarish::i2p::Privacy privacy)
 {
     static std::mutex linksMutex;
     static std::map<std::string, std::weak_ptr<bazarish::i2p::Endpoint>> links;
@@ -142,19 +142,25 @@ std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
     if (router == nullptr) {
         return nullptr;  // the caller starts the router first
     }
-    const auto build = [router, &owner, privacy, &label]() {
+    const auto build = [router, &owner, privacy]() {
         return router->createEndpoint(bazarish::i2p::EndpointConfig{
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
-            bazarish::i2p::kDefaultTunnelQuantity, /*published=*/false, label, owner});
+            bazarish::i2p::kDefaultTunnelQuantity, /*published=*/false, "Facade link", owner});
     };
-    // Deliberately one per caller, not one per profile. Sharing looked tidier in
-    // the status view, and it cost correctness: the poller holds a stream open for
-    // thirty seconds while sends and syncs dial from the same destination, and
-    // those replies came back unframed. Streams multiplex in principle; this pair
-    // does not survive it in practice.
-    (void)linksMutex;
-    (void)links;
-    return build();
+    // One per profile. Both of a profile's clients - the transport and the request
+    // parked waiting for news - dial through it; they need their own request
+    // queues, not their own addresses, and a destination carries many streams at
+    // once. Held by weak_ptr, so it goes down with its last user.
+    if (owner.empty()) {
+        return build();  // nothing to share it with
+    }
+    const std::lock_guard<std::mutex> lock(linksMutex);
+    if (const std::shared_ptr<bazarish::i2p::Endpoint> existing = links[owner].lock()) {
+        return existing;
+    }
+    const std::shared_ptr<bazarish::i2p::Endpoint> link = build();
+    links[owner] = link;
+    return link;
 }
 
 std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest()

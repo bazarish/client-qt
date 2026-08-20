@@ -88,11 +88,6 @@ void Client::setDestinationOwner(std::string owner)
     api_.setDestinationOwner(std::move(owner));
 }
 
-void Client::setDestinationLabel(std::string label)
-{
-    api_.setDestinationLabel(std::move(label));
-}
-
 void Client::releaseI2pLink()
 {
     api_.releaseI2pLink();
