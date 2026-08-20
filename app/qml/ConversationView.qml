@@ -400,9 +400,14 @@ Item {
                             ? -1 : indexAt(width / 2, contentY + topMargin + 2)
                         root.session.saveScroll(root.session.activePeer, anchor, stickToBottom)
                     }
-                    if (atYBeginning && root.session.hasMoreOlder && !paging) {
+                    // Fetch the next page while there is still a screenful above
+                    // the user rather than at the very edge: at the edge the list
+                    // stops dead until the page lands, which is what a small page
+                    // would otherwise be felt as.
+                    if (!paging && contentY - originY < height && root.session.hasMoreOlder) {
                         loadOlder()
-                    } else if (atYEnd && !root.session.atNewest && !paging) {
+                    } else if (!paging && contentY + height > contentHeight - height
+                            && !root.session.atNewest) {
                         loadNewer()
                     }
                 }

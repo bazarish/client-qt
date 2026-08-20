@@ -244,168 +244,172 @@ Item {
                 }
             }
 
-            // Attachment card.
-            ColumnLayout {
-                visible: delegate.isAttachment
-                spacing: 2
+            // Attachment card. Built only for a message that carries a file: it
+            // is the heaviest thing in this delegate, and a chat is mostly text.
+            Loader {
+                active: delegate.isAttachment
+                visible: active
                 Layout.fillWidth: true
-                Label { text: "" + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
-                Label { visible: model.attSize > 0; text: delegate.humanSize(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                // Upload feedback on one's own file while it is actively being
-                // sent (status stays Sending only during the live upload; an
-                // interrupted send is demoted to Failed on load). Shows the real
-                // byte percentage once known, falling back to an indeterminate bar
-                // before the first progress callback arrives.
-                // The stages differ in length, so the block is sized once for the
-                // longest of them: a bubble that resizes on every step is unreadable.
-                TextMetrics {
-                    id: stageMetrics
-                    font.pixelSize: Theme.fontSmall
-                    text: "Publishing the address"
-                }
+                sourceComponent: ColumnLayout {
+                    spacing: 2
+                    Label { text: "" + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
+                    Label { visible: model.attSize > 0; text: delegate.humanSize(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    // Upload feedback on one's own file while it is actively being
+                    // sent (status stays Sending only during the live upload; an
+                    // interrupted send is demoted to Failed on load). Shows the real
+                    // byte percentage once known, falling back to an indeterminate bar
+                    // before the first progress callback arrives.
+                    // The stages differ in length, so the block is sized once for the
+                    // longest of them: a bubble that resizes on every step is unreadable.
+                    TextMetrics {
+                        id: stageMetrics
+                        font.pixelSize: Theme.fontSmall
+                        text: "Publishing the address"
+                    }
 
-                ColumnLayout {
-                    // A file is served on demand, so this block also carries the
-                    // steps before any byte moves: the request arriving, the
-                    // one-time address being built and published.
-                    visible: model.outgoing
-                        && (model.status === DeliveryStatus.Sending
-                            || model.transferStage.length > 0)
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: stageMetrics.width
-                    spacing: 2
-                    RowLayout {
+                    ColumnLayout {
+                        // A file is served on demand, so this block also carries the
+                        // steps before any byte moves: the request arriving, the
+                        // one-time address being built and published.
+                        visible: model.outgoing
+                            && (model.status === DeliveryStatus.Sending
+                                || model.transferStage.length > 0)
                         Layout.fillWidth: true
-                        spacing: 6
-                        ProgressBar {
+                        Layout.minimumWidth: stageMetrics.width
+                        spacing: 2
+                        RowLayout {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 4
-                            from: 0
-                            to: 1
-                            indeterminate: model.uploadProgress < 0
-                            value: model.uploadProgress >= 0 ? model.uploadProgress : 0
+                            spacing: 6
+                            ProgressBar {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 4
+                                from: 0
+                                to: 1
+                                indeterminate: model.uploadProgress < 0
+                                value: model.uploadProgress >= 0 ? model.uploadProgress : 0
+                            }
+                            Label {
+                                text: model.uploadProgress >= 0
+                                    ? Math.round(model.uploadProgress * 100) + "%"
+                                    : ""
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                            }
                         }
                         Label {
-                            text: model.uploadProgress >= 0
-                                ? Math.round(model.uploadProgress * 100) + "%"
-                                : ""
+                            Layout.fillWidth: true
+                            text: model.transferStage.length > 0 ? model.transferStage : "Sending…"
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
+                            elide: Text.ElideRight
                         }
                     }
-                    Label {
+                    // Download progress for an incoming attachment being saved: a real
+                    // bytes received / total bar with a percentage (the I2P stream is
+                    // read in chunks). Indeterminate only briefly, before the first
+                    // byte arrives.
+                    ColumnLayout {
+                        id: dlProgress
+                        // Incoming only: an outgoing file has its own block above, and
+                        // showing both put two bars in the sender's bubble.
+                        visible: !model.outgoing
+                            && (model.downloading || model.transferStage.length > 0)
                         Layout.fillWidth: true
-                        text: model.transferStage.length > 0 ? model.transferStage : "Sending…"
-                        color: Theme.textDim
-                        font.pixelSize: Theme.fontSmall
-                        elide: Text.ElideRight
-                    }
-                }
-                // Download progress for an incoming attachment being saved: a real
-                // bytes received / total bar with a percentage (the I2P stream is
-                // read in chunks). Indeterminate only briefly, before the first
-                // byte arrives.
-                ColumnLayout {
-                    id: dlProgress
-                    // Incoming only: an outgoing file has its own block above, and
-                    // showing both put two bars in the sender's bubble.
-                    visible: !model.outgoing
-                        && (model.downloading || model.transferStage.length > 0)
-                    Layout.fillWidth: true
-                    Layout.minimumWidth: stageMetrics.width
-                    spacing: 2
-                    // downloadStage: 0 connecting, 1 downloading, 2 reconnecting.
-                    readonly property bool reconnecting: model.downloadStage === 2
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        ProgressBar {
+                        Layout.minimumWidth: stageMetrics.width
+                        spacing: 2
+                        // downloadStage: 0 connecting, 1 downloading, 2 reconnecting.
+                        readonly property bool reconnecting: model.downloadStage === 2
+                        RowLayout {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 4
-                            from: 0
-                            to: 1
-                            // Hold the bar at the bytes we have while reconnecting,
-                            // rather than dropping back to an indeterminate sweep.
-                            indeterminate: model.downloadTotal <= 0 && !dlProgress.reconnecting
-                            value: model.downloadTotal > 0
-                                ? model.downloadReceived / model.downloadTotal : 0
+                            spacing: 6
+                            ProgressBar {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 4
+                                from: 0
+                                to: 1
+                                // Hold the bar at the bytes we have while reconnecting,
+                                // rather than dropping back to an indeterminate sweep.
+                                indeterminate: model.downloadTotal <= 0 && !dlProgress.reconnecting
+                                value: model.downloadTotal > 0
+                                    ? model.downloadReceived / model.downloadTotal : 0
+                            }
+                            Label {
+                                text: model.downloadTotal > 0
+                                    ? Math.round(model.downloadReceived / model.downloadTotal * 100) + "%"
+                                    : ""
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                            }
                         }
                         Label {
-                            text: model.downloadTotal > 0
-                                ? Math.round(model.downloadReceived / model.downloadTotal * 100) + "%"
-                                : ""
-                            color: Theme.textDim
+                            Layout.fillWidth: true
+                            text: dlProgress.reconnecting
+                                ? (model.downloadTotal > 0
+                                    ? "Reconnecting… " + delegate.humanSize(model.downloadReceived)
+                                        + " / " + delegate.humanSize(model.downloadTotal)
+                                    : "Reconnecting over I2P…")
+                                : (model.downloadTotal > 0
+                                    ? (delegate.humanSize(model.downloadReceived) + " / "
+                                        + delegate.humanSize(model.downloadTotal))
+                                    : (model.transferStage.length > 0
+                                        ? model.transferStage
+                                        : "Connecting over I2P…"))
+                            color: dlProgress.reconnecting ? Theme.warn : Theme.textDim
                             font.pixelSize: Theme.fontSmall
+                            elide: Text.ElideRight
                         }
                     }
+                    // A failed save: the reason, inline. The Save button reappears so
+                    // the user can retry.
                     Label {
+                        visible: model.downloadError.length > 0
                         Layout.fillWidth: true
-                        text: dlProgress.reconnecting
-                            ? (model.downloadTotal > 0
-                                ? "Reconnecting… " + delegate.humanSize(model.downloadReceived)
-                                    + " / " + delegate.humanSize(model.downloadTotal)
-                                : "Reconnecting over I2P…")
-                            : (model.downloadTotal > 0
-                                ? (delegate.humanSize(model.downloadReceived) + " / "
-                                    + delegate.humanSize(model.downloadTotal))
-                                : (model.transferStage.length > 0
-                                    ? model.transferStage
-                                    : "Connecting over I2P…"))
-                        color: dlProgress.reconnecting ? Theme.warn : Theme.textDim
+                        text: "Save failed: " + model.downloadError
+                        color: Theme.danger
                         font.pixelSize: Theme.fontSmall
-                        elide: Text.ElideRight
+                        wrapMode: Text.Wrap
                     }
-                }
-                // A failed save: the reason, inline. The Save button reappears so
-                // the user can retry.
-                Label {
-                    visible: model.downloadError.length > 0
-                    Layout.fillWidth: true
-                    text: "Save failed: " + model.downloadError
-                    color: Theme.danger
-                    font.pixelSize: Theme.fontSmall
-                    wrapMode: Text.Wrap
-                }
-                // The blob aged out of the store (404/410): a permanent,
-                // non-retryable state (persisted across restarts), so the Save
-                // button is dropped and this stands in its place.
-                Label {
-                    visible: model.blobGone
-                    Layout.fillWidth: true
-                    text: "Not found"
-                    color: Theme.danger
-                    font.pixelSize: Theme.fontSmall
-                    font.weight: Font.Medium
-                }
-                Button {
-                    id: saveButton
-                    visible: !model.outgoing && !model.downloading && !model.blobGone
-                    // Once saved and the file is still on disk, offer to open it;
-                    // otherwise (never saved, or the file is gone) offer Save.
-                    readonly property bool savedExists: model.savedPath.length > 0
-                        && delegate.session && delegate.session.fileExists(model.savedPath)
-                    text: savedExists ? "Open" : "Save"
-                    onClicked: {
-                        // Re-check on click so a file deleted since the last load
-                        // falls back to re-saving rather than revealing a stale path.
-                        if (model.savedPath.length > 0 && delegate.session
-                                && delegate.session.fileExists(model.savedPath)) {
-                            delegate.session.showInFolder(model.savedPath)
-                            return
+                    // The blob aged out of the store (404/410): a permanent,
+                    // non-retryable state (persisted across restarts), so the Save
+                    // button is dropped and this stands in its place.
+                    Label {
+                        visible: model.blobGone
+                        Layout.fillWidth: true
+                        text: "Not found"
+                        color: Theme.danger
+                        font.pixelSize: Theme.fontSmall
+                        font.weight: Font.Medium
+                    }
+                    Button {
+                        id: saveButton
+                        visible: !model.outgoing && !model.downloading && !model.blobGone
+                        // Once saved and the file is still on disk, offer to open it;
+                        // otherwise (never saved, or the file is gone) offer Save.
+                        readonly property bool savedExists: model.savedPath.length > 0
+                            && delegate.session && delegate.session.fileExists(model.savedPath)
+                        text: savedExists ? "Open" : "Save"
+                        onClicked: {
+                            // Re-check on click so a file deleted since the last load
+                            // falls back to re-saving rather than revealing a stale path.
+                            if (model.savedPath.length > 0 && delegate.session
+                                    && delegate.session.fileExists(model.savedPath)) {
+                                delegate.session.showInFolder(model.savedPath)
+                                return
+                            }
+                            // Snapshot the attachment onto the shared dialog and seed the
+                            // native picker with the message's file name in Downloads.
+                            // currentFile (not selectedFile) is what pre-fills the
+                            // suggested name in SaveFile mode here - matching the export
+                            // backup dialog, which is the pattern that actually pre-fills.
+                            saveDialog.peer = delegate.session.activePeer
+                            saveDialog.messageId = model.protocolId
+                            saveDialog.token = model.msgId
+                            saveDialog.currentFile = delegate.session.defaultSaveUrl(model.attName)
+                            saveDialog.open()
                         }
-                        // Snapshot the attachment onto the shared dialog and seed the
-                        // native picker with the message's file name in Downloads.
-                        // currentFile (not selectedFile) is what pre-fills the
-                        // suggested name in SaveFile mode here - matching the export
-                        // backup dialog, which is the pattern that actually pre-fills.
-                        saveDialog.peer = delegate.session.activePeer
-                        saveDialog.messageId = model.protocolId
-                        saveDialog.token = model.msgId
-                        saveDialog.currentFile = delegate.session.defaultSaveUrl(model.attName)
-                        saveDialog.open()
+                        background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                        contentItem: Label { text: saveButton.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
                     }
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                    contentItem: Label { text: saveButton.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
                 }
             }
 
@@ -439,51 +443,55 @@ Item {
 
             // Inline keyboard (interactive message): rows of tappable buttons.
             // Shown on incoming messages; a tap sends a bot.callback (data) or a
-            // bot.command (command) back to the sender.
-            ColumnLayout {
-                visible: !model.outgoing && delegate.keyboardButtons.length > 0
+            // bot.command (command) back to the sender. Built only when there are
+            // buttons - almost no message has any.
+            Loader {
+                active: !model.outgoing && delegate.keyboardButtons.length > 0
+                visible: active
                 Layout.fillWidth: true
                 Layout.topMargin: 2
-                spacing: 4
-                Repeater {
-                    model: delegate.keyboardButtons
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-                        Repeater {
-                            model: modelData
-                            Button {
-                                id: kbButton
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 34
-                                text: modelData.text
-                                hoverEnabled: true
-                                enabled: !delegate.busy
-                                opacity: delegate.busy ? 0.5 : 1.0
-                                onClicked: {
-                                    delegate.busy = true
-                                    busyTimer.restart()
-                                    if (modelData.data !== undefined)
-                                        delegate.session.sendCallback(modelData.data, delegate.msgProtocolId)
-                                    else if (modelData.command !== undefined)
-                                        delegate.session.sendCommand(modelData.command, "")
-                                }
-                                // Pointing-hand cursor over the button.
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                background: Rectangle {
-                                    radius: 8
-                                    color: kbButton.down ? Theme.accent
-                                        : kbButton.hovered ? Theme.bg : Theme.surface
-                                    border.color: kbButton.hovered ? Theme.accent : Theme.border
-                                    Behavior on color { ColorAnimation { duration: 90 } }
-                                }
-                                contentItem: Label {
-                                    text: kbButton.text
-                                    color: kbButton.down ? Theme.bg : Theme.accent
-                                    font.weight: Font.Medium
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                    elide: Text.ElideRight
+                sourceComponent: ColumnLayout {
+                    spacing: 4
+                    Repeater {
+                        model: delegate.keyboardButtons
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Repeater {
+                                model: modelData
+                                Button {
+                                    id: kbButton
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 34
+                                    text: modelData.text
+                                    hoverEnabled: true
+                                    enabled: !delegate.busy
+                                    opacity: delegate.busy ? 0.5 : 1.0
+                                    onClicked: {
+                                        delegate.busy = true
+                                        busyTimer.restart()
+                                        if (modelData.data !== undefined)
+                                            delegate.session.sendCallback(modelData.data, delegate.msgProtocolId)
+                                        else if (modelData.command !== undefined)
+                                            delegate.session.sendCommand(modelData.command, "")
+                                    }
+                                    // Pointing-hand cursor over the button.
+                                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                    background: Rectangle {
+                                        radius: 8
+                                        color: kbButton.down ? Theme.accent
+                                            : kbButton.hovered ? Theme.bg : Theme.surface
+                                        border.color: kbButton.hovered ? Theme.accent : Theme.border
+                                        Behavior on color { ColorAnimation { duration: 90 } }
+                                    }
+                                    contentItem: Label {
+                                        text: kbButton.text
+                                        color: kbButton.down ? Theme.bg : Theme.accent
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        elide: Text.ElideRight
+                                    }
                                 }
                             }
                         }

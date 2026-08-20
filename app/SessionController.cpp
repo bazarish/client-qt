@@ -201,8 +201,10 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 }
 
 // How many messages a conversation loads per page (initial window and each
-// older/newer step). Keeps even a huge dialog cheap to open and scroll.
-constexpr int kPageSize = 50;
+// older/newer step). Small on purpose: opening a chat should cost what is on
+// screen, not what the chat has ever held, and the rest arrives as the user
+// scrolls into it.
+constexpr int kPageSize = 20;
 
 // Loads a picked image and compresses it to a square JPEG within the 500 KB
 // avatar protocol cap (center-crop, downscale to 256, drop quality - then, as a
@@ -890,9 +892,12 @@ void SessionWorker::sendReaction(const QString& peer, const QString& refId, cons
     try {
         session_->sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
         emit opDone(op, true, QStringLiteral("Sent"));
-    } catch (const std::exception&) {
-        // Best effort: the local optimistic reaction stands either way.
-        emit opDone(op, false, QStringLiteral("Not sent"));
+    } catch (const std::exception& error) {
+        // The reaction the user set stands locally either way, but why it did not
+        // reach the contact is theirs to know - the row said "Not sent" and kept
+        // the reason to itself.
+        bazarish::log::warn("reaction not sent: {}", error.what());
+        emit opDone(op, false, QStringLiteral("Not sent: ") + QString::fromUtf8(error.what()));
     }
 }
 
