@@ -1924,6 +1924,12 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
         inner["refillToken"] = issueOneToken();
     }
 
+    // Where to answer us. A destination is not for life: regenerate the key and
+    // the address changes, and a contact who learned the old one at introduction
+    // would go on dialling it forever. Carrying it on every message means the
+    // first thing that arrives after a move repairs the way back.
+    inner["routing"] = {{"dest", myDest_}, {"servingKey", myServingKeyB64_}};
+
     const std::string innerText = inner.dump();
     const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
     const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), peerSealing);
@@ -2011,6 +2017,25 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             message.messageId = body.value("id", std::string());
             message.sentAt = body.value("sentAt", static_cast<std::int64_t>(0));
             std::string type = body.value("type", std::string("text"));
+
+            // Their routing rides on every message: adopt it the moment it moves.
+            // This is the whole address-change repair - it needs one message from
+            // them, in any direction, of any type.
+            if (body.contains("routing")) {
+                const nlohmann::json& routing = body.at("routing");
+                Contact& peer = contacts_[message.fromFingerprint];
+                const std::string dest = routing.value("dest", std::string());
+                const std::string servingKey = routing.value("servingKey", std::string());
+                if (!dest.empty() && !servingKey.empty()
+                    && (peer.dest != dest || peer.servingSealingB64 != servingKey)) {
+                    validateB32I2pHost(dest);
+                    bazarish::log::info("contact {} answers at a new destination now",
+                        bazarish::log::redact(message.fromFingerprint));
+                    peer.dest = dest;
+                    peer.servingSealingB64 = servingKey;
+                    persistContacts();
+                }
+            }
 
             // Bootstrap may ride with any content type; apply it before dispatch
             // so a new or migrated contact is established regardless of type.
