@@ -31,6 +31,14 @@ namespace {
 
 namespace fs = std::filesystem;
 
+// The embedded router's state directory. One engine serves the whole
+// installation, so it does not sit among the profiles it serves: it lives one
+// level up, beside the profiles directory.
+fs::path i2pDirFor(const fs::path& profileDir)
+{
+    return profileDir.parent_path().parent_path() / "i2p";
+}
+
 // Tokens minted per batch handed to a contact. When a peer's stash of our
 // tokens drops to kRefillThreshold, they signal it and we mint another batch
 // (see Contacts.md refill) - so a conversation never runs dry.
@@ -250,10 +258,10 @@ Session::Session(fs::path profileDir, std::unique_ptr<Client> client, Key sealin
 bazarish::i2p::Router& Session::i2pRouter() const
 {
     // The embedded router is process-global (one per process), so share it across
-    // all profiles. Its state nests under the profiles root (the parent of this
-    // profile's directory) so it is reused regardless of which profile starts it
-    // first. Started lazily on first transport use; client role (notransit).
-    const fs::path dataDir = profileDir_.parent_path() / "i2p";
+    // all profiles: its state lives beside the profiles directory, so it is
+    // reused regardless of which profile starts it first. Started lazily on
+    // first transport use; client role (notransit).
+    const fs::path dataDir = i2pDirFor(profileDir_);
     // On a first-ever start, take the netDb from our own server over the clearnet
     // facade rather than announcing an I2P bootstrap to a public reseed host.
     seedRouterOnce(dataDir, [this]() { return client_->fetchReseed(); });
@@ -293,7 +301,7 @@ Session Session::create(
     writeFileText(profileDir / "meta.json", meta.dump(2));
 
     auto client = std::make_unique<Client>(
-        std::move(identity), clientId, endpoint, profileDir.parent_path() / "i2p");
+        std::move(identity), clientId, endpoint, i2pDirFor(profileDir));
     Session session(profileDir, std::move(client), std::move(sealing), {});
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
@@ -317,7 +325,7 @@ void Session::connectServer(const ServerEndpoint& endpoint)
     // the at-rest passphrase.
     client_ = std::make_unique<Client>(
         Identity::fromPrivatePem(client_->identity().privatePem()), client_->clientId(), endpoint,
-        profileDir_.parent_path() / "i2p");
+        i2pDirFor(profileDir_));
     persistMeta();
 }
 
@@ -392,7 +400,7 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     }
 
     auto client = std::make_unique<Client>(
-        std::move(identity), clientId, endpoint, profileDir.parent_path() / "i2p");
+        std::move(identity), clientId, endpoint, i2pDirFor(profileDir));
     Session session(profileDir, std::move(client), std::move(sealing), std::move(contacts));
     session.client_->setI2pProven(meta.value("i2pProven", false));
     session.client_->setAllowClearnet(
@@ -1207,7 +1215,7 @@ Session::ContactFetchContext Session::contactFetchContext() const
     ctx.identityPem = client_->identity().privatePem();  // unencrypted in memory
     ctx.clientId = client_->clientId();
     ctx.endpoint = endpoint();
-    ctx.i2pDataDir = profileDir_.parent_path() / "i2p";
+    ctx.i2pDataDir = i2pDirFor(profileDir_);
     ctx.resolver = resolverCoordinate_;
     ctx.i2pEnabled = i2pEnabled();
     ctx.blobFetchPrivacy = transferPrivacy();

@@ -27,6 +27,13 @@ std::filesystem::path profilesRoot()
     return client::ProfileManager::defaultRoot();
 }
 
+// The router serves the whole installation, so its state sits beside the
+// profiles directory rather than among the profiles themselves.
+std::filesystem::path i2pRoot()
+{
+    return profilesRoot().parent_path() / "i2p";
+}
+
 bazarish::i2p::Privacy privacyToProfile(const int level)
 {
     switch (level) {
@@ -92,7 +99,7 @@ std::filesystem::path I2pController::privacyPath() const
 
 void I2pController::reconcileRouter()
 {
-    const std::filesystem::path dir = profilesRoot() / "i2p";
+    const std::filesystem::path dir = i2pRoot();
     // Starting or stopping the engine is heavyweight (it joins worker threads), so
     // do it off the GUI thread. reconcileI2pRouter reads the enable flag itself, so
     // rapid toggles converge on the final state (idempotent, mutex-guarded).
