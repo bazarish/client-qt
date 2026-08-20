@@ -9,6 +9,9 @@ import Bazarish
 // Set `danger: true` to mark the accept action as destructive.
 Item {
     id: root
+    // Every dialog button is at least this wide, so short labels line up; a
+    // longer label widens its own button instead of being cut short.
+    readonly property int kMinButtonWidth: 104
     property string acceptText: "OK"
     property string rejectText: "Cancel"
     property bool showReject: true
@@ -27,12 +30,12 @@ Item {
         spacing: 8
         MenuButton {
             visible: root.showReject
-            Layout.preferredWidth: 104
+            Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
             text: root.rejectText
             onClicked: root.rejected()
         }
         MenuButton {
-            Layout.preferredWidth: 104
+            Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
             text: root.acceptText
             danger: root.danger
             onClicked: root.accepted()

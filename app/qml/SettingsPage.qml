@@ -98,15 +98,35 @@ Popup {
                         // buttons repeating what the things themselves can do were
                         // just the same actions written twice.
                         Item {
+                            id: avatarSlot
                             implicitWidth: 56
                             implicitHeight: 56
+                            readonly property bool busy: root.session ? root.session.avatarBusy : false
                             Avatar {
                                 anchors.fill: parent
                                 fingerprint: root.session ? root.session.fingerprint : ""
                                 size: 56
+                                opacity: avatarSlot.busy ? 0.35 : 1.0
                             }
-                            TapHandler { onTapped: avatarDialog.open() }
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            // Compressing the picture and handing it to every
+                            // contact runs over I2P: the wait belongs on the
+                            // picture that is changing, not only in the activity
+                            // panel behind this window.
+                            BusyIndicator {
+                                anchors.centerIn: parent
+                                running: avatarSlot.busy
+                                visible: avatarSlot.busy
+                                implicitWidth: 40
+                                implicitHeight: 40
+                            }
+                            TapHandler {
+                                enabled: !avatarSlot.busy
+                                onTapped: avatarDialog.open()
+                            }
+                            HoverHandler {
+                                enabled: !avatarSlot.busy
+                                cursorShape: Qt.PointingHandCursor
+                            }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
@@ -539,14 +559,14 @@ Popup {
         nameFilters: ["I2P destination key (*.dat)", "All files (*)"]
         onAccepted: if (root.session) root.session.loadPersonalKey(selectedFile)
     }
-    // Pick an image for the profile photo; the app squares and compresses it to
-    // within the 500 KB protocol cap before storing and distributing it.
+    // Pick an image for the avatar; the app squares and compresses it to within
+    // the 500 KB protocol cap before storing and distributing it.
     FileDialog {
         id: avatarDialog
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)", "All files (*)"]
         onAccepted: if (root.session) { avatarCrop.openFor(selectedFile) }
-        // Backing out of the picker is how someone with a photo asks to have none:
+        // Backing out of the picker is how someone with an avatar asks to have none:
         // the only other reading is that they meant nothing at all, and that is
         // what the dialog asks.
         onRejected: if (root.session && root.session.hasAvatar) { dropAvatarDialog.open() }
@@ -556,10 +576,10 @@ Popup {
     AvatarCropDialog {
         id: avatarCrop
         session: root.session
-        onCropped: function(fileUrl) { if (root.session) { root.session.setAvatar(fileUrl) } }
+        onCropped: function(filePath) { if (root.session) { root.session.setAvatar(filePath) } }
     }
 
-    // Remove the account's photo.
+    // Remove the account's avatar.
     Dialog {
         id: dropAvatarDialog
         anchors.centerIn: Overlay.overlay
@@ -567,7 +587,7 @@ Popup {
         width: Math.min(360, root.width - 24)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label {
-            text: "Remove your photo?"
+            text: "Remove your avatar?"
             color: Theme.text
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold

@@ -18,9 +18,13 @@ Dialog {
     readonly property real kMaxZoom: 4.0
     readonly property int kOutputSize: 512
 
-    signal cropped(string fileUrl)
+    signal cropped(string filePath)
+    // Why the crop could not be handed over. Shown in the dialog itself: a write
+    // that fails must not look like a picture that was accepted.
+    property string errorText: ""
 
     function openFor(source) {
+        errorText = ""
         picture.source = source
         zoom.value = 1.0
         picture.x = 0
@@ -33,26 +37,38 @@ Dialog {
     width: Math.min(kViewport + 48, parent ? parent.width - 24 : kViewport + 48)
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
     header: Label {
-        text: "Position your photo"
+        text: "Position your avatar"
         color: Theme.text
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Use photo"
-        onAccepted: root.accept()
+        acceptText: "Use avatar"
+        onAccepted: root.commit()
         onRejected: root.reject()
     }
 
-    onAccepted: {
-        // Grab exactly what the round window shows, at a size the compressor can
-        // work from, and hand the file over.
+    // The keyboard path (Enter) goes through accept(), which closes first; commit
+    // reopens the dialog if the crop could not be written.
+    onAccepted: root.commit()
+
+    // Grab exactly what the round window shows, at a size the compressor can work
+    // from, and hand the file over. The target is an absolute path in a writable
+    // place: a bare name lands next to wherever the app was started from, while
+    // the name handed back used to point into the read-only bundle - so the
+    // avatar was picked and then quietly dropped.
+    function commit() {
+        const target = App.scratchFile(kOutputName)
         viewport.grabToImage(function(result) {
-            const path = Qt.resolvedUrl(root.kOutputName)
-            if (result.saveToFile(root.kOutputName)) {
-                root.cropped(path)
+            if (!result.saveToFile(target)) {
+                root.errorText = "Could not write the cropped image to " + target
+                root.open()
+                return
             }
+            root.errorText = ""
+            root.cropped(target)
+            root.close()
         }, Qt.size(root.kOutputSize, root.kOutputSize))
     }
 
@@ -99,6 +115,15 @@ Dialog {
                 to: root.kMaxZoom
                 value: 1.0
             }
+        }
+
+        Label {
+            visible: root.errorText.length > 0
+            Layout.fillWidth: true
+            text: root.errorText
+            color: Theme.danger
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
         }
     }
 }

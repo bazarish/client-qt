@@ -12,6 +12,8 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QDir>
+#include <QStandardPaths>
 #include <QUrl>
 
 #include <nlohmann/json.hpp>
@@ -521,6 +523,11 @@ void AppController::setPortable(const bool on)
             ? QStringLiteral("Your data now lives beside the app. Start Bazarish again to use it.")
             : QStringLiteral("Your data moved back to your user folder. Start Bazarish again to "
                              "use it."));
+}
+
+QString AppController::scratchFile(const QString& name) const
+{
+    return QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(name);
 }
 
 void AppController::rebuildI2pLinks()

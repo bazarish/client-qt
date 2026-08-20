@@ -504,12 +504,17 @@ public:
     // field can prefill it and show a fingerprint placeholder otherwise).
     Q_INVOKABLE QString contactName(const QString& fp) const;
     // Sets the account's own avatar from a picked image file (file:// URL).
-    Q_INVOKABLE void setAvatar(const QString& fileUrl);
-    // Drops the account's photo. Contacts keep the copy they hold until a new one
+    Q_INVOKABLE void setAvatar(const QString& fileOrUrl);
+    // Drops the account's avatar. Contacts keep the copy they hold until a new one
     // is pushed; this device stops showing one.
     Q_PROPERTY(bool hasAvatar READ hasAvatar NOTIFY avatarChanged)
     bool hasAvatar() const;
-    // Emitted when this account's own photo is set or dropped.
+    // Whether an avatar change is in flight: compressing and handing the picture
+    // to every contact takes seconds over I2P, and the settings page says so
+    // where the picture is rather than leaving the click without an answer.
+    Q_PROPERTY(bool avatarBusy READ avatarBusy NOTIFY avatarChanged)
+    bool avatarBusy() const { return avatarBusy_; }
+    // Emitted when this account's own avatar is set, dropped, or starts changing.
     Q_INVOKABLE void clearAvatar();
     // Changes the account's own display name (trimmed). Local only: updates this
     // device and the name carried in future invite descriptors; contacts are not
@@ -800,6 +805,7 @@ private:
     QString subscriptionText_;
     QString activePeer_;
     QString activeFacade_;
+    bool avatarBusy_ = false;
     QStringList configuredFacades_;
     QString serverFp_;
     bool sendReceipts_ = true;
@@ -824,6 +830,7 @@ private:
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;
     void bumpStatus(qint64 localId, int status);
+    void setAvatarBusy(bool busy);
     // Conversation paging window. The model holds only [oldestLoadedId_ ..
     // newestLoadedId_]; the has-more flags say whether the store has rows beyond
     // either edge (drives load-more and the jump-to-latest control).

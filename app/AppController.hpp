@@ -81,6 +81,10 @@ public:
     Q_INVOKABLE void requestAddAccount();
     // Signs out (closes) the active account; switches to another if any remain.
     Q_INVOKABLE void closeProfile();
+    // A writable path for a short-lived working file (the cropped avatar on its
+    // way to the compressor). QML resolves relative names against the qrc bundle,
+    // which is read-only, so the location has to come from here.
+    Q_INVOKABLE QString scratchFile(const QString& name) const;
 
 signals:
     void portableChanged();

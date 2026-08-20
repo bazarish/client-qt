@@ -1159,7 +1159,7 @@ void SessionWorker::setAvatar(const QString& localPath)
     }
     // Compressing, then handing it to every established contact, takes seconds
     // over I2P: without a row it looks like the app stopped.
-    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Setting your photo"),
+    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Setting your avatar"),
         QStringLiteral("Preparing the image…"));
     try {
         const QByteArray bytes = compressAvatarJpeg(localPath);
@@ -1172,7 +1172,7 @@ void SessionWorker::setAvatar(const QString& localPath)
         session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
         // Echo locally at once so our own avatar updates without waiting for a sync.
         emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
-        emit opDone(op, true, QStringLiteral("Photo set"));
+        emit opDone(op, true, QStringLiteral("Avatar set"));
     } catch (const std::exception& e) {
         emit opDone(op, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1184,12 +1184,12 @@ void SessionWorker::clearAvatar()
     if (!session_) {
         return;
     }
-    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Removing your photo"),
+    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Removing your avatar"),
         QStringLiteral("Working…"));
     try {
         session_->setAvatar({}, {});
         emit avatarReady(QString::fromStdString(session_->fingerprint()), {});
-        emit opDone(op, true, QStringLiteral("Photo removed"));
+        emit opDone(op, true, QStringLiteral("Avatar removed"));
     } catch (const std::exception& e) {
         emit opDone(op, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1663,6 +1663,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
+        setAvatarBusy(false);
         if (connecting_) {
             connecting_ = false;
             connectPhase_.clear();
@@ -2058,12 +2059,25 @@ QString SessionController::contactName(const QString& fp) const
     return contactNames_.value(fp);
 }
 
-void SessionController::setAvatar(const QString& fileUrl)
+void SessionController::setAvatar(const QString& fileOrUrl)
 {
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (!localPath.isEmpty()) {
-        emit requestSetAvatar(localPath);
+    const QUrl url(fileOrUrl);
+    const QString localPath = url.isLocalFile() ? url.toLocalFile() : fileOrUrl;
+    if (localPath.isEmpty() || !QFileInfo::exists(localPath)) {
+        emit actionFailed(QStringLiteral("Could not read the image at ") + fileOrUrl);
+        return;
     }
+    setAvatarBusy(true);
+    emit requestSetAvatar(localPath);
+}
+
+void SessionController::setAvatarBusy(const bool busy)
+{
+    if (avatarBusy_ == busy) {
+        return;
+    }
+    avatarBusy_ = busy;
+    emit avatarChanged();
 }
 
 bool SessionController::hasAvatar() const
@@ -2073,6 +2087,7 @@ bool SessionController::hasAvatar() const
 
 void SessionController::clearAvatar()
 {
+    setAvatarBusy(true);
     emit requestClearAvatar();
 }
 
@@ -2954,6 +2969,7 @@ void SessionController::onAvatarReady(const QString& fingerprint, const QByteArr
 {
     AvatarStore::instance().put(fingerprint, data);
     if (fingerprint == fingerprint_) {
+        avatarBusy_ = false;
         emit avatarChanged();
     }
 }
