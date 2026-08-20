@@ -287,6 +287,9 @@ class SessionController : public QObject {
     // The facade the transport is connected/connecting through, and the full
     // configured facade list (for the connection editor and status display).
     Q_PROPERTY(QString activeFacade READ activeFacade NOTIFY facadeInfoChanged)
+    // Just the host of the active facade: what the status line shows, where the
+    // scheme and base path only cost characters of an already long b32 name.
+    Q_PROPERTY(QString activeFacadeHost READ activeFacadeHost NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
     // Whether any configured facade is an I2P facade (host ends in ".b32.i2p"). When
     // full privacy mode is on and this is false, the profile cannot reach its server
@@ -388,6 +391,7 @@ public:
     bool reachable() const { return reachable_; }
     QString syncError() const { return syncError_; }
     QString activeFacade() const { return activeFacade_; }
+    QString activeFacadeHost() const;
     QStringList configuredFacades() const { return configuredFacades_; }
     bool hasI2pFacade() const;
     bool onI2p() const { return activeFacade_.contains(QStringLiteral(".b32.i2p")); }

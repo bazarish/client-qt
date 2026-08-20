@@ -183,8 +183,8 @@ Popup {
                         }
                         Label {
                             Layout.fillWidth: true
-                            text: root.session && root.session.activeFacade.length > 0
-                                ? ((root.session.reachable ? "via " : "connecting via ") + root.session.activeFacade)
+                            text: root.session && root.session.activeFacadeHost.length > 0
+                                ? ((root.session.reachable ? "via " : "connecting via ") + root.session.activeFacadeHost)
                                 : ""
                             color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle
                         }

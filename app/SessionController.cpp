@@ -80,6 +80,26 @@ using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
 namespace {
+// Length of the "://" that separates a URL scheme from its authority.
+constexpr int kSchemeSeparatorLength = 3;
+
+// The facade as the status line shows it: host (with port, if any), without the
+// scheme and without the base path. Parsing by hand rather than through QUrl,
+// which reads a scheme-less "host/path" as a path with no host at all.
+QString facadeHost(const QString& url)
+{
+    QString rest = url.trimmed();
+    const int schemeEnd = rest.indexOf(QStringLiteral("://"));
+    if (schemeEnd >= 0) {
+        rest = rest.mid(schemeEnd + kSchemeSeparatorLength);
+    }
+    const int pathStart = rest.indexOf(QLatin1Char('/'));
+    if (pathStart >= 0) {
+        rest = rest.left(pathStart);
+    }
+    return rest;
+}
+
 // One background-activity row around a worker call: every server request the
 // user triggers shows up in the activity panel instead of looking like a button
 // that did nothing. The row ends when the scope does, whatever the exit path.
@@ -1754,6 +1774,11 @@ bool SessionController::hasI2pFacade() const
         }
     }
     return false;
+}
+
+QString SessionController::activeFacadeHost() const
+{
+    return facadeHost(activeFacade_);
 }
 
 void SessionController::onFacadeInfo(
