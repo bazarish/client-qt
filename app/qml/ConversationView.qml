@@ -482,10 +482,16 @@ Item {
                     color: Theme.surface
                     border.color: Theme.border
                 }
-                contentItem: Icon {
-                    name: "chevron"
-                    color: Theme.accent
-                    size: 18
+                // Centred by hand: RoundButton's own padding pulls a small
+                // content item off-centre in a 40px circle.
+                padding: 0
+                contentItem: Item {
+                    Icon {
+                        anchors.centerIn: parent
+                        name: "down"
+                        color: Theme.accent
+                        size: 18
+                    }
                 }
             }
         }

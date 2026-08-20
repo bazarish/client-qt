@@ -2376,6 +2376,12 @@ void Session::sendTokenRefill(const std::string& peerFingerprint, const std::str
     deliver(contact.dest, peerServingKey, "contact", peerFingerprint, std::nullopt, payload);
 }
 
+std::size_t Session::sendCapacity(const std::string& peerFingerprint) const
+{
+    const auto found = contacts_.find(peerFingerprint);
+    return found == contacts_.end() ? 0 : found->second.sendTokens.size();
+}
+
 std::vector<Client::DeviceEntry> Session::devices()
 {
     return client_->listClients();

@@ -438,6 +438,7 @@ void SessionWorker::emitContacts()
     QStringList names;
     QStringList pending;
     QStringList links;
+    QStringList capacities;
     for (const std::string& fp : session_->contactFingerprints()) {
         fps << QString::fromStdString(fp);
         names << QString::fromStdString(session_->contactDisplayName(fp));
@@ -452,8 +453,9 @@ void SessionWorker::emitContacts()
             // the card reads to say there is nothing to share.
             links << QString();
         }
+        capacities << QString::number(session_->sendCapacity(fp));
     }
-    emit contactsRefreshed(fps, names, pending, links);
+    emit contactsRefreshed(fps, names, pending, links, capacities);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -1546,11 +1548,15 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
         [this](const QStringList& fps, const QStringList& names, const QStringList& pending,
-            const QStringList& links) {
+            const QStringList& links, const QStringList& capacities) {
             contactFps_ = fps;
             contactNames_.clear();
             contactLinks_.clear();
+            sendCapacities_.clear();
             pendingContacts_.clear();
+            for (int i = 0; i < fps.size() && i < capacities.size(); ++i) {
+                sendCapacities_.insert(fps[i], capacities[i].toInt());
+            }
             for (int i = 0; i < fps.size() && i < names.size(); ++i) {
                 if (!names[i].isEmpty()) {
                     contactNames_.insert(fps[i], names[i]);
@@ -1987,6 +1993,11 @@ void SessionController::setDisplayName(const QString& name)
         return;
     }
     emit requestSetDisplayName(trimmed);
+}
+
+int SessionController::sendCapacity(const QString& fp) const
+{
+    return sendCapacities_.value(fp, 0);
 }
 
 QString SessionController::contactInvite(const QString& fp) const

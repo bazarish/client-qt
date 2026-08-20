@@ -127,6 +127,24 @@ Popup {
                 onClicked: deleteContactDialog.open()
             }
         }
+
+        // Sending capacity: one-time tickets this device holds for them. They
+        // hand over a batch, each message spends one, and the client asks for
+        // more before running out - so this is a number to glance at, not to act
+        // on. It is per device: another device of yours holds its own.
+        Label {
+            Layout.fillWidth: true
+            Layout.topMargin: 2
+            horizontalAlignment: Text.AlignHCenter
+            color: Theme.textFaint
+            font.pixelSize: Theme.fontSmall
+            visible: root.session && root.session.activePeer.length > 0
+            text: {
+                const n = root.session ? root.session.sendCapacity(root.session.activePeer) : 0
+                return n === 1 ? "1 send ticket left on this device"
+                               : n + " send tickets on this device"
+            }
+        }
     }
 
     // Clear-chat choice: only your copy, or ask the peer to clear theirs too.

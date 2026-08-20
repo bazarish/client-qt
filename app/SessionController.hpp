@@ -131,7 +131,7 @@ signals:
     // links carries each contact's shareable descriptor, empty where none is
     // known yet - it is built from routing the session already holds.
     void contactsRefreshed(const QStringList& fingerprints, const QStringList& names,
-        const QStringList& pending, const QStringList& links);
+        const QStringList& pending, const QStringList& links, const QStringList& capacities);
     // A real avatar became available for an identity (own or a contact): the GUI
     // feeds it to the shared avatar store. Empty data clears it.
     void avatarReady(const QString& fingerprint, const QByteArray& data);
@@ -517,6 +517,9 @@ public:
     // invite, built from what they already gave us. Empty while we hold no
     // routing for them.
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
+    // Messages this device can still send that contact before it asks them for
+    // more capacity (their one-time delivery tokens we hold).
+    Q_INVOKABLE int sendCapacity(const QString& fp) const;
     // Our own invite, from what this profile already holds: the fingerprint and
     // the address are ours, and the server's serving key has been in the stored
     // certificate since the destination was first published. Empty only while
@@ -832,6 +835,8 @@ private:
     // worker. Drives peerName() and the chat-list labels.
     QHash<QString, QString> contactNames_;
     QHash<QString, QString> contactLinks_;
+    // Sending capacity per contact: their tokens this device still holds.
+    QHash<QString, int> sendCapacities_;
     QString ownInvite_;
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.

@@ -551,6 +551,10 @@ public:
     // Asks the peer to clear the whole conversation with us (content type
     // "chat.clear"): on receipt their client wipes its transcript with us, the
     // same way it auto-applies a delete-for-everyone. Costs one delivery token.
+    // How many of a contact's one-time delivery tokens this device still holds:
+    // the number of messages it can send them before it has to ask for more.
+    std::size_t sendCapacity(const std::string& peerFingerprint) const;
+
     void sendChatClear(const std::string& peerFingerprint);
 
     // The outcome of a still-in-flight send, re-polled after the initial submit

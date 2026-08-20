@@ -73,9 +73,8 @@ Popup {
                     Layout.fillWidth: true
                     Layout.leftMargin: 16
                     Layout.rightMargin: 16
-                    text: "This is the card they gave you — who they are and where to reach them. "
-                        + "Whoever you pass it to learns their address, so pass it on only with "
-                        + "their agreement."
+                    text: "Their card: who they are and where to reach them. "
+                        + "Whoever gets it can reach them too."
                     color: Theme.textDim
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
