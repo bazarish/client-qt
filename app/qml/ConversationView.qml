@@ -136,7 +136,7 @@ Item {
         id: deleteMessageDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        width: 360
+        width: Math.min(360, parent ? parent.width - 24 : 360)
         readonly property bool forEveryone: root.pendingDeleteOutgoing && root.session
         footer: DialogButtons {
             acceptText: "Delete"
@@ -231,17 +231,40 @@ Item {
         // page on open, with older messages paged in at the top and newer ones at
         // the bottom (after a search jump), so even a huge dialog stays cheap.
         Item {
+            id: listPane
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            // Building a screenful of bubbles takes a moment, and doing it inside
+            // the click that switched accounts made the click itself feel stuck.
+            // The switch happens now; the bubbles are built on the next turn of
+            // the loop, with this in their place until they are.
+            property bool building: false
+            readonly property string openChat:
+                (root.session ? root.session.accountId : "") + "/"
+                    + (root.session ? root.session.activePeer : "")
+            onOpenChatChanged: { building = true; buildDelay.restart() }
+            Timer {
+                id: buildDelay
+                interval: 1
+                onTriggered: listPane.building = false
+            }
+
+            BusyIndicator {
+                anchors.centerIn: parent
+                running: listPane.building
+                visible: running
+            }
 
             ListView {
                 id: messages
                 anchors.fill: parent
                 clip: true
+                visible: !listPane.building
                 spacing: 6
                 topMargin: 10
                 bottomMargin: 10
-                model: root.session ? root.session.conversation : null
+                model: listPane.building ? null : (root.session ? root.session.conversation : null)
                 delegate: MessageBubble {
                     session: root.session
                     // Highlighted by a search jump, or as part of the unread tail that

@@ -22,7 +22,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
-    width: 380
+    width: Math.min(380, parent ? parent.width - 24 : 380)
     padding: 0
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }

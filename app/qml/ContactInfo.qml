@@ -12,7 +12,7 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 420
+    width: Math.min(420, parent ? parent.width - 24 : 420)
     // As tall as it needs, capped by the screen, and scrolling inside that cap -
     // it used to size past the bottom of a short screen with no way to reach the
     // rest.
@@ -152,7 +152,7 @@ Popup {
         id: clearChoiceDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        width: 360
+        width: Math.min(360, parent ? parent.width - 24 : 360)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label {
             text: "Clear chat"
@@ -208,7 +208,7 @@ Popup {
         id: deleteContactDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        width: 360
+        width: Math.min(360, parent ? parent.width - 24 : 360)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
         header: Label {
             text: "Delete contact"

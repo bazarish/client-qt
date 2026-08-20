@@ -9,7 +9,7 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 460
+    width: Math.min(460, parent ? parent.width - 24 : 460)
     padding: 18
     property string mode: "menu"
     property bool busy: false

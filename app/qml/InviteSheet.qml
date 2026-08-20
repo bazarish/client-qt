@@ -15,7 +15,7 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 460
+    width: Math.min(460, parent ? parent.width - 24 : 460)
     padding: 18
     onOpened: {
         // Straight from what this profile stores - no request, works offline.

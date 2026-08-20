@@ -63,6 +63,13 @@ Rectangle {
                 input.forceActiveFocus()
             }
         }
+        // Opening a chat means wanting to write in it: the caret starts there
+        // rather than after a click nobody should have to make.
+        function onActivePeerChanged() {
+            if (root.session.activePeer.length > 0) {
+                Qt.callLater(function() { input.forceActiveFocus() })
+            }
+        }
     }
 
     ColumnLayout {

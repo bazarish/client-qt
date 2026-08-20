@@ -10,7 +10,7 @@ Popup {
     id: root
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 420
+    width: Math.min(420, parent ? parent.width - 24 : 420)
     height: Math.min(parent ? parent.height - 80 : 560, 560)
     // Wide enough for the widest count the badge draws.
     readonly property int unreadSlotWidth: 34

@@ -12,7 +12,7 @@ Popup {
     property string target: ""
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 300
+    width: Math.min(300, parent ? parent.width - 24 : 300)
     padding: 12
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 

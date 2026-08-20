@@ -594,6 +594,9 @@ Popup {
         id: renameSelfDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        // Narrow on purpose: with no width of its own the dialog grew to fit its
+        // explanation on one line, which made a two-field form as wide as the app.
+        width: Math.min(320, parent ? parent.width - 24 : 320)
         title: "Change name"
         onAccepted: if (root.session) root.session.setDisplayName(renameSelfField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
@@ -604,7 +607,6 @@ Popup {
             TextField {
                 id: renameSelfField
                 Layout.fillWidth: true
-                implicitWidth: 300
                 placeholderText: "Your name"
                 color: Theme.text
                 placeholderTextColor: Theme.textDim

@@ -20,8 +20,8 @@ Popup {
     modal: true
     closePolicy: Popup.NoAutoClose  // dismissed only through call actions
     anchors.centerIn: Overlay.overlay
-    width: 360
-    height: 440
+    width: Math.min(360, parent ? parent.width - 24 : 360)
+    height: Math.min(440, parent ? parent.height - 24 : 440)
     padding: 18
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }

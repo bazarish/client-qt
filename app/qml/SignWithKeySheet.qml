@@ -15,7 +15,7 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 460
+    width: Math.min(460, parent ? parent.width - 24 : 460)
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
     onOpened: { challengeArea.text = ""; blobArea.text = "" }

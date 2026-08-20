@@ -145,7 +145,7 @@ Item {
         id: deleteDialog
         anchors.centerIn: parent
         modal: true
-        width: 360
+        width: Math.min(360, parent ? parent.width - 24 : 360)
         title: "Delete profile"
         footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteDialog.accept(); onRejected: deleteDialog.reject() }
         onAccepted: App.deleteProfile(root.pendingDeleteId)
