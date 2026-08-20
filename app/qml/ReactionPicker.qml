@@ -30,6 +30,8 @@ Popup {
     // Matches the protocol's cap; the field cannot hold more, and a longer one
     // would be dropped by the other side anyway.
     readonly property int kMaxChars: 4
+    // The grid unit the chips are built from.
+    readonly property int kChipSize: 36
 
     function pick(emoji) {
         const e = ("" + emoji).trim()
@@ -49,7 +51,7 @@ Popup {
                 model: root.common
                 Rectangle {
                     required property var modelData
-                    width: 36; height: 36; radius: 8
+                    width: root.kChipSize; height: root.kChipSize; radius: 8
                     color: emojiHover.hovered ? Theme.surfaceAlt : Theme.surface
                     border.color: emojiHover.hovered ? Theme.green : Theme.border
                     Label {
@@ -73,13 +75,25 @@ Popup {
             Repeater {
                 model: root.recent
                 Rectangle {
+                    id: recentChip
                     required property var modelData
-                    width: 36; height: 36; radius: 8
+                    // A saved reaction can be four characters of plain text, which
+                    // does not fit the square an emoji sits in. Two sizes only, so
+                    // the row still reads as a grid: one square, or two.
+                    width: recentLabel.implicitWidth + 12 > root.kChipSize
+                        ? root.kChipSize * 2 : root.kChipSize
+                    height: root.kChipSize
+                    radius: 8
+                    clip: true
                     color: recentHover.hovered ? Theme.surfaceAlt : Theme.surface
                     border.color: recentHover.hovered ? Theme.green : Theme.border
                     Label {
+                        id: recentLabel
                         anchors.centerIn: parent
-                        text: modelData
+                        width: Math.min(implicitWidth, recentChip.width - 8)
+                        horizontalAlignment: Text.AlignHCenter
+                        elide: Text.ElideRight
+                        text: recentChip.modelData
                         color: Theme.text
                         font.pixelSize: 18
                         font.family: Theme.emojiFontFamily
