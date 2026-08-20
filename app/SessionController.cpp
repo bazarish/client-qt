@@ -1732,7 +1732,8 @@ void SessionController::open(const QString& dir, const QString& profileId, const
         emit recentReactionsChanged();
     }
     // The passphrase that unlocks the keys also seals the transcript at rest.
-    store_.open(profileId, dir + "/transcript.db", passphrase);
+    // One encrypted database per profile; the transcript is its largest table.
+    store_.open(profileId, dir + "/profile.db", passphrase);
     // There is no persistent outbound queue, so any outgoing message still at
     // "sending" is an interrupted send (the app closed mid-upload), not one in
     // flight. Mark these failed on load so they read as "not sent" with a resend

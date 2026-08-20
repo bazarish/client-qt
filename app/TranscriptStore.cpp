@@ -3,39 +3,26 @@
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Cms.hpp>
+// Qt makes `emit` a macro and the log header declares a function of that name,
+// so the keyword is stood down for the length of this include.
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
 
-#include <QSqlDatabase>
-#include <QSqlDriver>
-#include <QSqlError>
-#include <QSqlQuery>
+#include <QFile>
 #include <QStringList>
-#include <QVariant>
 
-#include <sqlite3.h>
+#include <sqlcipher/sqlite3.h>
 
 #include <algorithm>
 #include <fstream>
 #include <stdexcept>
+#include <string>
 
 namespace bazarish::app {
 
 namespace {
-
-// Returns the underlying SQLite C handle for an open Qt connection, so the
-// in-memory database can be serialized/deserialized. Throws if the driver does
-// not expose one (always the QSQLITE driver here).
-sqlite3* sqliteHandle(const QSqlDatabase& db)
-{
-    const QVariant handle = db.driver()->handle();
-    if (!handle.isValid() || qstrcmp(handle.typeName(), "sqlite3*") != 0) {
-        throw std::runtime_error("transcript: no SQLite handle on the connection");
-    }
-    sqlite3* const native = *static_cast<sqlite3* const*>(handle.constData());
-    if (native == nullptr) {
-        throw std::runtime_error("transcript: null SQLite handle");
-    }
-    return native;
-}
 
 Bytes readFileBytes(const QString& path)
 {
@@ -43,14 +30,103 @@ Bytes readFileBytes(const QString& path)
     return Bytes(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 }
 
-void writeFileBytes(const QString& path, const Bytes& bytes)
-{
-    std::ofstream out(path.toStdString(), std::ios::binary | std::ios::trunc);
-    out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-    if (!out) {
-        throw std::runtime_error("transcript: failed to write sealed database");
+// One value read out of a result row, in the shape the readers below expect.
+class Value {
+public:
+    Value(sqlite3_stmt* const stmt, const int column)
+        : stmt_(stmt)
+        , column_(column)
+    {
     }
-}
+
+    QString toString() const
+    {
+        const unsigned char* const text = sqlite3_column_text(stmt_, column_);
+        return text == nullptr ? QString() : QString::fromUtf8(reinterpret_cast<const char*>(text));
+    }
+    qint64 toLongLong() const { return sqlite3_column_int64(stmt_, column_); }
+    int toInt() const { return sqlite3_column_int(stmt_, column_); }
+    bool isNull() const { return sqlite3_column_type(stmt_, column_) == SQLITE_NULL; }
+
+private:
+    sqlite3_stmt* stmt_ = nullptr;
+    int column_ = 0;
+};
+
+// A prepared statement in the shape the call sites are written against: prepare,
+// bind in order, exec or next, read by column. Thin on purpose - it exists so the
+// queries below read as queries and every sqlite3 handle has an owner.
+class Query {
+public:
+    explicit Query(sqlite3* const db)
+        : db_(db)
+    {
+    }
+    ~Query() { sqlite3_finalize(stmt_); }
+
+    Query(const Query&) = delete;
+    Query& operator=(const Query&) = delete;
+
+    bool prepare(const QString& sql)
+    {
+        sqlite3_finalize(stmt_);
+        stmt_ = nullptr;
+        bound_ = 0;
+        const QByteArray text = sql.toUtf8();
+        if (sqlite3_prepare_v2(db_, text.constData(), text.size(), &stmt_, nullptr) != SQLITE_OK) {
+            bazarish::log::warn("transcript: {}", sqlite3_errmsg(db_));
+            return false;
+        }
+        return true;
+    }
+
+    void addBindValue(const QString& value)
+    {
+        const QByteArray text = value.toUtf8();
+        sqlite3_bind_text(stmt_, ++bound_, text.constData(), text.size(), SQLITE_TRANSIENT);
+    }
+    void addBindValue(const char* const value) { addBindValue(QString::fromUtf8(value)); }
+    void addBindValue(const qint64 value) { sqlite3_bind_int64(stmt_, ++bound_, value); }
+    void addBindValue(const int value) { sqlite3_bind_int(stmt_, ++bound_, value); }
+
+    // Runs a prepared statement that returns nothing (or whose rows are ignored).
+    bool exec()
+    {
+        const int status = sqlite3_step(stmt_);
+        if (status != SQLITE_DONE && status != SQLITE_ROW) {
+            bazarish::log::warn("transcript: {}", sqlite3_errmsg(db_));
+            return false;
+        }
+        changes_ = sqlite3_changes(db_);
+        stepped_ = status == SQLITE_ROW;
+        return true;
+    }
+
+    // Prepares and runs a statement in one call (the DDL and the parameterless
+    // selects below).
+    bool exec(const QString& sql) { return prepare(sql) && exec(); }
+
+    // Advances to the next row; true while there is one.
+    bool next()
+    {
+        if (stepped_) {
+            stepped_ = false;  // exec() already stepped onto the first row
+            return true;
+        }
+        return sqlite3_step(stmt_) == SQLITE_ROW;
+    }
+
+    Value value(const int column) const { return Value(stmt_, column); }
+    qint64 lastInsertId() const { return sqlite3_last_insert_rowid(db_); }
+    int numRowsAffected() const { return changes_; }
+
+private:
+    sqlite3* db_ = nullptr;
+    sqlite3_stmt* stmt_ = nullptr;
+    int bound_ = 0;
+    int changes_ = 0;
+    bool stepped_ = false;
+};
 
 // Column list shared by every full-row query, so the indices below stay aligned.
 // orderKey is appended last so the existing 0..16 indices are unchanged.
@@ -73,7 +149,7 @@ void sortByOrder(QVector<StoredMessage>& rows)
 }
 
 // Reads one row produced by a SELECT over kMessageColumns into a StoredMessage.
-StoredMessage readMessageRow(const QSqlQuery& query)
+StoredMessage readMessageRow(const Query& query)
 {
     StoredMessage m;
     m.id = query.value(0).toLongLong();
@@ -105,49 +181,160 @@ TranscriptStore::TranscriptStore() = default;
 
 TranscriptStore::~TranscriptStore()
 {
-    if (!connectionName_.isEmpty()) {
-        flush();
-        QSqlDatabase::database(connectionName_).close();
-        QSqlDatabase::removeDatabase(connectionName_);
-    }
+    sqlite3_close(db_);
 }
 
-bool TranscriptStore::open(const QString& profileId, const QString& dbPath, const QString& passphrase)
-{
-    connectionName_ = "transcript-" + profileId;
-    encrypted_ = !passphrase.isEmpty();
-    passphrase_ = passphrase.toStdString();
-    blobPath_ = dbPath + ".enc";
+namespace {
 
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connectionName_);
-    // Encrypted profiles keep the database off disk: an in-memory connection
-    // loaded from / saved to the sealed blob. Unencrypted profiles use a plain
-    // file as before.
-    db.setDatabaseName(encrypted_ ? QStringLiteral(":memory:") : dbPath);
-    if (!db.open()) {
+// Opens a connection and unlocks it with `key`. The pragma has to be the first
+// statement on the connection; a plaintext database is opened by passing no key
+// at all, which is how a database from the previous layout is read for import.
+sqlite3* openKeyed(const QString& path, const std::string& key)
+{
+    sqlite3* db = nullptr;
+    if (sqlite3_open(path.toUtf8().constData(), &db) != SQLITE_OK) {
+        sqlite3_close(db);
+        return nullptr;
+    }
+    // SQLCipher reports a failed decryption on stderr; the caller reports it
+    // through the return value instead, so the library's own chatter is off.
+    sqlite3_exec(db, "PRAGMA cipher_log_level = NONE", nullptr, nullptr, nullptr);
+    if (!key.empty()) {
+        // Single quotes double inside a SQL string literal.
+        std::string quoted;
+        for (const char c : key) {
+            quoted.push_back(c);
+            if (c == '\'') {
+                quoted.push_back(c);
+            }
+        }
+        const std::string pragma = "PRAGMA key = '" + quoted + "'";
+        if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
+            sqlite3_close(db);
+            return nullptr;
+        }
+    }
+    return db;
+}
+
+// Whether the connection can actually read the database: with the wrong key the
+// pages do not decrypt and the first read fails.
+bool readable(sqlite3* const db)
+{
+    return sqlite3_exec(db, "SELECT count(*) FROM sqlite_master", nullptr, nullptr, nullptr)
+        == SQLITE_OK;
+}
+
+// Copies everything in `from` into a new encrypted database at `path`, using
+// SQLCipher's own export. The source may be plaintext or in memory.
+bool exportInto(sqlite3* const from, const QString& path, const std::string& key)
+{
+    std::string quoted;
+    for (const char c : key) {
+        quoted.push_back(c);
+        if (c == '\'') {
+            quoted.push_back(c);
+        }
+    }
+    const std::string attach = "ATTACH DATABASE '" + path.toStdString() + "' AS bz KEY '"
+        + quoted + "'";
+    if (sqlite3_exec(from, attach.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
         return false;
     }
+    const bool exported
+        = sqlite3_exec(from, "SELECT sqlcipher_export('bz')", nullptr, nullptr, nullptr)
+        == SQLITE_OK;
+    sqlite3_exec(from, "DETACH DATABASE bz", nullptr, nullptr, nullptr);
+    return exported;
+}
 
-    if (encrypted_ && std::ifstream(blobPath_.toStdString(), std::ios::binary).good()) {
-        const Bytes sealed = readFileBytes(blobPath_);
-        const Bytes plain = cms::unsealWithPassword(sealed, passphrase_);
+}  // namespace
+
+// Brings a database written by the previous layout into the encrypted one: a
+// plaintext transcript.db, or a CMS-sealed transcript.db.enc that used to be
+// loaded into memory in one piece. Returns false only when a migration was
+// attempted and failed - the caller then refuses to open rather than start an
+// empty transcript beside the old one.
+bool TranscriptStore::migrateLegacy(const QString& dbPath, const std::string& key)
+{
+    const QString dir = dbPath.left(dbPath.lastIndexOf('/') + 1);
+    const QString plainPath = dir + "transcript.db";
+    const QString sealedPath = plainPath + ".enc";
+
+    if (QFile::exists(sealedPath)) {
+        const Bytes sealed = readFileBytes(sealedPath);
+        const Bytes plain = cms::unsealWithPassword(sealed, key);
+        sqlite3* memory = openKeyed(QStringLiteral(":memory:"), std::string());
+        if (memory == nullptr) {
+            return false;
+        }
         // SQLite takes ownership of the buffer (FREEONCLOSE) and may grow it
         // (RESIZEABLE), so it must be a sqlite3_malloc allocation.
         unsigned char* const buffer
             = static_cast<unsigned char*>(sqlite3_malloc64(plain.empty() ? 1 : plain.size()));
         if (buffer == nullptr) {
-            throw std::runtime_error("transcript: sqlite3_malloc64 failed");
+            sqlite3_close(memory);
+            return false;
         }
         std::copy(plain.begin(), plain.end(), buffer);
-        if (sqlite3_deserialize(sqliteHandle(db), "main", buffer,
-                static_cast<sqlite3_int64>(plain.size()), static_cast<sqlite3_int64>(plain.size()),
+        if (sqlite3_deserialize(memory, "main", buffer, static_cast<sqlite3_int64>(plain.size()),
+                static_cast<sqlite3_int64>(plain.size()),
                 SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE)
             != SQLITE_OK) {
-            throw std::runtime_error("transcript: sqlite3_deserialize failed");
+            sqlite3_close(memory);
+            return false;
         }
+        const bool ok = exportInto(memory, dbPath, key);
+        sqlite3_close(memory);
+        if (!ok) {
+            return false;
+        }
+        QFile::remove(sealedPath);
+        bazarish::log::info("transcript: migrated the sealed database into {}", dbPath.toStdString());
+        return true;
     }
 
-    QSqlQuery query(db);
+    if (QFile::exists(plainPath)) {
+        sqlite3* plain = openKeyed(plainPath, std::string());
+        if (plain == nullptr || !readable(plain)) {
+            sqlite3_close(plain);
+            return false;
+        }
+        const bool ok = exportInto(plain, dbPath, key);
+        sqlite3_close(plain);
+        if (!ok) {
+            return false;
+        }
+        QFile::remove(plainPath);
+        bazarish::log::info(
+            "transcript: migrated the plaintext database into {}", dbPath.toStdString());
+        return true;
+    }
+    return true;
+}
+
+bool TranscriptStore::open(const QString& profileId, const QString& dbPath, const QString& passphrase)
+{
+    (void)profileId;  // one connection per store now; the id no longer names it
+    const std::string key
+        = passphrase.isEmpty() ? std::string(kDefaultKey) : passphrase.toStdString();
+
+    if (!QFile::exists(dbPath) && !migrateLegacy(dbPath, key)) {
+        return false;
+    }
+
+    db_ = openKeyed(dbPath, key);
+    if (db_ == nullptr) {
+        return false;
+    }
+    if (!readable(db_)) {
+        // Wrong key: the pages do not decrypt. Say so by failing the open.
+        sqlite3_close(db_);
+        db_ = nullptr;
+        return false;
+    }
+
+    Query query(db_);
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS messages ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -173,29 +360,12 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
     if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
         return false;
     }
-    ready_ = true;
     return true;
-}
-
-void TranscriptStore::flush() const
-{
-    if (!encrypted_ || !ready_) {
-        return;
-    }
-    const QSqlDatabase db = QSqlDatabase::database(connectionName_);
-    sqlite3_int64 size = 0;
-    unsigned char* const data = sqlite3_serialize(sqliteHandle(db), "main", &size, 0);
-    if (data == nullptr) {
-        throw std::runtime_error("transcript: sqlite3_serialize failed");
-    }
-    const Bytes plain(data, data + size);
-    sqlite3_free(data);
-    writeFileBytes(blobPath_, cms::sealWithPassword(plain, passphrase_));
 }
 
 qint64 TranscriptStore::append(const StoredMessage& message)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, protocolId, text, attName, attMime,"
         " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo)"
@@ -220,26 +390,24 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     if (!query.exec()) {
         return 0;
     }
-    const qint64 id = query.lastInsertId().toLongLong();
-    flush();
+    const qint64 id = query.lastInsertId();
     return id;
 }
 
 void TranscriptStore::updateStatus(qint64 id, int status)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("UPDATE messages SET status = ? WHERE id = ?");
     query.addBindValue(status);
     query.addBindValue(id);
     if (query.exec()) {
-        flush();
     }
 }
 
 QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
 {
     QVector<StoredMessage> result;
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? ORDER BY id")
                       .arg(kMessageColumns));
     query.addBindValue(peer);
@@ -258,7 +426,7 @@ QVector<StoredMessage> TranscriptStore::latestMessages(const QString& peer, int 
     // Newest `limit` rows, returned oldest-first (the display order). DESC+LIMIT
     // reads only the tail of a huge conversation; the result is then reversed.
     QVector<StoredMessage> result;
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? ORDER BY id DESC LIMIT ?")
                       .arg(kMessageColumns));
     query.addBindValue(peer);
@@ -278,7 +446,7 @@ QVector<StoredMessage> TranscriptStore::olderMessages(
 {
     // The `limit` rows immediately older than beforeId, oldest-first.
     QVector<StoredMessage> result;
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id < ?"
                                  " ORDER BY id DESC LIMIT ?")
                       .arg(kMessageColumns));
@@ -300,7 +468,7 @@ QVector<StoredMessage> TranscriptStore::newerMessages(
 {
     // The `limit` rows immediately newer than afterId, already oldest-first.
     QVector<StoredMessage> result;
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id > ?"
                                  " ORDER BY id ASC LIMIT ?")
                       .arg(kMessageColumns));
@@ -319,7 +487,7 @@ QVector<StoredMessage> TranscriptStore::newerMessages(
 
 bool TranscriptStore::hasMessagesBefore(const QString& peer, qint64 id) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT 1 FROM messages WHERE peer = ? AND id < ? LIMIT 1");
     query.addBindValue(peer);
     query.addBindValue(id);
@@ -328,7 +496,7 @@ bool TranscriptStore::hasMessagesBefore(const QString& peer, qint64 id) const
 
 bool TranscriptStore::hasMessagesAfter(const QString& peer, qint64 id) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT 1 FROM messages WHERE peer = ? AND id > ? LIMIT 1");
     query.addBindValue(peer);
     query.addBindValue(id);
@@ -344,7 +512,7 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
     if (query.isEmpty()) {
         return hits;
     }
-    QSqlQuery sql(QSqlDatabase::database(connectionName_));
+    Query sql(db_);
     sql.prepare("SELECT id, ts, text, outgoing, attName FROM messages"
                 " WHERE peer = ? AND (text <> '' OR attName <> '') ORDER BY id DESC");
     sql.addBindValue(peer);
@@ -374,7 +542,7 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
 
 int TranscriptStore::failUnsentOnLoad(int sendingStatus, int failedStatus)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("UPDATE messages SET status = ? WHERE outgoing = 1 AND status = ?");
     query.addBindValue(failedStatus);
     query.addBindValue(sendingStatus);
@@ -383,7 +551,6 @@ int TranscriptStore::failUnsentOnLoad(int sendingStatus, int failedStatus)
     }
     const int changed = query.numRowsAffected();
     if (changed > 0) {
-        flush();
     }
     return changed;
 }
@@ -391,7 +558,7 @@ int TranscriptStore::failUnsentOnLoad(int sendingStatus, int failedStatus)
 void TranscriptStore::markOutgoingReadUpTo(
     const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("UPDATE messages SET status = ? WHERE outgoing = 1 AND peer = ? AND id <= ?"
                   " AND status >= ? AND status <= ?");
     query.addBindValue(readStatus);
@@ -400,13 +567,12 @@ void TranscriptStore::markOutgoingReadUpTo(
     query.addBindValue(minStatus);
     query.addBindValue(maxStatus);
     if (query.exec() && query.numRowsAffected() > 0) {
-        flush();
     }
 }
 
 QString TranscriptStore::sourcePathFor(qint64 id) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT attSrcPath FROM messages WHERE id = ? LIMIT 1");
     query.addBindValue(id);
     if (query.exec() && query.next()) {
@@ -417,23 +583,21 @@ QString TranscriptStore::sourcePathFor(qint64 id) const
 
 void TranscriptStore::setSavedPath(qint64 id, const QString& path)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("UPDATE messages SET savedPath = ? WHERE id = ?");
     query.addBindValue(path);
     query.addBindValue(id);
     if (query.exec()) {
-        flush();
     }
 }
 
 void TranscriptStore::setBlobGone(qint64 id, bool gone)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("UPDATE messages SET blobGone = ? WHERE id = ?");
     query.addBindValue(gone ? 1 : 0);
     query.addBindValue(id);
     if (query.exec()) {
-        flush();
     }
 }
 
@@ -442,7 +606,7 @@ qint64 TranscriptStore::idForProtocol(const QString& protocolId) const
     if (protocolId.isEmpty()) {
         return 0;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT id FROM messages WHERE protocolId = ? AND outgoing = 1 LIMIT 1");
     query.addBindValue(protocolId);
     if (query.exec() && query.next()) {
@@ -456,7 +620,7 @@ qint64 TranscriptStore::idForIncomingProtocol(const QString& protocolId, const Q
     if (protocolId.isEmpty()) {
         return 0;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(
         "SELECT id FROM messages WHERE protocolId = ? AND peer = ? AND outgoing = 0 LIMIT 1");
     query.addBindValue(protocolId);
@@ -472,7 +636,7 @@ qint64 TranscriptStore::idForAnyProtocol(const QString& protocolId, const QStrin
     if (protocolId.isEmpty()) {
         return 0;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT id FROM messages WHERE protocolId = ? AND peer = ? ORDER BY id LIMIT 1");
     query.addBindValue(protocolId);
     query.addBindValue(peer);
@@ -489,7 +653,7 @@ StoredMessage TranscriptStore::messageByProtocol(
     if (protocolId.isEmpty()) {
         return m;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE protocolId = ? AND peer = ?"
                                  " ORDER BY id LIMIT 1")
                       .arg(kMessageColumns));
@@ -503,40 +667,37 @@ StoredMessage TranscriptStore::messageByProtocol(
 
 void TranscriptStore::editContent(qint64 id, const QString& text, const QString& keyboard)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("UPDATE messages SET text = ?, keyboard = ?, edited = 1 WHERE id = ?");
     query.addBindValue(text);
     query.addBindValue(keyboard);
     query.addBindValue(id);
     if (query.exec()) {
-        flush();
     }
 }
 
 void TranscriptStore::removeById(qint64 id)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("DELETE FROM messages WHERE id = ?");
     query.addBindValue(id);
     if (query.exec()) {
-        flush();
     }
 }
 
 void TranscriptStore::clearPeer(const QString& peer)
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("DELETE FROM messages WHERE peer = ?");
     query.addBindValue(peer);
     if (query.exec()) {
-        flush();
     }
 }
 
 QStringList TranscriptStore::conversationPeers() const
 {
     QStringList peers;
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     if (query.exec("SELECT DISTINCT peer FROM messages")) {
         while (query.next()) {
             peers << query.value(0).toString();
@@ -547,7 +708,7 @@ QStringList TranscriptStore::conversationPeers() const
 
 QString TranscriptStore::lastText(const QString& peer) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(
         "SELECT text, type FROM messages WHERE peer = ? ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
@@ -566,7 +727,7 @@ QString TranscriptStore::lastText(const QString& peer) const
 
 qint64 TranscriptStore::lastTime(const QString& peer) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare(
         "SELECT ts FROM messages WHERE peer = ? ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
@@ -581,7 +742,7 @@ void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
     if (peer.isEmpty() || id <= 0) {
         return;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     // Upsert, but never lower the high-water (a re-read of older history must not
     // resurrect newer messages as unread).
     query.prepare("INSERT INTO read_state (peer, last_read_id) VALUES (?, ?)"
@@ -589,13 +750,12 @@ void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
     query.addBindValue(peer);
     query.addBindValue(id);
     if (query.exec() && query.numRowsAffected() > 0) {
-        flush();
     }
 }
 
 qint64 TranscriptStore::lastReadId(const QString& peer) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT last_read_id FROM read_state WHERE peer = ? LIMIT 1");
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
@@ -609,7 +769,7 @@ void TranscriptStore::setPinned(const QString& peer, bool pinned)
     if (peer.isEmpty()) {
         return;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     if (pinned) {
         query.prepare("INSERT OR IGNORE INTO pinned_chats (peer) VALUES (?)");
     } else {
@@ -617,13 +777,12 @@ void TranscriptStore::setPinned(const QString& peer, bool pinned)
     }
     query.addBindValue(peer);
     if (query.exec() && query.numRowsAffected() > 0) {
-        flush();
     }
 }
 
 bool TranscriptStore::isPinned(const QString& peer) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT 1 FROM pinned_chats WHERE peer = ? LIMIT 1");
     query.addBindValue(peer);
     return query.exec() && query.next();
@@ -632,7 +791,7 @@ bool TranscriptStore::isPinned(const QString& peer) const
 QStringList TranscriptStore::pinnedPeers() const
 {
     QStringList peers;
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     if (query.exec("SELECT peer FROM pinned_chats")) {
         while (query.next()) {
             peers << query.value(0).toString();
@@ -643,7 +802,7 @@ QStringList TranscriptStore::pinnedPeers() const
 
 int TranscriptStore::unreadCount(const QString& peer) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     // Incoming messages newer than the read high-water. Only inbound rows count
     // (our own messages are always "read"), and locally-generated service banners
     // (type 'system', e.g. "X cleared the chat") are not messages to be read.
@@ -659,7 +818,7 @@ int TranscriptStore::unreadCount(const QString& peer) const
 
 qint64 TranscriptStore::firstUnreadId(const QString& peer) const
 {
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT MIN(id) FROM messages WHERE peer = ? AND outgoing = 0 AND type != 'system' AND id >"
                   " (SELECT COALESCE(MAX(last_read_id), 0) FROM read_state WHERE peer = ?)");
     query.addBindValue(peer);
@@ -676,7 +835,7 @@ void TranscriptStore::setReaction(
     if (peer.isEmpty() || target.isEmpty() || reactor.isEmpty()) {
         return;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     if (emoji.isEmpty()) {
         // An empty emoji clears the reactor's reaction on this message.
         query.prepare("DELETE FROM reactions WHERE peer = ? AND target = ? AND reactor = ?");
@@ -692,7 +851,6 @@ void TranscriptStore::setReaction(
         query.addBindValue(emoji);
     }
     if (query.exec()) {
-        flush();
     }
 }
 
@@ -702,7 +860,7 @@ QVector<Reaction> TranscriptStore::reactionsFor(const QString& peer, const QStri
     if (peer.isEmpty() || target.isEmpty()) {
         return result;
     }
-    QSqlQuery query(QSqlDatabase::database(connectionName_));
+    Query query(db_);
     query.prepare("SELECT reactor, emoji FROM reactions WHERE peer = ? AND target = ? ORDER BY rowid");
     query.addBindValue(peer);
     query.addBindValue(target);

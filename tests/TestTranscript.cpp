@@ -32,10 +32,9 @@ int main(int argc, char** argv)
 
     const fs::path dir = fs::temp_directory_path() / ("bz-transcript-" + toHex(randomBytes(8)));
     fs::create_directories(dir);
-    const QString db = QString::fromStdString((dir / "transcript.db").string());
-    const QString blob = db + ".enc";
+    const QString db = QString::fromStdString((dir / "profile.db").string());
 
-    // Encrypted mode: write one message, then close (flush on destruction).
+    // The database is encrypted in place: one file, written as it goes.
     {
         TranscriptStore store;
         CHECK(store.open("p1", db, "pw"));
@@ -49,18 +48,15 @@ int main(int argc, char** argv)
         CHECK(store.append(m) > 0);
     }
 
-    // The cleartext database file is never created; only the sealed blob is.
-    CHECK(!fs::exists(db.toStdString()));
-    CHECK(fs::exists(blob.toStdString()));
-
-    // The blob is CMS DER (begins with the SEQUENCE tag) and the plaintext
-    // message body does not appear anywhere in it.
+    // The file on disk is the database itself, and it carries neither the SQLite
+    // header nor the message body in the clear.
     {
-        std::ifstream in(blob.toStdString(), std::ios::binary);
+        CHECK(fs::exists(db.toStdString()));
+        std::ifstream in(db.toStdString(), std::ios::binary);
         const std::string bytes((std::istreambuf_iterator<char>(in)),
             std::istreambuf_iterator<char>());
         CHECK(!bytes.empty());
-        CHECK(static_cast<unsigned char>(bytes[0]) == 0x30);
+        CHECK(bytes.rfind("SQLite format 3", 0) != 0);
         CHECK(bytes.find("secret-hello") == std::string::npos);
     }
 
@@ -74,18 +70,13 @@ int main(int argc, char** argv)
         CHECK(msgs[0].ts == 42);
     }
 
-    // A wrong passphrase cannot unseal the blob (and must not clobber it).
+    // A wrong passphrase does not open the database (and must not clobber it):
+    // an unreadable file is a failed open, never an empty transcript.
     {
         TranscriptStore store;
-        bool threw = false;
-        try {
-            store.open("p3", db, "wrong");
-        } catch (const std::exception&) {
-            threw = true;
-        }
-        CHECK(threw);
+        CHECK(!store.open("p3", db, "wrong"));
     }
-    // The good blob still opens after the failed attempt.
+    // The database still opens with the right passphrase after the failed attempt.
     {
         TranscriptStore store;
         CHECK(store.open("p4", db, "pw"));

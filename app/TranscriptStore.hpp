@@ -7,6 +7,10 @@
 #include <cstdint>
 #include <string>
 
+// The SQLCipher connection handle, opaque here (sqlite3.h stays out of this
+// header, which the QML layer includes).
+struct sqlite3;
+
 namespace bazarish::app {
 
 // One stored conversation entry. Mirrors the rendered message; bodies live in
@@ -53,18 +57,25 @@ struct Reaction {
     QString emoji;
 };
 
-// Persistent local message log for one profile. When a passphrase is given the
-// database is never written to disk in the clear: it lives in an in-memory
-// SQLite connection and is persisted as a single CMS PWRI-sealed blob
-// (<dbPath>.enc), serialized/deserialized through the SQLite driver. With an
-// empty passphrase it falls back to a plaintext file (unencrypted profiles).
+// Persistent local message log for one profile, in the profile's SQLCipher
+// database. The file is encrypted page by page, so a message is written where it
+// belongs instead of re-sealing the whole history on every change. The key is the
+// profile passphrase; a profile without one is keyed with kDefaultKey, which
+// keeps a single code path and stops the file from being readable by accident -
+// it is not protection from anyone who has read this source.
 class TranscriptStore {
 public:
+    // What a profile with no passphrase is keyed with. See the note above.
+    static constexpr const char* kDefaultKey = "bazarish";
+
     TranscriptStore();
     ~TranscriptStore();
 
-    // Opens (and creates) the database for this profile id. A non-empty
-    // passphrase enables the sealed in-memory mode described above.
+    // Opens (and creates) the database for this profile id, keyed with the
+    // passphrase (or kDefaultKey when it is empty). Returns false when the key
+    // does not open the file - a wrong passphrase is a failed open, not an empty
+    // transcript. Migrates a database left by the previous layout (a plaintext
+    // transcript.db or a CMS-sealed transcript.db.enc beside it) on first open.
     bool open(const QString& profileId, const QString& dbPath, const QString& passphrase = {});
 
     qint64 append(const StoredMessage& message);
@@ -154,18 +165,11 @@ public:
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
 
 private:
-    // Serializes the in-memory database and writes the sealed blob. No-op when
-    // the store is not in encrypted mode.
-    void flush() const;
+    // Imports a database left by the previous layout, if one is there.
+    bool migrateLegacy(const QString& dbPath, const std::string& key);
 
-    QString connectionName_;
-    // Sealed-blob mode (non-empty passphrase): the at-rest file and the key.
-    bool encrypted_ = false;
-    QString blobPath_;
-    std::string passphrase_;
-    // True only after a fully successful open(), so a flush triggered while
-    // tearing down a failed open never overwrites a good blob.
-    bool ready_ = false;
+    // The open connection. Owned; closed in the destructor.
+    sqlite3* db_ = nullptr;
 };
 
 }  // namespace bazarish::app
