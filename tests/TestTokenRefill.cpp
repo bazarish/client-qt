@@ -8,7 +8,9 @@
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Tokens.hpp>
 
-#include <httplib/httplib.h>
+#include <bazarish/HttpServer.hpp>
+
+#include <functional>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -44,13 +46,13 @@ std::int64_t nowSeconds()
     return static_cast<std::int64_t>(std::time(nullptr));
 }
 
-auth::Headers collectAuthHeaders(const httplib::Request& request)
+auth::Headers collectAuthHeaders(const http::Request& request)
 {
     auth::Headers headers;
     for (const char* const name : {auth::kHeaderKeys, auth::kHeaderTimestamp,
              auth::kHeaderSignatureClassical, auth::kHeaderSignaturePq}) {
-        if (request.has_header(name)) {
-            headers[name] = request.get_header_value(name);
+        if (request.hasHeader(name)) {
+            headers[name] = request.header(name);
         }
     }
     return headers;
@@ -58,22 +60,43 @@ auth::Headers collectAuthHeaders(const httplib::Request& request)
 
 // Verifies the request signature against the real path and returns the caller
 // fingerprint, mirroring the server-side authenticated() wrapper.
-std::string requireCaller(const httplib::Request& request)
+std::string requireCaller(const http::Request& request)
 {
     return auth::verifyRequest(collectAuthHeaders(request), nowSeconds(), request.method,
         request.path, Bytes(request.body.begin(), request.body.end()));
 }
 
-void respondJson(httplib::Response& response, const nlohmann::json& body)
+// The tests write handlers the way the stub server used to take them - fill in
+// a response - while the server hands one back; this bridges the two shapes.
+using StubHandler = std::function<void(const http::Request&, http::Response&)>;
+
+http::Handler stub(StubHandler handler)
 {
-    response.set_content(body.dump(), "application/json");
+    return [handler = std::move(handler)](const http::Request& request) {
+        http::Response response;
+        handler(request, response);
+        return response;
+    };
+}
+
+http::Server::Options localOptions()
+{
+    http::Server::Options options;
+    options.port = 0;  // the kernel picks one
+    return options;
+}
+
+void respondJson(http::Response& response, const nlohmann::json& body)
+{
+    response.contentType = "application/json";
+    response.body = body.dump();
 }
 
 // A minimal but faithful stateful messaging server for two co-located users: it
 // stores per-mailbox blobs, tracks each mailbox's registered token hashes and
 // consumes exactly one on every content delivery (rejecting an unregistered
 // token), and hands back each user's self-signed subscription certificate. Every
-// handler runs on the httplib server thread while the test drives the sessions on
+// handler runs on the server's own thread while the test drives the sessions on
 // the main thread, so all state is guarded by one mutex.
 struct Mock {
     std::mutex mu;
@@ -106,18 +129,18 @@ int main()
     Mock m;
     m.serverFp = serverIdentity.fingerprint();
 
-    httplib::Server server;
+    http::Server server(localOptions());
 
-    server.Get("/v1/messaging/destination",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.get("/v1/messaging/destination",
+        stub([&](const http::Request& request, http::Response& response) {
             const std::string caller = requireCaller(request);
             std::lock_guard<std::mutex> lock(m.mu);
             respondJson(response,
                 {{"dest", m.destFor[caller]}, {"servingKey", toBase64(m.serverSealing.publicDer())}});
-        });
+        }));
 
     const auto handleSubscribe
-        = [&](const httplib::Request& request, httplib::Response& response) {
+        = [&](const http::Request& request, http::Response& response) {
               const std::string caller = requireCaller(request);
               const std::string certB64
                   = nlohmann::json::parse(request.body).at("cert").get<std::string>();
@@ -135,33 +158,33 @@ int main()
                       {"quotaBytes", 100u * 1024 * 1024},
                       {"maxTermSeconds", 365 * 24 * 3600}});
           };
-    server.Post("/v1/account/subscribe", handleSubscribe);
-    server.Post("/v1/account/renew", handleSubscribe);
+    server.post("/v1/account/subscribe", stub(handleSubscribe));
+    server.post("/v1/account/renew", stub(handleSubscribe));
 
     // Subscribing delegates this profile's offline transient before republishing
     // the card with its routing, so the account API must take one.
-    server.Post("/v1/account/i2p-dest",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.post("/v1/account/i2p-dest",
+        stub([&](const http::Request& request, http::Response& response) {
             (void)requireCaller(request);
             CHECK(!nlohmann::json::parse(request.body).at("transient").get<std::string>().empty());
             respondJson(response, {{"ok", true}});
-        });
+        }));
 
-    server.Post("/v1/messaging/clients",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.post("/v1/messaging/clients",
+        stub([&](const http::Request& request, http::Response& response) {
             (void)requireCaller(request);
             respondJson(response, {{"ok", true}});
-        });
+        }));
 
-    server.Get("/v1/account/contact",
-        [&](const httplib::Request& request, httplib::Response& response) {
-            const std::string user = request.get_param_value("user");
+    server.get("/v1/account/contact",
+        stub([&](const http::Request& request, http::Response& response) {
+            const std::string user = request.query("user");
             std::lock_guard<std::mutex> lock(m.mu);
             respondJson(response, {{"user", user}, {"subscriptionCert", m.certFor[user]}});
-        });
+        }));
 
-    server.Post("/v1/messaging/tokens",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.post("/v1/messaging/tokens",
+        stub([&](const http::Request& request, http::Response& response) {
             const std::string caller = requireCaller(request);
             const nlohmann::json hashes = nlohmann::json::parse(request.body).at("hashes");
             std::lock_guard<std::mutex> lock(m.mu);
@@ -174,10 +197,10 @@ int main()
                 m.singletons[caller].insert(hashes.at(0).get<std::string>());
             }
             respondJson(response, {{"ok", true}});
-        });
+        }));
 
-    server.Post("/v1/messaging/send",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.post("/v1/messaging/send",
+        stub([&](const http::Request& request, http::Response& response) {
             (void)requireCaller(request);
             const nlohmann::json body = nlohmann::json::parse(request.body);
             const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
@@ -203,16 +226,16 @@ int main()
                     fromBase64(body.at("payload").get<std::string>())});
             }
             respondJson(response, {{"attemptId", "att" + std::to_string(m.nextId)}});
-        });
+        }));
 
-    server.Get(R"(/v1/messaging/send/(.+))",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.get(R"(/v1/messaging/send/(.+))",
+        stub([&](const http::Request& request, http::Response& response) {
             (void)requireCaller(request);
             respondJson(response, {{"status", "delivered"}});
-        });
+        }));
 
-    server.Get("/v1/messaging/pending",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.get("/v1/messaging/pending",
+        stub([&](const http::Request& request, http::Response& response) {
             const std::string caller = requireCaller(request);
             std::lock_guard<std::mutex> lock(m.mu);
             nlohmann::json pending = nlohmann::json::array();
@@ -220,25 +243,25 @@ int main()
                 pending.push_back({{"id", item.id}, {"class", item.cls}});
             }
             respondJson(response, {{"pending", pending}});
-        });
+        }));
 
-    server.Get(R"(/v1/messaging/pending/(.+))",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.get(R"(/v1/messaging/pending/(.+))",
+        stub([&](const http::Request& request, http::Response& response) {
             const std::string caller = requireCaller(request);
-            const std::string id = request.matches[1];
+            const std::string id = request.captures.at(0);
             std::lock_guard<std::mutex> lock(m.mu);
             for (const Mock::Item& item : m.mailbox[caller]) {
                 if (item.id == id) {
-                    response.set_content(std::string(item.payload.begin(), item.payload.end()),
-                        "application/octet-stream");
+                    response.contentType = "application/octet-stream";
+                    response.body = std::string(item.payload.begin(), item.payload.end());
                     return;
                 }
             }
             response.status = 404;
-        });
+        }));
 
-    server.Post("/v1/messaging/ack",
-        [&](const httplib::Request& request, httplib::Response& response) {
+    server.post("/v1/messaging/ack",
+        stub([&](const http::Request& request, http::Response& response) {
             const std::string caller = requireCaller(request);
             const std::string blobId
                 = nlohmann::json::parse(request.body).at("blobId").get<std::string>();
@@ -248,12 +271,10 @@ int main()
                           [&](const Mock::Item& item) { return item.id == blobId; }),
                 box.end());
             respondJson(response, {{"ok", true}});
-        });
+        }));
 
-    const int port = server.bind_to_any_port("127.0.0.1");
+    const int port = server.start();
     CHECK(port > 0);
-    std::thread serverThread([&server]() { (void)server.listen_after_bind(); });
-    server.wait_until_ready();
 
     ServerEndpoint endpoint;
     endpoint.serverFingerprint = m.serverFp;
@@ -340,7 +361,6 @@ int main()
     alice.sendMessage(bob.fingerprint(), "after refill");
 
     server.stop();
-    serverThread.join();
     fs::remove_all(aDir);
     fs::remove_all(bDir);
 

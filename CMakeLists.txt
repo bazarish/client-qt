@@ -31,7 +31,8 @@ find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 
 # I2P key material + transport now come from common's bazarish::i2p (the embedded
 # libi2pd), so the previously-vendored trimmed libi2pd "keys" lib and the i2pd
-# submodule are gone. OpenSSL is still needed for httplib's TLS client below.
+# submodule are gone. OpenSSL is still needed for the crypto and for the TLS
+# client common's HTTP engine uses on a clearnet facade.
 find_package(OpenSSL 3.0 REQUIRED)
 
 # Sanitizer build (address / undefined), for chasing a crash rather than for
@@ -65,14 +66,6 @@ target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} $
 target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
 target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY})
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
-# HTTPS facades: enable httplib's TLS client. Defined PUBLIC and OpenSSL::SSL
-# linked PUBLIC so every client-side target that includes httplib (CLI, bot,
-# app, tests) sees the same definition (no header-only ODR mismatch). The server
-# repositories are separate and unaffected.
-find_package(OpenSSL 3.0 REQUIRED)
-target_compile_definitions(bazarish_client_lib PUBLIC CPPHTTPLIB_OPENSSL_SUPPORT)
-target_link_libraries(bazarish_client_lib PUBLIC OpenSSL::SSL)
-
 add_executable(bazarish-client src/Main.cpp)
 target_link_libraries(bazarish-client PRIVATE bazarish_client_lib)
 target_compile_options(bazarish-client PRIVATE -Wall -Wextra -Werror)

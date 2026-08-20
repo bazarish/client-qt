@@ -8,7 +8,7 @@
 #include <bazarish/Log.hpp>
 #include <bazarish/I2pHttp.hpp>
 
-#include <httplib/httplib.h>
+#include <bazarish/HttpClient.hpp>
 
 #include <algorithm>
 #include <array>
@@ -29,6 +29,20 @@ namespace {
 std::int64_t nowSeconds()
 {
     return static_cast<std::int64_t>(std::time(nullptr));
+}
+
+// How to talk to a clearnet facade. The facade is the untrusted last mile -
+// security is end-to-end and anchored in the server fingerprint, not in TLS PKI
+// - so a self-signed or proxy certificate is accepted.
+bazarish::http::ClientOptions facadeOptions(const Facade& facade, const int readTimeoutSeconds)
+{
+    bazarish::http::ClientOptions options;
+    options.tls = facade.tls;
+    options.verifyPeer = false;
+    options.connectTimeout = std::chrono::seconds(ApiClient::kConnectTimeoutSeconds);
+    options.readTimeout = std::chrono::seconds(readTimeoutSeconds);
+    options.writeTimeout = std::chrono::seconds(ApiClient::kWriteTimeoutSeconds);
+    return options;
 }
 
 // How long to wait for our own outbound destination's tunnels on a cold start,
@@ -580,14 +594,9 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
     const std::map<std::string, std::string>& headerMap, const int readTimeoutSeconds,
     const bool clearnetOnly)
 {
-    const httplib::Headers headers(headerMap.begin(), headerMap.end());
-
-    // The same headers as a plain map for the I2P transport (which writes them
-    // verbatim; Host / Content-Length / Connection are added by the builder).
-    std::map<std::string, std::string> i2pHeaders;
-    for (const auto& [key, value] : headers) {
-        i2pHeaders[key] = value;
-    }
+    // The headers the I2P transport writes verbatim (Host / Content-Length /
+    // Connection are added by the builder); the clearnet leg sends the same set.
+    std::map<std::string, std::string> i2pHeaders = headerMap;
     if (!body.empty() && !contentType.empty()) {
         i2pHeaders["Content-Type"] = contentType;
     }
@@ -595,45 +604,23 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
     // Issues the request against one clearnet facade. A send may relay over I2P
     // synchronously on the server side (tens of seconds), so the timeouts are
     // generous. An empty result means the facade was unreachable.
-    const auto clearnetAttempt = [&](const Facade& facade) -> httplib::Result {
-        std::string url = facade.basePath + path;
-        if (!query.empty()) {
-            url += "?" + query;
-        }
-        const auto run = [&](auto& http) -> httplib::Result {
-            http.set_keep_alive(false);
-            http.set_connection_timeout(kConnectTimeoutSeconds, 0);
-            http.set_read_timeout(readTimeoutSeconds, 0);
-            http.set_write_timeout(kWriteTimeoutSeconds, 0);
-            if (method == "GET") {
-                return http.Get(url, headers);
-            }
-            if (method == "POST") {
-                return http.Post(url, headers, std::string(body.begin(), body.end()), contentType);
-            }
-            if (method == "DELETE") {
-                return http.Delete(
-                    url, headers, std::string(body.begin(), body.end()), contentType);
-            }
-            if (method == "PUT") {
-                return http.Put(url, headers, std::string(body.begin(), body.end()), contentType);
-            }
+    const auto clearnetAttempt = [&](const Facade& facade) -> bazarish::http::ClientResponse {
+        if (method != "GET" && method != "POST" && method != "PUT" && method != "DELETE") {
             throw ApiError(std::nullopt, 0, "unsupported HTTP method: " + method);
-        };
-        if (facade.tls) {
-#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            httplib::SSLClient http(facade.host, facade.port);
-            // The facade is the untrusted last mile (security is end-to-end and
-            // anchored in the server fingerprint, not TLS PKI), so a self-signed
-            // or proxy certificate is accepted.
-            http.enable_server_certificate_verification(false);
-            return run(http);
-#else
-            throw ApiError(std::nullopt, 0, "https facade not supported in this build");
-#endif
         }
-        httplib::Client http(facade.host, facade.port);
-        return run(http);
+        bazarish::http::ClientRequest out;
+        out.method = method;
+        out.target = facade.basePath + path;
+        if (!query.empty()) {
+            out.target += "?" + query;
+        }
+        out.headers = headerMap;
+        out.body = std::string(body.begin(), body.end());
+        if (!body.empty()) {
+            out.contentType = contentType;
+        }
+        return bazarish::http::request(
+            facade.host, facade.port, out, facadeOptions(facade, readTimeoutSeconds));
     };
 
     // Try facades in priority order (I2P first), failing over only when a facade
@@ -699,16 +686,16 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
                 continue;
             }
         }
-        const httplib::Result result = clearnetAttempt(facade);
-        if (!result) {
+        const bazarish::http::ClientResponse result = clearnetAttempt(facade);
+        if (result.status == 0) {
             // A read timeout is not an unreachable facade: the request arrived and
             // the server is still working on it (a federated fetch dials the peer
             // over I2P, which is slow on a cold router). Say which of the two it
             // was, or the next reader goes looking at the facade for nothing.
-            lastError = result.error() == httplib::Error::Read
+            lastError = result.readTimedOut
                 ? "no response within " + std::to_string(readTimeoutSeconds)
                     + "s: " + facade.host
-                : "transport failure: " + httplib::to_string(result.error());
+                : "transport failure: " + result.error;
             continue;  // try the next facade
         }
         // A request that leaves over clearnet binds this account's keys to this
@@ -727,15 +714,10 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
         activeFacade_ = index;  // remember the working facade for next time
 
         ApiResponse response;
-        response.status = result->status;
-        response.body = Bytes(result->body.begin(), result->body.end());
-        response.contentType = result->get_header_value("Content-Type");
-        for (const auto& [name, value] : result->headers) {
-            std::string key = name;
-            std::transform(key.begin(), key.end(), key.begin(),
-                [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            response.headers[key] = value;
-        }
+        response.status = result.status;
+        response.body = Bytes(result.body.begin(), result.body.end());
+        response.contentType = result.contentType;
+        response.headers = result.headers;  // the client lowercases the keys
         if (response.status < 200 || response.status >= 300) {
             raiseFromResponse(response.status, response.body);
         }
@@ -758,73 +740,46 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
     // never materialized to sign or send it.
     const auth::Headers signedHeaders
         = auth::signRequestDigest(identity_, nowSeconds(), "PUT", path, bodySha256Hex);
-    httplib::Headers headers(signedHeaders.begin(), signedHeaders.end());
-    headers.emplace("X-Bazarish-Client", clientId_);
+    std::map<std::string, std::string> headers(signedHeaders.begin(), signedHeaders.end());
+    headers["X-Bazarish-Client"] = clientId_;
     for (const auto& [key, value] : extraHeaders) {
-        headers.emplace(key, value);
+        headers[key] = value;
     }
 
-    std::map<std::string, std::string> i2pHeaders;
-    for (const auto& [key, value] : headers) {
-        i2pHeaders[key] = value;
-    }
+    std::map<std::string, std::string> i2pHeaders = headers;
     if (!contentType.empty()) {
         i2pHeaders["Content-Type"] = contentType;
     }
 
-    const auto clearnetAttempt = [&](const Facade& facade) -> httplib::Result {
-        const std::string url = facade.basePath + path;
+    const auto clearnetAttempt = [&](const Facade& facade) -> bazarish::http::ClientResponse {
         // A fresh stream per attempt so a facade failover restarts cleanly from
-        // the beginning of the file (the content provider seeks within it).
+        // the beginning of the file.
         const auto file = std::make_shared<std::ifstream>(filePath, std::ios::binary);
         if (!*file) {
             throw ApiError(std::nullopt, 0, "cannot open blob file: " + filePath.string());
         }
-        const httplib::ContentProvider provider
-            = [file, length, &onProgress](const std::size_t offset, const std::size_t want,
-                  httplib::DataSink& sink) -> bool {
-            file->clear();
-            file->seekg(static_cast<std::streamoff>(offset));
-            std::array<char, 64 * 1024> buffer;
-            std::size_t remaining = want;
-            std::size_t produced = offset;  // bytes of the body emitted so far
-            while (remaining > 0) {
-                const std::streamsize chunk = static_cast<std::streamsize>(
-                    std::min<std::size_t>(remaining, buffer.size()));
-                file->read(buffer.data(), chunk);
-                const std::streamsize got = file->gcount();
-                if (got <= 0) {
-                    break;
-                }
-                if (!sink.write(buffer.data(), static_cast<std::size_t>(got))) {
-                    return false;
-                }
-                remaining -= static_cast<std::size_t>(got);
-                produced += static_cast<std::size_t>(got);
-                if (onProgress) {
-                    onProgress(produced, static_cast<std::uint64_t>(length));
-                }
+        const auto produced = std::make_shared<std::uintmax_t>(0);
+        const bazarish::http::BodyProvider provider
+            = [file, produced, length, &onProgress](
+                  char* const chunk, const std::size_t capacity) -> std::size_t {
+            file->read(chunk, static_cast<std::streamsize>(capacity));
+            const std::streamsize got = file->gcount();
+            if (got <= 0) {
+                return 0;
             }
-            return true;
+            *produced += static_cast<std::uintmax_t>(got);
+            if (onProgress) {
+                onProgress(*produced, static_cast<std::uint64_t>(length));
+            }
+            return static_cast<std::size_t>(got);
         };
-        const auto run = [&](auto& http) -> httplib::Result {
-            http.set_keep_alive(false);
-            http.set_connection_timeout(kConnectTimeoutSeconds, 0);
-            http.set_read_timeout(kDefaultReadTimeoutSeconds, 0);
-            http.set_write_timeout(kWriteTimeoutSeconds, 0);
-            return http.Put(url, headers, static_cast<std::size_t>(length), provider, contentType);
-        };
-        if (facade.tls) {
-#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
-            httplib::SSLClient http(facade.host, facade.port);
-            http.enable_server_certificate_verification(false);
-            return run(http);
-#else
-            throw ApiError(std::nullopt, 0, "https facade not supported in this build");
-#endif
-        }
-        httplib::Client http(facade.host, facade.port);
-        return run(http);
+        bazarish::http::ClientRequest out;
+        out.method = "PUT";
+        out.target = facade.basePath + path;
+        out.headers = headers;
+        out.contentType = contentType;
+        return bazarish::http::upload(facade.host, facade.port, out, length, provider,
+            facadeOptions(facade, kDefaultReadTimeoutSeconds));
     };
 
     // Streams the file body onto an I2P stream after the request head (the i2p
@@ -888,30 +843,25 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
                 + facade.host;
             continue;
         }
-        const httplib::Result result = clearnetAttempt(facade);
-        if (!result) {
+        const bazarish::http::ClientResponse result = clearnetAttempt(facade);
+        if (result.status == 0) {
             // A read timeout is not an unreachable facade: the request arrived and
             // the server is still working on it (a federated fetch dials the peer
             // over I2P, which is slow on a cold router). Say which of the two it
             // was, or the next reader goes looking at the facade for nothing.
-            lastError = result.error() == httplib::Error::Read
+            lastError = result.readTimedOut
                 ? "no response within " + std::to_string(kDefaultReadTimeoutSeconds)
                     + "s: " + facade.host
-                : "transport failure: " + httplib::to_string(result.error());
+                : "transport failure: " + result.error;
             continue;  // try the next facade
         }
         activeFacade_ = index;
 
         ApiResponse response;
-        response.status = result->status;
-        response.body = Bytes(result->body.begin(), result->body.end());
-        response.contentType = result->get_header_value("Content-Type");
-        for (const auto& [name, value] : result->headers) {
-            std::string key = name;
-            std::transform(key.begin(), key.end(), key.begin(),
-                [](const unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            response.headers[key] = value;
-        }
+        response.status = result.status;
+        response.body = Bytes(result.body.begin(), result.body.end());
+        response.contentType = result.contentType;
+        response.headers = result.headers;  // the client lowercases the keys
         if (response.status < 200 || response.status >= 300) {
             raiseFromResponse(response.status, response.body);
         }

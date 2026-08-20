@@ -5,7 +5,7 @@
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Errors.hpp>
 
-#include <httplib/httplib.h>
+#include <bazarish/HttpServer.hpp>
 #include <nlohmann/json.hpp>
 
 #include <cstdio>
@@ -13,7 +13,6 @@
 #include <ctime>
 #include <stdexcept>
 #include <filesystem>
-#include <thread>
 
 #define CHECK(condition)                                                            \
     do {                                                                            \
@@ -34,16 +33,23 @@ std::int64_t nowSeconds()
     return static_cast<std::int64_t>(std::time(nullptr));
 }
 
-auth::Headers collectAuthHeaders(const httplib::Request& request)
+auth::Headers collectAuthHeaders(const http::Request& request)
 {
     auth::Headers headers;
     for (const char* const name : {auth::kHeaderKeys, auth::kHeaderTimestamp,
              auth::kHeaderSignatureClassical, auth::kHeaderSignaturePq}) {
-        if (request.has_header(name)) {
-            headers[name] = request.get_header_value(name);
+        if (request.hasHeader(name)) {
+            headers[name] = request.header(name);
         }
     }
     return headers;
+}
+
+http::Server::Options localOptions()
+{
+    http::Server::Options options;
+    options.port = 0;  // the kernel picks one
+    return options;
 }
 
 }  // namespace
@@ -52,75 +58,77 @@ int main()
 {
     const Identity alice = Identity::generate();
 
-    httplib::Server server;
+    http::Server server(localOptions());
 
     // Echoes the verified caller fingerprint and the client header, proving
     // the request was correctly signed against the query-less path.
-    server.Get("/v1/account/subscription",
-        [&](const httplib::Request& request, httplib::Response& response) {
-            std::string user;
-            try {
-                user = auth::verifyRequest(collectAuthHeaders(request), nowSeconds(), "GET",
-                    request.path, Bytes(request.body.begin(), request.body.end()));
-            } catch (const std::exception& error) {
-                response.status = 401;
-                response.set_content(error.what(), "text/plain");
-                return;
-            }
-            response.set_content(nlohmann::json{{"notAfter", 1234},
-                                     {"quotaBytes", 10}, {"user", user}}
-                                     .dump(),
-                "application/json");
-        });
+    server.get("/v1/account/subscription", [&](const http::Request& request) {
+        http::Response response;
+        std::string user;
+        try {
+            user = auth::verifyRequest(collectAuthHeaders(request), nowSeconds(), "GET",
+                request.path, Bytes(request.body.begin(), request.body.end()));
+        } catch (const std::exception& error) {
+            response.status = 401;
+            response.contentType = "text/plain";
+            response.body = error.what();
+            return response;
+        }
+        response.body
+            = nlohmann::json{{"notAfter", 1234}, {"quotaBytes", 10}, {"user", user}}.dump();
+        return response;
+    });
 
     // A request signed for a secret base path must verify against the
     // stripped path, so the route lives under the base path but the auth
     // check uses the suffix.
-    server.Post("/s/secret/v1/messaging/clients",
-        [&](const httplib::Request& request, httplib::Response& response) {
-            std::string user;
-            try {
-                user = auth::verifyRequest(collectAuthHeaders(request), nowSeconds(), "POST",
-                    "/v1/messaging/clients", Bytes(request.body.begin(), request.body.end()));
-            } catch (const std::exception& error) {
-                response.status = 401;
-                response.set_content(error.what(), "text/plain");
-                return;
-            }
-            CHECK(request.get_header_value("X-Bazarish-Client") == "abc123");
-            const nlohmann::json body = nlohmann::json::parse(request.body);
-            CHECK(body.at("clientId") == "abc123");
-            response.set_content(nlohmann::json{{"ok", true}, {"user", user}}.dump(),
-                "application/json");
-        });
+    server.post("/s/secret/v1/messaging/clients", [&](const http::Request& request) {
+        http::Response response;
+        std::string user;
+        try {
+            user = auth::verifyRequest(collectAuthHeaders(request), nowSeconds(), "POST",
+                "/v1/messaging/clients", Bytes(request.body.begin(), request.body.end()));
+        } catch (const std::exception& error) {
+            response.status = 401;
+            response.contentType = "text/plain";
+            response.body = error.what();
+            return response;
+        }
+        CHECK(request.header("X-Bazarish-Client") == "abc123");
+        const nlohmann::json body = nlohmann::json::parse(request.body);
+        CHECK(body.at("clientId") == "abc123");
+        response.body = nlohmann::json{{"ok", true}, {"user", user}}.dump();
+        return response;
+    });
 
     // Returns a typed error envelope.
-    server.Get("/v1/account/contact",
-        [&](const httplib::Request&, httplib::Response& response) {
-            response.status = 404;
-            response.set_content(
-                makeErrorEnvelope(ErrorCode::eSubscriptionExpired, "no active subscription").dump(),
-                "application/json");
-        });
+    server.get("/v1/account/contact", [](const http::Request&) {
+        http::Response response;
+        response.status = 404;
+        response.body
+            = makeErrorEnvelope(ErrorCode::eSubscriptionExpired, "no active subscription").dump();
+        return response;
+    });
 
     // Returns a non-envelope error body.
-    server.Get("/v1/messaging/pending",
-        [&](const httplib::Request&, httplib::Response& response) {
-            response.status = 500;
-            response.set_content("internal boom", "text/plain");
-        });
+    server.get("/v1/messaging/pending", [](const http::Request&) {
+        http::Response response;
+        response.status = 500;
+        response.contentType = "text/plain";
+        response.body = "internal boom";
+        return response;
+    });
 
     // The private reseed: unauthenticated, and the one call that must stay on
     // clearnet because it is what bootstraps the I2P transport.
-    server.Get("/v1/messaging/reseed",
-        [](const httplib::Request&, httplib::Response& response) {
-            response.set_content(R"({"routers":["cm91dGVy"]})", "application/json");
-        });
+    server.get("/v1/messaging/reseed", [](const http::Request&) {
+        http::Response response;
+        response.body = R"({"routers":["cm91dGVy"]})";
+        return response;
+    });
 
-    const int port = server.bind_to_any_port("127.0.0.1");
+    const int port = server.start();
     CHECK(port > 0);
-    std::thread serverThread([&server]() { (void)server.listen_after_bind(); });
-    server.wait_until_ready();
 
     ServerEndpoint endpoint;
     endpoint.serverFingerprint = "unused-here";
@@ -197,7 +205,6 @@ int main()
     }
 
     server.stop();
-    serverThread.join();
 
     // A transport failure (nothing listening) is an ApiError with no HTTP
     // status and no typed code.
