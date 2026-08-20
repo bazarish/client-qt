@@ -541,13 +541,6 @@ public:
     // Sets our reaction (an emoji) to a one-to-one message: content type "reaction"
     // referencing refMessageId. An empty emoji removes our reaction. One reaction per
     // user per message - a new one overwrites the old at the recipient.
-    // Re-reads a contact's routing (destination + serving sealing key) from their
-    // signed subscription certificate, via our own server, and adopts it if it
-    // moved. A contact who regenerates their destination otherwise stays
-    // undeliverable forever: every send dials the address we learned when we met
-    // them. Returns whether anything changed. Throws if the lookup fails.
-    bool refreshContactRouting(const std::string& peerFingerprint);
-
     void sendReaction(const std::string& peerFingerprint, const std::string& refMessageId,
         const std::string& emoji);
 
