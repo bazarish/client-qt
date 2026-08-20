@@ -10,8 +10,8 @@ import Bazarish
 Item {
     id: root
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
-    // refresh, edit, more, plus, check, up, down, forward, link, at, dot, stop,
-    // send, person, burger.
+    // refresh, edit, more, plus, check, up, down, forward, link, bang, dot,
+    // stop, send, person, burger.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -48,11 +48,9 @@ Item {
                         + "A 4 4 0 0 0 12.5 5.8 L 11.2 7.1 "
                         + "M 14 10 A 4 4 0 0 0 8.3 10 L 5.8 12.5 "
                         + "A 4 4 0 0 0 11.5 18.2 L 12.8 16.9"
-                    // The "a" ring inside the open sweep that stops short of
-                    // closing: an at-sign, for anything addressed by name.
-                    case "at":      return "M 12 8 A 4 4 0 1 1 11.99 8 "
-                                         + "M 16 8 L 16 13 A 3 3 0 0 0 22 13 L 22 12 "
-                                         + "A 10 10 0 1 0 18.1 19.9"
+                    // The sigil an alias is written with in bazarish: "!name",
+                    // never "@name".
+                    case "bang":    return "M 12 4 L 12 14 M 12 18 L 12 18.5"
                     case "chevron": return "M 6 9 L 12 15 L 18 9"
                     case "up":      return "M 12 19 L 12 6 M 6 12 L 12 6 L 18 12"
                     case "down":    return "M 12 5 L 12 18 M 6 12 L 12 18 L 18 12"

@@ -116,7 +116,7 @@ Popup {
             Repeater {
                 model: [
                     { icon: "link", t: "Add by invite link", m: "invite" },
-                    { icon: "at", t: "Add by username", m: "username" }
+                    { icon: "bang", t: "Add by username", m: "username" }
                 ]
                 ItemDelegate {
                     id: menuItem

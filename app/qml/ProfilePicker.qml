@@ -43,8 +43,8 @@ Item {
         Image {
             source: "qrc:/icon/logo.svg"
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: 48
-            Layout.preferredWidth: 190
+            Layout.preferredHeight: 44
+            Layout.preferredWidth: 230
             fillMode: Image.PreserveAspectFit
             sourceSize.height: 96
             smooth: true
