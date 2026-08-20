@@ -2767,6 +2767,12 @@ void Session::importProfile(const fs::path& bundleFile, const fs::path& profileD
 
     nlohmann::json meta = bundle.at("meta");
     meta["encrypted"] = !atRestPassphrase.empty();
+    // A client id names a DEVICE, not a profile. Carried over from the bundle,
+    // both devices would present the same one: the server would hold a single
+    // pending list for them, and whichever fetched first would ack the mail away
+    // from the other. A fresh id makes this an added device, which is what an
+    // import is, and each gets its own copy of everything that arrives.
+    meta["clientId"] = toHex(randomBytes(8));
     writeFileText(profileDir / "meta.json", meta.dump(2));
 
     // Match the contacts file to the chosen at-rest scheme (sealed iff a
