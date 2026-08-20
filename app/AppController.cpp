@@ -243,6 +243,17 @@ void AppController::refreshAccounts()
         rows.push_back(std::move(row));
     }
     accounts_.setAccounts(std::move(rows));
+    // Warm spares are only ever handed to a lookup an open account makes. With
+    // every account offline nobody will ask, so the pool stops holding tunnels
+    // open on their behalf.
+    bool anyOnline = false;
+    for (const SessionController* const session : sessions_) {
+        if (session != nullptr && session->online()) {
+            anyOnline = true;
+            break;
+        }
+    }
+    client::setWarmDestsWanted(anyOnline);
     emit accountsChanged();
 }
 

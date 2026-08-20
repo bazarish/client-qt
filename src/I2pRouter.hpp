@@ -106,4 +106,10 @@ bazarish::i2p::Privacy tunnelPrivacy();
 // pool refills at the current one.
 void flushWarmDests();
 
+// Whether the process should keep warm spare destinations at all (default true).
+// The spares exist to save a contact-card fetch or an alias lookup the cold
+// tunnel-build wait; with every account offline nothing will ask for one, and
+// the pool would only hold tunnels open for nobody. Takes effect at once.
+void setWarmDestsWanted(bool wanted);
+
 }  // namespace bazarish::client

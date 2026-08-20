@@ -20,6 +20,9 @@ namespace {
 constexpr std::size_t kWarmPoolSize = 2;
 constexpr int kWarmPoolTunnelQuantity = 3;
 
+// Whether spares are wanted at all; see setWarmDestsWanted.
+std::atomic<bool> g_warmDestsWanted{true};
+
 std::mutex& routerMutex()
 {
     static std::mutex mutex;
@@ -44,6 +47,9 @@ std::unique_ptr<WarmDestPool>& warmPoolSlot()
 // Brings the warm pool up alongside a running router. Call under routerMutex.
 void ensureWarmPool(bazarish::i2p::Router& router)
 {
+    if (!g_warmDestsWanted.load()) {
+        return;
+    }
     std::unique_ptr<WarmDestPool>& pool = warmPoolSlot();
     if (!pool) {
         pool = std::make_unique<WarmDestPool>(
@@ -235,6 +241,18 @@ void setTunnelPrivacy(const bazarish::i2p::Privacy privacy)
 bazarish::i2p::Privacy tunnelPrivacy()
 {
     return g_tunnelPrivacy.load();
+}
+
+void setWarmDestsWanted(const bool wanted)
+{
+    g_warmDestsWanted.store(wanted);
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    bazarish::i2p::Router* const router = routerSlot().get();
+    if (!wanted) {
+        stopWarmPool();
+    } else if (router != nullptr && router->running()) {
+        ensureWarmPool(*router);
+    }
 }
 
 void flushWarmDests()
