@@ -583,6 +583,11 @@ void SessionWorker::sync()
         // undiagnosable, and the reason is often nothing to do with reachability.
         bazarish::log::warn("sync failed: {}", error.what());
         emit syncReachable(false, QString::fromUtf8(error.what()));
+        // Fetching the mailbox and asking after a send are separate requests, and
+        // one failing says nothing about the other. Leaving this out kept every
+        // message this profile had sent at "at your server" for as long as the
+        // fetch kept failing - long after the recipient's server had it.
+        reconcilePendingSends();
         return;  // transient (server momentarily unreachable); next tick retries
     }
     // A destination whose delegation lapses goes dark, and nothing else in the app
@@ -679,7 +684,15 @@ void SessionWorker::reconcilePendingSends()
     }
     std::vector<qint64> resolved;
     for (const auto& [localId, attemptId] : pendingSends_) {
-        const bazarish::client::Session::AttemptOutcome outcome = session_->pollAttempt(attemptId);
+        bazarish::client::Session::AttemptOutcome outcome;
+        try {
+            outcome = session_->pollAttempt(attemptId);
+        } catch (const std::exception& error) {
+            // The server did not answer this poll. The attempt is still live on it,
+            // so keep the message where it is and ask again next round.
+            bazarish::log::warn("send status unavailable: {}", error.what());
+            continue;
+        }
         if (outcome.status == "delivered") {
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);  // grey -> yellow
             resolved.push_back(localId);
