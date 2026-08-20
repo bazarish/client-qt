@@ -193,6 +193,7 @@ if(Qt6_FOUND)
             app/qml/components/Avatar.qml
             app/qml/components/AvatarViewer.qml
             app/qml/components/QrView.qml
+            app/qml/components/AvatarCropDialog.qml
             app/qml/components/Toggle.qml
             app/qml/components/UnreadBadge.qml
             app/qml/components/DialogButtons.qml

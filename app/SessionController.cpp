@@ -1118,17 +1118,41 @@ void SessionWorker::setAvatar(const QString& localPath)
     if (!session_) {
         return;
     }
+    // Compressing, then handing it to every established contact, takes seconds
+    // over I2P: without a row it looks like the app stopped.
+    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Setting your photo"),
+        QStringLiteral("Preparing the image…"));
     try {
         const QByteArray bytes = compressAvatarJpeg(localPath);
         if (bytes.isEmpty()) {
+            emit opDone(op, false, QStringLiteral("Could not read the image"));
             emit actionFailed(QStringLiteral("Could not read the selected image."));
             return;
         }
+        emit opProgress(op, QStringLiteral("Sending to your contacts…"));
         session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
         // Echo locally at once so our own avatar updates without waiting for a sync.
         emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
-        emit actionOk(QStringLiteral("Avatar updated."));
+        emit opDone(op, true, QStringLiteral("Photo set"));
     } catch (const std::exception& e) {
+        emit opDone(op, false, QString::fromUtf8(e.what()));
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::clearAvatar()
+{
+    if (!session_) {
+        return;
+    }
+    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Removing your photo"),
+        QStringLiteral("Working…"));
+    try {
+        session_->setAvatar({}, {});
+        emit avatarReady(QString::fromStdString(session_->fingerprint()), {});
+        emit opDone(op, true, QStringLiteral("Photo removed"));
+    } catch (const std::exception& e) {
+        emit opDone(op, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
     }
 }
@@ -1476,6 +1500,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
     connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
     connect(this, &SessionController::requestSetAvatar, worker_, &SessionWorker::setAvatar);
+    connect(this, &SessionController::requestClearAvatar, worker_, &SessionWorker::clearAvatar);
     connect(this, &SessionController::requestSetDisplayName, worker_,
         &SessionWorker::setDisplayName);
     connect(this, &SessionController::requestRenameContact, worker_, &SessionWorker::renameContact);
@@ -1593,6 +1618,8 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onContactAccepted);
     connect(worker_, &SessionWorker::opBegin, this, &SessionController::onOpBegin);
     connect(worker_, &SessionWorker::opDone, this, &SessionController::onOpDone);
+    connect(worker_, &SessionWorker::opProgress, this,
+        [this](const QString& opId, const QString& status) { updateOperation(opId, status); });
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
@@ -1984,6 +2011,16 @@ void SessionController::setAvatar(const QString& fileUrl)
     if (!localPath.isEmpty()) {
         emit requestSetAvatar(localPath);
     }
+}
+
+bool SessionController::hasAvatar() const
+{
+    return !AvatarStore::instance().image(fingerprint_).isNull();
+}
+
+void SessionController::clearAvatar()
+{
+    emit requestClearAvatar();
 }
 
 void SessionController::setDisplayName(const QString& name)
@@ -2863,6 +2900,9 @@ void SessionController::onMessageReceived(const QVariantMap& message)
 void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)
 {
     AvatarStore::instance().put(fingerprint, data);
+    if (fingerprint == fingerprint_) {
+        emit avatarChanged();
+    }
 }
 
 void SessionController::bumpStatus(qint64 localId, int status)

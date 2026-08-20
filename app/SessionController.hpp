@@ -63,6 +63,7 @@ public slots:
     // Compresses the picked image to a square avatar within the protocol cap and
     // sets it (persist + distribute to contacts and the account's other devices).
     void setAvatar(const QString& localPath);
+    void clearAvatar();
     // Changes the account's own display name (local + future invites only).
     void setDisplayName(const QString& name);
     // Renames a contact locally (mirrored only to the account's other devices).
@@ -114,6 +115,8 @@ signals:
     void opBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
     void opDone(const QString& opId, bool ok, const QString& status);
+    // A row's status line changed while it is still running.
+    void opProgress(const QString& opId, const QString& status);
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& subscriptionText);
     // The account's own display name was changed (so the GUI updates it without a
@@ -498,6 +501,12 @@ public:
     Q_INVOKABLE QString contactName(const QString& fp) const;
     // Sets the account's own avatar from a picked image file (file:// URL).
     Q_INVOKABLE void setAvatar(const QString& fileUrl);
+    // Drops the account's photo. Contacts keep the copy they hold until a new one
+    // is pushed; this device stops showing one.
+    Q_PROPERTY(bool hasAvatar READ hasAvatar NOTIFY avatarChanged)
+    bool hasAvatar() const;
+    // Emitted when this account's own photo is set or dropped.
+    Q_INVOKABLE void clearAvatar();
     // Changes the account's own display name (trimmed). Local only: updates this
     // device and the name carried in future invite descriptors; contacts are not
     // told (each keeps their own local name for us).
@@ -613,6 +622,7 @@ public:
     Q_INVOKABLE void setCallMuted(bool muted);
 
 signals:
+    void avatarChanged();
     void identityChanged();
     void connectedChanged();
     void activePeerChanged();
@@ -668,6 +678,7 @@ signals:  // to worker
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
     void requestSetAvatar(const QString& localPath);
+    void requestClearAvatar();
     void requestSetDisplayName(const QString& name);
     void requestRenameContact(const QString& peer, const QString& name);
     void requestRemoveContact(const QString& peer);

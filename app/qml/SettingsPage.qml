@@ -13,7 +13,9 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 460
+    // Fits the window it is shown in: on a narrow screen the panel used to keep
+    // its 460 and hang off both edges.
+    width: Math.min(460, parent ? parent.width - 24 : 460)
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
 
@@ -89,30 +91,55 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     RowLayout {
+                        Layout.fillWidth: true
                         spacing: 12
-                        // Tap the avatar to view it full-size; set a new photo with
-                        // the button below.
-                        Avatar {
-                            fingerprint: root.session ? root.session.fingerprint : ""
-                            size: 56
-                            enlargeable: true
+                        // The picture and the name are their own controls: tap the
+                        // picture to choose a new one, the name to rename. Two
+                        // buttons repeating what the things themselves can do were
+                        // just the same actions written twice.
+                        Item {
+                            implicitWidth: 56
+                            implicitHeight: 56
+                            Avatar {
+                                anchors.fill: parent
+                                fingerprint: root.session ? root.session.fingerprint : ""
+                                size: 56
+                            }
+                            TapHandler { onTapped: avatarDialog.open() }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: root.session ? root.session.displayName : ""; color: Theme.text; font.weight: Font.Medium }
-                            Label { text: root.session ? root.session.shortFingerprint(root.session.fingerprint) : ""; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                            spacing: 2
+                            Label {
+                                Layout.fillWidth: true
+                                text: root.session ? root.session.displayName : ""
+                                color: Theme.text
+                                font.weight: Font.Medium
+                                elide: Text.ElideRight
+                                TapHandler {
+                                    onTapped: {
+                                        renameSelfField.text
+                                            = root.session ? root.session.displayName : ""
+                                        renameSelfDialog.open()
+                                    }
+                                }
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            }
+                            Label {
+                                text: root.session
+                                    ? root.session.shortFingerprint(root.session.fingerprint) : ""
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                            }
+                        }
+                        // Sharing yourself lives at the far edge of the same row.
+                        IconButton {
+                            iconName: "forward"
+                            Layout.alignment: Qt.AlignVCenter
+                            onClicked: { root.close(); root.showInvite() }
                         }
                     }
-                    MenuButton { Layout.fillWidth: true; text: "Set photo…"; onClicked: avatarDialog.open() }
-                    MenuButton {
-                        Layout.fillWidth: true
-                        text: "Change name…"
-                        onClicked: {
-                            renameSelfField.text = root.session ? root.session.displayName : ""
-                            renameSelfDialog.open()
-                        }
-                    }
-                    MenuButton { Layout.fillWidth: true; text: "My invite link and QR…"; onClicked: { root.close(); root.showInvite() } }
                     MenuButton { Layout.fillWidth: true; text: "Sign in to a site with this key…"; onClicked: { root.close(); root.showSignWithKey() } }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -518,7 +545,47 @@ Popup {
         id: avatarDialog
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)", "All files (*)"]
-        onAccepted: if (root.session) root.session.setAvatar(selectedFile)
+        onAccepted: if (root.session) { avatarCrop.openFor(selectedFile) }
+        // Backing out of the picker is how someone with a photo asks to have none:
+        // the only other reading is that they meant nothing at all, and that is
+        // what the dialog asks.
+        onRejected: if (root.session && root.session.hasAvatar) { dropAvatarDialog.open() }
+    }
+
+    // Picking the part of the picture that becomes the avatar.
+    AvatarCropDialog {
+        id: avatarCrop
+        session: root.session
+        onCropped: function(fileUrl) { if (root.session) { root.session.setAvatar(fileUrl) } }
+    }
+
+    // Remove the account's photo.
+    Dialog {
+        id: dropAvatarDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(360, root.width - 24)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label {
+            text: "Remove your photo?"
+            color: Theme.text
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Remove"
+            danger: true
+            onAccepted: dropAvatarDialog.accept()
+            onRejected: dropAvatarDialog.reject()
+        }
+        onAccepted: if (root.session) { root.session.clearAvatar() }
+        contentItem: Label {
+            wrapMode: Text.Wrap
+            color: Theme.textDim
+            padding: 14
+            text: "Your contacts keep the copy they already have until you set a new one."
+        }
     }
     // Change the account's own display name. Local only: it updates this device and
     // the name carried in future invite descriptors; existing contacts keep the
