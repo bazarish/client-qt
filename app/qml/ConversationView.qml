@@ -238,12 +238,6 @@ Item {
                 id: messages
                 anchors.fill: parent
                 clip: true
-                // Bubbles are pooled rather than built and thrown away. A message
-                // bubble is a big component, and switching accounts rebinds the
-                // whole view at once - which was the pause between the click and
-                // the other account appearing. The delegate is binding-driven, so
-                // a reused one carries nothing over.
-                reuseItems: true
                 spacing: 6
                 topMargin: 10
                 bottomMargin: 10
