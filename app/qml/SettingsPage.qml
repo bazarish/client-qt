@@ -135,7 +135,7 @@ Popup {
                         }
                         // Sharing yourself lives at the far edge of the same row.
                         IconButton {
-                            iconName: "forward"
+                            iconName: "link"
                             Layout.alignment: Qt.AlignVCenter
                             onClicked: { root.close(); root.showInvite() }
                         }
