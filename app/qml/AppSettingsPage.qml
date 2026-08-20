@@ -79,7 +79,7 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "Keep data beside the app"; color: Theme.text }
+                            Label { text: "Portable mode"; color: Theme.text }
                             Label {
                                 text: "Profiles, history and the I2P router's state live in a "
                                     + "bazarish_data folder next to the program instead of your user "
