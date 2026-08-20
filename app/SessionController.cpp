@@ -894,7 +894,7 @@ void SessionWorker::sendReaction(const QString& peer, const QString& refId, cons
         QStringLiteral("Sending…"));
     try {
         session_->sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
-        emit opDone(op, true, QStringLiteral("Sent"));
+        emit opDone(op, true, QStringLiteral("Accepted by your server"));
     } catch (const std::exception& error) {
         // The reaction the user set stands locally either way, but why it did not
         // reach the contact is theirs to know - the row said "Not sent" and kept
@@ -2690,6 +2690,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // A reaction: record the reactor's emoji against the target message and
     // re-drive the chips. Never a chat bubble. The reactor is the peer who sent it.
     if (type == "reaction") {
+        bazarish::log::info("TRACE reaction surfaced ref={}",
+            message.value("ref").toString().toStdString());
         store_.setReaction(peer, message.value("ref").toString(), peer,
             message.value("text").toString());
         ++reactionsRevision_;
@@ -2867,11 +2869,10 @@ void SessionController::onSendProgress(qint64 localId, int state)
     bumpStatus(localId, state);  // AtSenderServer (our own server accepted it)
     const QString opId = QStringLiteral("send:") + QString::number(localId);
     if (state == DeliveryStatus::AtSenderServer) {
-        updateOperation(opId, QStringLiteral("At your server, delivering…"));
-    } else if (state == DeliveryStatus::AtRecipientServer) {
-        finishOperation(opId, true, QStringLiteral("Delivered to recipient's server"));
-    } else if (state == DeliveryStatus::Delivered) {
-        finishOperation(opId, true, QStringLiteral("Read"));
+        // The registry follows the handover, not the journey: once our own server
+        // holds the envelope the row is done. Delivery and reading show up on the
+        // message itself, and a failure comes back from our server as its status.
+        finishOperation(opId, true, QStringLiteral("Accepted by your server"));
     }
 }
 

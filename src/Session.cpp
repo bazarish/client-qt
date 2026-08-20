@@ -2107,6 +2107,8 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 // message and never renders it as a chat bubble.
                 message.contentType = type;
                 message.refId = body.value("ref", std::string());
+                bazarish::log::info("TRACE reaction in ref={} emoji={}",
+                    message.refId, body.value("text", std::string()));
                 message.text = body.value("text", std::string());
             } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
                 || type == "call.end") {
