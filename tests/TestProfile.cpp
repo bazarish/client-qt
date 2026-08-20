@@ -61,8 +61,18 @@ int main()
     // Duplicate name is rejected.
     CHECK_THROWS(manager.create("Acetone", "x"));
 
+    // A name with no ASCII in it has nothing to derive an id from, so it falls
+    // back to a generic one - and the next such name takes the next free id
+    // instead of colliding with it.
+    const ProfileInfo cyrillic = manager.create("клирнет");
+    CHECK(cyrillic.id == "profile");
+    CHECK(cyrillic.name == "клирнет");
+    const ProfileInfo another = manager.create("тестовый");
+    CHECK(another.id == "profile-2");
+    CHECK(another.name == "тестовый");
+
     // Listing reads public metadata with no passphrase.
-    CHECK(manager.list().size() == 2);
+    CHECK(manager.list().size() == 4);
 
     // Encrypted profile needs its passphrase to open.
     CHECK_THROWS(manager.open("acetone"));
@@ -148,7 +158,7 @@ int main()
     // Removal drops the profile.
     manager.remove("work-alias");
     CHECK(!manager.exists("work-alias"));
-    CHECK(manager.list().size() == 1);
+    CHECK(manager.list().size() == 3);
 
     fs::remove_all(root);
     std::fprintf(stderr, "TestProfile passed\n");

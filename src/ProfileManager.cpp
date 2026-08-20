@@ -13,6 +13,10 @@ namespace {
 
 namespace fs = std::filesystem;
 
+// How many profiles may share a sanitised id before creation gives up. A wall,
+// not a limit anybody should reach.
+constexpr int kMaxIdSuffix = 99;
+
 // Derives a safe directory id from a display name: lowercase, only
 // [a-z0-9_-], other runs collapsed to a single '-'. Never empty.
 std::string sanitizeId(const std::string& name)
@@ -162,9 +166,27 @@ std::vector<ProfileInfo> ProfileManager::list() const
 
 ProfileInfo ProfileManager::create(const std::string& name, const std::string& passphrase)
 {
-    const std::string id = sanitizeId(name);
+    std::string id = sanitizeId(name);
     if (exists(id)) {
-        throw std::runtime_error("a profile with this name already exists");
+        // Two different names can sanitise to the same id - a name with no ASCII
+        // in it at all sanitises to nothing and falls back to "profile" - so only
+        // a genuine repeat of the display name is a duplicate; the rest take the
+        // next free id.
+        if (readInfo(id, dirFor(id)).name == name) {
+            throw std::runtime_error("a profile with this name already exists");
+        }
+        std::string free;
+        for (int suffix = 2; suffix <= kMaxIdSuffix; ++suffix) {
+            const std::string candidate = id + "-" + std::to_string(suffix);
+            if (!exists(candidate)) {
+                free = candidate;
+                break;
+            }
+        }
+        if (free.empty()) {
+            throw std::runtime_error("too many profiles with this name");
+        }
+        id = free;
     }
     Session::create(dirFor(id), passphrase, name);
     return readInfo(id, dirFor(id));
