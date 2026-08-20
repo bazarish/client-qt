@@ -10,8 +10,8 @@ import Bazarish
 Item {
     id: root
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
-    // refresh, edit, more, plus, check, up, down, forward, link, dot, stop, send,
-    // sliders, burger.
+    // refresh, edit, more, plus, check, up, down, forward, link, at, dot, stop,
+    // send, person, burger.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -48,6 +48,11 @@ Item {
                         + "A 4 4 0 0 0 12.5 5.8 L 11.2 7.1 "
                         + "M 14 10 A 4 4 0 0 0 8.3 10 L 5.8 12.5 "
                         + "A 4 4 0 0 0 11.5 18.2 L 12.8 16.9"
+                    // The "a" ring inside the open sweep that stops short of
+                    // closing: an at-sign, for anything addressed by name.
+                    case "at":      return "M 12 8 A 4 4 0 1 1 11.99 8 "
+                                         + "M 16 8 L 16 13 A 3 3 0 0 0 22 13 L 22 12 "
+                                         + "A 10 10 0 1 0 18.1 19.9"
                     case "chevron": return "M 6 9 L 12 15 L 18 9"
                     case "up":      return "M 12 19 L 12 6 M 6 12 L 12 6 L 18 12"
                     case "down":    return "M 12 5 L 12 18 M 6 12 L 12 18 L 18 12"
@@ -67,10 +72,9 @@ Item {
                     case "edit":    return "M 4 20 L 4 16 L 16 4 L 20 8 L 8 20 Z M 14 6 L 18 10"
                     case "stop":    return "M 7 7 L 17 7 L 17 17 L 7 17 Z"
                     case "burger":  return "M 4 7 L 20 7 M 4 12 L 20 12 M 4 17 L 20 17"
-                    case "sliders": return "M 4 7 L 20 7 M 4 12 L 20 12 M 4 17 L 20 17 "
-                                         + "M 9 7 A 2.2 2.2 0 1 1 8.99 7 "
-                                         + "M 15 12 A 2.2 2.2 0 1 1 14.99 12 "
-                                         + "M 10 17 A 2.2 2.2 0 1 1 9.99 17"
+                    // Head over shoulders, cut at the waist: a person, not a portrait.
+                    case "person":  return "M 12 4 A 3.7 3.7 0 1 1 11.99 4 "
+                                         + "M 5 20 A 7 7 0 0 1 19 20"
                     case "send":    return "M 3 12 L 21 4 L 14 21 L 11.5 13.5 Z M 11.5 13.5 L 21 4"
                     default:        return ""
                     }

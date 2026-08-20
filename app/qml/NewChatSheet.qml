@@ -115,8 +115,8 @@ Popup {
             spacing: 8
             Repeater {
                 model: [
-                    { t: "🔗  Add by invite link", m: "invite" },
-                    { t: "@  Add by username", m: "username" }
+                    { icon: "link", t: "Add by invite link", m: "invite" },
+                    { icon: "at", t: "Add by username", m: "username" }
                 ]
                 ItemDelegate {
                     id: menuItem
@@ -127,11 +127,15 @@ Popup {
                     onClicked: root.mode = modelData.m
                     // A solid surface row that lifts on hover (surfaceAlt + neon
                     // outline), so the choices stand out and react to the cursor.
-                    contentItem: Label {
-                        text: menuItem.text
-                        color: Theme.text
-                        verticalAlignment: Text.AlignVCenter
-                        leftPadding: 10
+                    contentItem: RowLayout {
+                        spacing: 10
+                        Icon { name: modelData.icon; color: Theme.textDim; size: 17; Layout.leftMargin: 10 }
+                        Label {
+                            text: menuItem.text
+                            color: Theme.text
+                            verticalAlignment: Text.AlignVCenter
+                            Layout.fillWidth: true
+                        }
                     }
                     background: Rectangle {
                         radius: Theme.radiusSmall

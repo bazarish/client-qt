@@ -71,7 +71,7 @@ Item {
                 Item { Layout.fillWidth: true }
                 IconButton {
                     visible: !root.narrow
-                    iconName: "sliders"
+                    iconName: "gear"
                     onClicked: root.appSettingsRequested()
                 }
                 IconButton {
@@ -261,7 +261,7 @@ Item {
                     }
                 }
                 Icon {
-                    name: "gear"
+                    name: "person"
                     color: Theme.textDim
                     size: 15
                 }
@@ -286,7 +286,7 @@ Item {
                     onTapped: root.newChatRequested()
                 }
                 BarButton {
-                    iconName: "gear"
+                    iconName: "person"
                     label: "Account"
                     onTapped: root.settingsRequested()
                 }
