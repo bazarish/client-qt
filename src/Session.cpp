@@ -1137,6 +1137,32 @@ Session::AttemptOutcome Session::pollAttempt(const std::string& attemptId)
     }
 }
 
+bool Session::refreshContactRouting(const std::string& peerFingerprint)
+{
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end()) {
+        throw std::runtime_error("unknown contact: " + peerFingerprint);
+    }
+    // The certificate is signed by the peer, so this is their word on where they
+    // are now, not the server's.
+    const ContactInfo info = client_->lookupContact(peerFingerprint);
+    const std::string dest = info.subscriptionCert.dest;
+    const std::string servingKey = toBase64(info.subscriptionCert.servingSealingKeyDer);
+    if (dest.empty() || servingKey.empty()) {
+        return false;  // the peer publishes no routing: nothing to adopt
+    }
+    validateB32I2pHost(dest);
+    Contact& contact = found->second;
+    if (contact.dest == dest && contact.servingSealingB64 == servingKey) {
+        return false;
+    }
+    bazarish::log::info("contact {} moved to a new destination", bazarish::log::redact(peerFingerprint));
+    contact.dest = dest;
+    contact.servingSealingB64 = servingKey;
+    persistContacts();
+    return true;
+}
+
 void Session::sendContactRequest(const std::string& peerFingerprint, const std::string& text)
 {
     // Resolve the peer's prekey, serving server and server card on our own
@@ -2107,8 +2133,6 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 // message and never renders it as a chat bubble.
                 message.contentType = type;
                 message.refId = body.value("ref", std::string());
-                bazarish::log::info("TRACE reaction in ref={} emoji={}",
-                    message.refId, body.value("text", std::string()));
                 message.text = body.value("text", std::string());
             } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
                 || type == "call.end") {

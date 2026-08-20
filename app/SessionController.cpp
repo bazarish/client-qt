@@ -688,10 +688,10 @@ void SessionWorker::reconcilePendingSends()
         return;
     }
     std::vector<qint64> resolved;
-    for (const auto& [localId, attemptId] : pendingSends_) {
+    for (const auto& [localId, pending] : pendingSends_) {
         bazarish::client::Session::AttemptOutcome outcome;
         try {
-            outcome = session_->pollAttempt(attemptId);
+            outcome = session_->pollAttempt(pending.attemptId);
         } catch (const std::exception& error) {
             // The server did not answer this poll. The attempt is still live on it,
             // so keep the message where it is and ask again next round.
@@ -706,12 +706,20 @@ void SessionWorker::reconcilePendingSends()
             // activity panel reads as progress, not a frozen "sending".
             emit sendPhase(localId, QString::fromStdString(outcome.phase));
         } else if (outcome.status == "failed") {
+            if (outcome.errorMessage.find("could not be reached") != std::string::npos) {
+                refreshRoutingAfterFailure(pending.peer);
+            }
             // grey -> red, with the reason attached to the message.
             emit sendResult(localId, false,
                 QString::fromStdString(outcome.errorMessage.empty() ? std::string("delivery failed")
                                                                      : outcome.errorMessage));
             resolved.push_back(localId);
         } else if (outcome.status == "unconfirmed" || outcome.status == "unknown") {
+            // Nobody answered at the address we hold for them. The commonest
+            // reason is the honest one: they regenerated their destination, and
+            // every send since has been dialling an address nobody serves. Their
+            // certificate says where they are now, so ask.
+            refreshRoutingAfterFailure(pending.peer);
             // "unconfirmed": our server exhausted its retries without confirming
             // delivery, but the envelope may still have been stored (only its ack
             // was lost) - so this is NOT a failure. "unknown": the server forgot
@@ -724,6 +732,22 @@ void SessionWorker::reconcilePendingSends()
     }
     for (const qint64 localId : resolved) {
         pendingSends_.erase(localId);
+    }
+}
+
+void SessionWorker::refreshRoutingAfterFailure(const std::string& peer)
+{
+    if (peer.empty()) {
+        return;
+    }
+    try {
+        if (session_->refreshContactRouting(peer)) {
+            emit actionOk(QStringLiteral("A contact moved to a new address; resend to reach them."));
+        }
+    } catch (const std::exception& error) {
+        // The lookup itself failed (our server unreachable, or they have no
+        // certificate any more). Worth knowing, but it changes nothing here.
+        bazarish::log::warn("routing refresh for a contact failed: {}", error.what());
     }
 }
 
@@ -829,7 +853,7 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
         } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
+            pendingSends_[localId] = {attemptId, peer.toStdString()};
         }
         emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
@@ -851,7 +875,7 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
         } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
+            pendingSends_[localId] = {attemptId, peer.toStdString()};
         }
         emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
@@ -940,7 +964,7 @@ void SessionWorker::sendEdit(
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
         } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
+            pendingSends_[localId] = {attemptId, peer.toStdString()};
         }
         emit sendResult(localId, true, {});
     } catch (const std::exception& e) {
@@ -2690,8 +2714,6 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // A reaction: record the reactor's emoji against the target message and
     // re-drive the chips. Never a chat bubble. The reactor is the peer who sent it.
     if (type == "reaction") {
-        bazarish::log::info("TRACE reaction surfaced ref={}",
-            message.value("ref").toString().toStdString());
         store_.setReaction(peer, message.value("ref").toString(), peer,
             message.value("text").toString());
         ++reactionsRevision_;

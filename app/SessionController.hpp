@@ -231,6 +231,7 @@ private:
     // Re-polls sends still in flight after their initial submit window so a late
     // delivery (yellow) or failure (red) reaches the message; run each sync.
     void reconcilePendingSends();
+    void refreshRoutingAfterFailure(const std::string& peer);
     // Starts an asynchronous contact add: snapshots the transport context on this
     // thread, then runs the slow federated card fetch on a detached background
     // thread (its own transport) so sync and the connection are never blocked. The
@@ -255,7 +256,14 @@ private:
     qint64 lastTransientCheckMs_ = 0;
     // Outgoing messages accepted by our server but not yet confirmed delivered:
     // local message id -> server attempt id, reconciled on each sync.
-    std::map<qint64, std::string> pendingSends_;
+    // A send handed to our own server, waiting for its outcome: the attempt to
+    // ask about, and the contact it was for - so a delivery that never reaches
+    // them can ask whether they have moved.
+    struct PendingSend {
+        std::string attemptId;
+        std::string peer;
+    };
+    std::map<qint64, PendingSend> pendingSends_;
     // Set true to abort in-flight downloads (teardown / session switch); the fetch
     // polls it to close a parked read and stop retrying, and queued tasks skip
     // emitting onto a tearing-down session.
