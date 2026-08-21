@@ -1719,21 +1719,33 @@ SessionController::~SessionController()
     thread_.wait();
 }
 
+// The profile's own store, opened on demand: a second connection to the same
+// database the worker's session holds, which is what SQLite is built for.
+client::ProfileDb& SessionController::profileDb()
+{
+    if (!profileDb_) {
+        profileDb_ = std::make_unique<client::ProfileDb>(
+            profileDir_.toStdString(), profilePassphrase_.toStdString());
+    }
+    return *profileDb_;
+}
+
 void SessionController::open(const QString& dir, const QString& profileId, const QString& passphrase)
 {
     profileId_ = profileId;
-    recentReactionsPath_ = dir + "/recent-reactions.json";
-    QFile recents(recentReactionsPath_);
-    if (recents.open(QIODevice::ReadOnly)) {
-        const QJsonDocument document = QJsonDocument::fromJson(recents.readAll());
-        for (const QJsonValue& entry : document.array()) {
-            recentReactions_ << entry.toString();
-        }
+    profileDir_ = dir;
+    profilePassphrase_ = passphrase;
+    // Everything a profile keeps lives in its one encrypted database; the
+    // transcript is its largest table, the rest are named rows.
+    store_.open(profileId, dir + "/" + QString::fromUtf8(client::ProfileDb::kFileName), passphrase);
+    const QJsonDocument recents = QJsonDocument::fromJson(
+        QByteArray::fromStdString(profileDb().text("recent-reactions")));
+    for (const QJsonValue& entry : recents.array()) {
+        recentReactions_ << entry.toString();
+    }
+    if (!recentReactions_.isEmpty()) {
         emit recentReactionsChanged();
     }
-    // The passphrase that unlocks the keys also seals the transcript at rest.
-    // One encrypted database per profile; the transcript is its largest table.
-    store_.open(profileId, dir + "/profile.db", passphrase);
     // There is no persistent outbound queue, so any outgoing message still at
     // "sending" is an interrupted send (the app closed mid-upload), not one in
     // flight. Mark these failed on load so they read as "not sent" with a resend
@@ -3352,13 +3364,8 @@ void SessionController::rememberReaction(const QString& emoji)
     for (const QString& entry : recentReactions_) {
         array.append(entry);
     }
-    QFile file(recentReactionsPath_);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        file.write(QJsonDocument(array).toJson(QJsonDocument::Compact));
-    } else {
-        bazarish::log::warn("could not keep the recent reactions: {}",
-            file.errorString().toStdString());
-    }
+    const QByteArray text = QJsonDocument(array).toJson(QJsonDocument::Compact);
+    profileDb().putText("recent-reactions", text.toStdString());
     emit recentReactionsChanged();
 }
 

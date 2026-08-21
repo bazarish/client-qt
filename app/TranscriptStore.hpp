@@ -165,9 +165,6 @@ public:
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
 
 private:
-    // Imports a database left by the previous layout, if one is there.
-    bool migrateLegacy(const QString& dbPath, const std::string& key);
-
     // The open connection. Owned; closed in the destructor.
     sqlite3* db_ = nullptr;
 };

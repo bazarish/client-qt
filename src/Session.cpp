@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Session.hpp"
 
+#include "ProfileDb.hpp"
+
 #include "FederationFetch.hpp"
 #include "I2pKeys.hpp"
 #include "I2pRouter.hpp"
@@ -268,16 +270,22 @@ bazarish::i2p::Router& Session::i2pRouter() const
     return sharedI2pRouter(dataDir);
 }
 
+Session::~Session() = default;
+Session::Session(Session&&) noexcept = default;
+Session& Session::operator=(Session&&) noexcept = default;
+
 Session Session::create(
     const fs::path& profileDir, const std::string& passphrase, const std::string& name)
 {
-    fs::create_directories(profileDir);
+    // The database is the protection: it is keyed with the passphrase (or with
+    // the default key when there is none), so what goes inside is stored as it is.
+    auto db = std::make_unique<ProfileDb>(profileDir, passphrase);
 
     Identity identity = Identity::generate();
-    writeFileText(profileDir / "identity.pem", identity.privatePem(passphrase));
+    db->putText("identity.pem", identity.privatePem());
 
     Key sealing = Key::generateSealing();
-    writeFileText(profileDir / "sealing.pem", sealing.privatePem(passphrase));
+    db->putText("sealing.pem", sealing.privatePem());
 
     const std::string clientId = toHex(randomBytes(8));
     const bool encrypted = !passphrase.empty();
@@ -298,11 +306,12 @@ Session Session::create(
         {"subscriptionCert", ""},
         {"encrypted", encrypted},
     };
-    writeFileText(profileDir / "meta.json", meta.dump(2));
+    db->putText("meta", meta.dump(2));
 
     auto client = std::make_unique<Client>(
         std::move(identity), clientId, endpoint, i2pDirFor(profileDir));
     Session session(profileDir, std::move(client), std::move(sealing), {});
+    session.db_ = std::move(db);
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
     session.name_ = name;
@@ -355,7 +364,10 @@ std::vector<std::string> Session::facadeUrls() const
 
 Session Session::open(const fs::path& profileDir, const std::string& passphrase)
 {
-    const nlohmann::json meta = nlohmann::json::parse(readFileText(profileDir / "meta.json"));
+    // Opening the database is the passphrase check: with the wrong key the pages
+    // do not decrypt and this throws rather than reading an empty profile.
+    auto db = std::make_unique<ProfileDb>(profileDir, passphrase);
+    const nlohmann::json meta = nlohmann::json::parse(db->text("meta"));
     ServerEndpoint endpoint;
     const nlohmann::json& endpointJson = meta.at("endpoint");
     endpoint.serverFingerprint = endpointJson.at("serverFingerprint").get<std::string>();
@@ -364,25 +376,14 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     }
 
     const bool encrypted = meta.value("encrypted", false);
-    if (encrypted && passphrase.empty()) {
-        throw std::runtime_error(
-            "session keys are encrypted: set BAZARISH_PASSPHRASE");
-    }
 
-    Identity identity
-        = Identity::fromPrivatePem(readFileText(profileDir / "identity.pem"), passphrase);
-    Key sealing = Key::fromPrivatePem(readFileText(profileDir / "sealing.pem"), passphrase);
+    Identity identity = Identity::fromPrivatePem(db->text("identity.pem"));
+    Key sealing = Key::fromPrivatePem(db->text("sealing.pem"));
     const std::string clientId = meta.at("clientId").get<std::string>();
 
     std::map<std::string, Contact> contacts;
-    const fs::path contactsPath = profileDir / "contacts.json";
-    if (fs::exists(contactsPath)) {
-        const std::string raw = readFileText(contactsPath);
-        // When the profile is encrypted the file is a CMS PWRI blob holding
-        // the contacts JSON; otherwise it is the JSON itself.
-        const nlohmann::json stored = encrypted
-            ? nlohmann::json::parse(cms::unsealWithPassword(Bytes(raw.begin(), raw.end()), passphrase))
-            : nlohmann::json::parse(raw);
+    if (db->has("contacts")) {
+        const nlohmann::json stored = nlohmann::json::parse(db->text("contacts"));
         for (const auto& [fingerprint, entry] : stored.items()) {
             Contact contact;
             contact.sealingPublicB64 = entry.at("sealingPublicB64").get<std::string>();
@@ -402,6 +403,7 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     auto client = std::make_unique<Client>(
         std::move(identity), clientId, endpoint, i2pDirFor(profileDir));
     Session session(profileDir, std::move(client), std::move(sealing), std::move(contacts));
+    session.db_ = std::move(db);
     session.client_->setI2pProven(meta.value("i2pProven", false));
     session.client_->setAllowClearnet(
         meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
@@ -424,34 +426,28 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     session.loadSentFiles();
 
     // Load the user-owned I2P destination, if this profile has one (per-user
-    // path). Both blobs are sealed at rest when the profile is encrypted.
-    const auto loadI2pBlob = [&](const char* filename) -> Bytes {
-        const fs::path path = profileDir / filename;
-        if (!fs::exists(path)) {
-            return {};
-        }
-        const std::string raw = readFileText(path);
-        const Bytes blob(raw.begin(), raw.end());
-        return encrypted ? cms::unsealWithPassword(blob, passphrase) : blob;
+    // path).
+    const auto loadBlob = [&session](const std::string& name) -> Bytes {
+        return session.db_->get(name).value_or(Bytes{});
     };
-    session.i2pMaster_ = loadI2pBlob("i2p-master.dat");
+    session.i2pMaster_ = loadBlob("i2p-master");
     if (!session.i2pMaster_.empty()) {
         session.i2pAddress_ = i2pBase32(session.i2pMaster_);
     }
-    session.i2pTransient_ = loadI2pBlob("i2p-transient.dat");
+    session.i2pTransient_ = loadBlob("i2p-transient");
 
-    // Avatars (own + per-contact): the bytes live in sealed blob files, only the
-    // mime flags ride in meta/contacts. Load the bytes for whatever has a mime.
+    // Avatars (own + per-contact): the bytes are their own rows, only the mime
+    // flags ride in meta/contacts. Load the bytes for whatever has a mime.
     session.avatarMime_ = meta.value("avatarMime", std::string{});
     if (!session.avatarMime_.empty()) {
-        session.avatar_ = loadI2pBlob("avatar.self");
+        session.avatar_ = loadBlob("avatar.self");
         if (session.avatar_.empty()) {
-            session.avatarMime_.clear();  // file gone (e.g. a backup restore): no avatar
+            session.avatarMime_.clear();  // nothing stored: no avatar
         }
     }
     for (auto& [contactFp, contact] : session.contacts_) {
         if (!contact.avatarMime.empty()) {
-            contact.avatar = loadI2pBlob(("avatar-" + contactFp).c_str());
+            contact.avatar = loadBlob("avatar-" + contactFp);
             if (contact.avatar.empty()) {
                 contact.avatarMime.clear();
             }
@@ -556,7 +552,7 @@ void Session::persistMeta() const
         {"i2pProven", client_->i2pProven()},
         {"allowClearnet", client_->allowClearnet()},
     };
-    writeFileText(profileDir_ / "meta.json", meta.dump(2));
+    db_->putText("meta", meta.dump(2));
 }
 
 nlohmann::json Session::contactsToJson() const
@@ -579,16 +575,9 @@ nlohmann::json Session::contactsToJson() const
 
 void Session::persistContacts() const
 {
-    const nlohmann::json stored = contactsToJson();
-    if (encrypted_) {
-        // Delivery tokens are write capabilities into a peer's mailbox: seal
-        // the file at rest under the profile passphrase (CMS PWRI).
-        const std::string text = stored.dump();
-        const Bytes sealed = cms::sealWithPassword(Bytes(text.begin(), text.end()), passphrase_);
-        writeFileText(profileDir_ / "contacts.json", std::string(sealed.begin(), sealed.end()));
-        return;
-    }
-    writeFileText(profileDir_ / "contacts.json", stored.dump(2));
+    // Delivery tokens are write capabilities into a peer's mailbox; they live in
+    // the profile database, which is where the protection is.
+    db_->putText("contacts", contactsToJson().dump());
 }
 
 PortalInfo Session::serverPortalInfo()
@@ -694,18 +683,17 @@ std::string Session::ownRoutingHost() const
     return i2pAddress_.empty() ? std::string() : i2pAddress_ + kI2pHostSuffix;
 }
 
-void Session::persistSealedBlob(const std::string& filename, const Bytes& blob) const
+void Session::persistSealedBlob(const std::string& name, const Bytes& blob) const
 {
-    const Bytes onDisk = encrypted_ ? cms::sealWithPassword(blob, passphrase_) : blob;
-    writeFileText(profileDir_ / filename, std::string(onDisk.begin(), onDisk.end()));
+    db_->put(name, blob);
 }
 
-void Session::persistI2pBlob(const std::string& filename, const Bytes& blob) const
+void Session::persistI2pBlob(const std::string& name, const Bytes& blob) const
 {
-    // The master is the user's long-term routing identity and the transient is
-    // a live delegation key: both are sealed at rest under the profile
-    // passphrase, like the private-key PEMs.
-    persistSealedBlob(filename, blob);
+    // The master is the user's long-term routing identity and the transient is a
+    // live delegation key: they sit in the profile database like the private-key
+    // PEMs, never beside it.
+    persistSealedBlob(name, blob);
 }
 
 std::string Session::ensureI2pDestination()
@@ -714,7 +702,7 @@ std::string Session::ensureI2pDestination()
         const I2pMasterKey master = generateI2pMaster();
         i2pMaster_ = master.privateKeys;
         i2pAddress_ = master.base32;
-        persistI2pBlob("i2p-master.dat", i2pMaster_);
+        persistI2pBlob("i2p-master", i2pMaster_);
     }
     return i2pAddress_;
 }
@@ -734,9 +722,8 @@ void Session::deleteI2pDestination()
     i2pMaster_.clear();
     i2pTransient_.clear();
     i2pAddress_.clear();
-    // fs::remove returns false (no throw) when the file is already absent.
-    fs::remove(profileDir_ / "i2p-master.dat");
-    fs::remove(profileDir_ / "i2p-transient.dat");
+    db_->erase("i2p-master");
+    db_->erase("i2p-transient");
 }
 
 void Session::renewI2pTransient(const std::int64_t expiresUnix)
@@ -745,7 +732,7 @@ void Session::renewI2pTransient(const std::int64_t expiresUnix)
         throw std::runtime_error("no user-owned I2P destination to delegate");
     }
     i2pTransient_ = issueI2pOfflineKeys(i2pMaster_, expiresUnix);
-    persistI2pBlob("i2p-transient.dat", i2pTransient_);
+    persistI2pBlob("i2p-transient", i2pTransient_);
 }
 
 Bytes Session::i2pTransient() const
@@ -766,7 +753,7 @@ std::string Session::loadI2pDestination(const Bytes& privateKeysDat)
     const I2pMasterKey master = loadI2pMaster(privateKeysDat);
     i2pMaster_ = master.privateKeys;
     i2pAddress_ = master.base32;
-    persistI2pBlob("i2p-master.dat", i2pMaster_);
+    persistI2pBlob("i2p-master", i2pMaster_);
     return i2pAddress_;
 }
 
@@ -777,8 +764,7 @@ void Session::disableI2pDest()
     // restores the same address.
     client_->sendI2pTransient(std::string(), 0);
     i2pTransient_.clear();
-    // fs::remove returns false (no throw) when the file is already absent.
-    fs::remove(profileDir_ / "i2p-transient.dat");
+    db_->erase("i2p-transient");
 }
 
 void Session::syncI2pMasterToSelf()
@@ -977,9 +963,8 @@ void Session::removeContact(const std::string& peerFingerprint)
     if (contacts_.erase(peerFingerprint) == 0) {
         return;  // unknown contact
     }
-    // Drop the sealed avatar blob too, so nothing of the contact lingers on disk.
-    std::error_code ignore;
-    fs::remove(profileDir_ / ("avatar-" + peerFingerprint), ignore);
+    // Drop the avatar too, so nothing of the contact lingers in the profile.
+    db_->erase("avatar-" + peerFingerprint);
     persistContacts();
 }
 
@@ -1767,6 +1752,9 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
         return;
     }
     const fs::path source = found->second.path;
+    // The only thing besides the database that a profile ever writes: the sealed
+    // copy of a file being served. It holds ciphertext under a key that travels
+    // in the offer, and it is removed when the transfer window closes.
     const fs::path ciphertextPath
         = profileDir_ / ("file-serve-" + toHex(randomBytes(8)) + ".tmp");
 
@@ -1987,14 +1975,10 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
 
 void Session::loadSentFiles()
 {
-    const fs::path path = profileDir_ / "sent-files.json";
-    if (!fs::exists(path)) {
+    if (!db_->has("sent-files")) {
         return;
     }
-    const std::string raw = readFileText(path);
-    const nlohmann::json stored = encrypted_
-        ? nlohmann::json::parse(cms::unsealWithPassword(Bytes(raw.begin(), raw.end()), passphrase_))
-        : nlohmann::json::parse(raw);
+    const nlohmann::json stored = nlohmann::json::parse(db_->text("sent-files"));
     for (const auto& [id, entry] : stored.items()) {
         sentFiles_[id] = SentFile{fs::path(entry.at("path").get<std::string>()),
             entry.value("sha256", std::string()), entry.value("size", std::uint64_t{0})};
@@ -2011,8 +1995,7 @@ void Session::persistSentFiles() const
             {"size", file.size},
         };
     }
-    const std::string text = stored.dump();
-    persistSealedBlob("sent-files.json", Bytes(text.begin(), text.end()));
+    db_->putText("sent-files", stored.dump());
 }
 
 
@@ -2900,9 +2883,9 @@ std::string Session::inviteUri() const
 
 void Session::exportProfile(const fs::path& outFile, const std::string& password) const
 {
-    const nlohmann::json meta = nlohmann::json::parse(readFileText(profileDir_ / "meta.json"));
-    // Use the in-memory contacts: the on-disk file may be sealed, and the
-    // bundle carries them in the clear (the bundle password is the protection).
+    const nlohmann::json meta = nlohmann::json::parse(db_->text("meta"));
+    // Use the in-memory contacts; the bundle carries them in the clear (the
+    // bundle password is the protection).
     const nlohmann::json contacts = contactsToJson();
 
     // The keys are re-serialized unencrypted inside the bundle; the password
@@ -2930,12 +2913,13 @@ void Session::importProfile(const fs::path& bundleFile, const fs::path& profileD
 
     fs::create_directories(profileDir);
 
-    // Round-trip the keys through the crypto types so the imported PEMs adopt
-    // the chosen at-rest scheme (encrypted iff a passphrase is given).
+    // The new profile's database is keyed with the chosen passphrase; the keys go
+    // inside it as they are.
+    ProfileDb db(profileDir, atRestPassphrase);
     const Identity identity = Identity::fromPrivatePem(bundle.at("identityPem").get<std::string>());
     const Key sealing = Key::fromPrivatePem(bundle.at("sealingPem").get<std::string>());
-    writeFileText(profileDir / "identity.pem", identity.privatePem(atRestPassphrase));
-    writeFileText(profileDir / "sealing.pem", sealing.privatePem(atRestPassphrase));
+    db.putText("identity.pem", identity.privatePem());
+    db.putText("sealing.pem", sealing.privatePem());
 
     nlohmann::json meta = bundle.at("meta");
     meta["encrypted"] = !atRestPassphrase.empty();
@@ -2945,19 +2929,8 @@ void Session::importProfile(const fs::path& bundleFile, const fs::path& profileD
     // from the other. A fresh id makes this an added device, which is what an
     // import is, and each gets its own copy of everything that arrives.
     meta["clientId"] = toHex(randomBytes(8));
-    writeFileText(profileDir / "meta.json", meta.dump(2));
-
-    // Match the contacts file to the chosen at-rest scheme (sealed iff a
-    // passphrase is given), mirroring the keys above.
-    const nlohmann::json contacts = bundle.at("contacts");
-    if (!atRestPassphrase.empty()) {
-        const std::string text = contacts.dump();
-        const Bytes sealed
-            = cms::sealWithPassword(Bytes(text.begin(), text.end()), atRestPassphrase);
-        writeFileText(profileDir / "contacts.json", std::string(sealed.begin(), sealed.end()));
-    } else {
-        writeFileText(profileDir / "contacts.json", contacts.dump(2));
-    }
+    db.putText("meta", meta.dump(2));
+    db.putText("contacts", bundle.at("contacts").dump());
 }
 
 }  // namespace bazarish::client

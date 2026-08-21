@@ -2,7 +2,6 @@
 #include "TranscriptStore.hpp"
 
 #include <bazarish/Bytes.hpp>
-#include <bazarish/Cms.hpp>
 // Qt makes `emit` a macro and the log header declares a function of that name,
 // so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
@@ -10,25 +9,17 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
-#include <QFile>
 #include <QStringList>
 
 #include <sqlcipher/sqlite3.h>
 
 #include <algorithm>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 
 namespace bazarish::app {
 
 namespace {
-
-Bytes readFileBytes(const QString& path)
-{
-    std::ifstream in(path.toStdString(), std::ios::binary);
-    return Bytes(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-}
 
 // One value read out of a result row, in the shape the readers below expect.
 class Value {
@@ -225,103 +216,13 @@ bool readable(sqlite3* const db)
         == SQLITE_OK;
 }
 
-// Copies everything in `from` into a new encrypted database at `path`, using
-// SQLCipher's own export. The source may be plaintext or in memory.
-bool exportInto(sqlite3* const from, const QString& path, const std::string& key)
-{
-    std::string quoted;
-    for (const char c : key) {
-        quoted.push_back(c);
-        if (c == '\'') {
-            quoted.push_back(c);
-        }
-    }
-    const std::string attach = "ATTACH DATABASE '" + path.toStdString() + "' AS bz KEY '"
-        + quoted + "'";
-    if (sqlite3_exec(from, attach.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
-        return false;
-    }
-    const bool exported
-        = sqlite3_exec(from, "SELECT sqlcipher_export('bz')", nullptr, nullptr, nullptr)
-        == SQLITE_OK;
-    sqlite3_exec(from, "DETACH DATABASE bz", nullptr, nullptr, nullptr);
-    return exported;
-}
-
 }  // namespace
-
-// Brings a database written by the previous layout into the encrypted one: a
-// plaintext transcript.db, or a CMS-sealed transcript.db.enc that used to be
-// loaded into memory in one piece. Returns false only when a migration was
-// attempted and failed - the caller then refuses to open rather than start an
-// empty transcript beside the old one.
-bool TranscriptStore::migrateLegacy(const QString& dbPath, const std::string& key)
-{
-    const QString dir = dbPath.left(dbPath.lastIndexOf('/') + 1);
-    const QString plainPath = dir + "transcript.db";
-    const QString sealedPath = plainPath + ".enc";
-
-    if (QFile::exists(sealedPath)) {
-        const Bytes sealed = readFileBytes(sealedPath);
-        const Bytes plain = cms::unsealWithPassword(sealed, key);
-        sqlite3* memory = openKeyed(QStringLiteral(":memory:"), std::string());
-        if (memory == nullptr) {
-            return false;
-        }
-        // SQLite takes ownership of the buffer (FREEONCLOSE) and may grow it
-        // (RESIZEABLE), so it must be a sqlite3_malloc allocation.
-        unsigned char* const buffer
-            = static_cast<unsigned char*>(sqlite3_malloc64(plain.empty() ? 1 : plain.size()));
-        if (buffer == nullptr) {
-            sqlite3_close(memory);
-            return false;
-        }
-        std::copy(plain.begin(), plain.end(), buffer);
-        if (sqlite3_deserialize(memory, "main", buffer, static_cast<sqlite3_int64>(plain.size()),
-                static_cast<sqlite3_int64>(plain.size()),
-                SQLITE_DESERIALIZE_FREEONCLOSE | SQLITE_DESERIALIZE_RESIZEABLE)
-            != SQLITE_OK) {
-            sqlite3_close(memory);
-            return false;
-        }
-        const bool ok = exportInto(memory, dbPath, key);
-        sqlite3_close(memory);
-        if (!ok) {
-            return false;
-        }
-        QFile::remove(sealedPath);
-        bazarish::log::info("transcript: migrated the sealed database into {}", dbPath.toStdString());
-        return true;
-    }
-
-    if (QFile::exists(plainPath)) {
-        sqlite3* plain = openKeyed(plainPath, std::string());
-        if (plain == nullptr || !readable(plain)) {
-            sqlite3_close(plain);
-            return false;
-        }
-        const bool ok = exportInto(plain, dbPath, key);
-        sqlite3_close(plain);
-        if (!ok) {
-            return false;
-        }
-        QFile::remove(plainPath);
-        bazarish::log::info(
-            "transcript: migrated the plaintext database into {}", dbPath.toStdString());
-        return true;
-    }
-    return true;
-}
 
 bool TranscriptStore::open(const QString& profileId, const QString& dbPath, const QString& passphrase)
 {
     (void)profileId;  // one connection per store now; the id no longer names it
     const std::string key
         = passphrase.isEmpty() ? std::string(kDefaultKey) : passphrase.toStdString();
-
-    if (!QFile::exists(dbPath) && !migrateLegacy(dbPath, key)) {
-        return false;
-    }
 
     db_ = openKeyed(dbPath, key);
     if (db_ == nullptr) {

@@ -44,6 +44,12 @@ if(BAZARISH_SANITIZE)
     add_link_options(-fsanitize=${BAZARISH_SANITIZE})
 endif()
 
+# The profile store is SQLCipher (an encrypted SQLite): one file per profile,
+# unreadable without its key. It is a fork of SQLite exporting the same symbols,
+# so nothing in this project may link plain libsqlite3 next to it.
+find_library(SQLCIPHER_LIBRARY NAMES sqlcipher REQUIRED)
+find_path(SQLCIPHER_INCLUDE_DIR NAMES sqlcipher/sqlite3.h REQUIRED)
+
 add_library(bazarish_client_lib STATIC
     src/ApiClient.cpp
     src/AudioCodec.cpp
@@ -56,6 +62,7 @@ add_library(bazarish_client_lib STATIC
     src/I2pRouter.cpp
     src/Invite.cpp
     src/FileTransfer.cpp
+    src/ProfileDb.cpp
     src/ProfileManager.cpp
     src/Qr.cpp
     src/Session.cpp
@@ -63,7 +70,8 @@ add_library(bazarish_client_lib STATIC
 )
 target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR})
-target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads)
+target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads
+    ${SQLCIPHER_LIBRARY})
 target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY})
 target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 add_executable(bazarish-client src/Main.cpp)
@@ -91,12 +99,9 @@ if(Qt6_FOUND)
     # GUI; the code falls back to opening the containing folder when it is absent.
     find_package(Qt6 COMPONENTS DBus QUIET)
 
-    # The profile database is SQLCipher (an encrypted SQLite). It is a fork of
-    # SQLite exporting the same symbols, so nothing here may link plain libsqlite3
-    # as well - that is why the transcript store talks to the C API directly
-    # instead of going through Qt's QSQLITE driver.
-    find_library(SQLCIPHER_LIBRARY NAMES sqlcipher REQUIRED)
-    find_path(SQLCIPHER_INCLUDE_DIR NAMES sqlcipher/sqlite3.h REQUIRED)
+    # The transcript store talks to SQLCipher's C API directly rather than through
+    # Qt's QSQLITE driver: that driver links plain libsqlite3, and two SQLite
+    # implementations exporting the same symbols must not meet in one process.
 
     qt_add_executable(bazarish-app
         app/main.cpp

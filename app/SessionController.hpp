@@ -3,6 +3,7 @@
 
 #include "Models.hpp"
 #include "Session.hpp"
+#include "ProfileDb.hpp"
 #include "TranscriptStore.hpp"
 
 #include <QObject>
@@ -871,7 +872,11 @@ private:
     // Sending capacity per contact: their tokens this device still holds.
     QHash<QString, int> sendCapacities_;
     QStringList recentReactions_;
-    QString recentReactionsPath_;
+    // Where this profile lives and what unlocks it, for the store below.
+    QString profileDir_;
+    QString profilePassphrase_;
+    std::unique_ptr<client::ProfileDb> profileDb_;
+    client::ProfileDb& profileDb();
     QString ownInvite_;
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.

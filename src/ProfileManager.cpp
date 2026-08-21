@@ -1,10 +1,11 @@
 // Bazarish project (c) 2026
 #include "ProfileManager.hpp"
 
+#include "ProfileDb.hpp"
+
 #include <nlohmann/json.hpp>
 
 #include <cstdlib>
-#include <fstream>
 #include <stdexcept>
 
 namespace bazarish::client {
@@ -52,29 +53,29 @@ std::string sanitizeId(const std::string& name)
     return id;
 }
 
-std::string readFileText(const fs::path& path)
+// What can be told about a profile without opening it fully. A profile with a
+// passphrase gives up nothing until it is unlocked - not its name, not its
+// fingerprint - which is the point of keeping everything in one keyed file. It
+// is listed by its directory id and marked locked.
+ProfileInfo readInfo(const std::string& id, const fs::path& dir, const std::string& passphrase = {})
 {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        throw std::runtime_error("failed to open " + path.string());
-    }
-    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-}
-
-ProfileInfo readInfo(const std::string& id, const fs::path& dir)
-{
-    const nlohmann::json meta = nlohmann::json::parse(readFileText(dir / "meta.json"));
     ProfileInfo info;
     info.id = id;
     info.dir = dir;
+    info.name = id;
+    if (!ProfileDb::opens(dir, passphrase)) {
+        info.encrypted = true;
+        return info;
+    }
+    const ProfileDb db(dir, passphrase);
+    const nlohmann::json meta = nlohmann::json::parse(db.text("meta"));
     info.name = meta.value("name", std::string{});
     if (info.name.empty()) {
         info.name = id;
     }
     info.fingerprint = meta.value("fingerprint", std::string{});
     info.encrypted = meta.value("encrypted", false);
-    info.connected
-        = !meta.at("endpoint").value("facades", nlohmann::json::array()).empty();
+    info.connected = !meta.at("endpoint").value("facades", nlohmann::json::array()).empty();
     return info;
 }
 
@@ -142,7 +143,7 @@ fs::path ProfileManager::dirFor(const std::string& id) const
 
 bool ProfileManager::exists(const std::string& id) const
 {
-    return fs::exists(dirFor(id) / "meta.json");
+    return fs::exists(dirFor(id) / ProfileDb::kFileName);
 }
 
 std::vector<ProfileInfo> ProfileManager::list() const
@@ -155,8 +156,7 @@ std::vector<ProfileInfo> ProfileManager::list() const
         if (!entry.is_directory()) {
             continue;
         }
-        const fs::path meta = entry.path() / "meta.json";
-        if (!fs::exists(meta)) {
+        if (!fs::exists(entry.path() / ProfileDb::kFileName)) {
             continue;
         }
         profiles.push_back(readInfo(entry.path().filename().string(), entry.path()));
@@ -189,7 +189,7 @@ ProfileInfo ProfileManager::create(const std::string& name, const std::string& p
         id = free;
     }
     Session::create(dirFor(id), passphrase, name);
-    return readInfo(id, dirFor(id));
+    return readInfo(id, dirFor(id), passphrase);
 }
 
 Session ProfileManager::open(const std::string& id, const std::string& passphrase) const
@@ -207,14 +207,14 @@ ProfileInfo ProfileManager::import(const std::string& name, const fs::path& bund
     const fs::path tmp = root_ / ".import-tmp";
     fs::remove_all(tmp);
     Session::importProfile(bundleFile, tmp, password, atRestPassphrase);
-    const std::string restoredName = readInfo(std::string{}, tmp).name;
+    const std::string restoredName = readInfo(std::string{}, tmp, atRestPassphrase).name;
     const std::string id = sanitizeId(name.empty() ? restoredName : name);
     if (exists(id)) {
         fs::remove_all(tmp);
         throw std::runtime_error("a profile with this name already exists");
     }
     fs::rename(tmp, dirFor(id));
-    return readInfo(id, dirFor(id));
+    return readInfo(id, dirFor(id), atRestPassphrase);
 }
 
 void ProfileManager::remove(const std::string& id)

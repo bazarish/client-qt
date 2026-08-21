@@ -24,6 +24,8 @@
 
 namespace bazarish::client {
 
+class ProfileDb;
+
 // One button of an inline keyboard attached to a message. Carries a label and
 // exactly one action: a callback (sends a bot.callback when tapped) or a
 // command (sends a bot.command). When both are set, the callback wins.
@@ -707,6 +709,12 @@ public:
     std::vector<std::string> contactFingerprints() const;
 
 
+    // Declared here and defined in the .cpp so the profile database stays an
+    // incomplete type everywhere else; a session is moved, never copied.
+    ~Session();
+    Session(Session&&) noexcept;
+    Session& operator=(Session&&) noexcept;
+
 private:
     Session(std::filesystem::path profileDir, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);
@@ -868,6 +876,9 @@ private:
 
 
     std::filesystem::path profileDir_;
+    // The profile's storage: one encrypted file holding keys, metadata, contacts
+    // and blobs. Opened for the session's lifetime.
+    std::unique_ptr<ProfileDb> db_;
     // A peer asked for a file we announced: encrypt it to a temp ciphertext, raise
     // a one-time destination, seal the offer back and serve until the window
     // closes. Runs on its own thread - building tunnels takes tens of seconds.
