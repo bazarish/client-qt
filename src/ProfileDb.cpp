@@ -98,10 +98,12 @@ sqlite3* openProfile(const fs::path& file, const std::string& key)
 
 }  // namespace
 
-ProfileDb::ProfileDb(const fs::path& profileDir, const std::string& passphrase)
+ProfileDb::ProfileDb(const fs::path& file, const std::string& passphrase)
 {
-    fs::create_directories(profileDir);
-    db_ = openProfile(profileDir / kFileName, keyOrDefault(passphrase));
+    if (file.has_parent_path()) {
+        fs::create_directories(file.parent_path());
+    }
+    db_ = openProfile(file, keyOrDefault(passphrase));
     if (db_ == nullptr) {
         throw std::runtime_error("profile database: wrong passphrase or unreadable file");
     }
@@ -113,12 +115,12 @@ ProfileDb::~ProfileDb()
     sqlite3_close(db_);
 }
 
-bool ProfileDb::opens(const fs::path& profileDir, const std::string& passphrase)
+bool ProfileDb::opens(const fs::path& file, const std::string& passphrase)
 {
-    if (!fs::exists(profileDir / kFileName)) {
+    if (!fs::exists(file)) {
         return false;
     }
-    sqlite3* const db = openProfile(profileDir / kFileName, keyOrDefault(passphrase));
+    sqlite3* const db = openProfile(file, keyOrDefault(passphrase));
     sqlite3_close(db);
     return db != nullptr;
 }

@@ -189,19 +189,19 @@ using TransferEventFn = std::function<void(const TransferEvent&)>;
 // its reply.
 class Session {
 public:
-    // Creates a fresh identity and sealing key under profileDir, with no server
+    // Creates a fresh identity and sealing key under profileFile, with no server
     // connection yet. A non-empty passphrase encrypts the private key PEMs at
     // rest (AES-256-CBC); name is a human label stored in the clear for the
     // profile picker. Use connectServer() + subscribe() to attach a server.
-    static Session create(const std::filesystem::path& profileDir,
+    static Session create(const std::filesystem::path& profileFile,
         const std::string& passphrase = {}, const std::string& name = {});
     // Creates a profile already bound to a server (convenience for the CLI and
     // tests): equivalent to create() followed by connectServer().
-    static Session create(const std::filesystem::path& profileDir, const ServerEndpoint& endpoint,
+    static Session create(const std::filesystem::path& profileFile, const ServerEndpoint& endpoint,
         const std::string& passphrase);
     // Opens an existing session. The passphrase is required when the keys
     // were created encrypted; it is ignored for unencrypted keys.
-    static Session open(const std::filesystem::path& profileDir, const std::string& passphrase = {});
+    static Session open(const std::filesystem::path& profileFile, const std::string& passphrase = {});
 
     // Binds the profile to a serving server (or changes it). Rebinds the
     // transport to the new endpoint and persists it; subscribe() afterwards.
@@ -219,10 +219,10 @@ public:
     // holds the keys in plain PEM internally - the password protects the file.
     void exportProfile(
         const std::filesystem::path& outFile, const std::string& password) const;
-    // Imports an exported bundle into a fresh profileDir. A non-empty
+    // Imports an exported bundle into a fresh profileFile. A non-empty
     // atRestPassphrase re-encrypts the imported keys on disk.
     static void importProfile(const std::filesystem::path& bundleFile,
-        const std::filesystem::path& profileDir, const std::string& password,
+        const std::filesystem::path& profileFile, const std::string& password,
         const std::string& atRestPassphrase = {});
 
     std::string fingerprint() const;
@@ -716,7 +716,7 @@ public:
     Session& operator=(Session&&) noexcept;
 
 private:
-    Session(std::filesystem::path profileDir, std::unique_ptr<Client> client, Key sealingKey,
+    Session(std::filesystem::path profileFile, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);
 
     // Persists a subscribe/renew result: the card we just signed and the routing
@@ -875,7 +875,7 @@ private:
     nlohmann::json contactsToJson() const;
 
 
-    std::filesystem::path profileDir_;
+    std::filesystem::path profilePath_;
     // The profile's storage: one encrypted file holding keys, metadata, contacts
     // and blobs. Opened for the session's lifetime.
     std::unique_ptr<ProfileDb> db_;

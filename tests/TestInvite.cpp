@@ -45,9 +45,14 @@ namespace {
 
 namespace fs = std::filesystem;
 
-fs::path uniqueTempDir(const std::string& tag)
+// A profile is one file; the tests keep each in a directory of its own so a run
+// can wipe it whole.
+fs::path uniqueProfileFile(const std::string& tag)
 {
-    return fs::temp_directory_path() / ("bazarish-test-" + tag + "-" + toHex(randomBytes(8)));
+    const fs::path dir
+        = fs::temp_directory_path() / ("bazarish-test-" + tag + "-" + toHex(randomBytes(8)));
+    fs::create_directories(dir);
+    return dir / "profile.db";
 }
 
 }  // namespace
@@ -92,38 +97,37 @@ int main()
     endpoint.serverFingerprint = serverFp;
     endpoint.facades = {Facade{false, "127.0.0.1", 9, {}}};
 
-    const fs::path dirA = uniqueTempDir("a");
+    const fs::path fileA = uniqueProfileFile("a");
     const std::string passphrase = "at-rest secret";
-    const std::string fingerprintA = Session::create(dirA, endpoint, passphrase).fingerprint();
+    const std::string fingerprintA = Session::create(fileA, endpoint, passphrase).fingerprint();
 
     // Encrypted keys cannot be opened without the passphrase, and a wrong one
     // fails too.
-    CHECK_THROWS(Session::open(dirA));
-    CHECK_THROWS(Session::open(dirA, "wrong"));
-    CHECK(Session::open(dirA, passphrase).fingerprint() == fingerprintA);
+    CHECK_THROWS(Session::open(fileA));
+    CHECK_THROWS(Session::open(fileA, "wrong"));
+    CHECK(Session::open(fileA, passphrase).fingerprint() == fingerprintA);
 
     // Export to a password-protected bundle, then import into a fresh dir with
     // no at-rest passphrase: the identity survives the round trip.
-    const fs::path bundle = uniqueTempDir("bundle") / "session.baz";
-    fs::create_directories(bundle.parent_path());
+    const fs::path bundle = uniqueProfileFile("bundle").parent_path() / "session.baz";
     const std::string exportPw = "export password";
-    Session::open(dirA, passphrase).exportProfile(bundle, exportPw);
+    Session::open(fileA, passphrase).exportProfile(bundle, exportPw);
 
-    const fs::path dirB = uniqueTempDir("b");
-    CHECK_THROWS(Session::importProfile(bundle, dirB, "bad password"));
-    Session::importProfile(bundle, dirB, exportPw);
+    const fs::path fileB = uniqueProfileFile("b");
+    CHECK_THROWS(Session::importProfile(bundle, fileB, "bad password"));
+    Session::importProfile(bundle, fileB, exportPw);
     // No at-rest passphrase on the imported copy: it opens with none.
-    CHECK(Session::open(dirB).fingerprint() == fingerprintA);
+    CHECK(Session::open(fileB).fingerprint() == fingerprintA);
 
     // Import again, this time re-encrypting at rest under a new passphrase.
-    const fs::path dirC = uniqueTempDir("c");
-    Session::importProfile(bundle, dirC, exportPw, "new at-rest");
-    CHECK_THROWS(Session::open(dirC));
-    CHECK(Session::open(dirC, "new at-rest").fingerprint() == fingerprintA);
+    const fs::path fileC = uniqueProfileFile("c");
+    Session::importProfile(bundle, fileC, exportPw, "new at-rest");
+    CHECK_THROWS(Session::open(fileC));
+    CHECK(Session::open(fileC, "new at-rest").fingerprint() == fingerprintA);
 
-    fs::remove_all(dirA);
-    fs::remove_all(dirB);
-    fs::remove_all(dirC);
+    fs::remove_all(fileA);
+    fs::remove_all(fileB);
+    fs::remove_all(fileC);
     fs::remove_all(bundle.parent_path());
 
     std::fprintf(stderr, "TestInvite passed\n");

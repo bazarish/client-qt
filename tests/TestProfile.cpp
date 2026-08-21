@@ -46,57 +46,50 @@ int main()
     ProfileManager manager(root);
     CHECK(manager.list().empty());
 
-    // Create two profiles, one encrypted; the id is derived from the name.
+    // Create two profiles, one encrypted. A profile is one file named after it,
+    // so the name is the id.
     const ProfileInfo a = manager.create("Acetone", "secret");
-    CHECK(a.id == "acetone");
+    CHECK(a.id == "Acetone");
     CHECK(a.name == "Acetone");
     CHECK(a.encrypted);
     CHECK(!a.connected);
     CHECK(a.fingerprint.size() == kFingerprintTextLength);
 
     const ProfileInfo b = manager.create("Work Alias");
-    CHECK(b.id == "work-alias");
+    CHECK(b.id == "Work Alias");
     CHECK(!b.encrypted);
 
-    // A repeat of a name the manager can read is rejected.
+    // A repeat of a name is a repeat of a file name, locked or not.
     CHECK_THROWS(manager.create("Work Alias"));
-    // A profile with a passphrase does not tell the manager its name, so a repeat
-    // of it cannot be recognised as one: it gets its own directory instead.
-    const ProfileInfo twin = manager.create("Acetone", "other");
-    CHECK(twin.id == "acetone-2");
-    CHECK(twin.name == "Acetone");
+    CHECK_THROWS(manager.create("Acetone", "other"));
 
-    // A name with no ASCII in it has nothing to derive an id from, so it falls
-    // back to a generic one - and the next such name takes the next free id
-    // instead of colliding with it.
+    // The name is kept as it was typed, Unicode and all; only what a file system
+    // refuses is replaced.
     const ProfileInfo cyrillic = manager.create("клирнет");
-    CHECK(cyrillic.id == "profile");
+    CHECK(cyrillic.id == "клирнет");
     CHECK(cyrillic.name == "клирнет");
-    const ProfileInfo another = manager.create("тестовый");
-    CHECK(another.id == "profile-2");
-    CHECK(another.name == "тестовый");
+    const ProfileInfo slashed = manager.create("home/work: notes");
+    CHECK(slashed.id == "home_work_ notes");
 
     // Listing gives up nothing about a profile that has a passphrase: everything
     // it could say lives inside the keyed database. It is listed by its directory
     // id, marked locked, with no fingerprint. A profile without a passphrase opens
     // with the default key, so its name and fingerprint do show.
-    CHECK(manager.list().size() == 5);
+    CHECK(manager.list().size() == 4);
     for (const ProfileInfo& listed : manager.list()) {
-        if (listed.id == "acetone") {
+        if (listed.id == "Acetone") {
             CHECK(listed.encrypted);
-            CHECK(listed.name == "acetone");
             CHECK(listed.fingerprint.empty());
         }
-        if (listed.id == "work-alias") {
+        if (listed.id == "Work Alias") {
             CHECK(!listed.encrypted);
-            CHECK(listed.name == "Work Alias");
             CHECK(!listed.fingerprint.empty());
         }
     }
 
     // Encrypted profile needs its passphrase to open.
-    CHECK_THROWS(manager.open("acetone"));
-    Session sa = manager.open("acetone", "secret");
+    CHECK_THROWS(manager.open("Acetone"));
+    Session sa = manager.open("Acetone", "secret");
     CHECK(sa.fingerprint() == a.fingerprint);
     CHECK(sa.displayName() == "Acetone");
     CHECK(!sa.isConnected());
@@ -115,7 +108,7 @@ int main()
     // passphrase in hand the full picture is there.
     bool foundLocked = false;
     for (const ProfileInfo& info : manager.list()) {
-        if (info.id == "acetone") {
+        if (info.id == "Acetone") {
             CHECK(info.encrypted);
             CHECK(!info.connected);
             foundLocked = true;
@@ -124,20 +117,22 @@ int main()
     CHECK(foundLocked);
 
     // Reopening preserves the connection and label.
-    const Session reopened = manager.open("acetone", "secret");
+    const Session reopened = manager.open("Acetone", "secret");
     CHECK(reopened.isConnected());
     CHECK(reopened.endpoint().serverFingerprint == "serverfp");
 
     // Export the encrypted profile, then re-import it twice - once with an
     // at-rest passphrase, once without - and check that each import is one keyed
     // database that opens with its own key and nothing else.
-    const auto onlyTheDatabase = [](const fs::path& dir) {
+    // A profile is one file: an import writes that file and nothing else.
+    const auto onlyTheDatabase = [](const fs::path& file) {
+        CHECK(fs::is_regular_file(file));
         int files = 0;
-        for (const fs::directory_entry& entry : fs::directory_iterator(dir)) {
-            CHECK(entry.path().filename() == "profile.db");
+        for (const fs::directory_entry& entry : fs::directory_iterator(file.parent_path())) {
+            CHECK(entry.path().extension() == ".db" || entry.path().extension() == ".bundle");
             ++files;
         }
-        CHECK(files == 1);
+        CHECK(files >= 1);
     };
 
     // Kept outside the manager root so the imported profiles do not show up in
@@ -148,15 +143,15 @@ int main()
     const fs::path bundle = scratch / "acetone.bundle";
     sa.exportProfile(bundle, "bundle-pw");
 
-    Session::importProfile(bundle, scratch / "imported-enc", "bundle-pw", "atrest-pw");
-    onlyTheDatabase(scratch / "imported-enc");
-    const Session importedEnc = Session::open(scratch / "imported-enc", "atrest-pw");
+    Session::importProfile(bundle, scratch / "imported-enc.db", "bundle-pw", "atrest-pw");
+    onlyTheDatabase(scratch / "imported-enc.db");
+    const Session importedEnc = Session::open(scratch / "imported-enc.db", "atrest-pw");
     CHECK(importedEnc.fingerprint() == a.fingerprint);
-    CHECK_THROWS(Session::open(scratch / "imported-enc"));
+    CHECK_THROWS(Session::open(scratch / "imported-enc.db"));
 
-    Session::importProfile(bundle, scratch / "imported-plain", "bundle-pw");
-    onlyTheDatabase(scratch / "imported-plain");
-    const Session importedPlain = Session::open(scratch / "imported-plain");
+    Session::importProfile(bundle, scratch / "imported-plain.db", "bundle-pw");
+    onlyTheDatabase(scratch / "imported-plain.db");
+    const Session importedPlain = Session::open(scratch / "imported-plain.db");
     CHECK(importedPlain.fingerprint() == a.fingerprint);
 
     // Importing through a manager restores the display name from the bundle. With
@@ -167,11 +162,11 @@ int main()
         = fs::temp_directory_path() / ("bazarish-profiles-" + toHex(randomBytes(8)));
     ProfileManager manager2(root2);
     const ProfileInfo imp1 = manager2.import("", bundle, "bundle-pw");
-    CHECK(imp1.id == "acetone");
+    CHECK(imp1.id == "Acetone");
     CHECK(imp1.name == "Acetone");
     CHECK(imp1.fingerprint == a.fingerprint);
     const ProfileInfo imp2 = manager2.import("Other Name", bundle, "bundle-pw");
-    CHECK(imp2.id == "other-name");
+    CHECK(imp2.id == "Other Name");
     CHECK(imp2.name == "Acetone");
     CHECK(manager2.list().size() == 2);
     CHECK(!fs::exists(root2 / ".import-tmp"));
@@ -180,9 +175,9 @@ int main()
     fs::remove_all(scratch);
 
     // Removal drops the profile.
-    manager.remove("work-alias");
-    CHECK(!manager.exists("work-alias"));
-    CHECK(manager.list().size() == 4);
+    manager.remove("Work Alias");
+    CHECK(!manager.exists("Work Alias"));
+    CHECK(manager.list().size() == 3);
 
     fs::remove_all(root);
     std::fprintf(stderr, "TestProfile passed\n");

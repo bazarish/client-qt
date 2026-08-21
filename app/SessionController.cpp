@@ -1725,19 +1725,20 @@ client::ProfileDb& SessionController::profileDb()
 {
     if (!profileDb_) {
         profileDb_ = std::make_unique<client::ProfileDb>(
-            profileDir_.toStdString(), profilePassphrase_.toStdString());
+            profilePath_.toStdString(), profilePassphrase_.toStdString());
     }
     return *profileDb_;
 }
 
-void SessionController::open(const QString& dir, const QString& profileId, const QString& passphrase)
+void SessionController::open(
+    const QString& file, const QString& profileId, const QString& passphrase)
 {
     profileId_ = profileId;
-    profileDir_ = dir;
+    profilePath_ = file;
     profilePassphrase_ = passphrase;
     // Everything a profile keeps lives in its one encrypted database; the
     // transcript is its largest table, the rest are named rows.
-    store_.open(profileId, dir + "/" + QString::fromUtf8(client::ProfileDb::kFileName), passphrase);
+    store_.open(profileId, file, passphrase);
     const QJsonDocument recents = QJsonDocument::fromJson(
         QByteArray::fromStdString(profileDb().text("recent-reactions")));
     for (const QJsonValue& entry : recents.array()) {
@@ -1751,7 +1752,7 @@ void SessionController::open(const QString& dir, const QString& profileId, const
     // flight. Mark these failed on load so they read as "not sent" with a resend
     // option, instead of a perpetual upload animation.
     store_.failUnsentOnLoad(DeliveryStatus::Sending, DeliveryStatus::Failed);
-    emit requestOpen(dir, passphrase);
+    emit requestOpen(file, passphrase);
 }
 
 void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp)

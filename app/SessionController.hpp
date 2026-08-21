@@ -445,7 +445,7 @@ public:
     bool callMuted() const { return callMuted_; }
 
     // Opens a profile on the worker thread (dir + id + passphrase).
-    void open(const QString& dir, const QString& profileId, const QString& passphrase);
+    void open(const QString& file, const QString& profileId, const QString& passphrase);
 
     // Connects (and subscribes) through an ordered list of facade URLs
     // (http[s]://host[:port][/secret]). The client fails over across them.
@@ -873,7 +873,7 @@ private:
     QHash<QString, int> sendCapacities_;
     QStringList recentReactions_;
     // Where this profile lives and what unlocks it, for the store below.
-    QString profileDir_;
+    QString profilePath_;
     QString profilePassphrase_;
     std::unique_ptr<client::ProfileDb> profileDb_;
     client::ProfileDb& profileDb();

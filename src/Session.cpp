@@ -36,9 +36,9 @@ namespace fs = std::filesystem;
 // The embedded router's state directory. One engine serves the whole
 // installation, so it does not sit among the profiles it serves: it lives one
 // level up, beside the profiles directory.
-fs::path i2pDirFor(const fs::path& profileDir)
+fs::path i2pDirFor(const fs::path& profileFile)
 {
-    return profileDir.parent_path().parent_path() / "i2p";
+    return profileFile.parent_path().parent_path() / "i2p";
 }
 
 // Tokens minted per batch handed to a contact. When a peer's stash of our
@@ -236,9 +236,9 @@ std::string inlineKeyboardJson(const InlineKeyboard& keyboard)
     return keyboardToJson(keyboard).dump();
 }
 
-Session::Session(fs::path profileDir, std::unique_ptr<Client> client, Key sealingKey,
+Session::Session(fs::path profileFile, std::unique_ptr<Client> client, Key sealingKey,
     std::map<std::string, Contact> contacts)
-    : profileDir_(std::move(profileDir))
+    : profilePath_(std::move(profileFile))
     , client_(std::move(client))
     , sealingKey_(std::move(sealingKey))
     , contacts_(std::move(contacts))
@@ -263,7 +263,7 @@ bazarish::i2p::Router& Session::i2pRouter() const
     // all profiles: its state lives beside the profiles directory, so it is
     // reused regardless of which profile starts it first. Started lazily on
     // first transport use; client role (notransit).
-    const fs::path dataDir = i2pDirFor(profileDir_);
+    const fs::path dataDir = i2pDirFor(profilePath_);
     // On a first-ever start, take the netDb from our own server over the clearnet
     // facade rather than announcing an I2P bootstrap to a public reseed host.
     seedRouterOnce(dataDir, [this]() { return client_->fetchReseed(); });
@@ -275,11 +275,11 @@ Session::Session(Session&&) noexcept = default;
 Session& Session::operator=(Session&&) noexcept = default;
 
 Session Session::create(
-    const fs::path& profileDir, const std::string& passphrase, const std::string& name)
+    const fs::path& profileFile, const std::string& passphrase, const std::string& name)
 {
     // The database is the protection: it is keyed with the passphrase (or with
     // the default key when there is none), so what goes inside is stored as it is.
-    auto db = std::make_unique<ProfileDb>(profileDir, passphrase);
+    auto db = std::make_unique<ProfileDb>(profileFile, passphrase);
 
     Identity identity = Identity::generate();
     db->putText("identity.pem", identity.privatePem());
@@ -309,8 +309,8 @@ Session Session::create(
     db->putText("meta", meta.dump(2));
 
     auto client = std::make_unique<Client>(
-        std::move(identity), clientId, endpoint, i2pDirFor(profileDir));
-    Session session(profileDir, std::move(client), std::move(sealing), {});
+        std::move(identity), clientId, endpoint, i2pDirFor(profileFile));
+    Session session(profileFile, std::move(client), std::move(sealing), {});
     session.db_ = std::move(db);
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
@@ -319,10 +319,10 @@ Session Session::create(
     return session;
 }
 
-Session Session::create(const fs::path& profileDir, const ServerEndpoint& endpoint,
+Session Session::create(const fs::path& profileFile, const ServerEndpoint& endpoint,
     const std::string& passphrase)
 {
-    Session session = create(profileDir, passphrase);
+    Session session = create(profileFile, passphrase);
     session.connectServer(endpoint);
     return session;
 }
@@ -334,7 +334,7 @@ void Session::connectServer(const ServerEndpoint& endpoint)
     // the at-rest passphrase.
     client_ = std::make_unique<Client>(
         Identity::fromPrivatePem(client_->identity().privatePem()), client_->clientId(), endpoint,
-        i2pDirFor(profileDir_));
+        i2pDirFor(profilePath_));
     persistMeta();
 }
 
@@ -362,11 +362,11 @@ std::vector<std::string> Session::facadeUrls() const
     return urls;
 }
 
-Session Session::open(const fs::path& profileDir, const std::string& passphrase)
+Session Session::open(const fs::path& profileFile, const std::string& passphrase)
 {
     // Opening the database is the passphrase check: with the wrong key the pages
     // do not decrypt and this throws rather than reading an empty profile.
-    auto db = std::make_unique<ProfileDb>(profileDir, passphrase);
+    auto db = std::make_unique<ProfileDb>(profileFile, passphrase);
     const nlohmann::json meta = nlohmann::json::parse(db->text("meta"));
     ServerEndpoint endpoint;
     const nlohmann::json& endpointJson = meta.at("endpoint");
@@ -401,8 +401,8 @@ Session Session::open(const fs::path& profileDir, const std::string& passphrase)
     }
 
     auto client = std::make_unique<Client>(
-        std::move(identity), clientId, endpoint, i2pDirFor(profileDir));
-    Session session(profileDir, std::move(client), std::move(sealing), std::move(contacts));
+        std::move(identity), clientId, endpoint, i2pDirFor(profileFile));
+    Session session(profileFile, std::move(client), std::move(sealing), std::move(contacts));
     session.db_ = std::move(db);
     session.client_->setI2pProven(meta.value("i2pProven", false));
     session.client_->setAllowClearnet(
@@ -1200,7 +1200,7 @@ Session::ContactFetchContext Session::contactFetchContext() const
     ctx.identityPem = client_->identity().privatePem();  // unencrypted in memory
     ctx.clientId = client_->clientId();
     ctx.endpoint = endpoint();
-    ctx.i2pDataDir = i2pDirFor(profileDir_);
+    ctx.i2pDataDir = i2pDirFor(profilePath_);
     ctx.resolver = resolverCoordinate_;
     ctx.i2pEnabled = i2pEnabled();
     ctx.blobFetchPrivacy = transferPrivacy();
@@ -1753,10 +1753,12 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
     }
     const fs::path source = found->second.path;
     // The only thing besides the database that a profile ever writes: the sealed
-    // copy of a file being served. It holds ciphertext under a key that travels
-    // in the offer, and it is removed when the transfer window closes.
-    const fs::path ciphertextPath
-        = profileDir_ / ("file-serve-" + toHex(randomBytes(8)) + ".tmp");
+    // copy of a file being served, in a scratch directory beside the profiles. It
+    // holds ciphertext under a key that travels in the offer, and it is removed
+    // when the transfer window closes.
+    const fs::path scratch = profilePath_.parent_path() / ".transfers";
+    fs::create_directories(scratch);
+    const fs::path ciphertextPath = scratch / ("file-serve-" + toHex(randomBytes(8)) + ".tmp");
 
     // One serve per asking device: two devices of theirs can pull the same file at
     // once, each over its own one-time address, and each needs its own cancel
@@ -2903,7 +2905,7 @@ void Session::exportProfile(const fs::path& outFile, const std::string& password
     writeFileText(outFile, std::string(sealed.begin(), sealed.end()));
 }
 
-void Session::importProfile(const fs::path& bundleFile, const fs::path& profileDir,
+void Session::importProfile(const fs::path& bundleFile, const fs::path& profileFile,
     const std::string& password, const std::string& atRestPassphrase)
 {
     const std::string sealedText = readFileText(bundleFile);
@@ -2911,11 +2913,9 @@ void Session::importProfile(const fs::path& bundleFile, const fs::path& profileD
         = cms::unsealWithPassword(Bytes(sealedText.begin(), sealedText.end()), password);
     const nlohmann::json bundle = nlohmann::json::parse(plain.begin(), plain.end());
 
-    fs::create_directories(profileDir);
-
     // The new profile's database is keyed with the chosen passphrase; the keys go
     // inside it as they are.
-    ProfileDb db(profileDir, atRestPassphrase);
+    ProfileDb db(profileFile, atRestPassphrase);
     const Identity identity = Identity::fromPrivatePem(bundle.at("identityPem").get<std::string>());
     const Key sealing = Key::fromPrivatePem(bundle.at("sealingPem").get<std::string>());
     db.putText("identity.pem", identity.privatePem());

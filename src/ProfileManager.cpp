@@ -16,69 +16,54 @@ namespace {
 
 namespace fs = std::filesystem;
 
-// How many profiles may share a sanitised id before creation gives up. A wall,
-// not a limit anybody should reach.
-constexpr int kMaxIdSuffix = 99;
+// The extension every profile file carries.
+constexpr const char* kFileSuffix = ".db";
 
-// Derives a safe directory id from a display name: lowercase, only
-// [a-z0-9_-], other runs collapsed to a single '-'. Never empty.
-std::string sanitizeId(const std::string& name)
+// A profile is stored under its own name, so the name has to survive as a file
+// name. Only what a file system refuses is replaced - the reserved characters of
+// Windows and macOS included, so a portable copy on a stick stays readable - and
+// everything else, Unicode included, is kept as the user typed it.
+std::string sanitizeFileName(const std::string& name)
 {
-    std::string id;
-    bool lastDash = false;
+    static const std::string reserved = "/\\:*?\"<>|";
+    std::string out;
     for (const char c : name) {
-        char lowered = c;
-        if (c >= 'A' && c <= 'Z') {
-            lowered = static_cast<char>(c - 'A' + 'a');
-        }
-        const bool safe = (lowered >= 'a' && lowered <= 'z')
-            || (lowered >= '0' && lowered <= '9') || lowered == '_';
-        if (safe) {
-            id.push_back(lowered);
-            lastDash = false;
-        } else if (!lastDash) {
-            id.push_back('-');
-            lastDash = true;
-        }
+        const bool control = static_cast<unsigned char>(c) < 0x20;
+        out.push_back(control || reserved.find(c) != std::string::npos ? '_' : c);
     }
-    while (!id.empty() && id.back() == '-') {
-        id.pop_back();
+    // Leading dots hide the file; trailing dots and spaces are dropped by Windows.
+    const std::size_t first = out.find_first_not_of('.');
+    out = first == std::string::npos ? std::string() : out.substr(first);
+    while (!out.empty() && (out.back() == '.' || out.back() == ' ')) {
+        out.pop_back();
     }
-    std::size_t start = 0;
-    while (start < id.size() && id[start] == '-') {
-        ++start;
-    }
-    id = id.substr(start);
-    if (id.empty()) {
-        id = "profile";
-    }
-    return id;
+    return out;
 }
 
 // What can be told about a profile without opening it fully. A profile with a
 // passphrase gives up nothing until it is unlocked - not its name, not its
 // fingerprint - which is the point of keeping everything in one keyed file. It
 // is listed by its directory id and marked locked.
-ProfileInfo readInfo(const std::string& id, const fs::path& dir, const std::string& passphrase = {})
+ProfileInfo readInfo(const std::string& id, const fs::path& file, const std::string& passphrase = {})
 {
     ProfileInfo info;
     info.id = id;
-    info.dir = dir;
+    info.file = file;
     info.name = id;
     // One open, not two: unlocking a profile database runs its key derivation,
     // which is deliberately expensive.
     std::unique_ptr<ProfileDb> db;
     try {
-        db = std::make_unique<ProfileDb>(dir, passphrase);
+        db = std::make_unique<ProfileDb>(file, passphrase);
     } catch (const std::exception&) {
         info.encrypted = true;  // the key does not open it: locked
         return info;
     }
     const nlohmann::json meta = nlohmann::json::parse(db->text("meta"));
-    info.name = meta.value("name", std::string{});
-    if (info.name.empty()) {
-        info.name = id;
-    }
+    // For a profile in place the name and the file name are the same string; an
+    // imported bundle is read before it has a file name of its own, and there the
+    // name inside is all there is.
+    info.name = meta.value("name", id);
     info.fingerprint = meta.value("fingerprint", std::string{});
     info.encrypted = meta.value("encrypted", false);
     info.connected = !meta.at("endpoint").value("facades", nlohmann::json::array()).empty();
@@ -142,14 +127,14 @@ ProfileManager::ProfileManager(fs::path root)
     fs::create_directories(root_);
 }
 
-fs::path ProfileManager::dirFor(const std::string& id) const
+fs::path ProfileManager::fileFor(const std::string& id) const
 {
-    return root_ / id;
+    return root_ / (sanitizeFileName(id) + kFileSuffix);
 }
 
 bool ProfileManager::exists(const std::string& id) const
 {
-    return fs::exists(dirFor(id) / ProfileDb::kFileName);
+    return fs::exists(fileFor(id));
 }
 
 std::vector<ProfileInfo> ProfileManager::list() const
@@ -159,48 +144,30 @@ std::vector<ProfileInfo> ProfileManager::list() const
         return profiles;
     }
     for (const fs::directory_entry& entry : fs::directory_iterator(root_)) {
-        if (!entry.is_directory()) {
+        if (!entry.is_regular_file() || entry.path().extension() != kFileSuffix) {
             continue;
         }
-        if (!fs::exists(entry.path() / ProfileDb::kFileName)) {
-            continue;
-        }
-        profiles.push_back(readInfo(entry.path().filename().string(), entry.path()));
+        profiles.push_back(readInfo(entry.path().stem().string(), entry.path()));
     }
     return profiles;
 }
 
 ProfileInfo ProfileManager::create(const std::string& name, const std::string& passphrase)
 {
-    std::string id = sanitizeId(name);
-    if (exists(id)) {
-        // Two different names can sanitise to the same id - a name with no ASCII
-        // in it at all sanitises to nothing and falls back to "profile" - so only
-        // a genuine repeat of the display name is a duplicate; the rest take the
-        // next free id.
-        if (readInfo(id, dirFor(id)).name == name) {
-            throw std::runtime_error("a profile with this name already exists");
-        }
-        std::string free;
-        for (int suffix = 2; suffix <= kMaxIdSuffix; ++suffix) {
-            const std::string candidate = id + "-" + std::to_string(suffix);
-            if (!exists(candidate)) {
-                free = candidate;
-                break;
-            }
-        }
-        if (free.empty()) {
-            throw std::runtime_error("too many profiles with this name");
-        }
-        id = free;
+    const std::string id = sanitizeFileName(name);
+    if (id.empty()) {
+        throw std::runtime_error("a profile needs a name");
     }
-    Session::create(dirFor(id), passphrase, name);
-    return readInfo(id, dirFor(id), passphrase);
+    if (exists(id)) {
+        throw std::runtime_error("a profile with this name already exists");
+    }
+    Session::create(fileFor(id), passphrase, id);
+    return readInfo(id, fileFor(id), passphrase);
 }
 
 Session ProfileManager::open(const std::string& id, const std::string& passphrase) const
 {
-    return Session::open(dirFor(id), passphrase);
+    return Session::open(fileFor(id), passphrase);
 }
 
 ProfileInfo ProfileManager::import(const std::string& name, const fs::path& bundleFile,
@@ -210,22 +177,23 @@ ProfileInfo ProfileManager::import(const std::string& name, const fs::path& bund
     // meta verbatim). An explicit name, when given, only chooses the on-disk id;
     // when omitted the id is derived from the restored name. So import into a temp
     // dir first, read the restored name, then move it into place under its final id.
-    const fs::path tmp = root_ / ".import-tmp";
-    fs::remove_all(tmp);
+    const fs::path tmp = root_ / ".import-tmp.db";
+    fs::remove(tmp);
     Session::importProfile(bundleFile, tmp, password, atRestPassphrase);
     const std::string restoredName = readInfo(std::string{}, tmp, atRestPassphrase).name;
-    const std::string id = sanitizeId(name.empty() ? restoredName : name);
-    if (exists(id)) {
-        fs::remove_all(tmp);
-        throw std::runtime_error("a profile with this name already exists");
+    const std::string id = sanitizeFileName(name.empty() ? restoredName : name);
+    if (id.empty() || exists(id)) {
+        fs::remove(tmp);
+        throw std::runtime_error(id.empty() ? "a profile needs a name"
+                                            : "a profile with this name already exists");
     }
-    fs::rename(tmp, dirFor(id));
-    return readInfo(id, dirFor(id), atRestPassphrase);
+    fs::rename(tmp, fileFor(id));
+    return readInfo(id, fileFor(id), atRestPassphrase);
 }
 
 void ProfileManager::remove(const std::string& id)
 {
-    fs::remove_all(dirFor(id));
+    fs::remove(fileFor(id));
 }
 
 }  // namespace bazarish::client

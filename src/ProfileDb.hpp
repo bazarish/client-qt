@@ -14,24 +14,22 @@ namespace bazarish::client {
 
 // A profile's storage: one encrypted SQLite (SQLCipher) file holding everything
 // the profile is - keys, metadata, contacts, blobs and the message transcript.
-// Nothing about a profile is written beside it, so a profile is one file that is
-// unreadable without its key.
+// The file is the profile: it lives in the profiles directory under the profile's
+// own name, and without its key it gives up nothing but that name.
 //
 // This class owns the small named values; the transcript owns its own tables on
 // the same file through its own connection.
 class ProfileDb {
 public:
-    // The file name inside a profile directory.
-    static constexpr const char* kFileName = "profile.db";
     // What a profile with no passphrase is keyed with: it keeps one code path and
     // stops the file from being readable by accident. It is not protection from
     // anyone who has read this source.
     static constexpr const char* kDefaultKey = "bazarish";
 
-    // Opens (creating it when absent) the database in `profileDir`, keyed with
+    // Opens (creating it when absent) the database at `file`, keyed with
     // `passphrase` or kDefaultKey when that is empty. Throws when the key does not
     // open an existing file - a wrong passphrase must not read as an empty profile.
-    ProfileDb(const std::filesystem::path& profileDir, const std::string& passphrase);
+    ProfileDb(const std::filesystem::path& file, const std::string& passphrase);
     ~ProfileDb();
 
     ProfileDb(const ProfileDb&) = delete;
@@ -39,7 +37,7 @@ public:
 
     // Whether the key opens this database. Used to tell a locked profile from an
     // unlocked one without throwing.
-    static bool opens(const std::filesystem::path& profileDir, const std::string& passphrase);
+    static bool opens(const std::filesystem::path& file, const std::string& passphrase);
 
     std::optional<Bytes> get(const std::string& name) const;
     std::string text(const std::string& name) const;  // empty when absent

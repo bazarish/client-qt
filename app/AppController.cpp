@@ -325,8 +325,9 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
     connect(ctrl, &SessionController::facadeInfoChanged, this, &AppController::refreshAccounts);
 
     try {
-        const QString dir = QString::fromStdString(manager_->dirFor(id.toStdString()).string());
-        ctrl->open(dir, id, passphrase);
+        const QString file
+            = QString::fromStdString(manager_->fileFor(id.toStdString()).string());
+        ctrl->open(file, id, passphrase);
     } catch (const std::exception& e) {
         removeSession(ctrl, /*deferred=*/false);
         emit profileOpenFailed(QString::fromUtf8(e.what()));
