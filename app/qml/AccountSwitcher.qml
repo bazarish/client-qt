@@ -72,32 +72,76 @@ Popup {
                     border.color: model.active ? Theme.neon : "transparent"
                     border.width: model.active ? 1 : 0
                 }
-                contentItem: RowLayout {
-                    spacing: 12
-                    Avatar { fingerprint: model.fingerprint; size: 42 }
-                    ColumnLayout {
-                        Layout.fillWidth: true
+                // Anchored, not laid out: the avatar sits at the left edge, the
+                // name a fixed step from it, the switch at the right edge. Nothing
+                // in between - a longer name, a wider status, a badge that comes
+                // and goes - can move any of them.
+                contentItem: Item {
+                    Avatar {
+                        id: rowAvatar
+                        fingerprint: model.fingerprint
+                        size: 42
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Toggle {
+                        id: rowToggle
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: model.online
+                        onToggled: App.setOnline(model.accountId, checked)
+                    }
+                    // The count sits in a slot of its own, so arriving or clearing
+                    // messages never shift the switch beside it.
+                    Item {
+                        id: rowUnread
+                        width: root.unreadSlotWidth
+                        height: parent.height
+                        anchors.right: rowToggle.left
+                        anchors.rightMargin: 8
+                        UnreadBadge {
+                            anchors.centerIn: parent
+                            count: model.unread
+                        }
+                    }
+                    Column {
+                        anchors.left: rowAvatar.right
+                        anchors.leftMargin: 12
+                        anchors.right: rowUnread.left
+                        anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
                         spacing: 2
+                        clip: true
                         // The active account is marked by its name glowing neon
                         // green (plus the row's neon outline), not a separate label.
                         Label {
+                            width: parent.width
                             text: model.name
                             color: model.active ? Theme.neon : Theme.text
                             font.weight: Font.Medium
                             elide: Text.ElideRight
-                            Layout.maximumWidth: 200
                         }
-                        RowLayout {
+                        Row {
                             spacing: 6
-                            Rectangle { Layout.alignment: Qt.AlignVCenter; implicitWidth: 7; implicitHeight: 7; radius: 3.5; color: root.statusColor(model) }
-                            Label { text: root.statusText(model); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 7
+                                height: 7
+                                radius: 3.5
+                                color: root.statusColor(model)
+                            }
+                            Label {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.statusText(model)
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                            }
                             // The active connection, as a chip of fixed width: a
                             // positive green "I2P" over an I2P facade, grey "web"
-                            // over a clearnet one, and "off" when the profile is
-                            // not connected at all. Every row carries one, so the
-                            // grid does not drift between connected and idle rows.
+                            // over a clearnet one, and "OFF" when the profile is
+                            // not connected at all. Every row carries one.
                             Rectangle {
-                                Layout.alignment: Qt.AlignVCenter
+                                anchors.verticalCenter: parent.verticalCenter
                                 readonly property bool live: model.open && model.online
                                     && model.connected && model.activeFacade.length > 0
                                 radius: Theme.radiusSmall
@@ -106,36 +150,21 @@ Popup {
                                     ? (model.i2pFacade ? Theme.green : Theme.border)
                                     : Theme.border
                                 border.width: 1
-                                implicitHeight: connLabel.implicitHeight + 4
+                                height: connLabel.implicitHeight + 4
                                 // Sized for the widest label so the row keeps its
                                 // shape when the state changes under it.
-                                implicitWidth: 44
+                                width: 44
                                 Label {
                                     id: connLabel
                                     anchors.centerIn: parent
                                     text: !parent.live ? "OFF" : (model.i2pFacade ? "I2P" : "web")
-                                    color: parent.live && model.i2pFacade ? Theme.text : Theme.textDim
+                                    color: parent.live && model.i2pFacade
+                                        ? Theme.text : Theme.textDim
                                     font.pixelSize: Theme.fontSmall - 1
                                     font.weight: Font.Medium
                                 }
                             }
                         }
-                    }
-                    // The count sits in a slot of its own, so arriving or
-                    // clearing messages never shift the switch beside it.
-                    Item {
-                        Layout.preferredWidth: root.unreadSlotWidth
-                        Layout.fillHeight: true
-                        UnreadBadge {
-                            anchors.centerIn: parent
-                            count: model.unread
-                        }
-                    }
-                    // Per-account online/offline toggle, last in the row.
-                    Toggle {
-                        Layout.alignment: Qt.AlignVCenter
-                        checked: model.online
-                        onToggled: App.setOnline(model.accountId, checked)
                     }
                 }
             }
