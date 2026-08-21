@@ -15,7 +15,7 @@ Item {
     signal deleteRequested(var msgId, string protocolId, bool outgoing)
     // Asks the view to open the emoji picker for this message (handled by a single
     // shared popup, not one per bubble).
-    signal imageRequested(url source)
+    signal imageRequested(url source, string messageId, string name)
     signal reactRequested(string protocolId)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
@@ -35,9 +35,21 @@ Item {
     // An attachment card is shown both for an incoming message (which carries a
     // content-store ref) and for one's own outgoing file (which has the type set
     // locally before the upload finishes, so the ref is not there yet).
-    readonly property bool isAttachment: (model.attName && model.attName.length > 0)
-        || (model.outgoing && (model.type === "file" || model.type === "photo"
-            || model.type === "audio"))
+    // A picture is its own kind of message: its bytes are in the profile, it is
+    // drawn where it stands, and it never becomes a file card.
+    readonly property bool isPicture: model.type === "image"
+    // The picture as this profile holds it. The revision in the URL is what makes
+    // an Image reload when the bytes arrive.
+    readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
+        ? "image://picture/" + model.protocolId + "?r=" + Pictures.revision : ""
+    // Announced as a picture, here, and not one: no fallback, no Save button,
+    // just a message that says it is broken.
+    readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
+        && !model.downloading && !model.outgoing && model.savedPath.length === 0
+        && model.downloadError.length > 0
+    readonly property bool isAttachment: !delegate.isPicture
+        && ((model.attName && model.attName.length > 0)
+            || (model.outgoing && (model.type === "file" || model.type === "audio")))
     readonly property bool isUnsupported: model.type === "unsupported"
     readonly property bool isSystem: model.type === "system"
     // A contact request. Incoming ones render green with an "Agree" button; our own
@@ -272,9 +284,10 @@ Item {
                         // A file is served on demand, so this block also carries the
                         // steps before any byte moves: the request arriving, the
                         // one-time address being built and published.
-                        visible: model.outgoing
-                            && (model.status === DeliveryStatus.Sending
-                                || model.transferStage.length > 0)
+                        // Only while bytes are actually moving. The message that
+                        // announces a transfer is a small message like any other,
+                        // and a progress bar on it says something untrue.
+                        visible: model.outgoing && model.transferStage.length > 0
                         Layout.fillWidth: true
                         Layout.minimumWidth: stageMetrics.width
                         spacing: 2
@@ -414,28 +427,46 @@ Item {
                 }
             }
 
-            // A picture that has landed on this machine is shown rather than
-            // listed. What decides is the file's own first bytes: the name and
-            // the type the sender declared are theirs to write, so neither is
-            // allowed to point a renderer at anything.
-            Image {
-                id: preview
-                readonly property string safeUrl: (!model.downloading
-                        && model.savedPath.length > 0 && App.looksLikeImage(model.attMime))
-                    ? App.imageUrlIfSafe(model.savedPath) : ""
-                visible: safeUrl.length > 0
-                source: safeUrl
-                asynchronous: true
-                fillMode: Image.PreserveAspectFit
-                // Big enough to see, small enough to keep the chat a chat.
-                readonly property int maxEdge: 320
-                Layout.preferredWidth: Math.min(maxEdge, implicitWidth > 0 ? implicitWidth : maxEdge)
-                Layout.preferredHeight: implicitWidth > 0
-                    ? Layout.preferredWidth * (implicitHeight / implicitWidth) : 0
-                Layout.topMargin: 6
-                sourceSize.width: maxEdge * 2
-                TapHandler { onTapped: delegate.imageRequested(preview.safeUrl) }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
+            // A picture: the image itself, its size, and nothing else. What is
+            // not drawable is not quietly turned into a file - it says so.
+            ColumnLayout {
+                visible: delegate.isPicture
+                Layout.fillWidth: true
+                spacing: 2
+
+                Image {
+                    id: preview
+                    visible: delegate.pictureUrl.length > 0
+                    source: delegate.pictureUrl
+                    asynchronous: true
+                    fillMode: Image.PreserveAspectFit
+                    // Big enough to see, small enough to keep the chat a chat.
+                    readonly property int maxEdge: 320
+                    Layout.preferredWidth: Math.min(maxEdge,
+                        implicitWidth > 0 ? implicitWidth : maxEdge)
+                    Layout.preferredHeight: implicitWidth > 0
+                        ? Layout.preferredWidth * (implicitHeight / implicitWidth) : 0
+                    sourceSize.width: maxEdge * 2
+                    TapHandler {
+                        onTapped: delegate.imageRequested(delegate.pictureUrl,
+                            model.protocolId, model.attName)
+                    }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                }
+
+                Label {
+                    visible: delegate.pictureBroken
+                    text: "Broken picture"
+                    color: Theme.danger
+                    font.pixelSize: Theme.fontSmall
+                }
+
+                Label {
+                    visible: delegate.pictureUrl.length > 0 || delegate.pictureBroken
+                    text: delegate.humanSize(model.attSize)
+                    color: Theme.textFaint
+                    font.pixelSize: Theme.fontSmall
+                }
             }
 
             // Unsupported type placeholder (forward compatibility).
@@ -671,6 +702,12 @@ Item {
             acceptedButtons: Qt.LeftButton
             onLongPressed: contextMenu.popup()
         }
+        FileDialog {
+            id: pictureSaveDialog
+            property string messageId
+            fileMode: FileDialog.SaveFile
+            onAccepted: delegate.session.savePictureAs(pictureSaveDialog.messageId, selectedFile)
+        }
         ContextMenu {
             id: contextMenu
             ContextMenuItem {
@@ -681,6 +718,19 @@ Item {
                 visible: delegate.reactable
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.reactRequested(model.protocolId)
+            }
+            ContextMenuItem {
+                // A picture lives in the profile database; this is how it leaves
+                // it as a file.
+                text: "Save as"
+                visible: delegate.pictureUrl.length > 0
+                height: visible ? implicitHeight : 0
+                onTriggered: {
+                    pictureSaveDialog.currentFile = delegate.session.defaultPictureSaveUrl(
+                        model.protocolId, model.attName)
+                    pictureSaveDialog.messageId = model.protocolId
+                    pictureSaveDialog.open()
+                }
             }
             ContextMenuItem {
                 text: "Reply"

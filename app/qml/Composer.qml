@@ -22,14 +22,14 @@ Rectangle {
     function sendPicture(source) {
         const prepared = App.prepareImageForSend(source)
         if (prepared.length > 0 && root.session) {
-            root.session.sendFile(prepared)
+            root.session.sendPicture(prepared)
         }
     }
 
     function sendClipboardPicture() {
         const prepared = App.prepareClipboardImage()
         if (prepared.length > 0 && root.session) {
-            root.session.sendFile(prepared)
+            root.session.sendPicture(prepared)
         }
     }
 

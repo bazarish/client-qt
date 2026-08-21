@@ -51,6 +51,12 @@ public slots:
         const QString& protocolId, const QString& replyTo);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, const QString& replyTo);
+    void sendPicture(const QString& peer, const QString& localPath, qint64 localId,
+        const QString& protocolId, const QString& replyTo);
+    // Keeps a fetched picture in the profile database.
+    void storePicture(const QString& messageId, const QByteArray& bytes);
+    // Reads pictures back out of it, for the messages now on screen.
+    void loadPictures(const QStringList& messageIds);
     void sendReceipt(const QString& peer, const QString& refId);
     // Acks a pending mailbox item (deferred ack): called by the controller after it
     // has durably stored the item, so the server only drops it once it is safe.
@@ -214,6 +220,8 @@ signals:
     // and at what address. Emitted as soon as it is known, so the view never waits
     // on a server poll to say whether a key exists at all.
     void i2pKeyState(bool hasKey, const QString& address);
+    // One message's picture, read out of the profile database.
+    void pictureLoaded(const QString& messageId, const QByteArray& bytes);
     // This account's registered devices: {clientId, current}. A message is kept
     // until every one of them has acked it, so a device nobody uses any more
     // holds mail until the retention window ends.
@@ -533,6 +541,13 @@ public:
     // one-time destination, so there is no store to keep them in and no retention
     // to set; only the offer travels through the servers.
     Q_INVOKABLE void sendFile(const QString& fileUrl);
+    // The same transfer announced as a picture: the recipient fetches and shows
+    // it instead of being offered a Save button.
+    Q_INVOKABLE void sendPicture(const QString& fileUrl);
+    // Writes a picture this profile holds out to a file the user chose.
+    Q_INVOKABLE void savePictureAs(const QString& messageId, const QString& fileUrl);
+    // A name to suggest for that file.
+    Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& messageId, const QString& name) const;
     // Re-dispatches a failed outgoing file from the saved source path (reusing the
     // bubble); if that file is gone, emits resendFilePickRequested so the UI can
     // offer to pick a file to send instead.
@@ -735,6 +750,10 @@ signals:  // to worker
         const QString& protocolId, const QString& replyTo);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, const QString& replyTo);
+    void requestSendPicture(const QString& peer, const QString& localPath, qint64 localId,
+        const QString& protocolId, const QString& replyTo);
+    void requestStorePicture(const QString& messageId, const QByteArray& bytes);
+    void requestLoadPictures(const QStringList& messageIds);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
@@ -821,8 +840,10 @@ private slots:
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
+    void onPictureLoaded(const QString& messageId, const QByteArray& bytes);
     // Pulls a small incoming picture into the media cache without being asked.
     void fetchImageAttachment(const QString& peer, const StoredMessage& message);
+    void requestPicturesFor(const QList<StoredMessage>& messages);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, qint64 connectedAtMs);
@@ -943,6 +964,9 @@ private:
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.
     QHash<qint64, QString> pendingSavePath_;
+    // Downloads that are a picture being fetched for the chat: local id -> the
+    // message that announced it.
+    QHash<qint64, QString> pendingPictures_;
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart
     // falls back to the store default.

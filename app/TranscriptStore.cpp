@@ -125,7 +125,8 @@ private:
 // orderKey is appended last so the existing 0..16 indices are unchanged.
 const char* const kMessageColumns = "id, peer, outgoing, type, protocolId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
-                                    " edited, ts, status, orderKey, savedPath, blobGone, replyTo";
+                                    " edited, ts, status, orderKey, savedPath, blobGone, replyTo,"
+                                    " hasPicture";
 
 // Orders a loaded window oldest-first by the sort position (orderKey), then id as
 // a stable tiebreak. Each window is a contiguous id-range, so this repairs an
@@ -164,6 +165,7 @@ StoredMessage readMessageRow(const Query& query)
     m.orderKey = query.value(16).toLongLong();
     m.savedPath = query.value(17).toString();
     m.blobGone = query.value(18).toInt() != 0;
+    m.hasPicture = query.value(20).toInt() != 0;
     m.replyTo = query.value(19).toString();
     return m;
 }
@@ -244,7 +246,7 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
-            " blobGone INTEGER, replyTo TEXT)")) {
+            " blobGone INTEGER, replyTo TEXT, hasPicture INTEGER DEFAULT 0)")) {
         return false;
     }
     // Per-peer read high-water for persistent unread tracking (see read state).
@@ -500,6 +502,17 @@ void TranscriptStore::setBlobGone(qint64 id, bool gone)
     query.addBindValue(gone ? 1 : 0);
     query.addBindValue(id);
     if (query.exec()) {
+    }
+}
+
+void TranscriptStore::setHasPicture(const qint64 id, const bool has)
+{
+    Query query(db_);
+    query.prepare("UPDATE messages SET hasPicture = ? WHERE id = ?");
+    query.addBindValue(has ? 1 : 0);
+    query.addBindValue(id);
+    if (!query.exec()) {
+        bazarish::log::warn("could not record that a message holds a picture");
     }
 }
 

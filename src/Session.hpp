@@ -296,6 +296,20 @@ public:
     // Raises ApiError(eAccountPendingApproval) while approval is outstanding.
     void publishRouting();
 
+    // --- Pictures ---
+    //
+    // A picture that has arrived (or one being sent) lives in the profile
+    // database like everything else this client keeps: encrypted at rest, gone
+    // when the profile is deleted, and never a plaintext copy sitting in a cache
+    // directory. It is small by construction - the composer shrinks it before
+    // sending - so it costs the database little.
+
+    // Stores a picture's bytes against the message that announced it.
+    void putPicture(const std::string& messageId, const Bytes& bytes);
+    // The picture of a message, or nothing when this profile does not hold it.
+    std::optional<Bytes> picture(const std::string& messageId) const;
+    bool hasPicture(const std::string& messageId) const;
+
     // The devices registered on this account, and dropping one. A device that is
     // gone for good keeps every message in the mailbox until the server's
     // retention window expires, because deletion waits for all of them - so its
@@ -531,6 +545,14 @@ public:
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, const std::string& replyTo = {});
+
+    // The same transfer, announced as a picture: a message whose point is that
+    // it is shown. The recipient fetches it without being asked and draws it;
+    // what it never becomes is a file card with a Save button.
+    bool sendPicture(const std::string& peerFingerprint, const std::filesystem::path& path,
+        const std::string& messageId = {},
+        const std::function<void()>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
+        const std::string& replyTo = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.
@@ -909,6 +931,12 @@ private:
     // Answers one device's request for a file we announced: a one-time
     // destination of its own, named in the offer so their other devices know it
     // is not for them.
+    // Shared by sendFile and sendPicture: the announcement differs only in type.
+    bool announceTransfer(const std::string& type, const std::string& peerFingerprint,
+        const std::filesystem::path& path, const std::string& messageId,
+        const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+        const std::string& replyTo);
+
     void serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId,
         const std::string& forDevice);
     // A sealed offer came back for a file we asked for: fetch it. Also threaded.

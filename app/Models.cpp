@@ -200,6 +200,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case TransferStageRole: return transferStageById_.value(m.id);
     case SavedPathRole: return m.savedPath;
     case BlobGoneRole: return m.blobGone;
+    case PictureRole: return m.hasPicture;
     case ReplyToRole: return m.replyTo;
     // The local calendar day this message belongs to, as an ISO date string. The
     // view groups messages into per-day sections off this role and renders a
@@ -222,7 +223,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
         {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
-        {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"},
+        {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"}, {PictureRole, "hasPicture"},
         {DownloadStageRole, "downloadStage"}, {TransferStageRole, "transferStage"},
         {ReplyToRole, "replyTo"}};
 }
@@ -451,6 +452,18 @@ void ConversationModel::setSavedPathForId(qint64 id, const QString& path)
             messages_[i].savedPath = path;
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx, {SavedPathRole});
+            return;
+        }
+    }
+}
+
+void ConversationModel::setPictureReadyForId(qint64 id, const bool ready)
+{
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            messages_[i].hasPicture = ready;
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {PictureRole});
             return;
         }
     }

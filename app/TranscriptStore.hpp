@@ -30,6 +30,8 @@ struct StoredMessage {
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
     QString savedPath;     // where an incoming attachment was last saved (local path)
     bool blobGone = false; // incoming attachment whose blob is gone from the store
+    // A picture this profile holds in its database (drawn in the bubble).
+    bool hasPicture = false;
                            // (download returned 404/410); shows "Not found", no Save
     QString keyboard;      // inline-keyboard JSON (empty when none)
     QString replyTo;       // protocol id of the message this one replies to (empty
@@ -93,6 +95,8 @@ public:
     // Marks an incoming attachment whose blob is no longer on the store (the
     // download returned 404/410): the bubble then shows "Not found" with no Save,
     // a state that survives a restart.
+    // Marks a message whose picture this profile holds.
+    void setHasPicture(qint64 id, bool has);
     void setBlobGone(qint64 id, bool gone);
     // The row id of an outgoing message with this protocol id (0 if none).
     qint64 idForProtocol(const QString& protocolId) const;

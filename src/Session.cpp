@@ -32,6 +32,13 @@ namespace bazarish::client {
 
 namespace {
 
+// The two kinds of message that carry a transfer's metadata. They travel
+// identically; the type is how the other side knows whether what is coming is a
+// file to keep or a picture to show.
+const char* const kTypeFile = "file";
+const char* const kTypeImage = "image";
+
+
 namespace fs = std::filesystem;
 
 // The embedded router's state directory. One engine serves the whole
@@ -1485,6 +1492,37 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
+    return announceTransfer(
+        kTypeFile, peerFingerprint, path, messageId, onAcceptedByOwnServer, outAttemptId, replyTo);
+}
+
+bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& path,
+    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
+    std::string* outAttemptId, const std::string& replyTo)
+{
+    // The picture goes into the profile with the message: the file it was made
+    // from is a scratch copy, and the sender's own chat has to show it for as
+    // long as the message is there.
+    if (!messageId.empty()) {
+        std::ifstream in(path, std::ios::binary);
+        if (!in) {
+            throw std::runtime_error("cannot read the picture: " + path.string());
+        }
+        const Bytes bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        putPicture(messageId, bytes);
+    }
+    return announceTransfer(
+        kTypeImage, peerFingerprint, path, messageId, onAcceptedByOwnServer, outAttemptId, replyTo);
+}
+
+// The message that announces a transfer. Only its type differs between a file
+// and a picture: the bytes travel the same way, and what the type decides is
+// what the other side does when they arrive.
+bool Session::announceTransfer(const std::string& type, const std::string& peerFingerprint,
+    const fs::path& path, const std::string& messageId,
+    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+    const std::string& replyTo)
+{
     const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
     // Only metadata travels. The digest is over the plaintext, so the recipient
     // can check that what it finally holds is what was announced, independently
@@ -1496,7 +1534,7 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
 
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
-        {"type", "file"},
+        {"type", type},
         {"id", id},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
@@ -2135,7 +2173,8 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             if (type == "text" || type == "contact.request") {
                 message.contentType = type;
                 message.text = body.value("text", std::string());
-            } else if (type == "file" || type == "photo" || type == "audio" || type == "voice") {
+            } else if (type == kTypeFile || type == kTypeImage || type == "audio"
+                || type == "voice") {
                 // An announcement, not a delivery: the bytes are still on the
                 // sender's disk until we ask for them.
                 message.contentType = type;
@@ -2445,6 +2484,31 @@ std::size_t Session::sendCapacity(const std::string& peerFingerprint) const
 {
     const auto found = contacts_.find(peerFingerprint);
     return found == contacts_.end() ? 0 : found->second.sendTokens.size();
+}
+
+namespace {
+
+// Where a message's picture is kept in the profile database.
+std::string pictureKey(const std::string& messageId)
+{
+    return "picture:" + messageId;
+}
+
+}  // namespace
+
+void Session::putPicture(const std::string& messageId, const Bytes& bytes)
+{
+    db_->put(pictureKey(messageId), bytes);
+}
+
+std::optional<Bytes> Session::picture(const std::string& messageId) const
+{
+    return db_->get(pictureKey(messageId));
+}
+
+bool Session::hasPicture(const std::string& messageId) const
+{
+    return db_->has(pictureKey(messageId));
 }
 
 std::vector<Client::DeviceEntry> Session::devices()

@@ -10,6 +10,7 @@
 #include "I2pRouter.hpp"
 
 #include "AvatarStore.hpp"
+#include "PictureStore.hpp"
 #include "DeliveryStatus.hpp"
 #include "Invite.hpp"
 #include "QtAudioIo.hpp"
@@ -930,6 +931,52 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
     }
 }
 
+void SessionWorker::storePicture(const QString& messageId, const QByteArray& bytes)
+{
+    if (!session_) {
+        return;
+    }
+    const Bytes stored(bytes.begin(), bytes.end());
+    session_->putPicture(messageId.toStdString(), stored);
+}
+
+void SessionWorker::loadPictures(const QStringList& messageIds)
+{
+    if (!session_) {
+        return;
+    }
+    for (const QString& messageId : messageIds) {
+        const std::optional<Bytes> stored = session_->picture(messageId.toStdString());
+        if (stored.has_value()) {
+            emit pictureLoaded(messageId,
+                QByteArray(reinterpret_cast<const char*>(stored->data()),
+                    static_cast<qsizetype>(stored->size())));
+        }
+    }
+}
+
+void SessionWorker::sendPicture(const QString& peer, const QString& localPath, qint64 localId,
+    const QString& protocolId, const QString& replyTo)
+{
+    try {
+        std::string attemptId;
+        const bool delivered = session_->sendPicture(peer.toStdString(), localPath.toStdString(),
+            protocolId.toStdString(),
+            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            &attemptId, replyTo.toStdString());
+        if (delivered) {
+            pendingSends_.erase(localId);
+            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
+        } else if (!attemptId.empty()) {
+            pendingSends_[localId] = attemptId;
+        }
+        emit sendResult(localId, true, {});
+    } catch (const std::exception& e) {
+        pendingSends_.erase(localId);
+        emit sendResult(localId, false, QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
 {
     const QString op = beginOp(
@@ -1619,6 +1666,10 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::connectProgress, this, &SessionController::onConnectProgress);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
+    connect(this, &SessionController::requestSendPicture, worker_, &SessionWorker::sendPicture);
+    connect(this, &SessionController::requestStorePicture, worker_, &SessionWorker::storePicture);
+    connect(this, &SessionController::requestLoadPictures, worker_, &SessionWorker::loadPictures);
+    connect(worker_, &SessionWorker::pictureLoaded, this, &SessionController::onPictureLoaded);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
     connect(this, &SessionController::requestSendReaction, worker_, &SessionWorker::sendReaction);
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
@@ -1952,6 +2003,7 @@ void SessionController::loadLatestWindow()
     hasMoreOlder_ = !msgs.isEmpty() && store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
     hasMoreNewer_ = false;  // the latest page is, by definition, at the newest
     conversation_.setMessages(msgs);
+    requestPicturesFor(msgs);
     replayTransfersForActivePeer();
     emit pagingChanged();
 }
@@ -2022,6 +2074,7 @@ void SessionController::openWindowAtUnread(const QString& peer, qint64 firstUnre
     hasMoreOlder_ = store_.hasMessagesBefore(peer, oldestLoadedId_);
     hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
     conversation_.setMessages(win);
+    requestPicturesFor(win);
     replayTransfersForActivePeer();
     emit pagingChanged();
     emit scrollToUnread(firstUnread);
@@ -2059,6 +2112,7 @@ void SessionController::openConversationAtMessage(const QString& peer, qint64 me
     hasMoreOlder_ = !win.isEmpty() && store_.hasMessagesBefore(peer, oldestLoadedId_);
     hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
     conversation_.setMessages(win);
+    requestPicturesFor(win);
     replayTransfersForActivePeer();
     emit pagingChanged();
     emit scrollToMessage(messageId);
@@ -2362,6 +2416,54 @@ void SessionController::sendFile(const QString& fileUrl)
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
     emit requestSendFile(activePeer_, localPath, m.id, m.protocolId, replyTo);
+}
+
+void SessionController::sendPicture(const QString& fileUrl)
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    const QString localPath = QUrl(fileUrl).toLocalFile();
+    if (localPath.isEmpty()) {
+        return;
+    }
+    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    if (replying_) {
+        cancelReply();
+    }
+    StoredMessage m;
+    m.peer = activePeer_;
+    m.outgoing = true;
+    m.type = "image";
+    m.protocolId = SessionController_genProtocolId();
+    m.replyTo = replyTo;
+    m.attName = QUrl(fileUrl).fileName();
+    // Record the local size and mime so the sender's own bubble renders a real
+    // attachment card (name + size) immediately, without waiting for the upload.
+    const QFileInfo info(localPath);
+    m.attSize = info.size();
+    m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
+    // Keep the local source path so a failed send can be resent without re-picking
+    // the file (the bytes are not kept; only the path).
+    m.attSrcPath = localPath;
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
+    m.status = 0;
+    m.id = store_.append(m);
+    statusById_[m.id] = 0;
+    showInActiveView(m, true);
+    contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
+    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
+        m.attName, QStringLiteral("Sending…"), activePeer_);
+    // The sender's own bubble draws the picture at once, from the same bytes the
+    // core is about to store in the profile.
+    QFile prepared(localPath);
+    if (prepared.open(QIODevice::ReadOnly)) {
+        const bool drawable = PictureStore::instance().put(m.protocolId, prepared.readAll());
+        store_.setHasPicture(m.id, drawable);
+        conversation_.setPictureReadyForId(m.id, drawable);
+    }
+    emit requestSendPicture(activePeer_, localPath, m.id, m.protocolId, replyTo);
 }
 
 void SessionController::sendCallback(const QString& data, const QString& refMsgId)
@@ -2855,6 +2957,54 @@ void SessionController::forgetDevice(const QString& clientId)
     emit requestForgetDevice(clientId);
 }
 
+void SessionController::onPictureLoaded(const QString& messageId, const QByteArray& bytes)
+{
+    if (!PictureStore::instance().put(messageId, bytes)) {
+        bazarish::log::warn("a stored picture no longer decodes");
+    }
+}
+
+// Asks for the pictures of the messages now on screen that are not decoded yet.
+void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
+{
+    QStringList wanted;
+    for (const StoredMessage& message : messages) {
+        if (message.hasPicture && !message.protocolId.isEmpty()
+            && !PictureStore::instance().has(message.protocolId)) {
+            wanted << message.protocolId;
+        }
+    }
+    if (!wanted.isEmpty()) {
+        emit requestLoadPictures(wanted);
+    }
+}
+
+void SessionController::savePictureAs(const QString& messageId, const QString& fileUrl)
+{
+    const QString path = QUrl(fileUrl).toLocalFile();
+    const QByteArray bytes = PictureStore::instance().bytes(messageId);
+    if (path.isEmpty() || bytes.isEmpty()) {
+        emit actionFailed(QStringLiteral("This picture is not here to save."));
+        return;
+    }
+    QFile out(path);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate) || out.write(bytes) != bytes.size()) {
+        emit actionFailed(QStringLiteral("Could not write ") + path);
+        return;
+    }
+    emit actionOk(QStringLiteral("Picture saved."));
+}
+
+QUrl SessionController::defaultPictureSaveUrl(const QString& messageId, const QString& name) const
+{
+    const QByteArray bytes = PictureStore::instance().bytes(messageId);
+    // The extension follows what the bytes are, not what the message called them.
+    const QString suffix = bytes.startsWith(QByteArray::fromHex("89504E47"))
+        ? QStringLiteral(".png") : QStringLiteral(".jpg");
+    const QString base = name.isEmpty() ? QStringLiteral("picture") : QFileInfo(name).completeBaseName();
+    return defaultSaveUrl(base + suffix);
+}
+
 void SessionController::onDevicesReady(const QVariantList& devices)
 {
     devices_ = devices;
@@ -3171,7 +3321,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // that it is seen, and making the reader press Save to find out what arrived
     // is not that. Only a picture, only a small one, and what finally decides
     // whether it is drawn is the bytes on arrival, not this declared type.
-    if (!m.outgoing && m.attMime.startsWith(QStringLiteral("image/")) && m.attSize > 0
+    if (!m.outgoing && m.type == QStringLiteral("image") && m.attSize > 0
         && m.attSize <= kAutoFetchImageBytes && !m.protocolId.isEmpty()) {
         fetchImageAttachment(peer, m);
     }
@@ -3202,6 +3352,8 @@ void SessionController::fetchImageAttachment(const QString& peer, const StoredMe
     const QString name = message.attName.isEmpty() ? QStringLiteral("picture") : message.attName;
     const QString destination
         = QDir(directory).filePath(message.protocolId + "-" + QFileInfo(name).fileName());
+    // The file is where the bytes land; the profile is where they stay.
+    pendingPictures_.insert(message.id, message.protocolId);
     saveAttachmentToFile(
         peer, message.protocolId, QUrl::fromLocalFile(destination).toString(), message.id);
 }
@@ -3432,6 +3584,27 @@ void SessionController::onDownloadFinished(qint64 token, bool ok, const QString&
     finishOperation(opId, ok, ok ? QStringLiteral("Saved") : (QStringLiteral("Failed: ") + error));
     conversation_.finishDownloadForId(token, ok, error);
     if (ok && !path.isEmpty()) {
+        // A picture fetched for the chat goes into the profile and the file it
+        // arrived in is removed: what this client keeps, it keeps encrypted, not
+        // as a plaintext copy in a cache directory.
+        if (pendingPictures_.contains(token)) {
+            const QString protocolId = pendingPictures_.take(token);
+            QFile file(path);
+            if (file.open(QIODevice::ReadOnly)) {
+                const QByteArray bytes = file.readAll();
+                file.close();
+                emit requestStorePicture(protocolId, bytes);
+                // Not a picture after all: the message is broken, and nothing is
+                // drawn for it. No falling back to a file card.
+                const bool drawable = PictureStore::instance().put(protocolId, bytes);
+                store_.setHasPicture(token, drawable);
+                conversation_.setPictureReadyForId(token, drawable);
+            } else {
+                bazarish::log::warn("fetched picture could not be read back");
+            }
+            QFile::remove(path);
+            return;
+        }
         // Remember where it landed, in the store and the open view, so the bubble
         // can offer to open it (falling back to re-save when the file is gone).
         store_.setSavedPath(token, path);

@@ -128,7 +128,7 @@ Item {
 
     // Single shared reaction picker, opened by any bubble with its message's
     // protocol id (so the chat pays no popup per row).
-    ImageViewer { id: imageViewer }
+    ImageViewer { id: imageViewer; session: root.session }
 
     ReactionPicker { id: reactionPicker; session: root.session }
 
@@ -268,7 +268,9 @@ Item {
                         root.confirmDeleteMessage(msgId, protocolId, outgoing)
                     }
                     onReactRequested: function(protocolId) { reactionPicker.openFor(protocolId) }
-                    onImageRequested: function(url) { imageViewer.show(url) }
+                    onImageRequested: function(url, messageId, name) {
+                        imageViewer.show(url, messageId, name)
+                    }
                 }
 
                 // Section messages by calendar day and show a centered date

@@ -121,6 +121,7 @@ if(Qt6_FOUND)
         app/Identicon.cpp
         app/Identicon.hpp
         app/AvatarStore.cpp
+        app/PictureStore.cpp
         app/AvatarStore.hpp
     )
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

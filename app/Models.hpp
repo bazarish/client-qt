@@ -85,7 +85,7 @@ public:
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
-        BlobGoneRole, DownloadStageRole, TransferStageRole, ReplyToRole
+        BlobGoneRole, DownloadStageRole, TransferStageRole, ReplyToRole, PictureRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -133,6 +133,9 @@ public:
     // Records where an incoming attachment was saved, so the bubble can offer to
     // open it instead of re-saving.
     void setSavedPathForId(qint64 id, const QString& path);
+    // Marks a message whose picture this profile now holds, so the bubble draws
+    // it. What it draws is served out of the profile database, not off disk.
+    void setPictureReadyForId(qint64 id, bool ready);
     // Marks an incoming attachment as gone from the store (404/410): the bubble
     // shows "Not found" and drops the Save button.
     void setBlobGoneForId(qint64 id, bool gone);

@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import Bazarish
 
 // A picture at full size, over everything else. It shows what is already on this
@@ -9,9 +10,14 @@ import Bazarish
 Popup {
     id: root
     property url source
+    property string messageId
+    property string name
+    property var session: null
 
-    function show(url) {
+    function show(url, messageId, name) {
         root.source = url
+        root.messageId = messageId
+        root.name = name
         root.open()
     }
 
@@ -29,6 +35,12 @@ Popup {
         radius: Theme.radius
     }
 
+    FileDialog {
+        id: saveDialog
+        fileMode: FileDialog.SaveFile
+        onAccepted: root.session.savePictureAs(root.messageId, selectedFile)
+    }
+
     contentItem: Item {
         Image {
             id: picture
@@ -42,6 +54,31 @@ Popup {
             sourceSize.width: root.parent ? root.parent.width : 1920
             sourceSize.height: root.parent ? root.parent.height : 1080
         }
+        // Saving from here writes the same bytes the bubble drew, out of the
+        // profile and onto the disk the user chose.
+        Button {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 12
+            text: "Save as…"
+            onClicked: {
+                saveDialog.currentFile
+                    = root.session.defaultPictureSaveUrl(root.messageId, root.name)
+                saveDialog.open()
+            }
+            background: Rectangle {
+                radius: Theme.radiusSmall
+                color: Theme.surface
+                border.color: Theme.border
+            }
+            contentItem: Label {
+                text: parent.text
+                color: Theme.accent
+                leftPadding: 10
+                rightPadding: 10
+            }
+        }
+
         TapHandler { onTapped: root.close() }
     }
 }
