@@ -249,6 +249,24 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             " blobGone INTEGER, replyTo TEXT, hasPicture INTEGER DEFAULT 0)")) {
         return false;
     }
+    // A transcript written before pictures had a column of their own. Adding it
+    // is the whole migration: without it every query naming the column fails and
+    // the chat comes up empty, which is what happened.
+    Query columns(db_);
+    bool hasPictureColumn = false;
+    if (columns.exec("PRAGMA table_info(messages)")) {
+        while (columns.next()) {
+            if (columns.value(1).toString() == QStringLiteral("hasPicture")) {
+                hasPictureColumn = true;
+                break;
+            }
+        }
+    }
+    if (!hasPictureColumn
+        && !query.exec("ALTER TABLE messages ADD COLUMN hasPicture INTEGER DEFAULT 0")) {
+        return false;
+    }
+
     // Per-peer read high-water for persistent unread tracking (see read state).
     if (!query.exec("CREATE TABLE IF NOT EXISTS read_state ("
                     "peer TEXT PRIMARY KEY, last_read_id INTEGER NOT NULL)")) {
