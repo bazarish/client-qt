@@ -340,6 +340,18 @@ void ConversationModel::setStatusForId(qint64 id, int status)
     }
 }
 
+void ConversationModel::setTextForId(qint64 id, const QString& text)
+{
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            messages_[i].text = text;
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {TextRole});
+            return;
+        }
+    }
+}
+
 void ConversationModel::setErrorForId(qint64 id, const QString& error)
 {
     if (error.isEmpty()) {

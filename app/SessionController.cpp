@@ -2445,6 +2445,19 @@ void SessionController::addByInvite(const QString& uri, const QString& intro)
     const QString opId = QStringLiteral("contact:") + SessionController_genProtocolId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding contact"),
         QStringLiteral("Preparing…"));
+    // An invite carries who it is for, so the conversation can exist before the
+    // request is on its way: the chat opens now and the progress is written into
+    // it, instead of a modal parked over the app.
+    try {
+        const bazarish::Descriptor descriptor
+            = bazarish::parseDescriptor(uri.trimmed().toStdString());
+        openContactProgress(QString::fromStdString(descriptor.fingerprint), opId,
+            QString::fromStdString(descriptor.name));
+    } catch (const std::exception& error) {
+        // inviteProblem() already vetted the link, so this cannot normally fire;
+        // if it ever does, the add still runs and the panel carries the progress.
+        bazarish::log::warn("invite parsed for the chat but not for its peer: {}", error.what());
+    }
     emit requestAddByInvite(uri, intro, opId);
 }
 
@@ -2453,7 +2466,40 @@ void SessionController::addByUsername(const QString& alias, const QString& intro
     const QString opId = QStringLiteral("contact:") + SessionController_genProtocolId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding ") + alias,
         QStringLiteral("Preparing…"));
+    // Who the alias belongs to is only known once the resolver answers, so the
+    // chat opens then (onContactRequestSent); until it does, the activity panel
+    // is where the progress shows.
     emit requestAddByUsername(alias, intro, opId);
+}
+
+void SessionController::openContactProgress(
+    const QString& peer, const QString& opId, const QString& name)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    StoredMessage note;
+    note.peer = peer;
+    note.type = QStringLiteral("system");
+    note.text = QStringLiteral("Sending a contact request…");
+    note.ts = nowMillis();
+    note.orderKey = note.ts;
+    note.status = DeliveryStatus::Received;
+    note.id = store_.append(note);
+    contactProgressRows_[opId] = note.id;
+    contacts_.touch(peer, name, note.text, note.ts, false);
+    activateConversation(peer);
+    showInActiveView(note, true);
+}
+
+void SessionController::writeContactProgress(const QString& opId, const QString& text)
+{
+    const auto found = contactProgressRows_.constFind(opId);
+    if (found == contactProgressRows_.cend()) {
+        return;
+    }
+    store_.editContent(found.value(), text, QString());
+    conversation_.setTextForId(found.value(), text);
 }
 
 void SessionController::acceptContact()
@@ -3468,6 +3514,7 @@ void SessionController::markReadThroughRow(int row)
 void SessionController::onContactAddStage(const QString& opId, const QString& status)
 {
     updateOperation(opId, status);
+    writeContactProgress(opId, status);
 }
 
 void SessionController::onOpBegin(
@@ -3500,10 +3547,19 @@ void SessionController::onContactAccepted(const QString& peer, const bool ok,
 void SessionController::onContactAddDone(const QString& opId, bool ok, const QString& status)
 {
     finishOperation(opId, ok, status);
+    // The note in the chat carries the outcome and then stops being a progress
+    // line: a failed add says why, right where the user was watching.
+    writeContactProgress(opId, ok ? status : QStringLiteral("Could not add: ") + status);
+    contactProgressRows_.remove(opId);
 }
 
 void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro)
 {
+    // An add by alias only learns who the peer is here, so this is where its chat
+    // opens; an add by invite opened one already and just carries on in it.
+    if (!fingerprint.isEmpty() && activePeer_ != fingerprint) {
+        activateConversation(fingerprint);
+    }
     // Mirror the request on our own side: store the intro we just sent as an
     // outgoing message and open a chat for the new peer, so adding a contact
     // produces a visible conversation immediately instead of an empty chat-list

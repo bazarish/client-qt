@@ -12,23 +12,17 @@ Popup {
     width: Math.min(460, parent ? parent.width - 24 : 460)
     padding: 18
     property string mode: "menu"
-    property bool busy: false
     property string errorText: ""
-    closePolicy: busy ? Popup.NoAutoClose : (Popup.CloseOnEscape | Popup.CloseOnPressOutside)
-    onOpened: { mode = "menu"; busy = false; errorText = "" }
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    onOpened: { mode = "menu"; errorText = "" }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
     // The add-contact actions run on the worker thread (a lookup plus a sealed
-    // delivery with retries - slow over I2P), so reflect that immediately.
-    function startRequest(fn) { errorText = ""; busy = true; fn() }
-
-    Connections {
-        target: root.session
-        ignoreUnknownSignals: true
-        function onActionOk(info) { if (root.busy) { root.busy = false; root.close() } }
-        function onActionFailed(error) { if (root.busy) { root.busy = false; root.errorText = error } }
-    }
+    // delivery with retries - slow over I2P). The conversation the request belongs
+    // to opens right away and the progress is written into it, so this sheet has
+    // nothing left to wait for: it fires the request and closes.
+    function startRequest(fn) { errorText = ""; fn(); close() }
 
     // Primary action button: near-white accent fill, darker on hover/press, so it
     // reads clearly against the dark popup (the default Basic Button blends in).
@@ -55,53 +49,13 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             // Back to the menu page, shown left of the title while on a sub-page.
-            IconButton { iconName: "back"; font.pixelSize: 26; visible: !root.busy && root.mode !== "menu"; onClicked: root.mode = "menu" }
+            IconButton { iconName: "back"; font.pixelSize: 26; visible: root.mode !== "menu"; onClicked: root.mode = "menu" }
             Label { text: "New chat"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
-            IconButton { iconName: "close"; visible: !root.busy; onClicked: root.close() }
-        }
-
-        // --- Sending (immediate feedback while the worker does the request) ---
-        ColumnLayout {
-            visible: root.busy
-            Layout.fillWidth: true
-            spacing: 12
-            BusyIndicator { running: root.busy; Layout.alignment: Qt.AlignHCenter }
-            Label {
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-                text: "Sending request… this can take a moment while routing is resolved."
-                color: Theme.textDim
-            }
-            // When the embedded I2P router is off, routing falls back to the
-            // server proxy - say so, so the wait is explained rather than silent.
-            Label {
-                visible: !I2p.enabled
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.Wrap
-                text: "I2P is off — relaying through your server."
-                color: Theme.warn
-                font.pixelSize: Theme.fontSmall
-            }
-            Button {
-                id: bgBtn
-                text: "Run in background"
-                hoverEnabled: true
-                Layout.alignment: Qt.AlignHCenter
-                onClicked: root.close()
-                background: Rectangle {
-                    radius: 10
-                    color: bgBtn.down ? Theme.border2 : (bgBtn.hovered ? Theme.surfaceAlt : Theme.surface)
-                    border.color: bgBtn.hovered ? Theme.green : Theme.border
-                    border.width: 1
-                }
-                contentItem: Label { text: bgBtn.text; color: Theme.text; horizontalAlignment: Text.AlignHCenter; leftPadding: 14; rightPadding: 14 }
-            }
+            IconButton { iconName: "close"; onClicked: root.close() }
         }
 
         Label {
-            visible: root.errorText.length > 0 && !root.busy
+            visible: root.errorText.length > 0
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             color: Theme.danger
@@ -110,7 +64,7 @@ Popup {
 
         // --- Menu ---
         ColumnLayout {
-            visible: !root.busy && root.mode === "menu"
+            visible: root.mode === "menu"
             Layout.fillWidth: true
             spacing: 8
             Repeater {
@@ -150,7 +104,7 @@ Popup {
 
         // --- Add by invite ---
         ColumnLayout {
-            visible: !root.busy && root.mode === "invite"
+            visible: root.mode === "invite"
             Layout.fillWidth: true
             spacing: 8
             Label { text: "Paste the bazarish:// invite link:"; color: Theme.textDim }
@@ -189,7 +143,7 @@ Popup {
 
         // --- Add by username ---
         ColumnLayout {
-            visible: !root.busy && root.mode === "username"
+            visible: root.mode === "username"
             Layout.fillWidth: true
             spacing: 8
             Label { text: "The resolver maps the name to a fingerprint (it is trusted for that mapping only)."; color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true }

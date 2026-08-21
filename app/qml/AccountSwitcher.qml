@@ -91,23 +91,30 @@ Popup {
                             spacing: 6
                             Rectangle { Layout.alignment: Qt.AlignVCenter; implicitWidth: 7; implicitHeight: 7; radius: 3.5; color: root.statusColor(model) }
                             Label { text: root.statusText(model); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                            // The active connection: a positive green "I2P" pill when the
-                            // account is connected over an I2P facade, a grey "web" chip for
-                            // a clearnet facade. Only shown while actually connected.
+                            // The active connection, as a chip of fixed width: a
+                            // positive green "I2P" over an I2P facade, grey "web"
+                            // over a clearnet one, and "off" when the profile is
+                            // not connected at all. Every row carries one, so the
+                            // grid does not drift between connected and idle rows.
                             Rectangle {
-                                visible: model.open && model.online && model.connected && model.activeFacade.length > 0
                                 Layout.alignment: Qt.AlignVCenter
+                                readonly property bool live: model.open && model.online
+                                    && model.connected && model.activeFacade.length > 0
                                 radius: Theme.radiusSmall
-                                color: model.i2pFacade ? Theme.green : "transparent"
-                                border.color: model.i2pFacade ? Theme.green : Theme.border
+                                color: live && model.i2pFacade ? Theme.green : "transparent"
+                                border.color: live
+                                    ? (model.i2pFacade ? Theme.green : Theme.border)
+                                    : Theme.border
                                 border.width: 1
                                 implicitHeight: connLabel.implicitHeight + 4
-                                implicitWidth: connLabel.implicitWidth + 12
+                                // Sized for the widest label so the row keeps its
+                                // shape when the state changes under it.
+                                implicitWidth: 44
                                 Label {
                                     id: connLabel
                                     anchors.centerIn: parent
-                                    text: model.i2pFacade ? "I2P" : "web"
-                                    color: model.i2pFacade ? Theme.text : Theme.textDim
+                                    text: !parent.live ? "OFF" : (model.i2pFacade ? "I2P" : "web")
+                                    color: parent.live && model.i2pFacade ? Theme.text : Theme.textDim
                                     font.pixelSize: Theme.fontSmall - 1
                                     font.weight: Font.Medium
                                 }

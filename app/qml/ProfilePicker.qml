@@ -86,11 +86,20 @@ Item {
                             Layout.fillWidth: true
                             spacing: 2
                             Label { text: model.name; color: Theme.text; font.pixelSize: Theme.fontBody; font.weight: Font.Medium }
+                            // The second line is the fingerprint alone; whether a
+                            // server is configured is the chip on the right, so
+                            // every row is built the same way whatever its state.
                             Label {
-                                text: (model.fingerprint.substring(0, 12) + "…")
-                                    + (model.connected ? "" : "  · not connected")
+                                text: model.fingerprint.length > 0
+                                    ? model.fingerprint.substring(0, 12) + "…"
+                                    : "locked"
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                             }
+                        }
+                        // One chip per row, always: a profile with no server says
+                        // so instead of leaving a hole where the others have text.
+                        StatusChip {
+                            state: model.connected ? "configured" : "not configured"
                         }
                         Label { text: model.encrypted ? "🔒" : ""; color: Theme.textDim }
                         // Copy fingerprint and delete live in an overflow menu to

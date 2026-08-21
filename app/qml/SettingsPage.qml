@@ -181,7 +181,7 @@ Popup {
                         text: parent.i2pOnlyBlocked
                             ? "Offline — full privacy mode is on, but this profile has no I2P facade. Add one (or turn privacy mode off) to connect."
                             : (!(root.session && root.session.connected)
-                                ? "No server configured"
+                                ? "Not configured"
                                 : (root.session.reachable
                                     ? "Connected"
                                     : "Not reaching the server — Connect to finish setup"))

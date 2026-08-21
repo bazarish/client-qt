@@ -742,6 +742,9 @@ private slots:
     void ackAfterReceive(const QVariantMap& message);
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onContactAddStage(const QString& opId, const QString& status);
+    // Opens the conversation for a contact being added and starts a note in it.
+    void openContactProgress(const QString& peer, const QString& opId, const QString& name);
+    void writeContactProgress(const QString& opId, const QString& text);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
     void onContactAccepted(const QString& peer, bool ok, const QString& reason);
     void onOpBegin(const QString& opId, const QString& kind, const QString& title,
@@ -874,6 +877,9 @@ private:
     QStringList recentReactions_;
     // Where this profile lives and what unlocks it, for the store below.
     QString profilePath_;
+    // The system note tracking a contact add, per operation id: the progress of a
+    // request is written into the conversation it will belong to.
+    QHash<QString, qint64> contactProgressRows_;
     QString profilePassphrase_;
     std::unique_ptr<client::ProfileDb> profileDb_;
     client::ProfileDb& profileDb();

@@ -108,6 +108,8 @@ public:
     // (for the read high-water). Returns false when there is none.
     bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol) const;
     void setStatusForId(qint64 id, int status);
+    // Replaces a row's text in place (a system note tracking a running operation).
+    void setTextForId(qint64 id, const QString& text);
     // Attaches (or, when empty, clears) a delivery-error string for a message,
     // shown inline on a failed outgoing bubble. Session-only; not persisted.
     void setErrorForId(qint64 id, const QString& error);
