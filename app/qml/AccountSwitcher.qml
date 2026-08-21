@@ -89,7 +89,14 @@ Popup {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         checked: model.online
-                        onToggled: App.setOnline(model.accountId, checked)
+                        onToggled: {
+                            App.setOnline(model.accountId, checked)
+                            // Toggling breaks the binding, and then a switch that
+                            // asked for a passphrase and did not get one would
+                            // stay on while the account stayed off. Bind it again
+                            // so what is on disk is what is shown.
+                            checked = Qt.binding(function() { return model.online })
+                        }
                     }
                     // The count sits in a slot of its own, so arriving or clearing
                     // messages never shift the switch beside it.

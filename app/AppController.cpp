@@ -332,6 +332,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
         try {
             for (const ProfileRow& info : profileRows_) {
                 if (info.id == id && info.encrypted) {
+                    unlockingId_ = id;
                     emit needPassphrase(id, info.name);
                     return;
                 }
@@ -354,8 +355,15 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
             }
         }
     });
-    connect(ctrl, &SessionController::openFailed, this, [this, ctrl](const QString& error) {
+    connect(ctrl, &SessionController::openFailed, this, [this, ctrl, id](const QString& error) {
         removeSession(ctrl, /*deferred=*/true);
+        if (unlockingId_ == id) {
+            // The prompt stays open with the reason on it; the account it was
+            // opened for does not come online on a wrong passphrase.
+            refreshAccounts();
+            emit unlockFailed(error);
+            return;
+        }
         emit profileOpenFailed(error);
     });
     connect(ctrl, &SessionController::unreadTotalChanged, this, &AppController::refreshAccounts);
@@ -370,6 +378,11 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
         ctrl->open(file, id, passphrase);
     } catch (const std::exception& e) {
         removeSession(ctrl, /*deferred=*/false);
+        if (unlockingId_ == id) {
+            refreshAccounts();
+            emit unlockFailed(QString::fromUtf8(e.what()));
+            return;
+        }
         emit profileOpenFailed(QString::fromUtf8(e.what()));
         return;
     }
@@ -425,10 +438,33 @@ void AppController::createProfile(const QString& name, const QString& passphrase
 
 void AppController::openProfile(const QString& id, const QString& passphrase)
 {
-    // Explicitly opening an account brings it online; clear any persisted offline
-    // mark so it auto-opens on the next run too.
-    setAccountOffline(id, false);
+    // Unlocking is not the same as switching on. An account the user turned off
+    // is unlocked to be read: it opens, its chats are there, and it stays off
+    // until the switch says otherwise. Only an unlock asked for by that switch -
+    // or an account that was never turned off - comes online here.
+    const bool wasOff = offline_.constFind(id) != offline_.cend();
+    const bool bringOnline = !wasOff || (unlockingId_ == id && unlockToBringOnline_);
+    if (bringOnline) {
+        setAccountOffline(id, false);
+    }
+    unlockingId_.clear();
+    unlockToBringOnline_ = false;
     openSession(id, passphrase, /*makeActive=*/true);
+    if (!bringOnline) {
+        if (SessionController* const ctrl = sessionFor(id)) {
+            ctrl->goOffline();
+        }
+        refreshAccounts();
+    }
+}
+
+void AppController::cancelUnlock()
+{
+    unlockingId_.clear();
+    unlockToBringOnline_ = false;
+    // Nothing changed on disk while the prompt was open, so redrawing the rows
+    // puts every switch back to what it says there.
+    refreshAccounts();
 }
 
 void AppController::importProfile(const QString& name, const QString& fileUrl,
@@ -478,19 +514,32 @@ void AppController::switchTo(const QString& id)
 
 void AppController::setOnline(const QString& id, bool on)
 {
-    // Remember the choice across runs: an offline account is not auto-opened next
-    // launch; an online one is.
-    setAccountOffline(id, !on);
     SessionController* ctrl = sessionFor(id);
-    if (on) {
+    if (!on) {
+        // Remembered across runs: an account switched off is not opened at the
+        // next launch either.
+        setAccountOffline(id, true);
         if (ctrl != nullptr) {
-            ctrl->goOnline();
-            refreshAccounts();
-        } else {
-            openSession(id, {}, /*makeActive=*/false);
+            ctrl->goOffline();
         }
-    } else if (ctrl != nullptr) {
-        ctrl->goOffline();
+        refreshAccounts();
+        return;
+    }
+    if (ctrl != nullptr) {
+        setAccountOffline(id, false);
+        ctrl->goOnline();
+        refreshAccounts();
+        return;
+    }
+    // A locked account cannot come online until it is unlocked, and the switch
+    // must not claim otherwise in the meantime: nothing is written here, and
+    // openProfile writes it once the passphrase actually opens the profile.
+    unlockToBringOnline_ = true;
+    openSession(id, {}, /*makeActive=*/false);
+    if (unlockingId_.isEmpty()) {
+        // Not a locked profile: it opened (or failed) on the spot.
+        unlockToBringOnline_ = false;
+        setAccountOffline(id, false);
         refreshAccounts();
     }
 }

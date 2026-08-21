@@ -53,6 +53,10 @@ public:
     Q_INVOKABLE void refreshProfiles();
     Q_INVOKABLE void createProfile(const QString& name, const QString& passphrase);
     Q_INVOKABLE void openProfile(const QString& id, const QString& passphrase);
+    // The unlock prompt was dismissed. Whatever was waiting on it does not
+    // happen: an account asked to come online stays off, and its switch goes
+    // back to what is on disk.
+    Q_INVOKABLE void cancelUnlock();
     Q_INVOKABLE void importProfile(const QString& name, const QString& fileUrl,
         const QString& password, const QString& atRestPassphrase);
     Q_INVOKABLE void deleteProfile(const QString& id);
@@ -132,6 +136,9 @@ signals:
     void showPicker();
     // An encrypted account needs its passphrase before it can be opened.
     void needPassphrase(const QString& id, const QString& name);
+    // An unlock attempt failed. It belongs on the unlock screen, where the
+    // passphrase was typed, and not in a notice at the bottom of the window.
+    void unlockFailed(const QString& error);
 
 private:
     SessionController* sessionFor(const QString& id) const;
@@ -183,6 +190,11 @@ private:
     bool haveProfiles_ = false;
     // Ids of accounts the user turned offline (persisted; not auto-opened).
     QSet<QString> offline_;
+    // The account an unlock prompt is open for, and whether unlocking it was
+    // asked for in order to bring it online. A profile unlocked just to be read
+    // keeps whatever the switch says.
+    QString unlockingId_;
+    bool unlockToBringOnline_ = false;
     // Global full-privacy mode (persisted; applied process-wide on load/change).
     bool fullPrivacy_ = false;
 };

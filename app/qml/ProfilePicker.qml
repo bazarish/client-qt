@@ -157,19 +157,45 @@ Item {
         anchors.centerIn: parent
         modal: true
         title: "Unlock profile"
+        closePolicy: Popup.CloseOnEscape
         onAccepted: { App.openProfile(root.pendingId, passField.text); root.closeIfSwitching() }
+        onRejected: App.cancelUnlock()
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Unlock profile"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.accept(); onRejected: passDialog.reject() }
-        contentItem: TextField {
-            id: passField
-            echoMode: TextInput.Password
-            placeholderText: "Passphrase"
-            color: Theme.text
-            placeholderTextColor: Theme.textDim
-            implicitWidth: 280
-            onAccepted: passDialog.accept()
-            background: Rectangle { radius: 8; color: Theme.surface; border.color: passField.activeFocus ? Theme.accent : Theme.border }
+        contentItem: ColumnLayout {
+            spacing: 6
+            TextField {
+                id: passField
+                echoMode: TextInput.Password
+                placeholderText: "Passphrase"
+                color: Theme.text
+                placeholderTextColor: Theme.textDim
+                Layout.preferredWidth: 280
+                onAccepted: passDialog.accept()
+                background: Rectangle { radius: 8; color: Theme.surface; border.color: passField.activeFocus ? Theme.accent : Theme.border }
+            }
+            // The reason a passphrase did not open the profile belongs here.
+            Label {
+                id: passError
+                visible: text.length > 0
+                color: Theme.danger
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.preferredWidth: 280
+            }
+        }
+    }
+
+    Connections {
+        target: App
+        function onUnlockFailed(error) {
+            passError.text = error
+            passField.text = ""
+            passField.forceActiveFocus()
+            if (!passDialog.visible) {
+                passDialog.open()
+            }
         }
     }
 
