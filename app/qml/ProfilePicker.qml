@@ -79,13 +79,28 @@ Item {
                             root.closeIfSwitching()
                         }
                     }
+                    // Fixed grid: the avatar and the text hug the left edge, the
+                    // chip and the controls the right one, so rows line up
+                    // whatever their content is.
                     contentItem: RowLayout {
                         spacing: 12
-                        Avatar { fingerprint: model.fingerprint; size: 40 }
+                        Avatar {
+                            fingerprint: model.fingerprint
+                            size: 40
+                            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                        }
                         ColumnLayout {
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                             spacing: 2
-                            Label { text: model.name; color: Theme.text; font.pixelSize: Theme.fontBody; font.weight: Font.Medium }
+                            Label {
+                                text: model.name
+                                color: Theme.text
+                                font.pixelSize: Theme.fontBody
+                                font.weight: Font.Medium
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
                             // The second line is the fingerprint alone; whether a
                             // server is configured is the chip on the right, so
                             // every row is built the same way whatever its state.
@@ -93,18 +108,26 @@ Item {
                                 text: model.fingerprint.length > 0
                                     ? model.fingerprint.substring(0, 12) + "…"
                                     : "locked"
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                                Layout.fillWidth: true
                             }
                         }
                         // One chip per row, always: a profile with no server says
                         // so instead of leaving a hole where the others have text.
                         StatusChip {
+                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                             state: model.connected ? "configured" : "not configured"
                         }
-                        Label { text: model.encrypted ? "🔒" : ""; color: Theme.textDim }
+                        Label {
+                            text: model.encrypted ? "🔒" : " "
+                            color: Theme.textDim
+                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                        }
                         // Copy fingerprint and delete live in an overflow menu to
                         // keep the row clean at any width.
                         IconButton {
+                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                             iconName: "more"
                             onClicked: {
                                 root.rowFingerprint = model.fingerprint

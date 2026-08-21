@@ -206,8 +206,42 @@ void AppController::refreshProfiles()
     emit profilesChanged();
 }
 
+void AppController::refreshProfileRows()
+{
+    // The picker lists what is on disk, but an open profile knows better: it has
+    // just connected to a server, or learnt its own name, while the listing was
+    // taken before any of that. Patch the rows from the live sessions instead of
+    // re-reading the files - unlocking a profile database is expensive by design.
+    bool changed = false;
+    for (ProfileRow& row : profileRows_) {
+        const SessionController* const ctrl = sessionFor(row.id);
+        if (ctrl == nullptr) {
+            continue;
+        }
+        const bool connected = ctrl->connected();
+        const QString fingerprint = ctrl->fingerprint();
+        const QString name = ctrl->displayName();
+        if (row.connected != connected || (!fingerprint.isEmpty() && row.fingerprint != fingerprint)
+            || (!name.isEmpty() && row.name != name)) {
+            row.connected = connected;
+            if (!fingerprint.isEmpty()) {
+                row.fingerprint = fingerprint;
+            }
+            if (!name.isEmpty()) {
+                row.name = name;
+            }
+            changed = true;
+        }
+    }
+    if (changed) {
+        profiles_.setProfiles(profileRows_);
+        emit profilesChanged();
+    }
+}
+
 void AppController::refreshAccounts()
 {
+    refreshProfileRows();
     // The unified list is every on-disk profile, with live status merged in for
     // the ones currently open. It reads the profiles this controller already
     // listed, never the disk: this runs on every unread count change, and opening

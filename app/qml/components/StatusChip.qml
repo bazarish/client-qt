@@ -15,9 +15,10 @@ Item {
     readonly property bool waiting: state === "connecting"
     readonly property bool absent: state === "not configured" || state === "off"
 
-    // Wide enough for the longest label the chip ever draws, so a row keeps its
-    // shape when the state changes under it.
-    implicitWidth: 92
+    // Wide enough for the longest label the chip ever draws ("not configured"),
+    // so the text is never cut and a row keeps its shape when the state changes
+    // under it.
+    implicitWidth: 108
     implicitHeight: label.implicitHeight + 6
 
     Rectangle {
@@ -33,9 +34,6 @@ Item {
             color: root.positive ? Theme.text : (root.waiting ? Theme.warn : Theme.textDim)
             font.pixelSize: Theme.fontSmall - 1
             font.weight: Font.Medium
-            elide: Text.ElideRight
-            width: parent.width - 8
-            horizontalAlignment: Text.AlignHCenter
         }
     }
 }

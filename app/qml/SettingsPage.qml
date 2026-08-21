@@ -146,11 +146,35 @@ Popup {
                                 }
                                 HoverHandler { cursorShape: Qt.PointingHandCursor }
                             }
+                            // Tap the fingerprint to copy the whole thing; the line
+                            // says what happened for a moment, so the click is not
+                            // a guess.
                             Label {
-                                text: root.session
-                                    ? root.session.shortFingerprint(root.session.fingerprint) : ""
-                                color: Theme.textDim
+                                id: fingerprintLine
+                                property bool copied: false
+                                text: copied
+                                    ? "Copied to clipboard"
+                                    : (root.session
+                                        ? root.session.shortFingerprint(root.session.fingerprint)
+                                        : "")
+                                color: copied ? Theme.green : Theme.textDim
                                 font.pixelSize: Theme.fontSmall
+                                Timer {
+                                    id: copiedTimer
+                                    interval: 1500
+                                    onTriggered: fingerprintLine.copied = false
+                                }
+                                TapHandler {
+                                    onTapped: {
+                                        if (!root.session) {
+                                            return
+                                        }
+                                        root.session.copyText(root.session.fingerprint)
+                                        fingerprintLine.copied = true
+                                        copiedTimer.restart()
+                                    }
+                                }
+                                HoverHandler { cursorShape: Qt.PointingHandCursor }
                             }
                         }
                         // Sharing yourself lives at the far edge of the same row.
@@ -226,93 +250,79 @@ Popup {
                             onClicked: connectionDialog.open()
                         }
                     }
+                    // What this profile is holding on its server, as one line and a
+                    // bar. Tapping it re-polls the server and tints the row, so the
+                    // figures are refreshed where they are read.
+                    ColumnLayout {
+                        id: storageSection
+                        Layout.fillWidth: true
+                        spacing: 3
+                        readonly property var info: root.session ? root.session.storageInfo : ({})
+                        readonly property bool ok: info ? info.mailboxOk : false
+                        readonly property double used: info ? info.mailboxUsed : 0
+                        readonly property double quota: info ? info.mailboxQuota : 0
+                        Rectangle {
+                            Layout.fillWidth: true
+                            radius: Theme.radiusSmall
+                            color: "transparent"
+                            implicitHeight: storageRow.implicitHeight + 10
+                            SequentialAnimation {
+                                id: storageFlash
+                                PropertyAction { target: parent; property: "color"
+                                    value: Qt.rgba(0.12, 0.48, 0.08, 0.5) }
+                                PauseAnimation { duration: 550 }
+                                ColorAnimation { target: parent; property: "color"
+                                    to: "transparent"; duration: 500 }
+                            }
+                            ColumnLayout {
+                                id: storageRow
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.leftMargin: 6
+                                anchors.rightMargin: 6
+                                spacing: 3
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Label {
+                                        text: "Server storage usage"
+                                        color: Theme.textDim
+                                        font.pixelSize: Theme.fontSmall
+                                        Layout.fillWidth: true
+                                    }
+                                    Label {
+                                        text: storageSection.ok
+                                            ? (root.humanBytes(storageSection.used) + " / "
+                                                + root.humanBytes(storageSection.quota))
+                                            : "unavailable"
+                                        color: storageSection.ok ? Theme.textDim : Theme.warn
+                                        font.pixelSize: Theme.fontSmall
+                                    }
+                                }
+                                ProgressBar {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 5
+                                    from: 0
+                                    to: 1
+                                    value: (storageSection.ok && storageSection.quota > 0)
+                                        ? Math.min(1, storageSection.used / storageSection.quota)
+                                        : 0
+                                }
+                            }
+                            TapHandler {
+                                onTapped: {
+                                    if (root.session) {
+                                        root.session.refreshStorageUsage()
+                                    }
+                                    storageFlash.restart()
+                                }
+                            }
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        }
+                    }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                // Storage — this profile's usage on its two backends (server-core
-                // with how long ago the figures were taken
-                // so an offline profile still shows its last-known usage.
-                ColumnLayout {
-                    id: storageSection
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    readonly property var info: root.session ? root.session.storageInfo : ({})
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label { text: "Mailbox on your server"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
-                        Label {
-                            text: storageSection.info ? root.agoText(storageSection.info.updatedAt) : ""
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                        }
-                    }
-
-                    // One backend's used / free / total with a usage bar. `used`,
-                    // `quota` and `ok` come from storageInfo; quota is the total.
-                    component StorageRow: ColumnLayout {
-                        property string title: ""
-                        property double used: 0
-                        property double quota: 0
-                        property bool ok: false
-                        Layout.fillWidth: true
-                        spacing: 3
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label { text: title; color: Theme.text; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
-                            Label {
-                                text: ok
-                                    ? (root.humanBytes(used) + " / " + root.humanBytes(quota))
-                                    : "unavailable"
-                                color: ok ? Theme.textDim : Theme.warn
-                                font.pixelSize: Theme.fontSmall
-                            }
-                        }
-                        ProgressBar {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 5
-                            from: 0; to: 1
-                            value: (ok && quota > 0) ? Math.min(1, used / quota) : 0
-                        }
-                        Label {
-                            visible: ok
-                            text: root.humanBytes(Math.max(0, quota - used)) + " free"
-                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                        }
-                    }
-
-                    // Flashed on refresh: figures that come back unchanged are the
-                    // common case, so without it the button reads as a no-op.
-                    Rectangle {
-                        id: storageBox
-                        Layout.fillWidth: true
-                        radius: Theme.radiusSmall
-                        color: "transparent"
-                        implicitHeight: mailboxRow.implicitHeight + 12
-                        SequentialAnimation {
-                            id: storageFlash
-                            PropertyAction { target: storageBox; property: "color"; value: Qt.rgba(0.12, 0.48, 0.08, 0.5) }
-                            PauseAnimation { duration: 550 }
-                            ColorAnimation { target: storageBox; property: "color"; to: "transparent"; duration: 500 }
-                        }
-                        StorageRow {
-                            id: mailboxRow
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: 6
-                            anchors.rightMargin: 6
-                            title: "Waiting to be delivered"
-                            used: storageSection.info ? storageSection.info.mailboxUsed : 0
-                            quota: storageSection.info ? storageSection.info.mailboxQuota : 0
-                            ok: storageSection.info ? storageSection.info.mailboxOk : false
-                        }
-                    }
-                    MenuButton {
-                        Layout.alignment: Qt.AlignRight
-                        text: "Refresh"
-                        onClicked: { if (root.session) root.session.refreshStorageUsage(); storageFlash.restart() }
-                    }
-                }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 // Personal I2P destination

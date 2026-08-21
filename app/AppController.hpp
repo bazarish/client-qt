@@ -119,6 +119,8 @@ private:
     // transcript open while the data directory moves.
     void closeAllSessions();
     void refreshAccounts();
+    // Patches the listed profiles with what the open sessions know.
+    void refreshProfileRows();
     void setActive(const QString& id);
     // The last active account is remembered across runs (a file under the
     // profiles root), so the app reopens straight into it with no picker.
