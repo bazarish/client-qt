@@ -12,6 +12,12 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QBuffer>
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QImage>
+#include <QImageReader>
+#include <QDateTime>
 #include <QDir>
 #include <QStandardPaths>
 #include <QUrl>
@@ -550,6 +556,151 @@ void AppController::setPortable(const bool on)
                              "again to use it.")
             : QStringLiteral("Your data moved back to your user folder. Bazarish has to be "
                              "started again to use it."));
+}
+
+namespace {
+
+// What a picture is allowed to grow to before it is sent. A tunnel carries this
+// in a few seconds; a phone camera's original would sit in the transfer for
+// minutes and be resized on arrival anyway.
+constexpr int kMaxImageEdge = 1920;
+constexpr qint64 kMaxImageBytes = 1024 * 1024;
+constexpr int kJpegQuality = 85;
+// Each step down when the encoded picture still does not fit.
+constexpr int kQualityStep = 10;
+constexpr int kMinJpegQuality = 45;
+constexpr double kEdgeStep = 0.75;
+constexpr int kMinImageEdge = 640;
+
+// The first bytes of the formats worth rendering. A name says nothing and the
+// sender's declared type says less.
+bool looksLikePng(const QByteArray& head)
+{
+    static const QByteArray kSignature
+        = QByteArray::fromHex("89504E470D0A1A0A");
+    return head.startsWith(kSignature);
+}
+
+bool looksLikeJpeg(const QByteArray& head)
+{
+    return head.size() >= 3 && static_cast<unsigned char>(head[0]) == 0xFF
+        && static_cast<unsigned char>(head[1]) == 0xD8 && static_cast<unsigned char>(head[2]) == 0xFF;
+}
+
+// Encodes into the smallest of the formats that keeps the picture honest: PNG
+// when it has transparency to lose, JPEG otherwise, stepping quality and then
+// size down until it fits.
+QByteArray encodedImage(QImage image, QString* format)
+{
+    if (image.width() > kMaxImageEdge || image.height() > kMaxImageEdge) {
+        image = image.scaled(kMaxImageEdge, kMaxImageEdge, Qt::KeepAspectRatio,
+            Qt::SmoothTransformation);
+    }
+    const bool transparent = image.hasAlphaChannel();
+    *format = transparent ? QStringLiteral("png") : QStringLiteral("jpg");
+    int quality = kJpegQuality;
+    for (;;) {
+        QByteArray bytes;
+        QBuffer buffer(&bytes);
+        buffer.open(QIODevice::WriteOnly);
+        if (!image.save(&buffer, transparent ? "PNG" : "JPEG", transparent ? -1 : quality)) {
+            return {};
+        }
+        if (bytes.size() <= kMaxImageBytes) {
+            return bytes;
+        }
+        // Quality first (invisible at these sizes), then the picture itself.
+        if (!transparent && quality > kMinJpegQuality) {
+            quality -= kQualityStep;
+            continue;
+        }
+        const int edge = static_cast<int>(std::max(image.width(), image.height()) * kEdgeStep);
+        if (edge < kMinImageEdge) {
+            return bytes;  // as small as this is worth making it
+        }
+        image = image.scaled(edge, edge, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
+}
+
+}  // namespace
+
+QString AppController::prepareImageForSend(const QString& fileUrl)
+{
+    const QString localPath = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
+    QImage image(localPath);
+    if (image.isNull()) {
+        emit imageRejected(QStringLiteral("That file is not a picture this can read."));
+        return {};
+    }
+    return writePreparedImage(image, QFileInfo(localPath).completeBaseName());
+}
+
+bool AppController::clipboardHasImage() const
+{
+    const QClipboard* const clipboard = QGuiApplication::clipboard();
+    return clipboard != nullptr && !clipboard->image().isNull();
+}
+
+QString AppController::prepareClipboardImage()
+{
+    const QClipboard* const clipboard = QGuiApplication::clipboard();
+    const QImage image = clipboard == nullptr ? QImage() : clipboard->image();
+    if (image.isNull()) {
+        emit imageRejected(QStringLiteral("There is no picture in the clipboard."));
+        return {};
+    }
+    return writePreparedImage(image, QStringLiteral("pasted"));
+}
+
+QString AppController::writePreparedImage(const QImage& image, const QString& baseName)
+{
+    QString format;
+    const QByteArray bytes = encodedImage(image, &format);
+    if (bytes.isEmpty()) {
+        emit imageRejected(QStringLiteral("That picture could not be encoded."));
+        return {};
+    }
+    const QString name = (baseName.isEmpty() ? QStringLiteral("image") : baseName) + "-"
+        + QString::number(QDateTime::currentMSecsSinceEpoch()) + "." + format;
+    const QString path = scratchFile(name);
+    QFile out(path);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        emit imageRejected(QStringLiteral("Could not write the prepared picture."));
+        return {};
+    }
+    if (out.write(bytes) != bytes.size()) {
+        emit imageRejected(QStringLiteral("Could not write the prepared picture."));
+        return {};
+    }
+    out.close();
+    return QUrl::fromLocalFile(path).toString();
+}
+
+bool AppController::looksLikeImage(const QString& mime) const
+{
+    return mime.startsWith(QStringLiteral("image/"));
+}
+
+QString AppController::imageUrlIfSafe(const QString& localPath) const
+{
+    const QString path = QUrl(localPath).isLocalFile() ? QUrl(localPath).toLocalFile() : localPath;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+    // Only the two formats worth showing, recognised by their own first bytes.
+    constexpr qint64 kSignatureBytes = 8;
+    const QByteArray head = file.read(kSignatureBytes);
+    if (!looksLikePng(head) && !looksLikeJpeg(head)) {
+        return {};
+    }
+    // And it still has to decode: a file that starts like a PNG and is not one
+    // must not reach the renderer as a picture.
+    const QImageReader reader(path);
+    if (!reader.canRead()) {
+        return {};
+    }
+    return QUrl::fromLocalFile(path).toString();
 }
 
 QString AppController::scratchFile(const QString& name) const

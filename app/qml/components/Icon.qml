@@ -62,6 +62,9 @@ Item {
                     case "call":    return "M 6 3 L 9.5 3 L 11 8 L 8.5 9.5 "
                                          + "A 11 11 0 0 0 14.5 15.5 L 16 13 L 21 14.5 L 21 18 "
                                          + "A 3 3 0 0 1 18 21 A 18 18 0 0 1 3 6 A 3 3 0 0 1 6 3"
+                    // A frame with a hill and a sun in it: a picture, not a file.
+                    case "image":   return "M 4 5 H 20 V 19 H 4 Z M 4 16 L 9 11 L 13 15 "
+                        + "M 13 15 L 16 12 L 20 16 M 15.5 8.5 A 1.2 1.2 0 1 1 15.49 8.5"
                     case "attach":  return "M 17 8 L 9.5 15.5 A 3 3 0 0 0 13.5 19.5 L 20 13 "
                                          + "A 5.5 5.5 0 0 0 12.5 5.5 L 6 12 "
                                          + "A 8 8 0 0 0 17.5 23"

@@ -2660,8 +2660,11 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
     // Remember the destination so a successful download can record where it landed
     // (for the later "Open" action).
     pendingSavePath_.insert(token, dest);
+    // The row carries the transfer's id, which is what stops it: a download that
+    // has outlived its point must be endable from the activity panel, the same
+    // way a send is.
     beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
-        QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_);
+        QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_, messageId);
     emit requestSaveAttachment(peer, messageId, dest, token);
 }
 

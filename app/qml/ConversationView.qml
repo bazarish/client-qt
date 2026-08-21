@@ -128,6 +128,8 @@ Item {
 
     // Single shared reaction picker, opened by any bubble with its message's
     // protocol id (so the chat pays no popup per row).
+    ImageViewer { id: imageViewer }
+
     ReactionPicker { id: reactionPicker; session: root.session }
 
     // Confirms an irreversible message delete. For one's own one-to-one message it
@@ -266,6 +268,7 @@ Item {
                         root.confirmDeleteMessage(msgId, protocolId, outgoing)
                     }
                     onReactRequested: function(protocolId) { reactionPicker.openFor(protocolId) }
+                    onImageRequested: function(url) { imageViewer.show(url) }
                 }
 
                 // Section messages by calendar day and show a centered date

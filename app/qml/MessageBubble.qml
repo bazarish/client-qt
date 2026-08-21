@@ -15,6 +15,7 @@ Item {
     signal deleteRequested(var msgId, string protocolId, bool outgoing)
     // Asks the view to open the emoji picker for this message (handled by a single
     // shared popup, not one per bubble).
+    signal imageRequested(url source)
     signal reactRequested(string protocolId)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
@@ -411,6 +412,30 @@ Item {
                         contentItem: Label { text: saveButton.text; color: Theme.accent; horizontalAlignment: Text.AlignHCenter }
                     }
                 }
+            }
+
+            // A picture that has landed on this machine is shown rather than
+            // listed. What decides is the file's own first bytes: the name and
+            // the type the sender declared are theirs to write, so neither is
+            // allowed to point a renderer at anything.
+            Image {
+                id: preview
+                readonly property string safeUrl: (!model.downloading
+                        && model.savedPath.length > 0 && App.looksLikeImage(model.attMime))
+                    ? App.imageUrlIfSafe(model.savedPath) : ""
+                visible: safeUrl.length > 0
+                source: safeUrl
+                asynchronous: true
+                fillMode: Image.PreserveAspectFit
+                // Big enough to see, small enough to keep the chat a chat.
+                readonly property int maxEdge: 320
+                Layout.preferredWidth: Math.min(maxEdge, implicitWidth > 0 ? implicitWidth : maxEdge)
+                Layout.preferredHeight: implicitWidth > 0
+                    ? Layout.preferredWidth * (implicitHeight / implicitWidth) : 0
+                Layout.topMargin: 6
+                sourceSize.width: maxEdge * 2
+                TapHandler { onTapped: delegate.imageRequested(preview.safeUrl) }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
             }
 
             // Unsupported type placeholder (forward compatibility).

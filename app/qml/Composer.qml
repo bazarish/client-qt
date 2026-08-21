@@ -17,6 +17,22 @@ Rectangle {
     readonly property int minInputH: 38
     readonly property int maxInputH:
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
+    // Prepares a picture (scale, re-encode) and sends it as an attachment. A
+    // picture that cannot be read says so instead of going out as a file.
+    function sendPicture(source) {
+        const prepared = App.prepareImageForSend(source)
+        if (prepared.length > 0 && root.session) {
+            root.session.sendFile(prepared)
+        }
+    }
+
+    function sendClipboardPicture() {
+        const prepared = App.prepareClipboardImage()
+        if (prepared.length > 0 && root.session) {
+            root.session.sendFile(prepared)
+        }
+    }
+
     // Height set by dragging the grip (-1 means auto-size to the content).
     property int manualInputH: -1
     readonly property int autoInputH:
@@ -172,6 +188,15 @@ Rectangle {
                 onClicked: fileDialog.open()
             }
 
+            // Pictures are their own thing: they are shrunk before they cross a
+            // tunnel and shown in the bubble rather than listed as a file.
+            IconButton {
+                iconName: "image"
+                visible: !root.editing
+                Layout.alignment: Qt.AlignBottom
+                onClicked: imageDialog.open()
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: root.inputH
@@ -216,6 +241,17 @@ Rectangle {
                                 event.accepted = true
                             }
                         }
+                        // A picture in the clipboard is pasted as a picture; text
+                        // pastes the way it always did.
+                        Keys.onPressed: function(event) {
+                            const paste = (event.key === Qt.Key_V
+                                    && (event.modifiers & Qt.ControlModifier))
+                                || event.key === Qt.Key_Paste
+                            if (paste && App.clipboardHasImage()) {
+                                root.sendClipboardPicture()
+                                event.accepted = true
+                            }
+                        }
                     }
                 }
             }
@@ -233,6 +269,15 @@ Rectangle {
     FileDialog {
         id: fileDialog
         onAccepted: { sendOptions.fileUrl = selectedFile; sendOptions.open() }
+    }
+
+    // Pictures only: whatever comes back is scaled and re-encoded before it is
+    // sent, so a camera original does not sit in a transfer for minutes.
+    FileDialog {
+        id: imageDialog
+        title: "Send a picture"
+        nameFilters: ["Pictures (*.png *.jpg *.jpeg)", "All files (*)"]
+        onAccepted: root.sendPicture(selectedFile)
     }
     FileSendDialog {
         id: sendOptions

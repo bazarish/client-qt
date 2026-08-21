@@ -6,6 +6,7 @@
 #include "SessionController.hpp"
 
 #include <QList>
+#include <QImage>
 #include <QObject>
 #include <QSet>
 #include <QString>
@@ -86,7 +87,38 @@ public:
     // which is read-only, so the location has to come from here.
     Q_INVOKABLE QString scratchFile(const QString& name) const;
 
+    // --- Images ---
+    //
+    // A picture is the one attachment worth showing rather than listing, and the
+    // one worth shrinking before it crosses I2P.
+
+    // Prepares a picture for sending: reads it, scales it down to something a
+    // tunnel can carry and re-encodes it. Returns a file:// URL of the prepared
+    // copy in the scratch directory, or an empty string when the file is not a
+    // picture this can read (and reports why).
+    Q_INVOKABLE QString prepareImageForSend(const QString& fileUrl);
+    // The same for whatever the clipboard holds.
+    Q_INVOKABLE bool clipboardHasImage() const;
+    Q_INVOKABLE QString prepareClipboardImage();
+
+    // A file:// URL for a picture that is safe to render, or an empty string.
+    // What decides is the file's own first bytes, never the name or the type the
+    // sender claimed: a bubble must not run a renderer over whatever arrived
+    // because the other side called it a PNG.
+    Q_INVOKABLE QString imageUrlIfSafe(const QString& localPath) const;
+    // Whether an attachment is worth trying to show inline at all, by the type
+    // the sender declared. The bytes still decide (imageUrlIfSafe).
+    Q_INVOKABLE bool looksLikeImage(const QString& mime) const;
+
+private:
+    // Encodes a prepared picture into the scratch directory and returns its URL.
+    QString writePreparedImage(const QImage& image, const QString& baseName);
+
+public:
+
 signals:
+    // A picture the user chose could not be prepared: not an image, or unreadable.
+    void imageRejected(const QString& reason);
     void portableChanged();
     // The data moved; the app must be started again to use it.
     void restartRequired(const QString& message);

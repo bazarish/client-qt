@@ -174,6 +174,7 @@ if(Qt6_FOUND)
             app/qml/ChatList.qml
             app/qml/AccountSwitcher.qml
             app/qml/ConversationView.qml
+            app/qml/ImageViewer.qml
             app/qml/MessageBubble.qml
             app/qml/SearchPopup.qml
             app/qml/ReactionPicker.qml
