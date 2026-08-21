@@ -201,6 +201,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case SavedPathRole: return m.savedPath;
     case BlobGoneRole: return m.blobGone;
     case PictureRole: return m.hasPicture;
+    case DurationRole: return m.attDurationMs;
     case ReplyToRole: return m.replyTo;
     // The local calendar day this message belongs to, as an ISO date string. The
     // view groups messages into per-day sections off this role and renders a
@@ -224,6 +225,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
         {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
         {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"}, {PictureRole, "hasPicture"},
+        {DurationRole, "attDurationMs"},
         {DownloadStageRole, "downloadStage"}, {TransferStageRole, "transferStage"},
         {ReplyToRole, "replyTo"}};
 }

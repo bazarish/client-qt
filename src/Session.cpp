@@ -37,6 +37,7 @@ namespace {
 // file to keep or a picture to show.
 const char* const kTypeFile = "file";
 const char* const kTypeImage = "image";
+const char* const kTypeVoice = "voice";
 
 
 namespace fs = std::filesystem;
@@ -1553,6 +1554,39 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
     return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
+bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
+    const std::int64_t durationMs, const std::string& messageId,
+    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+    const std::string& replyTo)
+{
+    if (opus.empty()) {
+        throw std::runtime_error("there is nothing recorded to send");
+    }
+    const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
+    putVoice(id, opus);
+
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", kTypeVoice},
+        {"id", id},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"voice",
+            {
+                // Opus at the call format: 48 kHz mono, 20 ms frames, each one
+                // length-prefixed. The receiver needs nothing else to play it.
+                {"codec", "opus"},
+                {"durationMs", durationMs},
+                {"size", opus.size()},
+                {"data", nlohmann::json::binary(opus)},
+            }},
+    };
+    if (!replyTo.empty()) {
+        inner["replyTo"] = replyTo;
+    }
+    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+}
+
 // The message that announces a transfer. Only its type differs between a file
 // and a picture: the bytes travel the same way, and what the type decides is
 // what the other side does when they arrive.
@@ -2221,7 +2255,16 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.attachmentSize = picture.value("size", std::uint64_t{0});
                 const nlohmann::json::binary_t& data = picture.at("data").get_binary();
                 putPicture(message.messageId, Bytes(data.begin(), data.end()));
-            } else if (type == kTypeFile || type == "audio" || type == "voice") {
+            } else if (type == kTypeVoice) {
+                // The audio came with the message, like a picture does.
+                message.contentType = type;
+                const nlohmann::json& voice = body.at("voice");
+                message.attachmentMime = "audio/opus";
+                message.attachmentSize = voice.value("size", std::uint64_t{0});
+                message.attachmentDurationMs = voice.value("durationMs", std::int64_t{0});
+                const nlohmann::json::binary_t& data = voice.at("data").get_binary();
+                putVoice(message.messageId, Bytes(data.begin(), data.end()));
+            } else if (type == kTypeFile || type == "audio") {
                 // An announcement, not a delivery: the bytes are still on the
                 // sender's disk until we ask for them.
                 message.contentType = type;
@@ -2541,6 +2584,11 @@ std::string pictureKey(const std::string& messageId)
     return "picture:" + messageId;
 }
 
+std::string voiceKey(const std::string& messageId)
+{
+    return "voice:" + messageId;
+}
+
 }  // namespace
 
 void Session::putPicture(const std::string& messageId, const Bytes& bytes)
@@ -2556,6 +2604,16 @@ std::optional<Bytes> Session::picture(const std::string& messageId) const
 bool Session::hasPicture(const std::string& messageId) const
 {
     return db_->has(pictureKey(messageId));
+}
+
+void Session::putVoice(const std::string& messageId, const Bytes& bytes)
+{
+    db_->put(voiceKey(messageId), bytes);
+}
+
+std::optional<Bytes> Session::voice(const std::string& messageId) const
+{
+    return db_->get(voiceKey(messageId));
 }
 
 std::vector<Client::DeviceEntry> Session::devices()

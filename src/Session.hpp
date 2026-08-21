@@ -135,6 +135,8 @@ struct IncomingMessage {
     std::string attachmentName;
     std::string attachmentMime;
     std::uint64_t attachmentSize = 0;
+    // For a voice message, how long it plays.
+    std::int64_t attachmentDurationMs = 0;
 
     // For the "avatar"/"device.avatar" content types: the raw avatar image bytes
     // (already decoded from base64), so the UI can hand them to its avatar store
@@ -304,11 +306,21 @@ public:
     // directory. It is small by construction - the composer shrinks it before
     // sending - so it costs the database little.
 
+    // A voice message: Opus frames, small enough to ride inside the message, kept
+    // in the profile like a picture.
+    bool sendVoice(const std::string& peerFingerprint, const Bytes& opus, std::int64_t durationMs,
+        const std::string& messageId = {},
+        const std::function<void()>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
+        const std::string& replyTo = {});
+
     // Stores a picture's bytes against the message that announced it.
     void putPicture(const std::string& messageId, const Bytes& bytes);
     // The picture of a message, or nothing when this profile does not hold it.
     std::optional<Bytes> picture(const std::string& messageId) const;
     bool hasPicture(const std::string& messageId) const;
+    // The same for a voice message's audio.
+    void putVoice(const std::string& messageId, const Bytes& bytes);
+    std::optional<Bytes> voice(const std::string& messageId) const;
 
     // The devices registered on this account, and dropping one. A device that is
     // gone for good keeps every message in the mailbox until the server's

@@ -147,6 +147,13 @@ constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
+// A voice message rides inside one message, so it is bounded by the same limit:
+// two minutes of Opus at these settings is comfortably inside it.
+constexpr qint64 kMaxVoiceMs = 2 * 60 * 1000;
+// Below this it is a slip of the finger, not a message.
+constexpr qint64 kMinVoiceMs = 700;
+// How often the recording clock is reported to the UI.
+constexpr int kVoiceTickMs = 200;
 
 // How often the client asks its server for news when it has to poll, and how
 // often it checks in when the server holds the request open for it instead.
@@ -724,6 +731,7 @@ void SessionWorker::sync()
         map["attName"] = QString::fromStdString(m.attachmentName);
         map["attMime"] = QString::fromStdString(m.attachmentMime);
         map["attSize"] = static_cast<qint64>(m.attachmentSize);
+        map["attDurationMs"] = static_cast<qint64>(m.attachmentDurationMs);
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
@@ -935,6 +943,44 @@ void SessionWorker::storePicture(const QString& messageId, const QByteArray& byt
     }
     const Bytes stored(bytes.begin(), bytes.end());
     session_->putPicture(messageId.toStdString(), stored);
+}
+
+void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
+    const qint64 durationMs, const qint64 localId, const QString& protocolId,
+    const QString& replyTo)
+{
+    try {
+        std::string attemptId;
+        const Bytes audio(opus.begin(), opus.end());
+        const bool delivered = session_->sendVoice(peer.toStdString(), audio, durationMs,
+            protocolId.toStdString(),
+            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            &attemptId, replyTo.toStdString());
+        if (delivered) {
+            pendingSends_.erase(localId);
+            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
+        } else if (!attemptId.empty()) {
+            pendingSends_[localId] = attemptId;
+        }
+        emit sendResult(localId, true, {});
+    } catch (const std::exception& e) {
+        pendingSends_.erase(localId);
+        emit sendResult(localId, false, QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::loadVoice(const QString& messageId)
+{
+    if (!session_) {
+        return;
+    }
+    const std::optional<Bytes> stored = session_->voice(messageId.toStdString());
+    if (!stored.has_value()) {
+        return;
+    }
+    emit voiceLoaded(messageId,
+        QByteArray(reinterpret_cast<const char*>(stored->data()),
+            static_cast<qsizetype>(stored->size())));
 }
 
 void SessionWorker::loadPictures(const QStringList& messageIds)
@@ -1666,6 +1712,9 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendPicture, worker_, &SessionWorker::sendPicture);
     connect(this, &SessionController::requestStorePicture, worker_, &SessionWorker::storePicture);
     connect(this, &SessionController::requestLoadPictures, worker_, &SessionWorker::loadPictures);
+    connect(this, &SessionController::requestSendVoice, worker_, &SessionWorker::sendVoice);
+    connect(this, &SessionController::requestLoadVoice, worker_, &SessionWorker::loadVoice);
+    connect(worker_, &SessionWorker::voiceLoaded, this, &SessionController::onVoiceLoaded);
     connect(worker_, &SessionWorker::pictureLoaded, this, &SessionController::onPictureLoaded);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
     connect(this, &SessionController::requestSendReaction, worker_, &SessionWorker::sendReaction);
@@ -2953,6 +3002,144 @@ void SessionController::forgetDevice(const QString& clientId)
     emit requestForgetDevice(clientId);
 }
 
+void SessionController::startVoiceRecording()
+{
+    if (activePeer_.isEmpty() || voiceRecording_) {
+        return;
+    }
+    if (!voice_) {
+        voice_ = std::make_unique<VoiceNote>();
+        connect(voice_.get(), &VoiceNote::playbackFinished, this, [this]() {
+            voicePlaying_.clear();
+            emit voiceChanged();
+        });
+        voiceTimer_.setInterval(kVoiceTickMs);
+        connect(&voiceTimer_, &QTimer::timeout, this, [this]() {
+            voiceElapsedMs_ = voice_->elapsedMs();
+            emit voiceChanged();
+            // A voice message rides inside one message, so it is bounded by what
+            // a message may carry. Past that it stops on its own rather than
+            // being thrown away at the end.
+            if (voiceElapsedMs_ >= kMaxVoiceMs) {
+                sendVoiceRecording();
+            }
+        });
+    }
+    try {
+        voice_->startRecording();
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+        return;
+    }
+    voiceRecording_ = true;
+    voiceElapsedMs_ = 0;
+    voiceTimer_.start();
+    emit voiceChanged();
+}
+
+void SessionController::sendVoiceRecording()
+{
+    if (!voiceRecording_ || !voice_) {
+        return;
+    }
+    voiceTimer_.stop();
+    voiceRecording_ = false;
+    const qint64 durationMs = voice_->elapsedMs();
+    Bytes audio;
+    try {
+        audio = voice_->stopRecording();
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+        emit voiceChanged();
+        return;
+    }
+    emit voiceChanged();
+    if (audio.empty() || durationMs < kMinVoiceMs) {
+        emit actionFailed(QStringLiteral("Too short to send."));
+        return;
+    }
+
+    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    if (replying_) {
+        cancelReply();
+    }
+    StoredMessage m;
+    m.peer = activePeer_;
+    m.outgoing = true;
+    m.type = "voice";
+    m.protocolId = SessionController_genProtocolId();
+    m.replyTo = replyTo;
+    m.attMime = QStringLiteral("audio/opus");
+    m.attSize = static_cast<qint64>(audio.size());
+    m.attDurationMs = durationMs;
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
+    m.status = DeliveryStatus::Sending;
+    m.id = store_.append(m);
+    showInActiveView(m, true);
+    contacts_.touch(activePeer_, peerName(activePeer_), QStringLiteral("[voice]"), m.ts, true);
+
+    emit requestSendVoice(activePeer_,
+        QByteArray(reinterpret_cast<const char*>(audio.data()),
+            static_cast<qsizetype>(audio.size())),
+        durationMs, m.id, m.protocolId, replyTo);
+}
+
+void SessionController::cancelVoiceRecording()
+{
+    if (!voiceRecording_ || !voice_) {
+        return;
+    }
+    voiceTimer_.stop();
+    voiceRecording_ = false;
+    voice_->cancelRecording();
+    emit voiceChanged();
+}
+
+void SessionController::playVoice(const QString& messageId)
+{
+    if (voicePlaying_ == messageId) {
+        stopVoice();
+        return;
+    }
+    if (!voice_) {
+        voice_ = std::make_unique<VoiceNote>();
+        connect(voice_.get(), &VoiceNote::playbackFinished, this, [this]() {
+            voicePlaying_.clear();
+            emit voiceChanged();
+        });
+    }
+    voicePlaying_ = messageId;
+    emit voiceChanged();
+    emit requestLoadVoice(messageId);
+}
+
+void SessionController::stopVoice()
+{
+    if (voice_) {
+        voice_->stop();
+    }
+    voicePlaying_.clear();
+    emit voiceChanged();
+}
+
+void SessionController::onVoiceLoaded(const QString& messageId, const QByteArray& bytes)
+{
+    if (voicePlaying_ != messageId || !voice_) {
+        return;
+    }
+    try {
+        voice_->play(Bytes(bytes.begin(), bytes.end()));
+    } catch (const std::exception& error) {
+        // Audio that will not unpack is a broken message, and saying so beats
+        // silence from a button that was just pressed.
+        emit actionFailed(QStringLiteral("This voice message is broken."));
+        bazarish::log::warn("voice audio did not unpack: {}", error.what());
+        voicePlaying_.clear();
+        emit voiceChanged();
+    }
+}
+
 void SessionController::onPictureLoaded(const QString& messageId, const QByteArray& bytes)
 {
     if (PictureStore::instance().put(messageId, bytes)) {
@@ -3325,6 +3512,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.attName = message.value("attName").toString();
     m.attMime = message.value("attMime").toString();
     m.attSize = message.value("attSize").toLongLong();
+    m.attDurationMs = message.value("attDurationMs").toLongLong();
     m.attRef = message.value("attRef").toString();
     m.attKey = message.value("attKey").toString();
     m.keyboard = message.value("keyboard").toString();

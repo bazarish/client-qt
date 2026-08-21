@@ -5,6 +5,7 @@
 #include "Session.hpp"
 #include "ProfileDb.hpp"
 #include "TranscriptStore.hpp"
+#include "VoiceNote.hpp"
 
 #include <QObject>
 #include <QSortFilterProxyModel>
@@ -57,6 +58,9 @@ public slots:
     void storePicture(const QString& messageId, const QByteArray& bytes);
     // Reads pictures back out of it, for the messages now on screen.
     void loadPictures(const QStringList& messageIds);
+    void sendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs, qint64 localId,
+        const QString& protocolId, const QString& replyTo);
+    void loadVoice(const QString& messageId);
     void sendReceipt(const QString& peer, const QString& refId);
     // Acks a pending mailbox item (deferred ack): called by the controller after it
     // has durably stored the item, so the server only drops it once it is safe.
@@ -222,6 +226,7 @@ signals:
     void i2pKeyState(bool hasKey, const QString& address);
     // One message's picture, read out of the profile database.
     void pictureLoaded(const QString& messageId, const QByteArray& bytes);
+    void voiceLoaded(const QString& messageId, const QByteArray& bytes);
     // This account's registered devices: {clientId, current}. A message is kept
     // until every one of them has acked it, so a device nobody uses any more
     // holds mail until the retention window ends.
@@ -318,6 +323,11 @@ class SessionController : public QObject {
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     // This account's devices, newest answer first asked for.
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
+    // Recording a voice message, and how long it has been running.
+    Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
+    Q_PROPERTY(qint64 voiceElapsedMs READ voiceElapsedMs NOTIFY voiceChanged)
+    // The message whose voice note is playing, empty when none is.
+    Q_PROPERTY(QString voicePlaying READ voicePlaying NOTIFY voiceChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
     // What the operator tells a user who is waiting (empty if they wrote none).
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
@@ -433,6 +443,9 @@ public:
     QString syncError() const { return syncError_; }
     bool i2pBusy() const { return i2pBusy_; }
     QVariantList devices() const { return devices_; }
+    bool voiceRecording() const { return voiceRecording_; }
+    qint64 voiceElapsedMs() const { return voiceElapsedMs_; }
+    QString voicePlaying() const { return voicePlaying_; }
     bool awaitingApproval() const { return awaitingApproval_; }
     QString approvalNote() const { return approvalNote_; }
     QString activeFacade() const { return activeFacade_; }
@@ -549,6 +562,17 @@ public:
     // Puts it on the clipboard as an image: it goes from memory to memory, and
     // never becomes a plaintext file on the way.
     Q_INVOKABLE void copyPicture(const QString& messageId);
+
+    // --- Voice messages ---
+    //
+    // Recorded from the microphone, encoded with the same codec a call uses, and
+    // sent inside the message: small enough to ride there, so nothing is
+    // announced and nothing is fetched.
+    Q_INVOKABLE void startVoiceRecording();
+    Q_INVOKABLE void sendVoiceRecording();
+    Q_INVOKABLE void cancelVoiceRecording();
+    Q_INVOKABLE void playVoice(const QString& messageId);
+    Q_INVOKABLE void stopVoice();
     // A name to suggest for that file.
     Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& messageId, const QString& name) const;
     // Re-dispatches a failed outgoing file from the saved source path (reusing the
@@ -734,6 +758,7 @@ signals:
     void ownInviteChanged();
     void i2pStatusChanged();
     void devicesChanged();
+    void voiceChanged();
     void storageChanged();
     void callChanged();
     void openFailed(const QString& error);
@@ -757,6 +782,9 @@ signals:  // to worker
         const QString& protocolId, const QString& replyTo);
     void requestStorePicture(const QString& messageId, const QByteArray& bytes);
     void requestLoadPictures(const QStringList& messageIds);
+    void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
+        qint64 localId, const QString& protocolId, const QString& replyTo);
+    void requestLoadVoice(const QString& messageId);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
@@ -844,6 +872,7 @@ private slots:
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
     void onPictureLoaded(const QString& messageId, const QByteArray& bytes);
+    void onVoiceLoaded(const QString& messageId, const QByteArray& bytes);
     // Pulls a small incoming picture into the media cache without being asked.
     void requestPicturesFor(const QList<StoredMessage>& messages);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
@@ -969,6 +998,12 @@ private:
     // Which message a picture belongs to, so one that will not decode can be
     // marked broken where it stands.
     QHash<QString, qint64> pictureOwners_;
+    // Recording and playing voice messages; the audio never leaves memory.
+    std::unique_ptr<VoiceNote> voice_;
+    QTimer voiceTimer_;
+    bool voiceRecording_ = false;
+    qint64 voiceElapsedMs_ = 0;
+    QString voicePlaying_;
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart
     // falls back to the store default.

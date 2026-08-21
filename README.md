@@ -11,6 +11,14 @@ One library with three layers on top:
 - **GUI** - `bazarish-gui`, a Qt6 desktop app (built only when Qt6 Widgets is
   present), driving the same `Session`.
 
+A picture and a voice message ride **inside** the message, so they arrive with
+it: nothing is announced, nothing is fetched, and the mailbox holds them like any
+other message even if the sender goes offline the moment after sending. A picture
+is scaled and re-encoded first (long edge 1600, at most 256 KiB); a voice message
+is Opus at the call format - 48 kHz mono, 20 ms frames, each length-prefixed -
+which is a few hundred KiB for a minute or two. Both sit inside the protocol's
+512 KiB message limit.
+
 The sealed body of a message is **CBOR**, not JSON text. It is the same document
 with the same field names, but binary values travel as themselves - which is what
 lets a small attachment ride inside the message it belongs to instead of being

@@ -38,6 +38,9 @@ Item {
     // A picture is its own kind of message: its bytes are in the profile, it is
     // drawn where it stands, and it never becomes a file card.
     readonly property bool isPicture: model.type === "image"
+    readonly property bool isVoice: model.type === "voice"
+    readonly property bool voicePlaying: delegate.isVoice && delegate.session
+        && delegate.session.voicePlaying === model.protocolId
     // The picture as this profile holds it. The revision in the URL is what makes
     // an Image reload when the bytes arrive.
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
@@ -46,7 +49,7 @@ Item {
     // it, so nothing is on its way and there is nothing to ask for. No fallback,
     // no Save button - it says it is broken.
     readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
-    readonly property bool isAttachment: !delegate.isPicture
+    readonly property bool isAttachment: !delegate.isPicture && !delegate.isVoice
         && ((model.attName && model.attName.length > 0)
             || (model.outgoing && (model.type === "file" || model.type === "audio")))
     readonly property bool isUnsupported: model.type === "unsupported"
@@ -475,6 +478,35 @@ Item {
                     text: delegate.humanSize(model.attSize)
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
+                }
+            }
+
+            // A voice message: one button and how long it runs. The audio is in
+            // the profile, decoded straight into the speaker.
+            RowLayout {
+                visible: delegate.isVoice
+                Layout.fillWidth: true
+                spacing: 8
+
+                IconButton {
+                    iconName: delegate.voicePlaying ? "close" : "send"
+                    tint: Theme.accent
+                    onClicked: delegate.session.playVoice(model.protocolId)
+                }
+                Label {
+                    text: {
+                        const total = Math.floor((model.attDurationMs || 0) / 1000)
+                        const seconds = total % 60
+                        return Math.floor(total / 60) + ":" + (seconds < 10 ? "0" : "") + seconds
+                    }
+                    color: Theme.text
+                    font.pixelSize: Theme.fontSmall
+                }
+                Label {
+                    text: delegate.humanSize(model.attSize)
+                    color: Theme.textFaint
+                    font.pixelSize: Theme.fontSmall
+                    Layout.fillWidth: true
                 }
             }
 

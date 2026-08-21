@@ -56,4 +56,11 @@ private:
     OpusDecoder* decoder_;
 };
 
+// A voice message is a run of Opus frames, each one length-prefixed, in the same
+// 48 kHz mono 20 ms format calls use. There is no container beyond that: both
+// ends of this protocol are this client, and an Ogg header would be bytes spent
+// telling ourselves what we already know.
+Bytes packOpusFrames(const std::vector<Bytes>& frames);
+std::vector<Bytes> unpackOpusFrames(const Bytes& packed);
+
 }  // namespace bazarish

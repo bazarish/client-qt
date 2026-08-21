@@ -25,6 +25,7 @@ struct StoredMessage {
     QString attName;
     QString attMime;
     qint64 attSize = 0;
+    qint64 attDurationMs = 0;  // a voice message's length
     QString attRef;        // content-store id
     QString attKey;        // base64 content key
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)

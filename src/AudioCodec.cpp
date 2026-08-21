@@ -111,4 +111,49 @@ std::vector<std::int16_t> AudioDecoder::decode(const Bytes& packet)
     return pcm;
 }
 
+namespace {
+
+// Each frame is preceded by its length. Opus frames at these settings are well
+// under a kilobyte, so two bytes carry any of them.
+constexpr std::size_t kFrameLengthBytes = 2;
+constexpr unsigned kByteBits = 8;
+constexpr std::size_t kMaxFrameBytes = 0xFFFF;
+
+}  // namespace
+
+Bytes packOpusFrames(const std::vector<Bytes>& frames)
+{
+    Bytes packed;
+    for (const Bytes& frame : frames) {
+        if (frame.empty() || frame.size() > kMaxFrameBytes) {
+            throw std::runtime_error("an Opus frame of an impossible size");
+        }
+        packed.push_back(static_cast<unsigned char>(frame.size() >> kByteBits));
+        packed.push_back(static_cast<unsigned char>(frame.size() & 0xFF));
+        packed.insert(packed.end(), frame.begin(), frame.end());
+    }
+    return packed;
+}
+
+std::vector<Bytes> unpackOpusFrames(const Bytes& packed)
+{
+    std::vector<Bytes> frames;
+    std::size_t at = 0;
+    while (at + kFrameLengthBytes <= packed.size()) {
+        const std::size_t length = (static_cast<std::size_t>(packed[at]) << kByteBits)
+            | static_cast<std::size_t>(packed[at + 1]);
+        at += kFrameLengthBytes;
+        if (length == 0 || at + length > packed.size()) {
+            throw std::runtime_error("voice audio ends mid-frame");
+        }
+        frames.emplace_back(packed.begin() + static_cast<std::ptrdiff_t>(at),
+            packed.begin() + static_cast<std::ptrdiff_t>(at + length));
+        at += length;
+    }
+    if (at != packed.size()) {
+        throw std::runtime_error("voice audio has trailing bytes");
+    }
+    return frames;
+}
+
 }  // namespace bazarish
