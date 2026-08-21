@@ -507,6 +507,24 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
+                            Label { text: "Allow incoming calls"; color: Theme.text }
+                            Label {
+                                text: "Off, a caller is refused straight away instead of ringing "
+                                    + "here. They can still try again later - this can be turned "
+                                    + "back on at any time."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Toggle {
+                            checked: root.session ? root.session.acceptCalls : true
+                            onToggled: if (root.session) root.session.acceptCalls = checked
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
                             Label { text: "Send read receipts"; color: Theme.text }
                             Label { text: "Lets contacts see a green tick when you receive."; color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
                         }

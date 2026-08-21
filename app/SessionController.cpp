@@ -405,6 +405,9 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected,
         connected ? "connected" : "");
+    // Settings the profile carries, so the window shows what is actually in force
+    // rather than its own defaults.
+    emit profileSettings(session_->acceptCalls(), session_->allowClearnet());
     emitContacts();
     // Seed the avatar store from disk: our own avatar plus every contact that has
     // one, so faces appear before any sync runs.
@@ -1409,6 +1412,18 @@ void SessionWorker::deletePersonalKey()
     refreshI2pStatus();
 }
 
+void SessionWorker::setAcceptCalls(const bool accept)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setAcceptCalls(accept);
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::allowClearnet(const bool allow)
 {
     if (!session_) {
@@ -1581,6 +1596,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::publishPersonalDest);
     connect(this, &SessionController::requestAllowClearnet, worker_,
         &SessionWorker::allowClearnet);
+    connect(this, &SessionController::requestSetAcceptCalls, worker_,
+        &SessionWorker::setAcceptCalls);
     connect(this, &SessionController::requestDisablePersonalDest, worker_,
         &SessionWorker::disablePersonalDest);
     connect(this, &SessionController::requestRefreshI2pStatus, worker_,
@@ -1595,6 +1612,17 @@ SessionController::SessionController(QObject* parent)
 
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
+    connect(worker_, &SessionWorker::profileSettings, this,
+        [this](const bool acceptCalls, const bool allowClearnet) {
+            if (acceptCalls_ != acceptCalls) {
+                acceptCalls_ = acceptCalls;
+                emit acceptCallsChanged();
+            }
+            if (clearnetAllowed_ != allowClearnet) {
+                clearnetAllowed_ = allowClearnet;
+                emit facadeInfoChanged();
+            }
+        });
     connect(worker_, &SessionWorker::renamed, this, [this](const QString& newName) {
         if (newName != displayName_) {
             displayName_ = newName;
@@ -2674,6 +2702,16 @@ void SessionController::deletePersonalKey()
     emit requestDeletePersonalKey();
 }
 
+void SessionController::setAcceptCalls(const bool on)
+{
+    if (acceptCalls_ == on) {
+        return;
+    }
+    acceptCalls_ = on;
+    emit requestSetAcceptCalls(on);
+    emit acceptCallsChanged();
+}
+
 void SessionController::allowClearnet(const bool allow)
 {
     clearnetAllowed_ = allow;
@@ -3664,7 +3702,7 @@ void SessionController::onCallLogged(
         return;
     }
     // Outcome ints mirror Session::CallOutcome: 0 answered, 1 no-answer, 2 declined,
-    // 3 missed, 4 cancelled, 5 busy.
+    // 3 missed, 4 cancelled, 5 busy, 6 refused (the peer takes no calls).
     const QString dir
         = incoming ? QStringLiteral("Incoming call") : QStringLiteral("Outgoing call");
     QString text;
@@ -3679,6 +3717,7 @@ void SessionController::onCallLogged(
     case 3: text = QStringLiteral("Missed call"); break;
     case 4: text = QStringLiteral("Outgoing call, cancelled"); break;
     case 5: text = QStringLiteral("Outgoing call, busy"); break;
+    case 6: text = QStringLiteral("Outgoing call, not accepting calls"); break;
     default: text = dir; break;
     }
 

@@ -404,6 +404,7 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
         std::move(identity), clientId, endpoint, i2pDirFor(profileFile));
     Session session(profileFile, std::move(client), std::move(sealing), std::move(contacts));
     session.db_ = std::move(db);
+    session.acceptCalls_ = meta.value("acceptCalls", true);
     session.client_->setI2pProven(meta.value("i2pProven", false));
     session.client_->setAllowClearnet(
         meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
@@ -549,6 +550,7 @@ void Session::persistMeta() const
         {"avatarMime", avatarMime_},
         // Sticky I2P: once this profile has reached its server over I2P it keeps
         // refusing clearnet across restarts, unless the user allowed it again.
+        {"acceptCalls", acceptCalls_},
         {"i2pProven", client_->i2pProven()},
         {"allowClearnet", client_->allowClearnet()},
     };
@@ -2616,6 +2618,15 @@ void Session::acceptCall(const std::string& callId)
     startCallMedia();
 }
 
+void Session::setAcceptCalls(const bool accept)
+{
+    if (acceptCalls_ == accept) {
+        return;
+    }
+    acceptCalls_ = accept;
+    persistMeta();
+}
+
 void Session::declineCall(const std::string& callId)
 {
     if (call_.state != CallState::eIncoming || call_.callId != callId) {
@@ -2693,6 +2704,21 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
             bazarish::log::info("duplicate call invite ignored");
             return;
         }
+        if (!acceptCalls_) {
+            // This profile does not take calls right now. Answer at once so the
+            // caller sees a refusal instead of ringing into nothing; the setting
+            // can be turned back on any time, which is why the caller's call
+            // button stays where it is.
+            try {
+                sendCallSignal(
+                    from, "call.decline", {{"callId", message.callId}, {"reason", "refused"}});
+            } catch (const std::exception& error) {
+                bazarish::log::warn("refusal not delivered: {}", error.what());
+            }
+            pendingCallLog_.push_back({from, true, CallOutcome::eMissed, 0});
+            message.text = "refused";
+            return;
+        }
         if (call_.state != CallState::eIdle) {
             // Already busy: decline so the caller is not left ringing.
             try {
@@ -2746,8 +2772,14 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
         CallOutcome outcome;
         if (type == "call.decline") {
             // The peer rejected our outgoing call (busy vs an explicit decline).
-            outcome = body.value("reason", std::string()) == "busy" ? CallOutcome::eBusy
-                                                                     : CallOutcome::eDeclined;
+            const std::string reason = body.value("reason", std::string());
+            if (reason == "busy") {
+                outcome = CallOutcome::eBusy;
+            } else if (reason == "refused") {
+                outcome = CallOutcome::eRefused;
+            } else {
+                outcome = CallOutcome::eDeclined;
+            }
         } else if (call_.state == CallState::eActive) {
             outcome = CallOutcome::eAnswered;  // normal hang-up after connecting
         } else if (call_.state == CallState::eIncoming) {

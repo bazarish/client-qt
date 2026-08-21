@@ -92,6 +92,7 @@ public slots:
     void loadPersonalKey(const QString& path);
     void deletePersonalKey();
     void allowClearnet(bool allow);
+    void setAcceptCalls(bool accept);
     void cancelTransfer(const QString& protocolId);
     void publishPersonalDest();
     void disablePersonalDest();
@@ -118,6 +119,8 @@ signals:
     void opDone(const QString& opId, bool ok, const QString& status);
     // A row's status line changed while it is still running.
     void opProgress(const QString& opId, const QString& status);
+    // What the opened profile has stored for the settings the window shows.
+    void profileSettings(bool acceptCalls, bool allowClearnet);
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& subscriptionText);
     // The account's own display name was changed (so the GUI updates it without a
@@ -332,6 +335,10 @@ class SessionController : public QObject {
     Q_PROPERTY(QObject* operations READ operations CONSTANT)
     Q_PROPERTY(int activeOperations READ activeOperations NOTIFY operationsChanged)
     Q_PROPERTY(bool sendReceipts READ sendReceipts WRITE setSendReceipts NOTIFY sendReceiptsChanged)
+    // Whether this profile takes incoming calls. Off, a caller is refused at once
+    // instead of ringing; their call button stays, because this can be turned back
+    // on at any moment. Kept with the profile, not with the window.
+    Q_PROPERTY(bool acceptCalls READ acceptCalls WRITE setAcceptCalls NOTIFY acceptCallsChanged)
     // True while the composer is editing a previously sent message; editingText
     // is its current text, so the composer can prefill the field.
     Q_PROPERTY(bool editing READ editing NOTIFY editingChanged)
@@ -419,6 +426,8 @@ public:
     QObject* conversation() { return &conversation_; }
     QObject* operations() { return &operations_; }
     int activeOperations() const { return operations_.runningCount(); }
+    bool acceptCalls() const { return acceptCalls_; }
+    void setAcceptCalls(bool on);
     bool sendReceipts() const { return sendReceipts_; }
     void setSendReceipts(bool on) { if (sendReceipts_ != on) { sendReceipts_ = on; emit sendReceiptsChanged(); } }
     bool editing() const { return editing_; }
@@ -660,6 +669,7 @@ signals:
     void facadeInfoChanged();
     void connectStateChanged();
     void sendReceiptsChanged();
+    void acceptCallsChanged();
     void editingChanged();
     void replyingChanged();
     void contactsRevisionChanged();
@@ -721,6 +731,7 @@ signals:  // to worker
     void requestLoadPersonalKey(const QString& path);
     void requestDeletePersonalKey();
     void requestAllowClearnet(bool allow);
+    void requestSetAcceptCalls(bool accept);
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
@@ -813,6 +824,7 @@ private:
     QStringList configuredFacades_;
     QString serverFp_;
     bool sendReceipts_ = true;
+    bool acceptCalls_ = true;
     // Edit-in-progress state for the composer (0 / empty when not editing).
     bool editing_ = false;
     qint64 editingLocalId_ = 0;

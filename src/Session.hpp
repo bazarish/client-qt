@@ -270,6 +270,12 @@ public:
     // process-wide default is applied to every profile opened afterwards.
     void setAllowClearnet(bool allow);
     bool allowClearnet() const;
+
+    // Whether this profile takes incoming calls at all. Off, an invitation is
+    // answered with a refusal the moment it arrives - the caller learns it now
+    // rather than ringing into nothing. Persisted with the profile; on by default.
+    bool acceptCalls() const { return acceptCalls_; }
+    void setAcceptCalls(bool accept);
     static void setAllowClearnetDefault(bool allow);
 
     // Subscribes to the configured server for the given number of days and
@@ -622,6 +628,7 @@ public:
         eMissed,     // incoming: we never answered (timeout) or the caller cancelled
         eCancelled,  // outgoing: we hung up before the peer answered
         eBusy,       // outgoing: the peer was already in another call
+        eRefused,    // outgoing: the peer does not take calls at all right now
     };
 
     // A finished call awaiting a chat-history entry. Drained by takeCallLog().
@@ -976,6 +983,8 @@ private:
     // Whether the private key PEMs are encrypted at rest. Persisted in meta so
     // open() knows to require a passphrase.
     bool encrypted_ = false;
+    // Incoming calls are taken unless the user says otherwise; see acceptCalls().
+    bool acceptCalls_ = true;
     // The at-rest passphrase, retained for the session lifetime so contacts
     // (delivery tokens) can be re-sealed on every change. Empty when the
     // profile is unencrypted.
