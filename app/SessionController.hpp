@@ -963,6 +963,9 @@ private:
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.
     QHash<qint64, QString> pendingSavePath_;
+    // Which message a picture belongs to, so one that will not decode can be
+    // marked broken where it stands.
+    QHash<QString, qint64> pictureOwners_;
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart
     // falls back to the store default.

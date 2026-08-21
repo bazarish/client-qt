@@ -237,6 +237,21 @@ std::string guessMime(const fs::path& path)
     return "application/octet-stream";
 }
 
+
+// The sealed message body, as bytes. CBOR rather than JSON text: the format is
+// the same document, but binary values travel as themselves. A picture inside a
+// JSON message would have to be base64, which is a third more bytes to encrypt,
+// to store in a mailbox and to carry over a tunnel, for nothing.
+Bytes encodedBody(const nlohmann::json& inner)
+{
+    return nlohmann::json::to_cbor(inner);
+}
+
+nlohmann::json decodedBody(const Bytes& bytes)
+{
+    return nlohmann::json::from_cbor(bytes);
+}
+
 }  // namespace
 
 std::string inlineKeyboardJson(const InlineKeyboard& keyboard)
@@ -796,11 +811,11 @@ void Session::syncI2pMasterToSelf()
         {"sentAt", nowMillis()},
         {"i2pMaster", toBase64(i2pMaster_)},
     };
-    const std::string innerText = inner.dump();
+    const Bytes innerBytes = encodedBody(inner);
     // Sealed to our own sealing key: only this account's devices, which share
     // the key, can read it.
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Bytes payload = cms::seal(innerBytes, ownSealing);
     const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
     // Tokenless contact-class delivery to our own destination: it lands in our
     // own mailbox, which every device of this account polls.
@@ -844,10 +859,10 @@ void Session::syncAvatarToSelf()
         {"sentAt", nowMillis()},
         {"avatar", {{"mime", avatarMime_}, {"data", toBase64(avatar_)}}},
     };
-    const std::string innerText = inner.dump();
+    const Bytes innerBytes = encodedBody(inner);
     // Sealed to our own sealing key: only this account's devices can read it.
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Bytes payload = cms::seal(innerBytes, ownSealing);
     const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
     deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
 }
@@ -866,9 +881,9 @@ void Session::syncContactNameToSelf(const std::string& peerFingerprint, const st
         {"peer", peerFingerprint},
         {"name", name},
     };
-    const std::string innerText = inner.dump();
+    const Bytes innerBytes = encodedBody(inner);
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Bytes payload = cms::seal(innerBytes, ownSealing);
     const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
     deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
 }
@@ -889,9 +904,9 @@ void Session::syncChatPinToSelf(const std::string& peerFingerprint, bool pinned)
         {"peer", peerFingerprint},
         {"pinned", pinned},
     };
-    const std::string innerText = inner.dump();
+    const Bytes innerBytes = encodedBody(inner);
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Bytes payload = cms::seal(innerBytes, ownSealing);
     const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
     deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
 }
@@ -1529,7 +1544,7 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
                 {"name", path.filename().string()},
                 {"mime", guessMime(path)},
                 {"size", bytes.size()},
-                {"data", toBase64(bytes)},
+                {"data", nlohmann::json::binary(bytes)},
             }},
     };
     if (!replyTo.empty()) {
@@ -1979,7 +1994,7 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // The protocol's ceiling on one message, checked here so the client never
     // builds and encrypts what the recipient's server will refuse. The plaintext
     // is what the limit is about; the envelope around it is small and fixed.
-    if (const std::string body = inner.dump(); body.size() > kMaxMessagePayloadBytes) {
+    if (const Bytes body = encodedBody(inner); body.size() > kMaxMessagePayloadBytes) {
         throw std::runtime_error("this message is too large to send ("
             + std::to_string(body.size() / 1024) + " KiB; the limit is "
             + std::to_string(kMaxMessagePayloadBytes / 1024) + " KiB) - send it as a file");
@@ -2039,9 +2054,9 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // first thing that arrives after a move repairs the way back.
     inner["routing"] = {{"dest", myDest_}, {"servingKey", myServingKeyB64_}};
 
-    const std::string innerText = inner.dump();
+    const Bytes innerBytes = encodedBody(inner);
     const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), peerSealing);
+    const Bytes payload = cms::seal(innerBytes, peerSealing);
     const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
 
     const std::string token = useOverrideToken ? overrideToken : contact.sendTokens.back();
@@ -2115,7 +2130,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             // Every item is sealed to our user sealing key the same way; the
             // server-visible delivery class never changes how we decrypt.
             const Bytes plain = cms::unseal(blob, sealingKey_);
-            nlohmann::json body = nlohmann::json::parse(plain.begin(), plain.end());
+            nlohmann::json body = decodedBody(plain);
 
             IncomingMessage message;
             message.deliveryClass = entry.deliveryClass;
@@ -2204,7 +2219,8 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.attachmentName = picture.value("name", std::string());
                 message.attachmentMime = picture.value("mime", std::string());
                 message.attachmentSize = picture.value("size", std::uint64_t{0});
-                putPicture(message.messageId, fromBase64(picture.at("data").get<std::string>()));
+                const nlohmann::json::binary_t& data = picture.at("data").get_binary();
+                putPicture(message.messageId, Bytes(data.begin(), data.end()));
             } else if (type == kTypeFile || type == "audio" || type == "voice") {
                 // An announcement, not a delivery: the bytes are still on the
                 // sender's disk until we ask for them.
@@ -2504,9 +2520,9 @@ void Session::sendTokenRefill(const std::string& peerFingerprint, const std::str
     // nothing, and we have nothing of theirs to spend on the answer. The tokenless
     // contact channel exists for exactly this - otherwise the two of them would
     // wait on each other forever.
-    const std::string innerText = inner.dump();
+    const Bytes innerBytes = encodedBody(inner);
     const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), peerSealing);
+    const Bytes payload = cms::seal(innerBytes, peerSealing);
     const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
     deliver(contact.dest, peerServingKey, "contact", peerFingerprint, std::nullopt, payload);
 }
@@ -2567,9 +2583,9 @@ void Session::echoSentToSelf(const std::string& peerFingerprint, const nlohmann:
         {"device", client_->clientId()},
         {"message", inner},
     };
-    const std::string innerText = echo.dump();
+    const Bytes innerBytes = encodedBody(echo);
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), ownSealing);
+    const Bytes payload = cms::seal(innerBytes, ownSealing);
     const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
     deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
 }
@@ -2593,9 +2609,9 @@ void Session::sendTokenRequest(const std::string& peerFingerprint)
         {"device", client_->clientId()},
         {"routing", {{"dest", myDest_}, {"servingKey", myServingKeyB64_}}},
     };
-    const std::string innerText = inner.dump();
+    const Bytes innerBytes = encodedBody(inner);
     const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
-    const Bytes payload = cms::seal(Bytes(innerText.begin(), innerText.end()), peerSealing);
+    const Bytes payload = cms::seal(innerBytes, peerSealing);
     const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
     // Tokenless, over the contact channel: this device has nothing left to spend,
     // which is the whole reason it is asking. The channel is capped and rate

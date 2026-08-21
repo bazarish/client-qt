@@ -42,11 +42,10 @@ Item {
     // an Image reload when the bytes arrive.
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
         ? "image://picture/" + model.protocolId + "?r=" + Pictures.revision : ""
-    // A picture message whose picture this profile cannot draw: the bytes came
-    // with the message, so there is nothing still on its way and nothing to ask
-    // for. No fallback, no Save button - it says it is broken.
-    readonly property bool pictureBroken: delegate.isPicture
-        && delegate.pictureUrl.length === 0
+    // The profile holds no drawable picture for this message: the bytes came with
+    // it, so nothing is on its way and there is nothing to ask for. No fallback,
+    // no Save button - it says it is broken.
+    readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
     readonly property bool isAttachment: !delegate.isPicture
         && ((model.attName && model.attName.length > 0)
             || (model.outgoing && (model.type === "file" || model.type === "audio")))
@@ -427,16 +426,26 @@ Item {
                 }
             }
 
-            // A picture: the image itself, its size, and nothing else. What is
-            // not drawable is not quietly turned into a file - it says so.
+            // A picture: the image itself and its size. Between arriving and
+            // being decoded it holds its place rather than collapsing the bubble
+            // to nothing.
             ColumnLayout {
                 visible: delegate.isPicture
                 Layout.fillWidth: true
                 spacing: 2
 
+                Rectangle {
+                    visible: model.hasPicture && preview.status !== Image.Ready
+                    Layout.preferredWidth: preview.maxEdge
+                    Layout.preferredHeight: Math.round(preview.maxEdge * 0.6)
+                    radius: Theme.radiusSmall
+                    color: Theme.deep
+                    border.color: Theme.border
+                }
+
                 Image {
                     id: preview
-                    visible: delegate.pictureUrl.length > 0
+                    visible: model.hasPicture && status === Image.Ready
                     source: delegate.pictureUrl
                     asynchronous: true
                     fillMode: Image.PreserveAspectFit
@@ -462,7 +471,7 @@ Item {
                 }
 
                 Label {
-                    visible: delegate.pictureUrl.length > 0 || delegate.pictureBroken
+                    visible: model.attSize > 0
                     text: delegate.humanSize(model.attSize)
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall

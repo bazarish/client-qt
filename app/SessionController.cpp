@@ -2452,11 +2452,14 @@ void SessionController::sendPicture(const QString& fileUrl)
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
-    // The core stores the picture with the message; this draws it from there, so
-    // both sides show the same bytes from the same place.
+    // The core stores the picture with the message, and this asks for it back at
+    // once: both requests go to the same worker in order, so the picture is
+    // drawn as soon as it is stored rather than when the view next reloads.
     store_.setHasPicture(m.id, true);
     conversation_.setPictureReadyForId(m.id, true);
+    pictureOwners_.insert(m.protocolId, m.id);
     emit requestSendPicture(activePeer_, localPath, m.id, m.protocolId, replyTo);
+    emit requestLoadPictures({m.protocolId});
 }
 
 void SessionController::sendCallback(const QString& data, const QString& refMsgId)
@@ -2952,8 +2955,16 @@ void SessionController::forgetDevice(const QString& clientId)
 
 void SessionController::onPictureLoaded(const QString& messageId, const QByteArray& bytes)
 {
-    if (!PictureStore::instance().put(messageId, bytes)) {
-        bazarish::log::warn("a stored picture no longer decodes");
+    if (PictureStore::instance().put(messageId, bytes)) {
+        return;
+    }
+    // What arrived is not an image. The message keeps saying so - there is no
+    // second guess to make and nothing to fall back to.
+    bazarish::log::warn("a message announced a picture and carried something else");
+    const qint64 localId = pictureOwners_.value(messageId, 0);
+    if (localId != 0) {
+        store_.setHasPicture(localId, false);
+        conversation_.setPictureReadyForId(localId, false);
     }
 }
 
@@ -2962,8 +2973,11 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
 {
     QStringList wanted;
     for (const StoredMessage& message : messages) {
-        if (message.hasPicture && !message.protocolId.isEmpty()
-            && !PictureStore::instance().has(message.protocolId)) {
+        if (!message.hasPicture || message.protocolId.isEmpty()) {
+            continue;
+        }
+        pictureOwners_.insert(message.protocolId, message.id);
+        if (!PictureStore::instance().has(message.protocolId)) {
             wanted << message.protocolId;
         }
     }
@@ -3315,6 +3329,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (m.type == QStringLiteral("image") && !m.protocolId.isEmpty()) {
         store_.setHasPicture(m.id, true);
         conversation_.setPictureReadyForId(m.id, true);
+        pictureOwners_.insert(m.protocolId, m.id);
         emit requestLoadPictures({m.protocolId});
     }
     QString preview = m.text;
