@@ -2746,11 +2746,17 @@ void SessionController::allowClearnet(const bool allow)
 
 void SessionController::publishPersonalDest()
 {
+    // The worker answers with a fresh status when it is done, which is what
+    // clears this; until then the button says it is working.
+    i2pBusy_ = true;
+    emit i2pStatusChanged();
     emit requestPublishPersonalDest();
 }
 
 void SessionController::disablePersonalDest()
 {
+    i2pBusy_ = true;
+    emit i2pStatusChanged();
     emit requestDisablePersonalDest();
 }
 
@@ -2770,6 +2776,7 @@ void SessionController::onI2pStatus(const bool hasKey, const bool delegated, con
     const QString& address, const QString& summary, const qint64 transientExpires,
     const QString& serverState)
 {
+    i2pBusy_ = false;
     i2pServerState_ = serverState;
     i2pHasKey_ = hasKey;
     i2pEnabled_ = delegated;

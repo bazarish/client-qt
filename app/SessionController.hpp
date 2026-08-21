@@ -297,6 +297,10 @@ class SessionController : public QObject {
     // The server has this account but does not serve it yet: an operator has to
     // let it in. Connected and reachable are both true meanwhile, so without this
     // the app looks healthy while nothing it sends can leave.
+    // A destination action (publish, take offline) is under way. The worker may
+    // be minutes deep in a sync before it gets to it, so the press has to show
+    // somewhere or it reads as a button that does nothing.
+    Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
     // What the operator tells a user who is waiting (empty if they wrote none).
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
@@ -410,6 +414,7 @@ public:
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
     QString syncError() const { return syncError_; }
+    bool i2pBusy() const { return i2pBusy_; }
     bool awaitingApproval() const { return awaitingApproval_; }
     QString approvalNote() const { return approvalNote_; }
     QString activeFacade() const { return activeFacade_; }
@@ -833,6 +838,7 @@ private:
     bool online_ = false;
     bool reachable_ = false;
     QString syncError_;
+    bool i2pBusy_ = false;
     bool awaitingApproval_ = false;
     QString approvalNote_;
     QString subscriptionText_;

@@ -419,14 +419,18 @@ Popup {
                             // the delegation is re-issued in the background. This is for
                             // a key loaded from elsewhere, a revoked destination, or a
                             // publish that did not finish.
-                            text: "Publish address"
+                            text: root.session && root.session.i2pBusy ? "Publishing…"
+                                : "Publish address"
                             enabled: root.session && root.session.connected
+                                && !root.session.i2pBusy
                             onClicked: root.session.publishPersonalDest()
                         }
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && root.session.i2pEnabled
-                            text: "Take offline"
+                            text: root.session && root.session.i2pBusy ? "Taking offline…"
+                                : "Take offline"
+                            enabled: root.session && !root.session.i2pBusy
                             onClicked: root.session.disablePersonalDest()
                         }
                         // Re-poll the server status and flash the box for ~1s.
