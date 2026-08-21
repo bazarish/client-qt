@@ -32,10 +32,18 @@ public:
     bool recording() const { return recording_.load(); }
     // How long the recording has been running.
     qint64 elapsedMs() const;
+    // Loudness of the last frame off the microphone, 0..1. A microphone that is
+    // not delivering audio holds this at zero, which is what makes a dead one
+    // visible instead of merely silent.
+    float inputLevel() const { return inputLevel_.load(); }
+    // How much the recording weighs so far, encoded. A voice message rides
+    // inside one message, so this - not the clock - is what bounds it.
+    std::size_t encodedBytes() const { return encodedBytes_.load(); }
 
-    // Plays a recorded run of frames. Playing again while one is running replaces
-    // it: two voices at once is nobody's intent.
-    void play(const Bytes& opus);
+    // Plays a recorded run of frames at `speed` (1.0 is as recorded). Playing
+    // again while one is running replaces it: two voices at once is nobody's
+    // intent.
+    void play(const Bytes& opus, double speed = 1.0);
     void stop();
     bool playing() const { return playing_.load(); }
 
@@ -52,6 +60,8 @@ private:
     std::thread playbackThread_;
     std::atomic<bool> recording_{false};
     std::atomic<bool> playing_{false};
+    std::atomic<float> inputLevel_{0.0F};
+    std::atomic<std::size_t> encodedBytes_{0};
     std::vector<Bytes> frames_;
     std::mutex framesMutex_;
     qint64 startedAtMs_ = 0;

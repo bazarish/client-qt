@@ -827,7 +827,13 @@ void Session::storeOwnAvatar(const Bytes& data, const std::string& mime)
 {
     avatar_ = data;
     avatarMime_ = mime;
-    persistSealedBlob("avatar.self", avatar_);
+    // A removed avatar leaves no row behind: an empty blob would still be the
+    // shape of what was there.
+    if (avatar_.empty()) {
+        db_->erase("avatar.self");
+    } else {
+        persistSealedBlob("avatar.self", avatar_);
+    }
     persistMeta();  // record the mime so open() knows to load the blob
 }
 
@@ -843,14 +849,20 @@ void Session::storeContactAvatar(
     }
     found->second.avatar = data;
     found->second.avatarMime = mime;
-    persistSealedBlob("avatar-" + peerFingerprint, data);
+    // A contact who removed theirs is telling us to drop it, not to keep an
+    // empty one.
+    if (data.empty()) {
+        db_->erase("avatar-" + peerFingerprint);
+    } else {
+        persistSealedBlob("avatar-" + peerFingerprint, data);
+    }
     persistContacts();  // record the mime flag
 }
 
 void Session::syncAvatarToSelf()
 {
-    if (avatar_.empty() || myDest_.empty() || myServingKeyB64_.empty()) {
-        return;  // nothing to sync, or our own routing is not known yet
+    if (myDest_.empty() || myServingKeyB64_.empty()) {
+        return;  // our own routing is not known yet
     }
     const nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -912,9 +924,9 @@ void Session::syncChatPinToSelf(const std::string& peerFingerprint, bool pinned)
     deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
 }
 
-void Session::maybeSendAvatarToContact(const std::string& peerFingerprint)
+void Session::maybeSendAvatarToContact(const std::string& peerFingerprint, const bool removal)
 {
-    if (avatar_.empty()) {
+    if (avatar_.empty() && !removal) {
         return;  // no avatar to share
     }
     const auto found = contacts_.find(peerFingerprint);
@@ -954,6 +966,16 @@ void Session::setAvatar(const Bytes& data, const std::string& mime)
     if (data.size() > kAvatarMaxBytes) {
         throw std::runtime_error("avatar exceeds the 500 KB protocol limit");
     }
+    // Removing an avatar is as much an event as setting one: the contacts
+    // holding the old one are told to drop it. Only those - a contact that never
+    // received one has nothing to remove, and an empty push would say nothing.
+    const bool removal = data.empty();
+    std::vector<std::string> tell;
+    for (const auto& [contactFp, contact] : contacts_) {
+        if (!removal || contact.avatarSentToPeer) {
+            tell.push_back(contactFp);
+        }
+    }
     storeOwnAvatar(data, mime);
     // A changed avatar must reach every established contact: reset the per-contact
     // "already sent" flag, then push to all reachable contacts (best effort).
@@ -962,9 +984,8 @@ void Session::setAvatar(const Bytes& data, const std::string& mime)
         contact.avatarSentToPeer = false;
     }
     persistContacts();
-    for (const auto& [contactFp, contact] : contacts_) {
-        (void)contact;
-        maybeSendAvatarToContact(contactFp);
+    for (const std::string& contactFp : tell) {
+        maybeSendAvatarToContact(contactFp, removal);
     }
     // And to the account's other devices.
     try {

@@ -481,8 +481,10 @@ Item {
                 }
             }
 
-            // A voice message: one button and how long it runs. The audio is in
-            // the profile, decoded straight into the speaker.
+            // A voice message: the shape of what was said, how long it runs and
+            // what it weighs. The audio is in the profile, decoded straight into
+            // the speaker; the waveform was drawn from that same audio when the
+            // message was stored.
             RowLayout {
                 visible: delegate.isVoice
                 Layout.fillWidth: true
@@ -493,6 +495,36 @@ Item {
                     tint: Theme.accent
                     onClicked: delegate.session.playVoice(model.protocolId)
                 }
+
+                // One bar per slice of the recording, read out of the stored hex
+                // profile. A message stored without one draws nothing rather
+                // than an invented shape.
+                Row {
+                    id: wave
+                    readonly property string hex: model.attWave || ""
+                    readonly property int kBars: 32
+                    readonly property int kMaxHeight: 26
+                    visible: hex.length > 0
+                    Layout.preferredWidth: kBars * 3 - 1
+                    Layout.preferredHeight: kMaxHeight
+                    spacing: 1
+                    Repeater {
+                        model: wave.kBars
+                        delegate: Rectangle {
+                            required property int index
+                            readonly property real level: {
+                                const from = Math.floor(index * wave.hex.length / wave.kBars)
+                                return parseInt(wave.hex.charAt(from), 16) / 15
+                            }
+                            width: 2
+                            height: Math.max(2, level * wave.kMaxHeight)
+                            anchors.verticalCenter: parent.verticalCenter
+                            radius: 1
+                            color: delegate.voicePlaying ? Theme.accent : Theme.textDim
+                        }
+                    }
+                }
+
                 Label {
                     text: {
                         const total = Math.floor((model.attDurationMs || 0) / 1000)
@@ -507,6 +539,16 @@ Item {
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
                     Layout.fillWidth: true
+                }
+                // Playback speed, stepped through by pressing it. It belongs to
+                // the session, so the choice holds for the next one too.
+                Label {
+                    text: (delegate.session ? delegate.session.voiceSpeed : 1) + "x"
+                    color: (delegate.session && delegate.session.voiceSpeed > 1)
+                        ? Theme.accent : Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                    TapHandler { onTapped: delegate.session.cycleVoiceSpeed() }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
                 }
             }
 

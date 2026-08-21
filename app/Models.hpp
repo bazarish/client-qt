@@ -85,7 +85,8 @@ public:
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, ProtocolIdRole, EditedRole,
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
-        BlobGoneRole, DownloadStageRole, TransferStageRole, ReplyToRole, PictureRole, DurationRole
+        BlobGoneRole, DownloadStageRole, TransferStageRole, ReplyToRole, PictureRole,
+        DurationRole, WaveRole
     };
     using QAbstractListModel::QAbstractListModel;
 

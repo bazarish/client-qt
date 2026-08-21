@@ -22,7 +22,10 @@ inline constexpr int kCallSamplesPerFrame = kCallSampleRate / 1000 * kCallFrameM
 // Opus encoder for one mono stream. Move-only; owns the codec state.
 class AudioEncoder {
 public:
-    AudioEncoder();
+    // bitrateBps of 0 leaves the codec its own choice, which is what a call
+    // wants: it adapts to the link. A recording that has to fit inside one
+    // message says what it may spend instead.
+    explicit AudioEncoder(int bitrateBps = 0);
     ~AudioEncoder();
 
     AudioEncoder(AudioEncoder&& other) noexcept;
@@ -62,5 +65,15 @@ private:
 // telling ourselves what we already know.
 Bytes packOpusFrames(const std::vector<Bytes>& frames);
 std::vector<Bytes> unpackOpusFrames(const Bytes& packed);
+
+// How loud a voice message is over its length: one bar per slice, each in
+// 0..kWaveformLevels-1, taken from the decoded audio rather than from anything
+// stored alongside it. Loudness is relative to the recording's own peak, so a
+// quiet recording still draws a shape - but audio that never rises above
+// kWaveformSilence of full scale is silence, and draws flat. Meant to be
+// computed once, when a message is stored.
+inline constexpr int kWaveformLevels = 16;
+inline constexpr double kWaveformSilence = 0.01;
+std::vector<std::uint8_t> voiceWaveform(const Bytes& packed, int bars);
 
 }  // namespace bazarish

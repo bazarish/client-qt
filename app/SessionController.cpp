@@ -17,6 +17,7 @@
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
+#include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
 
 // Qt makes `emit` a macro and the log header declares a function of that name,
@@ -50,6 +51,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <ctime>
 #include <exception>
 #include <fstream>
@@ -147,13 +149,47 @@ constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
-// A voice message rides inside one message, so it is bounded by the same limit:
-// two minutes of Opus at these settings is comfortably inside it.
+// A voice message rides inside one message, so what really bounds it is the
+// payload cap, not the clock: recording stops once the encoded audio has spent
+// its share. The reserve covers the message around it (ids, reply, the CBOR
+// keys), which is far smaller than this but must not be cut fine.
 constexpr qint64 kMaxVoiceMs = 2 * 60 * 1000;
+constexpr std::size_t kVoiceEnvelopeReserveBytes = 8 * 1024;
+constexpr std::size_t kMaxVoiceBytes
+    = bazarish::kMaxMessagePayloadBytes - kVoiceEnvelopeReserveBytes;
 // Below this it is a slip of the finger, not a message.
 constexpr qint64 kMinVoiceMs = 700;
-// How often the recording clock is reported to the UI.
-constexpr int kVoiceTickMs = 200;
+// How often the recording clock and the input level are reported to the UI: the
+// level is a live picture of the microphone, so it is sampled at a rate a user
+// reads as movement rather than as steps.
+constexpr int kVoiceTickMs = 50;
+// How many bars a voice message's drawn waveform has - enough shape to read at
+// the width of a bubble.
+constexpr int kVoiceWaveBars = 40;
+// The speeds a voice message plays back at, stepped through by the bubble's own
+// control. Faster playback raises the pitch with it: the samples are handed to
+// the device faster, and nothing time-stretches them back.
+constexpr std::array<double, 3> kVoiceSpeeds = {1.0, 1.5, 2.0};
+
+// A voice message's drawn shape, as one hex digit a bar (kWaveformLevels is 16,
+// so a level is exactly a digit). Empty when the audio will not unpack - the
+// bubble then draws no waveform rather than a made-up one.
+QString waveformHex(const Bytes& opus)
+{
+    std::vector<std::uint8_t> bars;
+    try {
+        bars = voiceWaveform(opus, kVoiceWaveBars);
+    } catch (const std::exception& error) {
+        bazarish::log::warn("voice waveform: {}", error.what());
+        return {};
+    }
+    QString hex;
+    hex.reserve(static_cast<qsizetype>(bars.size()));
+    for (const std::uint8_t bar : bars) {
+        hex.append(QChar::fromLatin1("0123456789abcdef"[bar]));
+    }
+    return hex;
+}
 
 // How often the client asks its server for news when it has to poll, and how
 // often it checks in when the server holds the request open for it instead.
@@ -732,6 +768,14 @@ void SessionWorker::sync()
         map["attMime"] = QString::fromStdString(m.attachmentMime);
         map["attSize"] = static_cast<qint64>(m.attachmentSize);
         map["attDurationMs"] = static_cast<qint64>(m.attachmentDurationMs);
+        // The audio came inside the message, so its waveform is drawn from the
+        // real thing - computed here, on the worker, and stored with the row.
+        if (m.contentType == "voice") {
+            const std::optional<Bytes> audio = session_->voice(m.messageId);
+            if (audio.has_value()) {
+                map["attWave"] = waveformHex(*audio);
+            }
+        }
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
@@ -2964,62 +3008,136 @@ void SessionController::forgetDevice(const QString& clientId)
     emit requestForgetDevice(clientId);
 }
 
-void SessionController::startVoiceRecording()
+// The one VoiceNote this controller records and plays through, built on first
+// use. Both playback kinds end on the same signal, so both are cleared there.
+VoiceNote* SessionController::voiceNote()
 {
-    if (activePeer_.isEmpty() || voiceRecording_) {
-        return;
-    }
     if (!voice_) {
         voice_ = std::make_unique<VoiceNote>();
         connect(voice_.get(), &VoiceNote::playbackFinished, this, [this]() {
             voicePlaying_.clear();
+            voiceTakePlaying_ = false;
             emit voiceChanged();
         });
         voiceTimer_.setInterval(kVoiceTickMs);
         connect(&voiceTimer_, &QTimer::timeout, this, [this]() {
             voiceElapsedMs_ = voice_->elapsedMs();
+            voiceLevel_ = voice_->inputLevel();
             emit voiceChanged();
-            // A voice message rides inside one message, so it is bounded by what
-            // a message may carry. Past that it stops on its own rather than
-            // being thrown away at the end.
-            if (voiceElapsedMs_ >= kMaxVoiceMs) {
-                sendVoiceRecording();
+            // Full is full, by weight or by the clock. Recording stops on its
+            // own - the take is kept, and the user still decides whether it goes.
+            if (voiceElapsedMs_ >= kMaxVoiceMs
+                || voice_->encodedBytes() >= kMaxVoiceBytes) {
+                stopVoiceRecording();
             }
         });
     }
+    return voice_.get();
+}
+
+void SessionController::startVoiceRecording()
+{
+    if (activePeer_.isEmpty() || voiceRecording_) {
+        return;
+    }
+    discardVoiceTake();
+    voiceError_.clear();
     try {
-        voice_->startRecording();
+        voiceNote()->startRecording();
     } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
+        // Shown in the recorder itself, where the button that failed is.
+        voiceError_ = QString::fromUtf8(error.what());
+        emit voiceChanged();
         return;
     }
     voiceRecording_ = true;
     voiceElapsedMs_ = 0;
+    voiceLevel_ = 0.0;
     voiceTimer_.start();
     emit voiceChanged();
 }
 
-void SessionController::sendVoiceRecording()
+void SessionController::stopVoiceRecording()
 {
     if (!voiceRecording_ || !voice_) {
         return;
     }
     voiceTimer_.stop();
     voiceRecording_ = false;
+    voiceLevel_ = 0.0;
     const qint64 durationMs = voice_->elapsedMs();
     Bytes audio;
     try {
         audio = voice_->stopRecording();
     } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
+        voiceError_ = QString::fromUtf8(error.what());
         emit voiceChanged();
         return;
     }
-    emit voiceChanged();
     if (audio.empty() || durationMs < kMinVoiceMs) {
-        emit actionFailed(QStringLiteral("Too short to send."));
+        voiceError_ = QStringLiteral("Too short to send.");
+        emit voiceChanged();
         return;
     }
+    voiceTake_ = QByteArray(
+        reinterpret_cast<const char*>(audio.data()), static_cast<qsizetype>(audio.size()));
+    voiceTakeMs_ = durationMs;
+    voiceTakeWave_ = waveformHex(audio);
+    emit voiceChanged();
+}
+
+void SessionController::playVoiceTake()
+{
+    if (voiceTake_.isEmpty()) {
+        return;
+    }
+    if (voiceTakePlaying_) {
+        stopVoiceTake();
+        return;
+    }
+    stopVoice();
+    voiceTakePlaying_ = true;
+    emit voiceChanged();
+    try {
+        voiceNote()->play(Bytes(voiceTake_.begin(), voiceTake_.end()));
+    } catch (const std::exception& error) {
+        voiceError_ = QString::fromUtf8(error.what());
+        voiceTakePlaying_ = false;
+        emit voiceChanged();
+    }
+}
+
+void SessionController::stopVoiceTake()
+{
+    if (voice_) {
+        voice_->stop();
+    }
+    voiceTakePlaying_ = false;
+    emit voiceChanged();
+}
+
+void SessionController::discardVoiceTake()
+{
+    if (voiceTakePlaying_) {
+        stopVoiceTake();
+    }
+    voiceTake_.clear();
+    voiceTakeMs_ = 0;
+    voiceTakeWave_.clear();
+    voiceError_.clear();
+    emit voiceChanged();
+}
+
+void SessionController::sendVoiceTake()
+{
+    if (voiceTake_.isEmpty() || activePeer_.isEmpty()) {
+        return;
+    }
+    stopVoiceTake();
+    const QByteArray audio = voiceTake_;
+    const qint64 durationMs = voiceTakeMs_;
+    const QString wave = voiceTakeWave_;
+    discardVoiceTake();
 
     const QString replyTo = replying_ ? replyingProtocolId_ : QString();
     if (replying_) {
@@ -3032,8 +3150,9 @@ void SessionController::sendVoiceRecording()
     m.protocolId = SessionController_genProtocolId();
     m.replyTo = replyTo;
     m.attMime = QStringLiteral("audio/opus");
-    m.attSize = static_cast<qint64>(audio.size());
+    m.attSize = audio.size();
     m.attDurationMs = durationMs;
+    m.attWave = wave;
     m.ts = nowMillis();
     m.orderKey = m.ts;
     m.status = DeliveryStatus::Sending;
@@ -3041,21 +3160,35 @@ void SessionController::sendVoiceRecording()
     showInActiveView(m, true);
     contacts_.touch(activePeer_, peerName(activePeer_), QStringLiteral("[voice]"), m.ts, true);
 
-    emit requestSendVoice(activePeer_,
-        QByteArray(reinterpret_cast<const char*>(audio.data()),
-            static_cast<qsizetype>(audio.size())),
-        durationMs, m.id, m.protocolId, replyTo);
+    emit requestSendVoice(activePeer_, audio, durationMs, m.id, m.protocolId, replyTo);
 }
 
 void SessionController::cancelVoiceRecording()
 {
-    if (!voiceRecording_ || !voice_) {
-        return;
+    if (voiceRecording_ && voice_) {
+        voiceTimer_.stop();
+        voiceRecording_ = false;
+        voiceLevel_ = 0.0;
+        voice_->cancelRecording();
     }
-    voiceTimer_.stop();
-    voiceRecording_ = false;
-    voice_->cancelRecording();
+    discardVoiceTake();
+}
+
+qreal SessionController::voiceSpeed() const
+{
+    return kVoiceSpeeds.at(static_cast<std::size_t>(voiceSpeedStep_));
+}
+
+void SessionController::cycleVoiceSpeed()
+{
+    voiceSpeedStep_ = (voiceSpeedStep_ + 1) % static_cast<int>(kVoiceSpeeds.size());
     emit voiceChanged();
+    // A speed chosen mid-playback applies to what is playing, from where it is.
+    if (!voicePlaying_.isEmpty()) {
+        const QString playing = voicePlaying_;
+        stopVoice();
+        playVoice(playing);
+    }
 }
 
 void SessionController::playVoice(const QString& messageId)
@@ -3064,13 +3197,8 @@ void SessionController::playVoice(const QString& messageId)
         stopVoice();
         return;
     }
-    if (!voice_) {
-        voice_ = std::make_unique<VoiceNote>();
-        connect(voice_.get(), &VoiceNote::playbackFinished, this, [this]() {
-            voicePlaying_.clear();
-            emit voiceChanged();
-        });
-    }
+    stopVoiceTake();
+    voiceNote();
     voicePlaying_ = messageId;
     emit voiceChanged();
     // Read here, like a picture: a press on play must not wait for the worker.
@@ -3092,7 +3220,7 @@ void SessionController::onVoiceLoaded(const QString& messageId, const QByteArray
         return;
     }
     try {
-        voice_->play(Bytes(bytes.begin(), bytes.end()));
+        voice_->play(Bytes(bytes.begin(), bytes.end()), voiceSpeed());
     } catch (const std::exception& error) {
         // Audio that will not unpack is a broken message, and saying so beats
         // silence from a button that was just pressed.
@@ -3472,6 +3600,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.attMime = message.value("attMime").toString();
     m.attSize = message.value("attSize").toLongLong();
     m.attDurationMs = message.value("attDurationMs").toLongLong();
+    m.attWave = message.value("attWave").toString();
     m.attRef = message.value("attRef").toString();
     m.attKey = message.value("attKey").toString();
     m.keyboard = message.value("keyboard").toString();

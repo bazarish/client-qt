@@ -869,7 +869,10 @@ private:
     // can reach them. A no-op (never an error) when we have no avatar, the peer
     // is unreachable, or it was already sent. Gated on issuedToThem so an
     // un-accepted incoming request never triggers an automatic avatar reply.
-    void maybeSendAvatarToContact(const std::string& peerFingerprint);
+    // Pushes our avatar to one contact. `removal` is what makes an empty avatar
+    // a message rather than nothing to say: it tells a contact that holds the
+    // old one to drop it.
+    void maybeSendAvatarToContact(const std::string& peerFingerprint, bool removal = false);
     // Sends our own avatar to the account's other devices (a device.avatar
     // self-message), sealed to our own key and delivered to our own destination.
     void syncAvatarToSelf();

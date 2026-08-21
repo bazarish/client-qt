@@ -360,6 +360,21 @@ int main()
     // can send again now (this would throw "out of delivery tokens" otherwise).
     alice.sendMessage(bob.fingerprint(), "after refill");
 
+    // Removing an avatar travels like setting one. Bob holds Alice's until she
+    // takes it back; a removal that is never sent would leave him holding it for
+    // good, which is what used to happen.
+    {
+        const Bytes face = {0xFF, 0xD8, 0xFF, 0xE0, 'j', 'p', 'g'};
+        alice.setAvatar(face, "image/jpeg");
+        bob.sync();
+        CHECK(bob.contactAvatar(alice.fingerprint()) == face);
+
+        alice.setAvatar({}, {});
+        CHECK(alice.avatar().empty());
+        bob.sync();
+        CHECK(bob.contactAvatar(alice.fingerprint()).empty());
+    }
+
     server.stop();
     fs::remove_all(aDir);
     fs::remove_all(bDir);

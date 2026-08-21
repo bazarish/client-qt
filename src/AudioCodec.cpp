@@ -3,6 +3,8 @@
 
 #include <opus/opus.h>
 
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 
 namespace bazarish {
@@ -13,15 +15,23 @@ namespace {
 // bounds a single encode call.
 constexpr int kMaxPacketBytes = 4000;
 
+// Full scale of a signed-16 sample, the reference every level is measured
+// against.
+constexpr double kFullScale = 32768.0;
+
 }  // namespace
 
-AudioEncoder::AudioEncoder()
+AudioEncoder::AudioEncoder(const int bitrateBps)
     : encoder_(nullptr)
 {
     int error = 0;
     encoder_ = opus_encoder_create(kCallSampleRate, kCallChannels, OPUS_APPLICATION_VOIP, &error);
     if (encoder_ == nullptr || error != OPUS_OK) {
         throw std::runtime_error("opus encoder creation failed");
+    }
+    if (bitrateBps > 0 && opus_encoder_ctl(encoder_, OPUS_SET_BITRATE(bitrateBps)) != OPUS_OK) {
+        opus_encoder_destroy(encoder_);
+        throw std::runtime_error("opus encoder rejected the bitrate");
     }
 }
 
@@ -133,6 +143,48 @@ Bytes packOpusFrames(const std::vector<Bytes>& frames)
         packed.insert(packed.end(), frame.begin(), frame.end());
     }
     return packed;
+}
+
+std::vector<std::uint8_t> voiceWaveform(const Bytes& packed, const int bars)
+{
+    if (bars <= 0) {
+        return {};
+    }
+    const std::vector<Bytes> frames = unpackOpusFrames(packed);
+    if (frames.empty()) {
+        return {};
+    }
+    // One RMS per 20 ms frame first, then frames folded into bars: the fold is
+    // over a whole number of frames however long the message is.
+    AudioDecoder decoder;
+    std::vector<double> frameLevels;
+    frameLevels.reserve(frames.size());
+    for (const Bytes& frame : frames) {
+        const std::vector<std::int16_t> pcm = decoder.decode(frame);
+        double sum = 0.0;
+        for (const std::int16_t sample : pcm) {
+            const double value = static_cast<double>(sample) / kFullScale;
+            sum += value * value;
+        }
+        frameLevels.push_back(pcm.empty() ? 0.0 : std::sqrt(sum / static_cast<double>(pcm.size())));
+    }
+
+    std::vector<double> barLevels(static_cast<std::size_t>(bars), 0.0);
+    for (std::size_t i = 0; i < frameLevels.size(); ++i) {
+        const std::size_t bar
+            = i * static_cast<std::size_t>(bars) / frameLevels.size();
+        barLevels[bar] = std::max(barLevels[bar], frameLevels[i]);
+    }
+    const double peak = *std::max_element(barLevels.begin(), barLevels.end());
+    std::vector<std::uint8_t> out(static_cast<std::size_t>(bars), 0);
+    if (peak < kWaveformSilence) {
+        return out;  // nothing was recorded loud enough to draw
+    }
+    for (std::size_t i = 0; i < barLevels.size(); ++i) {
+        const double scaled = barLevels[i] / peak * (kWaveformLevels - 1);
+        out[i] = static_cast<std::uint8_t>(std::lround(scaled));
+    }
+    return out;
 }
 
 std::vector<Bytes> unpackOpusFrames(const Bytes& packed)

@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <algorithm>
 #include <vector>
 
 using namespace bazarish;
@@ -121,6 +122,43 @@ int main()
         const std::vector<std::int16_t> concealed = decoder.decode(Bytes{});
         CHECK(concealed.size() == static_cast<std::size_t>(kCallSamplesPerFrame));
         source.stop();
+    }
+
+    // 1b) The waveform a voice bubble draws comes from the audio itself: a tone
+    //     that plays only in the second half draws a quiet first half and a loud
+    //     second one, and pure silence draws flat.
+    {
+        constexpr int kBars = 8;
+        constexpr int kFramesPerHalf = 25;  // half a second at 20 ms a frame
+        AudioEncoder encoder;
+        SineAudioSource source(440.0);
+        source.start();
+        const std::vector<std::int16_t> silence(kCallSamplesPerFrame, 0);
+        std::vector<Bytes> frames;
+        for (int i = 0; i < kFramesPerHalf; ++i) {
+            frames.push_back(encoder.encode(silence.data(), kCallSamplesPerFrame));
+        }
+        for (int i = 0; i < kFramesPerHalf; ++i) {
+            const std::vector<std::int16_t> tone = source.readFrame();
+            frames.push_back(encoder.encode(tone.data(), kCallSamplesPerFrame));
+        }
+        source.stop();
+
+        const std::vector<std::uint8_t> wave = voiceWaveform(packOpusFrames(frames), kBars);
+        CHECK(wave.size() == static_cast<std::size_t>(kBars));
+        CHECK(wave.front() < wave.back());
+        CHECK(wave.back() == kWaveformLevels - 1);  // the loudest slice tops out
+
+        // Its own encoder: a codec stream carries the tail of what came before,
+        // and every recording starts one of its own.
+        AudioEncoder quietEncoder;
+        std::vector<Bytes> quiet;
+        for (int i = 0; i < kFramesPerHalf; ++i) {
+            quiet.push_back(quietEncoder.encode(silence.data(), kCallSamplesPerFrame));
+        }
+        const std::vector<std::uint8_t> flat = voiceWaveform(packOpusFrames(quiet), kBars);
+        CHECK(flat.size() == static_cast<std::size_t>(kBars));
+        CHECK(std::all_of(flat.begin(), flat.end(), [](std::uint8_t bar) { return bar == 0; }));
     }
 
     // 2) Full media pipeline over a loopback link: both sides capture a tone,

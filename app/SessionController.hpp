@@ -318,6 +318,21 @@ class SessionController : public QObject {
     // Recording a voice message, and how long it has been running.
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voiceElapsedMs READ voiceElapsedMs NOTIFY voiceChanged)
+    // What the microphone is picking up right now, 0..1. A microphone that is
+    // not working holds it at zero, which draws as a flat line.
+    Q_PROPERTY(qreal voiceLevel READ voiceLevel NOTIFY voiceChanged)
+    // The recording that has been stopped and is waiting to be sent or dropped:
+    // whether there is one, how long it runs, what it weighs and what it looks
+    // like. Nothing is sent until the user says so.
+    Q_PROPERTY(bool voiceTakeReady READ voiceTakeReady NOTIFY voiceChanged)
+    Q_PROPERTY(qint64 voiceTakeMs READ voiceTakeMs NOTIFY voiceChanged)
+    Q_PROPERTY(qint64 voiceTakeBytes READ voiceTakeBytes NOTIFY voiceChanged)
+    Q_PROPERTY(QString voiceTakeWave READ voiceTakeWave NOTIFY voiceChanged)
+    Q_PROPERTY(bool voiceTakePlaying READ voiceTakePlaying NOTIFY voiceChanged)
+    // Why recording could not start (no microphone, usually); empty when fine.
+    Q_PROPERTY(QString voiceError READ voiceError NOTIFY voiceChanged)
+    // Playback speed for voice messages, cycled by the bubble's own control.
+    Q_PROPERTY(qreal voiceSpeed READ voiceSpeed NOTIFY voiceChanged)
     // The message whose voice note is playing, empty when none is.
     Q_PROPERTY(QString voicePlaying READ voicePlaying NOTIFY voiceChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
@@ -437,6 +452,14 @@ public:
     QVariantList devices() const { return devices_; }
     bool voiceRecording() const { return voiceRecording_; }
     qint64 voiceElapsedMs() const { return voiceElapsedMs_; }
+    qreal voiceLevel() const { return voiceLevel_; }
+    bool voiceTakeReady() const { return !voiceTake_.isEmpty(); }
+    qint64 voiceTakeMs() const { return voiceTakeMs_; }
+    qint64 voiceTakeBytes() const { return voiceTake_.size(); }
+    QString voiceTakeWave() const { return voiceTakeWave_; }
+    bool voiceTakePlaying() const { return voiceTakePlaying_; }
+    QString voiceError() const { return voiceError_; }
+    qreal voiceSpeed() const;
     QString voicePlaying() const { return voicePlaying_; }
     bool awaitingApproval() const { return awaitingApproval_; }
     QString approvalNote() const { return approvalNote_; }
@@ -560,11 +583,20 @@ public:
     // Recorded from the microphone, encoded with the same codec a call uses, and
     // sent inside the message: small enough to ride there, so nothing is
     // announced and nothing is fetched.
+    // Recording runs in three steps, because a voice message is confirmed before
+    // it goes: record, stop (which holds the take), then send or drop it.
     Q_INVOKABLE void startVoiceRecording();
-    Q_INVOKABLE void sendVoiceRecording();
+    Q_INVOKABLE void stopVoiceRecording();
     Q_INVOKABLE void cancelVoiceRecording();
+    // Listening to the held take before sending it, and sending or dropping it.
+    Q_INVOKABLE void playVoiceTake();
+    Q_INVOKABLE void stopVoiceTake();
+    Q_INVOKABLE void sendVoiceTake();
+    Q_INVOKABLE void discardVoiceTake();
     Q_INVOKABLE void playVoice(const QString& messageId);
     Q_INVOKABLE void stopVoice();
+    // Steps the playback speed through the offered rates and back to normal.
+    Q_INVOKABLE void cycleVoiceSpeed();
     // A name to suggest for that file.
     Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& messageId, const QString& name) const;
     // Re-dispatches a failed outgoing file from the saved source path (reusing the
@@ -986,11 +1018,22 @@ private:
     // Which message a picture belongs to, so one that will not decode can be
     // marked broken where it stands.
     QHash<QString, qint64> pictureOwners_;
-    // Recording and playing voice messages; the audio never leaves memory.
+    // Recording and playing voice messages; the audio never leaves memory. Built
+    // on first use, and wired to the clock and the level the recorder shows.
+    VoiceNote* voiceNote();
     std::unique_ptr<VoiceNote> voice_;
     QTimer voiceTimer_;
     bool voiceRecording_ = false;
     qint64 voiceElapsedMs_ = 0;
+    qreal voiceLevel_ = 0.0;
+    // The stopped recording waiting for the user to send it, with what the modal
+    // shows about it. Empty when there is none.
+    QByteArray voiceTake_;
+    qint64 voiceTakeMs_ = 0;
+    QString voiceTakeWave_;
+    bool voiceTakePlaying_ = false;
+    QString voiceError_;
+    int voiceSpeedStep_ = 0;
     QString voicePlaying_;
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart

@@ -1,6 +1,5 @@
 // Bazarish project (c) 2026
 #include "TranscriptStore.hpp"
-#include <QSet>
 
 #include "ProfileKey.hpp"
 
@@ -134,7 +133,7 @@ private:
 const char* const kMessageColumns = "id, peer, outgoing, type, protocolId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, blobGone, replyTo,"
-                                    " hasPicture, attDurationMs";
+                                    " hasPicture, attDurationMs, attWave";
 
 // Orders a loaded window oldest-first by the sort position (orderKey), then id as
 // a stable tiebreak. Each window is a contiguous id-range, so this repairs an
@@ -175,6 +174,7 @@ StoredMessage readMessageRow(const Query& query)
     m.blobGone = query.value(18).toInt() != 0;
     m.hasPicture = query.value(20).toInt() != 0;
     m.attDurationMs = query.value(21).toLongLong();
+    m.attWave = query.value(22).toString();
     m.replyTo = query.value(19).toString();
     return m;
 }
@@ -191,8 +191,7 @@ TranscriptStore::~TranscriptStore()
 namespace {
 
 // Opens a connection and unlocks it with `key`. The pragma has to be the first
-// statement on the connection; a plaintext database is opened by passing no key
-// at all, which is how a database from the previous layout is read for import.
+// statement on the connection.
 sqlite3* openKeyed(const QString& path, const Bytes& key)
 {
     sqlite3* db = nullptr;
@@ -255,29 +254,9 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
-            " blobGone INTEGER, replyTo TEXT, hasPicture INTEGER DEFAULT 0,"
-            " attDurationMs INTEGER DEFAULT 0)")) {
+            " blobGone INTEGER, replyTo TEXT, hasPicture INTEGER,"
+            " attDurationMs INTEGER, attWave TEXT)")) {
         return false;
-    }
-    // A transcript written before pictures had a column of their own. Adding it
-    // is the whole migration: without it every query naming the column fails and
-    // the chat comes up empty, which is what happened.
-    QSet<QString> present;
-    Query columns(db_);
-    if (columns.exec("PRAGMA table_info(messages)")) {
-        while (columns.next()) {
-            present.insert(columns.value(1).toString());
-        }
-    }
-    const QList<QPair<QString, QString>> added = {
-        {QStringLiteral("hasPicture"), QStringLiteral("INTEGER DEFAULT 0")},
-        {QStringLiteral("attDurationMs"), QStringLiteral("INTEGER DEFAULT 0")},
-    };
-    for (const auto& [name, type] : added) {
-        if (!present.contains(name)
-            && !query.exec("ALTER TABLE messages ADD COLUMN " + name + " " + type)) {
-            return false;
-        }
     }
 
     // Per-peer read high-water for persistent unread tracking (see read state).
@@ -304,8 +283,8 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, protocolId, text, attName, attMime,"
         " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo,"
-        " attDurationMs)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " attDurationMs, attWave)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -324,6 +303,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.orderKey);
     query.addBindValue(message.replyTo);
     query.addBindValue(message.attDurationMs);
+    query.addBindValue(message.attWave);
     if (!query.exec()) {
         return 0;
     }

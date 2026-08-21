@@ -17,12 +17,6 @@ Rectangle {
     readonly property int minInputH: 38
     readonly property int maxInputH:
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
-    function formatDuration(ms) {
-        const total = Math.floor(ms / 1000)
-        const seconds = total % 60
-        return Math.floor(total / 60) + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
-
     // Prepares a picture (scale, re-encode) and sends it as an attachment. A
     // picture that cannot be read says so instead of going out as a file.
     function sendPicture(source) {
@@ -187,61 +181,12 @@ Rectangle {
             Layout.bottomMargin: (Theme.barHeight - root.minInputH) / 2
             spacing: 6
 
+            // One way to attach anything: the clip asks what kind.
             IconButton {
                 iconName: "attach"
                 visible: !root.editing
                 Layout.alignment: Qt.AlignBottom
-                onClicked: fileDialog.open()
-            }
-
-            // Pictures are their own thing: they are shrunk before they cross a
-            // tunnel and shown in the bubble rather than listed as a file.
-            IconButton {
-                iconName: "image"
-                visible: !root.editing
-                Layout.alignment: Qt.AlignBottom
-                onClicked: imageDialog.open()
-            }
-
-            // A voice message: press to record, press again to send. It is
-            // recorded and encoded in memory and rides inside the message.
-            IconButton {
-                iconName: "mic"
-                visible: !root.editing && !recording
-                readonly property bool recording: root.session && root.session.voiceRecording
-                Layout.alignment: Qt.AlignBottom
-                onClicked: root.session.startVoiceRecording()
-            }
-
-            RowLayout {
-                visible: root.session && root.session.voiceRecording
-                Layout.alignment: Qt.AlignBottom
-                spacing: 6
-                Rectangle {
-                    width: 8; height: 8; radius: 4
-                    color: Theme.danger
-                    Layout.alignment: Qt.AlignVCenter
-                    SequentialAnimation on opacity {
-                        running: root.session && root.session.voiceRecording
-                        loops: Animation.Infinite
-                        NumberAnimation { to: 0.2; duration: 600 }
-                        NumberAnimation { to: 1.0; duration: 600 }
-                    }
-                }
-                Label {
-                    text: root.formatDuration(root.session ? root.session.voiceElapsedMs : 0)
-                    color: Theme.text
-                    font.pixelSize: Theme.fontSmall
-                }
-                IconButton {
-                    iconName: "close"
-                    onClicked: root.session.cancelVoiceRecording()
-                }
-                IconButton {
-                    iconName: "send"
-                    tint: Theme.accent
-                    onClicked: root.session.sendVoiceRecording()
-                }
+                onClicked: attachMenu.popup()
             }
 
             Rectangle {
@@ -329,5 +274,32 @@ Rectangle {
     FileSendDialog {
         id: sendOptions
         session: root.session
+    }
+
+    ContextMenu {
+        id: attachMenu
+        ContextMenuItem {
+            text: "File"
+            onTriggered: fileDialog.open()
+        }
+        ContextMenuItem {
+            // Pictures are their own thing: they are shrunk before they cross a
+            // tunnel and shown in the bubble rather than listed as a file.
+            text: "Picture"
+            onTriggered: imageDialog.open()
+        }
+        ContextMenuItem {
+            text: "Voice message"
+            onTriggered: voiceSheet.open()
+        }
+    }
+
+    // Recording happens in a window of its own: what the microphone hears is
+    // drawn while it records, and the take is heard before it is sent.
+    VoiceRecorder {
+        id: voiceSheet
+        session: root.session
+        parent: Overlay.overlay
+        anchors.centerIn: parent
     }
 }

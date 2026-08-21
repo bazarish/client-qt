@@ -182,6 +182,7 @@ if(Qt6_FOUND)
             app/qml/ReactionPicker.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
+            app/qml/VoiceRecorder.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml

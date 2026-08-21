@@ -27,6 +27,7 @@ struct StoredMessage {
     QString attMime;
     qint64 attSize = 0;
     qint64 attDurationMs = 0;  // a voice message's length
+    QString attWave;       // a voice message's loudness profile, one hex digit a bar
     QString attRef;        // content-store id
     QString attKey;        // base64 content key
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
@@ -73,8 +74,7 @@ public:
 
     // Opens (and creates) the database for this profile id. Returns false when it
     // cannot be opened - a wrong passphrase is a failed open, never an empty
-    // transcript. Migrates a database left by the previous layout (a plaintext
-    // transcript.db or a CMS-sealed transcript.db.enc beside it) on first open.
+    // transcript.
     bool open(const QString& profileId, const QString& dbPath, const QString& passphrase = {});
 
     qint64 append(const StoredMessage& message);
