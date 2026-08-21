@@ -797,11 +797,11 @@ Item {
             }
             ContextMenuItem {
                 text: "Copy all"
-                // Only for text messages: an attachment or a request has nothing
-                // to copy.
+                // Only where there is text to copy: an attachment, a request, a
+                // picture and a voice message carry none.
                 visible: !delegate.isAttachment && !delegate.isContactRequest
+                    && delegate.fullText.length > 0
                 height: visible ? implicitHeight : 0
-                enabled: delegate.fullText.length > 0
                 onTriggered: delegate.session.copyText(delegate.fullText)
             }
             ContextMenuItem {

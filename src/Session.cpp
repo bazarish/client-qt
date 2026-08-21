@@ -1430,8 +1430,7 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     };
     // E2E-encrypted to the peer's prekey: the first message is confidential.
     // Delivered tokenless under the "contact" admission class.
-    const std::string plain = payload.dump();
-    const Bytes encrypted = cms::seal(Bytes(plain.begin(), plain.end()), peerPrekey);
+    const Bytes encrypted = cms::seal(encodedBody(payload), peerPrekey);
     deliver(peerDest, peerServingKey, "contact", peerFingerprint, std::nullopt, encrypted);
 
     // We now know how to reach the peer; reciprocal tokens arrive with the
