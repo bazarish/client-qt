@@ -267,8 +267,6 @@ Popup {
                                 anchors.left: parent.left
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
-                                anchors.leftMargin: 6
-                                anchors.rightMargin: 6
                                 spacing: 3
                                 RowLayout {
                                     Layout.fillWidth: true
@@ -321,8 +319,6 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 // Personal I2P destination
