@@ -193,14 +193,15 @@ Item {
     }
 
     // Per-row actions on a narrow window (the row fields are stashed on open).
-    Menu {
+    ContextMenu {
         id: rowMenu
-        MenuItem {
+        ContextMenuItem {
             text: "Copy fingerprint"
             onTriggered: root.copyFingerprint(root.rowFingerprint)
         }
-        MenuItem {
+        ContextMenuItem {
             text: "Delete profile"
+            danger: true
             onTriggered: deleteDialog.open()
         }
     }

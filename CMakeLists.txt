@@ -196,6 +196,8 @@ if(Qt6_FOUND)
             app/qml/components/QrView.qml
             app/qml/components/AvatarCropDialog.qml
             app/qml/components/Toggle.qml
+            app/qml/components/ContextMenu.qml
+            app/qml/components/ContextMenuItem.qml
             app/qml/components/StatusChip.qml
             app/qml/components/UnreadBadge.qml
             app/qml/components/DialogButtons.qml

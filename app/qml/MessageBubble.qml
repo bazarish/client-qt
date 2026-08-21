@@ -646,9 +646,9 @@ Item {
             acceptedButtons: Qt.LeftButton
             onLongPressed: contextMenu.popup()
         }
-        Menu {
+        ContextMenu {
             id: contextMenu
-            MenuItem {
+            ContextMenuItem {
                 text: "Reply"
                 // Any real message (text or attachment) can be replied to; service
                 // notices, requests and unsupported placeholders cannot.
@@ -663,7 +663,7 @@ Item {
                     delegate.session.beginReply(model.protocolId, preview, who)
                 }
             }
-            MenuItem {
+            ContextMenuItem {
                 // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
                 // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
                 // these labels into "React_" / "React_ view".
@@ -672,7 +672,7 @@ Item {
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.reactRequested(model.protocolId)
             }
-            MenuItem {
+            ContextMenuItem {
                 text: "Copy all"
                 // Only for text messages: an attachment or a request has nothing
                 // to copy.
@@ -681,13 +681,13 @@ Item {
                 enabled: delegate.fullText.length > 0
                 onTriggered: delegate.session.copyText(delegate.fullText)
             }
-            MenuItem {
+            ContextMenuItem {
                 text: "Edit"
                 visible: delegate.canEdit
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.session.beginEdit(model.msgId, model.protocolId, model.text)
             }
-            MenuItem {
+            ContextMenuItem {
                 text: "Delete"
                 onTriggered: delegate.deleteRequested(model.msgId, model.protocolId, model.outgoing)
             }

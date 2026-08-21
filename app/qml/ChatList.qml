@@ -78,12 +78,12 @@ Item {
                     visible: root.narrow
                     iconName: "burger"
                     onClicked: narrowMenu.open()
-                    Menu {
+                    ContextMenu {
                         id: narrowMenu
                         y: parent.height
-                        MenuItem { text: "New chat"; onTriggered: root.newChatRequested() }
-                        MenuItem { text: "Profile"; onTriggered: root.settingsRequested() }
-                        MenuItem { text: "Global settings"; onTriggered: root.appSettingsRequested() }
+                        ContextMenuItem { text: "New chat"; onTriggered: root.newChatRequested() }
+                        ContextMenuItem { text: "Profile"; onTriggered: root.settingsRequested() }
+                        ContextMenuItem { text: "Global settings"; onTriggered: root.appSettingsRequested() }
                     }
                 }
             }
@@ -184,9 +184,9 @@ Item {
                     longPressThreshold: 0.5
                     onLongPressed: pinMenu.popup()
                 }
-                Menu {
+                ContextMenu {
                     id: pinMenu
-                    MenuItem {
+                    ContextMenuItem {
                         text: model.pinned ? "Unpin chat" : "Pin to top"
                         onTriggered: root.session.pinChat(model.fingerprint, !model.pinned)
                     }
