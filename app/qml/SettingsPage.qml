@@ -338,8 +338,12 @@ Popup {
                                 Layout.fillWidth: true
                                 spacing: 8
                                 Label {
+                                    // The queue names the device that is holding
+                                    // mail without having to know whose id this is.
                                     text: modelData.clientId
                                         + (modelData.current ? "  (this device)" : "")
+                                        + (modelData.queue > 0
+                                            ? " (queue: " + modelData.queue + ")" : "")
                                     color: modelData.current ? Theme.text : Theme.textDim
                                     font.pixelSize: Theme.fontSmall
                                     elide: Text.ElideMiddle

@@ -240,6 +240,9 @@ public:
     struct DeviceEntry {
         std::string clientId;
         bool current = false;
+        // Mail this device has not acked yet: the one that stopped fetching is
+        // the one holding the mailbox.
+        std::size_t queued = 0;
     };
     std::vector<DeviceEntry> listClients();
     void retireClient(const std::string& clientId);

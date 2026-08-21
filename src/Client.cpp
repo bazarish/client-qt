@@ -334,8 +334,9 @@ std::vector<Client::DeviceEntry> Client::listClients()
     const nlohmann::json body = nlohmann::json::parse(response.body.begin(), response.body.end());
     std::vector<DeviceEntry> devices;
     for (const nlohmann::json& entry : body.at("clients")) {
-        devices.push_back(
-            DeviceEntry{entry.at("clientId").get<std::string>(), entry.value("current", false)});
+        devices.push_back(DeviceEntry{entry.at("clientId").get<std::string>(),
+            entry.value("current", false),
+            entry.value("queue", static_cast<std::size_t>(0))});
     }
     return devices;
 }

@@ -1451,6 +1451,7 @@ void SessionWorker::refreshDevices()
             devices.append(QVariantMap{
                 {QStringLiteral("clientId"), QString::fromStdString(device.clientId)},
                 {QStringLiteral("current"), device.current},
+                {QStringLiteral("queue"), static_cast<qulonglong>(device.queued)},
             });
         }
         op.succeed(QString::number(devices.size()) + QStringLiteral(" device(s)"));
