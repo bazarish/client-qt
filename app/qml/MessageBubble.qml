@@ -729,6 +729,13 @@ Item {
                 onTriggered: delegate.reactRequested(model.protocolId)
             }
             ContextMenuItem {
+                // From the profile straight to the clipboard: no file in between.
+                text: "Copy picture"
+                visible: delegate.pictureUrl.length > 0
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.session.copyPicture(model.protocolId)
+            }
+            ContextMenuItem {
                 // A picture lives in the profile database; this is how it leaves
                 // it as a file.
                 text: "Save as"

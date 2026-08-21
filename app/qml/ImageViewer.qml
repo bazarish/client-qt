@@ -54,31 +54,33 @@ Popup {
             sourceSize.width: root.parent ? root.parent.width : 1920
             sourceSize.height: root.parent ? root.parent.height : 1080
         }
-        // Saving from here writes the same bytes the bubble drew, out of the
-        // profile and onto the disk the user chose.
-        Button {
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: 12
-            text: "Save as…"
-            onClicked: {
-                saveDialog.currentFile
-                    = root.session.defaultPictureSaveUrl(root.messageId, root.name)
-                saveDialog.open()
+        // Right-click (or a long press) offers what can be done with the picture.
+        // A button standing on top of it forever was one thing too many.
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            onTapped: pictureMenu.popup()
+        }
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onLongPressed: pictureMenu.popup()
+        }
+
+        ContextMenu {
+            id: pictureMenu
+            ContextMenuItem {
+                text: "Copy"
+                onTriggered: root.session.copyPicture(root.messageId)
             }
-            background: Rectangle {
-                radius: Theme.radiusSmall
-                color: Theme.surface
-                border.color: Theme.border
-            }
-            contentItem: Label {
-                text: parent.text
-                color: Theme.accent
-                leftPadding: 10
-                rightPadding: 10
+            ContextMenuItem {
+                text: "Save as"
+                onTriggered: {
+                    saveDialog.currentFile
+                        = root.session.defaultPictureSaveUrl(root.messageId, root.name)
+                    saveDialog.open()
+                }
             }
         }
 
-        TapHandler { onTapped: root.close() }
+        TapHandler { acceptedButtons: Qt.LeftButton; onTapped: root.close() }
     }
 }

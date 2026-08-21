@@ -3002,6 +3002,22 @@ void SessionController::savePictureAs(const QString& messageId, const QString& f
     emit actionOk(QStringLiteral("Picture saved."));
 }
 
+void SessionController::copyPicture(const QString& messageId)
+{
+    const QImage picture = PictureStore::instance().image(messageId);
+    if (picture.isNull()) {
+        emit actionFailed(QStringLiteral("This picture is not here to copy."));
+        return;
+    }
+    QClipboard* const clipboard = QGuiApplication::clipboard();
+    if (clipboard == nullptr) {
+        emit actionFailed(QStringLiteral("There is no clipboard to copy to."));
+        return;
+    }
+    clipboard->setImage(picture);
+    emit actionOk(QStringLiteral("Picture copied."));
+}
+
 QUrl SessionController::defaultPictureSaveUrl(const QString& messageId, const QString& name) const
 {
     const QByteArray bytes = PictureStore::instance().bytes(messageId);

@@ -546,6 +546,9 @@ public:
     Q_INVOKABLE void sendPicture(const QString& fileUrl);
     // Writes a picture this profile holds out to a file the user chose.
     Q_INVOKABLE void savePictureAs(const QString& messageId, const QString& fileUrl);
+    // Puts it on the clipboard as an image: it goes from memory to memory, and
+    // never becomes a plaintext file on the way.
+    Q_INVOKABLE void copyPicture(const QString& messageId);
     // A name to suggest for that file.
     Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& messageId, const QString& name) const;
     // Re-dispatches a failed outgoing file from the saved source path (reusing the

@@ -11,6 +11,14 @@ One library with three layers on top:
 - **GUI** - `bazarish-gui`, a Qt6 desktop app (built only when Qt6 Widgets is
   present), driving the same `Session`.
 
+The sealed body of a message is **CBOR**, not JSON text. It is the same document
+with the same field names, but binary values travel as themselves - which is what
+lets a small attachment ride inside the message it belongs to instead of being
+announced and fetched. Base64 would have cost a third of every such payload (1.33x
+measured), while compressing it buys nothing: pictures and Opus audio are already
+entropy-coded. Large files keep the announcement-and-fetch path, where size is
+bounded by nothing.
+
 Messages are end-to-end encrypted to the peer's user sealing key. The **first**
 contact request is encrypted too, using the peer's sealing **prekey** fetched
 from its serving server (`GET /v1/account/contact`) - there is no plaintext
