@@ -444,12 +444,19 @@ void AppController::openProfile(const QString& id, const QString& passphrase)
     // or an account that was never turned off - comes online here.
     const bool wasOff = offline_.constFind(id) != offline_.cend();
     const bool bringOnline = !wasOff || (unlockingId_ == id && unlockToBringOnline_);
-    if (bringOnline) {
-        setAccountOffline(id, false);
+    // The attempt is still an unlock until it is known to have worked: clearing
+    // this before the open meant a wrong passphrase was reported as if nobody had
+    // been asked for one, which is to say not reported at all.
+    unlockingId_ = id;
+    openSession(id, passphrase, /*makeActive=*/true);
+    if (sessionFor(id) == nullptr) {
+        return;  // it did not open; the prompt has been told why
     }
     unlockingId_.clear();
     unlockToBringOnline_ = false;
-    openSession(id, passphrase, /*makeActive=*/true);
+    if (bringOnline) {
+        setAccountOffline(id, false);
+    }
     if (!bringOnline) {
         if (SessionController* const ctrl = sessionFor(id)) {
             ctrl->goOffline();

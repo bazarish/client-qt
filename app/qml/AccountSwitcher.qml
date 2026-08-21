@@ -8,6 +8,13 @@ import Bazarish
 // online (receiving) or offline. Several accounts stay online at once.
 Popup {
     id: root
+    // The account opened (a passphrase was right, or it needed none): this list
+    // has done its job.
+    Connections {
+        target: App
+        function onProfileOpened() { root.close() }
+    }
+
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
@@ -56,14 +63,20 @@ Popup {
             // Switching and closing live here, not in the delegate's onClicked: a
             // compiled signal handler inside a delegate cannot resolve the enclosing
             // Popup's id, so the delegate calls in through ListView.view instead.
-            function activate(accountId) {
+            function activate(accountId, locked) {
                 App.switchTo(accountId)
-                root.close()
+                // A locked account is not switched to yet - a prompt has opened
+                // over this list. Closing it here would take the list away too,
+                // and a wrong passphrase would leave the user looking at whatever
+                // account happened to be open.
+                if (!locked) {
+                    root.close()
+                }
             }
             delegate: ItemDelegate {
                 width: ListView.view.width
                 height: 68
-                onClicked: ListView.view.activate(model.accountId)
+                onClicked: ListView.view.activate(model.accountId, model.encrypted && !model.online)
                 // The active account is marked with a neon outline, not a bright
                 // accent fill (the brand's one-accent rule; gray stays the base).
                 background: Rectangle {

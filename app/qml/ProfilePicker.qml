@@ -158,7 +158,11 @@ Item {
         modal: true
         title: "Unlock profile"
         closePolicy: Popup.CloseOnEscape
-        onAccepted: { App.openProfile(root.pendingId, passField.text); root.closeIfSwitching() }
+        // Nothing is closed here: this screen goes away when the profile is
+        // actually open (App.profileOpened below), not when a passphrase is
+        // typed. A wrong one used to take the prompt and the profile list with
+        // it, and there was nothing left to try again on.
+        onAccepted: App.openProfile(root.pendingId, passField.text)
         onRejected: App.cancelUnlock()
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Unlock profile"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
@@ -196,6 +200,12 @@ Item {
             if (!passDialog.visible) {
                 passDialog.open()
             }
+        }
+        // The profile opened: the prompt has done its job and this screen with it.
+        function onProfileOpened() {
+            passError.text = ""
+            passDialog.close()
+            root.closeIfSwitching()
         }
     }
 
