@@ -82,7 +82,7 @@ Item {
                         id: narrowMenu
                         y: parent.height
                         MenuItem { text: "New chat"; onTriggered: root.newChatRequested() }
-                        MenuItem { text: "Account"; onTriggered: root.settingsRequested() }
+                        MenuItem { text: "Profile"; onTriggered: root.settingsRequested() }
                         MenuItem { text: "Global settings"; onTriggered: root.appSettingsRequested() }
                     }
                 }
@@ -250,7 +250,7 @@ Item {
                             ? "Privacy mode is on but this profile has no I2P facade"
                             : (connPlate.clearnetDowngrade
                                 ? "Not over I2P — your server sees this device's address"
-                                : (connPlate.isOffline ? "This account is not syncing"
+                                : (connPlate.isOffline ? "This profile is not syncing"
                                     : (root.session && root.session.syncError.length > 0
                                         ? root.session.syncError
                                         : "No server connection yet")))
@@ -287,7 +287,7 @@ Item {
                 }
                 BarButton {
                     iconName: "person"
-                    label: "Account"
+                    label: "Profile"
                     onTapped: root.settingsRequested()
                 }
             }

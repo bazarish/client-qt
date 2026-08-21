@@ -3,6 +3,8 @@
 
 #include "ProfileDb.hpp"
 
+#include <memory>
+
 #include <nlohmann/json.hpp>
 
 #include <cstdlib>
@@ -63,12 +65,16 @@ ProfileInfo readInfo(const std::string& id, const fs::path& dir, const std::stri
     info.id = id;
     info.dir = dir;
     info.name = id;
-    if (!ProfileDb::opens(dir, passphrase)) {
-        info.encrypted = true;
+    // One open, not two: unlocking a profile database runs its key derivation,
+    // which is deliberately expensive.
+    std::unique_ptr<ProfileDb> db;
+    try {
+        db = std::make_unique<ProfileDb>(dir, passphrase);
+    } catch (const std::exception&) {
+        info.encrypted = true;  // the key does not open it: locked
         return info;
     }
-    const ProfileDb db(dir, passphrase);
-    const nlohmann::json meta = nlohmann::json::parse(db.text("meta"));
+    const nlohmann::json meta = nlohmann::json::parse(db->text("meta"));
     info.name = meta.value("name", std::string{});
     if (info.name.empty()) {
         info.name = id;

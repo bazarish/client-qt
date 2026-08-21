@@ -119,6 +119,9 @@ private:
     bool stepped_ = false;
 };
 
+// Key derivation rounds for a profile with no passphrase; see ProfileDb.
+constexpr int kDefaultKeyKdfIterations = 4000;
+
 // Column list shared by every full-row query, so the indices below stay aligned.
 // orderKey is appended last so the existing 0..16 indices are unchanged.
 const char* const kMessageColumns = "id, peer, outgoing, type, protocolId, text, attName,"
@@ -180,7 +183,7 @@ namespace {
 // Opens a connection and unlocks it with `key`. The pragma has to be the first
 // statement on the connection; a plaintext database is opened by passing no key
 // at all, which is how a database from the previous layout is read for import.
-sqlite3* openKeyed(const QString& path, const std::string& key)
+sqlite3* openKeyed(const QString& path, const std::string& key, const int rounds)
 {
     sqlite3* db = nullptr;
     if (sqlite3_open(path.toUtf8().constData(), &db) != SQLITE_OK) {
@@ -204,6 +207,15 @@ sqlite3* openKeyed(const QString& path, const std::string& key)
             sqlite3_close(db);
             return nullptr;
         }
+        // Same reasoning as the profile store: there is no secret to stretch when
+        // the profile has no passphrase, so the rounds come down to match it.
+        if (rounds > 0) {
+            const std::string pragmaRounds = "PRAGMA kdf_iter = " + std::to_string(rounds);
+            if (sqlite3_exec(db, pragmaRounds.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
+                sqlite3_close(db);
+                return nullptr;
+            }
+        }
     }
     return db;
 }
@@ -216,6 +228,20 @@ bool readable(sqlite3* const db)
         == SQLITE_OK;
 }
 
+// Opens with the rounds this build writes, falling back to SQLCipher's own
+// default for a file written with those.
+sqlite3* openProfile(const QString& path, const std::string& key)
+{
+    const bool cheap = key == std::string(TranscriptStore::kDefaultKey);
+    if (sqlite3* const db = openKeyed(path, key, cheap ? kDefaultKeyKdfIterations : 0)) {
+        if (readable(db)) {
+            return db;
+        }
+        sqlite3_close(db);
+    }
+    return cheap ? openKeyed(path, key, 0) : nullptr;
+}
+
 }  // namespace
 
 bool TranscriptStore::open(const QString& profileId, const QString& dbPath, const QString& passphrase)
@@ -224,7 +250,7 @@ bool TranscriptStore::open(const QString& profileId, const QString& dbPath, cons
     const std::string key
         = passphrase.isEmpty() ? std::string(kDefaultKey) : passphrase.toStdString();
 
-    db_ = openKeyed(dbPath, key);
+    db_ = openProfile(dbPath, key);
     if (db_ == nullptr) {
         return false;
     }

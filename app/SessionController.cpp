@@ -2788,6 +2788,20 @@ void SessionController::onMessageReceived(const QVariantMap& message)
 {
     const QString peer = message.value("peer").toString();
     const QString type = message.value("type").toString();
+    const QString incomingId = message.value("messageId").toString();
+
+    // Idempotent receive, before anything acts on the message. The mailbox is
+    // at-least-once: an item whose ack was lost, or that a sender retried, is
+    // legitimately re-offered and arrives here again with the same id. Dedup
+    // against the transcript - if this conversation already holds an incoming
+    // message or note with this id, this is that redelivery. It has to come first:
+    // the handlers below return early, and a note stored by one of them (a contact
+    // request agreed to, a cleared chat) would otherwise be written once per
+    // redelivery. (A read receipt is only sent on a real read, handled by
+    // markReadThroughRow.)
+    if (!incomingId.isEmpty() && store_.idForIncomingProtocol(incomingId, peer) != 0) {
+        return;
+    }
 
     // Call signalling drives the call screen via callStateChanged, never the
     // chat list.
@@ -2881,6 +2895,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         store_.clearPeer(peer);
         StoredMessage sys;
         sys.peer = peer;
+        sys.protocolId = incomingId;  // so a redelivery is recognised as one
         sys.type = QStringLiteral("system");
         sys.text = peerName(peer) + QStringLiteral(" cleared the chat.");
         sys.ts = nowMillis();
@@ -2901,6 +2916,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (type == "contact.accept") {
         StoredMessage sys;
         sys.peer = peer;
+        sys.protocolId = incomingId;  // so a redelivery is recognised as one
         sys.type = QStringLiteral("system");
         sys.text = peerName(peer) + QStringLiteral(" accepted your contact request.");
         sys.ts = nowMillis();
@@ -2924,17 +2940,6 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         && message.value("attRef").toString().isEmpty()
         && message.value("keyboard").toString().isEmpty()) {
         bazarish::log::info("silent control message ({}) not shown", type.toStdString());
-        return;
-    }
-
-    // Idempotent receive. The mailbox is at-least-once: a blob whose ack was lost
-    // (or that we processed just before a restart) is legitimately re-offered and
-    // arrives here again with the same id. Dedup against the transcript we already
-    // keep - if this conversation already holds an incoming message with this id,
-    // this is that redelivery: never store or surface it a second time. (A read
-    // receipt is only sent on a real read, handled by markReadThroughRow.)
-    const QString incomingId = message.value("messageId").toString();
-    if (!incomingId.isEmpty() && store_.idForIncomingProtocol(incomingId, peer) != 0) {
         return;
     }
 

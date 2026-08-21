@@ -139,6 +139,10 @@ private:
 
     std::unique_ptr<client::ProfileManager> manager_;
     ProfileListModel profiles_;
+    // The profiles found on disk at the last refresh. The accounts list is
+    // rebuilt on every unread count change and must not reopen a profile
+    // database to do it - each open runs the key derivation.
+    QVector<ProfileRow> profileRows_;
     OpenAccountsModel accounts_;
     QList<SessionController*> sessions_;  // open accounts, owned (parented here)
     QString activeId_;

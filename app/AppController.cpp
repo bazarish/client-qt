@@ -201,6 +201,7 @@ void AppController::refreshProfiles()
         bazarish::log::warn("profile list incomplete: {}", error.what());
     }
     haveProfiles_ = !rows.isEmpty();
+    profileRows_ = rows;
     profiles_.setProfiles(std::move(rows));
     emit profilesChanged();
 }
@@ -208,17 +209,13 @@ void AppController::refreshProfiles()
 void AppController::refreshAccounts()
 {
     // The unified list is every on-disk profile, with live status merged in for
-    // the ones currently open.
+    // the ones currently open. It reads the profiles this controller already
+    // listed, never the disk: this runs on every unread count change, and opening
+    // a profile database means running its key derivation (a quarter of a second
+    // each, by design).
     QVector<AccountRow> rows;
-    std::vector<client::ProfileInfo> infos;
-    try {
-        infos = manager_->list();
-    } catch (const std::exception& error) {
-        infos.clear();
-        bazarish::log::warn("account list unavailable: {}", error.what());
-    }
-    for (const client::ProfileInfo& info : infos) {
-        const QString id = QString::fromStdString(info.id);
+    for (const ProfileRow& info : profileRows_) {
+        const QString id = info.id;
         AccountRow row;
         row.id = id;
         row.encrypted = info.encrypted;
@@ -233,14 +230,12 @@ void AppController::refreshAccounts()
             // positive green marking vs grey for a clearnet facade.
             row.activeFacade = ctrl->activeFacade();
             row.i2pFacade = row.activeFacade.contains(QStringLiteral(".b32.i2p"));
-            row.name = ctrl->displayName().isEmpty() ? QString::fromStdString(info.name)
-                                                      : ctrl->displayName();
-            row.fingerprint = ctrl->fingerprint().isEmpty()
-                ? QString::fromStdString(info.fingerprint)
-                : ctrl->fingerprint();
+            row.name = ctrl->displayName().isEmpty() ? info.name : ctrl->displayName();
+            row.fingerprint
+                = ctrl->fingerprint().isEmpty() ? info.fingerprint : ctrl->fingerprint();
         } else {
-            row.name = QString::fromStdString(info.name);
-            row.fingerprint = QString::fromStdString(info.fingerprint);
+            row.name = info.name;
+            row.fingerprint = info.fingerprint;
         }
         rows.push_back(std::move(row));
     }
@@ -295,9 +290,9 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
     // An encrypted profile needs its passphrase; ask the UI for it.
     if (passphrase.isEmpty() && manager_->exists(id.toStdString())) {
         try {
-            for (const client::ProfileInfo& info : manager_->list()) {
-                if (info.id == id.toStdString() && info.encrypted) {
-                    emit needPassphrase(id, QString::fromStdString(info.name));
+            for (const ProfileRow& info : profileRows_) {
+                if (info.id == id && info.encrypted) {
+                    emit needPassphrase(id, info.name);
                     return;
                 }
             }
@@ -345,15 +340,8 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
 
 void AppController::openAllProfiles()
 {
-    std::vector<client::ProfileInfo> infos;
-    try {
-        infos = manager_->list();
-    } catch (const std::exception& error) {
-        bazarish::log::warn("no profiles opened at start: {}", error.what());
-        return;
-    }
-    for (const client::ProfileInfo& info : infos) {
-        const QString id = QString::fromStdString(info.id);
+    for (const ProfileRow& info : profileRows_) {
+        const QString id = info.id;
         // Skip accounts the user turned offline: they stay closed (shown as
         // Offline) until explicitly switched on, so the choice survives a restart.
         if (!info.encrypted && offline_.constFind(id) == offline_.cend()) {

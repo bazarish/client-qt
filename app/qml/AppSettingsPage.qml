@@ -56,10 +56,10 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "I2P only, every account"; color: Theme.text }
+                            Label { text: "I2P only, every profile"; color: Theme.text }
                             Label {
-                                text: "Refuses clearnet for every account, whatever each one allows on its "
-                                    + "own - this switch wins. An account whose server publishes no I2P "
+                                text: "Refuses clearnet for every profile, whatever each one allows on its "
+                                    + "own - this switch wins. A profile whose server publishes no I2P "
                                     + "address goes offline while it is on. Fetching the I2P network "
                                     + "database stays allowed either way: it carries no identity, and "
                                     + "without it there is no I2P to use."
@@ -84,7 +84,7 @@ Popup {
                                 text: "Profiles, history and the I2P router's state live in a "
                                     + "bazarish_data folder next to the program instead of your user "
                                     + "folder, so a copy on a stick carries everything with it. "
-                                    + "Switching moves what is already there, closes every account "
+                                    + "Switching moves what is already there, closes every profile "
                                     + "and needs the app started again."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
@@ -159,7 +159,7 @@ Popup {
             wrapMode: Text.Wrap
             color: Theme.textDim
             padding: 14
-            text: "Every account closes, the data is moved, and Bazarish has to be started "
+            text: "Every profile closes, the data is moved, and Bazarish has to be started "
                 + "again. Nothing is deleted."
         }
     }

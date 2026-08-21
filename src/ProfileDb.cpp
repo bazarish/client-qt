@@ -16,6 +16,12 @@ namespace fs = std::filesystem;
 // a lock; they are both in-process and short, so the wait is a formality.
 constexpr int kBusyTimeoutMs = 5000;
 
+// Key derivation rounds for a profile that has no passphrase. A KDF exists to
+// make guessing a secret expensive, and kDefaultKey is not a secret - it is in
+// this file - so stretching it only costs the user a quarter of a second on
+// every open. A profile with a real passphrase keeps SQLCipher's own default.
+constexpr int kDefaultKeyKdfIterations = 4000;
+
 // Single quotes double inside a SQL string literal.
 std::string quoted(const std::string& text)
 {
@@ -40,8 +46,8 @@ void run(sqlite3* const db, const std::string& sql)
 }
 
 // Opens the file and unlocks it. The key pragma has to be the first statement on
-// the connection.
-sqlite3* openKeyed(const fs::path& file, const std::string& key)
+// the connection; `rounds` of 0 leaves SQLCipher's own default in place.
+sqlite3* openKeyed(const fs::path& file, const std::string& key, const int rounds)
 {
     sqlite3* db = nullptr;
     if (sqlite3_open(file.string().c_str(), &db) != SQLITE_OK) {
@@ -55,6 +61,13 @@ sqlite3* openKeyed(const fs::path& file, const std::string& key)
     if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
         sqlite3_close(db);
         return nullptr;
+    }
+    if (rounds > 0) {
+        const std::string pragmaRounds = "PRAGMA kdf_iter = " + std::to_string(rounds);
+        if (sqlite3_exec(db, pragmaRounds.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
+            sqlite3_close(db);
+            return nullptr;
+        }
     }
     sqlite3_busy_timeout(db, kBusyTimeoutMs);
     // With the wrong key the pages do not decrypt and the first read fails.
@@ -71,12 +84,24 @@ std::string keyOrDefault(const std::string& passphrase)
     return passphrase.empty() ? std::string(ProfileDb::kDefaultKey) : passphrase;
 }
 
+// Opens with the rounds this build writes; a file written with SQLCipher's own
+// default (an older build, or a profile that had a passphrase) opens on the
+// second try. Whichever worked is what the file keeps using.
+sqlite3* openProfile(const fs::path& file, const std::string& key)
+{
+    const bool cheap = key == ProfileDb::kDefaultKey;
+    if (sqlite3* const db = openKeyed(file, key, cheap ? kDefaultKeyKdfIterations : 0)) {
+        return db;
+    }
+    return cheap ? openKeyed(file, key, 0) : nullptr;
+}
+
 }  // namespace
 
 ProfileDb::ProfileDb(const fs::path& profileDir, const std::string& passphrase)
 {
     fs::create_directories(profileDir);
-    db_ = openKeyed(profileDir / kFileName, keyOrDefault(passphrase));
+    db_ = openProfile(profileDir / kFileName, keyOrDefault(passphrase));
     if (db_ == nullptr) {
         throw std::runtime_error("profile database: wrong passphrase or unreadable file");
     }
@@ -93,7 +118,7 @@ bool ProfileDb::opens(const fs::path& profileDir, const std::string& passphrase)
     if (!fs::exists(profileDir / kFileName)) {
         return false;
     }
-    sqlite3* const db = openKeyed(profileDir / kFileName, keyOrDefault(passphrase));
+    sqlite3* const db = openProfile(profileDir / kFileName, keyOrDefault(passphrase));
     sqlite3_close(db);
     return db != nullptr;
 }

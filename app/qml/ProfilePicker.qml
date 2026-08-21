@@ -50,7 +50,7 @@ Item {
             smooth: true
         }
         Label {
-            text: App.hasOpenAccounts ? "Add or switch account"
+            text: App.hasOpenAccounts ? "Add or switch profile"
                 : (App.hasProfiles ? "Choose a profile" : "Create your first profile to begin")
             color: Theme.textDim
             Layout.alignment: Qt.AlignHCenter
