@@ -649,6 +649,15 @@ Item {
         ContextMenu {
             id: contextMenu
             ContextMenuItem {
+                // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
+                // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
+                // these labels into "React_" / "React_ view".
+                text: "React"
+                visible: delegate.reactable
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.reactRequested(model.protocolId)
+            }
+            ContextMenuItem {
                 text: "Reply"
                 // Any real message (text or attachment) can be replied to; service
                 // notices, requests and unsupported placeholders cannot.
@@ -662,15 +671,6 @@ Item {
                         : (delegate.session ? delegate.session.activePeerName : "")
                     delegate.session.beginReply(model.protocolId, preview, who)
                 }
-            }
-            ContextMenuItem {
-                // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
-                // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
-                // these labels into "React_" / "React_ view".
-                text: "React"
-                visible: delegate.reactable
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.reactRequested(model.protocolId)
             }
             ContextMenuItem {
                 text: "Copy all"
