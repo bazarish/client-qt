@@ -158,15 +158,19 @@ Item {
         modal: true
         title: "Unlock profile"
         closePolicy: Popup.CloseOnEscape
-        // Nothing is closed here: this screen goes away when the profile is
-        // actually open (App.profileOpened below), not when a passphrase is
-        // typed. A wrong one used to take the prompt and the profile list with
-        // it, and there was nothing left to try again on.
-        onAccepted: App.openProfile(root.pendingId, passField.text)
+        // Submitting is not closing. Dialog.accept() takes the prompt away the
+        // moment the button is pressed, which is before anyone knows whether the
+        // passphrase worked - and then there is nowhere to say that it did not.
+        // This prompt closes when the profile opens, or when the user cancels.
+        function submit() {
+            passError.text = ""
+            App.openProfile(root.pendingId, passField.text)
+        }
         onRejected: App.cancelUnlock()
+        onOpened: passField.forceActiveFocus()
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Unlock profile"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
-        footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.accept(); onRejected: passDialog.reject() }
+        footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.submit(); onRejected: passDialog.reject() }
         contentItem: ColumnLayout {
             spacing: 6
             TextField {
@@ -176,7 +180,7 @@ Item {
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 Layout.preferredWidth: 280
-                onAccepted: passDialog.accept()
+                onAccepted: passDialog.submit()
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: passField.activeFocus ? Theme.accent : Theme.border }
             }
             // The reason a passphrase did not open the profile belongs here.
@@ -202,7 +206,7 @@ Item {
             }
         }
         // The profile opened: the prompt has done its job and this screen with it.
-        function onProfileOpened() {
+        function onProfileUnlocked(id) {
             passError.text = ""
             passDialog.close()
             root.closeIfSwitching()
