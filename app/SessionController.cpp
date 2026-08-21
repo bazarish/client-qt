@@ -236,7 +236,7 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 constexpr int kPageSize = 20;
 
 // How many reactions outside the standard set the picker remembers.
-constexpr int kRecentReactions = 10;
+constexpr int kRecentReactions = 5;
 
 // The reactions offered without being asked for. Anything else a user reaches
 // for - typed, or tapped on someone else's chip - is theirs, and is remembered.
