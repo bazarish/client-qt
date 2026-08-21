@@ -936,14 +936,6 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
     }
 }
 
-void SessionWorker::storePicture(const QString& messageId, const QByteArray& bytes)
-{
-    if (!session_) {
-        return;
-    }
-    const Bytes stored(bytes.begin(), bytes.end());
-    session_->putPicture(messageId.toStdString(), stored);
-}
 
 void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
     const qint64 durationMs, const qint64 localId, const QString& protocolId,
@@ -969,34 +961,7 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
     }
 }
 
-void SessionWorker::loadVoice(const QString& messageId)
-{
-    if (!session_) {
-        return;
-    }
-    const std::optional<Bytes> stored = session_->voice(messageId.toStdString());
-    if (!stored.has_value()) {
-        return;
-    }
-    emit voiceLoaded(messageId,
-        QByteArray(reinterpret_cast<const char*>(stored->data()),
-            static_cast<qsizetype>(stored->size())));
-}
 
-void SessionWorker::loadPictures(const QStringList& messageIds)
-{
-    if (!session_) {
-        return;
-    }
-    for (const QString& messageId : messageIds) {
-        const std::optional<Bytes> stored = session_->picture(messageId.toStdString());
-        if (stored.has_value()) {
-            emit pictureLoaded(messageId,
-                QByteArray(reinterpret_cast<const char*>(stored->data()),
-                    static_cast<qsizetype>(stored->size())));
-        }
-    }
-}
 
 void SessionWorker::sendPicture(const QString& peer, const QString& localPath, qint64 localId,
     const QString& protocolId, const QString& replyTo)
@@ -1710,12 +1675,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
     connect(this, &SessionController::requestSendPicture, worker_, &SessionWorker::sendPicture);
-    connect(this, &SessionController::requestStorePicture, worker_, &SessionWorker::storePicture);
-    connect(this, &SessionController::requestLoadPictures, worker_, &SessionWorker::loadPictures);
     connect(this, &SessionController::requestSendVoice, worker_, &SessionWorker::sendVoice);
-    connect(this, &SessionController::requestLoadVoice, worker_, &SessionWorker::loadVoice);
-    connect(worker_, &SessionWorker::voiceLoaded, this, &SessionController::onVoiceLoaded);
-    connect(worker_, &SessionWorker::pictureLoaded, this, &SessionController::onPictureLoaded);
     connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
     connect(this, &SessionController::requestSendReaction, worker_, &SessionWorker::sendReaction);
     connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
@@ -2501,14 +2461,15 @@ void SessionController::sendPicture(const QString& fileUrl)
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
-    // The core stores the picture with the message, and this asks for it back at
-    // once: both requests go to the same worker in order, so the picture is
-    // drawn as soon as it is stored rather than when the view next reloads.
-    store_.setHasPicture(m.id, true);
-    conversation_.setPictureReadyForId(m.id, true);
+    // The prepared file is right here, so the sender's bubble draws it without
+    // asking anyone: the core stores the same bytes in the profile.
     pictureOwners_.insert(m.protocolId, m.id);
+    QFile prepared(localPath);
+    const bool drawable = prepared.open(QIODevice::ReadOnly)
+        && PictureStore::instance().put(m.protocolId, prepared.readAll());
+    store_.setHasPicture(m.id, drawable);
+    conversation_.setPictureReadyForId(m.id, drawable);
     emit requestSendPicture(activePeer_, localPath, m.id, m.protocolId, replyTo);
-    emit requestLoadPictures({m.protocolId});
 }
 
 void SessionController::sendCallback(const QString& data, const QString& refMsgId)
@@ -3111,7 +3072,8 @@ void SessionController::playVoice(const QString& messageId)
     }
     voicePlaying_ = messageId;
     emit voiceChanged();
-    emit requestLoadVoice(messageId);
+    // Read here, like a picture: a press on play must not wait for the worker.
+    onVoiceLoaded(messageId, store_.media(QStringLiteral("voice:") + messageId));
 }
 
 void SessionController::stopVoice()
@@ -3140,36 +3102,32 @@ void SessionController::onVoiceLoaded(const QString& messageId, const QByteArray
     }
 }
 
-void SessionController::onPictureLoaded(const QString& messageId, const QByteArray& bytes)
-{
-    if (PictureStore::instance().put(messageId, bytes)) {
-        return;
-    }
-    // What arrived is not an image. The message keeps saying so - there is no
-    // second guess to make and nothing to fall back to.
-    bazarish::log::warn("a message announced a picture and carried something else");
-    const qint64 localId = pictureOwners_.value(messageId, 0);
-    if (localId != 0) {
-        store_.setHasPicture(localId, false);
-        conversation_.setPictureReadyForId(localId, false);
-    }
-}
 
-// Asks for the pictures of the messages now on screen that are not decoded yet.
+// Brings the pictures of the messages now on screen into the cache. The bytes
+// come out of the profile through this side's own connection: routing the read
+// through the session worker put it behind whatever that thread was doing - a
+// connect, a sync - which is why a chat opened on grey squares and filled in
+// minutes later.
 void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
 {
-    QStringList wanted;
     for (const StoredMessage& message : messages) {
         if (!message.hasPicture || message.protocolId.isEmpty()) {
             continue;
         }
         pictureOwners_.insert(message.protocolId, message.id);
-        if (!PictureStore::instance().has(message.protocolId)) {
-            wanted << message.protocolId;
+        if (PictureStore::instance().has(message.protocolId)) {
+            continue;
         }
-    }
-    if (!wanted.isEmpty()) {
-        emit requestLoadPictures(wanted);
+        const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.protocolId);
+        if (bytes.isEmpty()) {
+            continue;  // nothing stored for it: the bubble stays as it is
+        }
+        if (!PictureStore::instance().put(message.protocolId, bytes)) {
+            // What was stored is not a picture: the message is broken and stays
+            // marked so.
+            store_.setHasPicture(message.id, false);
+            conversation_.setPictureReadyForId(message.id, false);
+        }
     }
 }
 
@@ -3531,10 +3489,13 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // A picture arrives inside the message, so there is nothing to fetch: the
     // core has already put it in the profile, and this reads it back to draw.
     if (m.type == QStringLiteral("image") && !m.protocolId.isEmpty()) {
-        store_.setHasPicture(m.id, true);
-        conversation_.setPictureReadyForId(m.id, true);
         pictureOwners_.insert(m.protocolId, m.id);
-        emit requestLoadPictures({m.protocolId});
+        // The core has just stored it; read it back through this side's own
+        // connection so the bubble draws it now, not after the next sync.
+        const bool drawable = PictureStore::instance().put(
+            m.protocolId, store_.media(QStringLiteral("picture:") + m.protocolId));
+        store_.setHasPicture(m.id, drawable);
+        conversation_.setPictureReadyForId(m.id, drawable);
     }
     QString preview = m.text;
     if (preview.isEmpty() && !m.attName.isEmpty()) {

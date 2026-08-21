@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include <QByteArray>
 #include <QString>
 #include <QVector>
 
@@ -96,6 +97,12 @@ public:
     // Marks an incoming attachment whose blob is no longer on the store (the
     // download returned 404/410): the bubble then shows "Not found" with no Save,
     // a state that survives a restart.
+    // A media blob kept in the profile (a picture, a voice message), by the same
+    // key the core stores it under. Read here rather than through the session
+    // worker: this side already holds the profile open, and a picture must not
+    // wait behind a sync for its turn to be drawn.
+    QByteArray media(const QString& key) const;
+
     // Marks a message whose picture this profile holds.
     void setHasPicture(qint64 id, bool has);
     void setBlobGone(qint64 id, bool gone);

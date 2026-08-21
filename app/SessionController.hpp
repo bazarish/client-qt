@@ -54,13 +54,8 @@ public slots:
         const QString& protocolId, const QString& replyTo);
     void sendPicture(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, const QString& replyTo);
-    // Keeps a fetched picture in the profile database.
-    void storePicture(const QString& messageId, const QByteArray& bytes);
-    // Reads pictures back out of it, for the messages now on screen.
-    void loadPictures(const QStringList& messageIds);
     void sendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs, qint64 localId,
         const QString& protocolId, const QString& replyTo);
-    void loadVoice(const QString& messageId);
     void sendReceipt(const QString& peer, const QString& refId);
     // Acks a pending mailbox item (deferred ack): called by the controller after it
     // has durably stored the item, so the server only drops it once it is safe.
@@ -224,9 +219,6 @@ signals:
     // and at what address. Emitted as soon as it is known, so the view never waits
     // on a server poll to say whether a key exists at all.
     void i2pKeyState(bool hasKey, const QString& address);
-    // One message's picture, read out of the profile database.
-    void pictureLoaded(const QString& messageId, const QByteArray& bytes);
-    void voiceLoaded(const QString& messageId, const QByteArray& bytes);
     // This account's registered devices: {clientId, current}. A message is kept
     // until every one of them has acked it, so a device nobody uses any more
     // holds mail until the retention window ends.
@@ -780,11 +772,8 @@ signals:  // to worker
         const QString& protocolId, const QString& replyTo);
     void requestSendPicture(const QString& peer, const QString& localPath, qint64 localId,
         const QString& protocolId, const QString& replyTo);
-    void requestStorePicture(const QString& messageId, const QByteArray& bytes);
-    void requestLoadPictures(const QStringList& messageIds);
     void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
         qint64 localId, const QString& protocolId, const QString& replyTo);
-    void requestLoadVoice(const QString& messageId);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
@@ -871,7 +860,6 @@ private slots:
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
-    void onPictureLoaded(const QString& messageId, const QByteArray& bytes);
     void onVoiceLoaded(const QString& messageId, const QByteArray& bytes);
     // Pulls a small incoming picture into the media cache without being asked.
     void requestPicturesFor(const QList<StoredMessage>& messages);

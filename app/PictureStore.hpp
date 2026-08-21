@@ -11,14 +11,19 @@
 
 namespace bazarish::app {
 
-// The pictures of the open conversation, decoded and ready to draw, keyed by the
-// message that carries them. The bytes themselves live in the profile database -
-// encrypted, like everything else this client keeps - and are decoded into here
-// only while a chat is on screen.
+// The pictures of the conversations that have been on screen, keyed by the
+// message that carries them. The bytes come out of the profile database - the
+// only place they are kept - and are decoded when something actually draws them,
+// on the thread that draws.
 //
-// Thread-safe: filled from the GUI thread as messages load, read from the QML
-// image-loading thread. A revision that bumps on every write lets an Image whose
-// source embeds it reload when the picture arrives.
+// It holds a bounded amount: a chat scrolled through for an hour must not turn
+// into a heap full of bitmaps, so the least recently drawn are dropped once the
+// budget is passed. Dropping costs nothing but a re-decode of bytes that are
+// still there.
+//
+// Thread-safe: filled from the GUI thread, decoded and read from the QML
+// image-loading thread. A revision that bumps on every change lets an Image whose
+// source embeds it reload when its picture arrives.
 class PictureStore : public QObject {
     Q_OBJECT
     Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
@@ -27,18 +32,17 @@ public:
 
     int revision() const { return revision_; }
 
-    // Decodes and keeps a picture. Bytes that are not a picture are not kept,
-    // and the caller is told: a message that announced one and delivered
-    // something else is broken, not a file.
+    // Keeps a picture's bytes. Returns false when they are not a picture at all -
+    // the message that carried them is broken, and says so.
     bool put(const QString& messageId, const QByteArray& bytes);
 
-    // Whether this picture is decoded and ready to draw.
+    // Whether this message's bytes are here.
     bool has(const QString& messageId) const;
 
-    // The picture for a message, or a null image. Safe from the image thread.
-    QImage image(const QString& messageId) const;
+    // The picture, decoded on first use and kept while it fits in the budget.
+    QImage image(const QString& messageId);
 
-    // The bytes as they were stored, for writing the picture out to a file.
+    // The bytes as they were stored, for writing the picture out or copying it.
     QByteArray bytes(const QString& messageId) const;
 
     // Drops everything (a profile closing).
@@ -53,9 +57,20 @@ private:
     {
     }
 
+    struct Entry {
+        QByteArray bytes;
+        QImage decoded;      // empty until something draws it
+        quint64 usedAt = 0;  // for dropping the least recently drawn first
+    };
+
+    // Caller must hold the write lock.
+    void evictLocked();
+
     mutable QReadWriteLock lock_;
-    QHash<QString, QImage> images_;
-    QHash<QString, QByteArray> bytes_;
+    QHash<QString, Entry> entries_;
+    quint64 clock_ = 0;
+    qint64 decodedBytes_ = 0;
+    qint64 storedBytes_ = 0;
     int revision_ = 0;
 };
 

@@ -41,6 +41,13 @@ public:
     qint64 toLongLong() const { return sqlite3_column_int64(stmt_, column_); }
     int toInt() const { return sqlite3_column_int(stmt_, column_); }
     bool isNull() const { return sqlite3_column_type(stmt_, column_) == SQLITE_NULL; }
+    QByteArray toByteArray() const
+    {
+        const void* const blob = sqlite3_column_blob(stmt_, column_);
+        const int size = sqlite3_column_bytes(stmt_, column_);
+        return blob == nullptr ? QByteArray()
+                               : QByteArray(static_cast<const char*>(blob), size);
+    }
 
 private:
     sqlite3_stmt* stmt_ = nullptr;
@@ -529,6 +536,20 @@ void TranscriptStore::setBlobGone(qint64 id, bool gone)
     query.addBindValue(id);
     if (query.exec()) {
     }
+}
+
+QByteArray TranscriptStore::media(const QString& key) const
+{
+    Query query(db_);
+    // The same table the core keeps its state in: one profile, one database.
+    if (!query.prepare("SELECT value FROM state WHERE name = ?")) {
+        return {};
+    }
+    query.addBindValue(key);
+    if (!query.exec() || !query.next()) {
+        return {};
+    }
+    return query.value(0).toByteArray();
 }
 
 void TranscriptStore::setHasPicture(const qint64 id, const bool has)
