@@ -124,15 +124,15 @@ int main()
     // Export the encrypted profile, then re-import it twice - once with an
     // at-rest passphrase, once without - and check that each import is one keyed
     // database that opens with its own key and nothing else.
-    // A profile is one file: an import writes that file and nothing else.
+    // A profile is its database plus the small key file beside it, and nothing
+    // else: an import writes exactly that pair.
     const auto onlyTheDatabase = [](const fs::path& file) {
         CHECK(fs::is_regular_file(file));
-        int files = 0;
+        CHECK(fs::is_regular_file(fs::path(file).replace_extension(".key")));
         for (const fs::directory_entry& entry : fs::directory_iterator(file.parent_path())) {
-            CHECK(entry.path().extension() == ".db" || entry.path().extension() == ".bundle");
-            ++files;
+            const std::string extension = entry.path().extension().string();
+            CHECK(extension == ".db" || extension == ".key" || extension == ".bundle");
         }
-        CHECK(files >= 1);
     };
 
     // Kept outside the manager root so the imported profiles do not show up in

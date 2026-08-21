@@ -21,14 +21,10 @@ namespace bazarish::client {
 // the same file through its own connection.
 class ProfileDb {
 public:
-    // What a profile with no passphrase is keyed with: it keeps one code path and
-    // stops the file from being readable by accident. It is not protection from
-    // anyone who has read this source.
-    static constexpr const char* kDefaultKey = "bazarish";
-
-    // Opens (creating it when absent) the database at `file`, keyed with
-    // `passphrase` or kDefaultKey when that is empty. Throws when the key does not
-    // open an existing file - a wrong passphrase must not read as an empty profile.
+    // Opens (creating it when absent) the database at `file`. The database key is
+    // a random 32 bytes kept in "<file>.key" beside it, sealed under `passphrase`;
+    // opening throws when the passphrase does not unseal it - a wrong passphrase
+    // must not read as an empty profile.
     ProfileDb(const std::filesystem::path& file, const std::string& passphrase);
     ~ProfileDb();
 
@@ -46,10 +42,12 @@ public:
     void erase(const std::string& name);
     bool has(const std::string& name) const;
 
-    // Re-keys the whole file in place (changing or setting the passphrase).
+    // Seals the same database key under a new passphrase. Rewrites the key file
+    // beside the database; the database itself is not touched.
     void rekey(const std::string& passphrase);
 
 private:
+    std::filesystem::path file_;
     sqlite3* db_ = nullptr;
 };
 

@@ -2,6 +2,7 @@
 #include "ProfileManager.hpp"
 
 #include "ProfileDb.hpp"
+#include "ProfileKey.hpp"
 
 #include <memory>
 
@@ -18,6 +19,21 @@ namespace fs = std::filesystem;
 
 // The extension every profile file carries.
 constexpr const char* kFileSuffix = ".db";
+
+// A profile is a pair: the database and the small key file beside it. They move
+// and go away together, or the database is left with nothing to open it.
+void movePair(const fs::path& from, const fs::path& to)
+{
+    fs::rename(from, to);
+    fs::rename(profilekey::sidecarFor(from), profilekey::sidecarFor(to));
+}
+
+void removePair(const fs::path& file)
+{
+    profilekey::forget(file);
+    fs::remove(file);
+    fs::remove(profilekey::sidecarFor(file));
+}
 
 // A profile is stored under its own name, so the name has to survive as a file
 // name. Only what a file system refuses is replaced - the reserved characters of
@@ -178,22 +194,22 @@ ProfileInfo ProfileManager::import(const std::string& name, const fs::path& bund
     // when omitted the id is derived from the restored name. So import into a temp
     // dir first, read the restored name, then move it into place under its final id.
     const fs::path tmp = root_ / ".import-tmp.db";
-    fs::remove(tmp);
+    removePair(tmp);
     Session::importProfile(bundleFile, tmp, password, atRestPassphrase);
     const std::string restoredName = readInfo(std::string{}, tmp, atRestPassphrase).name;
     const std::string id = sanitizeFileName(name.empty() ? restoredName : name);
     if (id.empty() || exists(id)) {
-        fs::remove(tmp);
+        removePair(tmp);
         throw std::runtime_error(id.empty() ? "a profile needs a name"
                                             : "a profile with this name already exists");
     }
-    fs::rename(tmp, fileFor(id));
+    movePair(tmp, fileFor(id));
     return readInfo(id, fileFor(id), atRestPassphrase);
 }
 
 void ProfileManager::remove(const std::string& id)
 {
-    fs::remove(fileFor(id));
+    removePair(fileFor(id));
 }
 
 }  // namespace bazarish::client

@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "TranscriptStore.hpp"
 
+#include "ProfileKey.hpp"
+
 #include <bazarish/Bytes.hpp>
 // Qt makes `emit` a macro and the log header declares a function of that name,
 // so the keyword is stood down for the length of this include.
@@ -119,9 +121,6 @@ private:
     bool stepped_ = false;
 };
 
-// Key derivation rounds for a profile database; see ProfileDb for the trade.
-constexpr int kKdfIterations = 4000;
-
 // Column list shared by every full-row query, so the indices below stay aligned.
 // orderKey is appended last so the existing 0..16 indices are unchanged.
 const char* const kMessageColumns = "id, peer, outgoing, type, protocolId, text, attName,"
@@ -183,7 +182,7 @@ namespace {
 // Opens a connection and unlocks it with `key`. The pragma has to be the first
 // statement on the connection; a plaintext database is opened by passing no key
 // at all, which is how a database from the previous layout is read for import.
-sqlite3* openKeyed(const QString& path, const std::string& key)
+sqlite3* openKeyed(const QString& path, const Bytes& key)
 {
     sqlite3* db = nullptr;
     if (sqlite3_open(path.toUtf8().constData(), &db) != SQLITE_OK) {
@@ -193,25 +192,12 @@ sqlite3* openKeyed(const QString& path, const std::string& key)
     // SQLCipher reports a failed decryption on stderr; the caller reports it
     // through the return value instead, so the library's own chatter is off.
     sqlite3_exec(db, "PRAGMA cipher_log_level = NONE", nullptr, nullptr, nullptr);
-    if (!key.empty()) {
-        // Single quotes double inside a SQL string literal.
-        std::string quoted;
-        for (const char c : key) {
-            quoted.push_back(c);
-            if (c == '\'') {
-                quoted.push_back(c);
-            }
-        }
-        const std::string pragma = "PRAGMA key = '" + quoted + "'";
-        if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
-            sqlite3_close(db);
-            return nullptr;
-        }
-        const std::string rounds = "PRAGMA kdf_iter = " + std::to_string(kKdfIterations);
-        if (sqlite3_exec(db, rounds.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
-            sqlite3_close(db);
-            return nullptr;
-        }
+    // The raw key goes in as a blob literal, so SQLCipher derives nothing: the
+    // passphrase guards the key file beside the database (see ProfileKey).
+    const std::string pragma = "PRAGMA key = \"x'" + toHex(key) + "'\"";
+    if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
+        sqlite3_close(db);
+        return nullptr;
     }
     return db;
 }
@@ -229,9 +215,16 @@ bool readable(sqlite3* const db)
 bool TranscriptStore::open(const QString& profileId, const QString& dbPath, const QString& passphrase)
 {
     (void)profileId;  // one connection per store now; the id no longer names it
-    const std::string key
-        = passphrase.isEmpty() ? std::string(kDefaultKey) : passphrase.toStdString();
-
+    // The same key the profile store holds: unwrapped once per process. A wrong
+    // passphrase cannot unwrap it, and this store answers that with false rather
+    // than an exception - a failed open, never an empty transcript.
+    Bytes key;
+    try {
+        key = client::profilekey::keyFor(dbPath.toStdString(), passphrase.toStdString());
+    } catch (const std::exception& error) {
+        bazarish::log::warn("transcript: {}", error.what());
+        return false;
+    }
     db_ = openKeyed(dbPath, key);
     if (db_ == nullptr) {
         return false;

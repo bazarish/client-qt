@@ -63,6 +63,7 @@ add_library(bazarish_client_lib STATIC
     src/Invite.cpp
     src/FileTransfer.cpp
     src/ProfileDb.cpp
+    src/ProfileKey.cpp
     src/ProfileManager.cpp
     src/Qr.cpp
     src/Session.cpp
@@ -195,6 +196,7 @@ if(Qt6_FOUND)
             app/qml/components/QrView.qml
             app/qml/components/AvatarCropDialog.qml
             app/qml/components/Toggle.qml
+            app/qml/components/StatusChip.qml
             app/qml/components/UnreadBadge.qml
             app/qml/components/DialogButtons.qml
             app/qml/components/Icon.qml

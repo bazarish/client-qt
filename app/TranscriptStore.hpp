@@ -59,21 +59,16 @@ struct Reaction {
 
 // Persistent local message log for one profile, in the profile's SQLCipher
 // database. The file is encrypted page by page, so a message is written where it
-// belongs instead of re-sealing the whole history on every change. The key is the
-// profile passphrase; a profile without one is keyed with kDefaultKey, which
-// keeps a single code path and stops the file from being readable by accident -
-// it is not protection from anyone who has read this source.
+// belongs instead of re-sealing the whole history on every change. The database
+// key is the random one kept beside the file (see ProfileKey), so opening costs
+// nothing once the profile is unlocked.
 class TranscriptStore {
 public:
-    // What a profile with no passphrase is keyed with. See the note above.
-    static constexpr const char* kDefaultKey = "bazarish";
-
     TranscriptStore();
     ~TranscriptStore();
 
-    // Opens (and creates) the database for this profile id, keyed with the
-    // passphrase (or kDefaultKey when it is empty). Returns false when the key
-    // does not open the file - a wrong passphrase is a failed open, not an empty
+    // Opens (and creates) the database for this profile id. Returns false when it
+    // cannot be opened - a wrong passphrase is a failed open, never an empty
     // transcript. Migrates a database left by the previous layout (a plaintext
     // transcript.db or a CMS-sealed transcript.db.enc beside it) on first open.
     bool open(const QString& profileId, const QString& dbPath, const QString& passphrase = {});
