@@ -1100,8 +1100,10 @@ void SessionWorker::drainResolvedAdds()
         try {
             emit contactAddStage(entry.opId, QStringLiteral("Sending request…"));
             const std::string fingerprint = session_->commitContactAdd(resolved);
-            emit actionOk(QString::fromStdString(
-                "Contact request sent. Verify fingerprint: " + fingerprint));
+            // Short on purpose: a toast is gone before a 52-character fingerprint
+            // can be read, and the fingerprint is in the contact's own card where
+            // it can be compared at leisure.
+            emit actionOk(QStringLiteral("Contact request sent."));
             emit contactRequestSent(QString::fromStdString(fingerprint),
                 QString::fromStdString(resolved.introText));
             emit contactAddDone(
