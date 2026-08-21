@@ -18,7 +18,13 @@ Popup {
     width: Math.min(460, parent ? parent.width - 24 : 460)
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
-    onOpened: { challengeArea.text = ""; blobArea.text = "" }
+    // The one thing to do here is paste a challenge, so the cursor is already in
+    // the field that takes it.
+    onOpened: {
+        challengeArea.text = ""
+        blobArea.text = ""
+        challengeArea.forceActiveFocus()
+    }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
@@ -60,9 +66,8 @@ Popup {
                     spacing: 12
 
                     Label {
-                        text: "Your key is your sign-in for every Bazarish portal, and for any site that "
-                            + "supports sign-in-with-key. Paste the challenge the site shows; your key signs "
-                            + "it here and only the signature leaves. The key never goes to the site or a server."
+                        text: "Sign in with your key: the challenge is signed here and only the "
+                            + "signature leaves. The key itself never goes anywhere."
                         color: Theme.textDim
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
