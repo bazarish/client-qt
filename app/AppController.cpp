@@ -542,10 +542,14 @@ void AppController::setPortable(const bool on)
         fs::remove(client::ProfileManager::portableMarker(), error);
     }
     emit portableChanged();
+    // Nothing in this window works from here on: the profiles are closed and the
+    // embedded router is still holding the directory that just moved. The dialog
+    // this raises has one button, and it quits.
     emit restartRequired(on
-            ? QStringLiteral("Your data now lives beside the app. Start Bazarish again to use it.")
-            : QStringLiteral("Your data moved back to your user folder. Start Bazarish again to "
-                             "use it."));
+            ? QStringLiteral("Your data now lives beside the app. Bazarish has to be started "
+                             "again to use it.")
+            : QStringLiteral("Your data moved back to your user folder. Bazarish has to be "
+                             "started again to use it."));
 }
 
 QString AppController::scratchFile(const QString& name) const

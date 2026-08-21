@@ -162,10 +162,13 @@ ApplicationWindow {
             font.weight: Font.DemiBold
             padding: 14
         }
+        // No way out but out: the data has already moved, every profile is
+        // closed, and the embedded router still points at the directory that is
+        // no longer there. Carrying on in this window would be pretending.
         footer: DialogButtons {
             acceptText: "Quit"
+            showReject: false
             onAccepted: restartDialog.accept()
-            onRejected: restartDialog.reject()
         }
         onAccepted: Qt.quit()
         contentItem: Label {
