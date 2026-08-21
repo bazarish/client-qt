@@ -64,19 +64,24 @@ Popup {
             sourceSize.height: root.height
         }
 
-        // A press anywhere closes it, and is consumed here rather than reaching
-        // what is underneath.
-        TapHandler {
-            acceptedButtons: Qt.LeftButton
-            onTapped: root.close()
+        // A plain Item does not accept mouse events, so a press over it was still
+        // delivered to the pointer handlers of the bubbles underneath - which is
+        // how clicking "through" the picture opened another one. A MouseArea
+        // accepts the press as an item, and delivery stops here.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+            hoverEnabled: true
+            preventStealing: true
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.RightButton) {
+                    pictureMenu.popup()
+                } else {
+                    root.close()
+                }
+            }
+            onWheel: function(wheel) { wheel.accepted = true }
         }
-        TapHandler {
-            acceptedButtons: Qt.RightButton
-            onTapped: pictureMenu.popup()
-        }
-        // Wheel events stop here too: a scroll over a picture must not scroll the
-        // conversation behind it.
-        WheelHandler { onWheel: function(event) { event.accepted = true } }
 
         ContextMenu {
             id: pictureMenu
