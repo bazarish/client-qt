@@ -454,6 +454,7 @@ void AppController::openProfile(const QString& id, const QString& passphrase)
     }
     unlockingId_.clear();
     unlockToBringOnline_ = false;
+    emit profileUnlocked(id);
     if (bringOnline) {
         setAccountOffline(id, false);
     }

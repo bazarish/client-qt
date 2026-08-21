@@ -139,6 +139,10 @@ signals:
     // An unlock attempt failed. It belongs on the unlock screen, where the
     // passphrase was typed, and not in a notice at the bottom of the window.
     void unlockFailed(const QString& error);
+    // A profile opened with the passphrase that was just typed. The prompt closes
+    // on this and on nothing else: pressing the button is not the same as being
+    // let in.
+    void profileUnlocked(const QString& id);
 
 private:
     SessionController* sessionFor(const QString& id) const;

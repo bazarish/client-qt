@@ -201,14 +201,17 @@ Item {
             unlockDialog.title = "Unlock " + name
             unlockDialog.open()
         }
-        // A wrong passphrase belongs here, on the screen where it was typed.
+        // A wrong passphrase belongs here, on the screen where it was typed. The
+        // prompt has not closed - it closes when the profile opens, or when the
+        // user says Cancel - so the reason lands on it.
         function onUnlockFailed(error) {
             unlockError.text = error
             unlockField.text = ""
             unlockField.forceActiveFocus()
-            if (!unlockDialog.visible) {
-                unlockDialog.open()
-            }
+        }
+        function onProfileUnlocked(id) {
+            unlockError.text = ""
+            unlockDialog.close()
         }
     }
     Dialog {
@@ -216,13 +219,19 @@ Item {
         anchors.centerIn: Overlay.overlay
         modal: true
         closePolicy: Popup.CloseOnEscape
-        onAccepted: if (root.unlockId.length > 0) App.openProfile(root.unlockId, unlockField.text)
+        // Submitting is not closing: Dialog.accept() would take the prompt away
+        // before anyone knew whether the passphrase worked.
+        function submit() {
+            if (root.unlockId.length > 0) {
+                App.openProfile(root.unlockId, unlockField.text)
+            }
+        }
         // Dismissed: whatever was waiting on it does not happen, and the account's
         // switch goes back to what is on disk.
         onRejected: App.cancelUnlock()
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: unlockDialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
-        footer: DialogButtons { acceptText: "Unlock"; onAccepted: unlockDialog.accept(); onRejected: unlockDialog.reject() }
+        footer: DialogButtons { acceptText: "Unlock"; onAccepted: unlockDialog.submit(); onRejected: unlockDialog.reject() }
         contentItem: ColumnLayout {
             spacing: 6
             TextField {
@@ -232,7 +241,7 @@ Item {
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 Layout.preferredWidth: 280
-                onAccepted: unlockDialog.accept()
+                onAccepted: unlockDialog.submit()
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: unlockField.activeFocus ? Theme.accent : Theme.border }
             }
             Label {
