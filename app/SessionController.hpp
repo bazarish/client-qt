@@ -191,6 +191,11 @@ signals:
     // reason carries why a failed sync failed, so an account stuck at
     // "Connecting" can say what is wrong instead of only that it is not right.
     void syncReachable(bool ok, const QString& reason);
+    // Whether the serving server is still holding this account for an operator to
+    // approve, and what that operator has to say about it. A moderated server
+    // takes the account, answers every request and serves none of it, so this is
+    // the only thing that tells the two apart.
+    void approvalState(bool pending, const QString& note);
     // The facade currently in use, the configured facade list, and the server
     // fingerprint, for the GUI.
     void facadeInfo(
@@ -260,6 +265,7 @@ private:
     void stopEventWaiter();
     // When the delegation renewal was last considered (never = 0).
     qint64 lastTransientCheckMs_ = 0;
+    qint64 lastApprovalCheckMs_ = 0;
     // Outgoing messages accepted by our server but not yet confirmed delivered:
     // local message id -> server attempt id, reconciled on each sync.
     std::map<qint64, std::string> pendingSends_;
@@ -288,6 +294,12 @@ class SessionController : public QObject {
     Q_PROPERTY(bool reachable READ reachable NOTIFY reachableChanged)
     // Why the last sync failed, empty while it is succeeding.
     Q_PROPERTY(QString syncError READ syncError NOTIFY reachableChanged)
+    // The server has this account but does not serve it yet: an operator has to
+    // let it in. Connected and reachable are both true meanwhile, so without this
+    // the app looks healthy while nothing it sends can leave.
+    Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
+    // What the operator tells a user who is waiting (empty if they wrote none).
+    Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
     // The facade the transport is connected/connecting through, and the full
     // configured facade list (for the connection editor and status display).
     Q_PROPERTY(QString activeFacade READ activeFacade NOTIFY facadeInfoChanged)
@@ -398,6 +410,8 @@ public:
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
     QString syncError() const { return syncError_; }
+    bool awaitingApproval() const { return awaitingApproval_; }
+    QString approvalNote() const { return approvalNote_; }
     QString activeFacade() const { return activeFacade_; }
     QString activeFacadeHost() const;
     QStringList configuredFacades() const { return configuredFacades_; }
@@ -678,6 +692,7 @@ signals:
     void operationsChanged();
     void onlineChanged();
     void reachableChanged();
+    void approvalChanged();
     void acceptingContactChanged();
     void ownInviteChanged();
     void i2pStatusChanged();
@@ -776,6 +791,7 @@ private slots:
     void onSendPhase(qint64 localId, const QString& phase);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);
     void onSyncReachable(bool ok, const QString& reason);
+    void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
@@ -817,6 +833,8 @@ private:
     bool online_ = false;
     bool reachable_ = false;
     QString syncError_;
+    bool awaitingApproval_ = false;
+    QString approvalNote_;
     QString subscriptionText_;
     QString activePeer_;
     QString activeFacade_;

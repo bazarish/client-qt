@@ -322,6 +322,18 @@ public:
     void disableI2pDest();
     // The per-user i2p-dest status from the server (for display and decisions).
     I2pDestStatus i2pDestStatus();
+
+    // What the serving server last said about this account's approval. A
+    // moderated server carries a registered account without serving it, and the
+    // difference is invisible from the client's own state: it is connected, its
+    // key is fine, and nothing reaches anybody. Every status poll and every
+    // refused publish records the answer here so the UI can say which it is.
+    struct ApprovalState {
+        bool pending = false;
+        // What the operator tells a user still waiting (empty if they wrote none).
+        std::string message;
+    };
+    ApprovalState approvalState() const { return approval_; }
     // The user's own storage usage on the mailbox + blob backends (used/quota each),
     // for the per-profile settings view. Best effort - never throws.
     StorageUsage storageUsage();
@@ -980,6 +992,8 @@ private:
     // Our own subscription certificate (DER, base64), retained on subscribe
     // so we can publish the full self-verifying chain in an invite.
     std::string subscriptionCertB64_;
+    // The last word from the server on whether this account is served yet.
+    ApprovalState approval_;
     // Whether the private key PEMs are encrypted at rest. Persisted in meta so
     // open() knows to require a passphrase.
     bool encrypted_ = false;

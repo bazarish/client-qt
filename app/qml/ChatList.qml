@@ -197,7 +197,10 @@ Item {
         // Connection status plate: makes a missing or pending server connection
         // obvious at the bottom-left without opening any menu. "Offline" when the
         // account is not syncing; "Connecting…" while online but not yet reaching
-        // the server. Tapping it opens Settings, where the connection is managed.
+        // the server; "Waiting for approval" when the server has the account but
+        // an operator has not let it in, which otherwise looks exactly like a
+        // healthy connection that quietly delivers nothing. Tapping it opens
+        // Settings, where the connection is managed.
         Rectangle {
             id: connPlate
             Layout.fillWidth: true
@@ -212,7 +215,11 @@ Item {
             // the server. Say so where the user actually looks.
             property bool clearnetDowngrade: root.session && root.session.connected
                 && root.session.hasI2pFacade && !root.session.onI2p
+            // The server took the account and serves nothing until an operator
+            // approves it: connected, reachable, and unusable.
+            property bool heldForApproval: root.session && root.session.awaitingApproval
             visible: connPlate.isOffline || connPlate.isConnecting || connPlate.clearnetDowngrade
+                || connPlate.heldForApproval
             implicitHeight: plateRow.implicitHeight + 16
             color: Theme.surface
 
@@ -230,16 +237,18 @@ Item {
                     Layout.alignment: Qt.AlignVCenter
                     implicitWidth: 8; implicitHeight: 8; radius: 4
                     color: connPlate.i2pOnlyBlocked ? Theme.danger
+                        : (connPlate.heldForApproval ? Theme.warn
                         : (connPlate.clearnetDowngrade ? Theme.warn
-                        : (connPlate.isOffline ? Theme.textDim : Theme.warn))
+                        : (connPlate.isOffline ? Theme.textDim : Theme.warn)))
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
                     Label {
                         text: connPlate.i2pOnlyBlocked ? "Offline — no I2P facade"
+                            : (connPlate.heldForApproval ? "Waiting for approval"
                             : (connPlate.clearnetDowngrade ? "Connected over clearnet"
-                            : (connPlate.isOffline ? "Offline" : "Connecting…"))
+                            : (connPlate.isOffline ? "Offline" : "Connecting…")))
                         color: connPlate.i2pOnlyBlocked ? Theme.danger
                             : (connPlate.isOffline ? Theme.textDim : Theme.warn)
                         font.pixelSize: Theme.fontSmall
@@ -248,12 +257,16 @@ Item {
                     Label {
                         text: connPlate.i2pOnlyBlocked
                             ? "Privacy mode is on but this profile has no I2P facade"
+                            : (connPlate.heldForApproval
+                                ? (root.session && root.session.approvalNote.length > 0
+                                    ? root.session.approvalNote
+                                    : "Your server holds this account until its operator approves it — you cannot send or receive yet")
                             : (connPlate.clearnetDowngrade
                                 ? "Not over I2P — your server sees this device's address"
                                 : (connPlate.isOffline ? "This profile is not syncing"
                                     : (root.session && root.session.syncError.length > 0
                                         ? root.session.syncError
-                                        : "No server connection yet")))
+                                        : "No server connection yet"))))
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight

@@ -140,6 +140,10 @@ private:
 // (the poll-before-issue inside stands the losers down). Checked at most hourly:
 // the check itself is a server call, and the sync tick is seconds.
 constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
+// An account held for approval asks again on this cadence: often enough that the
+// user is not left staring at a stale warning after the operator lets them in,
+// rare enough to be one small request a minute.
+constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 
@@ -638,6 +642,24 @@ void SessionWorker::sync()
         // fetch kept failing - long after the recipient's server had it.
         reconcilePendingSends();
         return;  // transient (server momentarily unreachable); next tick retries
+    }
+    // A server that has taken the account but not been told to serve it answers
+    // everything and delivers nothing. Ask it again while it holds us, and the
+    // moment it lets go, publish the routing subscribe could not.
+    if (session_->approvalState().pending
+        && nowMillis() - lastApprovalCheckMs_ >= kApprovalCheckIntervalMs) {
+        lastApprovalCheckMs_ = nowMillis();
+        try {
+            (void)session_->i2pDestStatus();
+            if (!session_->approvalState().pending) {
+                session_->publishRouting();
+                refreshI2pStatus();
+            }
+        } catch (const std::exception& error) {
+            bazarish::log::warn("approval check failed: {}", error.what());
+        }
+        const Session::ApprovalState approval = session_->approvalState();
+        emit approvalState(approval.pending, QString::fromStdString(approval.message));
     }
     // A destination whose delegation lapses goes dark, and nothing else in the app
     // renews it: the CLI had this loop, the GUI did not.
@@ -1333,6 +1355,8 @@ void SessionWorker::refreshI2pStatus()
                          : QStringLiteral("No destination key yet.");
     }
     op.succeed(summary);
+    const Session::ApprovalState approval = session_->approvalState();
+    emit approvalState(approval.pending, QString::fromStdString(approval.message));
     emit i2pStatus(hasKey, delegated, live, address, summary, transientExpires, serverState);
 }
 
@@ -1690,6 +1714,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::opProgress, this,
         [this](const QString& opId, const QString& status) { updateOperation(opId, status); });
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
+    connect(worker_, &SessionWorker::approvalState, this, &SessionController::onApprovalState);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
@@ -2858,6 +2883,16 @@ void SessionController::onSyncReachable(const bool ok, const QString& reason)
         syncError_ = error;
         emit reachableChanged();
     }
+}
+
+void SessionController::onApprovalState(const bool pending, const QString& note)
+{
+    if (awaitingApproval_ == pending && approvalNote_ == note) {
+        return;
+    }
+    awaitingApproval_ = pending;
+    approvalNote_ = note;
+    emit approvalChanged();
 }
 
 void SessionController::ackAfterReceive(const QVariantMap& message)

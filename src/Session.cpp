@@ -633,6 +633,9 @@ void Session::subscribe(const std::int64_t days)
         if (error.code != ErrorCode::eAccountPendingApproval) {
             throw;
         }
+        // The operator's own note comes with the status poll, not with this
+        // refusal; mark the wait and keep whatever note is already known.
+        approval_.pending = true;
         bazarish::log::info("account awaiting operator approval: no routing published yet");
     }
 }
@@ -666,6 +669,9 @@ void Session::publishRouting()
     } catch (const std::exception& error) {
         bazarish::log::info("master not synced to this account's other devices: {}", error.what());
     }
+    // Routing published means the server serves this account: whatever wait it
+    // was under is over.
+    approval_ = {};
 }
 
 void Session::storeSubscription(const SubscribeResult& result)
@@ -972,7 +978,9 @@ void Session::removeContact(const std::string& peerFingerprint)
 
 I2pDestStatus Session::i2pDestStatus()
 {
-    return client_->i2pStatus();
+    const I2pDestStatus status = client_->i2pStatus();
+    approval_ = {status.approval == "pending", status.registrationMessage};
+    return status;
 }
 
 StorageUsage Session::storageUsage()
@@ -985,7 +993,7 @@ bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_
     if (!hasI2pDestination()) {
         return false;
     }
-    const I2pDestStatus status = client_->i2pStatus();
+    const I2pDestStatus status = i2pDestStatus();
     if (!status.approved()) {
         return false;  // no account here, or not approved yet: no destination to keep alive
     }

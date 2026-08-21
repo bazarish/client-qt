@@ -184,7 +184,7 @@ Popup {
                             onClicked: { root.close(); root.showInvite() }
                         }
                     }
-                    MenuButton { Layout.fillWidth: true; text: "Sign in to a site with this key…"; onClicked: { root.close(); root.showSignWithKey() } }
+                    MenuButton { Layout.fillWidth: true; text: "Sign in with your key…"; onClicked: { root.close(); root.showSignWithKey() } }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
