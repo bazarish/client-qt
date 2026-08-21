@@ -563,8 +563,11 @@ namespace {
 // What a picture is allowed to grow to before it is sent. A tunnel carries this
 // in a few seconds; a phone camera's original would sit in the transfer for
 // minutes and be resized on arrival anyway.
-constexpr int kMaxImageEdge = 1920;
-constexpr qint64 kMaxImageBytes = 1024 * 1024;
+constexpr int kMaxImageEdge = 1600;
+// Small enough that a picture is a message, not an event: a few hundred KiB
+// crosses a tunnel in seconds and sits inside the protocol's message ceiling
+// with room to spare.
+constexpr qint64 kMaxImageBytes = 320 * 1024;
 constexpr int kJpegQuality = 85;
 // Each step down when the encoded picture still does not fit.
 constexpr int kQualityStep = 10;

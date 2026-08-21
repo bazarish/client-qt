@@ -12,6 +12,7 @@
 #include <bazarish/Cms.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Errors.hpp>
+#include <bazarish/Limits.hpp>
 #include <bazarish/Log.hpp>
 #include <bazarish/Reactions.hpp>
 #include <bazarish/I2pAddress.hpp>
@@ -1490,7 +1491,7 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
     // of how many transfer attempts it took.
     const std::uint64_t size = fs::file_size(path);
     const std::string digest = toHex(sha256File(path));
-    sentFiles_[id] = SentFile{path, digest, size};
+    sentFiles_[id] = SentFile{path, digest, size, peerFingerprint};
     persistSentFiles();
 
     nlohmann::json inner = {
@@ -1747,6 +1748,14 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
         // about to work.
         return;
     }
+    // The file was announced to one contact. Answering anyone else would mean
+    // encrypting a file and publishing a destination for whoever asked - so a
+    // request from anybody else is not answered at all, not even with a refusal.
+    if (!found->second.peer.empty() && found->second.peer != peerFingerprint) {
+        bazarish::log::warn("file request for another contact's file from {}, ignored",
+            bazarish::log::redact(peerFingerprint));
+        return;
+    }
     if (!fs::exists(found->second.path)) {
         // Either we never announced it or the user moved the file: say so instead
         // of leaving the recipient waiting on a transfer that can never start.
@@ -1782,8 +1791,12 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
     std::thread([this, peerFingerprint, fileId, serveId, forDevice, source, ciphertextPath,
                     cancel]() {
         try {
+            // Every stage of one serve is keyed the same way. Reporting the first
+            // one under the file id and the rest under the per-device serve id
+            // left the sender's row frozen at "Encrypting" while the transfer
+            // ran to completion under a key nothing was watching.
             emitTransfer(
-                fileId, TransferState::eRequested, 0, 0, {}, "Encrypting", peerFingerprint);
+                serveId, TransferState::eRequested, 0, 0, {}, "Encrypting", peerFingerprint);
             const PreparedFile prepared = prepareFile(source, ciphertextPath);
             emitTransfer(serveId, TransferState::eRequested, 0, 0, {}, "Making an address",
                 peerFingerprint);
@@ -1902,6 +1915,14 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     if (contact.sealingPublicB64.empty() || contact.servingSealingB64.empty()) {
         throw std::runtime_error("contact not established yet: " + peerFingerprint);
     }
+    // The protocol's ceiling on one message, checked here so the client never
+    // builds and encrypts what the recipient's server will refuse. The plaintext
+    // is what the limit is about; the envelope around it is small and fixed.
+    if (const std::string body = inner.dump(); body.size() > kMaxMessagePayloadBytes) {
+        throw std::runtime_error("this message is too large to send ("
+            + std::to_string(body.size() / 1024) + " KiB; the limit is "
+            + std::to_string(kMaxMessagePayloadBytes / 1024) + " KiB) - send it as a file");
+    }
     // A caller-supplied token is spent instead of one from our stash (a prepaid
     // token-refill reply), so an empty stash is not an error on that path.
     const bool useOverrideToken = !overrideToken.empty();
@@ -1993,7 +2014,8 @@ void Session::loadSentFiles()
     const nlohmann::json stored = nlohmann::json::parse(db_->text("sent-files"));
     for (const auto& [id, entry] : stored.items()) {
         sentFiles_[id] = SentFile{fs::path(entry.at("path").get<std::string>()),
-            entry.value("sha256", std::string()), entry.value("size", std::uint64_t{0})};
+            entry.value("sha256", std::string()), entry.value("size", std::uint64_t{0}),
+            entry.value("peer", std::string())};
     }
 }
 
@@ -2005,6 +2027,7 @@ void Session::persistSentFiles() const
             {"path", file.path.string()},
             {"sha256", file.sha256},
             {"size", file.size},
+            {"peer", file.peer},
         };
     }
     db_->putText("sent-files", stored.dump());

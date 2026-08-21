@@ -146,6 +146,9 @@ constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
+// A picture this size or smaller is pulled the moment it arrives, so it can be
+// shown rather than announced. Anything larger stays a file the reader asks for.
+constexpr qint64 kAutoFetchImageBytes = 2 * 1024 * 1024;
 
 // How often the client asks its server for news when it has to poll, and how
 // often it checks in when the server holds the request open for it instead.
@@ -3164,6 +3167,14 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.id = store_.append(m);
 
     showInActiveView(m, false);
+    // A picture is fetched without being asked for: the point of sending one is
+    // that it is seen, and making the reader press Save to find out what arrived
+    // is not that. Only a picture, only a small one, and what finally decides
+    // whether it is drawn is the bytes on arrival, not this declared type.
+    if (!m.outgoing && m.attMime.startsWith(QStringLiteral("image/")) && m.attSize > 0
+        && m.attSize <= kAutoFetchImageBytes && !m.protocolId.isEmpty()) {
+        fetchImageAttachment(peer, m);
+    }
     QString preview = m.text;
     if (preview.isEmpty() && !m.attName.isEmpty()) {
         preview = "[" + type + "] " + m.attName;
@@ -3176,6 +3187,23 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // No receipt is sent on arrival: the green "read" state is reported only when
     // the user actually reads the message (chat open + window focused + the message
     // in view), driven by markReadThroughRow.
+}
+
+// Pulls a picture into this profile's media cache and records where it landed,
+// which is what lets the bubble draw it.
+void SessionController::fetchImageAttachment(const QString& peer, const StoredMessage& message)
+{
+    const QString directory = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+        + QStringLiteral("/media/") + peer;
+    if (!QDir().mkpath(directory)) {
+        bazarish::log::warn("no media cache directory for pictures");
+        return;
+    }
+    const QString name = message.attName.isEmpty() ? QStringLiteral("picture") : message.attName;
+    const QString destination
+        = QDir(directory).filePath(message.protocolId + "-" + QFileInfo(name).fileName());
+    saveAttachmentToFile(
+        peer, message.protocolId, QUrl::fromLocalFile(destination).toString(), message.id);
 }
 
 void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)

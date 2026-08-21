@@ -150,6 +150,10 @@ struct SentFile {
     std::filesystem::path path;
     std::string sha256;  // plaintext digest, as announced in the message
     std::uint64_t size = 0;
+    // Who this file was announced to. A transfer is served to that contact and
+    // nobody else: without this, anyone who learned an id could ask for the
+    // bytes, and the sender would encrypt and publish a destination for them.
+    std::string peer;
 };
 
 // What a direct transfer is doing, so the message block can show it honestly

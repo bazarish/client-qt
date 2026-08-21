@@ -821,6 +821,8 @@ private slots:
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
+    // Pulls a small incoming picture into the media cache without being asked.
+    void fetchImageAttachment(const QString& peer, const StoredMessage& message);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, qint64 connectedAtMs);
