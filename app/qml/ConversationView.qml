@@ -200,25 +200,14 @@ Item {
                     }
                 }
                 Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38; enlargeable: true }
-                ColumnLayout {
+                // The name alone: the identity behind it is one tap away, under
+                // the info button, where it can be read and copied properly.
+                Label {
+                    text: root.session ? root.session.activePeerName : ""
+                    color: Theme.text
+                    font.weight: Font.Medium
+                    elide: Text.ElideRight
                     Layout.fillWidth: true
-                    spacing: 0
-                    Label {
-                        text: root.session ? root.session.activePeerName : ""
-                        color: Theme.text
-                        font.weight: Font.Medium
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                    // Under the display name: the peer's full fingerprint (the
-                    // identity itself), so it stays visible/verifiable.
-                    Label {
-                        text: root.session ? root.session.activePeer : ""
-                        color: Theme.textDim
-                        font.pixelSize: Theme.fontSmall
-                        elide: Text.ElideMiddle
-                        Layout.fillWidth: true
-                    }
                 }
                 IconButton { iconName: "search"; onClicked: searchPopup.openSearch() }
                 IconButton { iconName: "call"; onClicked: root.callRequested() }
