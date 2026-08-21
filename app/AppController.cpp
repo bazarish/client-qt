@@ -564,10 +564,11 @@ namespace {
 // in a few seconds; a phone camera's original would sit in the transfer for
 // minutes and be resized on arrival anyway.
 constexpr int kMaxImageEdge = 1600;
-// Small enough that a picture is a message, not an event: a few hundred KiB
-// crosses a tunnel in seconds and sits inside the protocol's message ceiling
-// with room to spare.
-constexpr qint64 kMaxImageBytes = 320 * 1024;
+// A picture travels inside the message, so what has to fit is not the picture
+// but its base64 (a third larger) plus the envelope around it, inside the
+// protocol's 512 KiB message ceiling. A quarter of a megabyte leaves room for
+// both and still crosses a tunnel in seconds.
+constexpr qint64 kMaxImageBytes = 256 * 1024;
 constexpr int kJpegQuality = 85;
 // Each step down when the encoded picture still does not fit.
 constexpr int kQualityStep = 10;

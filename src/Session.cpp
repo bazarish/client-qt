@@ -1500,19 +1500,42 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
     const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
-    // The picture goes into the profile with the message: the file it was made
-    // from is a scratch copy, and the sender's own chat has to show it for as
-    // long as the message is there.
-    if (!messageId.empty()) {
-        std::ifstream in(path, std::ios::binary);
-        if (!in) {
-            throw std::runtime_error("cannot read the picture: " + path.string());
-        }
-        const Bytes bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        putPicture(messageId, bytes);
+    // A picture rides inside the message. It is small by construction - the
+    // composer shrinks it to well under the protocol's message limit, base64 and
+    // envelope included - so there is nothing to gain from announcing it and
+    // waiting to be asked: it arrives once, with the message, and it arrives
+    // even if this client goes offline the moment after sending.
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        throw std::runtime_error("cannot read the picture: " + path.string());
     }
-    return announceTransfer(
-        kTypeImage, peerFingerprint, path, messageId, onAcceptedByOwnServer, outAttemptId, replyTo);
+    const Bytes bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    if (bytes.empty()) {
+        throw std::runtime_error("the picture is empty: " + path.string());
+    }
+
+    const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
+    // The sender's own chat draws it from the same place the recipient will.
+    putPicture(id, bytes);
+
+    nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", kTypeImage},
+        {"id", id},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"image",
+            {
+                {"name", path.filename().string()},
+                {"mime", guessMime(path)},
+                {"size", bytes.size()},
+                {"data", toBase64(bytes)},
+            }},
+    };
+    if (!replyTo.empty()) {
+        inner["replyTo"] = replyTo;
+    }
+    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
 }
 
 // The message that announces a transfer. Only its type differs between a file
@@ -2173,8 +2196,16 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             if (type == "text" || type == "contact.request") {
                 message.contentType = type;
                 message.text = body.value("text", std::string());
-            } else if (type == kTypeFile || type == kTypeImage || type == "audio"
-                || type == "voice") {
+            } else if (type == kTypeImage) {
+                // The bytes came with the message: keep them in the profile and
+                // let the message carry only what the chat shows.
+                message.contentType = type;
+                const nlohmann::json& picture = body.at("image");
+                message.attachmentName = picture.value("name", std::string());
+                message.attachmentMime = picture.value("mime", std::string());
+                message.attachmentSize = picture.value("size", std::uint64_t{0});
+                putPicture(message.messageId, fromBase64(picture.at("data").get<std::string>()));
+            } else if (type == kTypeFile || type == "audio" || type == "voice") {
                 // An announcement, not a delivery: the bytes are still on the
                 // sender's disk until we ask for them.
                 message.contentType = type;

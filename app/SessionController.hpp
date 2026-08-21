@@ -842,7 +842,6 @@ private slots:
     void onDevicesReady(const QVariantList& devices);
     void onPictureLoaded(const QString& messageId, const QByteArray& bytes);
     // Pulls a small incoming picture into the media cache without being asked.
-    void fetchImageAttachment(const QString& peer, const StoredMessage& message);
     void requestPicturesFor(const QList<StoredMessage>& messages);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
@@ -964,9 +963,6 @@ private:
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.
     QHash<qint64, QString> pendingSavePath_;
-    // Downloads that are a picture being fetched for the chat: local id -> the
-    // message that announced it.
-    QHash<qint64, QString> pendingPictures_;
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart
     // falls back to the store default.

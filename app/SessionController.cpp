@@ -147,9 +147,6 @@ constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
-// A picture this size or smaller is pulled the moment it arrives, so it can be
-// shown rather than announced. Anything larger stays a file the reader asks for.
-constexpr qint64 kAutoFetchImageBytes = 2 * 1024 * 1024;
 
 // How often the client asks its server for news when it has to poll, and how
 // often it checks in when the server holds the request open for it instead.
@@ -2455,14 +2452,10 @@ void SessionController::sendPicture(const QString& fileUrl)
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
-    // The sender's own bubble draws the picture at once, from the same bytes the
-    // core is about to store in the profile.
-    QFile prepared(localPath);
-    if (prepared.open(QIODevice::ReadOnly)) {
-        const bool drawable = PictureStore::instance().put(m.protocolId, prepared.readAll());
-        store_.setHasPicture(m.id, drawable);
-        conversation_.setPictureReadyForId(m.id, drawable);
-    }
+    // The core stores the picture with the message; this draws it from there, so
+    // both sides show the same bytes from the same place.
+    store_.setHasPicture(m.id, true);
+    conversation_.setPictureReadyForId(m.id, true);
     emit requestSendPicture(activePeer_, localPath, m.id, m.protocolId, replyTo);
 }
 
@@ -3317,13 +3310,12 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.id = store_.append(m);
 
     showInActiveView(m, false);
-    // A picture is fetched without being asked for: the point of sending one is
-    // that it is seen, and making the reader press Save to find out what arrived
-    // is not that. Only a picture, only a small one, and what finally decides
-    // whether it is drawn is the bytes on arrival, not this declared type.
-    if (!m.outgoing && m.type == QStringLiteral("image") && m.attSize > 0
-        && m.attSize <= kAutoFetchImageBytes && !m.protocolId.isEmpty()) {
-        fetchImageAttachment(peer, m);
+    // A picture arrives inside the message, so there is nothing to fetch: the
+    // core has already put it in the profile, and this reads it back to draw.
+    if (m.type == QStringLiteral("image") && !m.protocolId.isEmpty()) {
+        store_.setHasPicture(m.id, true);
+        conversation_.setPictureReadyForId(m.id, true);
+        emit requestLoadPictures({m.protocolId});
     }
     QString preview = m.text;
     if (preview.isEmpty() && !m.attName.isEmpty()) {
@@ -3339,24 +3331,6 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // in view), driven by markReadThroughRow.
 }
 
-// Pulls a picture into this profile's media cache and records where it landed,
-// which is what lets the bubble draw it.
-void SessionController::fetchImageAttachment(const QString& peer, const StoredMessage& message)
-{
-    const QString directory = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
-        + QStringLiteral("/media/") + peer;
-    if (!QDir().mkpath(directory)) {
-        bazarish::log::warn("no media cache directory for pictures");
-        return;
-    }
-    const QString name = message.attName.isEmpty() ? QStringLiteral("picture") : message.attName;
-    const QString destination
-        = QDir(directory).filePath(message.protocolId + "-" + QFileInfo(name).fileName());
-    // The file is where the bytes land; the profile is where they stay.
-    pendingPictures_.insert(message.id, message.protocolId);
-    saveAttachmentToFile(
-        peer, message.protocolId, QUrl::fromLocalFile(destination).toString(), message.id);
-}
 
 void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)
 {
@@ -3584,27 +3558,6 @@ void SessionController::onDownloadFinished(qint64 token, bool ok, const QString&
     finishOperation(opId, ok, ok ? QStringLiteral("Saved") : (QStringLiteral("Failed: ") + error));
     conversation_.finishDownloadForId(token, ok, error);
     if (ok && !path.isEmpty()) {
-        // A picture fetched for the chat goes into the profile and the file it
-        // arrived in is removed: what this client keeps, it keeps encrypted, not
-        // as a plaintext copy in a cache directory.
-        if (pendingPictures_.contains(token)) {
-            const QString protocolId = pendingPictures_.take(token);
-            QFile file(path);
-            if (file.open(QIODevice::ReadOnly)) {
-                const QByteArray bytes = file.readAll();
-                file.close();
-                emit requestStorePicture(protocolId, bytes);
-                // Not a picture after all: the message is broken, and nothing is
-                // drawn for it. No falling back to a file card.
-                const bool drawable = PictureStore::instance().put(protocolId, bytes);
-                store_.setHasPicture(token, drawable);
-                conversation_.setPictureReadyForId(token, drawable);
-            } else {
-                bazarish::log::warn("fetched picture could not be read back");
-            }
-            QFile::remove(path);
-            return;
-        }
         // Remember where it landed, in the store and the open view, so the bubble
         // can offer to open it (falling back to re-save when the file is gone).
         store_.setSavedPath(token, path);

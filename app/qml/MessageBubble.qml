@@ -42,11 +42,11 @@ Item {
     // an Image reload when the bytes arrive.
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
         ? "image://picture/" + model.protocolId + "?r=" + Pictures.revision : ""
-    // Announced as a picture, here, and not one: no fallback, no Save button,
-    // just a message that says it is broken.
-    readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
-        && !model.downloading && !model.outgoing && model.savedPath.length === 0
-        && model.downloadError.length > 0
+    // A picture message whose picture this profile cannot draw: the bytes came
+    // with the message, so there is nothing still on its way and nothing to ask
+    // for. No fallback, no Save button - it says it is broken.
+    readonly property bool pictureBroken: delegate.isPicture
+        && delegate.pictureUrl.length === 0
     readonly property bool isAttachment: !delegate.isPicture
         && ((model.attName && model.attName.length > 0)
             || (model.outgoing && (model.type === "file" || model.type === "audio")))
