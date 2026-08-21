@@ -4,9 +4,9 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import Bazarish
 
-// A picture at full size, over everything else. It shows what is already on this
-// machine - a file whose own first bytes said it was a picture - and nothing it
-// is given can reach a renderer any other way.
+// A picture over the whole window. It takes the window, not the column it was
+// opened from: a wide picture in a narrow chat pane was the reason to open it in
+// the first place. Nothing under it can be clicked while it is up.
 Popup {
     id: root
     property url source
@@ -21,18 +21,22 @@ Popup {
         root.open()
     }
 
+    // The window's overlay, so the size below is the window's size and not the
+    // size of whatever opened this.
+    parent: Overlay.overlay
     modal: true
     dim: true
     padding: 0
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(parent ? parent.width - 48 : 800, picture.implicitWidth + 2)
-    height: Math.min(parent ? parent.height - 48 : 600, picture.implicitHeight + 2)
+    x: 0
+    y: 0
+    width: parent ? parent.width : 0
+    height: parent ? parent.height : 0
+    // Only Escape: a press anywhere is handled inside, so it never reaches the
+    // chat behind.
+    closePolicy: Popup.CloseOnEscape
 
     background: Rectangle {
-        color: Theme.deep
-        border.color: Theme.border
-        radius: Theme.radius
+        color: Qt.rgba(0, 0, 0, 0.92)
     }
 
     FileDialog {
@@ -45,25 +49,34 @@ Popup {
         Image {
             id: picture
             anchors.fill: parent
-            anchors.margins: 1
+            anchors.margins: 16
             source: root.source
             fillMode: Image.PreserveAspectFit
+            // Never upscale past the picture's own pixels: a small picture blown
+            // up to a 4K window is mush.
+            readonly property bool fits: implicitWidth <= width && implicitHeight <= height
+            horizontalAlignment: Image.AlignHCenter
+            verticalAlignment: Image.AlignVCenter
             asynchronous: true
-            // A picture from a stranger is not allowed to become a huge
-            // allocation: it is drawn no larger than the window it opens in.
-            sourceSize.width: root.parent ? root.parent.width : 1920
-            sourceSize.height: root.parent ? root.parent.height : 1080
+            // Decoded at the size it is drawn at, so a large picture is not a
+            // large allocation.
+            sourceSize.width: root.width
+            sourceSize.height: root.height
         }
-        // Right-click (or a long press) offers what can be done with the picture.
-        // A button standing on top of it forever was one thing too many.
+
+        // A press anywhere closes it, and is consumed here rather than reaching
+        // what is underneath.
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onTapped: root.close()
+        }
         TapHandler {
             acceptedButtons: Qt.RightButton
             onTapped: pictureMenu.popup()
         }
-        TapHandler {
-            acceptedButtons: Qt.LeftButton
-            onLongPressed: pictureMenu.popup()
-        }
+        // Wheel events stop here too: a scroll over a picture must not scroll the
+        // conversation behind it.
+        WheelHandler { onWheel: function(event) { event.accepted = true } }
 
         ContextMenu {
             id: pictureMenu
@@ -81,6 +94,13 @@ Popup {
             }
         }
 
-        TapHandler { acceptedButtons: Qt.LeftButton; onTapped: root.close() }
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 12
+            text: "Right-click for copy and save - click anywhere to close"
+            color: Theme.textFaint
+            font.pixelSize: Theme.fontSmall
+        }
     }
 }
