@@ -238,18 +238,6 @@ Popup {
                         text: root.session ? (root.session.configuredFacades.length + " facades configured (failover)") : ""
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        // Full descriptor editor (link / facades / fingerprint), the
-                        // same flow as first connect: lets the user re-point the server
-                        // or, after registering on the portal, Connect again to finish.
-                        MenuButton {
-                            Layout.fillWidth: true
-                            text: "Server connection…"
-                            onClicked: connectionDialog.open()
-                        }
-                    }
                     // What this profile is holding on its server, as one line and a
                     // bar. Tapping it re-polls the server and tints the row, so the
                     // figures are refreshed where they are read.
@@ -318,6 +306,18 @@ Popup {
                                 }
                             }
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        // Full descriptor editor (link / facades / fingerprint), the
+                        // same flow as first connect: lets the user re-point the server
+                        // or, after registering on the portal, Connect again to finish.
+                        MenuButton {
+                            Layout.fillWidth: true
+                            text: "Server connection…"
+                            onClicked: connectionDialog.open()
                         }
                     }
                 }
