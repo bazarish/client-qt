@@ -78,48 +78,40 @@ Popup {
             }
             MenuButton { text: "Save"; onClicked: root.saveName() }
         }
-        // The identity itself, in full: what a contact is actually confirmed by.
-        Label {
-            id: fingerprintLabel
-            property bool copied: false
-            text: copied ? "Copied to clipboard" : "Identity fingerprint"
-            color: copied ? Theme.green : Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            Timer {
-                id: fingerprintCopied
-                interval: 1500
-                onTriggered: fingerprintLabel.copied = false
-            }
-        }
-        // Tapping it copies the whole thing; the label above says so for a moment,
-        // so the click is not a guess. Still selectable for a partial copy.
-        Rectangle {
+        // The identity itself, on one line: the middle gives way when it does not
+        // fit, and a tap anywhere on it copies the whole thing.
+        RowLayout {
             Layout.fillWidth: true
-            radius: 8
-            color: Theme.surface
-            border.color: fingerprintHover.hovered ? Theme.border2 : Theme.border
-            implicitHeight: fingerprintText.implicitHeight + 16
-            TextArea {
-                id: fingerprintText
-                anchors.fill: parent
-                anchors.margins: 8
-                readOnly: true
-                wrapMode: TextArea.WrapAnywhere
-                text: root.session ? root.session.activePeer : ""
-                color: Theme.textDim
+            spacing: 8
+            Label {
+                text: fingerprintLine.copied ? "Copied to clipboard" : "Identity fingerprint"
+                color: fingerprintLine.copied ? Theme.green : Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                selectByMouse: true
-                background: null
             }
-            HoverHandler { id: fingerprintHover; cursorShape: Qt.PointingHandCursor }
-            TapHandler {
-                onTapped: {
-                    if (!root.session) {
-                        return
+            Label {
+                id: fingerprintLine
+                property bool copied: false
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignRight
+                text: root.session ? root.session.activePeer : ""
+                color: Theme.text
+                font.pixelSize: Theme.fontSmall
+                elide: Text.ElideMiddle
+                Timer {
+                    id: fingerprintCopied
+                    interval: 1500
+                    onTriggered: fingerprintLine.copied = false
+                }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
+                        if (!root.session) {
+                            return
+                        }
+                        root.session.copyText(root.session.activePeer)
+                        fingerprintLine.copied = true
+                        fingerprintCopied.restart()
                     }
-                    root.session.copyText(root.session.activePeer)
-                    fingerprintLabel.copied = true
-                    fingerprintCopied.restart()
                 }
             }
         }

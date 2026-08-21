@@ -13,6 +13,20 @@ ApplicationWindow {
     title: "Bazarish"
     color: Theme.bg
 
+    // The dim behind every modal, and the thing that makes it modal: the stock
+    // overlay dims but lets a pointer handler underneath still see the press, so a
+    // click on a dialog reached the chat behind it. This one swallows the lot.
+    Overlay.modal: Rectangle {
+        color: Qt.rgba(0, 0, 0, 0.45)
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            hoverEnabled: true
+            preventStealing: true
+        }
+        WheelHandler { onWheel: (event) => event.accepted = true }
+    }
+
     function showToast(message) {
         toastLabel.text = message
         toast.opacity = 1
