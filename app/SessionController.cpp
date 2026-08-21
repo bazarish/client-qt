@@ -1380,6 +1380,49 @@ void SessionWorker::refreshStorageUsage()
         static_cast<qulonglong>(u.mailboxQuotaBytes));
 }
 
+void SessionWorker::refreshDevices()
+{
+    if (!session_) {
+        return;
+    }
+    WorkerOp op(this, QStringLiteral("devices"), QStringLiteral("status"),
+        QStringLiteral("Checking your devices"), QStringLiteral("Asking your server…"));
+    try {
+        QVariantList devices;
+        for (const bazarish::client::Client::DeviceEntry& device : session_->devices()) {
+            devices.append(QVariantMap{
+                {QStringLiteral("clientId"), QString::fromStdString(device.clientId)},
+                {QStringLiteral("current"), device.current},
+            });
+        }
+        op.succeed(QString::number(devices.size()) + QStringLiteral(" device(s)"));
+        emit devicesReady(devices);
+    } catch (const std::exception& error) {
+        op.fail(QString::fromUtf8(error.what()));
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
+void SessionWorker::forgetDevice(const QString& clientId)
+{
+    if (!session_) {
+        return;
+    }
+    {
+        WorkerOp op(this, QStringLiteral("device-forget"), QStringLiteral("status"),
+            QStringLiteral("Forgetting a device"), QStringLiteral("Telling your server…"));
+        try {
+            session_->retireDevice(clientId.toStdString());
+            op.succeed(QStringLiteral("Forgotten"));
+            emit actionOk(QStringLiteral("Device forgotten. Its unread mail is no longer held."));
+        } catch (const std::exception& error) {
+            op.fail(QString::fromUtf8(error.what()));
+            emit actionFailed(QString::fromUtf8(error.what()));
+        }
+    }
+    refreshDevices();
+}
+
 void SessionWorker::generatePersonalKey()
 {
     if (!session_) {
@@ -1715,6 +1758,10 @@ SessionController::SessionController(QObject* parent)
         [this](const QString& opId, const QString& status) { updateOperation(opId, status); });
     connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
     connect(worker_, &SessionWorker::approvalState, this, &SessionController::onApprovalState);
+    connect(worker_, &SessionWorker::devicesReady, this, &SessionController::onDevicesReady);
+    connect(this, &SessionController::requestRefreshDevices, worker_,
+        &SessionWorker::refreshDevices);
+    connect(this, &SessionController::requestForgetDevice, worker_, &SessionWorker::forgetDevice);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
@@ -2790,6 +2837,22 @@ void SessionController::onI2pStatus(const bool hasKey, const bool delegated, con
 void SessionController::refreshStorageUsage()
 {
     emit requestRefreshStorageUsage();
+}
+
+void SessionController::refreshDevices()
+{
+    emit requestRefreshDevices();
+}
+
+void SessionController::forgetDevice(const QString& clientId)
+{
+    emit requestForgetDevice(clientId);
+}
+
+void SessionController::onDevicesReady(const QVariantList& devices)
+{
+    devices_ = devices;
+    emit devicesChanged();
 }
 
 void SessionController::onStorageUsageReady(

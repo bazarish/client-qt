@@ -99,6 +99,9 @@ public slots:
     void refreshI2pStatus();
     // Polls the user's own storage usage (mailbox + blob backends) and reports it.
     void refreshStorageUsage();
+    // The devices registered on this account, and dropping one.
+    void refreshDevices();
+    void forgetDevice(const QString& clientId);
     // Calls: each runs the matching Session method (strict I2P, so a failure
     // surfaces as actionFailed) and then re-emits the call state.
     void startCall(const QString& peer);
@@ -211,6 +214,10 @@ signals:
     // and at what address. Emitted as soon as it is known, so the view never waits
     // on a server poll to say whether a key exists at all.
     void i2pKeyState(bool hasKey, const QString& address);
+    // This account's registered devices: {clientId, current}. A message is kept
+    // until every one of them has acked it, so a device nobody uses any more
+    // holds mail until the retention window ends.
+    void devicesReady(const QVariantList& devices);
     // The user's storage usage (mailbox + blob), each with an `ok` flag (a backend
     // that did not answer keeps its last figures and is marked stale by the UI).
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
@@ -301,6 +308,8 @@ class SessionController : public QObject {
     // be minutes deep in a sync before it gets to it, so the press has to show
     // somewhere or it reads as a button that does nothing.
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
+    // This account's devices, newest answer first asked for.
+    Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
     // What the operator tells a user who is waiting (empty if they wrote none).
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
@@ -415,6 +424,7 @@ public:
     bool reachable() const { return reachable_; }
     QString syncError() const { return syncError_; }
     bool i2pBusy() const { return i2pBusy_; }
+    QVariantList devices() const { return devices_; }
     bool awaitingApproval() const { return awaitingApproval_; }
     QString approvalNote() const { return approvalNote_; }
     QString activeFacade() const { return activeFacade_; }
@@ -661,6 +671,10 @@ public:
     // result lands in the storageInfo property; until it does, the last figures (if
     // any) stay, with the UI showing how long ago they were taken.
     Q_INVOKABLE void refreshStorageUsage();
+    Q_INVOKABLE void refreshDevices();
+    // Drops a device's registration: its unacked mail stops being held, and the
+    // device registers again the next time it connects.
+    Q_INVOKABLE void forgetDevice(const QString& clientId);
     // Audio calls. startCall dials the active/given peer; accept/decline act on
     // the current incoming call; end hangs up; setCallMuted toggles the mic.
     Q_INVOKABLE void startCall(const QString& peer);
@@ -701,6 +715,7 @@ signals:
     void acceptingContactChanged();
     void ownInviteChanged();
     void i2pStatusChanged();
+    void devicesChanged();
     void storageChanged();
     void callChanged();
     void openFailed(const QString& error);
@@ -756,6 +771,8 @@ signals:  // to worker
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
     void requestRefreshStorageUsage();
+    void requestRefreshDevices();
+    void requestForgetDevice(const QString& clientId);
     void requestStartCall(const QString& peer);
     void requestAcceptCall(const QString& callId);
     void requestDeclineCall(const QString& callId);
@@ -803,6 +820,7 @@ private slots:
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
+    void onDevicesReady(const QVariantList& devices);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, qint64 connectedAtMs);
@@ -936,6 +954,7 @@ private:
     bool i2pActive_ = false;
     QString i2pAddress_;
     QString i2pStatusText_;
+    QVariantList devices_;
     QString i2pServerState_;
     QString acceptingContact_;
     // Transfers in flight, by the file's protocol id. Kept here rather than only

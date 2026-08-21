@@ -292,6 +292,13 @@ public:
     // Raises ApiError(eAccountPendingApproval) while approval is outstanding.
     void publishRouting();
 
+    // The devices registered on this account, and dropping one. A device that is
+    // gone for good keeps every message in the mailbox until the server's
+    // retention window expires, because deletion waits for all of them - so its
+    // owner has to be able to see the list and end one.
+    std::vector<Client::DeviceEntry> devices();
+    void retireDevice(const std::string& clientId);
+
     // The serving server's onboarding info (message + registration links),
     // shown when a connect/subscribe is refused because this key is not
     // registered yet. Requires a configured server (facades).
@@ -818,12 +825,6 @@ private:
     // other device.* service messages; best effort, and never a chat bubble on
     // the device that sent it.
     void echoSentToSelf(const std::string& peerFingerprint, const nlohmann::json& inner);
-
-    // The devices registered on this account, and dropping one. A device that is
-    // gone for good keeps every message in the mailbox until the server's
-    // retention window expires, because deletion waits for all of them.
-    std::vector<Client::DeviceEntry> devices();
-    void retireDevice(const std::string& clientId);
 
     // Pushes our own avatar to a contact as an "avatar" service message, once,
     // when the dialog is mutually established (we have engaged with them) and we

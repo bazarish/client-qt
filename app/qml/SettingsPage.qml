@@ -20,7 +20,8 @@ Popup {
     padding: 0
 
     // Refresh the per-user I2P destination status and storage usage on open.
-    onOpened: if (session) { session.refreshI2pStatus(); session.refreshStorageUsage() }
+    onOpened: if (session) { session.refreshI2pStatus(); session.refreshStorageUsage();
+        session.refreshDevices() }
 
     // Ticks every few seconds while Settings is open so the storage "updated N ago"
     // age stays current without the user reopening the page.
@@ -306,6 +307,63 @@ Popup {
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
+                    // The devices registered on this account. Mail is deleted only
+                    // once every one of them has acked it, so a device that is gone
+                    // for good holds the mailbox until retention runs out - which is
+                    // why its owner needs to be able to drop it.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        visible: root.session && root.session.connected
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: "Devices on this account"
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: root.session ? root.session.devices.length : 0
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                            }
+                        }
+
+                        Repeater {
+                            model: root.session ? root.session.devices : []
+                            delegate: RowLayout {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                spacing: 8
+                                Label {
+                                    text: modelData.clientId
+                                        + (modelData.current ? "  (this device)" : "")
+                                    color: modelData.current ? Theme.text : Theme.textDim
+                                    font.pixelSize: Theme.fontSmall
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
+                                }
+                                MenuButton {
+                                    text: "Forget"
+                                    danger: true
+                                    visible: !modelData.current
+                                    onClicked: root.session.forgetDevice(modelData.clientId)
+                                }
+                            }
+                        }
+
+                        Label {
+                            visible: root.session && root.session.devices.length === 0
+                            text: "Nothing yet - open this while connected to ask your server."
+                            color: Theme.textFaint
+                            font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
+                    }
+
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8

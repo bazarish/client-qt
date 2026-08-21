@@ -66,6 +66,8 @@ void printUsage()
         "  bazarish-client i2p-publish <profile>\n"
         "  bazarish-client i2p-cancel <profile>\n"
         "  bazarish-client i2p-status <profile>\n"
+        "  bazarish-client devices <profile>\n"
+        "  bazarish-client forget-device <profile> <client-id>\n"
         "  bazarish-client sign-login <profile> <challenge>\n"
         "  bazarish-client invite <profile>\n"
         "  bazarish-client request <profile> <peer-fp> <text>\n"
@@ -243,6 +245,36 @@ int runI2pStatus(const std::vector<std::string>& args)
     if (!s.registrationMessage.empty()) {
         std::printf("message: %s\n", s.registrationMessage.c_str());
     }
+    return 0;
+}
+
+// devices <profile>: the devices registered on this account. A message is kept
+// until every one of them has acked it, so a device nobody uses any more holds
+// the mailbox until retention runs out.
+int runDevices(const std::vector<std::string>& args)
+{
+    if (args.size() != 2) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    for (const bazarish::client::Client::DeviceEntry& device : session.devices()) {
+        std::printf("%s%s\n", device.clientId.c_str(), device.current ? "  (this device)" : "");
+    }
+    return 0;
+}
+
+// forget-device <profile> <client-id>: drop a device's registration so its
+// unacked mail stops being held.
+int runForgetDevice(const std::vector<std::string>& args)
+{
+    if (args.size() != 3) {
+        printUsage();
+        return 2;
+    }
+    Session session = Session::open(args[1], keyPassphrase());
+    session.retireDevice(args[2]);
+    std::printf("forgotten: %s\n", args[2].c_str());
     return 0;
 }
 
@@ -700,6 +732,12 @@ int main(const int argc, const char** argv)
         }
         if (command == "i2p-status") {
             return runI2pStatus(args);
+        }
+        if (command == "devices") {
+            return runDevices(args);
+        }
+        if (command == "forget-device") {
+            return runForgetDevice(args);
         }
         if (command == "sign-login") {
             return runSignLogin(args);
