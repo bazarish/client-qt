@@ -78,22 +78,50 @@ Popup {
             }
             MenuButton { text: "Save"; onClicked: root.saveName() }
         }
-        // The identity itself, in full. Verify it out of band (read it out, compare
-        // over a trusted channel) to confirm you are talking to the right person.
+        // The identity itself, in full: what a contact is actually confirmed by.
         Label {
-            text: "Identity fingerprint (verify out of band):"
-            color: Theme.textDim
+            id: fingerprintLabel
+            property bool copied: false
+            text: copied ? "Copied to clipboard" : "Identity fingerprint"
+            color: copied ? Theme.green : Theme.textDim
             font.pixelSize: Theme.fontSmall
+            Timer {
+                id: fingerprintCopied
+                interval: 1500
+                onTriggered: fingerprintLabel.copied = false
+            }
         }
-        TextArea {
+        // Tapping it copies the whole thing; the label above says so for a moment,
+        // so the click is not a guess. Still selectable for a partial copy.
+        Rectangle {
             Layout.fillWidth: true
-            readOnly: true
-            wrapMode: TextArea.WrapAnywhere
-            text: root.session ? root.session.activePeer : ""
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            selectByMouse: true
-            background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+            radius: 8
+            color: Theme.surface
+            border.color: fingerprintHover.hovered ? Theme.border2 : Theme.border
+            implicitHeight: fingerprintText.implicitHeight + 16
+            TextArea {
+                id: fingerprintText
+                anchors.fill: parent
+                anchors.margins: 8
+                readOnly: true
+                wrapMode: TextArea.WrapAnywhere
+                text: root.session ? root.session.activePeer : ""
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                selectByMouse: true
+                background: null
+            }
+            HoverHandler { id: fingerprintHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler {
+                onTapped: {
+                    if (!root.session) {
+                        return
+                    }
+                    root.session.copyText(root.session.activePeer)
+                    fingerprintLabel.copied = true
+                    fingerprintCopied.restart()
+                }
+            }
         }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
