@@ -161,6 +161,55 @@ int main()
         CHECK(std::all_of(flat.begin(), flat.end(), [](std::uint8_t bar) { return bar == 0; }));
     }
 
+    // 1c) Faster playback keeps the voice: a 440 Hz tone played at 2x comes out
+    //     half as long, and still 440 Hz. Pitch is counted by zero crossings,
+    //     which is what would double if the audio were merely resampled.
+    {
+        constexpr double kSpeed = 2.0;
+        constexpr int kToneFrames = 100;  // two seconds
+        constexpr double kToneHz = 440.0;
+        // A tone rings either side of zero twice a period.
+        constexpr double kCrossingsPerPeriod = 2.0;
+        constexpr double kPitchTolerance = 0.05;
+        constexpr double kLengthTolerance = 0.05;
+
+        SineAudioSource source(kToneHz);
+        source.start();
+        std::vector<std::int16_t> tone;
+        for (int i = 0; i < kToneFrames; ++i) {
+            const std::vector<std::int16_t> frame = source.readFrame();
+            tone.insert(tone.end(), frame.begin(), frame.end());
+        }
+        source.stop();
+
+        TimeStretch stretch(tone, kSpeed);
+        std::vector<std::int16_t> fast;
+        std::vector<std::int16_t> chunk(kCallSamplesPerFrame);
+        for (std::size_t produced = stretch.read(chunk.data(), chunk.size()); produced > 0;
+            produced = stretch.read(chunk.data(), chunk.size())) {
+            fast.insert(fast.end(), chunk.begin(),
+                chunk.begin() + static_cast<std::ptrdiff_t>(produced));
+        }
+
+        // Half the samples, within a window's worth of rounding.
+        const double ratio = static_cast<double>(fast.size()) / static_cast<double>(tone.size());
+        CHECK(std::abs(ratio - 1.0 / kSpeed) < kLengthTolerance);
+
+        // And the same pitch: crossings per second, not per sample.
+        const auto pitchOf = [](const std::vector<std::int16_t>& pcm) {
+            int crossings = 0;
+            for (std::size_t i = 1; i < pcm.size(); ++i) {
+                if ((pcm[i - 1] < 0) != (pcm[i] < 0)) {
+                    ++crossings;
+                }
+            }
+            return crossings * static_cast<double>(kCallSampleRate)
+                / (static_cast<double>(pcm.size()) * kCrossingsPerPeriod);
+        };
+        const double heard = pitchOf(fast);
+        CHECK(std::abs(heard - kToneHz) / kToneHz < kPitchTolerance);
+    }
+
     // 2) Full media pipeline over a loopback link: both sides capture a tone,
     //    seal/encode it, and the peer decrypts/decodes and plays real frames.
     {

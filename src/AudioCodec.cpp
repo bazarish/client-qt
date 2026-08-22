@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 namespace bazarish {
@@ -18,6 +19,22 @@ constexpr int kMaxPacketBytes = 4000;
 // Full scale of a signed-16 sample, the reference every level is measured
 // against.
 constexpr double kFullScale = 32768.0;
+
+// WSOLA settings. The window is long enough to hold a pitch period of any voice
+// (a low male voice is around 12 ms) and short enough that the audio inside it
+// does not change character. Windows are laid down half a window apart, where a
+// Hann pair sums to one and needs no further correction. The search is what
+// keeps the pitch: the next window is taken from within this much of where it
+// would ideally fall, wherever it best continues the last one.
+constexpr int kStretchWindowMs = 30;
+constexpr int kStretchSearchMs = 5;
+constexpr int kStretchMatchMs = 5;
+constexpr double kPi = 3.14159265358979323846;
+
+int samplesOf(const int milliseconds)
+{
+    return kCallSampleRate / 1000 * milliseconds;
+}
 
 }  // namespace
 
@@ -143,6 +160,99 @@ Bytes packOpusFrames(const std::vector<Bytes>& frames)
         packed.insert(packed.end(), frame.begin(), frame.end());
     }
     return packed;
+}
+
+TimeStretch::TimeStretch(std::vector<std::int16_t> pcm, const double speed)
+    : pcm_(std::move(pcm))
+    , window_(samplesOf(kStretchWindowMs))
+    , hopSynthesis_(samplesOf(kStretchWindowMs) / 2)
+{
+    hopAnalysis_ = static_cast<int>(std::lround(hopSynthesis_ * speed));
+    // Nothing to stretch: at normal speed, or when the recording is shorter than
+    // a single window, the audio is handed over as it is.
+    stretching_ = speed > 1.0 && pcm_.size() > static_cast<std::size_t>(window_);
+    if (!stretching_) {
+        return;
+    }
+    shape_.resize(static_cast<std::size_t>(window_));
+    for (int i = 0; i < window_; ++i) {
+        shape_[static_cast<std::size_t>(i)]
+            = 0.5 - 0.5 * std::cos(2.0 * kPi * i / static_cast<double>(window_));
+    }
+    pending_.assign(static_cast<std::size_t>(window_), 0.0);
+}
+
+bool TimeStretch::step()
+{
+    const std::size_t window = static_cast<std::size_t>(window_);
+    const std::size_t match = static_cast<std::size_t>(samplesOf(kStretchMatchMs));
+    if (read_ + window > pcm_.size()) {
+        return false;
+    }
+    if (pending_.size() < window) {
+        pending_.resize(window, 0.0);
+    }
+    for (std::size_t i = 0; i < window; ++i) {
+        pending_[i] += static_cast<double>(pcm_[read_ + i]) * shape_[i];
+    }
+    ready_ += static_cast<std::size_t>(hopSynthesis_);
+
+    // What would have followed this window is the sound the next one has to
+    // continue; the search picks the start that matches it best.
+    const std::size_t natural = read_ + static_cast<std::size_t>(hopSynthesis_);
+    if (natural + match > pcm_.size()) {
+        read_ = pcm_.size();
+        return true;
+    }
+    const std::ptrdiff_t ideal = static_cast<std::ptrdiff_t>(read_ + hopAnalysis_);
+    const std::ptrdiff_t search = samplesOf(kStretchSearchMs);
+    std::ptrdiff_t best = ideal;
+    double bestScore = -std::numeric_limits<double>::infinity();
+    for (std::ptrdiff_t offset = -search; offset <= search; ++offset) {
+        const std::ptrdiff_t at = ideal + offset;
+        if (at < 0 || static_cast<std::size_t>(at) + match > pcm_.size()) {
+            continue;
+        }
+        double score = 0.0;
+        for (std::size_t i = 0; i < match; ++i) {
+            score += static_cast<double>(pcm_[static_cast<std::size_t>(at) + i])
+                * static_cast<double>(pcm_[natural + i]);
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            best = at;
+        }
+    }
+    read_ = static_cast<std::size_t>(best);
+    return true;
+}
+
+std::size_t TimeStretch::read(std::int16_t* const out, const std::size_t want)
+{
+    if (!stretching_) {
+        const std::size_t left = pcm_.size() - passthrough_;
+        const std::size_t take = std::min(want, left);
+        std::copy(pcm_.begin() + static_cast<std::ptrdiff_t>(passthrough_),
+            pcm_.begin() + static_cast<std::ptrdiff_t>(passthrough_ + take), out);
+        passthrough_ += take;
+        return take;
+    }
+    std::size_t produced = 0;
+    while (produced < want) {
+        if (ready_ == 0 && !step()) {
+            break;
+        }
+        const std::size_t take = std::min(want - produced, ready_);
+        for (std::size_t i = 0; i < take; ++i) {
+            const double value = std::round(pending_[i]);
+            out[produced + i] = static_cast<std::int16_t>(
+                std::clamp(value, -kFullScale, kFullScale - 1));
+        }
+        pending_.erase(pending_.begin(), pending_.begin() + static_cast<std::ptrdiff_t>(take));
+        ready_ -= take;
+        produced += take;
+    }
+    return produced;
 }
 
 std::vector<std::uint8_t> voiceWaveform(const Bytes& packed, const int bars)

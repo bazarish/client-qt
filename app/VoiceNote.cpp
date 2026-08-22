@@ -28,8 +28,6 @@ constexpr int kIdleSleepMs = 5;
 // against.
 constexpr double kFullScale = 32768.0;
 
-constexpr double kMicrosecondsPerMillisecond = 1000.0;
-
 // What a voice note may spend on a second of speech. A call lets the codec
 // decide and adapt; a recording is bounded by the message it has to fit in, so
 // it is told. Opus at this rate is speech quality at 48 kHz mono.
@@ -142,26 +140,35 @@ void VoiceNote::play(const Bytes& opus, const double speed)
     if (frames.empty()) {
         return;
     }
-    // Speed is the device's own doing: the same 48 kHz samples handed to a sink
-    // opened proportionally faster. The frame pacing follows, or the sink would
-    // starve between frames.
-    sink_ = std::make_unique<QtAudioSink>(static_cast<int>(kCallSampleRate * speed));
+    sink_ = std::make_unique<QtAudioSink>();
     sink_->start();
     playing_.store(true);
     playbackThread_ = std::thread([this, frames, speed]() {
+        // Decoded whole first: the stretcher needs to look ahead of what it is
+        // playing, and a voice message is short enough to hold at once.
+        std::vector<std::int16_t> pcm;
+        pcm.reserve(frames.size() * static_cast<std::size_t>(kCallSamplesPerFrame));
         AudioDecoder decoder;
         for (const Bytes& frame : frames) {
-            if (!playing_.load()) {
-                break;
-            }
             try {
-                sink_->writeFrame(decoder.decode(frame));
+                const std::vector<std::int16_t> decoded = decoder.decode(frame);
+                pcm.insert(pcm.end(), decoded.begin(), decoded.end());
             } catch (const std::exception& error) {
                 bazarish::log::warn("a voice frame did not decode: {}", error.what());
                 break;
             }
-            std::this_thread::sleep_for(std::chrono::microseconds(
-                static_cast<long>(kCallFrameMs * kMicrosecondsPerMillisecond / speed)));
+        }
+        TimeStretch stretch(std::move(pcm), speed);
+        std::vector<std::int16_t> out(static_cast<std::size_t>(kCallSamplesPerFrame));
+        while (playing_.load()) {
+            const std::size_t produced = stretch.read(out.data(), out.size());
+            if (produced == 0) {
+                break;
+            }
+            out.resize(produced);
+            sink_->writeFrame(out);
+            out.resize(static_cast<std::size_t>(kCallSamplesPerFrame));
+            std::this_thread::sleep_for(std::chrono::milliseconds(kCallFrameMs));
         }
         playing_.store(false);
         emit playbackFinished();

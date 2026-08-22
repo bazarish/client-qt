@@ -16,10 +16,10 @@
 
 namespace bazarish::app {
 
-QAudioFormat callAudioFormat(const int sampleRate)
+QAudioFormat callAudioFormat()
 {
     QAudioFormat format;
-    format.setSampleRate(sampleRate);
+    format.setSampleRate(kCallSampleRate);
     format.setChannelCount(kCallChannels);
     format.setSampleFormat(QAudioFormat::Int16);
     return format;
@@ -166,9 +166,8 @@ private:
     std::mutex mutex_;
 };
 
-QtAudioSink::QtAudioSink(const int sampleRate)
-    : sink_(std::make_unique<QAudioSink>(
-          QMediaDevices::defaultAudioOutput(), callAudioFormat(sampleRate)))
+QtAudioSink::QtAudioSink()
+    : sink_(std::make_unique<QAudioSink>(QMediaDevices::defaultAudioOutput(), callAudioFormat()))
     , device_(std::make_unique<PlaybackDevice>())
 {
     device_->open(QIODevice::ReadOnly);

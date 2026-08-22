@@ -15,9 +15,7 @@ class QAudioSink;
 namespace bazarish::app {
 
 // The shared call audio format: 48 kHz mono signed-16, matching the Opus codec.
-// A sink may be opened at a higher rate to play the same samples faster (see
-// QtAudioSink).
-QAudioFormat callAudioFormat(int sampleRate = kCallSampleRate);
+QAudioFormat callAudioFormat();
 
 // Microphone capture via Qt Multimedia. QAudioSource runs in pull mode, writing
 // captured PCM into an internal thread-safe ring; the call engine's capture
@@ -43,9 +41,7 @@ private:
 // underruns play silence. Same thread-affinity rule as QtAudioSource.
 class QtAudioSink : public bazarish::AudioSink {
 public:
-    // Opening the device above the recording rate is how playback speeds up:
-    // the same samples are consumed faster, and the pitch rises with them.
-    explicit QtAudioSink(int sampleRate = kCallSampleRate);
+    QtAudioSink();
     ~QtAudioSink() override;
 
     void start() override;

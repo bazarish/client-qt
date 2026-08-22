@@ -76,4 +76,39 @@ inline constexpr int kWaveformLevels = 16;
 inline constexpr double kWaveformSilence = 0.01;
 std::vector<std::uint8_t> voiceWaveform(const Bytes& packed, int bars);
 
+// Plays a recording faster without moving its pitch. Handing the same samples to
+// a faster device would raise the voice with the speed; this cuts the audio into
+// overlapping windows and lays them down closer together, choosing each next
+// window where it continues the last one in phase (WSOLA), so the speech keeps
+// the speaker's voice.
+//
+// Output is produced as it is asked for rather than all at once: the search
+// costs a fraction of real time per window, but a two-minute message would
+// otherwise have to be ground through before the first sound came out.
+class TimeStretch {
+public:
+    // speed of 1.0 (or below) passes the audio through untouched.
+    TimeStretch(std::vector<std::int16_t> pcm, double speed);
+
+    // Writes up to `want` samples and returns how many there were. A count below
+    // `want` means the recording has ended.
+    std::size_t read(std::int16_t* out, std::size_t want);
+
+private:
+    // Lays the next window down over the pending output and picks where the one
+    // after it starts. False once the input is spent.
+    bool step();
+
+    std::vector<std::int16_t> pcm_;
+    std::vector<double> shape_;   // the window's fade, one value a sample
+    std::vector<double> pending_; // overlap-added output not yet handed out
+    std::size_t ready_ = 0;       // how much of pending_ is finished
+    std::size_t read_ = 0;        // where in pcm_ the next window comes from
+    std::size_t passthrough_ = 0; // read position when there is nothing to do
+    int window_ = 0;
+    int hopSynthesis_ = 0;
+    int hopAnalysis_ = 0;
+    bool stretching_ = false;
+};
+
 }  // namespace bazarish
