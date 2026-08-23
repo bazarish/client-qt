@@ -33,7 +33,10 @@ find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 # libi2pd), so the previously-vendored trimmed libi2pd "keys" lib and the i2pd
 # submodule are gone. OpenSSL is still needed for the crypto and for the TLS
 # client common's HTTP engine uses on a clearnet facade.
-find_package(OpenSSL 3.0 REQUIRED)
+# 3.2 is where Argon2id arrived, and a profile key is Argon2id: an older OpenSSL
+# builds a client that cannot create a profile, so it is refused here rather than
+# at the first passphrase.
+find_package(OpenSSL 3.2 REQUIRED)
 
 # Sanitizer build (address / undefined), for chasing a crash rather than for
 # shipping: BAZARISH_SANITIZE=address. It also drops -Werror, because under a
