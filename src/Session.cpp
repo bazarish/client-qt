@@ -209,6 +209,10 @@ constexpr int kServeWindowSeconds = 30 * 60;
 // How long a file request is worth answering. The requester waits live on the
 // other side, so one that arrives from a mailbox after a restart is answered to
 // an empty room - and costs a published destination to find that out.
+// How long a delegation is handed over for. It is the account's only clock: the
+// client re-issues it while it runs, and a server drops an account that stops.
+constexpr std::int64_t kTransientTermSeconds = 30 * 24 * 3600;
+
 constexpr std::int64_t kFileRequestFreshnessMs = 5 * 60 * 1000;
 
 std::string guessMime(const fs::path& path)
@@ -432,16 +436,15 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
     session.client_->setI2pProven(meta.value("i2pProven", false));
     session.client_->setAllowClearnet(
         meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
-    session.subscriptionCertB64_ = meta.value("subscriptionCert", std::string{});
-    // Our own routing (dest + serving sealing key) lives in our self-signed
-    // subscription certificate; recover it for invites and contact bootstraps.
-    if (!session.subscriptionCertB64_.empty()) {
-        const SubscriptionCertificate cert
-            = SubscriptionCertificate::verify(fromBase64(session.subscriptionCertB64_));
-        session.myDest_ = cert.dest;
-        if (!cert.servingSealingKeyDer.empty()) {
-            session.myServingKeyB64_ = toBase64(cert.servingSealingKeyDer);
-            session.client_->setSessionSealingKey(cert.servingSealingKeyDer);
+    session.cardB64_ = meta.value("card", std::string{});
+    // Our own routing (dest + serving sealing key) lives in the card we signed;
+    // recover it for invites and contact bootstraps.
+    if (!session.cardB64_.empty()) {
+        const ContactCard card = ContactCard::verify(fromBase64(session.cardB64_));
+        session.myDest_ = card.dest;
+        if (!card.servingSealingKeyDer.empty()) {
+            session.myServingKeyB64_ = toBase64(card.servingSealingKeyDer);
+            session.client_->setSessionSealingKey(card.servingSealingKeyDer);
         }
     }
     session.encrypted_ = encrypted;
@@ -569,7 +572,7 @@ void Session::persistMeta() const
                 {"serverFingerprint", endpoint.serverFingerprint},
                 {"facades", facades},
             }},
-        {"subscriptionCert", subscriptionCertB64_},
+        {"card", cardB64_},
         {"encrypted", encrypted_},
         {"avatarMime", avatarMime_},
         // Sticky I2P: once this profile has reached its server over I2P it keeps
@@ -627,24 +630,23 @@ bool Session::allowClearnet() const
     return client_->allowClearnet();
 }
 
-void Session::subscribe(const std::int64_t days)
+void Session::registerAccount()
 {
-    const std::int64_t now = nowSeconds();
-    const std::int64_t notAfter = now + days * 24 * 3600;
-    // Publish our sealing key as a prekey so contacts can encrypt their very
-    // first message to us before any token exchange.
-    const SubscribeResult result
-        = client_->subscribe(now, notAfter, sealingKey_.publicDer(), ownRoutingHost());
+    // Publishing our card is what turns the portal registration into an account,
+    // and it publishes our sealing key as a prekey so contacts can encrypt their
+    // very first message to us before any token exchange.
+    const PublishResult result
+        = client_->publishCard(sealingKey_.publicDer(), ownRoutingHost());
     // Reported here, not on entry: the call above is what brings the transport
     // up, so its own milestones (reseed, router, dial) come first.
-    reportConnectProgress(70, "Subscribed; registering this device");
-    storeSubscription(result);
+    reportConnectProgress(70, "Registered; registering this device");
+    storeCard(result);
     client_->registerThisClient();
 
     // Every account routes through a destination of its own, so mint the master
     // if this profile has none. The delegation can only be handed over once the
-    // account exists, which is what the subscribe above created - hence the
-    // second, routing-carrying certificate published right after it.
+    // account exists, which is what the call above created - hence the second,
+    // routing-carrying card published right after it.
     ensureI2pDestination();
     reportConnectProgress(85, "Publishing your own destination");
     try {
@@ -652,7 +654,7 @@ void Session::subscribe(const std::int64_t days)
     } catch (const ApiError& error) {
         // A moderated server withholds the destination until an operator
         // approves the account. That is the one refusal that is not a failure:
-        // the subscription stands and the routing is published by a later
+        // the account stands and the routing is published by a later
         // publishRouting() call, once approved.
         if (error.code != ErrorCode::eAccountPendingApproval) {
             throw;
@@ -669,21 +671,20 @@ void Session::publishRouting()
     if (!hasI2pDestination()) {
         throw std::runtime_error("no user-owned I2P destination to publish");
     }
-    if (subscriptionCertB64_.empty()) {
-        throw std::runtime_error("not subscribed: nothing to publish routing into");
+    if (cardB64_.empty()) {
+        throw std::runtime_error("not registered: nothing to publish routing into");
     }
-    const SubscriptionCertificate held
-        = SubscriptionCertificate::verify(fromBase64(subscriptionCertB64_));
     // The transient is a time-boxed capability that lets the server operate our
-    // destination; it never outlives the subscription it belongs to.
-    renewI2pTransient(held.notAfter);
+    // destination. Its term is the only clock the account has: the server keeps
+    // serving while it is renewed.
+    const std::int64_t expires = nowSeconds() + kTransientTermSeconds;
+    renewI2pTransient(expires);
     reportConnectProgress(88, "Delegating your destination to the server");
-    client_->sendI2pTransient(i2pTransientBase64(), held.notAfter);
+    client_->sendI2pTransient(i2pTransientBase64(), expires);
     reportConnectProgress(92, "Publishing your contact card");
-    // Re-issue the card inside the term already held: same window, so the
-    // service node treats it as a re-publish and grants nothing.
-    storeSubscription(client_->renew(
-        nowSeconds(), held.notAfter, sealingKey_.publicDer(), ownRoutingHost()));
+    // Re-publish the card, now carrying the routing. The node grants nothing for
+    // it - the account already exists.
+    storeCard(client_->publishCard(sealingKey_.publicDer(), ownRoutingHost()));
     // Hand the master to this account's other devices so they keep the same
     // address and can re-issue transients. Best effort: our own routing is
     // published either way, and the sync needs it to be.
@@ -698,9 +699,9 @@ void Session::publishRouting()
     approval_ = {};
 }
 
-void Session::storeSubscription(const SubscribeResult& result)
+void Session::storeCard(const PublishResult& result)
 {
-    subscriptionCertB64_ = toBase64(result.subscriptionCertDer);
+    cardB64_ = toBase64(result.cardDer);
     myDest_ = result.dest;
     myServingKeyB64_
         = result.servingSealingKeyDer.empty() ? std::string() : toBase64(result.servingSealingKeyDer);
@@ -1191,16 +1192,6 @@ Session::AttemptOutcome Session::pollAttempt(const std::string& attemptId)
     }
 }
 
-void Session::sendContactRequest(const std::string& peerFingerprint, const std::string& text)
-{
-    // Resolve the peer's prekey, serving server and server card on our own
-    // server (facade locality - we never reach a foreign facade). The prekey
-    // is signed by the peer (subscription certificate) and the server card by
-    // the peer's server, so neither can be substituted by an intermediary.
-    const ContactInfo info = client_->lookupContact(peerFingerprint);
-    requestWithInfo(peerFingerprint, text, info);
-}
-
 FetchTransport Session::fetchTransport() const
 {
     return [this](const std::string& toDest, const std::string& op, const Bytes& sealed) {
@@ -1417,12 +1408,12 @@ std::string Session::addByUsername(const std::string& alias, const std::string& 
 void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,
     const ContactInfo& info, const std::string& displayName)
 {
-    if (info.subscriptionCert.user != peerFingerprint) {
+    if (info.card.user != peerFingerprint) {
         throw std::runtime_error("contact lookup returned a different user");
     }
-    const Key peerPrekey = info.subscriptionCert.sealingKey();
-    const Key peerServingKey = info.subscriptionCert.servingSealingKey();
-    const std::string peerDest = info.subscriptionCert.dest;
+    const Key peerPrekey = info.card.sealingKey();
+    const Key peerServingKey = info.card.servingSealingKey();
+    const std::string peerDest = info.card.dest;
     validateB32I2pHost(peerDest);
 
     // Mint a batch the peer will use to write back to us and hand it over, with
@@ -3084,15 +3075,12 @@ bool Session::hasOwnRouting() const
 
 void Session::refreshOwnCard()
 {
-    if (subscriptionCertB64_.empty()) {
-        throw std::runtime_error("not subscribed: nothing to refresh");
+    if (cardB64_.empty()) {
+        throw std::runtime_error("not registered: nothing to refresh");
     }
-    const SubscriptionCertificate held
-        = SubscriptionCertificate::verify(fromBase64(subscriptionCertB64_));
-    // Same term, so the service node treats this as a re-publish and consumes no
-    // grant; the point is the routing the server now has and our card does not.
-    storeSubscription(client_->renew(
-        nowSeconds(), held.notAfter, sealingKey_.publicDer(), ownRoutingHost()));
+    // A re-publish grants nothing; the point is the routing the server now has
+    // and our card does not.
+    storeCard(client_->publishCard(sealingKey_.publicDer(), ownRoutingHost()));
 }
 
 std::string Session::contactInviteUri(const std::string& peerFingerprint) const
@@ -3106,8 +3094,8 @@ std::string Session::contactInviteUri(const std::string& peerFingerprint) const
     }
     Descriptor descriptor;
     descriptor.fingerprint = peerFingerprint;
-    descriptor.srv = found->second.dest;
-    descriptor.srvKeyDer = fromBase64(found->second.servingSealingB64);
+    descriptor.dest = found->second.dest;
+    descriptor.keyDer = fromBase64(found->second.servingSealingB64);
     descriptor.name = found->second.displayName;
     return encodeDescriptor(descriptor);
 }
@@ -3128,8 +3116,8 @@ std::string Session::inviteUri() const
     // serving sealing key. The contact fetches and verifies the full card.
     Descriptor descriptor;
     descriptor.fingerprint = fingerprint();
-    descriptor.srv = myDest_;
-    descriptor.srvKeyDer = fromBase64(myServingKeyB64_);
+    descriptor.dest = myDest_;
+    descriptor.keyDer = fromBase64(myServingKeyB64_);
     // Advertise our profile name so the contact can adopt it as our display name.
     descriptor.name = name_;
     return encodeDescriptor(descriptor);

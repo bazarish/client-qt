@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Shown when a server refuses to subscribe this key (usually "not registered
+// Shown when a server refuses this key (usually "not registered
 // yet"). Carries the server's full onboarding message and registration link(s),
 // which the user can copy or open. It is top-layer and closes only on the
 // explicit button - never on a click-away or Escape - so the links are not lost.

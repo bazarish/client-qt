@@ -284,11 +284,12 @@ public:
     void setAcceptCalls(bool accept);
     static void setAllowClearnetDefault(bool allow);
 
-    // Subscribes to the configured server for the given number of days and
-    // registers this client ID. Mints this profile's own I2P destination if it
-    // has none and publishes the routing (see publishRouting), so the contact
-    // card is reachable as soon as the destination's tunnels are up.
-    void subscribe(std::int64_t days);
+    // Redeems the portal registration on the configured server and registers
+    // this client ID. Mints this profile's own I2P destination if it has none
+    // and publishes the routing (see publishRouting), so the contact card is
+    // reachable as soon as the destination's tunnels are up. The account has no
+    // term: it lives while the destination stays delegated.
+    void registerAccount();
 
     // Hands the serving server a fresh transient for this profile's destination
     // and re-issues the contact card with the routing folded in, inside the term
@@ -398,14 +399,6 @@ public:
     // which verifies it (see verifyLoginBlob) and recovers this fingerprint.
     std::string signLogin(const std::string& challenge) const;
 
-    // Sends a contact request to a peer subscribed to our own server. The
-    // peer's prekey, serving server and server card are looked up on our own
-    // facade; the request payload is E2E-encrypted to the peer's prekey and
-    // carries a fresh token batch and our own server card so the peer can
-    // reply. A client never reaches another server's facade (facade locality):
-    // cross-server first contact goes through an invite (self-verifying, no
-    // lookup) or, in future, a sealed federated resolve over the server link.
-    void sendContactRequest(const std::string& peerFingerprint, const std::string& text);
 
     // A bazarish:// invite carrying our full self-verifying serving chain
     // (subscription certificate + server card). A contact can verify it and
@@ -785,7 +778,7 @@ private:
 
     // Persists a subscribe/renew result: the card we just signed and the routing
     // it carries.
-    void storeSubscription(const SubscribeResult& result);
+    void storeCard(const PublishResult& result);
     // This profile's own destination as a routing host, empty without a master.
     std::string ownRoutingHost() const;
 
@@ -1039,7 +1032,7 @@ private:
     std::string avatarMime_;
     // Our own subscription certificate (DER, base64), retained on subscribe
     // so we can publish the full self-verifying chain in an invite.
-    std::string subscriptionCertB64_;
+    std::string cardB64_;
     // The last word from the server on whether this account is served yet.
     ApprovalState approval_;
     // Whether the private key PEMs are encrypted at rest. Persisted in meta so

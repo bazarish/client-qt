@@ -561,8 +561,7 @@ void SessionWorker::emitFacadeInfo()
         QString::fromStdString(session_->endpoint().serverFingerprint));
 }
 
-void SessionWorker::connectAndSubscribe(
-    const QStringList& facadeUrls, const QString& serverFp, int days)
+void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QString& serverFp)
 {
     if (!session_) {
         return;
@@ -597,7 +596,7 @@ void SessionWorker::connectAndSubscribe(
             overI2p ? "Connecting over I2P — the first call builds tunnels, this takes minutes"
                     : "Connecting to the server");
         session_->connectServer(endpoint);
-        session_->subscribe(days);
+        session_->registerAccount();
     } catch (const std::exception& e) {
         bazarish::client::setConnectProgressSink({});
         const QString reason = QString::fromUtf8(e.what());
@@ -1715,7 +1714,7 @@ SessionController::SessionController(QObject* parent)
 
     // Commands -> worker (queued across threads).
     connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openProfile);
-    connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndSubscribe);
+    connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndRegister);
     connect(worker_, &SessionWorker::connectProgress, this, &SessionController::onConnectProgress);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
     connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
@@ -1971,7 +1970,7 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
     beginOperation(kConnectOperationId, QStringLiteral("connect"),
         QStringLiteral("Connecting this account"), connectPhase_);
     emit connectStateChanged();
-    emit requestConnect(facadeUrls, serverFp, 14);
+    emit requestConnect(facadeUrls, serverFp);
 }
 
 void SessionController::onConnectProgress(const int percent, const QString& phase)
@@ -2677,7 +2676,7 @@ QString SessionController::inviteProblem(const QString& uri) const
     }
     try {
         const bazarish::Descriptor descriptor = bazarish::parseDescriptor(trimmed.toStdString());
-        if (descriptor.srv.empty()) {
+        if (descriptor.dest.empty()) {
             return QStringLiteral("This invite carries no address to reach that account.");
         }
     } catch (const std::exception&) {
@@ -3335,12 +3334,12 @@ QVariantMap SessionController::storageInfo() const
 }
 
 void SessionController::onOpened(const QString& fingerprint, const QString& displayName,
-    bool connected, const QString& subscriptionText)
+    bool connected, const QString& connectionNote)
 {
     fingerprint_ = fingerprint;
     displayName_ = displayName;
     connected_ = connected;
-    subscriptionText_ = subscriptionText;
+    connectionNote_ = connectionNote;
     emit identityChanged();
     emit connectedChanged();
     // A connected profile starts syncing on open, so it comes up online.
@@ -3350,20 +3349,20 @@ void SessionController::onOpened(const QString& fingerprint, const QString& disp
     }
 }
 
-void SessionController::onConnectionChanged(bool connected, const QString& subscriptionText)
+void SessionController::onConnectionChanged(bool connected, const QString& connectionNote)
 {
     // Any outcome ends the connect: success clears the screen's busy state,
     // failure leaves the reason on it instead of a silent button.
     if (connecting_) {
         connecting_ = false;
         connectPhase_.clear();
-        connectError_ = connected ? QString() : subscriptionText;
+        connectError_ = connected ? QString() : connectionNote;
         finishOperation(kConnectOperationId, connected,
-            connected ? QStringLiteral("Connected") : subscriptionText);
+            connected ? QStringLiteral("Connected") : connectionNote);
         emit connectStateChanged();
     }
     connected_ = connected;
-    subscriptionText_ = subscriptionText;
+    connectionNote_ = connectionNote;
     emit connectedChanged();
     if (online_ != connected) {
         online_ = connected;

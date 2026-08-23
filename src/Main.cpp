@@ -143,11 +143,9 @@ int runSubscribe(const std::vector<std::string>& args)
         printUsage();
         return 2;
     }
-    const std::int64_t days = args.size() == 3 ? std::atoll(args[2].c_str()) : 14;
     Session session = Session::open(args[1], keyPassphrase());
-    session.subscribe(days);
-    std::printf("subscribed for %lld day(s); client registered\n",
-        static_cast<long long>(days));
+    session.registerAccount();
+    std::printf("registered; client registered\n");
     if (session.hasI2pDestination()) {
         std::printf("issued I2P transient delegation (%zu bytes) for %s.b32.i2p\n",
             session.i2pTransient().size(), session.i2pAddress().c_str());
@@ -305,20 +303,6 @@ int runInvite(const std::vector<std::string>& args)
     for (std::size_t i = 0; i < codes.size(); ++i) {
         std::printf("--- QR %zu/%zu ---\n%s\n", i + 1, codes.size(), codes[i].c_str());
     }
-    return 0;
-}
-
-int runRequest(const std::vector<std::string>& args)
-{
-    // request <profile> <peer-fp> <text>  (peer must be on our own server;
-    // cross-server first contact uses add-invite - facade locality)
-    if (args.size() != 4) {
-        printUsage();
-        return 2;
-    }
-    Session session = Session::open(args[1], keyPassphrase());
-    session.sendContactRequest(args[2], args[3]);
-    std::printf("contact request sent to %s\n", args[2].c_str());
     return 0;
 }
 
@@ -744,9 +728,6 @@ int main(const int argc, const char** argv)
         }
         if (command == "invite") {
             return runInvite(args);
-        }
-        if (command == "request") {
-            return runRequest(args);
         }
         if (command == "add-invite") {
             return runAddInvite(args);

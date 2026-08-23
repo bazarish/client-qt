@@ -395,7 +395,7 @@ Popup {
                     }
                     // Status block. "Refresh" re-polls the server and briefly tints
                     // this box so the user sees the data was just updated; the
-                    // term line reads "Inactive" whenever the subscription is not
+                    // term line reads "Inactive" whenever the delegation is not
                     // currently paid-active.
                     Rectangle {
                         id: i2pStatusBox

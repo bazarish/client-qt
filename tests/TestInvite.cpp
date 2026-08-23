@@ -76,8 +76,8 @@ int main()
 
     const Descriptor decoded = parseDescriptor(uri);
     CHECK(decoded.fingerprint == user.fingerprint());
-    CHECK(decoded.srv == userDest);
-    CHECK(decoded.srvKeyDer == servingKey.publicDer());
+    CHECK(decoded.dest == userDest);
+    CHECK(decoded.keyDer == servingKey.publicDer());
 
     // Malformed URIs are rejected.
     CHECK_THROWS(parseDescriptor("http://example/x"));

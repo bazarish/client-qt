@@ -72,7 +72,7 @@ Item {
         }
 
         // The descriptor form (link paste or manual facades + fingerprint). The
-        // user subscribes on the server's portal; this only connects.
+        // user registers on the server's portal; this only connects.
         ServerConnectForm {
             Layout.fillWidth: true
             session: root.session

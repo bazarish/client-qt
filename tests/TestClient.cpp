@@ -118,43 +118,19 @@ int main()
 
     // --- Account stub ---
 
-    const auto handleSubscribe
-        = [&](const http::Request& request, http::Response& response) {
-              const std::string user = requireCaller(request);
-              const Bytes der
-                  = fromBase64(nlohmann::json::parse(request.body).at("cert").get<std::string>());
-              const SubscriptionCertificate cert = SubscriptionCertificate::verify(der);
-              CHECK(cert.user == user);
-              CHECK(cert.server == serverFp);
-              // The client publishes its sealing prekey and the routing it
-              // fetched from the messaging server in the certificate.
-              CHECK(!cert.sealingPublicKeyDer.empty());
-              CHECK(cert.dest == aliceDest);
-              CHECK(cert.servingSealingKeyDer == serverSealing.publicDer());
-              respondJson(response,
-                  {
-                      {"notAfter", cert.notAfter},
-                      {"quotaBytes", 10 * 1024 * 1024},
-                      {"maxTermSeconds", 14 * 24 * 3600},
-                  });
-          };
-    server.post("/v1/account/subscribe", stub(handleSubscribe));
-    server.post("/v1/account/renew", stub(handleSubscribe));
-
-    server.get("/v1/account/subscription",
+    server.post("/v1/account/card",
         stub([&](const http::Request& request, http::Response& response) {
-            (void)requireCaller(request);
-            respondJson(response, {{"notAfter", now + 3600}, {"quotaBytes", 42}});
-        }));
-
-    server.get("/v1/account/contact",
-        stub([&](const http::Request& request, http::Response& response) {
-            CHECK(request.query("user") == bob.fingerprint());
-            const Key bobSealing = Key::generateSealing();
-            const Bytes subCert = SubscriptionCertificate::issue(bob, serverFp, now, now + 3600,
-                bobSealing.publicDer(), bobDest, serverSealing.publicDer());
-            respondJson(response,
-                {{"user", bob.fingerprint()}, {"subscriptionCert", toBase64(subCert)}});
+            const std::string user = requireCaller(request);
+            const Bytes der
+                = fromBase64(nlohmann::json::parse(request.body).at("card").get<std::string>());
+            const ContactCard card = ContactCard::verify(der);
+            CHECK(card.user == user);
+            // The card names its owner and their routing, and nothing else - a
+            // contact must not learn which server operates the destination.
+            CHECK(!card.sealingPublicKeyDer.empty());
+            CHECK(card.dest == aliceDest);
+            CHECK(card.servingSealingKeyDer == serverSealing.publicDer());
+            respondJson(response, {{"quotaBytes", 10 * 1024 * 1024}});
         }));
 
     server.get("/v1/messaging/destination",
@@ -180,10 +156,13 @@ int main()
                 const CardFetchQuery query
                     = cardFetchQueryFromJson(nlohmann::json::parse(queryBytes));
                 CHECK(query.fingerprint == bob.fingerprint());
+                // The asker brings back the key from the descriptor; without it
+                // no card is served.
+                CHECK(query.keyDer == serverSealing.publicDer());
                 const Key bobSealing = Key::generateSealing();
-                const Bytes subCert = SubscriptionCertificate::issue(bob, serverFp, now, now + 3600,
-                    bobSealing.publicDer(), bobDest, serverSealing.publicDer());
-                const std::string respJson = toJson(CardFetchResponse{subCert}).dump();
+                const Bytes bobCard = ContactCard::issue(
+                    bob, bobDest, bobSealing.publicDer(), serverSealing.publicDer());
+                const std::string respJson = toJson(CardFetchResponse{bobCard}).dump();
                 const Bytes sealedResp = cms::seal(Bytes(respJson.begin(), respJson.end()),
                     Key::fromPublicDer(query.responseKeyDer));
                 respondJson(response, {{"ok", true}, {"sealed", toBase64(sealedResp)}});
@@ -295,45 +274,27 @@ int main()
               return client.relayFetch(toDest, op, sealed);
           };
 
-    // Subscribe (publishing a sealing prekey) returns the granted lifecycle
-    // and a verifiable server card.
+    // Publishing a card returns what the account holds and the routing the
+    // messaging server assigned.
     {
         const Key aliceSealing = Key::generateSealing();
-        const SubscribeResult result
-            = client.subscribe(now, now + 7 * 24 * 3600, aliceSealing.publicDer());
-        CHECK(result.notAfter == now + 7 * 24 * 3600);
+        const PublishResult result = client.publishCard(aliceSealing.publicDer());
         CHECK(result.quotaBytes == 10u * 1024 * 1024);
         CHECK(result.dest == aliceDest);
         CHECK(result.servingSealingKeyDer == serverSealing.publicDer());
-    }
-
-    // Contact lookup by fingerprint returns the verified certificate carrying
-    // the prekey and the routing (dest + serving sealing key).
-    {
-        const ContactInfo looked = client.lookupContact(bob.fingerprint());
-        CHECK(looked.subscriptionCert.user == bob.fingerprint());
-        CHECK(looked.subscriptionCert.server == serverFp);
-        CHECK(!looked.subscriptionCert.sealingPublicKeyDer.empty());
-        CHECK(looked.subscriptionCert.dest == bobDest);
-        CHECK(looked.subscriptionCert.servingSealingKey().publicDer() == serverSealing.publicDer());
+        CHECK(!result.cardDer.empty());
     }
 
     // First-contact card fetch from a descriptor (via the own-server proxy): the
-    // query fingerprint is sealed to the serving key, the verified card comes
-    // back and must be for the descriptor's fingerprint.
+    // query carries the descriptor's key, the verified card comes back and must
+    // be for the descriptor's fingerprint - and names no server.
     {
         const Descriptor descriptor{bob.fingerprint(), bobDest, serverSealing.publicDer()};
         const ContactInfo info = client.fetchCard(descriptor, proxy);
-        CHECK(info.subscriptionCert.user == bob.fingerprint());
-        CHECK(info.subscriptionCert.dest == bobDest);
-        CHECK(info.subscriptionCert.servingSealingKey().publicDer() == serverSealing.publicDer());
-    }
-
-    // Subscription status.
-    {
-        const Subscription status = client.subscriptionStatus();
-        CHECK(status.notAfter == now + 3600);
-        CHECK(status.quotaBytes == 42u);
+        CHECK(info.card.user == bob.fingerprint());
+        CHECK(info.card.dest == bobDest);
+        CHECK(info.card.servingSealingKey().publicDer() == serverSealing.publicDer());
+        CHECK(!info.card.sealingPublicKeyDer.empty());
     }
 
     // Central alias resolve: the signed, self-verifying record maps the alias to a
@@ -351,8 +312,8 @@ int main()
     {
         const Descriptor descriptor = client.resolveAlias("bob", resolver, now, proxy);
         CHECK(descriptor.fingerprint == bob.fingerprint());
-        CHECK(descriptor.srv == bobDest);
-        CHECK(descriptor.srvKeyDer == serverSealing.publicDer());
+        CHECK(descriptor.dest == bobDest);
+        CHECK(descriptor.keyDer == serverSealing.publicDer());
 
         // An unknown alias surfaces as a thrown ALIAS_UNKNOWN.
         CHECK(rejects([&]() { (void)client.resolveAlias("ghost", resolver, now, proxy); }));

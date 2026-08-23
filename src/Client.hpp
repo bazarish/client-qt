@@ -57,31 +57,22 @@ struct StorageUsage {
     std::uint64_t mailboxQuotaBytes = 0;
 };
 
-// Server reply to subscribe/renew: the granted lifecycle plus the serving
-// destination + serving sealing key the certificate now carries.
-struct SubscribeResult {
-    std::int64_t notAfter = 0;
+// Server reply to publishing our card: what the account holds, plus the serving
+// destination and serving sealing key the card now carries.
+struct PublishResult {
     std::uint64_t quotaBytes = 0;
-    std::int64_t maxTermSeconds = 0;
     // The user's assigned serving destination and its serving sealing key.
     std::string dest;
     Bytes servingSealingKeyDer;
-    // The subscription certificate we issued (DER): our self-signed contact
-    // card (prekey + dest + serving sealing key), persisted so we can hand a
-    // contact the full self-verifying card.
-    Bytes subscriptionCertDer;
+    // The card we signed (DER), persisted so we can hand a contact the full
+    // self-verifying card and recover our own routing after a restart.
+    Bytes cardDer;
 };
 
-// A contact looked up by fingerprint: the user's subscription certificate,
-// which carries the sealing prekey plus the routing (dest + serving sealing
-// key). Verified before being returned.
+// A contact's card: the sealing prekey plus the routing (dest + serving sealing
+// key), signed by them. Verified before being returned.
 struct ContactInfo {
-    SubscriptionCertificate subscriptionCert;
-};
-
-struct Subscription {
-    std::int64_t notAfter = 0;
-    std::uint64_t quotaBytes = 0;
+    ContactCard card;
 };
 
 struct PendingEntry {
@@ -178,17 +169,19 @@ public:
 
     // --- Account (service node) ---
 
-    // sealingPrekeyDer, when non-empty, is published in the subscription
-    // certificate so contacts can E2E-encrypt their first message. ownDest is
-    // this profile's own destination host: the certificate carries it while the
-    // server has not published the destination yet (tunnels take minutes), since
-    // the address is the user's master b32 either way.
-    SubscribeResult subscribe(std::int64_t issuedAt, std::int64_t notAfter,
-        const Bytes& sealingPrekeyDer = {}, const std::string& ownDest = {});
-    SubscribeResult renew(std::int64_t issuedAt, std::int64_t notAfter,
-        const Bytes& sealingPrekeyDer = {}, const std::string& ownDest = {});
-    Subscription subscriptionStatus();
-    void unsubscribe();
+    // Publishes our contact card, which is also what turns a portal
+    // registration into an account: the first call redeems it. Called again
+    // whenever the routing changes - there is no term to renew.
+    //
+    // sealingPrekeyDer, when non-empty, is published in the card so contacts can
+    // E2E-encrypt their first message. ownDest is this profile's own destination
+    // host: the card carries it while the server has not published the
+    // destination yet (tunnels take minutes), since the address is the user's
+    // master b32 either way.
+    PublishResult publishCard(const Bytes& sealingPrekeyDer = {}, const std::string& ownDest = {});
+    // Ends the account: the destination is revoked and everything the node holds
+    // for it is dropped. Coming back means registering again.
+    void closeAccount();
     // Onboarding discovery (GET /v1/account/portal): the server's message and
     // registration link(s), shown when subscribing is refused because the key is
     // not registered yet. Unauthenticated on the server; safe to call any time.
@@ -205,9 +198,6 @@ public:
     // half is fetched independently; a backend that does not answer leaves its half
     // at zero with ok=false. Never throws - it is a best-effort status poll.
     StorageUsage storageUsage();
-    // Looks up a user by fingerprint: their subscription certificate (sealing
-    // prekey + routing). Verified.
-    ContactInfo lookupContact(const std::string& peerFingerprint);
     // Own-server proxy relay (POST /v1/messaging/fetch): moves a sealed fetch
     // frame over I2P to toDest and returns the sealed reply opaquely. The
     // fallback FetchTransport for clients with no I2P transport of their own.
@@ -267,9 +257,6 @@ public:
     SendStatus pollSend(const std::string& attemptId);
 
 private:
-    SubscribeResult submitSubscription(const std::string& path, std::int64_t issuedAt,
-        std::int64_t notAfter, const Bytes& sealingPrekeyDer, const std::string& ownDest);
-
     const Identity identity_;
     ApiClient api_;
 };

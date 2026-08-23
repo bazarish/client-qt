@@ -33,7 +33,7 @@ namespace bazarish::app {
 // resolve is still in flight at teardown. Defined in the .cpp.
 struct ResolvedContactAddQueue;
 
-// Runs all blocking Session work (open, subscribe, send with retries, sync) on
+// Runs all blocking Session work (open, register, send with retries, sync) on
 // a dedicated thread so the UI never freezes. Lives on that worker thread;
 // commands arrive via queued calls and results leave via queued signals.
 class SessionWorker : public QObject {
@@ -43,7 +43,7 @@ public:
 
 public slots:
     void openProfile(const QString& dir, const QString& passphrase);
-    void connectAndSubscribe(const QStringList& facadeUrls, const QString& serverFp, int days);
+    void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp);
     void sync();
     // Starts or stops background syncing (the account going online/offline).
     void setSyncEnabled(bool on);
@@ -130,13 +130,13 @@ signals:
     // What the opened profile has stored for the settings the window shows.
     void profileSettings(bool acceptCalls, bool allowClearnet);
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
-        const QString& subscriptionText);
+        const QString& connectionNote);
     // The account's own display name was changed (so the GUI updates it without a
     // full re-open).
     void renamed(const QString& newName);
     void openFailed(const QString& error);
-    void connectionChanged(bool connected, const QString& subscriptionText);
-    // Coarse progress while connectAndSubscribe runs: it is several network round
+    void connectionChanged(bool connected, const QString& connectionNote);
+    // Coarse progress while connectAndRegister runs: it is several network round
     // trips and, over I2P, minutes - the connect screen must see it move.
     void connectProgress(int percent, const QString& phase);
     void messageReceived(const QVariantMap& message);
@@ -226,7 +226,7 @@ signals:
     // The user's storage usage (mailbox + blob), each with an `ok` flag (a backend
     // that did not answer keeps its last figures and is marked stale by the UI).
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
-    // The serving server's onboarding info, shown when a connect/subscribe is
+    // The serving server's onboarding info, shown when a connect is
     // refused because this key is not registered: the refusal reason, the
     // server's message and its registration link(s).
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
@@ -298,7 +298,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString fingerprint READ fingerprint NOTIFY identityChanged)
     Q_PROPERTY(QString displayName READ displayName NOTIFY identityChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
-    Q_PROPERTY(QString subscriptionText READ subscriptionText NOTIFY connectedChanged)
+    Q_PROPERTY(QString connectionNote READ connectionNote NOTIFY connectedChanged)
     // online: this account is syncing in the background (receiving). reachable:
     // the last sync actually reached the facade. Together they give the live
     // connection status shown in the account list.
@@ -444,7 +444,7 @@ public:
     QString fingerprint() const { return fingerprint_; }
     QString displayName() const { return displayName_; }
     bool connected() const { return connected_; }
-    QString subscriptionText() const { return subscriptionText_; }
+    QString connectionNote() const { return connectionNote_; }
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
     QString syncError() const { return syncError_; }
@@ -797,7 +797,7 @@ signals:
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
 signals:  // to worker
-    void requestConnect(const QStringList& facadeUrls, const QString& serverFp, int days);
+    void requestConnect(const QStringList& facadeUrls, const QString& serverFp);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& protocolId, const QString& replyTo);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
@@ -852,8 +852,8 @@ signals:  // to worker
 
 private slots:
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected,
-        const QString& subscriptionText);
-    void onConnectionChanged(bool connected, const QString& subscriptionText);
+        const QString& connectionNote);
+    void onConnectionChanged(bool connected, const QString& connectionNote);
     void onMessageReceived(const QVariantMap& message);
     // Connected to messageReceived AFTER onMessageReceived, so it runs once that has
     // durably stored/handled the item: acks the pending mailbox item (deferred ack),
@@ -933,7 +933,7 @@ private:
     bool i2pBusy_ = false;
     bool awaitingApproval_ = false;
     QString approvalNote_;
-    QString subscriptionText_;
+    QString connectionNote_;
     QString activePeer_;
     QString activeFacade_;
     bool avatarBusy_ = false;

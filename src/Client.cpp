@@ -98,61 +98,31 @@ void Client::setSessionSealingKey(Bytes servingSealingKeyDer)
     api_.setSessionSealingKey(std::move(servingSealingKeyDer));
 }
 
-SubscribeResult Client::submitSubscription(const std::string& path,
-    const std::int64_t issuedAt, const std::int64_t notAfter, const Bytes& sealingPrekeyDer,
-    const std::string& ownDest)
+PublishResult Client::publishCard(const Bytes& sealingPrekeyDer, const std::string& ownDest)
 {
     // Ask the messaging server which destination + serving sealing key it has
-    // assigned us, then fold them into the user-signed certificate (our contact
-    // card) alongside the sealing prekey. The server fingerprint is kept as the
-    // lifecycle anchor the service node checks, but routing is by destination.
+    // assigned us, then sign both into the card alongside the sealing prekey.
     // While the destination is still building the server reports no address yet,
     // so the card carries ours: the destination is ours, and its address is the
     // master b32 we already hold.
     const DestinationInfo destination = myDestination();
     const std::string dest = destination.dest.empty() ? ownDest : destination.dest;
-    const Bytes cert
-        = SubscriptionCertificate::issue(identity_, api_.endpoint().serverFingerprint, issuedAt,
-            notAfter, sealingPrekeyDer, dest, destination.servingSealingKeyDer);
-    const ApiResponse response = api_.postJson(path, {{"cert", toBase64(cert)}});
+    const Bytes card
+        = ContactCard::issue(identity_, dest, sealingPrekeyDer, destination.servingSealingKeyDer);
+    const ApiResponse response = api_.postJson("/v1/account/card", {{"card", toBase64(card)}});
     const nlohmann::json body = response.json();
 
-    SubscribeResult result;
-    result.subscriptionCertDer = cert;
-    result.notAfter = body.at("notAfter").get<std::int64_t>();
+    PublishResult result;
+    result.cardDer = card;
     result.quotaBytes = body.at("quotaBytes").get<std::uint64_t>();
-    result.maxTermSeconds = body.at("maxTermSeconds").get<std::int64_t>();
     result.dest = dest;
     result.servingSealingKeyDer = destination.servingSealingKeyDer;
     return result;
 }
 
-SubscribeResult Client::subscribe(const std::int64_t issuedAt, const std::int64_t notAfter,
-    const Bytes& sealingPrekeyDer, const std::string& ownDest)
+void Client::closeAccount()
 {
-    return submitSubscription(
-        "/v1/account/subscribe", issuedAt, notAfter, sealingPrekeyDer, ownDest);
-}
-
-SubscribeResult Client::renew(const std::int64_t issuedAt, const std::int64_t notAfter,
-    const Bytes& sealingPrekeyDer, const std::string& ownDest)
-{
-    return submitSubscription("/v1/account/renew", issuedAt, notAfter, sealingPrekeyDer, ownDest);
-}
-
-Subscription Client::subscriptionStatus()
-{
-    const ApiResponse response = api_.get("/v1/account/subscription");
-    const nlohmann::json body = response.json();
-    Subscription result;
-    result.notAfter = body.at("notAfter").get<std::int64_t>();
-    result.quotaBytes = body.at("quotaBytes").get<std::uint64_t>();
-    return result;
-}
-
-void Client::unsubscribe()
-{
-    api_.del("/v1/account/subscription");
+    api_.del("/v1/account/registration");
 }
 
 PortalInfo Client::fetchPortalInfo()
@@ -210,16 +180,6 @@ StorageUsage Client::storageUsage()
     return usage;
 }
 
-ContactInfo Client::lookupContact(const std::string& peerFingerprint)
-{
-    const ApiResponse response
-        = api_.getPublic("/v1/account/contact", "user=" + peerFingerprint);
-    const nlohmann::json body = response.json();
-    ContactInfo info;
-    info.subscriptionCert = SubscriptionCertificate::verify(
-        fromBase64(body.at("subscriptionCert").get<std::string>()));
-    return info;
-}
 
 FetchOutcome Client::relayFetch(
     const std::string& toDest, const std::string& op, const Bytes& sealed)
@@ -243,32 +203,34 @@ FetchOutcome Client::relayFetch(
 
 ContactInfo Client::fetchCard(const Descriptor& descriptor, const FetchTransport& transport)
 {
-    // Seal the query (which fingerprint) to the serving server's serving sealing
-    // key so a relay cannot read it; the response comes back sealed to a fresh
-    // ephemeral key only we hold.
+    // Seal the query to the destination's serving key so a relay cannot read it;
+    // the response comes back sealed to a fresh ephemeral key only we hold. The
+    // key from the descriptor goes with the query: it is what shows we were
+    // given this descriptor, and a server answers nothing without it.
     const Key ephemeral = Key::generateSealing();
-    const CardFetchQuery query{descriptor.fingerprint, ephemeral.publicDer()};
+    const CardFetchQuery query{descriptor.fingerprint, descriptor.keyDer, ephemeral.publicDer()};
     const std::string queryJson = toJson(query).dump();
     const Bytes sealedQuery = cms::seal(
-        Bytes(queryJson.begin(), queryJson.end()), Key::fromPublicDer(descriptor.srvKeyDer));
+        Bytes(queryJson.begin(), queryJson.end()), Key::fromPublicDer(descriptor.keyDer));
 
-    const FetchOutcome outcome = transport(descriptor.srv, "card", sealedQuery);
+    const FetchOutcome outcome = transport(descriptor.dest, "card", sealedQuery);
     if (!outcome.ok) {
-        throw std::runtime_error("card fetch failed: "
-            + (outcome.errorCode.empty() ? std::string("CARD_UNKNOWN") : outcome.errorCode));
+        // The one answer for "no such user here" and "that is not the key I
+        // issued": from where the asker stands, both mean the same thing.
+        throw std::runtime_error("that invite is out of date - ask for a new one");
     }
     const Bytes responseBytes = cms::unseal(outcome.sealed, ephemeral);
     const CardFetchResponse fetched
         = cardFetchResponseFromJson(nlohmann::json::parse(responseBytes));
 
     ContactInfo info;
-    info.subscriptionCert = SubscriptionCertificate::verify(fetched.subscriptionCertDer);
+    info.card = ContactCard::verify(fetched.cardDer);
     // The fingerprint is the trust anchor: the card is user-signed, so a wrong
     // server can only withhold, never forge a card for someone else's fingerprint.
-    if (info.subscriptionCert.user != descriptor.fingerprint) {
+    if (info.card.user != descriptor.fingerprint) {
         throw std::runtime_error("fetched card is for a different fingerprint");
     }
-    validateB32I2pHost(info.subscriptionCert.dest);
+    validateB32I2pHost(info.card.dest);
     return info;
 }
 

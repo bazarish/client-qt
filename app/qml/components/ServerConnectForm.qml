@@ -9,8 +9,8 @@ import Bazarish
 // link (parsed into the fields) or manual entry: an ordered facade list (tried
 // with failover) and the server fingerprint. The action calls connectServer on
 // the session, which binds the endpoint and registers this client; the user
-// subscribes separately on the server's own portal (there is no automatic
-// subscribe here). Re-running it after a portal registration finishes setup.
+// registers separately on the server's own portal (there is no automatic
+// registration here). Re-running it after a portal registration finishes setup.
 ColumnLayout {
     id: form
     property var session: null

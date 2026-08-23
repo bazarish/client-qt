@@ -6,6 +6,7 @@
 #include <bazarish/Certificates.hpp>
 #include <bazarish/Cms.hpp>
 #include <bazarish/Crypto.hpp>
+#include <bazarish/Resolve.hpp>
 #include <bazarish/Tokens.hpp>
 
 #include <bazarish/HttpServer.hpp>
@@ -139,29 +140,24 @@ int main()
                 {{"dest", m.destFor[caller]}, {"servingKey", toBase64(m.serverSealing.publicDer())}});
         }));
 
-    const auto handleSubscribe
+    const auto handlePublishCard
         = [&](const http::Request& request, http::Response& response) {
               const std::string caller = requireCaller(request);
-              const std::string certB64
-                  = nlohmann::json::parse(request.body).at("cert").get<std::string>();
-              // Faithful: verify the client's self-signed cert and keep it verbatim to
-              // hand back on a contact lookup (the routing + prekey a peer needs).
-              const SubscriptionCertificate cert = SubscriptionCertificate::verify(fromBase64(certB64));
-              CHECK(cert.user == caller);
-              CHECK(cert.server == m.serverFp);
+              const std::string cardB64
+                  = nlohmann::json::parse(request.body).at("card").get<std::string>();
+              // Faithful: verify the user-signed card and keep it verbatim to hand
+              // back on a card fetch (the routing + prekey a peer needs).
+              const ContactCard card = ContactCard::verify(fromBase64(cardB64));
+              CHECK(card.user == caller);
               {
                   std::lock_guard<std::mutex> lock(m.mu);
-                  m.certFor[caller] = certB64;
+                  m.certFor[caller] = cardB64;
               }
-              respondJson(response,
-                  {{"notAfter", nowSeconds() + 365 * 24 * 3600},
-                      {"quotaBytes", 100u * 1024 * 1024},
-                      {"maxTermSeconds", 365 * 24 * 3600}});
+              respondJson(response, {{"quotaBytes", 100u * 1024 * 1024}});
           };
-    server.post("/v1/account/subscribe", stub(handleSubscribe));
-    server.post("/v1/account/renew", stub(handleSubscribe));
+    server.post("/v1/account/card", stub(handlePublishCard));
 
-    // Subscribing delegates this profile's offline transient before republishing
+    // Registering delegates this profile's offline transient before republishing
     // the card with its routing, so the account API must take one.
     server.post("/v1/account/i2p-dest",
         stub([&](const http::Request& request, http::Response& response) {
@@ -176,11 +172,25 @@ int main()
             respondJson(response, {{"ok", true}});
         }));
 
-    server.get("/v1/account/contact",
+    // The card is answered only to a caller that brings back the key from the
+    // descriptor, exactly as the node does.
+    server.get("/v1/account/card",
         stub([&](const http::Request& request, http::Response& response) {
             const std::string user = request.query("user");
             std::lock_guard<std::mutex> lock(m.mu);
-            respondJson(response, {{"user", user}, {"subscriptionCert", m.certFor[user]}});
+            const auto found = m.certFor.find(user);
+            if (found == m.certFor.end()) {
+                response.status = 404;
+                respondJson(response, {{"error", "unknown"}});
+                return;
+            }
+            const ContactCard card = ContactCard::verify(fromBase64(found->second));
+            if (toBase64Url(card.servingSealingKeyDer) != request.query("key")) {
+                response.status = 404;
+                respondJson(response, {{"error", "unknown"}});
+                return;
+            }
+            respondJson(response, {{"user", user}, {"card", found->second}});
         }));
 
     server.post("/v1/messaging/tokens",
@@ -197,6 +207,31 @@ int main()
                 m.singletons[caller].insert(hashes.at(0).get<std::string>());
             }
             respondJson(response, {{"ok", true}});
+        }));
+
+    // The own-server relay a card fetch rides on: it carries the sealed query to
+    // the destination and brings the sealed answer back. The stand-in server
+    // operates every destination here, so it answers on the spot - and only when
+    // the query brings back the key from the descriptor.
+    server.post("/v1/messaging/fetch",
+        stub([&](const http::Request& request, http::Response& response) {
+            (void)requireCaller(request);
+            const nlohmann::json body = nlohmann::json::parse(request.body);
+            CHECK(body.at("op") == "card");
+            const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
+            const CardFetchQuery query
+                = cardFetchQueryFromJson(nlohmann::json::parse(cms::unseal(sealed, m.serverSealing)));
+            std::lock_guard<std::mutex> lock(m.mu);
+            const auto found = m.certFor.find(query.fingerprint);
+            if (found == m.certFor.end() || query.keyDer != m.serverSealing.publicDer()) {
+                respondJson(response, {{"ok", false}, {"errorCode", "CARD_UNKNOWN"}});
+                return;
+            }
+            const std::string answer
+                = toJson(CardFetchResponse{fromBase64(found->second)}).dump();
+            const Bytes sealedAnswer = cms::seal(
+                Bytes(answer.begin(), answer.end()), Key::fromPublicDer(query.responseKeyDer));
+            respondJson(response, {{"ok", true}, {"sealed", toBase64(sealedAnswer)}});
         }));
 
     server.post("/v1/messaging/send",
@@ -296,12 +331,14 @@ int main()
         m.watchMailbox = alice.fingerprint();
     }
 
-    alice.subscribe(30);
-    bob.subscribe(30);
+    alice.registerAccount();
+    bob.registerAccount();
 
-    // Establish the contact both ways: Alice requests, Bob accepts. Now Alice holds a
-    // batch of Bob's tokens and Bob holds a batch of Alice's.
-    alice.sendContactRequest(bob.fingerprint(), "hi bob");
+    // Establish the contact both ways: Alice adds Bob from his invite (the only
+    // way in - a bare fingerprint would need a server to say who it hosts), Bob
+    // accepts. Now Alice holds a batch of Bob's tokens and Bob holds a batch of
+    // Alice's.
+    alice.addByInvite(bob.inviteUri(), "hi bob");
     bob.sync();
     bob.acceptContactRequest(alice.fingerprint());
     alice.sync();

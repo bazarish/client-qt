@@ -106,7 +106,7 @@ int main()
         http::Response response;
         response.status = 404;
         response.body
-            = makeErrorEnvelope(ErrorCode::eSubscriptionExpired, "no active subscription").dump();
+            = makeErrorEnvelope(ErrorCode::eClientUnregistered, "no account").dump();
         return response;
     });
 
@@ -167,7 +167,7 @@ int main()
             threw = true;
             CHECK(error.httpStatus == 404);
             CHECK(error.code.has_value());
-            CHECK(error.code.value() == ErrorCode::eSubscriptionExpired);
+            CHECK(error.code.value() == ErrorCode::eClientUnregistered);
         }
         CHECK(threw);
     }
