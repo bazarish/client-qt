@@ -175,6 +175,18 @@ int main()
             respondJson(response, {{"ok", true}});
         }));
 
+    // Device self-sync: one device writing into its own account's mailbox. No
+    // token, no destination - the signature on the request is the whole check.
+    server.post("/v1/messaging/self",
+        stub([&](const http::Request& request, http::Response& response) {
+            const std::string caller = requireCaller(request);
+            const nlohmann::json body = nlohmann::json::parse(request.body);
+            std::lock_guard<std::mutex> lock(m.mu);
+            m.mailbox[caller].push_back({body.at("messageId").get<std::string>(), "device",
+                fromBase64(body.at("payload").get<std::string>())});
+            respondJson(response, {{"ok", true}});
+        }));
+
     server.post("/v1/messaging/clients",
         stub([&](const http::Request& request, http::Response& response) {
             (void)requireCaller(request);

@@ -383,6 +383,12 @@ void Client::ack(const std::string& blobId)
     api_.postJson("/v1/messaging/ack", {{"blobId", blobId}});
 }
 
+void Client::submitSelf(const std::string& messageId, const Bytes& payload)
+{
+    api_.postJson("/v1/messaging/self",
+        {{"messageId", messageId}, {"payload", toBase64(payload)}});
+}
+
 std::string Client::submitSend(
     const std::string& toDest, const Bytes& sealed, const Bytes& payload, const std::string& messageId)
 {

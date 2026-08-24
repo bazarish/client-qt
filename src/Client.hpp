@@ -255,6 +255,13 @@ public:
     // messageId is the delivery id (also sealed inside the envelope): sent in the
     // clear so our own server can correlate the recipient's signed delivered-ack
     // back to this attempt (the amber state).
+    // Writes a blob into this account's own mailbox for its other devices. The
+    // request's signature is the whole admission check: the caller owns the
+    // mailbox, so there is no token to spend, no destination to dial and nothing
+    // to federate - and it stays out of the tokenless budget, which is there to
+    // bound strangers.
+    void submitSelf(const std::string& messageId, const Bytes& payload);
+
     std::string submitSend(const std::string& toDest, const Bytes& sealed, const Bytes& payload,
         const std::string& messageId = {});
     SendStatus pollSend(const std::string& attemptId);

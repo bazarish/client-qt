@@ -826,11 +826,10 @@ void Session::syncI2pMasterToSelf()
     // Sealed to our own sealing key: only this account's devices, which share
     // the key, can read it.
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(innerBytes, ownSealing);
-    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
-    // Tokenless contact-class delivery to our own destination: it lands in our
-    // own mailbox, which every device of this account polls.
-    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+    // Straight into our own mailbox on our own server, which every device of
+    // this account polls: the request's signature is the admission check, so
+    // there is no destination to dial and no token to spend.
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
 }
 
 void Session::storeOwnAvatar(const Bytes& data, const std::string& mime)
@@ -885,9 +884,7 @@ void Session::syncAvatarToSelf()
     const Bytes innerBytes = encodedBody(inner);
     // Sealed to our own sealing key: only this account's devices can read it.
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(innerBytes, ownSealing);
-    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
-    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
 }
 
 void Session::syncContactNameToSelf(const std::string& peerFingerprint, const std::string& name)
@@ -906,9 +903,7 @@ void Session::syncContactNameToSelf(const std::string& peerFingerprint, const st
     };
     const Bytes innerBytes = encodedBody(inner);
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(innerBytes, ownSealing);
-    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
-    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
 }
 
 void Session::syncChatPinToSelf(const std::string& peerFingerprint, bool pinned)
@@ -929,9 +924,7 @@ void Session::syncChatPinToSelf(const std::string& peerFingerprint, bool pinned)
     };
     const Bytes innerBytes = encodedBody(inner);
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(innerBytes, ownSealing);
-    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
-    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
 }
 
 void Session::maybeSendAvatarToContact(const std::string& peerFingerprint, const bool removal)
@@ -2690,9 +2683,7 @@ void Session::echoSentToSelf(const std::string& peerFingerprint, const nlohmann:
     };
     const Bytes innerBytes = encodedBody(echo);
     const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
-    const Bytes payload = cms::seal(innerBytes, ownSealing);
-    const Key ownServingKey = Key::fromPublicDer(fromBase64(myServingKeyB64_));
-    deliver(myDest_, ownServingKey, "contact", fingerprint(), std::nullopt, payload);
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
 }
 
 void Session::sendTokenRequest(const std::string& peerFingerprint)
