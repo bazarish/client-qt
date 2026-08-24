@@ -16,6 +16,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QUrl>
 
 #include <array>
 #include <utility>
@@ -118,7 +119,9 @@ int main(int argc, char** argv)
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 
-    engine.loadFromModule("Bazarish", "Main");
+    // The module's own resource path rather than loadFromModule, which arrived in
+    // Qt 6.5: this is what that call resolves to, and it builds on 6.4 as well.
+    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Bazarish/app/qml/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
         return -1;
     }

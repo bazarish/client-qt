@@ -700,12 +700,15 @@ void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
         return;
     }
     Query query(db_);
-    // Upsert, but never lower the high-water (a re-read of older history must not
-    // resurrect newer messages as unread).
-    query.prepare("INSERT INTO read_state (peer, last_read_id) VALUES (?, ?)"
-                  " ON CONFLICT(peer) DO UPDATE SET last_read_id = max(last_read_id, excluded.last_read_id)");
+    // Never lower the high-water (a re-read of older history must not resurrect
+    // newer messages as unread). Written without UPSERT, which arrived in SQLite
+    // 3.24 and is not in the SQLCipher some distributions ship: the row is
+    // replaced with whichever mark is further along.
+    query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
+                  " max(?, coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0)))");
     query.addBindValue(peer);
     query.addBindValue(id);
+    query.addBindValue(peer);
     if (query.exec() && query.numRowsAffected() > 0) {
     }
 }
@@ -800,8 +803,11 @@ void TranscriptStore::setReaction(
         query.addBindValue(target);
         query.addBindValue(reactor);
     } else {
-        query.prepare("INSERT INTO reactions (peer, target, reactor, emoji) VALUES (?, ?, ?, ?)"
-                      " ON CONFLICT(peer, target, reactor) DO UPDATE SET emoji = excluded.emoji");
+        // The key is (peer, target, reactor) and emoji is the whole value, so
+        // replacing the row is the same as updating it - and works on the older
+        // SQLite that has no UPSERT.
+        query.prepare("INSERT OR REPLACE INTO reactions (peer, target, reactor, emoji)"
+                      " VALUES (?, ?, ?, ?)");
         query.addBindValue(peer);
         query.addBindValue(target);
         query.addBindValue(reactor);

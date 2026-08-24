@@ -124,8 +124,10 @@ void AccountDb::put(const std::string& name, const Bytes& value)
 {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(db_,
-            "INSERT INTO state (name, value) VALUES (?, ?)"
-            " ON CONFLICT(name) DO UPDATE SET value = excluded.value",
+            // Not an UPSERT: it arrived in SQLite 3.24, and the SQLCipher some
+            // distributions ship is older. The table is a key and its value, so
+            // replacing the row says exactly the same thing.
+            "INSERT OR REPLACE INTO state (name, value) VALUES (?, ?)",
             -1, &statement, nullptr)
         != SQLITE_OK) {
         throw std::runtime_error(std::string("account database: ") + sqlite3_errmsg(db_));

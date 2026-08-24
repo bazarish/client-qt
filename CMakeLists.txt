@@ -33,10 +33,13 @@ find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 # libi2pd), so the previously-vendored trimmed libi2pd "keys" lib and the i2pd
 # submodule are gone. OpenSSL is still needed for the crypto and for the TLS
 # client common's HTTP engine uses on a clearnet facade.
-# 3.2 is where Argon2id arrived, and a account key is Argon2id: an older OpenSSL
-# builds a client that cannot create a account, so it is refused here rather than
-# at the first passphrase.
-find_package(OpenSSL 3.2 REQUIRED)
+# 3.5 is where ML-DSA and ML-KEM arrived (every signature and sealed envelope is
+# hybrid) and 3.2 is where Argon2id did (an account key is Argon2id): an older
+# OpenSSL builds a client that can neither create an account nor speak the
+# protocol, so it is refused here rather than at the first passphrase.
+# Distributions that ship an older one (Debian 12 has 3.0) need one built
+# alongside: -DOPENSSL_ROOT_DIR=/path/to/openssl-3.5.
+find_package(OpenSSL 3.5 REQUIRED)
 
 # Sanitizer build (address / undefined), for chasing a crash rather than for
 # shipping: BAZARISH_SANITIZE=address. It also drops -Werror, because under a
