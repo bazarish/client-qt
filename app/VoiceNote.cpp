@@ -12,6 +12,7 @@
 #include <QAudioDevice>
 #include <QMediaDevices>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
@@ -23,6 +24,9 @@ namespace {
 // One frame of the call format is 20 ms; a recorder that reads slower than that
 // falls behind, so it sleeps only when the source has nothing yet.
 constexpr int kIdleSleepMs = 5;
+
+// Sample counts are per second; positions are reported in milliseconds.
+constexpr int kMillisecondsPerSecond = 1000;
 
 // Full scale of a signed-16 sample: the reference the input level is measured
 // against.
@@ -148,7 +152,7 @@ qint64 VoiceNote::elapsedMs() const
     return recording_.load() ? QDateTime::currentMSecsSinceEpoch() - startedAtMs_ : 0;
 }
 
-void VoiceNote::play(const Bytes& opus, const double speed)
+void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
 {
     stop();
     const std::vector<Bytes> frames = unpackOpusFrames(opus);
@@ -158,7 +162,8 @@ void VoiceNote::play(const Bytes& opus, const double speed)
     sink_ = std::make_unique<QtAudioSink>();
     sink_->start();
     playing_.store(true);
-    playbackThread_ = std::thread([this, frames, speed]() {
+    playedMs_.store(std::max<qint64>(0, fromMs));
+    playbackThread_ = std::thread([this, frames, speed, fromMs]() {
         // Decoded whole first: the stretcher needs to look ahead of what it is
         // playing, and a voice message is short enough to hold at once.
         std::vector<std::int16_t> pcm;
@@ -173,8 +178,18 @@ void VoiceNote::play(const Bytes& opus, const double speed)
                 break;
             }
         }
+        // Playing from somewhere other than the start is dropping what came
+        // before it: the stretcher works forward through what it is given.
+        const std::size_t from = static_cast<std::size_t>(
+            std::max<qint64>(0, fromMs) * kCallSampleRate / kMillisecondsPerSecond);
+        if (from >= pcm.size()) {
+            pcm.clear();
+        } else if (from > 0) {
+            pcm.erase(pcm.begin(), pcm.begin() + static_cast<std::ptrdiff_t>(from));
+        }
         TimeStretch stretch(std::move(pcm), speed);
         std::vector<std::int16_t> out(static_cast<std::size_t>(kCallSamplesPerFrame));
+        std::size_t playedSamples = 0;
         while (playing_.load()) {
             const std::size_t produced = stretch.read(out.data(), out.size());
             if (produced == 0) {
@@ -183,6 +198,12 @@ void VoiceNote::play(const Bytes& opus, const double speed)
             out.resize(produced);
             sink_->writeFrame(out);
             out.resize(static_cast<std::size_t>(kCallSamplesPerFrame));
+            // Reported in recording time: a message played at 2x still says where
+            // in itself it has got to.
+            playedSamples += produced;
+            playedMs_.store(std::max<qint64>(0, fromMs)
+                + static_cast<qint64>(static_cast<double>(playedSamples) * speed
+                    * kMillisecondsPerSecond / kCallSampleRate));
             std::this_thread::sleep_for(std::chrono::milliseconds(kCallFrameMs));
         }
         playing_.store(false);

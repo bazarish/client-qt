@@ -3195,6 +3195,13 @@ VoiceNote* SessionController::voiceNote()
         connect(voice_.get(), &VoiceNote::playbackFinished, this, [this]() {
             voicePlaying_.clear();
             voiceTakePlaying_ = false;
+            playbackTimer_.stop();
+            voicePositionMs_ = 0;
+            emit voiceChanged();
+        });
+        playbackTimer_.setInterval(kVoiceTickMs);
+        connect(&playbackTimer_, &QTimer::timeout, this, [this]() {
+            voicePositionMs_ = voice_->playbackPositionMs();
             emit voiceChanged();
         });
         voiceTimer_.setInterval(kVoiceTickMs);
@@ -3278,6 +3285,7 @@ void SessionController::playVoiceTake()
     emit voiceChanged();
     try {
         voiceNote()->play(Bytes(voiceTake_.begin(), voiceTake_.end()));
+        playbackTimer_.start();
     } catch (const std::exception& error) {
         voiceError_ = QString::fromUtf8(error.what());
         voiceTakePlaying_ = false;
@@ -3290,6 +3298,7 @@ void SessionController::stopVoiceTake()
     if (voice_) {
         voice_->stop();
     }
+    playbackTimer_.stop();
     voiceTakePlaying_ = false;
     emit voiceChanged();
 }
@@ -3369,15 +3378,19 @@ void SessionController::cycleVoiceSpeed()
     }
 }
 
-void SessionController::playVoice(const QString& messageId)
+void SessionController::playVoice(const QString& messageId, const qint64 fromMs)
 {
-    if (voicePlaying_ == messageId) {
+    // The play button on the message that is playing stops it; a tap on its
+    // waveform moves playback instead, which is why the position decides.
+    if (voicePlaying_ == messageId && fromMs < 0) {
         stopVoice();
         return;
     }
     stopVoiceTake();
     voiceNote();
     voicePlaying_ = messageId;
+    voiceSeekMs_ = std::max<qint64>(0, fromMs);
+    voicePositionMs_ = voiceSeekMs_;
     emit voiceChanged();
     // Read here, like a picture: a press on play must not wait for the worker.
     onVoiceLoaded(messageId, store_.media(QStringLiteral("voice:") + messageId));
@@ -3388,6 +3401,8 @@ void SessionController::stopVoice()
     if (voice_) {
         voice_->stop();
     }
+    playbackTimer_.stop();
+    voicePositionMs_ = 0;
     voicePlaying_.clear();
     emit voiceChanged();
 }
@@ -3398,7 +3413,8 @@ void SessionController::onVoiceLoaded(const QString& messageId, const QByteArray
         return;
     }
     try {
-        voice_->play(Bytes(bytes.begin(), bytes.end()), voiceSpeed());
+        voice_->play(Bytes(bytes.begin(), bytes.end()), voiceSpeed(), voiceSeekMs_);
+        playbackTimer_.start();
     } catch (const std::exception& error) {
         // Audio that will not unpack is a broken message, and saying so beats
         // silence from a button that was just pressed.

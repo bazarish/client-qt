@@ -498,6 +498,15 @@ Item {
                     readonly property string hex: model.attWave || ""
                     readonly property int kBars: 32
                     readonly property int kMaxHeight: 26
+                    // How much of it has been played, in bars. Only the message
+                    // actually playing has any: the rest sit unlit.
+                    readonly property int playedBars: {
+                        if (!delegate.voicePlaying || !(model.attDurationMs > 0)) {
+                            return 0
+                        }
+                        const fraction = delegate.session.voicePositionMs / model.attDurationMs
+                        return Math.round(Math.min(1, Math.max(0, fraction)) * kBars)
+                    }
                     visible: hex.length > 0
                     Layout.preferredWidth: kBars * 3 - 1
                     Layout.preferredHeight: kMaxHeight
@@ -514,9 +523,22 @@ Item {
                             height: Math.max(2, level * wave.kMaxHeight)
                             anchors.verticalCenter: parent.verticalCenter
                             radius: 1
-                            color: delegate.voicePlaying ? Theme.accent : Theme.textDim
+                            color: index < wave.playedBars ? Theme.accent : Theme.textDim
                         }
                     }
+                    // Pressing the shape plays from there: the drawn audio is the
+                    // only place in the bubble that knows where "there" is.
+                    TapHandler {
+                        onTapped: function(point) {
+                            if (!(model.attDurationMs > 0)) {
+                                return
+                            }
+                            const fraction = Math.min(1, Math.max(0, point.position.x / wave.width))
+                            delegate.session.playVoice(model.protocolId,
+                                Math.round(fraction * model.attDurationMs))
+                        }
+                    }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
                 }
 
                 Label {

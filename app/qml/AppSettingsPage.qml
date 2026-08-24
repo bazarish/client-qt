@@ -125,7 +125,7 @@ Popup {
                     }
                     MenuButton {
                         Layout.fillWidth: true
-                        text: "Router & status…"
+                        text: "I2P status…"
                         onClicked: { root.close(); root.showRouterStatus() }
                     }
                 }

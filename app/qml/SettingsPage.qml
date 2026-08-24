@@ -609,6 +609,60 @@ Popup {
                                     to: root.session ? root.session.maxDelegationDays : 30
                                     value: root.session ? root.session.delegationDays : 14
                                     editable: true
+                                    // The stock control is a white box the height
+                                    // of three lines: on this palette it reads as
+                                    // the brightest thing on the page.
+                                    readonly property int fieldHeight: 30
+                                    implicitHeight: fieldHeight
+                                    topPadding: 0
+                                    bottomPadding: 0
+                                    background: Rectangle {
+                                        radius: Theme.radiusSmall
+                                        color: Theme.surface
+                                        border.color: delegationDaysBox.activeFocus
+                                            ? Theme.accent : Theme.border
+                                    }
+                                    contentItem: TextInput {
+                                        text: delegationDaysBox.textFromValue(
+                                            delegationDaysBox.value, delegationDaysBox.locale)
+                                        color: Theme.text
+                                        font: delegationDaysBox.font
+                                        horizontalAlignment: Qt.AlignHCenter
+                                        verticalAlignment: Qt.AlignVCenter
+                                        selectByMouse: true
+                                        selectionColor: Theme.accent
+                                        selectedTextColor: Theme.accentInk
+                                        readOnly: !delegationDaysBox.editable
+                                        validator: delegationDaysBox.validator
+                                        inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                    }
+                                    up.indicator: Rectangle {
+                                        x: delegationDaysBox.width - width
+                                        height: delegationDaysBox.height
+                                        implicitWidth: delegationDaysBox.fieldHeight
+                                        radius: Theme.radiusSmall
+                                        color: delegationDaysBox.up.pressed
+                                            ? Theme.surfaceAlt : "transparent"
+                                        Label {
+                                            anchors.centerIn: parent
+                                            text: "+"
+                                            color: delegationDaysBox.up.hovered
+                                                ? Theme.text : Theme.textDim
+                                        }
+                                    }
+                                    down.indicator: Rectangle {
+                                        height: delegationDaysBox.height
+                                        implicitWidth: delegationDaysBox.fieldHeight
+                                        radius: Theme.radiusSmall
+                                        color: delegationDaysBox.down.pressed
+                                            ? Theme.surfaceAlt : "transparent"
+                                        Label {
+                                            anchors.centerIn: parent
+                                            text: "−"
+                                            color: delegationDaysBox.down.hovered
+                                                ? Theme.text : Theme.textDim
+                                        }
+                                    }
                                 }
                                 Label {
                                     text: "days"

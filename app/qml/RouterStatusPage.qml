@@ -80,132 +80,6 @@ Popup {
                 width: root.width
                 spacing: 14
 
-                // Enable / disable.
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: "Embedded I2P"; color: Theme.text; font.weight: Font.Medium }
-                            Label {
-                                text: "Anonymous transport for messages, calls and files: it carries "
-                                    + "your traffic to the server without revealing your IP address. It "
-                                    + "stays off until you turn it back on."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Toggle {
-                            checked: I2p.enabled
-                            onToggled: I2p.enabled = checked
-                        }
-                    }
-                    Label {
-                        visible: !I2p.enabled
-                        text: "I2P is off — you now reach the server over clearnet, so its operator "
-                            + "and anyone watching your network can see your IP address and that you "
-                            + "use this service. Calls and any server reachable only over I2P stop "
-                            + "working until you turn it back on."
-                        color: Theme.warn; font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap; Layout.fillWidth: true
-                    }
-                    // libi2pd's own logging - off by default, on demand for debugging.
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: "Show I2P logs"; color: Theme.text }
-                            Label {
-                                text: "Surface libi2pd's own logging (debugging). Off by default."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Toggle {
-                            checked: I2p.loggingEnabled
-                            onToggled: I2p.loggingEnabled = checked
-                        }
-                    }
-                    // Tunnel hop length. Each hop is another router that has to be
-                    // subverted to trace a connection, and another leg of latency.
-                    ColumnLayout {
-                        enabled: I2p.enabled
-                        opacity: I2p.enabled ? 1 : 0.5
-                        Layout.fillWidth: true
-                        spacing: 4
-                        Label { text: "Tunnel length"; color: Theme.text; font.weight: Font.Medium }
-                        Slider {
-                            id: privacySlider
-                            Layout.fillWidth: true
-                            Layout.topMargin: 2
-                            implicitHeight: root.kSliderHeight
-                            from: 0
-                            to: 2
-                            stepSize: 1
-                            snapMode: Slider.SnapAlways
-                            value: I2p.privacyLevel
-                            onMoved: I2p.privacyLevel = value
-                            background: Rectangle {
-                                x: privacySlider.leftPadding
-                                y: privacySlider.topPadding
-                                    + (privacySlider.availableHeight - height) / 2
-                                width: privacySlider.availableWidth
-                                height: root.kSliderTrackHeight
-                                radius: height / 2
-                                color: Theme.deep
-                                border.color: Theme.border2
-                                border.width: 1
-                                Rectangle {
-                                    width: privacySlider.visualPosition * parent.width
-                                    height: parent.height
-                                    radius: height / 2
-                                    color: Theme.green
-                                }
-                            }
-                            handle: Rectangle {
-                                x: privacySlider.leftPadding + privacySlider.visualPosition
-                                    * (privacySlider.availableWidth - width)
-                                y: privacySlider.topPadding
-                                    + (privacySlider.availableHeight - height) / 2
-                                implicitWidth: root.kSliderHandle
-                                implicitHeight: root.kSliderHandle
-                                radius: width / 2
-                                color: Theme.text
-                            }
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.topMargin: -4
-                            Label {
-                                text: "Min"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            }
-                            Label {
-                                text: "Middle"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                horizontalAlignment: Text.AlignHCenter
-                                Layout.fillWidth: true
-                            }
-                            Label {
-                                text: "Max"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            }
-                        }
-                        Label {
-                            text: root.privacyText(I2p.privacyLevel)
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                        Label {
-                            text: "Voice calls always use Min: longer tunnels would put "
-                                + "audible delay into a live call."
-                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                    }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
                 // Live status.
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -215,7 +89,7 @@ Popup {
                     Label { text: "Status"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
 
                     Label {
-                        visible: I2p.enabled && !I2p.running
+                        visible: !I2p.running
                         // A router with nobody to ask cannot start the network: it
                         // is the bootstrap it waits for, not its own start-up.
                         text: I2p.knownRouters < I2p.minKnownRouters
@@ -225,14 +99,9 @@ Popup {
                               + "network database in the background."
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
-                    Label {
-                        visible: !I2p.enabled
-                        text: "Disabled."
-                        color: Theme.textDim
-                    }
 
                     RowLayout {
-                        visible: I2p.enabled && I2p.running
+                        visible: I2p.running
                         Layout.fillWidth: true
                         spacing: 8
                         Rectangle {
@@ -247,7 +116,7 @@ Popup {
                     }
 
                     ColumnLayout {
-                        visible: I2p.enabled && I2p.running
+                        visible: I2p.running
                         Layout.fillWidth: true
                         spacing: 6
                         StatRow { label: "Routers known"; value: I2p.knownRouters }
@@ -262,7 +131,7 @@ Popup {
                 // above are router-wide, so without this it is impossible to tell
                 // whether they belong to one address or to six.
                 ColumnLayout {
-                    visible: I2p.enabled && I2p.running
+                    visible: I2p.running
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
@@ -337,9 +206,88 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
+                // Tunnel hop length. Each hop is another router that has to be
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                // subverted to trace a connection, and another leg of latency.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Label { text: "Tunnel length"; color: Theme.text; font.weight: Font.Medium }
+                        Slider {
+                            id: privacySlider
+                            Layout.fillWidth: true
+                            Layout.topMargin: 2
+                            implicitHeight: root.kSliderHeight
+                            from: 0
+                            to: 2
+                            stepSize: 1
+                            snapMode: Slider.SnapAlways
+                            value: I2p.privacyLevel
+                            onMoved: I2p.privacyLevel = value
+                            background: Rectangle {
+                                x: privacySlider.leftPadding
+                                y: privacySlider.topPadding
+                                    + (privacySlider.availableHeight - height) / 2
+                                width: privacySlider.availableWidth
+                                height: root.kSliderTrackHeight
+                                radius: height / 2
+                                color: Theme.deep
+                                border.color: Theme.border2
+                                border.width: 1
+                                Rectangle {
+                                    width: privacySlider.visualPosition * parent.width
+                                    height: parent.height
+                                    radius: height / 2
+                                    color: Theme.green
+                                }
+                            }
+                            handle: Rectangle {
+                                x: privacySlider.leftPadding + privacySlider.visualPosition
+                                    * (privacySlider.availableWidth - width)
+                                y: privacySlider.topPadding
+                                    + (privacySlider.availableHeight - height) / 2
+                                implicitWidth: root.kSliderHandle
+                                implicitHeight: root.kSliderHandle
+                                radius: width / 2
+                                color: Theme.text
+                            }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.topMargin: -4
+                            Label {
+                                text: "Min"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                text: "Middle"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                horizontalAlignment: Text.AlignHCenter
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: "Max"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            }
+                        }
+                        Label {
+                            text: root.privacyText(I2p.privacyLevel)
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                        Label {
+                            text: "Voice calls always use Min: longer tunnels would put "
+                                + "audible delay into a live call."
+                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
                 // Active direct transport connections (NTCP2 / SSU2 sessions).
                 ColumnLayout {
-                    visible: I2p.enabled && I2p.running
+                    visible: I2p.running
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
@@ -380,6 +328,30 @@ Popup {
                                 font.pixelSize: Theme.fontSmall
                                 elide: Text.ElideRight
                             }
+                        }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                // libi2pd's own logging - off by default, on demand for debugging.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Show I2P logs"; color: Theme.text }
+                            Label {
+                                text: "Surface libi2pd's own logging (debugging). Off by default."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Toggle {
+                            checked: I2p.loggingEnabled
+                            onToggled: I2p.loggingEnabled = checked
                         }
                     }
                 }

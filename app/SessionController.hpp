@@ -332,6 +332,9 @@ class SessionController : public QObject {
     // Recording a voice message, and how long it has been running.
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voiceElapsedMs READ voiceElapsedMs NOTIFY voiceChanged)
+    // How far into the message being played back we are, in its own time; the
+    // bubble fills its waveform up to here.
+    Q_PROPERTY(qint64 voicePositionMs READ voicePositionMs NOTIFY voiceChanged)
     // What the microphone is picking up right now, 0..1. A microphone that is
     // not working holds it at zero, which draws as a flat line.
     Q_PROPERTY(qreal voiceLevel READ voiceLevel NOTIFY voiceChanged)
@@ -473,6 +476,7 @@ public:
     QVariantList devices() const { return devices_; }
     bool voiceRecording() const { return voiceRecording_; }
     qint64 voiceElapsedMs() const { return voiceElapsedMs_; }
+    qint64 voicePositionMs() const { return voicePositionMs_; }
     qreal voiceLevel() const { return voiceLevel_; }
     bool voiceTakeReady() const { return !voiceTake_.isEmpty(); }
     qint64 voiceTakeMs() const { return voiceTakeMs_; }
@@ -618,7 +622,10 @@ public:
     Q_INVOKABLE void stopVoiceTake();
     Q_INVOKABLE void sendVoiceTake();
     Q_INVOKABLE void discardVoiceTake();
-    Q_INVOKABLE void playVoice(const QString& messageId);
+    // Plays a voice message. fromMs of -1 means "the play button": start from
+    // the beginning, or stop if this message is the one already playing. A real
+    // position means the waveform was tapped there, and playback moves to it.
+    Q_INVOKABLE void playVoice(const QString& messageId, qint64 fromMs = -1);
     Q_INVOKABLE void stopVoice();
     // Steps the playback speed through the offered rates and back to normal.
     Q_INVOKABLE void cycleVoiceSpeed();
@@ -1076,6 +1083,9 @@ private:
     QTimer voiceTimer_;
     bool voiceRecording_ = false;
     qint64 voiceElapsedMs_ = 0;
+    qint64 voicePositionMs_ = 0;
+    // Where the message being loaded for playback should start.
+    qint64 voiceSeekMs_ = 0;
     qreal voiceLevel_ = 0.0;
     // The stopped recording waiting for the user to send it, with what the modal
     // shows about it. Empty when there is none.
@@ -1086,6 +1096,8 @@ private:
     QString voiceError_;
     int voiceSpeedStep_ = 0;
     QString voicePlaying_;
+    // Ticks while something is playing, so the waveform fills as it goes.
+    QTimer playbackTimer_;
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart
     // falls back to the store default.

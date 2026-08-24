@@ -26,6 +26,7 @@
 
 #include <cstdlib>
 #include <exception>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -587,6 +588,24 @@ QString AppController::dataLocation() const
 
 namespace {
 
+// Whether a path sits inside the system's temporary directory. An AppImage run
+// with APPIMAGE_EXTRACT_AND_RUN unpacks itself there, and the unpacked copy is
+// writable - so "beside the application" would be a directory that the next
+// reboot clears, with every account in it.
+bool underTempDirectory(const std::filesystem::path& path)
+{
+    std::error_code error;
+    const std::filesystem::path temp
+        = std::filesystem::weakly_canonical(std::filesystem::temp_directory_path(), error);
+    const std::filesystem::path candidate = std::filesystem::weakly_canonical(path, error);
+    if (error) {
+        return false;
+    }
+    const auto mismatch = std::mismatch(temp.begin(), temp.end(), candidate.begin(),
+        candidate.end());
+    return mismatch.first == temp.end();
+}
+
 // Whether a directory can be created in and written to, answered by doing it:
 // permissions alone do not say whether the filesystem underneath is read-only.
 bool directoryIsWritable(const std::filesystem::path& directory)
@@ -617,6 +636,16 @@ void AppController::setPortable(const bool on)
     // written to (an AppImage on a read-only medium, an application directory
     // owned by root) would otherwise be discovered halfway through, with the
     // accounts already shut and the data already moved.
+    if (on && underTempDirectory(client::AccountManager::portableRoot())) {
+        emit createFailed(QStringLiteral("This copy of the application is running from a "
+                                         "temporary directory (")
+            + QString::fromStdString(
+                client::AccountManager::portableRoot().parent_path().string())
+            + QStringLiteral("), which is cleared on reboot. Keep the application somewhere "
+                             "of its own first - a USB stick or a folder - and turn this on "
+                             "there."));
+        return;
+    }
     if (on && !directoryIsWritable(client::AccountManager::portableRoot().parent_path())) {
         emit createFailed(QStringLiteral("Cannot write beside the application (")
             + QString::fromStdString(

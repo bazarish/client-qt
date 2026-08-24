@@ -44,12 +44,15 @@ public:
     // recording ends.
     std::size_t encodedBytes() const { return encodedBytes_.load(); }
 
-    // Plays a recorded run of frames at `speed` (1.0 is as recorded). Playing
-    // again while one is running replaces it: two voices at once is nobody's
-    // intent.
-    void play(const Bytes& opus, double speed = 1.0);
+    // Plays a recorded run of frames at `speed` (1.0 is as recorded), starting
+    // fromMs into the recording. Playing again while one is running replaces it:
+    // two voices at once is nobody's intent.
+    void play(const Bytes& opus, double speed = 1.0, qint64 fromMs = 0);
     void stop();
     bool playing() const { return playing_.load(); }
+    // How far into the recording playback has reached, in recording time - so it
+    // is the same number whatever speed it is being played at.
+    qint64 playbackPositionMs() const { return playedMs_.load(); }
 
 signals:
     void playbackFinished();
@@ -66,6 +69,7 @@ private:
     std::atomic<bool> playing_{false};
     std::atomic<float> inputLevel_{0.0F};
     std::atomic<std::size_t> encodedBytes_{0};
+    std::atomic<qint64> playedMs_{0};
     // The recording as captured, one run of samples; encoded on stop.
     std::vector<std::int16_t> pcm_;
     std::mutex pcmMutex_;

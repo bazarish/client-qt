@@ -9,15 +9,12 @@
 
 namespace bazarish::app {
 
-// QML-facing view of the process-global embedded I2P router: a persistent on/off
+// QML-facing view of the process-global embedded I2P router: the tunnel length
 // setting, an optional libi2pd log switch, read-only diagnostics (netDb size,
 // floodfills, our tunnels) and the list of active direct transport connections.
-// The router is shared by every account; this object reports it, starts and stops
-// it, and flips the transport's enable/logging flags. Turning I2P off persists
-// across runs and is never re-enabled automatically: the embedded router's network
-// is stopped and traffic runs on clearnet facades only. The client never relays
-// transit traffic (the router runs notransit), so no transit-tunnel count is
-// reported.
+// The router is shared by every account and is not optional - it is the transport
+// this client speaks over, so there is no off. The client never relays transit
+// traffic (the router runs notransit), so no transit-tunnel count is reported.
 
 // Slider positions for the tunnel privacy profile, lowest hop count first.
 inline constexpr int kMinimalPrivacyLevel = 0;
@@ -26,7 +23,6 @@ inline constexpr int kMaxPrivacyLevel = 2;
 
 class I2pController : public QObject {
     Q_OBJECT
-    Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
     // libi2pd's own logging. OFF by default (fully suppressed); a debugging aid.
     Q_PROPERTY(bool loggingEnabled READ loggingEnabled WRITE setLoggingEnabled NOTIFY loggingChanged)
     // Tunnel hop length for every destination this app builds: 0 minimal, 1
@@ -53,8 +49,6 @@ class I2pController : public QObject {
 public:
     explicit I2pController(QObject* parent = nullptr);
 
-    bool enabled() const { return enabled_; }
-    void setEnabled(bool on);
     bool loggingEnabled() const { return loggingEnabled_; }
     int privacyLevel() const { return privacyLevel_; }
     void setPrivacyLevel(int level);
@@ -74,13 +68,11 @@ public:
     Q_INVOKABLE void refresh();
 
 signals:
-    void enabledChanged();
     void loggingChanged();
     void privacyLevelChanged();
     void statusChanged();
 
 private:
-    std::filesystem::path settingPath() const;
     std::filesystem::path loggingPath() const;
     std::filesystem::path privacyPath() const;
     // Brings the shared router into line with the enable flag off the GUI thread:
@@ -88,7 +80,6 @@ private:
     // its network when disabled.
     void reconcileRouter();
 
-    bool enabled_ = true;
     bool loggingEnabled_ = false;
     int privacyLevel_ = kMinimalPrivacyLevel;
     bool running_ = false;

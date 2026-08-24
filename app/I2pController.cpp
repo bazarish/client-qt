@@ -47,14 +47,6 @@ bazarish::i2p::Privacy privacyForLevel(const int level)
 I2pController::I2pController(QObject* parent)
     : QObject(parent)
 {
-    // The setting persists across runs: an "0" in the file means I2P was turned
-    // off and must stay off (never re-enabled automatically). Absent => on.
-    {
-        std::ifstream in(settingPath());
-        std::string value;
-        std::getline(in, value);
-        enabled_ = value != "0";
-    }
     // libi2pd logging is off unless a "1" was persisted (default fully silent).
     {
         std::ifstream in(loggingPath());
@@ -72,19 +64,15 @@ I2pController::I2pController(QObject* parent)
         const int level = value.empty() ? kMinimalPrivacyLevel : std::atoi(value.c_str());
         privacyLevel_ = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
     }
-    client::setI2pEnabled(enabled_);
+    // The embedded router is the transport, not a feature: without it there is
+    // no way to reach a server, so there is nothing to turn off.
+    client::setI2pEnabled(true);
     bazarish::i2p::setI2pLogging(loggingEnabled_);
     client::setTunnelPrivacy(privacyForLevel(privacyLevel_));
-    // When enabled, bring the embedded router up at launch so it passively learns
-    // the network (routers + floodfills) even before any session uses it; when
-    // disabled it stays down.
+    // Brought up at launch so it passively learns the network (routers +
+    // floodfills) even before any account uses it.
     reconcileRouter();
     refresh();
-}
-
-std::filesystem::path I2pController::settingPath() const
-{
-    return accountsRoot() / ".i2p-enabled";
 }
 
 std::filesystem::path I2pController::loggingPath() const
@@ -104,21 +92,6 @@ void I2pController::reconcileRouter()
     // do it off the GUI thread. reconcileI2pRouter reads the enable flag itself, so
     // rapid toggles converge on the final state (idempotent, mutex-guarded).
     std::thread([dir]() { client::reconcileI2pRouter(dir); }).detach();
-}
-
-void I2pController::setEnabled(bool on)
-{
-    if (enabled_ == on) {
-        return;
-    }
-    enabled_ = on;
-    client::setI2pEnabled(on);
-    std::ofstream out(settingPath(), std::ios::trunc);
-    out << (on ? "1" : "0");
-    emit enabledChanged();
-    // Honestly start or stop the embedded router to match the toggle.
-    reconcileRouter();
-    refresh();
 }
 
 void I2pController::setLoggingEnabled(bool on)
