@@ -67,17 +67,19 @@ int main()
     const std::string userDest = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
     const Identity user = Identity::generate();
 
-    // The invite is a small descriptor (fingerprint + serving destination +
-    // serving sealing key); the contact card is fetched and verified separately
-    // (TestClient). The descriptor codec itself is covered by common TestDescriptor.
-    const Descriptor descriptor{user.fingerprint(), userDest, servingKey.publicDer()};
+    // The invite is a small descriptor (fingerprint, the user's own destination
+    // and the capability that reads their card); the card is fetched and
+    // verified separately (TestClient). The codec is covered by common
+    // TestDescriptor.
+    const std::string view = "0123456789abcdef0123456789abcdef";
+    const Descriptor descriptor{user.fingerprint(), userDest, view};
     const std::string uri = encodeDescriptor(descriptor);
     CHECK(uri.rfind("bazarish://invite?", 0) == 0);
 
     const Descriptor decoded = parseDescriptor(uri);
     CHECK(decoded.fingerprint == user.fingerprint());
     CHECK(decoded.dest == userDest);
-    CHECK(decoded.keyDer == servingKey.publicDer());
+    CHECK(decoded.view == view);
 
     // Malformed URIs are rejected.
     CHECK_THROWS(parseDescriptor("http://example/x"));

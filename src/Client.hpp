@@ -61,6 +61,9 @@ struct StorageUsage {
 // destination and serving sealing key the card now carries.
 struct PublishResult {
     std::uint64_t quotaBytes = 0;
+    // The card-read capability the node issued for this account: it goes in
+    // every invite this profile makes.
+    std::string view;
     // The user's assigned serving destination and its serving sealing key.
     std::string dest;
     Bytes servingSealingKeyDer;

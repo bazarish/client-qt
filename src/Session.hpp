@@ -53,6 +53,9 @@ struct Contact {
     // The peer's serving sealing public key (SPKI DER, base64): delivery
     // envelopes to this contact are sealed to it (held by the peer's server).
     std::string servingSealingB64;
+    // The contact's card-read capability, from the descriptor we added them by:
+    // kept so their invite can be passed on.
+    std::string view;
     // Unused one-time delivery tokens (base64) issued by the peer to us:
     // each authorizes one message into the peer's mailbox.
     std::vector<std::string> sendTokens;
@@ -487,6 +490,8 @@ public:
         ContactInfo info;
         std::string displayName;
         std::string introText;
+        // The capability from the descriptor this was resolved from.
+        std::string view;
     };
 
     // [worker thread] Snapshot the transport context for an off-thread resolve.
@@ -710,6 +715,11 @@ public:
     // fresh device per call.
     using AudioSourceFactory = std::function<std::unique_ptr<AudioSource>()>;
     using AudioSinkFactory = std::function<std::unique_ptr<AudioSink>()>;
+    // Replaces the transport a card / alias fetch uses. Only a test harness sets
+    // this; a running client always uses the direct-I2P one, because a relayed
+    // lookup would tell our own server who is being added.
+    void setFetchTransport(FetchTransport transport);
+
     void setAudioBackend(AudioSourceFactory sourceFactory, AudioSinkFactory sinkFactory);
 
 
@@ -794,11 +804,14 @@ private:
     // already known (from a lookup or an invite). Mints a reply token batch
     // and records the contact, adopting displayName as its local label (the
     // alias used or the name carried in the invite) when non-empty.
+    // descriptorView is the capability from the descriptor this contact was
+    // added by: kept so their invite can be shared on.
     void requestWithInfo(const std::string& peerFingerprint, const std::string& text,
-        const ContactInfo& info, const std::string& displayName = {});
+        const ContactInfo& info, const std::string& displayName = {},
+        const std::string& descriptorView = {});
 
     // The fetch transport for card / alias-resolve frames: a fresh transient-I2P
-    // dial preferred (our own server uninvolved), falling back to the own-server
+    // dial, and only that - a relayed lookup would tell our own server
     // I2P proxy when there is no I2P transport of our own or the direct dial fails. A
     // served negative (CARD_UNKNOWN / ALIAS_UNKNOWN) is authoritative and does
     // not trigger the fallback - only a transport failure does.
@@ -1023,6 +1036,11 @@ private:
     // contacts in the E2E bootstrap so they route and seal replies to us.
     std::string myDest_;
     std::string myServingKeyB64_;
+    // The capability our server issued for reading our card: what an invite
+    // carries so a contact can fetch it, and nothing else.
+    std::string view_;
+    // Set only by a test harness (see setFetchTransport).
+    FetchTransport fetchTransportOverride_;
     // Human label for the profile picker (stored in the clear in meta.json).
     std::string name_;
     // The user's own avatar (compressed PNG/JPEG bytes) and its mime. The bytes

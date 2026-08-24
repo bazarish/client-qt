@@ -10,6 +10,18 @@
 
 namespace bazarish::client {
 
+namespace {
+
+// The card query as it goes on the wire: plain CBOR, because the stream it
+// travels on is already encrypted to the destination.
+Bytes cardQueryBytes(const CardFetchQuery& query)
+{
+    const std::string text = toJson(query).dump();
+    return Bytes(text.begin(), text.end());
+}
+
+}  // namespace
+
 Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& mailbox,
     const std::string& messageId, const std::optional<Bytes>& token,
     const Key& recipientSealingKey)
@@ -115,6 +127,7 @@ PublishResult Client::publishCard(const Bytes& sealingPrekeyDer, const std::stri
     PublishResult result;
     result.cardDer = card;
     result.quotaBytes = body.at("quotaBytes").get<std::uint64_t>();
+    result.view = body.value("view", std::string());
     result.dest = dest;
     result.servingSealingKeyDer = destination.servingSealingKeyDer;
     return result;
@@ -203,28 +216,21 @@ FetchOutcome Client::relayFetch(
 
 ContactInfo Client::fetchCard(const Descriptor& descriptor, const FetchTransport& transport)
 {
-    // Seal the query to the destination's serving key so a relay cannot read it;
-    // the response comes back sealed to a fresh ephemeral key only we hold. The
-    // key from the descriptor goes with the query: it is what shows we were
-    // given this descriptor, and a server answers nothing without it.
-    const Key ephemeral = Key::generateSealing();
-    const CardFetchQuery query{descriptor.fingerprint, descriptor.keyDer, ephemeral.publicDer()};
-    const std::string queryJson = toJson(query).dump();
-    const Bytes sealedQuery = cms::seal(
-        Bytes(queryJson.begin(), queryJson.end()), Key::fromPublicDer(descriptor.keyDer));
-
-    const FetchOutcome outcome = transport(descriptor.dest, "card", sealedQuery);
+    // The query names the fingerprint and hands back the descriptor's view
+    // capability, and travels in the clear: the transport dials the destination
+    // directly over I2P, whose stream is already encrypted and authenticated to
+    // it, and no relayed path is allowed - that would tell our own server who is
+    // being added.
+    const FetchOutcome outcome = transport(descriptor.dest, "card",
+        cardQueryBytes(CardFetchQuery{descriptor.fingerprint, descriptor.view}));
     if (!outcome.ok) {
-        // The one answer for "no such user here" and "that is not the key I
-        // issued": from where the asker stands, both mean the same thing.
+        // The one answer for "no such user here" and "that is not the capability
+        // I issued": from where the asker stands, both mean the same thing.
         throw std::runtime_error("that invite is out of date - ask for a new one");
     }
-    const Bytes responseBytes = cms::unseal(outcome.sealed, ephemeral);
-    const CardFetchResponse fetched
-        = cardFetchResponseFromJson(nlohmann::json::parse(responseBytes));
 
     ContactInfo info;
-    info.card = ContactCard::verify(fetched.cardDer);
+    info.card = ContactCard::verify(outcome.sealed);
     // The fingerprint is the trust anchor: the card is user-signed, so a wrong
     // server can only withhold, never forge a card for someone else's fingerprint.
     if (info.card.user != descriptor.fingerprint) {

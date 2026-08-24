@@ -437,6 +437,7 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
     session.client_->setAllowClearnet(
         meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
     session.cardB64_ = meta.value("card", std::string{});
+    session.view_ = meta.value("view", std::string{});
     // Our own routing (dest + serving sealing key) lives in the card we signed;
     // recover it for invites and contact bootstraps.
     if (!session.cardB64_.empty()) {
@@ -573,6 +574,7 @@ void Session::persistMeta() const
                 {"facades", facades},
             }},
         {"card", cardB64_},
+        {"view", view_},
         {"encrypted", encrypted_},
         {"avatarMime", avatarMime_},
         // Sticky I2P: once this profile has reached its server over I2P it keeps
@@ -702,6 +704,9 @@ void Session::publishRouting()
 void Session::storeCard(const PublishResult& result)
 {
     cardB64_ = toBase64(result.cardDer);
+    if (!result.view.empty()) {
+        view_ = result.view;
+    }
     myDest_ = result.dest;
     myServingKeyB64_
         = result.servingSealingKeyDer.empty() ? std::string() : toBase64(result.servingSealingKeyDer);
@@ -1192,30 +1197,33 @@ Session::AttemptOutcome Session::pollAttempt(const std::string& attemptId)
     }
 }
 
+void Session::setFetchTransport(FetchTransport transport)
+{
+    fetchTransportOverride_ = std::move(transport);
+}
+
 FetchTransport Session::fetchTransport() const
 {
+    if (fetchTransportOverride_) {
+        return fetchTransportOverride_;
+    }
     return [this](const std::string& toDest, const std::string& op, const Bytes& sealed) {
-        // Direct over a fresh transient I2P destination is preferred (our own
-        // server is never involved, and a b33 dial authenticates the target), but
-        // it needs the embedded router up with tunnels. Only attempt it when I2P
-        // is enabled and the router is already running and ready: never force-start
-        // a disabled router, and never block building tunnels that may never come
-        // up (e.g. no reachable I2P network). Otherwise - or on a direct-dial
-        // failure - relay the opaque sealed bytes through our own server's I2P
-        // proxy, so adding a contact still works without a local I2P transport.
-        if (i2pEnabled()) {
-            bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
-            if (router != nullptr && router->ready()) {
-                try {
-                    return federationFetchOverI2p(
-                        *router, toDest, op, sealed, transferPrivacy(), destinationOwner());
-                } catch (const std::exception& error) {
-                    // Direct dial failed; fall back to the server proxy below.
-                    bazarish::log::debug("direct fetch failed, relaying: {}", error.what());
-                }
-            }
+        // Direct over a fresh transient I2P destination, and nothing else. The
+        // relay through our own server is gone on purpose: a card fetch names
+        // the person being added, and it now travels in the clear (the I2P
+        // stream is already encrypted to the destination), so relaying it would
+        // hand our own server the one thing this design keeps from it. No
+        // router, no fetch - said plainly rather than quietly downgraded.
+        if (!i2pEnabled()) {
+            throw std::runtime_error("adding a contact needs I2P, and it is switched off");
         }
-        return client_->relayFetch(toDest, op, sealed);
+        bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
+        if (router == nullptr || !router->ready()) {
+            throw std::runtime_error(
+                "adding a contact needs the I2P router; it is still building tunnels");
+        }
+        return federationFetchOverI2p(
+            *router, toDest, op, sealed, transferPrivacy(), destinationOwner());
     };
 }
 
@@ -1236,7 +1244,7 @@ std::string Session::addByInvite(const std::string& inviteUri, const std::string
     const Descriptor descriptor = parseDescriptor(inviteUri);
     const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
     // Adopt the name advertised in the invite as this contact's local label.
-    requestWithInfo(descriptor.fingerprint, text, info, descriptor.name);
+    requestWithInfo(descriptor.fingerprint, text, info, descriptor.name, descriptor.view);
     return descriptor.fingerprint;
 }
 
@@ -1297,25 +1305,22 @@ Session::ContactCardResolved Session::resolveContactCard(
         // sync transport. Constructing a Client does no network work.
         Client fetchClient(Identity::fromPrivatePem(context.identityPem), context.clientId,
             context.endpoint, context.i2pDataDir);
-        // Mirrors Session::fetchTransport, but bound to the throwaway client: direct
-        // over a transient I2P destination when the router is up, else relay the
-        // sealed bytes through our own server.
-        const FetchTransport transport = [&fetchClient, &context](const std::string& toDest,
+        // Mirrors Session::fetchTransport, and like it goes direct or not at
+        // all: a lookup relayed through our own server would tell it who is
+        // being added.
+        const FetchTransport transport = [&context](const std::string& toDest,
                                              const std::string& op,
                                              const Bytes& sealed) -> FetchOutcome {
-            if (context.i2pEnabled) {
-                bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
-                if (router != nullptr && router->ready()) {
-                    try {
-                        return federationFetchOverI2p(*router, toDest, op, sealed,
-                            context.blobFetchPrivacy, context.destinationOwner);
-                    } catch (const std::exception& error) {
-                        // Direct dial failed; fall back to the server relay below.
-                        bazarish::log::debug("direct fetch failed, relaying: {}", error.what());
-                    }
-                }
+            if (!context.i2pEnabled) {
+                throw std::runtime_error("adding a contact needs I2P, and it is switched off");
             }
-            return fetchClient.relayFetch(toDest, op, sealed);
+            bazarish::i2p::Router* const router = sharedI2pRouterIfRunning();
+            if (router == nullptr || !router->ready()) {
+                throw std::runtime_error(
+                    "adding a contact needs the I2P router; it is still building tunnels");
+            }
+            return federationFetchOverI2p(
+                *router, toDest, op, sealed, context.blobFetchPrivacy, context.destinationOwner);
         };
 
         if (request.byUsername) {
@@ -1323,11 +1328,13 @@ Session::ContactCardResolved Session::resolveContactCard(
                 normalizeAlias(request.uriOrAlias), context.resolver, nowSeconds(), transport);
             out.info = fetchClient.fetchCard(descriptor, transport);
             out.fingerprint = descriptor.fingerprint;
+            out.view = descriptor.view;
             out.displayName = request.uriOrAlias;  // the alias typed becomes the label
         } else {
             const Descriptor descriptor = parseDescriptor(request.uriOrAlias);
             out.info = fetchClient.fetchCard(descriptor, transport);
             out.fingerprint = descriptor.fingerprint;
+            out.view = descriptor.view;
             out.displayName = descriptor.name;
         }
         out.ok = true;
@@ -1345,7 +1352,8 @@ std::string Session::commitContactAdd(const ContactCardResolved& resolved)
 {
     // Fast: register reply tokens, send the request, record the contact. The slow
     // card fetch already happened off-thread in resolveContactCard.
-    requestWithInfo(resolved.fingerprint, resolved.introText, resolved.info, resolved.displayName);
+    requestWithInfo(resolved.fingerprint, resolved.introText, resolved.info,
+        resolved.displayName, resolved.view);
     return resolved.fingerprint;
 }
 
@@ -1401,12 +1409,12 @@ std::string Session::addByUsername(const std::string& alias, const std::string& 
     // rule in Contacts.md).
     const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
     // The alias the user typed becomes this contact's local display name.
-    requestWithInfo(descriptor.fingerprint, text, info, alias);
+    requestWithInfo(descriptor.fingerprint, text, info, alias, descriptor.view);
     return descriptor.fingerprint;
 }
 
 void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,
-    const ContactInfo& info, const std::string& displayName)
+    const ContactInfo& info, const std::string& displayName, const std::string& descriptorView)
 {
     if (info.card.user != peerFingerprint) {
         throw std::runtime_error("contact lookup returned a different user");
@@ -1460,6 +1468,7 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     contact.sealingPublicB64 = toBase64(peerPrekey.publicDer());
     contact.servingSealingB64 = toBase64(peerServingKey.publicDer());
     contact.issuedToThem = true;
+    contact.view = descriptorView;
     // The name (from an invite or the alias used) is a one-time local label set
     // at add time; it is never re-fetched or transmitted afterwards.
     if (!displayName.empty()) {
@@ -3103,7 +3112,7 @@ std::string Session::contactInviteUri(const std::string& peerFingerprint) const
     Descriptor descriptor;
     descriptor.fingerprint = peerFingerprint;
     descriptor.dest = found->second.dest;
-    descriptor.keyDer = fromBase64(found->second.servingSealingB64);
+    descriptor.view = found->second.view;
     descriptor.name = found->second.displayName;
     return encodeDescriptor(descriptor);
 }
@@ -3117,15 +3126,16 @@ std::string Session::destinationOwner() const
 
 std::string Session::inviteUri() const
 {
-    if (myDest_.empty() || myServingKeyB64_.empty()) {
-        throw std::runtime_error("subscribe first: no serving destination to publish");
+    if (myDest_.empty() || view_.empty()) {
+        throw std::runtime_error("register first: no destination to publish");
     }
-    // The invite is a small descriptor: fingerprint + serving destination +
-    // serving sealing key. The contact fetches and verifies the full card.
+    // The invite is a small descriptor: fingerprint, our own destination, and
+    // the capability that reads our card. No key travels in it - the contact
+    // takes the serving key out of the card it fetches and verifies.
     Descriptor descriptor;
     descriptor.fingerprint = fingerprint();
     descriptor.dest = myDest_;
-    descriptor.keyDer = fromBase64(myServingKeyB64_);
+    descriptor.view = view_;
     // Advertise our profile name so the contact can adopt it as our display name.
     descriptor.name = name_;
     return encodeDescriptor(descriptor);

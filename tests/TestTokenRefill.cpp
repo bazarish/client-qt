@@ -104,7 +104,8 @@ struct Mock {
     std::string serverFp;
     Key serverSealing = Key::generateSealing();  // one serving key shared by both dests
     std::map<std::string, std::string> destFor;  // fingerprint -> serving destination
-    std::map<std::string, std::string> certFor;  // fingerprint -> subscription cert (base64 DER)
+    std::map<std::string, std::string> certFor;  // fingerprint -> contact card (base64 DER)
+    std::map<std::string, std::string> viewFor;  // fingerprint -> card-read capability
     struct Item {
         std::string id;
         std::string cls;
@@ -153,7 +154,15 @@ int main()
                   std::lock_guard<std::mutex> lock(m.mu);
                   m.certFor[caller] = cardB64;
               }
-              respondJson(response, {{"quotaBytes", 100u * 1024 * 1024}});
+              // Hex, and different per user: the descriptor codec insists on
+              // both, exactly as the real capability does.
+              const std::string view = toHex(sha256(Bytes(caller.begin(), caller.end())))
+                                           .substr(0, bazarish::kViewCapabilityChars);
+              {
+                  std::lock_guard<std::mutex> lock(m.mu);
+                  m.viewFor[caller] = view;
+              }
+              respondJson(response, {{"quotaBytes", 100u * 1024 * 1024}, {"view", view}});
           };
     server.post("/v1/account/card", stub(handlePublishCard));
 
@@ -207,31 +216,6 @@ int main()
                 m.singletons[caller].insert(hashes.at(0).get<std::string>());
             }
             respondJson(response, {{"ok", true}});
-        }));
-
-    // The own-server relay a card fetch rides on: it carries the sealed query to
-    // the destination and brings the sealed answer back. The stand-in server
-    // operates every destination here, so it answers on the spot - and only when
-    // the query brings back the key from the descriptor.
-    server.post("/v1/messaging/fetch",
-        stub([&](const http::Request& request, http::Response& response) {
-            (void)requireCaller(request);
-            const nlohmann::json body = nlohmann::json::parse(request.body);
-            CHECK(body.at("op") == "card");
-            const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
-            const CardFetchQuery query
-                = cardFetchQueryFromJson(nlohmann::json::parse(cms::unseal(sealed, m.serverSealing)));
-            std::lock_guard<std::mutex> lock(m.mu);
-            const auto found = m.certFor.find(query.fingerprint);
-            if (found == m.certFor.end() || query.keyDer != m.serverSealing.publicDer()) {
-                respondJson(response, {{"ok", false}, {"errorCode", "CARD_UNKNOWN"}});
-                return;
-            }
-            const std::string answer
-                = toJson(CardFetchResponse{fromBase64(found->second)}).dump();
-            const Bytes sealedAnswer = cms::seal(
-                Bytes(answer.begin(), answer.end()), Key::fromPublicDer(query.responseKeyDer));
-            respondJson(response, {{"ok", true}, {"sealed", toBase64(sealedAnswer)}});
         }));
 
     server.post("/v1/messaging/send",
@@ -333,6 +317,29 @@ int main()
 
     alice.registerAccount();
     bob.registerAccount();
+
+    // A card fetch dials the peer's destination directly over I2P; there is no
+    // router here, so the harness stands in for that dial. It answers exactly as
+    // a serving destination does: the card when the query brings back the view
+    // capability, and the same nothing otherwise.
+    const auto directDial = [&m](const std::string& toDest, const std::string& op,
+                                const Bytes& query) {
+        CHECK(op == "card");
+        (void)toDest;
+        const CardFetchQuery asked = cardFetchQueryFromJson(nlohmann::json::parse(query));
+        std::lock_guard<std::mutex> lock(m.mu);
+        const auto found = m.certFor.find(asked.fingerprint);
+        FetchOutcome outcome;
+        if (found == m.certFor.end() || asked.view != m.viewFor[asked.fingerprint]) {
+            outcome.errorCode = "CARD_UNKNOWN";
+            return outcome;
+        }
+        outcome.ok = true;
+        outcome.sealed = fromBase64(found->second);
+        return outcome;
+    };
+    alice.setFetchTransport(directDial);
+    bob.setFetchTransport(directDial);
 
     // Establish the contact both ways: Alice adds Bob from his invite (the only
     // way in - a bare fingerprint would need a server to say who it hosts), Bob
