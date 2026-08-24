@@ -473,12 +473,6 @@ Item {
                     font.pixelSize: Theme.fontSmall
                 }
 
-                Label {
-                    visible: model.attSize > 0
-                    text: delegate.humanSize(model.attSize)
-                    color: Theme.textFaint
-                    font.pixelSize: Theme.fontSmall
-                }
             }
 
             // A voice message: the shape of what was said, how long it runs and
@@ -491,7 +485,7 @@ Item {
                 spacing: 8
 
                 IconButton {
-                    iconName: delegate.voicePlaying ? "close" : "send"
+                    iconName: delegate.voicePlaying ? "close" : "play"
                     tint: Theme.accent
                     onClicked: delegate.session.playVoice(model.protocolId)
                 }
@@ -534,12 +528,8 @@ Item {
                     color: Theme.text
                     font.pixelSize: Theme.fontSmall
                 }
-                Label {
-                    text: delegate.humanSize(model.attSize)
-                    color: Theme.textFaint
-                    font.pixelSize: Theme.fontSmall
-                    Layout.fillWidth: true
-                }
+                // What it weighs is footer material; this row is for playing it.
+                Item { Layout.fillWidth: true }
                 // Playback speed, stepped through by pressing it. It belongs to
                 // the session, so the choice holds for the next one too.
                 Label {
@@ -698,10 +688,21 @@ Item {
                 }
             }
 
-            // Footer: edited marker + time + outgoing status.
+            // Footer: edited marker + time + outgoing status, and for a voice
+            // message what it weighs - on this line rather than on the one with
+            // the waveform, the speed and the play button.
             RowLayout {
-                Layout.alignment: Qt.AlignRight
+                Layout.alignment: (delegate.isVoice || delegate.isPicture)
+                    ? Qt.AlignLeft : Qt.AlignRight
+                Layout.fillWidth: delegate.isVoice || delegate.isPicture
                 spacing: 4
+                Label {
+                    visible: (delegate.isVoice || delegate.isPicture) && model.attSize > 0
+                    text: delegate.humanSize(model.attSize)
+                    color: Theme.textFaint
+                    font.pixelSize: 10
+                    Layout.fillWidth: true
+                }
                 Label {
                     visible: model.edited === true
                     text: "edited"

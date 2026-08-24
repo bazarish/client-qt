@@ -232,6 +232,11 @@ public:
     // The configured facade URLs (the failover list, or the single facade).
     std::vector<std::string> facadeUrls() const;
 
+    // Changes the passphrase this account is kept under. Only the key beside the
+    // database is re-sealed, so nothing that is open on it has to be closed; an
+    // empty passphrase leaves the account unencrypted at rest.
+    void changePassphrase(const std::string& passphrase);
+
     // Exports the whole session (identity, sealing key, routing meta and
     // contacts) into a single password-encrypted file (CMS PWRI). The bundle
     // holds the keys in plain PEM internally - the password protects the file.

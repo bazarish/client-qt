@@ -26,7 +26,9 @@ public:
 
     // Starts capturing. Throws when there is no microphone to capture from.
     void startRecording();
-    // Stops and hands over what was captured, encoded.
+    // Stops and hands over what was captured, levelled and encoded. The audio is
+    // encoded here rather than while it is captured: the gain that levels a
+    // recording is only knowable once all of it is in hand.
     Bytes stopRecording();
     void cancelRecording();
     bool recording() const { return recording_.load(); }
@@ -36,8 +38,10 @@ public:
     // not delivering audio holds this at zero, which is what makes a dead one
     // visible instead of merely silent.
     float inputLevel() const { return inputLevel_.load(); }
-    // How much the recording weighs so far, encoded. A voice message rides
-    // inside one message, so this - not the clock - is what bounds it.
+    // How much the recording will weigh, encoded. A voice message rides inside
+    // one message, so this - not the clock - is what bounds it. An estimate from
+    // the bitrate the recorder asks for, because nothing is encoded until the
+    // recording ends.
     std::size_t encodedBytes() const { return encodedBytes_.load(); }
 
     // Plays a recorded run of frames at `speed` (1.0 is as recorded). Playing
@@ -62,8 +66,9 @@ private:
     std::atomic<bool> playing_{false};
     std::atomic<float> inputLevel_{0.0F};
     std::atomic<std::size_t> encodedBytes_{0};
-    std::vector<Bytes> frames_;
-    std::mutex framesMutex_;
+    // The recording as captured, one run of samples; encoded on stop.
+    std::vector<std::int16_t> pcm_;
+    std::mutex pcmMutex_;
     qint64 startedAtMs_ = 0;
 };
 

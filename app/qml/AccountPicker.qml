@@ -50,7 +50,6 @@ Item {
         id: appSettings
         parent: Overlay.overlay
         anchors.centerIn: parent
-        onBack: appSettings.close()
         onShowRouterStatus: routerStatus.open()
     }
 

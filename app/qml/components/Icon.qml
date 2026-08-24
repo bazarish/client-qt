@@ -80,6 +80,8 @@ Item {
                     case "person":  return "M 12 4 A 3.7 3.7 0 1 1 11.99 4 "
                                          + "M 5 20 A 7 7 0 0 1 19 20"
                     case "send":    return "M 3 12 L 21 4 L 14 21 L 11.5 13.5 Z M 11.5 13.5 L 21 4"
+                    // The pair to "stop": a triangle pointing the way it plays.
+                    case "play":    return "M 8 5 L 19 12 L 8 19 Z"
                     default:        return ""
                     }
                 }

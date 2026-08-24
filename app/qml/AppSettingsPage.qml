@@ -9,8 +9,8 @@ import Bazarish
 // a per-account setting and an app-wide one can never be read as the same thing.
 Popup {
     id: root
-    // Back to the page this opened from (Settings); the close button exits.
-    signal back()
+    // A window of its own: it is opened from several places and belongs to none
+    // of them, so it closes rather than going back to one.
     signal showRouterStatus()
 
     modal: true
@@ -27,7 +27,6 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
             Label {
                 text: "Global settings"
                 color: Theme.green

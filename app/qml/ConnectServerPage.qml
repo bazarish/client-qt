@@ -35,7 +35,6 @@ Item {
         id: appSettings
         parent: Overlay.overlay
         anchors.centerIn: parent
-        onBack: appSettings.close()
         onShowRouterStatus: routerStatus.open()
     }
 
@@ -107,7 +106,7 @@ Item {
         // The dialog can be hidden while the connect runs; this is the way back.
         Label {
             visible: root.session && root.session.connecting && connectDialog.suppressed
-            text: "Connecting (" + (root.session ? root.session.connectPercent : 0) + "%) — show progress"
+            text: "Connecting (" + (root.session ? root.session.connectPercent : 0) + "%)"
             color: Theme.accent
             font.pixelSize: Theme.fontSmall
             Layout.alignment: Qt.AlignHCenter

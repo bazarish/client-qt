@@ -122,10 +122,18 @@ Popup {
         MenuButton {
             Layout.fillWidth: true
             enabled: root.shareLink.length > 0
-            text: root.shareLink.length > 0
-                ? "Share this contact…"
-                : "Nothing to share yet — no address held for them"
+            text: "Share this contact…"
             onClicked: { root.close(); root.shareRequested() }
+        }
+        // Said under the button, not on it: the reason is a sentence, and a
+        // button wearing one cuts it off in the middle.
+        Label {
+            visible: root.shareLink.length === 0
+            text: "Not yet — this contact's descriptor arrives with their next message."
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }

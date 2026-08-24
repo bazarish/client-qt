@@ -297,6 +297,33 @@ std::vector<std::uint8_t> voiceWaveform(const Bytes& packed, const int bars)
     return out;
 }
 
+void normalizeVoicePcm(std::vector<std::int16_t>& pcm)
+{
+    if (pcm.empty()) {
+        return;
+    }
+    double square = 0.0;
+    std::int32_t peak = 0;
+    for (const std::int16_t sample : pcm) {
+        const double value = static_cast<double>(sample) / kFullScale;
+        square += value * value;
+        peak = std::max(peak, std::abs(static_cast<std::int32_t>(sample)));
+    }
+    const double rms = std::sqrt(square / static_cast<double>(pcm.size()));
+    if (rms < kVoiceSilenceRms || peak == 0) {
+        return;  // a room, not a voice: raising it would only send the room
+    }
+    const double peakScale = static_cast<double>(peak) / kFullScale;
+    const double gain = std::min({kVoiceTargetRms / rms, kVoiceTargetPeak / peakScale,
+        kVoiceMaxGain});
+    for (std::int16_t& sample : pcm) {
+        const double scaled = std::lround(static_cast<double>(sample) * gain);
+        sample = static_cast<std::int16_t>(
+            std::clamp(scaled, static_cast<double>(std::numeric_limits<std::int16_t>::min()),
+                static_cast<double>(std::numeric_limits<std::int16_t>::max())));
+    }
+}
+
 std::vector<Bytes> unpackOpusFrames(const Bytes& packed)
 {
     std::vector<Bytes> frames;

@@ -26,6 +26,7 @@
 
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
 #include <fstream>
 
 namespace bazarish::app {
@@ -584,6 +585,24 @@ QString AppController::dataLocation() const
     return QString::fromStdString(client::AccountManager::dataRoot().string());
 }
 
+namespace {
+
+// Whether a directory can be created in and written to, answered by doing it:
+// permissions alone do not say whether the filesystem underneath is read-only.
+bool directoryIsWritable(const std::filesystem::path& directory)
+{
+    std::error_code error;
+    std::filesystem::create_directories(directory, error);
+    const std::filesystem::path probe = directory / ".bazarish-write-test";
+    std::ofstream out(probe);
+    const bool ok = out.is_open() && (out << "x").good();
+    out.close();
+    std::filesystem::remove(probe, error);
+    return ok;
+}
+
+}  // namespace
+
 void AppController::setPortable(const bool on)
 {
     namespace fs = std::filesystem;
@@ -594,6 +613,18 @@ void AppController::setPortable(const bool on)
                              : client::AccountManager::portableRoot();
     const fs::path to = on ? client::AccountManager::portableRoot()
                            : client::AccountManager::globalRoot();
+    // Asked before anything is closed or moved: a directory that cannot be
+    // written to (an AppImage on a read-only medium, an application directory
+    // owned by root) would otherwise be discovered halfway through, with the
+    // accounts already shut and the data already moved.
+    if (on && !directoryIsWritable(client::AccountManager::portableRoot().parent_path())) {
+        emit createFailed(QStringLiteral("Cannot write beside the application (")
+            + QString::fromStdString(
+                client::AccountManager::portableRoot().parent_path().string())
+            + QStringLiteral(") - move it somewhere writable, such as your home directory, "
+                             "and try again."));
+        return;
+    }
     // Close everything first: accounts hold their transcripts open, and moving a
     // directory out from under them would be moving files that are being written.
     closeAllSessions();

@@ -179,7 +179,6 @@ Item {
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
     AppSettingsPage {
         id: appSettings
-        onBack: { appSettings.close(); settings.open() }
         onShowRouterStatus: routerStatus.open()
     }
     SettingsPage {

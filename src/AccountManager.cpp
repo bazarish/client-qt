@@ -100,10 +100,17 @@ fs::path AccountManager::globalRoot()
 
 namespace {
 
-// The directory the running executable lives in. Read from the process itself
-// rather than argv[0], which a caller can set to anything.
+// The directory the application lives in, which is where portable data goes.
+// Read from the process itself rather than argv[0], which a caller can set to
+// anything - except inside an AppImage, where the executable is on a read-only
+// mount of its own and the file the user actually launched is the one named by
+// APPIMAGE (set by the AppImage runtime).
 fs::path executableDir()
 {
+    if (const char* const bundle = std::getenv("APPIMAGE");
+        bundle != nullptr && bundle[0] != '\0') {
+        return fs::path(bundle).parent_path();
+    }
     std::error_code error;
     const fs::path self = fs::read_symlink("/proc/self/exe", error);
     return error ? fs::current_path() : self.parent_path();

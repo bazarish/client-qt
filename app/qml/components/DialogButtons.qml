@@ -16,6 +16,9 @@ Item {
     property string rejectText: "Cancel"
     property bool showReject: true
     property bool danger: false
+    // A dialog whose input is not yet valid keeps its accept action out of reach
+    // rather than answering the press with an error.
+    property bool acceptEnabled: true
     signal accepted()
     signal rejected()
 
@@ -38,6 +41,7 @@ Item {
             Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
             text: root.acceptText
             danger: root.danger
+            enabled: root.acceptEnabled
             onClicked: root.accepted()
         }
     }

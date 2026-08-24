@@ -676,7 +676,16 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    Label { text: "Backup"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: "Database"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    MenuButton {
+                        Layout.fillWidth: true
+                        text: "Change password…"
+                        onClicked: {
+                            newPass.text = ""
+                            newPassAgain.text = ""
+                            passwordDialog.open()
+                        }
+                    }
                     MenuButton { Layout.fillWidth: true; text: "Export encrypted backup…"; onClicked: exportDialog.open() }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -815,6 +824,58 @@ Popup {
         footer: DialogButtons { onAccepted: exportPassDialog.accept(); onRejected: exportPassDialog.reject() }
         contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260; onAccepted: exportPassDialog.accept()
             background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
+    }
+
+    // The password this account is kept under at rest. Asked twice, because a
+    // mistyped one would lock the account against its owner - only the sealed key
+    // beside the database changes, so nothing open on it is disturbed.
+    Dialog {
+        id: passwordDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        title: "Database password"
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label { text: "Database password"; color: Theme.green
+            font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        readonly property bool matched: newPass.text === newPassAgain.text
+        onAccepted: root.session.changePassphrase(newPass.text)
+        footer: DialogButtons {
+            acceptEnabled: passwordDialog.matched
+            onAccepted: passwordDialog.accept()
+            onRejected: passwordDialog.reject()
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            TextField {
+                id: newPass
+                echoMode: TextInput.Password
+                placeholderText: "new password"
+                color: Theme.text; placeholderTextColor: Theme.textDim
+                Layout.fillWidth: true; implicitWidth: 260
+                background: Rectangle { radius: 8; color: Theme.surface
+                    border.color: newPass.activeFocus ? Theme.accent : Theme.border }
+            }
+            TextField {
+                id: newPassAgain
+                echoMode: TextInput.Password
+                placeholderText: "repeat it"
+                color: Theme.text; placeholderTextColor: Theme.textDim
+                Layout.fillWidth: true; implicitWidth: 260
+                onAccepted: if (passwordDialog.matched) { passwordDialog.accept() }
+                background: Rectangle { radius: 8; color: Theme.surface
+                    border.color: newPassAgain.activeFocus ? Theme.accent : Theme.border }
+            }
+            Label {
+                text: passwordDialog.matched
+                    ? (newPass.text.length === 0
+                        ? "Empty: this account will be kept unencrypted."
+                        : "Asked for whenever this account is opened.")
+                    : "The two do not match."
+                color: passwordDialog.matched ? Theme.textDim : Theme.warn
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap; Layout.fillWidth: true
+            }
+        }
     }
 
     // Full server-connection editor: the same descriptor flow as first connect,

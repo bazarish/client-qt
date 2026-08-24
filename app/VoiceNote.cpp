@@ -33,6 +33,12 @@ constexpr double kFullScale = 32768.0;
 // it is told. Opus at this rate is speech quality at 48 kHz mono.
 constexpr int kVoiceBitrateBps = 24000;
 
+// What one frame will weigh once encoded, at the bitrate above. Nothing is
+// encoded until the recording ends, so the size the UI stops at is this.
+constexpr int kBitsPerByte = 8;
+constexpr std::size_t kFrameBytesEstimate = static_cast<std::size_t>(kVoiceBitrateBps)
+    * kCallFrameMs / (kBitsPerByte * 1000);
+
 // Loudness of one captured frame, 0..1.
 float frameLevel(const std::vector<std::int16_t>& pcm)
 {
@@ -63,8 +69,8 @@ void VoiceNote::startRecording()
         return;
     }
     {
-        const std::lock_guard<std::mutex> lock(framesMutex_);
-        frames_.clear();
+        const std::lock_guard<std::mutex> lock(pcmMutex_);
+        pcm_.clear();
     }
     // Named before the fact: with no input device the recorder would run,
     // draw a flat line and end with nothing to send, which says the same thing
@@ -79,22 +85,16 @@ void VoiceNote::startRecording()
     startedAtMs_ = QDateTime::currentMSecsSinceEpoch();
     recording_.store(true);
     captureThread_ = std::thread([this]() {
-        AudioEncoder encoder(kVoiceBitrateBps);
         while (recording_.load()) {
-            const std::vector<std::int16_t> pcm = source_->readFrame();
-            if (pcm.size() != static_cast<std::size_t>(kCallSamplesPerFrame)) {
+            const std::vector<std::int16_t> frame = source_->readFrame();
+            if (frame.size() != static_cast<std::size_t>(kCallSamplesPerFrame)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(kIdleSleepMs));
                 continue;
             }
-            inputLevel_.store(frameLevel(pcm));
-            try {
-                Bytes packet = encoder.encode(pcm.data(), kCallSamplesPerFrame);
-                encodedBytes_.fetch_add(packet.size());
-                const std::lock_guard<std::mutex> lock(framesMutex_);
-                frames_.push_back(std::move(packet));
-            } catch (const std::exception& error) {
-                bazarish::log::warn("a voice frame did not encode: {}", error.what());
-            }
+            inputLevel_.store(frameLevel(frame));
+            encodedBytes_.fetch_add(kFrameBytesEstimate);
+            const std::lock_guard<std::mutex> lock(pcmMutex_);
+            pcm_.insert(pcm_.end(), frame.begin(), frame.end());
         }
     });
 }
@@ -115,17 +115,32 @@ void VoiceNote::stopCaptureThread()
 Bytes VoiceNote::stopRecording()
 {
     stopCaptureThread();
-    const std::lock_guard<std::mutex> lock(framesMutex_);
-    const Bytes packed = packOpusFrames(frames_);
-    frames_.clear();
-    return packed;
+    std::vector<std::int16_t> pcm;
+    {
+        const std::lock_guard<std::mutex> lock(pcmMutex_);
+        pcm.swap(pcm_);
+    }
+    // One loudness for every message, whatever the microphone was set to.
+    normalizeVoicePcm(pcm);
+    AudioEncoder encoder(kVoiceBitrateBps);
+    std::vector<Bytes> frames;
+    frames.reserve(pcm.size() / static_cast<std::size_t>(kCallSamplesPerFrame));
+    for (std::size_t at = 0; at + kCallSamplesPerFrame <= pcm.size();
+        at += static_cast<std::size_t>(kCallSamplesPerFrame)) {
+        try {
+            frames.push_back(encoder.encode(&pcm[at], kCallSamplesPerFrame));
+        } catch (const std::exception& error) {
+            bazarish::log::warn("a voice frame did not encode: {}", error.what());
+        }
+    }
+    return packOpusFrames(frames);
 }
 
 void VoiceNote::cancelRecording()
 {
     stopCaptureThread();
-    const std::lock_guard<std::mutex> lock(framesMutex_);
-    frames_.clear();
+    const std::lock_guard<std::mutex> lock(pcmMutex_);
+    pcm_.clear();
 }
 
 qint64 VoiceNote::elapsedMs() const

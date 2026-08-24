@@ -17,6 +17,33 @@ Popup {
     // Emitted when the user collapses the call to MainView's compact banner.
     signal minimizeRequested()
 
+    // Media is flowing: accepted is not connected, and until the first packet
+    // arrives both sides are still opening the path. This is the same instant on
+    // both of them, so neither says "in call" while the other is still waiting.
+    readonly property bool connected: session && session.callConnectedAtMs > 0
+    // Ticks the running time while the call is up.
+    property int elapsedTick: 0
+    Timer {
+        running: root.connected
+        interval: 1000
+        repeat: true
+        onTriggered: root.elapsedTick++
+    }
+    // How long the two sides have been talking, m:ss (h:mm:ss past the hour).
+    function callDuration() {
+        void root.elapsedTick
+        if (!root.connected) {
+            return ""
+        }
+        const total = Math.max(0, Math.floor((Date.now() - root.session.callConnectedAtMs) / 1000))
+        const seconds = total % 60
+        const minutes = Math.floor(total / 60) % 60
+        const hours = Math.floor(total / 3600)
+        const mm = (hours > 0 && minutes < 10 ? "0" : "") + minutes
+        const ss = (seconds < 10 ? "0" : "") + seconds
+        return (hours > 0 ? hours + ":" : "") + mm + ":" + ss
+    }
+
     modal: true
     closePolicy: Popup.NoAutoClose  // dismissed only through call actions
     anchors.centerIn: Overlay.overlay
@@ -92,11 +119,22 @@ Popup {
                             ? root.session.callStage : "Calling…")
                     : root.callState === "incoming" ? "Incoming audio call"
                     : root.callState === "active"
-                        ? (root.session && root.session.callStage.length > 0
-                            ? root.session.callStage
+                        ? (!root.connected
+                            ? (root.session && root.session.callStage.length > 0
+                                ? root.session.callStage : "Opening the audio path")
                             : ((root.session && root.session.callMuted)
                                 ? "In call (muted)" : "In call"))
                     : ""
+            }
+            // The running time, once there is a call to time.
+            Label {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                visible: root.connected
+                text: root.callDuration()
+                color: Theme.text
+                font.pixelSize: Theme.fontTitle
+                font.family: Theme.fontFamily
             }
             Item { Layout.fillHeight: true }
             CallControls { }

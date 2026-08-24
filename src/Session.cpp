@@ -38,6 +38,8 @@ namespace {
 const char* const kTypeFile = "file";
 const char* const kTypeImage = "image";
 const char* const kTypeVoice = "voice";
+// What both sides show between accepting a call and the first media packet.
+const char* const kCallOpeningStage = "Opening the audio path";
 
 
 namespace fs = std::filesystem;
@@ -143,6 +145,9 @@ void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap,
     }
     if (bootstrap.contains("servingKey")) {
         contact.servingSealingB64 = bootstrap.at("servingKey").get<std::string>();
+    }
+    if (bootstrap.contains("view")) {
+        contact.view = bootstrap.at("view").get<std::string>();
     }
     if (!bootstrap.contains("replyTokens")) {
         return;
@@ -1543,6 +1548,7 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
                 {"sealing", sealingPublicB64()},
                 {"dest", myDest_},
                 {"servingKey", myServingKeyB64_},
+                {"view", view_},
                 {"replyTokens", replyTokens},
             }},
     };
@@ -2185,6 +2191,7 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
             {"sealing", sealingPublicB64()},
             {"dest", myDest_},
             {"servingKey", myServingKeyB64_},
+            {"view", view_},
             {"replyTokens", issueTokenBatch()},
         };
         // Addressed when we know which device asked: their other devices then
@@ -2210,7 +2217,12 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // the address changes, and a contact who learned the old one at introduction
     // would go on dialling it forever. Carrying it on every message means the
     // first thing that arrives after a move repairs the way back.
-    inner["routing"] = {{"dest", myDest_}, {"servingKey", myServingKeyB64_}};
+    // The view capability rides with the routing: it is what lets this contact
+    // hand us on to someone else, and without it a dialog that started from
+    // their side could never be shared. It grants no more than what they already
+    // hold - the card behind it is the dest and keys they are talking to us on.
+    inner["routing"]
+        = {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", view_}};
 
     const Bytes innerBytes = encodedBody(inner);
     const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
@@ -2327,6 +2339,14 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                         bazarish::log::redact(message.fromFingerprint));
                     peer.dest = dest;
                     peer.servingSealingB64 = servingKey;
+                    persistContacts();
+                }
+                // A dialog that started from their side never carried their view
+                // capability, so this is also where an older contact becomes one
+                // we can hand on to somebody else.
+                const std::string view = routing.value("view", std::string());
+                if (isViewCapability(view) && peer.view != view) {
+                    peer.view = view;
                     persistContacts();
                 }
             }
@@ -2739,7 +2759,8 @@ void Session::sendTokenRefill(const std::string& peerFingerprint, const std::str
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"bootstrap", {{"replyTokens", issueTokenBatch()}, {"forDevice", forDevice}}},
-        {"routing", {{"dest", myDest_}, {"servingKey", myServingKeyB64_}}},
+        {"routing",
+            {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", view_}}},
     };
     if (!prepaidToken.empty() || !contact.sendTokens.empty()) {
         sendContent(peerFingerprint, std::move(inner), {}, nullptr, false, true, prepaidToken);
@@ -2856,7 +2877,8 @@ void Session::sendTokenRequest(const std::string& peerFingerprint)
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"device", client_->clientId()},
-        {"routing", {{"dest", myDest_}, {"servingKey", myServingKeyB64_}}},
+        {"routing",
+            {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", view_}}},
     };
     // Spends one of our tokens like any other message: the peer answers with a
     // batch addressed to this device, and no other device of ours holds it.
@@ -3064,6 +3086,10 @@ void Session::acceptCall(const std::string& callId)
             {"dest", dgram->routingHost()}});
     call_.dgram = std::move(dgram);
     call_.state = CallState::eActive;
+    // Accepted is not connected: the tunnels between the two media destinations
+    // still have to meet. Both sides say the same thing here and both stop
+    // saying it at the same moment - when the first packet arrives.
+    call_.stage = kCallOpeningStage;
     startCallMedia();
 }
 
@@ -3208,7 +3234,7 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
             && from == call_.peerFingerprint) {
             call_.peerMediaDest = body.value("dest", std::string());
             call_.state = CallState::eActive;
-            call_.stage = "Answered; opening the audio path";
+            call_.stage = kCallOpeningStage;
             startCallMedia();
         }
         return;
@@ -3330,6 +3356,10 @@ std::string Session::contactInviteUri(const std::string& peerFingerprint) const
     if (found->second.dest.empty() || found->second.servingSealingB64.empty()) {
         throw std::runtime_error("no routing held for this contact yet");
     }
+    if (!isViewCapability(found->second.view)) {
+        throw std::runtime_error(
+            "no descriptor key for this contact yet - it arrives with their next message");
+    }
     Descriptor descriptor;
     descriptor.fingerprint = peerFingerprint;
     descriptor.dest = found->second.dest;
@@ -3360,6 +3390,13 @@ std::string Session::inviteUri() const
     // Advertise our account name so the contact can adopt it as our display name.
     descriptor.name = name_;
     return encodeDescriptor(descriptor);
+}
+
+void Session::changePassphrase(const std::string& passphrase)
+{
+    db_->rekey(passphrase);
+    encrypted_ = !passphrase.empty();
+    persistMeta();
 }
 
 void Session::exportAccount(const fs::path& outFile, const std::string& password) const

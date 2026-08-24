@@ -7,6 +7,7 @@
 #include <bazarish/Crypto.hpp>
 
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <cstdint>
 #include <cstdio>
@@ -98,8 +99,81 @@ double frameEnergy(const std::vector<std::int16_t>& pcm)
 
 }  // namespace
 
+namespace {
+
+// A tone at a chosen amplitude, the shape a levelling pass is judged on.
+std::vector<std::int16_t> tone(const std::size_t samples, const double amplitude)
+{
+    std::vector<std::int16_t> pcm(samples);
+    for (std::size_t i = 0; i < samples; ++i) {
+        const double phase = 2.0 * 3.14159265358979323846 * 440.0
+            * static_cast<double>(i) / static_cast<double>(bazarish::kCallSampleRate);
+        pcm[i] = static_cast<std::int16_t>(std::lround(amplitude * 32767.0 * std::sin(phase)));
+    }
+    return pcm;
+}
+
+double rmsOf(const std::vector<std::int16_t>& pcm)
+{
+    double square = 0.0;
+    for (const std::int16_t sample : pcm) {
+        const double value = static_cast<double>(sample) / 32768.0;
+        square += value * value;
+    }
+    return std::sqrt(square / static_cast<double>(pcm.size()));
+}
+
+std::int32_t peakOf(const std::vector<std::int16_t>& pcm)
+{
+    std::int32_t peak = 0;
+    for (const std::int16_t sample : pcm) {
+        peak = std::max(peak, std::abs(static_cast<std::int32_t>(sample)));
+    }
+    return peak;
+}
+
+// A recording is levelled before it is sent: what the microphone was set to must
+// not decide how loud the message arrives.
+void testVoiceNormalization()
+{
+    const std::size_t samples = static_cast<std::size_t>(bazarish::kCallSampleRate);
+
+    // Recorded far too quietly: brought up to the target, and not past the peak
+    // ceiling that keeps it from clipping.
+    std::vector<std::int16_t> quiet = tone(samples, 0.02);
+    bazarish::normalizeVoicePcm(quiet);
+    CHECK(rmsOf(quiet) > 0.05);
+    CHECK(peakOf(quiet) <= static_cast<std::int32_t>(bazarish::kVoiceTargetPeak * 32768.0) + 1);
+
+    // Recorded hot: brought down rather than left to clip on the way out.
+    std::vector<std::int16_t> loud = tone(samples, 0.99);
+    const double loudBefore = rmsOf(loud);
+    bazarish::normalizeVoicePcm(loud);
+    CHECK(rmsOf(loud) < loudBefore);
+    CHECK(peakOf(loud) <= static_cast<std::int32_t>(bazarish::kVoiceTargetPeak * 32768.0) + 1);
+
+    // A quiet room is not a quiet voice: silence stays silent instead of being
+    // lifted into a message of noise.
+    std::vector<std::int16_t> silence = tone(samples, 0.0002);
+    const std::vector<std::int16_t> before = silence;
+    bazarish::normalizeVoicePcm(silence);
+    CHECK(silence == before);
+
+    // The gain is bounded, so a whisper is not multiplied without limit.
+    std::vector<std::int16_t> whisper = tone(samples, 0.002);
+    bazarish::normalizeVoicePcm(whisper);
+    CHECK(rmsOf(whisper) <= 0.002 * bazarish::kVoiceMaxGain / std::sqrt(2.0) + 0.001);
+
+    std::vector<std::int16_t> nothing;
+    bazarish::normalizeVoicePcm(nothing);
+    CHECK(nothing.empty());
+}
+
+}  // namespace
+
 int main()
 {
+    testVoiceNormalization();
     // 1) Opus round trip: a 440 Hz frame encodes to a compact packet and decodes
     //    back to a full frame whose energy is preserved (the tone survives).
     {

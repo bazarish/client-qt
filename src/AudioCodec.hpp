@@ -66,6 +66,19 @@ private:
 Bytes packOpusFrames(const std::vector<Bytes>& frames);
 std::vector<Bytes> unpackOpusFrames(const Bytes& packed);
 
+// Levels a recording before it is encoded. Speech captured at a low input gain
+// reaches the other side as a whisper, and one captured hot reaches it clipped;
+// the whole recording is brought to one loudness instead. The gain takes the
+// recording's RMS to kVoiceTargetRms without letting its peak past
+// kVoiceTargetPeak, is capped at kVoiceMaxGain so a quiet room is not lifted
+// into the message as noise, and is not applied at all to what never rose above
+// kVoiceSilenceRms. In place, so it is one pass over the samples.
+inline constexpr double kVoiceTargetRms = 0.10;   // about -20 dBFS
+inline constexpr double kVoiceTargetPeak = 0.89;  // about -1 dBFS
+inline constexpr double kVoiceMaxGain = 8.0;
+inline constexpr double kVoiceSilenceRms = 0.001;
+void normalizeVoicePcm(std::vector<std::int16_t>& pcm);
+
 // How loud a voice message is over its length: one bar per slice, each in
 // 0..kWaveformLevels-1, taken from the decoded audio rather than from anything
 // stored alongside it. Loudness is relative to the recording's own peak, so a

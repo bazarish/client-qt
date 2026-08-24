@@ -91,6 +91,7 @@ public slots:
     void signLogin(const QString& challenge);
     void saveAttachment(const QString& peer, const QString& messageId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
+    void changePassphrase(const QString& passphrase);
     // Per-user I2P destination: set up the master (generate or load a .dat),
     // turn the paid option on/off, and report the current status.
     void generatePersonalKey();
@@ -255,6 +256,8 @@ private:
     // Emits the current contacts with their display names (parallel lists).
     void emitContacts();
     void emitCallState();
+    // Runs the call watch while a call is live and stops it once idle.
+    void reconcileCallTimer();
     // Drains finished calls from the session and emits callLogged for each.
     void flushCallLog();
     // Re-polls sends still in flight after their initial submit window so a late
@@ -273,6 +276,10 @@ private:
     // Completed off-thread contact resolutions awaiting finalize (see above).
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
     QTimer* syncTimer_ = nullptr;
+    // While a call is up, its state is watched far faster than the sync tick:
+    // both sides say "in call" the moment media flows, and neither can learn
+    // that seconds late from a poll meant for the mailbox.
+    QTimer* callTimer_ = nullptr;
     // The long-poll loop: its own thread, because the request is meant to hang.
     // While it works the sync timer only heartbeats; if the server has no event
     // face it stops and the timer goes back to its short interval.
@@ -741,6 +748,10 @@ public:
     // selected (falling back to opening its folder).
     Q_INVOKABLE void showInFolder(const QString& path) const;
     Q_INVOKABLE void exportAccount(const QString& fileUrl, const QString& password);
+    // Changes the passphrase this account is kept under at rest. An empty one
+    // leaves it unencrypted, which is what an account created without a
+    // passphrase already is.
+    Q_INVOKABLE void changePassphrase(const QString& passphrase);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     // Per-user I2P destination controls (drive the worker thread).
     Q_INVOKABLE void generatePersonalKey();
@@ -855,6 +866,7 @@ signals:  // to worker
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
         qint64 token);
     void requestExport(const QString& path, const QString& password);
+    void requestChangePassphrase(const QString& passphrase);
     void requestOpen(const QString& dir, const QString& passphrase);
     void requestSetSync(bool on);
     void requestRebuildI2p();

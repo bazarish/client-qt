@@ -167,6 +167,10 @@ constexpr qint64 kMinVoiceMs = 700;
 // level is a live picture of the microphone, so it is sampled at a rate a user
 // reads as movement rather than as steps.
 constexpr int kVoiceTickMs = 50;
+// How often a live call is asked for its state. The moment media starts flowing
+// is what both sides show as "in call", and the mailbox poll is far too coarse
+// to carry it.
+constexpr int kCallWatchIntervalMs = 400;
 
 // A contact request the recipient's address refused for being over its cap is
 // sent again on a timer: enough tries to ride out a busy minute, spaced so the
@@ -548,10 +552,13 @@ void SessionWorker::emitContacts()
         // own card, so nothing is computed that they did not already hand over.
         try {
             links << QString::fromStdString(session_->contactInviteUri(fp));
-        } catch (const std::exception&) {
-            // error-hiding: allowed - a contact whose routing we have not been
-            // given yet is the normal early state, and the empty entry is what
-            // the card reads to say there is nothing to share.
+        } catch (const std::exception& error) {
+            // A contact we have not been handed everything for yet is the normal
+            // early state, and the empty entry is what the card reads to say
+            // there is nothing to share - but the reason is said out loud, since
+            // "nothing to share" is exactly what a bug here looks like.
+            bazarish::log::debug("contact {} is not shareable yet: {}",
+                bazarish::log::redact(fp), error.what());
             links << QString();
         }
         capacities << QString::number(session_->sendCapacity(fp));
@@ -888,6 +895,24 @@ void SessionWorker::emitCallState()
     emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
         QString::fromStdString(call.callId), call.muted, QString::fromStdString(call.stage),
         static_cast<qint64>(call.connectedAtMs));
+    reconcileCallTimer();
+}
+
+void SessionWorker::reconcileCallTimer()
+{
+    const bool live = session_ && session_->currentCall().state != Session::CallState::eIdle;
+    if (live) {
+        if (callTimer_ == nullptr) {
+            callTimer_ = new QTimer(this);
+            callTimer_->setInterval(kCallWatchIntervalMs);
+            connect(callTimer_, &QTimer::timeout, this, &SessionWorker::emitCallState);
+        }
+        if (!callTimer_->isActive()) {
+            callTimer_->start();
+        }
+    } else if (callTimer_ != nullptr) {
+        callTimer_->stop();
+    }
 }
 
 void SessionWorker::flushCallLog()
@@ -1752,6 +1777,17 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
     }
 }
 
+void SessionWorker::changePassphrase(const QString& passphrase)
+{
+    try {
+        session_->changePassphrase(passphrase.toStdString());
+        emit actionOk(passphrase.isEmpty() ? "This account is no longer password-protected."
+                                           : "Password changed.");
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 // ============================ SessionController ============================
 
 SessionController::SessionController(QObject* parent)
@@ -1810,6 +1846,8 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::downloadFinished, this,
         &SessionController::onDownloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportAccount);
+    connect(this, &SessionController::requestChangePassphrase, worker_,
+        &SessionWorker::changePassphrase);
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
     connect(this, &SessionController::requestRebuildI2p, worker_, &SessionWorker::rebuildI2pLinks);
     connect(this, &SessionController::requestCancelTransfer, worker_,
@@ -2955,6 +2993,14 @@ QUrl SessionController::defaultSaveUrl(const QString& fileName) const
     return QUrl::fromLocalFile(QDir(dir).filePath(name));
 }
 
+void SessionController::changePassphrase(const QString& passphrase)
+{
+    // Kept here too: the transcript store and the account database are opened
+    // again on this side, and they open with what this holds.
+    accountPassphrase_ = passphrase;
+    emit requestChangePassphrase(passphrase);
+}
+
 void SessionController::exportAccount(const QString& fileUrl, const QString& password)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
@@ -3712,9 +3758,13 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // Stored, each became an empty bubble that also counted as unread. The item is
     // still acked - ackAfterReceive runs off the same signal - so it does not come
     // back.
+    // Audio that rides inside the message has no name and nothing to fetch, so
+    // "nothing to show" has to ask about the bytes too - without this a voice
+    // message was received, acked and receipted, and then dropped here.
     if (message.value("text").toString().isEmpty()
         && message.value("attName").toString().isEmpty()
         && message.value("attRef").toString().isEmpty()
+        && message.value("attSize").toLongLong() <= 0
         && message.value("keyboard").toString().isEmpty()) {
         bazarish::log::info("silent control message ({}) not shown", type.toStdString());
         return;
