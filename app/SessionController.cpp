@@ -163,6 +163,13 @@ constexpr qint64 kMinVoiceMs = 700;
 // level is a live picture of the microphone, so it is sampled at a rate a user
 // reads as movement rather than as steps.
 constexpr int kVoiceTickMs = 50;
+
+// A contact request the recipient's address refused for being over its cap is
+// sent again on a timer: enough tries to ride out a busy minute, spaced so the
+// next one lands in a fresh window.
+constexpr int kContactRetryAttempts = 3;
+constexpr int kContactRetrySeconds = 20;
+constexpr int kMillisecondsPerSecond = 1000;
 // How many bars a voice message's drawn waveform has - enough shape to read at
 // the width of a bubble.
 constexpr int kVoiceWaveBars = 40;
@@ -1234,6 +1241,18 @@ void SessionWorker::drainResolvedAdds()
                 QString::fromStdString(resolved.introText));
             emit contactAddDone(
                 entry.opId, true, QStringLiteral("Request sent, awaiting delivery…"));
+        } catch (const bazarish::client::ApiError& e) {
+            // The recipient's address is taking too many contact requests just
+            // now. The request is not lost - it was never stored - so it is
+            // worth repeating, and the user is told that is what is happening.
+            if (e.code == bazarish::ErrorCode::eContactRateLimited) {
+                emit contactAddRateLimited(entry.opId,
+                    QString::fromStdString(resolved.fingerprint),
+                    QString::fromStdString(resolved.displayName));
+                continue;
+            }
+            emit contactAddDone(entry.opId, false, QString::fromUtf8(e.what()));
+            emit actionFailed(QString::fromUtf8(e.what()));
         } catch (const std::exception& e) {
             emit contactAddDone(entry.opId, false, QString::fromUtf8(e.what()));
             emit actionFailed(QString::fromUtf8(e.what()));
@@ -1868,6 +1887,8 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::contactAddStage, this,
         &SessionController::onContactAddStage);
     connect(worker_, &SessionWorker::contactAddDone, this, &SessionController::onContactAddDone);
+    connect(worker_, &SessionWorker::contactAddRateLimited, this,
+        &SessionController::onContactAddRateLimited);
     connect(worker_, &SessionWorker::contactAccepted, this,
         &SessionController::onContactAccepted);
     connect(worker_, &SessionWorker::opBegin, this, &SessionController::onOpBegin);
@@ -2724,12 +2745,56 @@ void SessionController::addByInvite(const QString& uri, const QString& intro)
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
         openContactProgress(QString::fromStdString(descriptor.fingerprint), opId,
             QString::fromStdString(descriptor.name));
+        // Remembered in case the recipient's address is over its cap: the
+        // request then has to be sent again, and this is what it takes.
+        refusedRequests_.insert(QString::fromStdString(descriptor.fingerprint),
+            PendingContactRequest{uri, intro, kContactRetryAttempts});
     } catch (const std::exception& error) {
         // inviteProblem() already vetted the link, so this cannot normally fire;
         // if it ever does, the add still runs and the panel carries the progress.
         bazarish::log::warn("invite parsed for the chat but not for its peer: {}", error.what());
     }
     emit requestAddByInvite(uri, intro, opId);
+}
+
+void SessionController::onContactAddRateLimited(
+    const QString& opId, const QString& fingerprint, const QString& displayName)
+{
+    (void)displayName;
+    finishOperation(opId, false, QStringLiteral("Their address is busy"));
+    contactProgressRows_.remove(opId);
+    const auto found = refusedRequests_.find(fingerprint);
+    if (found == refusedRequests_.end() || found->triesLeft <= 0) {
+        writeConversationNote(fingerprint,
+            QStringLiteral("Their address is taking too many contact requests just now, and "
+                           "this one was refused rather than lost. Try again when you like."));
+        emit contactRetryExhausted(fingerprint);
+        return;
+    }
+    --found->triesLeft;
+    writeConversationNote(fingerprint,
+        QStringLiteral("Their address is busy with contact requests. Trying again in %1 "
+                       "seconds (%2 left).")
+            .arg(kContactRetrySeconds)
+            .arg(found->triesLeft + 1));
+    const QString peer = fingerprint;
+    QTimer::singleShot(kContactRetrySeconds * kMillisecondsPerSecond, this,
+        [this, peer]() { retryContactRequest(peer); });
+}
+
+void SessionController::retryContactRequest(const QString& fingerprint)
+{
+    const auto found = refusedRequests_.find(fingerprint);
+    if (found == refusedRequests_.end()) {
+        return;
+    }
+    const PendingContactRequest pending = *found;
+    addByInvite(pending.uri, pending.intro);
+    // addByInvite re-registers the entry with a full set of automatic tries; keep
+    // the count this attempt is on instead.
+    if (const auto again = refusedRequests_.find(fingerprint); again != refusedRequests_.end()) {
+        again->triesLeft = pending.triesLeft;
+    }
 }
 
 void SessionController::addByUsername(const QString& alias, const QString& intro)
@@ -2741,6 +2806,25 @@ void SessionController::addByUsername(const QString& alias, const QString& intro
     // chat opens then (onContactRequestSent); until it does, the activity panel
     // is where the progress shows.
     emit requestAddByUsername(alias, intro, opId);
+}
+
+// A system line in a conversation: what is happening with a contact request the
+// user is watching, written where they are looking.
+void SessionController::writeConversationNote(const QString& peer, const QString& text)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    StoredMessage note;
+    note.peer = peer;
+    note.type = QStringLiteral("system");
+    note.text = text;
+    note.ts = nowMillis();
+    note.orderKey = note.ts;
+    note.status = DeliveryStatus::Received;
+    note.id = store_.append(note);
+    contacts_.touch(peer, peerName(peer), text, note.ts, false);
+    showInActiveView(note, true);
 }
 
 void SessionController::openContactProgress(

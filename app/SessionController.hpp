@@ -189,6 +189,10 @@ signals:
     // Activity-panel progress for an in-flight contact add (opId assigned by the
     // controller at start): a stage update, then a terminal done (ok + final text).
     void contactAddStage(const QString& opId, const QString& status);
+    // The recipient's address is over its contact-request cap: the request was
+    // refused, not lost, and the controller repeats it on a timer.
+    void contactAddRateLimited(
+        const QString& opId, const QString& fingerprint, const QString& displayName);
     void contactAddDone(const QString& opId, bool ok, const QString& status);
     // A contact request we agreed to: the peer, and whether it went through.
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
@@ -704,6 +708,10 @@ public:
     // background operation that dials I2P first.
     Q_INVOKABLE QString inviteProblem(const QString& uri) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
+    // Sends a contact request again after the recipient's address refused it for
+    // being over its cap. Called by the timer that repeats it, and by the user
+    // from the chat once the automatic tries are spent.
+    Q_INVOKABLE void retryContactRequest(const QString& fingerprint);
     Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
     // Agrees to the active chat's received contact request (the green "Agree").
     Q_INVOKABLE void acceptContact();
@@ -782,6 +790,9 @@ signals:
     void sendReceiptsChanged();
     void acceptCallsChanged();
     void delegationDaysChanged();
+    // The automatic retries of a refused contact request are spent: the chat
+    // offers to send it again by hand.
+    void contactRetryExhausted(const QString& fingerprint);
     void editingChanged();
     void replyingChanged();
     void contactsRevisionChanged();
@@ -879,6 +890,9 @@ private slots:
     void openContactProgress(const QString& peer, const QString& opId, const QString& name);
     void writeContactProgress(const QString& opId, const QString& text);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
+    void writeConversationNote(const QString& peer, const QString& text);
+    void onContactAddRateLimited(
+        const QString& opId, const QString& fingerprint, const QString& displayName);
     void onContactAccepted(const QString& peer, bool ok, const QString& reason);
     void onOpBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
@@ -1023,6 +1037,14 @@ private:
     // The system note tracking a contact add, per operation id: the progress of a
     // request is written into the conversation it will belong to.
     QHash<QString, qint64> contactProgressRows_;
+    // A contact request the recipient's address refused for being over its cap:
+    // what it takes to send it again, and how many automatic tries are left.
+    struct PendingContactRequest {
+        QString uri;
+        QString intro;
+        int triesLeft = 0;
+    };
+    QHash<QString, PendingContactRequest> refusedRequests_;
     QString profilePassphrase_;
     std::unique_ptr<client::ProfileDb> profileDb_;
     client::ProfileDb& profileDb();

@@ -66,8 +66,12 @@ Item {
     }
 
     // A failed file whose saved source is gone: let the user pick a file to send.
+    // The automatic tries of a refused contact request are spent: offer to send
+    // it again by hand, in the chat the user is already looking at.
+    property string retryPeer: ""
     Connections {
         target: root.session
+        function onContactRetryExhausted(fingerprint) { root.retryPeer = fingerprint }
         function onResendFilePickRequested() { resendPickDialog.open() }
         // Search jump: scroll the chosen message into view and flash it.
         function onScrollToMessage(messageId) {
@@ -513,6 +517,30 @@ Item {
             }
         }
 
-        Composer { session: root.session }
+        // Shown only after the automatic tries are spent; sending again clears it.
+    RowLayout {
+        visible: root.retryPeer.length > 0 && root.retryPeer === (root.session ? root.session.activePeer : "")
+        Layout.fillWidth: true
+        Layout.leftMargin: 12
+        Layout.rightMargin: 12
+        Layout.bottomMargin: 4
+        spacing: 8
+        Label {
+            text: "Their address was busy with contact requests."
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+        MenuButton {
+            text: "Send the request again"
+            onClicked: {
+                root.session.retryContactRequest(root.retryPeer)
+                root.retryPeer = ""
+            }
+        }
+    }
+
+    Composer { session: root.session }
     }
 }

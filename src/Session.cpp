@@ -1179,9 +1179,12 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
                 return true;  // recipient server stored it: yellow
             }
             if (status.status == "failed") {
-                throw std::runtime_error("delivery failed: "
-                    + (status.errorMessage.empty() ? std::string("unknown")
-                                                    : status.errorMessage));
+                // Typed, so a caller can tell a refusal it should repeat (the
+                // recipient's address is taking too many contact requests just
+                // now) from one it should not.
+                throw ApiError(status.errorCode, 0,
+                    status.errorMessage.empty() ? std::string("delivery failed")
+                                                : status.errorMessage);
             }
             if (status.status == "unconfirmed") {
                 // Our server gave up trying to confirm delivery, but the envelope
