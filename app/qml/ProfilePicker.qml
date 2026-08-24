@@ -35,6 +35,25 @@ Item {
         if (typeof window !== "undefined") window.showToast("Fingerprint copied")
     }
 
+    // The application's own settings, reachable before any profile is open: the
+    // I2P router status lives behind them, and a client stuck building tunnels
+    // has nowhere else to look.
+    IconButton {
+        iconName: "gear"
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 12
+        onClicked: appSettings.open()
+    }
+    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    AppSettingsPage {
+        id: appSettings
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        onBack: appSettings.close()
+        onShowRouterStatus: routerStatus.open()
+    }
+
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 460)

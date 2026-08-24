@@ -21,6 +21,24 @@ Item {
     // Connecting is minutes of real work over I2P: show it, with steps.
     ConnectProgressDialog { id: connectDialog; session: root.session }
 
+    // The same gear as on the profile list: a client waiting on I2P needs the
+    // router status, and there is no profile open to reach it through.
+    IconButton {
+        iconName: "gear"
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 12
+        onClicked: appSettings.open()
+    }
+    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    AppSettingsPage {
+        id: appSettings
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        onBack: appSettings.close()
+        onShowRouterStatus: routerStatus.open()
+    }
+
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 480)
@@ -73,10 +91,17 @@ Item {
 
         // The descriptor form (link paste or manual facades + fingerprint). The
         // user registers on the server's portal; this only connects.
+        // Prefilled from what the profile already holds: a connect that failed
+        // does not throw the server away - it is stored the moment it is
+        // entered - and asking for the descriptor again reads as if it had.
         ServerConnectForm {
+            id: connectForm
             Layout.fillWidth: true
             session: root.session
             actionText: "Connect"
+            initialFacades: root.session ? root.session.configuredFacades : []
+            initialFingerprint: root.session ? root.session.serverFingerprint : ""
+            showManual: root.session && root.session.configuredFacades.length > 0
         }
 
         // The dialog can be hidden while the connect runs; this is the way back.

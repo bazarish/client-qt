@@ -20,6 +20,24 @@ Item {
         onClicked: root.StackView.view.pop()
     }
 
+    // The same gear as on the profile list: a client waiting on I2P needs the
+    // router status, and there is no profile open to reach it through.
+    IconButton {
+        iconName: "gear"
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 12
+        onClicked: appSettings.open()
+    }
+    RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    AppSettingsPage {
+        id: appSettings
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        onBack: appSettings.close()
+        onShowRouterStatus: routerStatus.open()
+    }
+
     ColumnLayout {
         anchors.centerIn: parent
         width: Math.min(parent.width - 64, 420)
