@@ -132,6 +132,9 @@ public:
     QVector<StoredMessage> latestMessages(const QString& peer, int limit) const;
     QVector<StoredMessage> olderMessages(const QString& peer, qint64 beforeId, int limit) const;
     QVector<StoredMessage> newerMessages(const QString& peer, qint64 afterId, int limit) const;
+    // The next voice message after afterId in this conversation, from either
+    // side; empty when that was the last one. Playback runs on to it.
+    StoredMessage nextVoiceAfter(const QString& peer, qint64 afterId) const;
     // Whether any row exists strictly older / newer than id (drives "load more").
     bool hasMessagesBefore(const QString& peer, qint64 id) const;
     bool hasMessagesAfter(const QString& peer, qint64 id) const;

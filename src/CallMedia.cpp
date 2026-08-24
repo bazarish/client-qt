@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <thread>
 #include <stdexcept>
 #include <utility>
@@ -30,15 +31,37 @@ constexpr std::uint64_t kMaxPlcGap = 5;
 // How long the receive loop waits per poll before re-checking the stop flag.
 constexpr int kReceivePollMs = 200;
 
-Bytes makeNonce(const std::uint8_t role, const std::uint8_t track, const std::uint64_t sequence)
+// Byte 2 of the nonce says "I have heard you": the sender has already opened a
+// datagram from the peer. It travels in the clear but is part of the AEAD nonce,
+// so a flipped bit makes the datagram fail to open rather than lie.
+constexpr std::size_t kHeardFlagOffset = 2;
+
+Bytes makeNonce(const std::uint8_t role, const std::uint8_t track, const std::uint64_t sequence,
+    const bool heardPeer = false)
 {
     Bytes nonce(kNonceSize, 0);
     nonce[0] = role;
     nonce[1] = track;
+    nonce[kHeardFlagOffset] = heardPeer ? 1 : 0;
     for (int i = 0; i < 8; ++i) {
         nonce[kNonceSize - 1 - i] = static_cast<unsigned char>((sequence >> (8 * i)) & 0xff);
     }
     return nonce;
+}
+
+// Loudness of one frame, 0..1, as the level meters draw it.
+float frameLevel(const std::vector<std::int16_t>& pcm)
+{
+    if (pcm.empty()) {
+        return 0.0F;
+    }
+    constexpr double kFullScale = 32768.0;
+    double square = 0.0;
+    for (const std::int16_t sample : pcm) {
+        const double value = static_cast<double>(sample) / kFullScale;
+        square += value * value;
+    }
+    return static_cast<float>(std::sqrt(square / static_cast<double>(pcm.size())));
 }
 
 std::uint64_t sequenceFromNonce(const Bytes& nonce)
@@ -85,6 +108,10 @@ CallMedia::CallMedia(CallTransport& transport, std::unique_ptr<AudioSource> audi
     , sendSeqAudio_(0)
     , packetsSent_(0)
     , packetsReceived_(0)
+    , heardPeer_(false)
+    , reportedConnected_(false)
+    , inputLevel_(0.0F)
+    , outputLevel_(0.0F)
 {
     if (mediaKey_.size() != kAeadKeyBytes) {
         throw std::invalid_argument("CallMedia: media key must be 32 bytes");
@@ -131,9 +158,19 @@ std::uint64_t CallMedia::packetsSent() const
     return packetsSent_.load(std::memory_order_relaxed);
 }
 
-void CallMedia::setOnFirstPacket(std::function<void()> callback)
+void CallMedia::setOnConnected(std::function<void()> callback)
 {
-    onFirstPacket_ = std::move(callback);
+    onConnected_ = std::move(callback);
+}
+
+float CallMedia::inputLevel() const
+{
+    return inputLevel_.load();
+}
+
+float CallMedia::outputLevel() const
+{
+    return outputLevel_.load();
 }
 
 std::uint64_t CallMedia::packetsReceived() const
@@ -145,7 +182,7 @@ void CallMedia::sealAndSend(
     const std::uint8_t track, std::atomic<std::uint64_t>& counter, const Bytes& payload)
 {
     const std::uint64_t sequence = counter.fetch_add(1, std::memory_order_relaxed);
-    const Bytes nonce = makeNonce(sendRole_, track, sequence);
+    const Bytes nonce = makeNonce(sendRole_, track, sequence, heardPeer_.load());
     const Bytes sealed = aeadSeal(mediaKey_, nonce, payload);
 
     Bytes packet;
@@ -181,6 +218,11 @@ void CallMedia::audioCaptureLoop()
         const std::vector<std::int16_t> frame = audioSource_->readFrame();
         const bool haveAudio
             = frame.size() == static_cast<std::size_t>(kCallSamplesPerFrame) && !muted_.load();
+        if (frame.size() == static_cast<std::size_t>(kCallSamplesPerFrame)) {
+            // Measured before the mute check: a muted microphone that is picking
+            // up a voice is a thing the user should be able to see.
+            inputLevel_.store(frameLevel(frame));
+        }
         if (haveAudio) {
             const Bytes opus = encoder_.encode(frame.data(), static_cast<int>(frame.size()));
             sealAndSend(kTrackAudio, sendSeqAudio_, opus);
@@ -223,6 +265,13 @@ void CallMedia::receiveLoop()
             handleAudioPacket(
                 sequenceFromNonce(nonce), opened.value(), audioHavePlayed, audioLastPlayed);
         }
+        // From now on our own datagrams say we have heard them.
+        heardPeer_.store(true);
+        // ...and once one of theirs says the same, media is proven both ways.
+        if (nonce[kHeardFlagOffset] != 0 && !reportedConnected_.exchange(true)
+            && onConnected_) {
+            onConnected_();
+        }
     }
     audioSink_->stop();
 }
@@ -240,12 +289,12 @@ void CallMedia::handleAudioPacket(const std::uint64_t sequence, const Bytes& opu
             audioSink_->writeFrame(decoder_.decode(Bytes{}));
         }
     }
-    audioSink_->writeFrame(decoder_.decode(opus));
+    const std::vector<std::int16_t> decoded = decoder_.decode(opus);
+    outputLevel_.store(frameLevel(decoded));
+    audioSink_->writeFrame(decoded);
     lastPlayed = sequence;
     havePlayed = true;
-    if (packetsReceived_.fetch_add(1, std::memory_order_relaxed) == 0 && onFirstPacket_) {
-        onFirstPacket_();  // media is flowing: this is where the call really starts
-    }
+    packetsReceived_.fetch_add(1, std::memory_order_relaxed);
 }
 
 

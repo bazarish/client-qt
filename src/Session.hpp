@@ -768,8 +768,12 @@ public:
         // What the caller is waiting on: the invitation being delivered, then the
         // peer answering, then media. Empty once the call is running.
         std::string stage;
-        // Unix ms when media first arrived; 0 while the call is not yet running.
+        // Unix ms when media was proven in both directions; 0 until then.
         std::int64_t connectedAtMs = 0;
+        // Loudness in each direction, 0..1: what this microphone hears and what
+        // arrives from the peer. Zero while no call is running.
+        float inputLevel = 0.0F;
+        float outputLevel = 0.0F;
     };
 
     // Audio device backends are injected so the core stays Qt-free: the GUI sets

@@ -53,10 +53,71 @@ Popup {
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
+    // A rolling level meter: one bar per sample of the recent past, newest on the
+    // right. Drawn from a timer rather than from the value changing, so a silent
+    // line keeps scrolling instead of freezing at whatever it last was - which is
+    // the difference between "quiet" and "dead".
+    component LevelMeter: ColumnLayout {
+        property real level: 0
+        property color tint: Theme.accent
+        property string caption: ""
+        // Sized to fit two of these side by side inside the window: a meter wider
+        // than that pushed everything centred in this column off to one side,
+        // which is how the buttons came to sit right of centre.
+        readonly property int bars: 24
+        readonly property int barHeight: 22
+        readonly property int sampleMs: 100
+        property var history: []
+        spacing: 2
+
+        Timer {
+            running: root.connected
+            interval: parent.sampleMs
+            repeat: true
+            onTriggered: {
+                const next = parent.history.slice(-(parent.bars - 1))
+                next.push(parent.level)
+                parent.history = next
+            }
+        }
+        Label {
+            Layout.alignment: Qt.AlignHCenter
+            text: parent.caption
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+        }
+        Row {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: 2
+            Repeater {
+                model: parent.parent.bars
+                delegate: Rectangle {
+                    required property int index
+                    readonly property var meter: parent.parent
+                    // The history fills from the right: the leftmost bars are
+                    // empty until enough has been heard to fill them.
+                    readonly property real value: {
+                        const at = index - (meter.bars - meter.history.length)
+                        return at >= 0 ? Math.min(1, meter.history[at] * 4) : 0
+                    }
+                    width: 3
+                    height: Math.max(2, value * meter.barHeight)
+                    anchors.verticalCenter: parent.verticalCenter
+                    radius: 1
+                    color: value > 0.02 ? meter.tint : Theme.border2
+                }
+            }
+        }
+    }
+
     // A round, coloured action button.
     component CallButton: Button {
         property color fill: Theme.accent
         property color label: "white"
+        // One width for every call action: a row of buttons that size themselves
+        // to their labels is a row that is never centred under the avatar.
+        Layout.preferredWidth: 120
+        padding: 0
         background: Rectangle {
             radius: 24
             // A request in flight dims its button, so a press that is already
@@ -136,8 +197,29 @@ Popup {
                 font.pixelSize: Theme.fontTitle
                 font.family: Theme.fontFamily
             }
+            // What the microphone hears and what is arriving: with neither, a
+            // silent call gives the user nothing to tell a dead line from a
+            // quiet one.
+            RowLayout {
+                // Hugging its contents and centred as a whole: the two meters are
+                // a fixed size that fits, so nothing has to be stretched.
+                Layout.alignment: Qt.AlignHCenter
+                visible: root.connected
+                spacing: 24
+                LevelMeter {
+                    caption: (root.session && root.session.callMuted) ? "You (muted)" : "You"
+                    level: (root.session && !root.session.callMuted)
+                        ? root.session.callInputLevel : 0
+                    tint: (root.session && root.session.callMuted) ? Theme.warn : Theme.accent
+                }
+                LevelMeter {
+                    caption: root.session ? root.session.callPeerName : "Them"
+                    level: root.session ? root.session.callOutputLevel : 0
+                    tint: Theme.green
+                }
+            }
             Item { Layout.fillHeight: true }
-            CallControls { }
+            CallControls { Layout.alignment: Qt.AlignHCenter }
         }
 
     }
@@ -163,7 +245,7 @@ Popup {
         // Active: mute, end.
         CallButton {
             visible: root.callState === "active"
-            text: (root.session && root.session.callMuted) ? "Unmute" : "Mute"
+            text: (root.session && root.session.callMuted) ? "Mic on" : "Mic off"
             fill: Theme.surface; label: Theme.text
             onClicked: root.session.setCallMuted(!root.session.callMuted)
         }

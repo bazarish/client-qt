@@ -573,6 +573,15 @@ Item {
                     color: (delegate.session && delegate.session.voiceSpeed > 1)
                         ? Theme.accent : Theme.textDim
                     font.pixelSize: Theme.fontSmall
+                    // As wide as the widest label it will ever hold: stepping
+                    // 1x -> 1.5x otherwise widened the bubble under the cursor.
+                    Layout.preferredWidth: speedWidth.implicitWidth
+                    horizontalAlignment: Text.AlignRight
+                    TextMetrics {
+                        id: speedWidth
+                        font.pixelSize: Theme.fontSmall
+                        text: "1.5x"
+                    }
                     TapHandler { onTapped: delegate.session.cycleVoiceSpeed() }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                 }

@@ -169,8 +169,9 @@ constexpr qint64 kMinVoiceMs = 700;
 constexpr int kVoiceTickMs = 50;
 // How often a live call is asked for its state. The moment media starts flowing
 // is what both sides show as "in call", and the mailbox poll is far too coarse
-// to carry it.
-constexpr int kCallWatchIntervalMs = 400;
+// to carry it; the level meters are drawn from the same tick, which is what sets
+// the rate - slower than this and a voice reads as a series of steps.
+constexpr int kCallWatchIntervalMs = 100;
 
 // A contact request the recipient's address refused for being over its cap is
 // sent again on a timer: enough tries to ride out a busy minute, spaced so the
@@ -900,7 +901,7 @@ void SessionWorker::emitCallState()
     const Session::CallInfo call = session_->currentCall();
     emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
         QString::fromStdString(call.callId), call.muted, QString::fromStdString(call.stage),
-        static_cast<qint64>(call.connectedAtMs));
+        static_cast<qint64>(call.connectedAtMs), call.inputLevel, call.outputLevel);
     reconcileCallTimer();
 }
 
@@ -3274,11 +3275,25 @@ VoiceNote* SessionController::voiceNote()
     if (!voice_) {
         voice_ = std::make_unique<VoiceNote>();
         connect(voice_.get(), &VoiceNote::playbackFinished, this, [this]() {
+            const QString finished = voicePlaying_;
             voicePlaying_.clear();
             voiceTakePlaying_ = false;
             playbackTimer_.stop();
             voicePositionMs_ = 0;
             emit voiceChanged();
+            // Run on to the next voice message in this chat, from either side:
+            // a run of them is one thing to listen to, not a row of buttons.
+            if (finished.isEmpty() || activePeer_.isEmpty()) {
+                return;
+            }
+            const qint64 playedId = store_.idForProtocol(finished);
+            if (playedId == 0) {
+                return;
+            }
+            const StoredMessage next = store_.nextVoiceAfter(activePeer_, playedId);
+            if (!next.protocolId.isEmpty()) {
+                playVoice(next.protocolId, 0);
+            }
         });
         playbackTimer_.setInterval(kVoiceTickMs);
         connect(&playbackTimer_, &QTimer::timeout, this, [this]() {
@@ -4507,8 +4522,17 @@ void SessionController::setCallMuted(const bool muted)
 }
 
 void SessionController::onCallStateChanged(const int state, const QString& peer,
-    const QString& callId, const bool muted, const QString& stage, const qint64 connectedAtMs)
+    const QString& callId, const bool muted, const QString& stage, const qint64 connectedAtMs,
+    const float inputLevel, const float outputLevel)
 {
+    // The levels move on every tick and nothing else does: they have their own
+    // signal, so a level meter does not re-evaluate the whole call window.
+    if (!qFuzzyCompare(static_cast<qreal>(callInputLevel_), static_cast<qreal>(inputLevel))
+        || !qFuzzyCompare(static_cast<qreal>(callOutputLevel_), static_cast<qreal>(outputLevel))) {
+        callInputLevel_ = inputLevel;
+        callOutputLevel_ = outputLevel;
+        emit callLevelsChanged();
+    }
     static const char* const kNames[] = {"idle", "outgoing", "incoming", "active"};
     const QString name = (state >= 0 && state <= 3) ? QString::fromLatin1(kNames[state])
                                                     : QStringLiteral("idle");

@@ -6,34 +6,42 @@
 #include "Identicon.hpp"
 
 #include <QColor>
+#include <QFile>
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QIcon>
+#include <QLibraryInfo>
 #include <QPalette>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
 
+#include <array>
+#include <utility>
+
 int main(int argc, char** argv)
 {
     // Qt selects a platform theme from the desktop environment; that theme is what
-    // provides the NATIVE file dialog (the system file manager, with a pre-filled
-    // save name). When no theme is advertised - or the desktop is GTK-based but Qt
-    // does not map it to the GTK theme on its own (e.g. XFCE), or nothing is
-    // detected at all - QtQuick.Dialogs.FileDialog falls back to its own non-native
-    // dialog: a different look that does not open the file manager and cannot
-    // pre-fill the name. Default to the GTK theme (shipped with Qt; GTK3 is
-    // near-universal on Linux) for those cases so the real file chooser is used.
-    // A theme the user set, and Qt-native desktops (KDE, LXQt), are left untouched.
+    // provides the SYSTEM file dialog (the desktop's own chooser, with a pre-filled
+    // save name). With no theme named - or one named whose plugin is not there -
+    // QtQuick.Dialogs.FileDialog draws its own instead: a different look that does
+    // not open the file manager and cannot pre-fill the name. So the theme is
+    // picked by what is actually installed beside this build: the desktop portal
+    // first (it serves every desktop that runs one), then GTK. A theme the user
+    // set, and Qt-native desktops that advertise their own, are left untouched.
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME")) {
-        const QByteArray desktop = qgetenv("XDG_CURRENT_DESKTOP").toLower();
-        const bool gtkBasedOrUnknown = desktop.isEmpty() || desktop.contains("gnome")
-            || desktop.contains("xfce") || desktop.contains("mate")
-            || desktop.contains("cinnamon") || desktop.contains("unity")
-            || desktop.contains("lxde") || desktop.contains("budgie");
-        if (gtkBasedOrUnknown) {
-            qputenv("QT_QPA_PLATFORMTHEME", "gtk3");
+        const QString themes
+            = QLibraryInfo::path(QLibraryInfo::PluginsPath) + QStringLiteral("/platformthemes/");
+        const std::array<std::pair<const char*, const char*>, 2> candidates{{
+            {"libqxdgdesktopportal.so", "xdgdesktopportal"},
+            {"libqgtk3.so", "gtk3"},
+        }};
+        for (const auto& [plugin, name] : candidates) {
+            if (QFile::exists(themes + QLatin1String(plugin))) {
+                qputenv("QT_QPA_PLATFORMTHEME", name);
+                break;
+            }
         }
     }
 

@@ -77,11 +77,20 @@ public:
 
     std::uint64_t packetsSent() const;
     std::uint64_t packetsReceived() const;
-    // Called once, from the receive loop, when the first datagram from the peer
-    // opens. Both sides see it within a round trip of each other, which is what
-    // makes it the moment a call actually started - unlike accepting, which each
-    // side learns at a different time.
-    void setOnFirstPacket(std::function<void()> callback);
+    // Called once, from the receive loop, when media is flowing BOTH ways: this
+    // side has heard the peer, and a packet has arrived saying the peer has heard
+    // this side. Each end of a call starts sending at a different moment - the
+    // caller only learns where to send when the accept reaches it, and the
+    // callee's destination has to publish first - so "I heard something" happens
+    // seconds apart on the two ends. "We have heard each other" happens within
+    // one one-way latency of each other, which is what a shared "in call" needs.
+    void setOnConnected(std::function<void()> callback);
+
+    // Loudness of the last frame in each direction, 0..1: what the microphone is
+    // picking up here, and what is arriving from the peer. A call with silence on
+    // one side is otherwise indistinguishable from a call with a dead microphone.
+    float inputLevel() const;
+    float outputLevel() const;
 
 private:
     void audioCaptureLoop();
@@ -103,7 +112,14 @@ private:
     std::atomic<std::uint64_t> sendSeqAudio_;
     std::atomic<std::uint64_t> packetsSent_;
     std::atomic<std::uint64_t> packetsReceived_;
-    std::function<void()> onFirstPacket_;
+    std::function<void()> onConnected_;
+    // Set once a datagram from the peer has opened here: from then on every
+    // datagram this side sends says so, which is what lets the peer know the
+    // path works in both directions.
+    std::atomic<bool> heardPeer_;
+    std::atomic<bool> reportedConnected_;
+    std::atomic<float> inputLevel_;
+    std::atomic<float> outputLevel_;
 
     std::mutex sendMutex_;
 

@@ -380,6 +380,21 @@ QVector<StoredMessage> TranscriptStore::olderMessages(
     return result;
 }
 
+StoredMessage TranscriptStore::nextVoiceAfter(const QString& peer, const qint64 afterId) const
+{
+    StoredMessage found;
+    Query query(db_);
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id > ?"
+                                 " AND type = 'voice' ORDER BY id ASC LIMIT 1")
+                      .arg(kMessageColumns));
+    query.addBindValue(peer);
+    query.addBindValue(afterId);
+    if (!query.exec() || !query.next()) {
+        return found;
+    }
+    return readMessageRow(query);
+}
+
 QVector<StoredMessage> TranscriptStore::newerMessages(
     const QString& peer, qint64 afterId, int limit) const
 {

@@ -3078,11 +3078,11 @@ void Session::startCallMedia()
         std::move(audioSink), call_.mediaKey,
         call_.initiator ? CallRole::eCaller : CallRole::eCallee);
     call_.media->setMuted(call_.muted);
-    // Both sides start counting from the first datagram they receive, which they
-    // see within a round trip of each other. Counting from "accepted" instead put
-    // the two timers tens of seconds apart, because the accept signal travels the
-    // federation while the callee has already started.
-    call_.media->setOnFirstPacket([this]() {
+    // Both sides start counting when media is proven in BOTH directions. The
+    // first datagram received is not that moment: the caller hears the callee as
+    // soon as the accept arrives, while the callee cannot hear the caller until
+    // its own destination has published, which is seconds later.
+    call_.media->setOnConnected([this]() {
         if (call_.connectedAtMs == 0) {
             call_.connectedAtMs = nowMillis();
             call_.stage.clear();  // talking: no stage to report any more
@@ -3254,6 +3254,10 @@ Session::CallInfo Session::currentCall() const
     info.peerFingerprint = call_.peerFingerprint;
     info.muted = call_.muted;
     info.stage = call_.stage;
+    if (call_.media) {
+        info.inputLevel = call_.media->inputLevel();
+        info.outputLevel = call_.media->outputLevel();
+    }
     info.connectedAtMs = call_.connectedAtMs;
     if (call_.media) {
         info.packetsSent = call_.media->packetsSent();

@@ -246,7 +246,7 @@ signals:
     // Call lifecycle: state is 0 idle / 1 outgoing / 2 incoming / 3 active,
     // matching Session::CallState. Emitted after every sync and call action.
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, qint64 connectedAtMs);
+        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
     // A call finished: its peer, direction (incoming), how it ended (a
     // Session::CallOutcome as an int) and connected duration - for a chat-history
     // entry. Emitted after sync and after any call action.
@@ -470,6 +470,11 @@ class SessionController : public QObject {
     // the audio path); empty once the call is running. And when it started.
     Q_PROPERTY(QString callStage READ callStage NOTIFY callChanged)
     Q_PROPERTY(qint64 callConnectedAtMs READ callConnectedAtMs NOTIFY callChanged)
+    // Live loudness in each direction, 0..1: the call window draws both, so a
+    // silent call still shows whether the microphone works and whether anything
+    // is arriving from the other side.
+    Q_PROPERTY(qreal callInputLevel READ callInputLevel NOTIFY callLevelsChanged)
+    Q_PROPERTY(qreal callOutputLevel READ callOutputLevel NOTIFY callLevelsChanged)
     Q_PROPERTY(QString callPeer READ callPeer NOTIFY callChanged)
     Q_PROPERTY(QString callPeerName READ callPeerName NOTIFY callChanged)
     Q_PROPERTY(bool callMuted READ callMuted NOTIFY callChanged)
@@ -563,6 +568,8 @@ public:
     QString callState() const { return callState_; }
     QString callStage() const { return callStage_; }
     qint64 callConnectedAtMs() const { return callConnectedAtMs_; }
+    qreal callInputLevel() const { return callInputLevel_; }
+    qreal callOutputLevel() const { return callOutputLevel_; }
     QString callPeer() const { return callPeer_; }
     QString callPeerName() const { return peerName(callPeer_); }
     bool callMuted() const { return callMuted_; }
@@ -855,6 +862,7 @@ signals:
     void voiceChanged();
     void storageChanged();
     void callChanged();
+    void callLevelsChanged();
     void openFailed(const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
@@ -976,7 +984,7 @@ private slots:
     void requestPicturesFor(const QList<StoredMessage>& messages);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, qint64 connectedAtMs);
+        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
     // Appends a finished call to the peer's transcript as a clear system line.
     void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
@@ -1178,6 +1186,8 @@ private:
     QString callState_ = QStringLiteral("idle");
     QString callStage_;
     qint64 callConnectedAtMs_ = 0;
+    qreal callInputLevel_ = 0.0;
+    qreal callOutputLevel_ = 0.0;
     QString callPeer_;
     QString callId_;
     // The activity-panel operation id for the call currently in progress (so it is
