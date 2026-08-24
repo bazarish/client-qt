@@ -129,7 +129,10 @@ constexpr std::size_t kAvatarMaxBytes = 500 * 1024;
 // addressed to another device is left alone: the peer's devices share a mailbox,
 // so every one of them sees this message, and taking a batch meant for one of
 // them is how two devices come to spend the same one-time token.
-void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap, const std::string& thisDevice)
+// soleDevice: this account has no other device registered, so an unaddressed
+// batch has no one to race with and is simply kept.
+void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap,
+    const std::string& thisDevice, const bool soleDevice)
 {
     if (bootstrap.contains("sealing")) {
         contact.sealingPublicB64 = bootstrap.at("sealing").get<std::string>();
@@ -152,7 +155,7 @@ void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap, const std
         return;
     }
     const std::string forDevice = bootstrap.value("forDevice", std::string());
-    if (forDevice.empty()) {
+    if (forDevice.empty() && !soleDevice) {
         // An unaddressed batch: every device of this account sees it, so keeping
         // all of it would leave several devices holding the same one-time tokens
         // and racing to spend them. Take exactly one, at random so two devices
@@ -160,6 +163,18 @@ void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap, const std
         const std::size_t pick = static_cast<std::size_t>(randomBytes(1).front()) % offered.size();
         contact.sendTokens.assign(1, offered[pick]);
         contact.needsOwnBatch = true;
+        return;
+    }
+    if (forDevice.empty()) {
+        // The only device on this account: nobody to share with, so there is
+        // nothing to buy and no round trip to spend on it.
+        contact.needsOwnBatch = false;
+        for (const std::string& token : offered) {
+            if (std::find(contact.sendTokens.begin(), contact.sendTokens.end(), token)
+                == contact.sendTokens.end()) {
+                contact.sendTokens.push_back(token);
+            }
+        }
         return;
     }
     if (forDevice != thisDevice) {
@@ -2296,7 +2311,8 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             // Bootstrap may ride with any content type; apply it before dispatch
             // so a new or migrated contact is established regardless of type.
             if (body.contains("bootstrap")) {
-                applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"), client_->clientId());
+                applyBootstrap(contacts_[message.fromFingerprint], body.at("bootstrap"),
+                    client_->clientId(), soleDevice());
                 message.establishedContact = true;
                 establishedPeers.insert(message.fromFingerprint);
             }
@@ -2811,6 +2827,21 @@ void Session::sendTokenRequest(const std::string& peerFingerprint)
     sendContent(peerFingerprint, std::move(inner));
     contact.needsOwnBatch = false;
     persistContacts();
+}
+
+bool Session::soleDevice() const
+{
+    try {
+        const std::vector<Client::DeviceEntry> devices = client_->listClients();
+        return devices.size() <= 1;
+    } catch (const std::exception& error) {
+        // Unknown means "assume there are others": taking one token and asking
+        // for a batch costs a round trip, while wrongly keeping a shared batch
+        // costs another device its tokens.
+        bazarish::log::info("device list unavailable, treating this as one of several: {}",
+            error.what());
+        return false;
+    }
 }
 
 void Session::askDevicesForToken(const std::string& peerFingerprint)

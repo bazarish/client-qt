@@ -245,8 +245,30 @@ void AppController::refreshProfileRows()
     }
 }
 
+void AppController::publishReseedFacades()
+{
+    // Every clearnet facade of every profile that is open. A profile that is
+    // locked keeps its endpoint inside its encrypted database, so it cannot
+    // contribute one until it is unlocked - that is a fact of the storage, not a
+    // choice.
+    std::vector<std::string> urls;
+    for (SessionController* const ctrl : sessions_) {
+        if (ctrl == nullptr) {
+            continue;
+        }
+        for (const QString& url : ctrl->configuredFacades()) {
+            const std::string text = url.trimmed().toStdString();
+            if (!text.empty() && std::find(urls.begin(), urls.end(), text) == urls.end()) {
+                urls.push_back(text);
+            }
+        }
+    }
+    bazarish::client::setReseedFacades(std::move(urls));
+}
+
 void AppController::refreshAccounts()
 {
+    publishReseedFacades();
     refreshProfileRows();
     // The unified list is every on-disk profile, with live status merged in for
     // the ones currently open. It reads the profiles this controller already

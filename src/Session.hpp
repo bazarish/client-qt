@@ -885,6 +885,11 @@ private:
     // Each device that has one sends exactly one and drops it, so a token is
     // never in two places.
     void askDevicesForToken(const std::string& peerFingerprint);
+    // Whether this account has no other device registered. Asked of the server
+    // once per sync and only when it matters (a batch addressed to nobody has
+    // just arrived), because the answer decides whether this device keeps it
+    // whole or trades one token for a batch of its own.
+    bool soleDevice() const;
     void grantTokenToDevices(const std::string& peerFingerprint, const std::string& toDevice);
 
     // Echoes a message this device just sent to the account's other devices, so

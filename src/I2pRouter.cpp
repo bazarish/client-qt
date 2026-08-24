@@ -122,6 +122,31 @@ void reportBootstrapNotice(const std::string& message)
     }
 }
 
+namespace {
+std::mutex& facadesMutex()
+{
+    static std::mutex mutex;
+    return mutex;
+}
+std::vector<std::string>& facadesSlot()
+{
+    static std::vector<std::string> facades;
+    return facades;
+}
+}  // namespace
+
+void setReseedFacades(std::vector<std::string> urls)
+{
+    const std::lock_guard<std::mutex> lock(facadesMutex());
+    facadesSlot() = std::move(urls);
+}
+
+std::vector<std::string> reseedFacades()
+{
+    const std::lock_guard<std::mutex> lock(facadesMutex());
+    return facadesSlot();
+}
+
 std::size_t knownRouterCount(const std::filesystem::path& dataDir)
 {
     std::error_code ec;

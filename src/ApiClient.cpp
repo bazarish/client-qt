@@ -480,6 +480,19 @@ ApiResponse ApiClient::getClearnet(const std::string& path, const std::string& q
     return send("GET", path, query, {}, {}, false, {}, kDefaultReadTimeoutSeconds, true);
 }
 
+namespace {
+
+std::vector<Bytes> routersFromReseedBody(const nlohmann::json& body)
+{
+    std::vector<Bytes> routers;
+    for (const nlohmann::json& entry : body.at("routers")) {
+        routers.push_back(fromBase64(entry.get<std::string>()));
+    }
+    return routers;
+}
+
+}  // namespace
+
 void ApiClient::seedRouterFromServer()
 {
     if (i2pDataDir_.empty() || !i2pEnabled()) {
@@ -487,13 +500,46 @@ void ApiClient::seedRouterFromServer()
     }
     const bool seeded = seedRouterOnce(i2pDataDir_, [this]() {
         reportConnectProgress(10, "Asking your server for the I2P network database");
-        // Clearnet by construction: this call bootstraps the transport itself.
-        const nlohmann::json body = getClearnet("/v1/messaging/reseed").json();
-        std::vector<Bytes> routers;
-        for (const nlohmann::json& entry : body.at("routers")) {
-            routers.push_back(fromBase64(entry.get<std::string>()));
+        try {
+            // Clearnet by construction: this call bootstraps the transport itself.
+            return routersFromReseedBody(getClearnet("/v1/messaging/reseed").json());
+        } catch (const std::exception& error) {
+            bazarish::log::info("own server did not reseed: {}", error.what());
         }
-        return routers;
+        // Every other server this application holds an account with, in turn:
+        // bootstrapping is the application's job, not one profile's, and a
+        // client with three accounts has three places to ask before it reaches
+        // outside. Started at a rotating position so one unreachable facade is
+        // not always the first thing tried.
+        const std::vector<std::string> facades = reseedFacades();
+        static std::atomic<std::size_t> nextFacade{0};
+        for (std::size_t i = 0; i < facades.size(); ++i) {
+            const std::string& url = facades[(nextFacade + i) % facades.size()];
+            try {
+                const Facade facade = parseFacadeUrl(url);
+                if (facadeIsI2p(facade)) {
+                    continue;  // an I2P facade cannot be reached before I2P is up
+                }
+                reportConnectProgress(15, "Asking another of your servers for the network database");
+                bazarish::http::ClientRequest ask;
+                ask.method = "GET";
+                ask.target = facade.basePath + "/v1/messaging/reseed";
+                const bazarish::http::ClientResponse res
+                    = bazarish::http::request(facade.host, facade.port, ask, {});
+                if (res.status != 200) {
+                    continue;
+                }
+                std::vector<Bytes> routers = routersFromReseedBody(nlohmann::json::parse(res.body));
+                if (!routers.empty()) {
+                    ++nextFacade;
+                    return routers;
+                }
+            } catch (const std::exception& error) {
+                bazarish::log::info("reseed from {} failed: {}", url, error.what());
+            }
+        }
+        ++nextFacade;
+        return std::vector<Bytes>{};
     });
     // i2pd's own reseed hosts are the last resort, and only when there is nobody
     // to ask: no clearnet facade in this server's descriptor, or none answered.

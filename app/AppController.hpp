@@ -48,6 +48,11 @@ public:
     QObject* profiles() { return &profiles_; }
     QObject* accounts() { return &accounts_; }
     int unreadElsewhere() const;
+    // Hands the core every clearnet facade this application knows of, from all
+    // open profiles. Bootstrapping I2P is the application's job: with three
+    // accounts there are three servers to ask before reaching for a public
+    // reseed host.
+    void publishReseedFacades();
     static int maxGreetingLength() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
     QObject* session();
     bool hasProfiles() const { return haveProfiles_; }

@@ -79,6 +79,13 @@ std::size_t knownRouterCount(const std::filesystem::path& dataDir);
 // network the user chose, and that is not something to leave in a log.
 using BootstrapNoticeFn = std::function<void(const std::string& message)>;
 void setBootstrapNoticeSink(BootstrapNoticeFn sink);
+
+// Clearnet facades this application knows of, from every profile it has open.
+// Bootstrapping I2P belongs to the application, not to one profile: a client
+// that holds three accounts should ask all three servers before it reaches for a
+// public reseed host. Each entry is a facade URL.
+void setReseedFacades(std::vector<std::string> urls);
+std::vector<std::string> reseedFacades();
 void reportBootstrapNotice(const std::string& message);
 bool publicReseedAllowed();
 
