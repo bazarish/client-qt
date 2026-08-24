@@ -424,6 +424,8 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
             contact.displayName = entry.value("displayName", std::string());
             contact.avatarMime = entry.value("avatarMime", std::string());
             contact.avatarSentToPeer = entry.value("avatarSentToPeer", false);
+            contact.view = entry.value("view", std::string());
+            contact.requesterDevice = entry.value("requesterDevice", std::string());
             contacts.emplace(fingerprint, std::move(contact));
         }
     }
@@ -599,6 +601,8 @@ nlohmann::json Session::contactsToJson() const
             {"displayName", contact.displayName},
             {"avatarMime", contact.avatarMime},
             {"avatarSentToPeer", contact.avatarSentToPeer},
+            {"view", contact.view},
+            {"requesterDevice", contact.requesterDevice},
         };
     }
     return stored;
@@ -1442,6 +1446,11 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
+        // Which of our devices is asking: the peer's reply addresses its token
+        // batch to it, so our other devices do not adopt the same one-time
+        // tokens and race to spend them. They ask for their own when they need
+        // to write (token-request).
+        {"device", client_->clientId()},
         {"text", text},
         // Our own self-chosen display name, so the recipient can show a named
         // friend in their contacts from the start - mirroring how we learn their
@@ -2097,6 +2106,12 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
             {"servingKey", myServingKeyB64_},
             {"replyTokens", issueTokenBatch()},
         };
+        // Addressed when we know which device asked: their other devices then
+        // leave this batch alone and ask for their own rather than spending the
+        // same one-time tokens twice.
+        if (!contact.requesterDevice.empty()) {
+            inner["bootstrap"]["forDevice"] = contact.requesterDevice;
+        }
         contact.issuedToThem = true;
     }
 
@@ -2255,6 +2270,10 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 Contact& peer = contacts_[message.fromFingerprint];
                 if (!dn.empty() && peer.displayName.empty()) {
                     peer.displayName = dn;
+                }
+                if (type == "contact.request") {
+                    // Whoever asked gets our batch by name.
+                    peer.requesterDevice = body.value("device", std::string());
                 }
             }
 

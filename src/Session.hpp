@@ -56,6 +56,11 @@ struct Contact {
     // The contact's card-read capability, from the descriptor we added them by:
     // kept so their invite can be passed on.
     std::string view;
+    // The device of theirs that asked to be added, from their contact request.
+    // Our first reply addresses its token batch to it, so only that device
+    // adopts the batch and their other devices ask for their own - two devices
+    // holding the same one-time tokens is two devices spending them.
+    std::string requesterDevice;
     // Unused one-time delivery tokens (base64) issued by the peer to us:
     // each authorizes one message into the peer's mailbox.
     std::vector<std::string> sendTokens;
