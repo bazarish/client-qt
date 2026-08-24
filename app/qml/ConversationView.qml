@@ -135,8 +135,6 @@ Item {
     ImageViewer { id: imageViewer; session: root.session }
 
     ReactionPicker { id: reactionPicker; session: root.session }
-
-
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
     Dialog {

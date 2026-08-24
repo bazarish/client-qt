@@ -839,6 +839,7 @@ Item {
         ContextMenu {
             id: contextMenu
             ContextMenuItem {
+                id: reactEntry
                 // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
                 // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
                 // these labels into "React_" / "React_ view".
@@ -847,7 +848,10 @@ Item {
                 visible: delegate.reactable
                 height: visible ? implicitHeight : 0
                 onTriggered: {
-                    const at = delegate.mapToItem(null, delegate.width / 2, delegate.height)
+                    // Where this entry itself is: the picker opens on the spot the
+                    // user pressed, not somewhere near the message.
+                    const at = delegate.mapToItem(null, contextMenu.x + reactEntry.x,
+                        contextMenu.y + reactEntry.y)
                     delegate.reactRequested(model.protocolId, at.x, at.y)
                 }
             }

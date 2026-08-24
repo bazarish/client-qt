@@ -20,17 +20,36 @@ Popup {
     padding: 12
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
-    // Opened beside the message it is for, at scene coordinates, and kept inside
-    // the window: a picker in the middle of the screen makes the user find which
-    // message they were reacting to all over again.
+    // Where the user pressed "React", in scene coordinates. The window opens
+    // there rather than in the middle of the screen, which made the user find
+    // the message they were reacting to all over again.
+    property real askedX: 0
+    property real askedY: 0
+    // Kept off the edges by this much when the asked-for spot is too near one.
+    readonly property int kEdgeGap: 12
+
     function openAt(protocolId, sceneX, sceneY) {
         root.target = protocolId
         customField.text = ""
-        const area = root.parent
-        root.x = Math.max(12, Math.min(sceneX, area.width - root.width - 12))
-        root.y = Math.max(12, Math.min(sceneY, area.height - root.implicitHeight - 12))
+        root.askedX = sceneX
+        root.askedY = sceneY
         root.open()
+        root.placeInside()
     }
+
+    // Placed after opening and again whenever the size settles: before it opens
+    // the window has no height to keep inside anything, which is how it ended up
+    // hanging off the bottom.
+    function placeInside() {
+        const area = root.parent
+        if (!area) {
+            return
+        }
+        root.x = Math.max(kEdgeGap, Math.min(root.askedX, area.width - root.width - kEdgeGap))
+        root.y = Math.max(kEdgeGap, Math.min(root.askedY, area.height - root.height - kEdgeGap))
+    }
+    onHeightChanged: if (root.opened) { root.placeInside() }
+    onWidthChanged: if (root.opened) { root.placeInside() }
 
     // The set comes from the session, which also decides what counts as one of
     // the user's own - the two must not drift apart.

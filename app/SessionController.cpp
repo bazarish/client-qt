@@ -3286,7 +3286,10 @@ VoiceNote* SessionController::voiceNote()
             if (finished.isEmpty() || activePeer_.isEmpty()) {
                 return;
             }
-            const qint64 playedId = store_.idForProtocol(finished);
+            // By protocol id in this conversation, either direction: the
+            // outgoing-only lookup that serves delivery receipts found nothing
+            // for a message we had received, and the run stopped at the first one.
+            const qint64 playedId = store_.messageByProtocol(finished, activePeer_).id;
             if (playedId == 0) {
                 return;
             }

@@ -344,7 +344,7 @@ Popup {
                             Layout.fillWidth: true
                             Label { text: "Show I2P logs"; color: Theme.text }
                             Label {
-                                text: "Surface libi2pd's own logging (debugging). Off by default."
+                                text: "Surface libi2pd's own logging (debugging)."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
