@@ -66,6 +66,20 @@ bool seedRouterOnce(
 // third party. It is turned on only for the one case where there is nobody to
 // ask - the server descriptor carries no clearnet facade, or none answered.
 void setPublicReseedAllowed(bool allowed);
+
+// A router that knows fewer peers than this cannot build a tunnel on its own and
+// has to be handed a slice of somebody's netDb first. Ten is enough to start
+// asking the network for more.
+inline constexpr std::size_t kMinKnownRouters = 10;
+// How many routers this data directory already knows.
+std::size_t knownRouterCount(const std::filesystem::path& dataDir);
+
+// Told when the bootstrap has to fall back to the public reseed hosts, so the
+// app can say so where the user will see it: the fallback reaches outside the
+// network the user chose, and that is not something to leave in a log.
+using BootstrapNoticeFn = std::function<void(const std::string& message)>;
+void setBootstrapNoticeSink(BootstrapNoticeFn sink);
+void reportBootstrapNotice(const std::string& message);
 bool publicReseedAllowed();
 
 // Connect progress: the core reports named milestones of a connect (reseed,

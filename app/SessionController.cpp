@@ -581,6 +581,11 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
             [this](const int percent, const std::string& text) {
                 emit connectProgress(percent, QString::fromStdString(text));
             });
+        // Bootstrapping from public reseed hosts reaches outside the network the
+        // user chose, so it is said out loud rather than logged.
+        bazarish::client::setBootstrapNoticeSink([this](const std::string& text) {
+            emit actionFailed(QString::fromStdString(text));
+        });
         ServerEndpoint endpoint;
         endpoint.serverFingerprint = serverFp.toStdString();
         for (const QString& url : facadeUrls) {

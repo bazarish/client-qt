@@ -506,6 +506,14 @@ void ApiClient::seedRouterFromServer()
             endpoint_.facades.end(), [](const Facade& f) { return !facadeIsI2p(f); });
         setPublicReseedAllowed(true);
         reportConnectProgress(25, "Your server did not answer: bootstrapping from public reseeds");
+        // Said where the user can see it, not only in a log: this is the one
+        // moment the client reaches outside the network they chose, and it is
+        // their call whether that is acceptable.
+        reportBootstrapNotice(haveClearnetFacade
+                ? "Your server did not answer with an I2P network database, so this client is "
+                  "bootstrapping I2P from public reseed hosts."
+                : "This server publishes no clearnet address to bootstrap from, so this client "
+                  "is bootstrapping I2P from public reseed hosts.");
         if (haveClearnetFacade) {
             bazarish::log::warn(
                 "no clearnet facade answered the reseed: falling back to public reseed hosts");

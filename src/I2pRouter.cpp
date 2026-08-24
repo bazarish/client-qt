@@ -91,6 +91,59 @@ ConnectProgressFn& progressSink()
 std::atomic<bool> g_fullPrivacy{false};
 }  // namespace
 
+namespace {
+std::mutex& noticeMutex()
+{
+    static std::mutex mutex;
+    return mutex;
+}
+BootstrapNoticeFn& noticeSink()
+{
+    static BootstrapNoticeFn sink;
+    return sink;
+}
+}  // namespace
+
+void setBootstrapNoticeSink(BootstrapNoticeFn sink)
+{
+    const std::lock_guard<std::mutex> lock(noticeMutex());
+    noticeSink() = std::move(sink);
+}
+
+void reportBootstrapNotice(const std::string& message)
+{
+    BootstrapNoticeFn sink;
+    {
+        const std::lock_guard<std::mutex> lock(noticeMutex());
+        sink = noticeSink();
+    }
+    if (sink) {
+        sink(message);
+    }
+}
+
+std::size_t knownRouterCount(const std::filesystem::path& dataDir)
+{
+    std::error_code ec;
+    const std::filesystem::path netDb = dataDir / "netDb";
+    if (!std::filesystem::exists(netDb, ec)) {
+        return 0;
+    }
+    // i2pd files them under one directory per leading character, so the count
+    // is of the leaves, not of the buckets.
+    std::size_t count = 0;
+    std::filesystem::recursive_directory_iterator entries(netDb, ec);
+    if (ec) {
+        return 0;
+    }
+    for (const std::filesystem::directory_entry& entry : entries) {
+        if (entry.is_regular_file(ec)) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 bool seedRouterOnce(
     const std::filesystem::path& dataDir, const std::function<std::vector<Bytes>()>& fetch)
 {
@@ -101,9 +154,10 @@ bool seedRouterOnce(
     if (routerSlot()) {
         return true;  // the engine has already loaded its netDb
     }
-    std::error_code ec;
-    const std::filesystem::path netDb = dataDir / "netDb";
-    if (std::filesystem::exists(netDb, ec) && !std::filesystem::is_empty(netDb, ec)) {
+    // Not "is there a netDb" but "is there enough of one": a directory with a
+    // handful of stale routers is a router that cannot build a tunnel and will
+    // sit there trying.
+    if (knownRouterCount(dataDir) >= kMinKnownRouters) {
         return true;
     }
     try {
