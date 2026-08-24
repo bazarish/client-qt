@@ -470,7 +470,8 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
         connected ? "connected" : "");
     // Settings the account carries, so the window shows what is actually in force
     // rather than its own defaults.
-    emit accountSettings(session_->acceptCalls(), session_->allowClearnet());
+    emit accountSettings(session_->acceptCalls(), session_->allowClearnet(),
+        session_->sharingAllowed());
     emitContacts();
     // Seed the avatar store from disk: our own avatar plus every contact that has
     // one, so faces appear before any sync runs.
@@ -543,6 +544,7 @@ void SessionWorker::emitContacts()
     QStringList names;
     QStringList pending;
     QStringList links;
+    QStringList shareStates;
     QStringList capacities;
     for (const std::string& fp : session_->contactFingerprints()) {
         fps << QString::fromStdString(fp);
@@ -550,6 +552,10 @@ void SessionWorker::emitContacts()
         pending << (session_->contactIsPending(fp) ? QStringLiteral("1") : QStringLiteral("0"));
         // Built here because this is where the routing is; it is the contact's
         // own card, so nothing is computed that they did not already hand over.
+        // Why there is no link, when there is none: a contact who has turned
+        // sharing off is not one we are simply waiting on.
+        shareStates << (session_->contactSharingRefused(fp) ? QStringLiteral("refused")
+                                                            : QStringLiteral("waiting"));
         try {
             links << QString::fromStdString(session_->contactInviteUri(fp));
         } catch (const std::exception& error) {
@@ -563,7 +569,7 @@ void SessionWorker::emitContacts()
         }
         capacities << QString::number(session_->sendCapacity(fp));
     }
-    emit contactsRefreshed(fps, names, pending, links, capacities);
+    emit contactsRefreshed(fps, names, pending, links, capacities, shareStates);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -1777,6 +1783,30 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
     }
 }
 
+void SessionWorker::rotateServingKey()
+{
+    try {
+        session_->rotateServingKey([this](const std::string& stage) {
+            emit servingKeyStage(QString::fromStdString(stage));
+        });
+        emit servingKeyDone(true, QStringLiteral("The key was changed."));
+        emitContacts();
+    } catch (const std::exception& e) {
+        emit servingKeyDone(false, QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::setSharingAllowed(const bool allowed)
+{
+    try {
+        session_->setSharingAllowed(allowed);
+        emit accountSettings(session_->acceptCalls(), session_->allowClearnet(),
+            session_->sharingAllowed());
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::changePassphrase(const QString& passphrase)
 {
     try {
@@ -1848,6 +1878,25 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportAccount);
     connect(this, &SessionController::requestChangePassphrase, worker_,
         &SessionWorker::changePassphrase);
+    connect(this, &SessionController::requestRotateServingKey, worker_,
+        &SessionWorker::rotateServingKey);
+    connect(this, &SessionController::requestSharingAllowed, worker_,
+        &SessionWorker::setSharingAllowed);
+    connect(worker_, &SessionWorker::servingKeyStage, this, [this](const QString& stage) {
+        servingKeyStage_ = stage;
+        emit servingKeyChanged();
+    });
+    connect(worker_, &SessionWorker::servingKeyDone, this, [this](const bool ok,
+                                                              const QString& text) {
+        servingKeyBusy_ = false;
+        servingKeyStage_ = text;
+        emit servingKeyChanged();
+        if (ok) {
+            emit actionOk(text);
+        } else {
+            emit actionFailed(text);
+        }
+    });
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
     connect(this, &SessionController::requestRebuildI2p, worker_, &SessionWorker::rebuildI2pLinks);
     connect(this, &SessionController::requestCancelTransfer, worker_,
@@ -1881,7 +1930,11 @@ SessionController::SessionController(QObject* parent)
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
     connect(worker_, &SessionWorker::accountSettings, this,
-        [this](const bool acceptCalls, const bool allowClearnet) {
+        [this](const bool acceptCalls, const bool allowClearnet, const bool sharingAllowed) {
+            if (sharingAllowed_ != sharingAllowed) {
+                sharingAllowed_ = sharingAllowed;
+                emit sharingAllowedChanged();
+            }
             if (acceptCalls_ != acceptCalls) {
                 acceptCalls_ = acceptCalls;
                 emit acceptCallsChanged();
@@ -1910,7 +1963,8 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
         [this](const QStringList& fps, const QStringList& names, const QStringList& pending,
-            const QStringList& links, const QStringList& capacities) {
+            const QStringList& links, const QStringList& capacities,
+            const QStringList& shareStates) {
             contactFps_ = fps;
             contactNames_.clear();
             contactLinks_.clear();
@@ -1927,6 +1981,12 @@ SessionController::SessionController(QObject* parent)
             for (int i = 0; i < fps.size() && i < links.size(); ++i) {
                 if (!links[i].isEmpty()) {
                     contactLinks_.insert(fps[i], links[i]);
+                }
+            }
+            shareRefused_.clear();
+            for (int i = 0; i < fps.size() && i < shareStates.size(); ++i) {
+                if (shareStates[i] == QStringLiteral("refused")) {
+                    shareRefused_.insert(fps[i]);
                 }
             }
             for (int i = 0; i < fps.size() && i < pending.size(); ++i) {
@@ -2991,6 +3051,27 @@ QUrl SessionController::defaultSaveUrl(const QString& fileName) const
     }
     const QString name = fileName.isEmpty() ? QStringLiteral("file") : fileName;
     return QUrl::fromLocalFile(QDir(dir).filePath(name));
+}
+
+void SessionController::rotateServingKey()
+{
+    if (servingKeyBusy_) {
+        return;
+    }
+    servingKeyBusy_ = true;
+    servingKeyStage_ = QStringLiteral("Starting");
+    emit servingKeyChanged();
+    emit requestRotateServingKey();
+}
+
+void SessionController::setSharingAllowed(const bool allowed)
+{
+    if (sharingAllowed_ == allowed) {
+        return;
+    }
+    sharingAllowed_ = allowed;
+    emit sharingAllowedChanged();
+    emit requestSharingAllowed(allowed);
 }
 
 void SessionController::changePassphrase(const QString& passphrase)

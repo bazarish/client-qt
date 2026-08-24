@@ -182,6 +182,19 @@ public:
     // destination yet (tunnels take minutes), since the address is the user's
     // master b32 either way.
     PublishResult publishCard(const Bytes& sealingPrekeyDer = {}, const std::string& ownDest = {});
+
+    // Rotating the serving sealing key our server holds for our destination, and
+    // the capability that reads our card, in the two phases the switch needs.
+    // prepareServingKey returns the key the server minted (base64 SPKI) and the
+    // capability that will go with it; commitServingKey hands back a card signed
+    // over that key and, on the ack, both are in force. Until the commit lands
+    // the old key keeps serving, so a rotation that fails changes nothing.
+    struct PreparedServingKey {
+        Bytes servingSealingKeyDer;
+        std::string view;
+    };
+    PreparedServingKey prepareServingKey();
+    void commitServingKey(const Bytes& cardDer);
     // Ends the account: the destination is revoked and everything the node holds
     // for it is dropped. Coming back means registering again.
     void closeAccount();

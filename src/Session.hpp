@@ -54,9 +54,13 @@ struct Contact {
     // The peer's serving sealing public key (SPKI DER, base64): delivery
     // envelopes to this contact are sealed to it (held by the peer's server).
     std::string servingSealingB64;
-    // The contact's card-read capability, from the descriptor we added them by:
-    // kept so their invite can be passed on.
+    // The contact's card-read capability, from the descriptor we added them by
+    // or from the routing on any message of theirs: kept so their invite can be
+    // passed on.
     std::string view;
+    // They sent routing with no capability in it: they have turned sharing off,
+    // which is a different thing from not having told us yet.
+    bool sharingRefused = false;
     // The device of theirs that asked to be added, from their contact request.
     // Our first reply addresses its token batch to it, so only that device
     // adopts the batch and their other devices ask for their own - two devices
@@ -623,6 +627,43 @@ public:
     // actually sent, exactly like an edit. Costs one delivery token.
     void sendDelete(const std::string& peerFingerprint, const std::string& refMessageId);
 
+    // Rotates the serving sealing key our server holds and the capability that
+    // reads our card, then hands the new pair to every contact. Nothing is in
+    // force until the server acks the commit, so a failure anywhere before that
+    // leaves the account exactly as it was; a failure after it leaves contacts
+    // to learn the new key from the next message we send them. onStage reports
+    // each step so a user watching the dialog can see where it got to.
+    void rotateServingKey(const std::function<void(const std::string& stage)>& onStage);
+
+    // How a routing push went: contacts told, and contacts that could not be
+    // reached (no capacity, or their server did not answer) - they learn it from
+    // the next message that reaches them.
+    struct RoutingPushResult {
+        std::size_t told = 0;
+        std::size_t failed = 0;
+    };
+    // Whether this contact has told us their invite may not be passed on.
+    bool contactSharingRefused(const std::string& peerFingerprint) const
+    {
+        const auto found = contacts_.find(peerFingerprint);
+        return found != contacts_.end() && found->second.sharingRefused;
+    }
+
+    RoutingPushResult pushRoutingToContacts(
+        const std::function<void(const std::string& stage)>& onStage);
+
+    // Whether contacts are handed our card-read capability, which is what lets
+    // them pass us on to someone else. Off, they get an empty one and their
+    // client says sharing is not allowed. Persisted with the account.
+    bool sharingAllowed() const { return sharingAllowed_; }
+    void setSharingAllowed(bool allowed);
+
+private:
+    // The capability as contacts get it: ours, or nothing when sharing is off.
+    std::string sharedView() const { return sharingAllowed_ ? view_ : std::string(); }
+
+public:
+
     // Sends a delivery receipt (content type "receipt") acknowledging that we
     // received the message with id refMessageId. Costs one delivery token.
     void sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId);
@@ -1096,6 +1137,8 @@ private:
     // Whether the private key PEMs are encrypted at rest. Persisted in meta so
     // open() knows to require a passphrase.
     bool encrypted_ = false;
+    // Whether our capability travels to contacts (see sharingAllowed).
+    bool sharingAllowed_ = true;
     // Incoming calls are taken unless the user says otherwise; see acceptCalls().
     bool acceptCalls_ = true;
     // The at-rest passphrase, retained for the session lifetime so contacts

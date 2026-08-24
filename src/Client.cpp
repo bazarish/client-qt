@@ -133,6 +133,23 @@ PublishResult Client::publishCard(const Bytes& sealingPrekeyDer, const std::stri
     return result;
 }
 
+Client::PreparedServingKey Client::prepareServingKey()
+{
+    const ApiResponse response = api_.postJson("/v1/account/serving-key", nlohmann::json::object());
+    const nlohmann::json body = response.json();
+    PreparedServingKey prepared;
+    prepared.servingSealingKeyDer = fromBase64(body.at("servingKey").get<std::string>());
+    prepared.view = body.at("view").get<std::string>();
+    return prepared;
+}
+
+void Client::commitServingKey(const Bytes& cardDer)
+{
+    // The answer is the ack: anything else throws, and the caller keeps what it
+    // had rather than acting on a rotation that did not happen.
+    (void)api_.postJson("/v1/account/serving-key/commit", {{"card", toBase64(cardDer)}}).json();
+}
+
 void Client::closeAccount()
 {
     api_.del("/v1/account/registration");

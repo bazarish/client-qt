@@ -129,7 +129,9 @@ Popup {
         // button wearing one cuts it off in the middle.
         Label {
             visible: root.shareLink.length === 0
-            text: "Not yet — this contact's descriptor arrives with their next message."
+            text: (root.session && root.session.contactSharingRefused(root.session.activePeer))
+                ? "Not allowed — this contact has turned off being passed on."
+                : "Not yet — this contact's descriptor arrives with their next message."
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

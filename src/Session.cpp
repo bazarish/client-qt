@@ -462,6 +462,7 @@ Session Session::open(const fs::path& accountFile, const std::string& passphrase
             contact.avatarMime = entry.value("avatarMime", std::string());
             contact.avatarSentToPeer = entry.value("avatarSentToPeer", false);
             contact.view = entry.value("view", std::string());
+            contact.sharingRefused = entry.value("sharingRefused", false);
             contact.requesterDevice = entry.value("requesterDevice", std::string());
             contact.needsOwnBatch = entry.value("needsOwnBatch", false);
             contacts.emplace(fingerprint, std::move(contact));
@@ -478,6 +479,7 @@ Session Session::open(const fs::path& accountFile, const std::string& passphrase
         meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
     session.cardB64_ = meta.value("card", std::string{});
     session.view_ = meta.value("view", std::string{});
+    session.sharingAllowed_ = meta.value("sharingAllowed", true);
     session.delegationDays_ = meta.value("delegationDays", kDefaultDelegationDays);
     // Our own routing (dest + serving sealing key) lives in the card we signed;
     // recover it for invites and contact bootstraps.
@@ -616,6 +618,7 @@ void Session::persistMeta() const
             }},
         {"card", cardB64_},
         {"view", view_},
+        {"sharingAllowed", sharingAllowed_},
         {"delegationDays", delegationDays_},
         {"encrypted", encrypted_},
         {"avatarMime", avatarMime_},
@@ -643,6 +646,7 @@ nlohmann::json Session::contactsToJson() const
             {"avatarMime", contact.avatarMime},
             {"avatarSentToPeer", contact.avatarSentToPeer},
             {"view", contact.view},
+            {"sharingRefused", contact.sharingRefused},
             {"requesterDevice", contact.requesterDevice},
         };
     }
@@ -1548,7 +1552,7 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
                 {"sealing", sealingPublicB64()},
                 {"dest", myDest_},
                 {"servingKey", myServingKeyB64_},
-                {"view", view_},
+                {"view", sharedView()},
                 {"replyTokens", replyTokens},
             }},
     };
@@ -1828,6 +1832,90 @@ void Session::sendDelete(const std::string& peerFingerprint, const std::string& 
         {"ref", refMessageId},
     };
     sendContent(peerFingerprint, std::move(inner));
+}
+
+void Session::setSharingAllowed(const bool allowed)
+{
+    if (sharingAllowed_ == allowed) {
+        return;
+    }
+    sharingAllowed_ = allowed;
+    persistMeta();
+    // Said now rather than at the next message each: a contact who was told they
+    // may pass us on keeps thinking so until something says otherwise.
+    pushRoutingToContacts({});
+}
+
+void Session::rotateServingKey(const std::function<void(const std::string&)>& onStage)
+{
+    const auto stage = [&onStage](const std::string& text) {
+        if (onStage) {
+            onStage(text);
+        }
+    };
+    if (myDest_.empty()) {
+        throw std::runtime_error("no destination of your own yet - connect first");
+    }
+    stage("Asking your server for a new serving key");
+    const Client::PreparedServingKey prepared = client_->prepareServingKey();
+    stage("Signing a card over the new key");
+    const Bytes card = ContactCard::issue(
+        client_->identity(), myDest_, sealingKey_.publicDer(), prepared.servingSealingKeyDer);
+    // The point of no return: before it, the old key still serves and nothing has
+    // changed; after it, the old one is refused and the contacts have to be told.
+    stage("Putting the new key in force");
+    client_->commitServingKey(card);
+    cardB64_ = toBase64(card);
+    myServingKeyB64_ = toBase64(prepared.servingSealingKeyDer);
+    view_ = prepared.view;
+    client_->setSessionSealingKey(prepared.servingSealingKeyDer);
+    persistMeta();
+    stage("Telling your contacts");
+    const RoutingPushResult pushed = pushRoutingToContacts(onStage);
+    stage(pushed.failed == 0
+            ? ("Done - " + std::to_string(pushed.told) + " contact(s) told")
+            : ("Done - " + std::to_string(pushed.told) + " told, " + std::to_string(pushed.failed)
+                + " could not be reached; they get it with your next message"));
+}
+
+Session::RoutingPushResult Session::pushRoutingToContacts(
+    const std::function<void(const std::string&)>& onStage)
+{
+    RoutingPushResult result;
+    // A copy of the names: sending writes to contacts_ (tokens are spent), and
+    // iterating the map while it is being written to is not a thing to do.
+    std::vector<std::string> peers;
+    for (const auto& [fingerprint, contact] : contacts_) {
+        if (contact.issuedToThem && !contact.sealingPublicB64.empty()
+            && !contact.servingSealingB64.empty()) {
+            peers.push_back(fingerprint);
+        }
+    }
+    for (const std::string& peer : peers) {
+        if (onStage) {
+            onStage("Telling your contacts (" + std::to_string(result.told + result.failed + 1)
+                + "/" + std::to_string(peers.size()) + ")");
+        }
+        nlohmann::json inner = {
+            {"v", kMessageFormatVersion},
+            {"type", "contact.routing"},
+            {"id", toHex(randomBytes(8))},
+            {"from", fingerprint()},
+            {"sentAt", nowMillis()},
+        };
+        try {
+            // The routing block rides on every message; this one carries nothing
+            // else, so it is a routing update and nothing more.
+            sendContent(peer, std::move(inner), {}, nullptr, false,
+                /*establishOnFirstReply=*/false);
+            ++result.told;
+        } catch (const std::exception& error) {
+            ++result.failed;
+            bazarish::log::warn("routing update not delivered to {}: {}",
+                bazarish::log::redact(peer), error.what());
+        }
+    }
+    return result;
 }
 
 void Session::sendReceipt(const std::string& peerFingerprint, const std::string& refMessageId)
@@ -2191,7 +2279,7 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
             {"sealing", sealingPublicB64()},
             {"dest", myDest_},
             {"servingKey", myServingKeyB64_},
-            {"view", view_},
+            {"view", sharedView()},
             {"replyTokens", issueTokenBatch()},
         };
         // Addressed when we know which device asked: their other devices then
@@ -2222,7 +2310,7 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     // their side could never be shared. It grants no more than what they already
     // hold - the card behind it is the dest and keys they are talking to us on.
     inner["routing"]
-        = {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", view_}};
+        = {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", sharedView()}};
 
     const Bytes innerBytes = encodedBody(inner);
     const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
@@ -2343,11 +2431,20 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 }
                 // A dialog that started from their side never carried their view
                 // capability, so this is also where an older contact becomes one
-                // we can hand on to somebody else.
-                const std::string view = routing.value("view", std::string());
-                if (isViewCapability(view) && peer.view != view) {
-                    peer.view = view;
-                    persistContacts();
+                // we can hand on to somebody else - and where one who has turned
+                // sharing off takes that back, by sending an empty one.
+                if (routing.contains("view")) {
+                    const std::string view = routing.value("view", std::string());
+                    const bool refused = view.empty();
+                    if (isViewCapability(view) && (peer.view != view || peer.sharingRefused)) {
+                        peer.view = view;
+                        peer.sharingRefused = false;
+                        persistContacts();
+                    } else if (refused && (!peer.view.empty() || !peer.sharingRefused)) {
+                        peer.view.clear();
+                        peer.sharingRefused = true;
+                        persistContacts();
+                    }
                 }
             }
 
@@ -2760,7 +2857,7 @@ void Session::sendTokenRefill(const std::string& peerFingerprint, const std::str
         {"sentAt", nowMillis()},
         {"bootstrap", {{"replyTokens", issueTokenBatch()}, {"forDevice", forDevice}}},
         {"routing",
-            {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", view_}}},
+            {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", sharedView()}}},
     };
     if (!prepaidToken.empty() || !contact.sendTokens.empty()) {
         sendContent(peerFingerprint, std::move(inner), {}, nullptr, false, true, prepaidToken);
@@ -2878,7 +2975,7 @@ void Session::sendTokenRequest(const std::string& peerFingerprint)
         {"sentAt", nowMillis()},
         {"device", client_->clientId()},
         {"routing",
-            {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", view_}}},
+            {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", sharedView()}}},
     };
     // Spends one of our tokens like any other message: the peer answers with a
     // batch addressed to this device, and no other device of ours holds it.

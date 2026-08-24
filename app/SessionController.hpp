@@ -92,6 +92,8 @@ public slots:
     void saveAttachment(const QString& peer, const QString& messageId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
     void changePassphrase(const QString& passphrase);
+    void rotateServingKey();
+    void setSharingAllowed(bool allowed);
     // Per-user I2P destination: set up the master (generate or load a .dat),
     // turn the paid option on/off, and report the current status.
     void generatePersonalKey();
@@ -130,7 +132,11 @@ signals:
     // A row's status line changed while it is still running.
     void opProgress(const QString& opId, const QString& status);
     // What the opened account has stored for the settings the window shows.
-    void accountSettings(bool acceptCalls, bool allowClearnet);
+    void accountSettings(bool acceptCalls, bool allowClearnet, bool sharingAllowed);
+    // One step of a serving-key rotation, as it happens.
+    void servingKeyStage(const QString& stage);
+    // The rotation finished: ok with the summary, or the reason it did not.
+    void servingKeyDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& connectionNote);
     // The account's own display name was changed (so the GUI updates it without a
@@ -148,7 +154,8 @@ signals:
     // links carries each contact's shareable descriptor, empty where none is
     // known yet - it is built from routing the session already holds.
     void contactsRefreshed(const QStringList& fingerprints, const QStringList& names,
-        const QStringList& pending, const QStringList& links, const QStringList& capacities);
+        const QStringList& pending, const QStringList& links, const QStringList& capacities,
+        const QStringList& shareStates);
     // A real avatar became available for an identity (own or a contact): the GUI
     // feeds it to the shared avatar store. Empty data clears it.
     void avatarReady(const QString& fingerprint, const QByteArray& data);
@@ -406,6 +413,12 @@ class SessionController : public QObject {
     // instead of ringing; their call button stays, because this can be turned back
     // on at any moment. Kept with the account, not with the window.
     Q_PROPERTY(bool acceptCalls READ acceptCalls WRITE setAcceptCalls NOTIFY acceptCallsChanged)
+    // Whether contacts are handed the capability that lets them pass us on.
+    Q_PROPERTY(bool sharingAllowed READ sharingAllowed WRITE setSharingAllowed
+            NOTIFY sharingAllowedChanged)
+    // The rotation in progress: what it is doing, and whether one is running.
+    Q_PROPERTY(QString servingKeyStage READ servingKeyStage NOTIFY servingKeyChanged)
+    Q_PROPERTY(bool servingKeyBusy READ servingKeyBusy NOTIFY servingKeyChanged)
     // How long this account hands its destination to the server for, in days.
     // Shorter means leaving a server takes effect sooner; longer means a client
     // that is away stays reachable. Bounded by the protocol, not by the server.
@@ -517,6 +530,13 @@ public:
     QObject* operations() { return &operations_; }
     int activeOperations() const { return operations_.runningCount(); }
     bool acceptCalls() const { return acceptCalls_; }
+    bool sharingAllowed() const { return sharingAllowed_; }
+    void setSharingAllowed(bool allowed);
+    QString servingKeyStage() const { return servingKeyStage_; }
+    bool servingKeyBusy() const { return servingKeyBusy_; }
+    // Rotates the serving key our server holds and the capability that reads our
+    // card, and hands both to every contact. Reported step by step.
+    Q_INVOKABLE void rotateServingKey();
     int delegationDays() const { return delegationDays_; }
     static int minDelegationDays() { return static_cast<int>(bazarish::kMinDelegationDays); }
     static int maxDelegationDays() { return static_cast<int>(bazarish::kMaxDelegationDays); }
@@ -682,6 +702,12 @@ public:
     // invite, built from what they already gave us. Empty while we hold no
     // routing for them.
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
+    // Whether this contact has said their invite may not be passed on, which is
+    // a different thing from not having sent us one yet.
+    Q_INVOKABLE bool contactSharingRefused(const QString& fp) const
+    {
+        return shareRefused_.contains(fp);
+    }
     // Messages this device can still send that contact before it asks them for
     // more capacity (their one-time delivery tokens we hold).
     Q_INVOKABLE int sendCapacity(const QString& fp) const;
@@ -874,6 +900,10 @@ signals:  // to worker
         qint64 token);
     void requestExport(const QString& path, const QString& password);
     void requestChangePassphrase(const QString& passphrase);
+    void requestRotateServingKey();
+    void requestSharingAllowed(bool allowed);
+    void sharingAllowedChanged();
+    void servingKeyChanged();
     void requestOpen(const QString& dir, const QString& passphrase);
     void requestSetSync(bool on);
     void requestRebuildI2p();
@@ -990,6 +1020,9 @@ private:
     QString serverFp_;
     bool sendReceipts_ = true;
     bool acceptCalls_ = true;
+    bool sharingAllowed_ = true;
+    QString servingKeyStage_;
+    bool servingKeyBusy_ = false;
     int delegationDays_ = static_cast<int>(bazarish::kDefaultDelegationDays);
     // Edit-in-progress state for the composer (0 / empty when not editing).
     bool editing_ = false;
@@ -1050,6 +1083,9 @@ private:
     // worker. Drives peerName() and the chat-list labels.
     QHash<QString, QString> contactNames_;
     QHash<QString, QString> contactLinks_;
+    // Contacts that have said their invite may not be passed on: "no link yet"
+    // and "not allowed" read the same in the UI otherwise.
+    QSet<QString> shareRefused_;
     // Sending capacity per contact: their tokens this device still holds.
     QHash<QString, int> sendCapacities_;
     QStringList recentReactions_;

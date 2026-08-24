@@ -134,5 +134,88 @@ Popup {
             contentItem: Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
             Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
         }
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 6 }
+
+        // The way out of an invite that got somewhere it should not have: the
+        // server's key for this account is replaced, which retires every link
+        // already handed out.
+        MenuButton {
+            Layout.fillWidth: true
+            text: "Change the server key…"
+            danger: true
+            enabled: root.session && root.session.connected && !root.session.servingKeyBusy
+            onClicked: rotateDialog.open()
+        }
+    }
+
+    Dialog {
+        id: rotateDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(420, parent ? parent.width - 24 : 420)
+        closePolicy: root.session && root.session.servingKeyBusy
+            ? Popup.NoAutoClose : Popup.CloseOnEscape
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label {
+            text: "Change the server key"
+            color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Change it"
+            danger: true
+            acceptEnabled: root.session && !root.session.servingKeyBusy
+            onAccepted: root.session.rotateServingKey()
+            onRejected: rotateDialog.close()
+        }
+        contentItem: ColumnLayout {
+            spacing: 10
+            Label {
+                text: "Your server holds a key that every message to you is sealed to, and "
+                    + "your invite carries the capability that reads your card. Both are "
+                    + "replaced here."
+                color: Theme.text; wrapMode: Text.Wrap; Layout.fillWidth: true
+            }
+            Label {
+                text: "Every link you have handed out stops working, and anyone holding your "
+                    + "old card can no longer deliver to you. Your current contacts are sent "
+                    + "the new pair straight away; one that is offline picks it up from your "
+                    + "next message to them."
+                color: Theme.warn; font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap; Layout.fillWidth: true
+            }
+            // What the rotation is doing, step by step: it talks to the server
+            // twice and then to every contact, and a silent dialog through that
+            // is a dialog that looks stuck.
+            Label {
+                visible: root.session && root.session.servingKeyStage.length > 0
+                text: root.session ? root.session.servingKeyStage : ""
+                color: (root.session && root.session.servingKeyBusy) ? Theme.accent : Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap; Layout.fillWidth: true
+            }
+
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Label { text: "Let contacts pass my contact on"; color: Theme.text }
+                    Label {
+                        text: "On, a contact can hand you to someone else. Off, they are sent "
+                            + "no capability and their Share button says so."
+                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                }
+                Toggle {
+                    checked: root.session ? root.session.sharingAllowed : true
+                    onToggled: if (root.session) { root.session.sharingAllowed = checked }
+                }
+            }
+        }
     }
 }
