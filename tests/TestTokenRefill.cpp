@@ -364,6 +364,17 @@ int main()
     CHECK(alice.hasContact(bob.fingerprint()));
     CHECK(bob.hasContact(alice.fingerprint()));
 
+    // A batch that was addressed to nobody is not kept whole: each device takes
+    // one token out of it and spends that on a batch addressed to itself, so no
+    // two devices of an account hold the same one-time tokens. Two rounds of
+    // sync carry those requests and their answers.
+    for (int round = 0; round < 2; ++round) {
+        alice.sync();
+        bob.sync();
+    }
+    CHECK(alice.hasContact(bob.fingerprint()));
+    CHECK(bob.hasContact(alice.fingerprint()));
+
     const auto rejects = [](const auto& fn) {
         try {
             fn();

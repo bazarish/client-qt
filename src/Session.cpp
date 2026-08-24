@@ -141,17 +141,38 @@ void applyBootstrap(Contact& contact, const nlohmann::json& bootstrap, const std
     if (bootstrap.contains("servingKey")) {
         contact.servingSealingB64 = bootstrap.at("servingKey").get<std::string>();
     }
+    if (!bootstrap.contains("replyTokens")) {
+        return;
+    }
+    std::vector<std::string> offered;
+    for (const nlohmann::json& token : bootstrap.at("replyTokens")) {
+        offered.push_back(token.get<std::string>());
+    }
+    if (offered.empty()) {
+        return;
+    }
     const std::string forDevice = bootstrap.value("forDevice", std::string());
-    if (bootstrap.contains("replyTokens") && (forDevice.empty() || forDevice == thisDevice)) {
-        for (const nlohmann::json& token : bootstrap.at("replyTokens")) {
-            const std::string t = token.get<std::string>();
-            // Dedup: a pending item may be re-fetched before it is acked (acks are
-            // deferred until the client durably stores the item), so applying the
-            // same bootstrap twice must not double the token stash.
-            if (std::find(contact.sendTokens.begin(), contact.sendTokens.end(), t)
-                == contact.sendTokens.end()) {
-                contact.sendTokens.push_back(t);
-            }
+    if (forDevice.empty()) {
+        // An unaddressed batch: every device of this account sees it, so keeping
+        // all of it would leave several devices holding the same one-time tokens
+        // and racing to spend them. Take exactly one, at random so two devices
+        // rarely pick the same, and spend it on a batch addressed to this device.
+        const std::size_t pick = static_cast<std::size_t>(randomBytes(1).front()) % offered.size();
+        contact.sendTokens.assign(1, offered[pick]);
+        contact.needsOwnBatch = true;
+        return;
+    }
+    if (forDevice != thisDevice) {
+        return;  // somebody else's batch: leaving it alone is the whole point
+    }
+    contact.needsOwnBatch = false;
+    for (const std::string& token : offered) {
+        // Dedup: a pending item may be re-fetched before it is acked (acks are
+        // deferred until the client durably stores the item), so applying the
+        // same bootstrap twice must not double the token stash.
+        if (std::find(contact.sendTokens.begin(), contact.sendTokens.end(), token)
+            == contact.sendTokens.end()) {
+            contact.sendTokens.push_back(token);
         }
     }
 }
@@ -422,6 +443,7 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
             contact.avatarSentToPeer = entry.value("avatarSentToPeer", false);
             contact.view = entry.value("view", std::string());
             contact.requesterDevice = entry.value("requesterDevice", std::string());
+            contact.needsOwnBatch = entry.value("needsOwnBatch", false);
             contacts.emplace(fingerprint, std::move(contact));
         }
     }
@@ -595,6 +617,7 @@ nlohmann::json Session::contactsToJson() const
             {"dest", contact.dest},
             {"servingSealingB64", contact.servingSealingB64},
             {"sendTokens", contact.sendTokens},
+            {"needsOwnBatch", contact.needsOwnBatch},
             {"issuedToThem", contact.issuedToThem},
             {"displayName", contact.displayName},
             {"avatarMime", contact.avatarMime},
@@ -2447,6 +2470,36 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             } else if (type == "token-refill") {
                 // The fresh tokens already arrived via the bootstrap block.
                 message.contentType = type;
+            } else if (type == "device.token-request") {
+                // Another of our devices has nothing left to write to this peer
+                // with. Give it one of ours if we have any; every device that
+                // does answers, and the asker keeps what arrives.
+                message.contentType = type;
+                if (body.value("device", std::string()) != client_->clientId()) {
+                    grantTokenToDevices(body.value("peer", std::string()),
+                        body.value("device", std::string()));
+                }
+            } else if (type == "device.token-grant") {
+                // A token another of our devices gave up for us. The first one
+                // buys a batch of our own; the rest are ours to keep, and they
+                // are gone from the device that sent them.
+                message.contentType = type;
+                if (body.value("forDevice", std::string()) == client_->clientId()) {
+                    const std::string peer = body.value("peer", std::string());
+                    const std::string token = body.value("token", std::string());
+                    const auto known = contacts_.find(peer);
+                    if (known != contacts_.end() && !token.empty()) {
+                        Contact& contact = known->second;
+                        if (std::find(contact.sendTokens.begin(), contact.sendTokens.end(), token)
+                            == contact.sendTokens.end()) {
+                            contact.sendTokens.push_back(token);
+                        }
+                        persistContacts();
+                        if (contact.needsOwnBatch || contact.sendTokens.size() == 1) {
+                            sendTokenRequest(peer);
+                        }
+                    }
+                }
             } else if (type == "device.i2p-master") {
                 // A self-sync from another of our devices: adopt the I2P master if we
                 // do not already hold one, so this device keeps the same address.
@@ -2574,6 +2627,20 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
 
     // Refill peers that ran low (a fresh token batch, sent as a token-refill).
     // Done after the loop so the outbound send never races the fetch loop.
+    // A device that took one token out of an unaddressed batch owes itself a
+    // batch of its own: spend it now rather than at the first message, so the
+    // shared pool stops being shared as early as possible.
+    for (auto& [peerFingerprint, contact] : contacts_) {
+        if (!contact.needsOwnBatch || contact.sendTokens.empty()) {
+            continue;
+        }
+        try {
+            sendTokenRequest(peerFingerprint);
+        } catch (const std::exception& error) {
+            bazarish::log::warn("sync: could not ask {} for this device's own tokens: {}",
+                bazarish::log::redact(peerFingerprint), error.what());
+        }
+    }
     for (const auto& [peer, device] : refillPeers) {
         // Best-effort: a peer we cannot route to right now must not fail the
         // whole sync (which would read as "server unreachable"); retry next tick.
@@ -2719,9 +2786,16 @@ void Session::sendTokenRequest(const std::string& peerFingerprint)
     if (found == contacts_.end()) {
         return;
     }
-    const Contact& contact = found->second;
+    Contact& contact = found->second;
     if (contact.sealingPublicB64.empty() || contact.servingSealingB64.empty()) {
         return;  // no descriptor yet: nothing to ask, and nowhere to ask it
+    }
+    if (contact.sendTokens.empty()) {
+        // Nothing to spend, so nothing to ask with. The way out is a token
+        // borrowed from another of this account's own devices, not a tokenless
+        // write into a stranger's mailbox.
+        askDevicesForToken(peerFingerprint);
+        return;
     }
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -2732,14 +2806,57 @@ void Session::sendTokenRequest(const std::string& peerFingerprint)
         {"device", client_->clientId()},
         {"routing", {{"dest", myDest_}, {"servingKey", myServingKeyB64_}}},
     };
+    // Spends one of our tokens like any other message: the peer answers with a
+    // batch addressed to this device, and no other device of ours holds it.
+    sendContent(peerFingerprint, std::move(inner));
+    contact.needsOwnBatch = false;
+    persistContacts();
+}
+
+void Session::askDevicesForToken(const std::string& peerFingerprint)
+{
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.token-request"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"device", client_->clientId()},
+        {"peer", peerFingerprint},
+    };
     const Bytes innerBytes = encodedBody(inner);
-    const Key peerSealing = Key::fromPublicDer(fromBase64(contact.sealingPublicB64));
-    const Bytes payload = cms::seal(innerBytes, peerSealing);
-    const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
-    // Tokenless, over the contact channel: this device has nothing left to spend,
-    // which is the whole reason it is asking. The channel is capped and rate
-    // limited, and one request per empty stash is well inside that.
-    deliver(contact.dest, peerServingKey, "contact", peerFingerprint, std::nullopt, payload);
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
+}
+
+void Session::grantTokenToDevices(
+    const std::string& peerFingerprint, const std::string& toDevice)
+{
+    const auto found = contacts_.find(peerFingerprint);
+    if (found == contacts_.end() || found->second.sendTokens.empty()) {
+        return;  // nothing to give: another device may still have one
+    }
+    Contact& contact = found->second;
+    // Exactly one, and it leaves this device with it: a one-time token in two
+    // places is a token one of them will be refused for.
+    const std::string token = contact.sendTokens.back();
+    contact.sendTokens.pop_back();
+    persistContacts();
+
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.token-grant"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"device", client_->clientId()},
+        {"forDevice", toDevice},
+        {"peer", peerFingerprint},
+        {"token", token},
+    };
+    const Bytes innerBytes = encodedBody(inner);
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
 }
 
 // ============================ Audio calls ============================

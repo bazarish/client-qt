@@ -2766,15 +2766,13 @@ void SessionController::onContactAddRateLimited(
     const auto found = refusedRequests_.find(fingerprint);
     if (found == refusedRequests_.end() || found->triesLeft <= 0) {
         writeConversationNote(fingerprint,
-            QStringLiteral("Their address is taking too many contact requests just now, and "
-                           "this one was refused rather than lost. Try again when you like."));
+            QStringLiteral("The request was refused - their server is busy. Try again later."));
         emit contactRetryExhausted(fingerprint);
         return;
     }
     --found->triesLeft;
     writeConversationNote(fingerprint,
-        QStringLiteral("Their address is busy with contact requests. Trying again in %1 "
-                       "seconds (%2 left).")
+        QStringLiteral("Their server is busy. Trying again in %1 seconds (%2 left).")
             .arg(kContactRetrySeconds)
             .arg(found->triesLeft + 1));
     const QString peer = fingerprint;

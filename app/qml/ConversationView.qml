@@ -526,7 +526,7 @@ Item {
         Layout.bottomMargin: 4
         spacing: 8
         Label {
-            text: "Their address was busy with contact requests."
+            text: "The request was refused - their server is busy."
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

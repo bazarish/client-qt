@@ -62,6 +62,9 @@ struct Contact {
     // adopts the batch and their other devices ask for their own - two devices
     // holding the same one-time tokens is two devices spending them.
     std::string requesterDevice;
+    // This device holds one token out of a batch that was addressed to nobody,
+    // and owes itself a batch of its own: it spends that one asking for it.
+    bool needsOwnBatch = false;
     // Unused one-time delivery tokens (base64) issued by the peer to us:
     // each authorizes one message into the peer's mailbox.
     std::vector<std::string> sendTokens;
@@ -874,7 +877,15 @@ private:
     // Asks a contact for a batch of their tokens for THIS device. Rides the
     // tokenless contact channel, because a device with an empty stash has no
     // other way to speak to them.
+    // Asks the peer for a batch addressed to this device, spending one of the
+    // tokens we hold. With none left it asks our own devices instead.
     void sendTokenRequest(const std::string& peerFingerprint);
+    // Asks this account's other devices for one unspent token for a peer: the
+    // way back for a device that has none and therefore cannot ask the peer.
+    // Each device that has one sends exactly one and drops it, so a token is
+    // never in two places.
+    void askDevicesForToken(const std::string& peerFingerprint);
+    void grantTokenToDevices(const std::string& peerFingerprint, const std::string& toDevice);
 
     // Echoes a message this device just sent to the account's other devices, so
     // the conversation reads the same everywhere. Rides our own mailbox like the
