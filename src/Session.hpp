@@ -397,7 +397,9 @@ public:
     // re-issues at once). Bounded by the protocol: kMinDelegationDays ..
     // kMaxDelegationDays.
     std::int64_t delegationDays() const;
-    void setDelegationDays(std::int64_t days);
+    // announce=false applies a term another device chose, without telling them
+    // back about it.
+    void setDelegationDays(std::int64_t days, bool announce = true);
 
     bool refreshI2pTransientIfDue(std::int64_t now, std::int64_t leadSeconds);
     // Issues a fresh time-boxed transient (offline keys) from the master, valid
@@ -884,6 +886,7 @@ private:
     // way back for a device that has none and therefore cannot ask the peer.
     // Each device that has one sends exactly one and drops it, so a token is
     // never in two places.
+    void syncDelegationTermToSelf();
     void askDevicesForToken(const std::string& peerFingerprint);
     // Whether this account has no other device registered. Asked of the server
     // once per sync and only when it matters (a batch addressed to nobody has

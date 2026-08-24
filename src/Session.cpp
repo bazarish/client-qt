@@ -1077,7 +1077,7 @@ std::int64_t Session::delegationDays() const
     return delegationDays_;
 }
 
-void Session::setDelegationDays(const std::int64_t days)
+void Session::setDelegationDays(const std::int64_t days, const bool announce)
 {
     if (days < kMinDelegationDays || days > kMaxDelegationDays) {
         throw std::invalid_argument("a delegation runs between "
@@ -1096,6 +1096,29 @@ void Session::setDelegationDays(const std::int64_t days)
         renewI2pTransient(expires);
         client_->sendI2pTransient(i2pTransientBase64(), expires);
     }
+    if (announce) {
+        syncDelegationTermToSelf();
+    }
+}
+
+void Session::syncDelegationTermToSelf()
+{
+    // The term is the account's, not this device's: a device left on a longer
+    // term would keep renewing past what another device chose, and the shorter
+    // choice would never take effect (a device stands down while the server
+    // holds a delegation comfortably in date).
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "device.delegation-term"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"device", client_->clientId()},
+        {"days", delegationDays_},
+    };
+    const Bytes innerBytes = encodedBody(inner);
+    const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+    client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
 }
 
 bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_t leadSeconds)
@@ -2486,6 +2509,19 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             } else if (type == "token-refill") {
                 // The fresh tokens already arrived via the bootstrap block.
                 message.contentType = type;
+            } else if (type == "device.delegation-term") {
+                // Another device changed the account's delegation term. Adopt it
+                // and, when it is shorter than what is out there, re-issue now:
+                // otherwise the longer delegation already on the server would
+                // keep this device standing down until it lapsed.
+                message.contentType = type;
+                if (body.value("device", std::string()) != client_->clientId()) {
+                    const std::int64_t days = body.value("days", kDefaultDelegationDays);
+                    if (days >= kMinDelegationDays && days <= kMaxDelegationDays
+                        && days != delegationDays_) {
+                        setDelegationDays(days, false);
+                    }
+                }
             } else if (type == "device.token-request") {
                 // Another of our devices has nothing left to write to this peer
                 // with. Give it one of ours if we have any; every device that
