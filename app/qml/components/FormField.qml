@@ -9,6 +9,7 @@ ColumnLayout {
     property alias placeholder: field.placeholderText
     property alias echoMode: field.echoMode
     property alias inputField: field
+    property alias maximumLength: field.maximumLength
     spacing: 4
     Layout.fillWidth: true
 

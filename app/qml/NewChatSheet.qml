@@ -127,7 +127,14 @@ Popup {
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            FormField { id: inviteIntro; label: "Introduction"; text: "Hi, found your invite!" }
+            // A contact request is tokenless, and the protocol caps what one may
+            // carry; the introduction is what is left over for a person to write.
+            FormField {
+                id: inviteIntro
+                label: "Introduction"
+                text: "Hi, found your invite!"
+                maximumLength: App.maxGreetingLength
+            }
             RowLayout {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }

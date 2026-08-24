@@ -1411,6 +1411,14 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     if (info.card.user != peerFingerprint) {
         throw std::runtime_error("contact lookup returned a different user");
     }
+    // A contact request is tokenless, so what a stranger may put in a mailbox is
+    // capped by the protocol. Hold the greeting to what the cap leaves room for
+    // here, where the user can still be told, rather than letting the recipient's
+    // server refuse a request they cannot see.
+    if (text.size() > kMaxContactGreetingBytes) {
+        throw std::runtime_error("the introduction may be at most "
+            + std::to_string(kMaxContactGreetingBytes) + " characters");
+    }
     const Key peerPrekey = info.card.sealingKey();
     const Key peerServingKey = info.card.servingSealingKey();
     const std::string peerDest = info.card.dest;

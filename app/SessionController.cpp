@@ -294,7 +294,7 @@ const QStringList kStandardReactions = {QStringLiteral("\U0001F44D"),
     QStringLiteral("\U0001F622"), QStringLiteral("\U0001F64F"), QStringLiteral("\U0001F440"),
     QStringLiteral("\u2705"), QStringLiteral("\U0001F4AF"), QStringLiteral("\U0001F680"),
     QStringLiteral("\U0001F621"), QStringLiteral("\U0001F44F"), QStringLiteral("\U0001F914"),
-    QStringLiteral("\U0001F973"), QStringLiteral("\U0001F91D"), QStringLiteral("\U0001F529")};
+    QStringLiteral("\U0001F44E"), QStringLiteral("\U0001F91D"), QStringLiteral("\U0001F529")};
 
 // Loads a picked image and compresses it to a square JPEG within the 500 KB
 // avatar protocol cap (center-crop, downscale to 256, drop quality - then, as a

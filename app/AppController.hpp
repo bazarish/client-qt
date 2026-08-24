@@ -5,6 +5,8 @@
 #include "ProfileManager.hpp"
 #include "SessionController.hpp"
 
+#include <bazarish/Limits.hpp>
+
 #include <QList>
 #include <QImage>
 #include <QObject>
@@ -30,6 +32,9 @@ class AppController : public QObject {
     // Unread waiting in accounts other than the one on screen: the switcher is
     // the only place they would ever be noticed.
     Q_PROPERTY(int unreadElsewhere READ unreadElsewhere NOTIFY accountsChanged)
+    // What a contact request leaves for a person to write: the protocol's cap,
+    // so the field cannot be filled past what the recipient's server accepts.
+    Q_PROPERTY(int maxGreetingLength READ maxGreetingLength CONSTANT)
     // --- Global (app-wide) settings, shared by every profile ---
     // Full privacy mode: forbid connecting through any clearnet client-facade, so
     // all traffic runs over I2P only. Persisted across runs and applied process-wide.
@@ -43,6 +48,7 @@ public:
     QObject* profiles() { return &profiles_; }
     QObject* accounts() { return &accounts_; }
     int unreadElsewhere() const;
+    static int maxGreetingLength() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
     QObject* session();
     bool hasProfiles() const { return haveProfiles_; }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }
