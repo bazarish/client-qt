@@ -147,7 +147,7 @@ std::vector<std::string> reseedFacades()
     return facadesSlot();
 }
 
-std::size_t knownRouterCount(const std::filesystem::path& dataDir)
+std::size_t knownRouterCount(const std::filesystem::path& dataDir, const std::size_t limit)
 {
     std::error_code ec;
     const std::filesystem::path netDb = dataDir / "netDb";
@@ -164,6 +164,9 @@ std::size_t knownRouterCount(const std::filesystem::path& dataDir)
     for (const std::filesystem::directory_entry& entry : entries) {
         if (entry.is_regular_file(ec)) {
             ++count;
+            if (count >= limit) {
+                break;
+            }
         }
     }
     return count;
@@ -176,23 +179,41 @@ bool seedRouterOnce(
         return false;
     }
     const std::lock_guard<std::mutex> lock(routerMutex());
-    if (routerSlot()) {
-        return true;  // the engine has already loaded its netDb
+    // Answered once: this sits on the path of every request that may go over I2P.
+    static bool netDbReady = false;
+    if (netDbReady) {
+        return true;
     }
     // Not "is there a netDb" but "is there enough of one": a directory with a
     // handful of stale routers is a router that cannot build a tunnel and will
-    // sit there trying.
+    // sit there trying. A running engine answers nothing here - it may well be
+    // the one sitting there with an empty netDb.
     if (knownRouterCount(dataDir) >= kMinKnownRouters) {
+        netDbReady = true;
         return true;
     }
+    std::size_t written = 0;
     try {
-        const std::size_t written = bazarish::i2p::seedRouterInfos(dataDir, fetch());
+        written = bazarish::i2p::seedRouterInfos(dataDir, fetch());
         bazarish::log::info("private reseed: {} routers", written);
-        return written > 0;
     } catch (const std::exception& error) {
         bazarish::log::info("private reseed unavailable: {}", error.what());
         return false;
     }
+    if (written == 0) {
+        return false;
+    }
+    // The engine reads its netDb when its network starts, so one that is already
+    // up knows nothing of the files just written until it is cycled.
+    const std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
+    if (router && router->running()) {
+        stopWarmPool();
+        router->stop();
+        router->start();
+        ensureWarmPool(*router);
+    }
+    netDbReady = true;
+    return true;
 }
 
 bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
@@ -260,6 +281,17 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
     const std::lock_guard<std::mutex> lock(routerMutex());
     std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
     if (g_i2pEnabled.load()) {
+        // An engine started on an empty netDb has nobody to learn the network
+        // from: it builds no tunnel, and every destination it is asked for dies
+        // waiting. Left down until a profile hands it a netDb (or public reseeds
+        // are allowed), which is also what starts it.
+        if (!router && !g_publicReseedAllowed.load()
+            && knownRouterCount(dataDir) < kMinKnownRouters) {
+            bazarish::log::info(
+                "i2p: not starting on {} known routers - waiting for a bootstrap",
+                knownRouterCount(dataDir));
+            return;
+        }
         if (!router) {
             router = std::make_unique<bazarish::i2p::Router>(
                 bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient,

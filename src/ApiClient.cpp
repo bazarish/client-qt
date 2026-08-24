@@ -66,13 +66,20 @@ constexpr std::size_t kSessionIdChars = 32;
         const nlohmann::json document = nlohmann::json::parse(text);
         const std::optional<ParsedError> parsed = parseErrorEnvelope(document);
         if (parsed.has_value()) {
-            throw ApiError(parsed->code, status, parsed->message);
+            // A refusal with nothing written on it is undiagnosable where it
+            // surfaces, so it carries its status instead of an empty string.
+            throw ApiError(parsed->code, status,
+                parsed->message.empty()
+                    ? ("server refused with status " + std::to_string(status))
+                    : parsed->message);
         }
     } catch (const nlohmann::json::exception&) {
         // error-hiding: allowed - the body was not an error envelope, and the
         // ApiError thrown right below carries the status and the raw text.
     }
-    throw ApiError(std::nullopt, status, text);
+    throw ApiError(std::nullopt, status,
+        text.empty() ? ("server answered status " + std::to_string(status) + " with no body")
+                     : text);
 }
 
 }  // namespace

@@ -83,6 +83,7 @@ Popup {
             Layout.fillWidth: true
             Layout.fillHeight: true
             contentWidth: availableWidth
+            clip: true
             ColumnLayout {
                 // Bound to what the scroll view actually offers. Taking the
                 // popup's width instead left the column wider than the visible
@@ -579,7 +580,7 @@ Popup {
                         spacing: 8
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "Hand your address to the server for"; color: Theme.text }
+                            Label { text: "Delegation term"; color: Theme.text }
                             Label {
                                 text: "Your server can only carry your address while you keep "
                                     + "delegating it, and your client renews at half the term. "
@@ -589,38 +590,41 @@ Popup {
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                         }
-                        // Bounded width: an editable SpinBox asks for far more
-                        // room than it needs, and a row that asks for more than
-                        // the page has widens the whole window.
-                        SpinBox {
-                            id: delegationDaysBox
-                            Layout.preferredWidth: 108
-                            Layout.alignment: Qt.AlignVCenter
-                            from: root.session ? root.session.minDelegationDays : 1
-                            to: root.session ? root.session.maxDelegationDays : 30
-                            value: root.session ? root.session.delegationDays : 14
-                            editable: true
-                        }
-                        Label {
-                            text: "days"
-                            color: Theme.textDim
-                            font.pixelSize: Theme.fontSmall
+                        ColumnLayout {
                             Layout.alignment: Qt.AlignVCenter
                             Layout.rightMargin: 2
-                        }
-                    }
-                    // Applied on the button, not on every keystroke: each change
-                    // re-issues the delegation, and typing "30" would issue one
-                    // for three days on the way.
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.rightMargin: 2
-                        Item { Layout.fillWidth: true }
-                        MenuButton {
-                            text: "Save the term"
-                            enabled: root.session
-                                && delegationDaysBox.value !== root.session.delegationDays
-                            onClicked: root.session.delegationDays = delegationDaysBox.value
+                            spacing: 6
+                            RowLayout {
+                                Layout.alignment: Qt.AlignRight
+                                spacing: 6
+                                // Bounded width: an editable SpinBox asks for far
+                                // more room than it needs, and a control that asks
+                                // for more than the page has pushes the page wider.
+                                SpinBox {
+                                    id: delegationDaysBox
+                                    Layout.preferredWidth: 108
+                                    from: root.session ? root.session.minDelegationDays : 1
+                                    to: root.session ? root.session.maxDelegationDays : 30
+                                    value: root.session ? root.session.delegationDays : 14
+                                    editable: true
+                                }
+                                Label {
+                                    text: "days"
+                                    color: Theme.textDim
+                                    font.pixelSize: Theme.fontSmall
+                                    Layout.alignment: Qt.AlignVCenter
+                                }
+                            }
+                            // Applied on the button, not on every keystroke: each
+                            // change re-issues the delegation, and typing "30"
+                            // would issue one for three days on the way.
+                            MenuButton {
+                                Layout.alignment: Qt.AlignRight
+                                text: "Save the term"
+                                enabled: root.session
+                                    && delegationDaysBox.value !== root.session.delegationDays
+                                onClicked: root.session.delegationDays = delegationDaysBox.value
+                            }
                         }
                     }
                     RowLayout {

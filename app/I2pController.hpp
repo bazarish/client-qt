@@ -37,6 +37,9 @@ class I2pController : public QObject {
     Q_PROPERTY(bool running READ running NOTIFY statusChanged)
     Q_PROPERTY(bool ready READ ready NOTIFY statusChanged)
     Q_PROPERTY(int knownRouters READ knownRouters NOTIFY statusChanged)
+    // How many routers the netDb has to hold before the engine is worth starting,
+    // so the status page can say what a stopped router is waiting for.
+    Q_PROPERTY(int minKnownRouters READ minKnownRouters CONSTANT)
     Q_PROPERTY(int floodfills READ floodfills NOTIFY statusChanged)
     Q_PROPERTY(int inboundTunnels READ inboundTunnels NOTIFY statusChanged)
     Q_PROPERTY(int outboundTunnels READ outboundTunnels NOTIFY statusChanged)
@@ -59,6 +62,7 @@ public:
     bool running() const { return running_; }
     bool ready() const { return ready_; }
     int knownRouters() const { return knownRouters_; }
+    int minKnownRouters() const;
     int floodfills() const { return floodfills_; }
     int inboundTunnels() const { return inboundTunnels_; }
     int outboundTunnels() const { return outboundTunnels_; }

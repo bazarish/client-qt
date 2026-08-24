@@ -147,6 +147,10 @@ constexpr qint64 kTransientCheckIntervalMs = 3600 * 1000;
 // user is not left staring at a stale warning after the operator lets them in,
 // rare enough to be one small request a minute.
 constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
+// A device the server does not know cannot be told anything, so registering it
+// is retried from the sync tick - but no faster than this: the registration is
+// several calls, and the reason it failed is usually not a passing one.
+constexpr qint64 kRegisterRetryIntervalMs = 60 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 // A voice message rides inside one message, so what really bounds it is the
@@ -681,10 +685,27 @@ void SessionWorker::sync()
     }
     std::vector<IncomingMessage> messages;
     try {
-        // autoAckSurfaced=false: defer acking each surfaced item until the GUI has
-        // durably stored it (ackPending via ackAfterReceive), so a crash/restart
-        // between fetch and store never loses a message.
-        messages = session_->sync(false);
+        try {
+            // autoAckSurfaced=false: defer acking each surfaced item until the GUI has
+            // durably stored it (ackPending via ackAfterReceive), so a crash/restart
+            // between fetch and store never loses a message.
+            messages = session_->sync(false);
+        } catch (const bazarish::client::ApiError& error) {
+            // A connect that died halfway - no I2P yet, the server unreachable -
+            // leaves the profile holding a server this device was never
+            // registered with, and nothing else would ever register it: the
+            // account is on the server, the device is not. Finish that here
+            // rather than answering "not reachable" until the user reconnects
+            // by hand.
+            if (error.code != bazarish::ErrorCode::eClientUnregistered
+                || nowMillis() - lastRegisterAttemptMs_ < kRegisterRetryIntervalMs) {
+                throw;
+            }
+            lastRegisterAttemptMs_ = nowMillis();
+            bazarish::log::info("this device is not registered with the server: registering it");
+            session_->registerAccount();
+            messages = session_->sync(false);
+        }
         emit syncReachable(true, {});
     } catch (const std::exception& error) {
         // Never swallowed: an account that sits at "Connecting" with no reason is

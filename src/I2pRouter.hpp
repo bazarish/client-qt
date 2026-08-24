@@ -72,7 +72,11 @@ void setPublicReseedAllowed(bool allowed);
 // asking the network for more.
 inline constexpr std::size_t kMinKnownRouters = 10;
 // How many routers this data directory already knows.
-std::size_t knownRouterCount(const std::filesystem::path& dataDir);
+// Routers in the data directory's netDb, counted no further than limit: every
+// caller only asks whether there are enough, and a netDb that has been warming
+// for a while holds thousands of files.
+std::size_t knownRouterCount(
+    const std::filesystem::path& dataDir, std::size_t limit = kMinKnownRouters);
 
 // Told when the bootstrap has to fall back to the public reseed hosts, so the
 // app can say so where the user will see it: the fallback reaches outside the

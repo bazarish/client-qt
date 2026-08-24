@@ -146,6 +146,11 @@ void I2pController::setPrivacyLevel(const int level)
     emit privacyLevelChanged();
 }
 
+int I2pController::minKnownRouters() const
+{
+    return static_cast<int>(client::kMinKnownRouters);
+}
+
 void I2pController::refresh()
 {
     // Never start the router here: report it only when another path (warmup, a
@@ -153,7 +158,9 @@ void I2pController::refresh()
     bazarish::i2p::Router* const router = client::sharedI2pRouterIfRunning();
     const bool running = router != nullptr;
     bool ready = false;
-    int knownRouters = 0;
+    // A stopped router still has a netDb on disk, and how big it is says whether
+    // it is waiting for a bootstrap or just about to come up.
+    int knownRouters = static_cast<int>(client::knownRouterCount(i2pRoot()));
     int floodfills = 0;
     int inboundTunnels = 0;
     int outboundTunnels = 0;

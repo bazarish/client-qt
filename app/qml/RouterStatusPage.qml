@@ -216,8 +216,13 @@ Popup {
 
                     Label {
                         visible: I2p.enabled && !I2p.running
-                        text: "Router is starting up — it stays on while enabled, warming the "
-                            + "network database in the background."
+                        // A router with nobody to ask cannot start the network: it
+                        // is the bootstrap it waits for, not its own start-up.
+                        text: I2p.knownRouters < I2p.minKnownRouters
+                            ? "No network database yet — the router starts once your server hands "
+                              + "it one, which happens the first time a profile connects."
+                            : "Router is starting up — it stays on while enabled, warming the "
+                              + "network database in the background."
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     Label {

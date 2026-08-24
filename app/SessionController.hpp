@@ -283,6 +283,8 @@ private:
     // When the delegation renewal was last considered (never = 0).
     qint64 lastTransientCheckMs_ = 0;
     qint64 lastApprovalCheckMs_ = 0;
+    // When this device last tried to register itself with the server (never = 0).
+    qint64 lastRegisterAttemptMs_ = 0;
     // Outgoing messages accepted by our server but not yet confirmed delivered:
     // local message id -> server attempt id, reconciled on each sync.
     std::map<qint64, std::string> pendingSends_;
