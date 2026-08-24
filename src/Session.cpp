@@ -71,7 +71,7 @@ constexpr int kMessageFormatVersion = 1;
 // How long an offline transient delegated to the serving server stays valid.
 // Kept short so the operator only ever holds a time-boxed capability; the client
 // re-issues a fresh one well before it lapses (see refreshI2pTransientIfDue).
-constexpr std::int64_t kI2pTransientValiditySeconds = 7 * 24 * 3600;
+constexpr std::int64_t kSecondsPerDay = 24 * 3600;
 
 // Host form of a standard-LeaseSet I2P address (the per-user destination).
 constexpr const char* kI2pHostSuffix = ".b32.i2p";
@@ -209,10 +209,6 @@ constexpr int kServeWindowSeconds = 30 * 60;
 // How long a file request is worth answering. The requester waits live on the
 // other side, so one that arrives from a mailbox after a restart is answered to
 // an empty room - and costs a published destination to find that out.
-// How long a delegation is handed over for. It is the account's only clock: the
-// client re-issues it while it runs, and a server drops an account that stops.
-constexpr std::int64_t kTransientTermSeconds = 30 * 24 * 3600;
-
 constexpr std::int64_t kFileRequestFreshnessMs = 5 * 60 * 1000;
 
 std::string guessMime(const fs::path& path)
@@ -440,6 +436,7 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
         meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
     session.cardB64_ = meta.value("card", std::string{});
     session.view_ = meta.value("view", std::string{});
+    session.delegationDays_ = meta.value("delegationDays", kDefaultDelegationDays);
     // Our own routing (dest + serving sealing key) lives in the card we signed;
     // recover it for invites and contact bootstraps.
     if (!session.cardB64_.empty()) {
@@ -577,6 +574,7 @@ void Session::persistMeta() const
             }},
         {"card", cardB64_},
         {"view", view_},
+        {"delegationDays", delegationDays_},
         {"encrypted", encrypted_},
         {"avatarMime", avatarMime_},
         // Sticky I2P: once this profile has reached its server over I2P it keeps
@@ -683,7 +681,7 @@ void Session::publishRouting()
     // The transient is a time-boxed capability that lets the server operate our
     // destination. Its term is the only clock the account has: the server keeps
     // serving while it is renewed.
-    const std::int64_t expires = nowSeconds() + kTransientTermSeconds;
+    const std::int64_t expires = nowSeconds() + delegationDays_ * kSecondsPerDay;
     renewI2pTransient(expires);
     reportConnectProgress(88, "Delegating your destination to the server");
     client_->sendI2pTransient(i2pTransientBase64(), expires);
@@ -1036,6 +1034,32 @@ StorageUsage Session::storageUsage()
     return client_->storageUsage();
 }
 
+std::int64_t Session::delegationDays() const
+{
+    return delegationDays_;
+}
+
+void Session::setDelegationDays(const std::int64_t days)
+{
+    if (days < kMinDelegationDays || days > kMaxDelegationDays) {
+        throw std::invalid_argument("a delegation runs between "
+            + std::to_string(kMinDelegationDays) + " and " + std::to_string(kMaxDelegationDays)
+            + " days");
+    }
+    if (days == delegationDays_) {
+        return;
+    }
+    delegationDays_ = days;
+    persistMeta();
+    // Re-issue at once so the new term applies now rather than at the next
+    // renewal, which the old term would have scheduled.
+    if (hasI2pDestination() && !myDest_.empty()) {
+        const std::int64_t expires = nowSeconds() + delegationDays_ * kSecondsPerDay;
+        renewI2pTransient(expires);
+        client_->sendI2pTransient(i2pTransientBase64(), expires);
+    }
+}
+
 bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_t leadSeconds)
 {
     if (!hasI2pDestination()) {
@@ -1051,7 +1075,7 @@ bool Session::refreshI2pTransientIfDue(const std::int64_t now, const std::int64_
     if (status.transientExpires != 0 && status.transientExpires - now > leadSeconds) {
         return false;
     }
-    const std::int64_t expiresUnix = now + kI2pTransientValiditySeconds;
+    const std::int64_t expiresUnix = now + delegationDays_ * kSecondsPerDay;
     renewI2pTransient(expiresUnix);
     client_->sendI2pTransient(i2pTransientBase64(), expiresUnix);
     return true;

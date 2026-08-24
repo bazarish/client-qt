@@ -98,6 +98,7 @@ public slots:
     void deletePersonalKey();
     void allowClearnet(bool allow);
     void setAcceptCalls(bool accept);
+    void setDelegationDays(int days);
     void cancelTransfer(const QString& protocolId);
     void publishPersonalDest();
     void disablePersonalDest();
@@ -389,6 +390,13 @@ class SessionController : public QObject {
     // instead of ringing; their call button stays, because this can be turned back
     // on at any moment. Kept with the profile, not with the window.
     Q_PROPERTY(bool acceptCalls READ acceptCalls WRITE setAcceptCalls NOTIFY acceptCallsChanged)
+    // How long this profile hands its destination to the server for, in days.
+    // Shorter means leaving a server takes effect sooner; longer means a client
+    // that is away stays reachable. Bounded by the protocol, not by the server.
+    Q_PROPERTY(int delegationDays READ delegationDays WRITE setDelegationDays
+            NOTIFY delegationDaysChanged)
+    Q_PROPERTY(int minDelegationDays READ minDelegationDays CONSTANT)
+    Q_PROPERTY(int maxDelegationDays READ maxDelegationDays CONSTANT)
     // True while the composer is editing a previously sent message; editingText
     // is its current text, so the composer can prefill the field.
     Q_PROPERTY(bool editing READ editing NOTIFY editingChanged)
@@ -492,6 +500,10 @@ public:
     QObject* operations() { return &operations_; }
     int activeOperations() const { return operations_.runningCount(); }
     bool acceptCalls() const { return acceptCalls_; }
+    int delegationDays() const { return delegationDays_; }
+    static int minDelegationDays() { return static_cast<int>(bazarish::kMinDelegationDays); }
+    static int maxDelegationDays() { return static_cast<int>(bazarish::kMaxDelegationDays); }
+    void setDelegationDays(int days);
     void setAcceptCalls(bool on);
     bool sendReceipts() const { return sendReceipts_; }
     void setSendReceipts(bool on) { if (sendReceipts_ != on) { sendReceipts_ = on; emit sendReceiptsChanged(); } }
@@ -769,6 +781,7 @@ signals:
     void connectStateChanged();
     void sendReceiptsChanged();
     void acceptCallsChanged();
+    void delegationDaysChanged();
     void editingChanged();
     void replyingChanged();
     void contactsRevisionChanged();
@@ -838,6 +851,7 @@ signals:  // to worker
     void requestDeletePersonalKey();
     void requestAllowClearnet(bool allow);
     void requestSetAcceptCalls(bool accept);
+    void requestSetDelegationDays(int days);
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();
     void requestRefreshI2pStatus();
@@ -941,6 +955,7 @@ private:
     QString serverFp_;
     bool sendReceipts_ = true;
     bool acceptCalls_ = true;
+    int delegationDays_ = static_cast<int>(bazarish::kDefaultDelegationDays);
     // Edit-in-progress state for the composer (0 / empty when not editing).
     bool editing_ = false;
     qint64 editingLocalId_ = 0;

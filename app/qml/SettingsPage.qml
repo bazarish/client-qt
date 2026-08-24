@@ -565,6 +565,33 @@ Popup {
                             onToggled: root.session.allowClearnet(checked)
                         }
                     }
+                    // How long this profile hands its address to the server for.
+                    // It is the only thing that ties an account to a server in
+                    // time, so the user - not the operator - sets it.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Hand your address to the server for"; color: Theme.text }
+                            Label {
+                                text: "Your server can only carry your address while you keep "
+                                    + "delegating it, and your client renews at half the term. "
+                                    + "Shorter means moving to another server takes effect "
+                                    + "sooner; longer means you stay reachable while you are away."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        SpinBox {
+                            from: root.session ? root.session.minDelegationDays : 1
+                            to: root.session ? root.session.maxDelegationDays : 30
+                            value: root.session ? root.session.delegationDays : 14
+                            editable: true
+                            onValueModified: if (root.session) { root.session.delegationDays = value }
+                        }
+                        Label { text: "days"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {

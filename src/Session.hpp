@@ -9,6 +9,7 @@
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
 #include <bazarish/I2p.hpp>
+#include <bazarish/Limits.hpp>
 
 #include <atomic>
 #include <cstdint>
@@ -389,6 +390,12 @@ public:
     // - but only after the poll, so when another of the user's devices has
     // already renewed, this one stands down (the multi-device race). Returns
     // true if it uploaded a new transient. A no-op without a personal dest.
+    // The delegation term this profile uses, in days, and setting it (which
+    // re-issues at once). Bounded by the protocol: kMinDelegationDays ..
+    // kMaxDelegationDays.
+    std::int64_t delegationDays() const;
+    void setDelegationDays(std::int64_t days);
+
     bool refreshI2pTransientIfDue(std::int64_t now, std::int64_t leadSeconds);
     // Issues a fresh time-boxed transient (offline keys) from the master, valid
     // until expiresUnix - the delegation handed to the serving server to operate
@@ -1044,6 +1051,10 @@ private:
     // The capability our server issued for reading our card: what an invite
     // carries so a contact can fetch it, and nothing else.
     std::string view_;
+    // How long this profile delegates its destination for, in days. The user
+    // picks it inside the protocol's ceiling: shorter means leaving a server
+    // takes effect sooner, longer means an absent client stays reachable.
+    std::int64_t delegationDays_ = kDefaultDelegationDays;
     // Set only by a test harness (see setFetchTransport).
     FetchTransport fetchTransportOverride_;
     // Human label for the profile picker (stored in the clear in meta.json).

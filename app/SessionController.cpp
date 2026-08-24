@@ -1581,6 +1581,18 @@ void SessionWorker::deletePersonalKey()
     refreshI2pStatus();
 }
 
+void SessionWorker::setDelegationDays(const int days)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setDelegationDays(days);
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
 void SessionWorker::setAcceptCalls(const bool accept)
 {
     if (!session_) {
@@ -1767,6 +1779,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::publishPersonalDest);
     connect(this, &SessionController::requestAllowClearnet, worker_,
         &SessionWorker::allowClearnet);
+    connect(this, &SessionController::requestSetDelegationDays, worker_,
+        &SessionWorker::setDelegationDays);
     connect(this, &SessionController::requestSetAcceptCalls, worker_,
         &SessionWorker::setAcceptCalls);
     connect(this, &SessionController::requestDisablePersonalDest, worker_,
@@ -2930,6 +2944,17 @@ void SessionController::loadPersonalKey(const QString& fileUrl)
 void SessionController::deletePersonalKey()
 {
     emit requestDeletePersonalKey();
+}
+
+void SessionController::setDelegationDays(const int days)
+{
+    const int bounded = std::clamp(days, minDelegationDays(), maxDelegationDays());
+    if (delegationDays_ == bounded) {
+        return;
+    }
+    delegationDays_ = bounded;
+    emit requestSetDelegationDays(bounded);
+    emit delegationDaysChanged();
 }
 
 void SessionController::setAcceptCalls(const bool on)
