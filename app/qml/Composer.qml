@@ -17,6 +17,9 @@ Rectangle {
     readonly property int minInputH: 38
     readonly property int maxInputH:
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
+    // How far the attach menu floats above the input bar.
+    readonly property int kAttachMenuGap: 8
+
     // Prepares a picture (scale, re-encode) and sends it as an attachment. A
     // picture that cannot be read says so instead of going out as a file.
     function sendPicture(source) {
@@ -183,10 +186,14 @@ Rectangle {
 
             // One way to attach anything: the clip asks what kind.
             IconButton {
+                id: attachButton
                 iconName: "attach"
                 visible: !root.editing
                 Layout.alignment: Qt.AlignBottom
-                onClicked: attachMenu.popup()
+                // Above the bar, over the conversation: opened at the cursor it
+                // covered the field the user is about to type in.
+                onClicked: attachMenu.popup(attachButton, 0,
+                    -attachMenu.implicitHeight - root.kAttachMenuGap)
             }
 
             Rectangle {
@@ -280,16 +287,19 @@ Rectangle {
         id: attachMenu
         ContextMenuItem {
             text: "File"
+            iconName: "file"
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
             // Pictures are their own thing: they are shrunk before they cross a
             // tunnel and shown in the bubble rather than listed as a file.
             text: "Picture"
+            iconName: "image"
             onTriggered: imageDialog.open()
         }
         ContextMenuItem {
             text: "Voice message"
+            iconName: "mic"
             onTriggered: voiceSheet.open()
         }
     }

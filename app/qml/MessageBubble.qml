@@ -16,7 +16,8 @@ Item {
     // Asks the view to open the emoji picker for this message (handled by a single
     // shared popup, not one per bubble).
     signal imageRequested(url source, string messageId, string name)
-    signal reactRequested(string protocolId)
+    // Carries where the message is on screen, so the picker opens beside it.
+    signal reactRequested(string protocolId, real sceneX, real sceneY)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
@@ -575,7 +576,7 @@ Item {
                     font.pixelSize: Theme.fontSmall
                     // As wide as the widest label it will ever hold: stepping
                     // 1x -> 1.5x otherwise widened the bubble under the cursor.
-                    Layout.preferredWidth: speedWidth.implicitWidth
+                    Layout.preferredWidth: Math.ceil(speedWidth.advanceWidth)
                     horizontalAlignment: Text.AlignRight
                     TextMetrics {
                         id: speedWidth
@@ -842,13 +843,18 @@ Item {
                 // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
                 // these labels into "React_" / "React_ view".
                 text: "React"
+                iconName: "smile"
                 visible: delegate.reactable
                 height: visible ? implicitHeight : 0
-                onTriggered: delegate.reactRequested(model.protocolId)
+                onTriggered: {
+                    const at = delegate.mapToItem(null, delegate.width / 2, delegate.height)
+                    delegate.reactRequested(model.protocolId, at.x, at.y)
+                }
             }
             ContextMenuItem {
                 // From the account straight to the clipboard: no file in between.
                 text: "Copy picture"
+                iconName: "copy"
                 visible: delegate.pictureUrl.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.session.copyPicture(model.protocolId)
@@ -857,6 +863,7 @@ Item {
                 // A picture lives in the account database; this is how it leaves
                 // it as a file.
                 text: "Save as"
+                iconName: "save"
                 visible: delegate.pictureUrl.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: {
@@ -868,6 +875,7 @@ Item {
             }
             ContextMenuItem {
                 text: "Reply"
+                iconName: "reply"
                 // Any real message (text or attachment) can be replied to; service
                 // notices, requests and unsupported placeholders cannot.
                 visible: !delegate.isSystem && !delegate.isUnsupported
@@ -883,6 +891,7 @@ Item {
             }
             ContextMenuItem {
                 text: "Copy all"
+                iconName: "copy"
                 // Only where there is text to copy: an attachment, a request, a
                 // picture and a voice message carry none.
                 visible: !delegate.isAttachment && !delegate.isContactRequest
@@ -892,12 +901,14 @@ Item {
             }
             ContextMenuItem {
                 text: "Edit"
+                iconName: "edit"
                 visible: delegate.canEdit
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.session.beginEdit(model.msgId, model.protocolId, model.text)
             }
             ContextMenuItem {
                 text: "Delete"
+                iconName: "trash"
                 onTriggered: delegate.deleteRequested(model.msgId, model.protocolId, model.outgoing)
             }
         }

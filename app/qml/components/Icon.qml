@@ -82,6 +82,20 @@ Item {
                     case "send":    return "M 3 12 L 21 4 L 14 21 L 11.5 13.5 Z M 11.5 13.5 L 21 4"
                     // The pair to "stop": a triangle pointing the way it plays.
                     case "play":    return "M 8 5 L 19 12 L 8 19 Z"
+                    // A sheet with its corner turned: a file, whatever is in it.
+                    case "file":    return "M 6 3 H 14 L 19 8 V 21 H 6 Z M 14 3 V 8 H 19"
+                    // An arrow into a tray: saving to disk.
+                    case "save":    return "M 12 4 V 15 M 8 11 L 12 15 L 16 11 "
+                                         + "M 5 17 V 20 H 19 V 17"
+                    // An arrow turning back on itself: replying to a message.
+                    case "reply":   return "M 10 5 L 4 10 L 10 15 M 4 10 H 14 "
+                                         + "A 5 5 0 0 1 19 15 V 19"
+                    // A bin with a lid: deleting.
+                    case "trash":   return "M 5 7 H 19 M 10 7 V 5 H 14 V 7 "
+                                         + "M 7 7 L 8 20 H 16 L 17 7 M 10 11 V 17 M 14 11 V 17"
+                    // A face: reacting to a message with one.
+                    case "smile":   return "M 12 3 A 9 9 0 1 1 11.99 3 "
+                                         + "M 8 14 A 5 5 0 0 0 16 14 M 9 9 V 10 M 15 9 V 10"
                     default:        return ""
                     }
                 }

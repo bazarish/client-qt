@@ -11,14 +11,24 @@ Popup {
     property var session: null
     property string target: ""
     modal: true
-    anchors.centerIn: Overlay.overlay
-    width: Math.min(300, parent ? parent.width - 24 : 300)
+    parent: Overlay.overlay
+    // As wide as the chips it holds and no wider: a fixed width left a gap on
+    // the right that was not enough for another chip.
+    readonly property int kColumns: 6
+    width: Math.min(parent ? parent.width - 24 : 400,
+        kColumns * kChipSize + (kColumns - 1) * kChipSpacing + 2 * padding)
     padding: 12
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
-    function openFor(protocolId) {
+    // Opened beside the message it is for, at scene coordinates, and kept inside
+    // the window: a picker in the middle of the screen makes the user find which
+    // message they were reacting to all over again.
+    function openAt(protocolId, sceneX, sceneY) {
         root.target = protocolId
         customField.text = ""
+        const area = root.parent
+        root.x = Math.max(12, Math.min(sceneX, area.width - root.width - 12))
+        root.y = Math.max(12, Math.min(sceneY, area.height - root.implicitHeight - 12))
         root.open()
     }
 
@@ -41,7 +51,7 @@ Popup {
         if (root.session && root.target.length > 0 && e.length > 0) {
             root.session.react(root.target, e)
         }
-        root.close()
+        Qt.callLater(root.close)
     }
 
     contentItem: ColumnLayout {
@@ -66,7 +76,10 @@ Popup {
                         renderType: Text.NativeRendering
                     }
                     HoverHandler { id: emojiHover; cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: root.pick(modelData) }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: root.pick(modelData)
+                    }
                 }
             }
         }
@@ -103,7 +116,10 @@ Popup {
                         renderType: Text.NativeRendering
                     }
                     HoverHandler { id: recentHover; cursorShape: Qt.PointingHandCursor }
-                    TapHandler { onTapped: root.pick(modelData) }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: root.pick(recentChip.modelData)
+                    }
                 }
             }
         }
@@ -117,8 +133,11 @@ Popup {
                 placeholderText: "Any unicode…"
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
-                // Show the typed emoji in colour too.
-                font.family: Theme.emojiFontFamily
+                // Emoji in colour, but only for what is emoji: the bundled emoji
+                // font has no glyphs for digits, and typing one into a field set
+                // in that font produced a blank.
+                font.family: /^[\x20-\x7E]*$/.test(customField.text)
+                    ? Theme.fontFamily : Theme.emojiFontFamily
                 renderType: Text.NativeRendering
                 onAccepted: root.pick(customField.text)
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: customField.activeFocus ? Theme.accent : Theme.border }

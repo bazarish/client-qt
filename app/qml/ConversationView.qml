@@ -136,6 +136,7 @@ Item {
 
     ReactionPicker { id: reactionPicker; session: root.session }
 
+
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
     Dialog {
@@ -271,7 +272,9 @@ Item {
                     onDeleteRequested: function(msgId, protocolId, outgoing) {
                         root.confirmDeleteMessage(msgId, protocolId, outgoing)
                     }
-                    onReactRequested: function(protocolId) { reactionPicker.openFor(protocolId) }
+                    onReactRequested: function(protocolId, sceneX, sceneY) {
+                        reactionPicker.openAt(protocolId, sceneX, sceneY)
+                    }
                     onImageRequested: function(url, messageId, name) {
                         imageViewer.show(url, messageId, name)
                     }
