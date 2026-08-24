@@ -75,6 +75,12 @@ Item {
         && model.protocolId && model.protocolId.length > 0
     // The reaction chips for this message: [{ emoji, count, mine }], re-queried
     // whenever any reaction changes (reactionsRevision drives the binding).
+    // Whether a reaction is ordinary printable text rather than an emoji: the
+    // bundled emoji font carries no glyphs for digits, so text drawn through it
+    // comes out blank.
+    function plainText(glyph) {
+        return /^[\x20-\x7E]+$/.test(glyph)
+    }
     readonly property var reactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionSummary(model.protocolId) : []
@@ -542,8 +548,16 @@ Item {
                 }
 
                 Label {
+                    // How long it runs, and while it is running how much of it is
+                    // left - in the time that is actually still to wait, so a
+                    // message played at 2x counts down twice as fast.
                     text: {
-                        const total = Math.floor((model.attDurationMs || 0) / 1000)
+                        const durationMs = model.attDurationMs || 0
+                        const speed = delegate.session ? delegate.session.voiceSpeed : 1
+                        const leftMs = delegate.voicePlaying
+                            ? Math.max(0, (durationMs - delegate.session.voicePositionMs) / speed)
+                            : durationMs
+                        const total = Math.round(leftMs / 1000)
                         const seconds = total % 60
                         return Math.floor(total / 60) + ":" + (seconds < 10 ? "0" : "") + seconds
                     }
@@ -659,71 +673,71 @@ Item {
                 Label { text: "sending…"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
             }
 
-            // Reaction chips: one per distinct emoji with its count; the one we set
-            // is outlined. Tapping a chip toggles our reaction to that emoji.
-            Flow {
-                visible: delegate.reactions.length > 0
-                Layout.fillWidth: true
-                Layout.topMargin: 2
-                spacing: 4
-                Repeater {
-                    model: delegate.reactions
-                    Rectangle {
-                        required property var modelData
-                        height: 22
-                        width: chipRow.implicitWidth + 12
-                        radius: 11
-                        color: modelData.mine ? Qt.rgba(0.22, 0.5, 0.2, 0.35) : Theme.surface
-                        border.width: 1
-                        border.color: modelData.mine ? Theme.green : Theme.border
-                        Row {
-                            id: chipRow
-                            anchors.centerIn: parent
-                            spacing: 3
-                            Label {
-                                text: modelData.emoji
-                                // A reaction can be any glyph, and a plain
-                                // character renders as text: without a colour it
-                                // came out black on a dark bubble.
-                                color: Theme.text
-                                font.pixelSize: 13
-                                // Colour emoji need the bundled emoji font + the
-                                // native renderer (the default is monochrome).
-                                font.family: Theme.emojiFontFamily
-                                renderType: Text.NativeRendering
-                            }
-                            Label {
-                                visible: modelData.count > 1
-                                text: modelData.count
-                                color: Theme.textDim
-                                font.pixelSize: 11
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                        }
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler {
-                            onTapped: if (delegate.session) {
-                                delegate.session.react(delegate.msgProtocolId, modelData.emoji)
-                            }
-                        }
-                    }
-                }
-            }
-
             // Footer: edited marker + time + outgoing status, and for a voice
             // message what it weighs - on this line rather than on the one with
             // the waveform, the speed and the play button.
             RowLayout {
-                Layout.alignment: (delegate.isVoice || delegate.isPicture)
-                    ? Qt.AlignLeft : Qt.AlignRight
-                Layout.fillWidth: delegate.isVoice || delegate.isPicture
+                readonly property bool spread: delegate.isVoice || delegate.isPicture
+                    || delegate.reactions.length > 0
+                Layout.alignment: spread ? Qt.AlignLeft : Qt.AlignRight
+                Layout.fillWidth: spread
                 spacing: 4
                 Label {
                     visible: (delegate.isVoice || delegate.isPicture) && model.attSize > 0
                     text: delegate.humanSize(model.attSize)
                     color: Theme.textFaint
                     font.pixelSize: 10
+                }
+                Item {
+                    visible: parent.spread
                     Layout.fillWidth: true
+                    implicitHeight: 1
+                }
+                // Reaction chips, on the same line as the time and to the left of
+                // it: one per distinct emoji with its count, the one we set
+                // outlined. A chip is light, because a glyph is drawn in whatever
+                // colours it has and a dark chip loses the dark ones. Tapping a
+                // chip toggles our reaction to that emoji.
+                Repeater {
+                    model: delegate.reactions
+                    Rectangle {
+                        required property var modelData
+                        height: 18
+                        width: chipRow.implicitWidth + 10
+                        radius: 9
+                        color: modelData.mine ? Qt.rgba(0.66, 0.93, 0.62, 1) : Theme.accent
+                        border.width: 1
+                        border.color: modelData.mine ? Theme.green : Theme.border2
+                        Row {
+                            id: chipRow
+                            anchors.centerIn: parent
+                            spacing: 3
+                            Label {
+                                text: modelData.emoji
+                                // Dark ink on the light chip; a plain character is
+                                // drawn as text and would otherwise be invisible.
+                                color: Theme.accentInk
+                                font.pixelSize: 12
+                                // The emoji font only for what is emoji: it has no
+                                // glyphs for plain digits, which came out blank
+                                // when everything was forced through it.
+                                font.family: delegate.plainText(modelData.emoji)
+                                    ? Theme.fontFamily : Theme.emojiFontFamily
+                                renderType: Text.NativeRendering
+                            }
+                            Label {
+                                visible: modelData.count > 1
+                                text: modelData.count
+                                color: Theme.accentInk
+                                font.pixelSize: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                        TapHandler {
+                            onTapped: delegate.session.react(model.protocolId, modelData.emoji)
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    }
                 }
                 Label {
                     visible: model.edited === true

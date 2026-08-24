@@ -190,9 +190,15 @@ void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
         TimeStretch stretch(std::move(pcm), speed);
         std::vector<std::int16_t> out(static_cast<std::size_t>(kCallSamplesPerFrame));
         std::size_t playedSamples = 0;
+        // Ran out on its own, rather than being stopped: only the first is the
+        // end of a message. Reporting a requested stop as "finished" made a seek
+        // - which stops and starts again - look like playback ending, and the
+        // bubble emptied itself a moment after the press.
+        bool ended = false;
         while (playing_.load()) {
             const std::size_t produced = stretch.read(out.data(), out.size());
             if (produced == 0) {
+                ended = true;
                 break;
             }
             out.resize(produced);
@@ -207,7 +213,9 @@ void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
             std::this_thread::sleep_for(std::chrono::milliseconds(kCallFrameMs));
         }
         playing_.store(false);
-        emit playbackFinished();
+        if (ended) {
+            emit playbackFinished();
+        }
     });
 }
 
