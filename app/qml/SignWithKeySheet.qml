@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import Bazarish
 
 // Sign-in-with-key: paste a challenge from any Bazarish portal (or any site that
-// supports it), sign it locally with this profile's key, and copy the signature
+// supports it), sign it locally with this account's key, and copy the signature
 // back. No server is contacted, so it works even before a server is connected.
 // Scrolls exactly like SettingsPage: a fixed header plus a ScrollView body.
 Popup {
@@ -73,7 +73,7 @@ Popup {
                         Layout.fillWidth: true
                     }
 
-                    // Which identity will sign: the active profile's name and fingerprint.
+                    // Which identity will sign: the active account's name and fingerprint.
                     Rectangle {
                         visible: root.session && root.session.fingerprint.length > 0
                         Layout.fillWidth: true
@@ -88,7 +88,7 @@ Popup {
                             spacing: 2
                             Label {
                                 text: root.session && root.session.displayName.length > 0
-                                    ? "Signing as " + root.session.displayName : "Signing as this profile"
+                                    ? "Signing as " + root.session.displayName : "Signing as this account"
                                 color: Theme.text
                                 font.weight: Font.Medium
                             }

@@ -1,8 +1,8 @@
 // Bazarish project (c) 2026
-#include "ProfileManager.hpp"
+#include "AccountManager.hpp"
 
-#include "ProfileDb.hpp"
-#include "ProfileKey.hpp"
+#include "AccountDb.hpp"
+#include "AccountKey.hpp"
 
 #include <memory>
 
@@ -17,25 +17,25 @@ namespace {
 
 namespace fs = std::filesystem;
 
-// The extension every profile file carries.
+// The extension every account file carries.
 constexpr const char* kFileSuffix = ".db";
 
-// A profile is a pair: the database and the small key file beside it. They move
+// An account is a pair: the database and the small key file beside it. They move
 // and go away together, or the database is left with nothing to open it.
 void movePair(const fs::path& from, const fs::path& to)
 {
     fs::rename(from, to);
-    fs::rename(profilekey::sidecarFor(from), profilekey::sidecarFor(to));
+    fs::rename(accountkey::sidecarFor(from), accountkey::sidecarFor(to));
 }
 
 void removePair(const fs::path& file)
 {
-    profilekey::forget(file);
+    accountkey::forget(file);
     fs::remove(file);
-    fs::remove(profilekey::sidecarFor(file));
+    fs::remove(accountkey::sidecarFor(file));
 }
 
-// A profile is stored under its own name, so the name has to survive as a file
+// An account is stored under its own name, so the name has to survive as a file
 // name. Only what a file system refuses is replaced - the reserved characters of
 // Windows and macOS included, so a portable copy on a stick stays readable - and
 // everything else, Unicode included, is kept as the user typed it.
@@ -56,27 +56,27 @@ std::string sanitizeFileName(const std::string& name)
     return out;
 }
 
-// What can be told about a profile without opening it fully. A profile with a
+// What can be told about an account without opening it fully. An account with a
 // passphrase gives up nothing until it is unlocked - not its name, not its
 // fingerprint - which is the point of keeping everything in one keyed file. It
 // is listed by its directory id and marked locked.
-ProfileInfo readInfo(const std::string& id, const fs::path& file, const std::string& passphrase = {})
+AccountInfo readInfo(const std::string& id, const fs::path& file, const std::string& passphrase = {})
 {
-    ProfileInfo info;
+    AccountInfo info;
     info.id = id;
     info.file = file;
     info.name = id;
-    // One open, not two: unlocking a profile database runs its key derivation,
+    // One open, not two: unlocking an account database runs its key derivation,
     // which is deliberately expensive.
-    std::unique_ptr<ProfileDb> db;
+    std::unique_ptr<AccountDb> db;
     try {
-        db = std::make_unique<ProfileDb>(file, passphrase);
+        db = std::make_unique<AccountDb>(file, passphrase);
     } catch (const std::exception&) {
         info.encrypted = true;  // the key does not open it: locked
         return info;
     }
     const nlohmann::json meta = nlohmann::json::parse(db->text("meta"));
-    // For a profile in place the name and the file name are the same string; an
+    // For an account in place the name and the file name are the same string; an
     // imported bundle is read before it has a file name of its own, and there the
     // name inside is all there is.
     info.name = meta.value("name", id);
@@ -88,7 +88,7 @@ ProfileInfo readInfo(const std::string& id, const fs::path& file, const std::str
 
 }  // namespace
 
-fs::path ProfileManager::globalRoot()
+fs::path AccountManager::globalRoot()
 {
     if (const char* const xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != '\0') {
         return fs::path(xdg) / "bazarish";
@@ -111,103 +111,103 @@ fs::path executableDir()
 
 }  // namespace
 
-fs::path ProfileManager::portableMarker()
+fs::path AccountManager::portableMarker()
 {
     return executableDir() / ".bazarish.portable";
 }
 
-fs::path ProfileManager::portableRoot()
+fs::path AccountManager::portableRoot()
 {
     return executableDir() / "bazarish_data";
 }
 
-bool ProfileManager::portable()
+bool AccountManager::portable()
 {
     std::error_code ignored;
     return fs::exists(portableMarker(), ignored);
 }
 
-fs::path ProfileManager::dataRoot()
+fs::path AccountManager::dataRoot()
 {
     return portable() ? portableRoot() : globalRoot();
 }
 
-fs::path ProfileManager::defaultRoot()
+fs::path AccountManager::defaultRoot()
 {
-    return dataRoot() / "profiles";
+    return dataRoot() / "accounts";
 }
 
-ProfileManager::ProfileManager(fs::path root)
+AccountManager::AccountManager(fs::path root)
     : root_(std::move(root))
 {
     fs::create_directories(root_);
 }
 
-fs::path ProfileManager::fileFor(const std::string& id) const
+fs::path AccountManager::fileFor(const std::string& id) const
 {
     return root_ / (sanitizeFileName(id) + kFileSuffix);
 }
 
-bool ProfileManager::exists(const std::string& id) const
+bool AccountManager::exists(const std::string& id) const
 {
     return fs::exists(fileFor(id));
 }
 
-std::vector<ProfileInfo> ProfileManager::list() const
+std::vector<AccountInfo> AccountManager::list() const
 {
-    std::vector<ProfileInfo> profiles;
+    std::vector<AccountInfo> accounts;
     if (!fs::exists(root_)) {
-        return profiles;
+        return accounts;
     }
     for (const fs::directory_entry& entry : fs::directory_iterator(root_)) {
         if (!entry.is_regular_file() || entry.path().extension() != kFileSuffix) {
             continue;
         }
-        profiles.push_back(readInfo(entry.path().stem().string(), entry.path()));
+        accounts.push_back(readInfo(entry.path().stem().string(), entry.path()));
     }
-    return profiles;
+    return accounts;
 }
 
-ProfileInfo ProfileManager::create(const std::string& name, const std::string& passphrase)
+AccountInfo AccountManager::create(const std::string& name, const std::string& passphrase)
 {
     const std::string id = sanitizeFileName(name);
     if (id.empty()) {
-        throw std::runtime_error("a profile needs a name");
+        throw std::runtime_error("an account needs a name");
     }
     if (exists(id)) {
-        throw std::runtime_error("a profile with this name already exists");
+        throw std::runtime_error("an account with this name already exists");
     }
     Session::create(fileFor(id), passphrase, id);
     return readInfo(id, fileFor(id), passphrase);
 }
 
-Session ProfileManager::open(const std::string& id, const std::string& passphrase) const
+Session AccountManager::open(const std::string& id, const std::string& passphrase) const
 {
     return Session::open(fileFor(id), passphrase);
 }
 
-ProfileInfo ProfileManager::import(const std::string& name, const fs::path& bundleFile,
+AccountInfo AccountManager::import(const std::string& name, const fs::path& bundleFile,
     const std::string& password, const std::string& atRestPassphrase)
 {
-    // The display name is restored from the bundle (importProfile writes the bundled
+    // The display name is restored from the bundle (importAccount writes the bundled
     // meta verbatim). An explicit name, when given, only chooses the on-disk id;
     // when omitted the id is derived from the restored name. So import into a temp
     // dir first, read the restored name, then move it into place under its final id.
     const fs::path tmp = root_ / ".import-tmp.db";
     removePair(tmp);
-    Session::importProfile(bundleFile, tmp, password, atRestPassphrase);
+    Session::importAccount(bundleFile, tmp, password, atRestPassphrase);
     const std::string restoredName = readInfo(std::string{}, tmp, atRestPassphrase).name;
     const std::string id = sanitizeFileName(name.empty() ? restoredName : name);
     if (id.empty() || exists(id)) {
         removePair(tmp);
-        throw std::runtime_error(id.empty() ? "a profile needs a name"
-                                            : "a profile with this name already exists");
+        throw std::runtime_error(id.empty() ? "an account needs a name"
+                                            : "an account with this name already exists");
     }
     movePair(tmp, fileFor(id));
     return readInfo(id, fileFor(id), atRestPassphrase);
 }
 
-void ProfileManager::remove(const std::string& id)
+void AccountManager::remove(const std::string& id)
 {
     removePair(fileFor(id));
 }

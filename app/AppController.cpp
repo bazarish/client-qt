@@ -31,46 +31,46 @@
 namespace bazarish::app {
 
 namespace {
-std::filesystem::path profilesRoot()
+std::filesystem::path accountsRoot()
 {
-    if (const char* const env = std::getenv("BAZARISH_PROFILES_DIR");
+    if (const char* const env = std::getenv("BAZARISH_ACCOUNTS_DIR");
         env != nullptr && env[0] != '\0') {
         return std::filesystem::path(env);
     }
-    return client::ProfileManager::defaultRoot();
+    return client::AccountManager::defaultRoot();
 }
 
 std::filesystem::path lastActivePath()
 {
-    return profilesRoot() / ".active";
+    return accountsRoot() / ".active";
 }
 
 std::filesystem::path offlinePath()
 {
-    return profilesRoot() / ".offline";
+    return accountsRoot() / ".offline";
 }
 
 std::filesystem::path settingsPath()
 {
-    return profilesRoot() / ".settings";
+    return accountsRoot() / ".settings";
 }
 }  // namespace
 
 AppController::AppController(QObject* parent)
     : QObject(parent)
-    , manager_(std::make_unique<client::ProfileManager>(profilesRoot()))
+    , manager_(std::make_unique<client::AccountManager>(accountsRoot()))
 {
-    refreshProfiles();
-    // Apply global settings (e.g. full privacy mode) before opening any profile, so
+    refreshAccountList();
+    // Apply global settings (e.g. full privacy mode) before opening any account, so
     // the first background sync already honours them.
     loadSettings();
     // Accounts the user turned offline last run must stay offline: load that set
     // before opening anything so they are skipped.
     loadOfflineSet();
-    // Open every unencrypted profile in the background so they are all online by
+    // Open every unencrypted account in the background so they are all online by
     // default (except the ones kept offline), then focus the last active one -
-    // no startup dialog when at least one profile could be opened.
-    openAllProfiles();
+    // no startup dialog when at least one account could be opened.
+    openAllAccounts();
     const QString last = readLastActive();
     if (sessionFor(last) != nullptr) {
         activeId_ = last;
@@ -193,33 +193,33 @@ void AppController::setAccountOffline(const QString& id, bool offline)
     persistOfflineSet();
 }
 
-void AppController::refreshProfiles()
+void AppController::refreshAccountList()
 {
-    QVector<ProfileRow> rows;
+    QVector<AccountListRow> rows;
     try {
-        for (const client::ProfileInfo& info : manager_->list()) {
-            rows.push_back(ProfileRow{QString::fromStdString(info.id),
+        for (const client::AccountInfo& info : manager_->list()) {
+            rows.push_back(AccountListRow{QString::fromStdString(info.id),
                 QString::fromStdString(info.name), QString::fromStdString(info.fingerprint),
                 info.encrypted, info.connected});
         }
     } catch (const std::exception& error) {
-        // A malformed profile dir should not break the picker.
-        bazarish::log::warn("profile list incomplete: {}", error.what());
+        // A malformed account dir should not break the picker.
+        bazarish::log::warn("account list incomplete: {}", error.what());
     }
-    haveProfiles_ = !rows.isEmpty();
-    profileRows_ = rows;
-    profiles_.setProfiles(std::move(rows));
-    emit profilesChanged();
+    haveAccounts_ = !rows.isEmpty();
+    accountRows_ = rows;
+    accountList_.setAccounts(std::move(rows));
+    emit accountListChanged();
 }
 
-void AppController::refreshProfileRows()
+void AppController::refreshAccountRows()
 {
-    // The picker lists what is on disk, but an open profile knows better: it has
+    // The picker lists what is on disk, but an open account knows better: it has
     // just connected to a server, or learnt its own name, while the listing was
     // taken before any of that. Patch the rows from the live sessions instead of
-    // re-reading the files - unlocking a profile database is expensive by design.
+    // re-reading the files - unlocking an account database is expensive by design.
     bool changed = false;
-    for (ProfileRow& row : profileRows_) {
+    for (AccountListRow& row : accountRows_) {
         const SessionController* const ctrl = sessionFor(row.id);
         if (ctrl == nullptr) {
             continue;
@@ -240,14 +240,14 @@ void AppController::refreshProfileRows()
         }
     }
     if (changed) {
-        profiles_.setProfiles(profileRows_);
-        emit profilesChanged();
+        accountList_.setAccounts(accountRows_);
+        emit accountListChanged();
     }
 }
 
 void AppController::publishReseedFacades()
 {
-    // Every clearnet facade of every profile that is open. A profile that is
+    // Every clearnet facade of every account that is open. An account that is
     // locked keeps its endpoint inside its encrypted database, so it cannot
     // contribute one until it is unlocked - that is a fact of the storage, not a
     // choice.
@@ -269,14 +269,14 @@ void AppController::publishReseedFacades()
 void AppController::refreshAccounts()
 {
     publishReseedFacades();
-    refreshProfileRows();
-    // The unified list is every on-disk profile, with live status merged in for
-    // the ones currently open. It reads the profiles this controller already
+    refreshAccountRows();
+    // The unified list is every on-disk account, with live status merged in for
+    // the ones currently open. It reads the accounts this controller already
     // listed, never the disk: this runs on every unread count change, and opening
-    // a profile database means running its key derivation (a quarter of a second
+    // an account database means running its key derivation (a quarter of a second
     // each, by design).
     QVector<AccountRow> rows;
-    for (const ProfileRow& info : profileRows_) {
+    for (const AccountListRow& info : accountRows_) {
         const QString id = info.id;
         AccountRow row;
         row.id = id;
@@ -344,15 +344,15 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
     if (sessionFor(id) != nullptr) {
         if (makeActive) {
             setActive(id);
-            emit profileOpened();
+            emit accountOpened();
         }
         return;
     }
 
-    // An encrypted profile needs its passphrase; ask the UI for it.
+    // An encrypted account needs its passphrase; ask the UI for it.
     if (passphrase.isEmpty() && manager_->exists(id.toStdString())) {
         try {
-            for (const ProfileRow& info : profileRows_) {
+            for (const AccountListRow& info : accountRows_) {
                 if (info.id == id && info.encrypted) {
                     unlockingId_ = id;
                     emit needPassphrase(id, info.name);
@@ -361,7 +361,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
             }
         } catch (const std::exception& error) {
             // fall through and attempt the open
-            bazarish::log::warn("could not tell whether the profile is encrypted: {}",
+            bazarish::log::warn("could not tell whether the account is encrypted: {}",
                 error.what());
         }
     }
@@ -373,7 +373,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
         if (!ctrl->fingerprint().isEmpty()) {
             refreshAccounts();
             if (makeActive && ctrl->accountId() == activeId_) {
-                emit profileOpened();
+                emit accountOpened();
             }
         }
     });
@@ -386,7 +386,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
             emit unlockFailed(error);
             return;
         }
-        emit profileOpenFailed(error);
+        emit accountOpenFailed(error);
     });
     connect(ctrl, &SessionController::unreadTotalChanged, this, &AppController::refreshAccounts);
     connect(ctrl, &SessionController::onlineChanged, this, &AppController::refreshAccounts);
@@ -405,7 +405,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
             emit unlockFailed(QString::fromUtf8(e.what()));
             return;
         }
-        emit profileOpenFailed(QString::fromUtf8(e.what()));
+        emit accountOpenFailed(QString::fromUtf8(e.what()));
         return;
     }
     if (makeActive) {
@@ -414,9 +414,9 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
     refreshAccounts();
 }
 
-void AppController::openAllProfiles()
+void AppController::openAllAccounts()
 {
-    for (const ProfileRow& info : profileRows_) {
+    for (const AccountListRow& info : accountRows_) {
         const QString id = info.id;
         // Skip accounts the user turned offline: they stay closed (shown as
         // Offline) until explicitly switched on, so the choice survives a restart.
@@ -443,22 +443,22 @@ void AppController::removeSession(SessionController* ctrl, bool deferred)
     refreshAccounts();
 }
 
-void AppController::createProfile(const QString& name, const QString& passphrase)
+void AppController::createAccount(const QString& name, const QString& passphrase)
 {
     std::string id;
     try {
-        const client::ProfileInfo info
+        const client::AccountInfo info
             = manager_->create(name.toStdString(), passphrase.toStdString());
         id = info.id;
     } catch (const std::exception& e) {
         emit createFailed(QString::fromUtf8(e.what()));
         return;
     }
-    refreshProfiles();
+    refreshAccountList();
     openSession(QString::fromStdString(id), passphrase, /*makeActive=*/true);
 }
 
-void AppController::openProfile(const QString& id, const QString& passphrase)
+void AppController::openAccount(const QString& id, const QString& passphrase)
 {
     // Unlocking is not the same as switching on. An account the user turned off
     // is unlocked to be read: it opens, its chats are there, and it stays off
@@ -476,7 +476,7 @@ void AppController::openProfile(const QString& id, const QString& passphrase)
     }
     unlockingId_.clear();
     unlockToBringOnline_ = false;
-    emit profileUnlocked(id);
+    emit accountUnlocked(id);
     if (bringOnline) {
         setAccountOffline(id, false);
     }
@@ -497,24 +497,24 @@ void AppController::cancelUnlock()
     refreshAccounts();
 }
 
-void AppController::importProfile(const QString& name, const QString& fileUrl,
+void AppController::importAccount(const QString& name, const QString& fileUrl,
     const QString& password, const QString& atRestPassphrase)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
     std::string id;
     try {
-        const client::ProfileInfo info = manager_->import(name.toStdString(),
+        const client::AccountInfo info = manager_->import(name.toStdString(),
             localPath.toStdString(), password.toStdString(), atRestPassphrase.toStdString());
         id = info.id;
     } catch (const std::exception& e) {
         emit createFailed(QString::fromUtf8(e.what()));
         return;
     }
-    refreshProfiles();
+    refreshAccountList();
     openSession(QString::fromStdString(id), atRestPassphrase, /*makeActive=*/true);
 }
 
-void AppController::deleteProfile(const QString& id)
+void AppController::deleteAccount(const QString& id)
 {
     // If the account is open, tear its session down first (synchronously, so the
     // transcript is flushed and closed) before removing the directory.
@@ -525,9 +525,9 @@ void AppController::deleteProfile(const QString& id)
         manager_->remove(id.toStdString());
     } catch (const std::exception& error) {
         // What is left behind is on disk, and the user must be able to find out.
-        bazarish::log::warn("profile directory not removed: {}", error.what());
+        bazarish::log::warn("account directory not removed: {}", error.what());
     }
-    refreshProfiles();
+    refreshAccountList();
     refreshAccounts();
 }
 
@@ -563,11 +563,11 @@ void AppController::setOnline(const QString& id, bool on)
     }
     // A locked account cannot come online until it is unlocked, and the switch
     // must not claim otherwise in the meantime: nothing is written here, and
-    // openProfile writes it once the passphrase actually opens the profile.
+    // openAccount writes it once the passphrase actually opens the account.
     unlockToBringOnline_ = true;
     openSession(id, {}, /*makeActive=*/false);
     if (unlockingId_.isEmpty()) {
-        // Not a locked profile: it opened (or failed) on the spot.
+        // Not a locked account: it opened (or failed) on the spot.
         unlockToBringOnline_ = false;
         setAccountOffline(id, false);
         refreshAccounts();
@@ -576,12 +576,12 @@ void AppController::setOnline(const QString& id, bool on)
 
 bool AppController::portable() const
 {
-    return client::ProfileManager::portable();
+    return client::AccountManager::portable();
 }
 
 QString AppController::dataLocation() const
 {
-    return QString::fromStdString(client::ProfileManager::dataRoot().string());
+    return QString::fromStdString(client::AccountManager::dataRoot().string());
 }
 
 void AppController::setPortable(const bool on)
@@ -590,11 +590,11 @@ void AppController::setPortable(const bool on)
     if (on == portable()) {
         return;
     }
-    const fs::path from = on ? client::ProfileManager::globalRoot()
-                             : client::ProfileManager::portableRoot();
-    const fs::path to = on ? client::ProfileManager::portableRoot()
-                           : client::ProfileManager::globalRoot();
-    // Close everything first: profiles hold their transcripts open, and moving a
+    const fs::path from = on ? client::AccountManager::globalRoot()
+                             : client::AccountManager::portableRoot();
+    const fs::path to = on ? client::AccountManager::portableRoot()
+                           : client::AccountManager::globalRoot();
+    // Close everything first: accounts hold their transcripts open, and moving a
     // directory out from under them would be moving files that are being written.
     closeAllSessions();
     std::error_code error;
@@ -621,13 +621,13 @@ void AppController::setPortable(const bool on)
         }
     }
     if (on) {
-        std::ofstream marker(client::ProfileManager::portableMarker(), std::ios::trunc);
+        std::ofstream marker(client::AccountManager::portableMarker(), std::ios::trunc);
         marker << "bazarish keeps its data in bazarish_data beside this file\n";
     } else {
-        fs::remove(client::ProfileManager::portableMarker(), error);
+        fs::remove(client::AccountManager::portableMarker(), error);
     }
     emit portableChanged();
-    // Nothing in this window works from here on: the profiles are closed and the
+    // Nothing in this window works from here on: the accounts are closed and the
     // embedded router is still holding the directory that just moved. The dialog
     // this raises has one button, and it quits.
     emit restartRequired(on
@@ -815,12 +815,12 @@ void AppController::closeAllSessions()
     refreshAccounts();
 }
 
-void AppController::closeProfile()
+void AppController::closeAccount()
 {
     if (SessionController* ctrl = activeController()) {
         removeSession(ctrl, /*deferred=*/false);
     }
-    refreshProfiles();
+    refreshAccountList();
 }
 
 }  // namespace bazarish::app

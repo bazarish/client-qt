@@ -3,7 +3,7 @@
 
 #include "Models.hpp"
 #include "Session.hpp"
-#include "ProfileDb.hpp"
+#include "AccountDb.hpp"
 #include "TranscriptStore.hpp"
 #include "VoiceNote.hpp"
 
@@ -42,7 +42,7 @@ public:
     ~SessionWorker() override;
 
 public slots:
-    void openProfile(const QString& dir, const QString& passphrase);
+    void openAccount(const QString& dir, const QString& passphrase);
     void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp);
     void sync();
     // Starts or stops background syncing (the account going online/offline).
@@ -86,11 +86,11 @@ public slots:
     // Agrees to a received contact request (sends our descriptor back).
     void acceptContact(const QString& peer);
     void requestInvite();
-    // Signs a portal/third-party login challenge with this profile's key. Local
+    // Signs a portal/third-party login challenge with this account's key. Local
     // only - no server is contacted - so it works before a server is connected.
     void signLogin(const QString& challenge);
     void saveAttachment(const QString& peer, const QString& messageId, const QString& destPath, qint64 token);
-    void exportProfile(const QString& path, const QString& password);
+    void exportAccount(const QString& path, const QString& password);
     // Per-user I2P destination: set up the master (generate or load a .dat),
     // turn the paid option on/off, and report the current status.
     void generatePersonalKey();
@@ -115,7 +115,7 @@ public slots:
     void declineCall(const QString& callId);
     void endCall();
     void setCallMuted(bool muted);
-    // first openProfile so the injected backend can reach them.
+    // first openAccount so the injected backend can reach them.
 
 signals:
     // General background-activity stream: every observable worker operation - a
@@ -128,8 +128,8 @@ signals:
     void opDone(const QString& opId, bool ok, const QString& status);
     // A row's status line changed while it is still running.
     void opProgress(const QString& opId, const QString& status);
-    // What the opened profile has stored for the settings the window shows.
-    void profileSettings(bool acceptCalls, bool allowClearnet);
+    // What the opened account has stored for the settings the window shows.
+    void accountSettings(bool acceptCalls, bool allowClearnet);
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& connectionNote);
     // The account's own display name was changed (so the GUI updates it without a
@@ -213,14 +213,14 @@ signals:
     // fingerprint, for the GUI.
     void facadeInfo(
         const QString& activeUrl, const QStringList& configured, const QString& serverFp);
-    // hasKey: a master is set up in the profile. delegated: the server holds a
+    // hasKey: a master is set up in the account. delegated: the server holds a
     // delegation for it. live: delegated and the account is approved, so the
     // destination is being served. address: the b32 (empty if none). summary: a
     // one-line human status for the settings page. transientExpires: when the
     // current delegation lapses (0 when there is none).
     void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
         const QString& summary, qint64 transientExpires, const QString& serverState);
-    // The half that needs no server: whether this profile holds a destination key
+    // The half that needs no server: whether this account holds a destination key
     // and at what address. Emitted as soon as it is known, so the view never waits
     // on a server poll to say whether a key exists at all.
     void i2pKeyState(bool hasKey, const QString& address);
@@ -353,7 +353,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString activeFacadeHost READ activeFacadeHost NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
     // Whether any configured facade is an I2P facade (host ends in ".b32.i2p"). When
-    // full privacy mode is on and this is false, the profile cannot reach its server
+    // full privacy mode is on and this is false, the account cannot reach its server
     // (clearnet is refused), so its status reads as an explicit I2P-only offline error.
     Q_PROPERTY(bool hasI2pFacade READ hasI2pFacade NOTIFY facadeInfoChanged)
     // Whether traffic is currently leaving over I2P. False while connected on a
@@ -378,7 +378,7 @@ class SessionController : public QObject {
     // (so stick-to-bottom applies) and whether older history remains above.
     Q_PROPERTY(bool atNewest READ atNewest NOTIFY pagingChanged)
     Q_PROPERTY(bool hasMoreOlder READ hasMoreOlder NOTIFY pagingChanged)
-    // The on-disk profile id this session was opened from (stable per account).
+    // The on-disk account id this session was opened from (stable per account).
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
     // Total unread across this account's conversations (for the switcher badge).
     Q_PROPERTY(int unreadTotal READ unreadTotal NOTIFY unreadTotalChanged)
@@ -392,11 +392,11 @@ class SessionController : public QObject {
     Q_PROPERTY(QObject* operations READ operations CONSTANT)
     Q_PROPERTY(int activeOperations READ activeOperations NOTIFY operationsChanged)
     Q_PROPERTY(bool sendReceipts READ sendReceipts WRITE setSendReceipts NOTIFY sendReceiptsChanged)
-    // Whether this profile takes incoming calls. Off, a caller is refused at once
+    // Whether this account takes incoming calls. Off, a caller is refused at once
     // instead of ringing; their call button stays, because this can be turned back
-    // on at any moment. Kept with the profile, not with the window.
+    // on at any moment. Kept with the account, not with the window.
     Q_PROPERTY(bool acceptCalls READ acceptCalls WRITE setAcceptCalls NOTIFY acceptCallsChanged)
-    // How long this profile hands its destination to the server for, in days.
+    // How long this account hands its destination to the server for, in days.
     // Shorter means leaving a server takes effect sooner; longer means a client
     // that is away stays reachable. Bounded by the protocol, not by the server.
     Q_PROPERTY(int delegationDays READ delegationDays WRITE setDelegationDays
@@ -434,10 +434,10 @@ class SessionController : public QObject {
     // Unix second the personal destination is paid through (0 when inactive), so
     // the settings page can show an expiry date or the phrase "Inactive".
     Q_PROPERTY(qint64 i2pTransientExpires READ i2pTransientExpires NOTIFY i2pStatusChanged)
-    // This profile's storage usage for the settings view: a map with mailboxOk,
+    // This account's storage usage for the settings view: a map with mailboxOk,
     // mailboxUsed, mailboxQuota (bytes), updatedAt (the
     // unix-ms time it was last fetched, 0 if never) and everFetched. The figures
-    // persist for the session, so an offline profile still shows its last-known
+    // persist for the session, so an offline account still shows its last-known
     // usage with a "updated N ago" age.
     Q_PROPERTY(QVariantMap storageInfo READ storageInfo NOTIFY storageChanged)
     // Audio call state for the call screen: "idle"/"outgoing"/"incoming"/"active",
@@ -492,7 +492,7 @@ public:
     QString activePeerName() const { return peerName(activePeer_); }
     bool atNewest() const;
     bool hasMoreOlder() const;
-    QString accountId() const { return profileId_; }
+    QString accountId() const { return accountId_; }
     int unreadTotal() const { return unreadTotal_; }
     QObject* contacts() { return &contacts_; }
     QObject* chatList() { return &contactsProxy_; }
@@ -536,8 +536,8 @@ public:
     QString callPeerName() const { return peerName(callPeer_); }
     bool callMuted() const { return callMuted_; }
 
-    // Opens a profile on the worker thread (dir + id + passphrase).
-    void open(const QString& file, const QString& profileId, const QString& passphrase);
+    // Opens an account on the worker thread (dir + id + passphrase).
+    void open(const QString& file, const QString& accountId, const QString& passphrase);
 
     // Connects (and subscribes) through an ordered list of facade URLs
     // (http[s]://host[:port][/secret]). The client fails over across them.
@@ -590,7 +590,7 @@ public:
     // The same transfer announced as a picture: the recipient fetches and shows
     // it instead of being offered a Save button.
     Q_INVOKABLE void sendPicture(const QString& fileUrl);
-    // Writes a picture this profile holds out to a file the user chose.
+    // Writes a picture this account holds out to a file the user chose.
     Q_INVOKABLE void savePictureAs(const QString& messageId, const QString& fileUrl);
     // Puts it on the clipboard as an image: it goes from memory to memory, and
     // never becomes a plaintext file on the way.
@@ -648,7 +648,7 @@ public:
     // optimistic local store + send. Tapping the emoji we already set removes it.
     Q_INVOKABLE void react(const QString& protocolId, const QString& emoji);
     // Reactions this user reached for that are not in the standard set, newest
-    // first. Kept per profile so the picker offers what this person actually uses.
+    // first. Kept per account so the picker offers what this person actually uses.
     // The set the picker offers by default. Held here because it also decides
     // what counts as "one of this user's own" for the recents below, and that
     // decision has to be the same wherever a reaction is set from.
@@ -671,7 +671,7 @@ public:
     // Messages this device can still send that contact before it asks them for
     // more capacity (their one-time delivery tokens we hold).
     Q_INVOKABLE int sendCapacity(const QString& fp) const;
-    // Our own invite, from what this profile already holds: the fingerprint and
+    // Our own invite, from what this account already holds: the fingerprint and
     // the address are ours, and the server's serving key has been in the stored
     // certificate since the destination was first published. Empty only while
     // that has never happened.
@@ -721,7 +721,7 @@ public:
     // (drives the "Agree" button on an incoming contact-request bubble).
     Q_INVOKABLE bool contactCanAccept(const QString& fp) const;
     Q_INVOKABLE void requestInvite();
-    // Signs a sign-in-with-key challenge with this profile's key (no server
+    // Signs a sign-in-with-key challenge with this account's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void saveAttachment(const QString& peer, const QString& messageId, const QString& fileUrl);
@@ -740,13 +740,13 @@ public:
     // Reveals a saved attachment in the system file manager with the file itself
     // selected (falling back to opening its folder).
     Q_INVOKABLE void showInFolder(const QString& path) const;
-    Q_INVOKABLE void exportProfile(const QString& fileUrl, const QString& password);
+    Q_INVOKABLE void exportAccount(const QString& fileUrl, const QString& password);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     // Per-user I2P destination controls (drive the worker thread).
     Q_INVOKABLE void generatePersonalKey();
     Q_INVOKABLE void loadPersonalKey(const QString& fileUrl);
     Q_INVOKABLE void deletePersonalKey();
-    // Sticky I2P's escape hatch: this profile has reached its server over I2P and
+    // Sticky I2P's escape hatch: this account has reached its server over I2P and
     // refuses clearnet since; allowing it again is the user's call, never automatic.
     Q_INVOKABLE void allowClearnet(bool allow);
     // Stops a file transfer in either direction, by the file's protocol id (the
@@ -755,7 +755,7 @@ public:
     Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
-    // Triggers a fresh poll of this profile's storage usage (mailbox + blob). The
+    // Triggers a fresh poll of this account's storage usage (mailbox + blob). The
     // result lands in the storageInfo property; until it does, the last figures (if
     // any) stay, with the UI showing how long ago they were taken.
     Q_INVOKABLE void refreshStorageUsage();
@@ -953,7 +953,7 @@ private:
         double progress = -1.0);
     void finishOperation(const QString& id, bool ok, const QString& finalStatus);
 
-    QString profileId_;
+    QString accountId_;
     QString fingerprint_;
     QString displayName_;
     bool connected_ = false;
@@ -1034,8 +1034,8 @@ private:
     // Sending capacity per contact: their tokens this device still holds.
     QHash<QString, int> sendCapacities_;
     QStringList recentReactions_;
-    // Where this profile lives and what unlocks it, for the store below.
-    QString profilePath_;
+    // Where this account lives and what unlocks it, for the store below.
+    QString accountPath_;
     // The system note tracking a contact add, per operation id: the progress of a
     // request is written into the conversation it will belong to.
     QHash<QString, qint64> contactProgressRows_;
@@ -1047,9 +1047,9 @@ private:
         int triesLeft = 0;
     };
     QHash<QString, PendingContactRequest> refusedRequests_;
-    QString profilePassphrase_;
-    std::unique_ptr<client::ProfileDb> profileDb_;
-    client::ProfileDb& profileDb();
+    QString accountPassphrase_;
+    std::unique_ptr<client::AccountDb> accountDb_;
+    client::AccountDb& accountDb();
     QString ownInvite_;
     // Destination chosen for an in-flight attachment save (message id -> path),
     // recorded as the saved location once the download succeeds.

@@ -35,11 +35,11 @@ bazarish::i2p::Router* sharedI2pRouterIfRunning();
 // not pay cold tunnel-build latency. The endpoint is used once and then dropped.
 std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest();
 
-// The one outbound destination a profile talks to its facade through, shared by
+// The one outbound destination an account talks to its facade through, shared by
 // everything that dials for it: the session's transport and the request that
 // waits for news each keep their own request queue (a wait must never sit in
 // front of a send), but a destination multiplexes streams, so one is enough.
-// Kept alive by its users; `owner` is the profile it belongs to, and an empty
+// Kept alive by its users; `owner` is the account it belongs to, and an empty
 // one gets a destination of its own rather than sharing a nameless bucket.
 std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
     const std::string& owner, bazarish::i2p::Privacy privacy);
@@ -84,8 +84,8 @@ std::size_t knownRouterCount(
 using BootstrapNoticeFn = std::function<void(const std::string& message)>;
 void setBootstrapNoticeSink(BootstrapNoticeFn sink);
 
-// Clearnet facades this application knows of, from every profile it has open.
-// Bootstrapping I2P belongs to the application, not to one profile: a client
+// Clearnet facades this application knows of, from every account it has open.
+// Bootstrapping I2P belongs to the application, not to one account: a client
 // that holds three accounts should ask all three servers before it reaches for a
 // public reseed host. Each entry is a facade URL.
 void setReseedFacades(std::vector<std::string> urls);
@@ -113,7 +113,7 @@ void setI2pEnabled(bool enabled);
 bool i2pEnabled();
 
 // Process-wide full-privacy flag (default false). When on, the transport refuses
-// every clearnet facade, so all traffic goes over I2P only; a profile whose
+// every clearnet facade, so all traffic goes over I2P only; an account whose
 // facades are all clearnet then has nothing reachable and is explicitly offline.
 // Consulted at request time, so it takes effect on the next request.
 void setFullPrivacy(bool enabled);
@@ -127,7 +127,7 @@ bool fullPrivacy();
 void setTunnelPrivacy(bazarish::i2p::Privacy privacy);
 bazarish::i2p::Privacy tunnelPrivacy();
 
-// Throws away the warm spares (built at whatever profile was in force) so the
+// Throws away the warm spares (built at whatever account was in force) so the
 // pool refills at the current one.
 void flushWarmDests();
 

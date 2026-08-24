@@ -60,7 +60,7 @@ FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::st
     bazarish::i2p::Endpoint& endpoint = warm ? *warm : *fresh;
     if (warm) {
         // A spare belongs to nobody while it waits; from here it is this
-        // profile's lookup, and the status view should say so.
+        // account's lookup, and the status view should say so.
         router.retagEndpoint(endpoint, "Contact lookup", owner);
     } else if (!endpoint.waitReady(std::chrono::seconds(kOwnTunnelsSeconds))) {
         // A dest built for this call has no tunnels yet. Dialing anyway fails in a

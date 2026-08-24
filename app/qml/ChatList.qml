@@ -33,7 +33,7 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // Header: own profile + actions.
+        // Header: own account + actions.
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 60
@@ -82,7 +82,7 @@ Item {
                         id: narrowMenu
                         y: parent.height
                         ContextMenuItem { text: "New chat"; onTriggered: root.newChatRequested() }
-                        ContextMenuItem { text: "Profile"; onTriggered: root.settingsRequested() }
+                        ContextMenuItem { text: "Account"; onTriggered: root.settingsRequested() }
                         ContextMenuItem { text: "Global settings"; onTriggered: root.appSettingsRequested() }
                     }
                 }
@@ -206,11 +206,11 @@ Item {
             Layout.fillWidth: true
             property bool isOffline: root.session && !root.session.online
             property bool isConnecting: root.session && root.session.online && !root.session.reachable
-            // Under full privacy mode a profile with no I2P facade cannot connect at
+            // Under full privacy mode an account with no I2P facade cannot connect at
             // all: surface that as an explicit, emphasised offline error.
             property bool i2pOnlyBlocked: App.fullPrivacyMode && root.session
                 && root.session.connected && !root.session.hasI2pFacade
-            // Connected, but not over I2P while this profile has an I2P facade:
+            // Connected, but not over I2P while this account has an I2P facade:
             // traffic is on the clearnet, which ties this account to this IP at
             // the server. Say so where the user actually looks.
             property bool clearnetDowngrade: root.session && root.session.connected
@@ -256,14 +256,14 @@ Item {
                     }
                     Label {
                         text: connPlate.i2pOnlyBlocked
-                            ? "Privacy mode is on but this profile has no I2P facade"
+                            ? "Privacy mode is on but this account has no I2P facade"
                             : (connPlate.heldForApproval
                                 ? (root.session && root.session.approvalNote.length > 0
                                     ? root.session.approvalNote
                                     : "Your server holds this account until its operator approves it — you cannot send or receive yet")
                             : (connPlate.clearnetDowngrade
                                 ? "Not over I2P — your server sees this device's address"
-                                : (connPlate.isOffline ? "This profile is not syncing"
+                                : (connPlate.isOffline ? "This account is not syncing"
                                     : (root.session && root.session.syncError.length > 0
                                         ? root.session.syncError
                                         : "No server connection yet"))))
@@ -300,7 +300,7 @@ Item {
                 }
                 BarButton {
                     iconName: "person"
-                    label: "Profile"
+                    label: "Account"
                     onTapped: root.settingsRequested()
                 }
             }

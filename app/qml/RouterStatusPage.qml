@@ -220,7 +220,7 @@ Popup {
                         // is the bootstrap it waits for, not its own start-up.
                         text: I2p.knownRouters < I2p.minKnownRouters
                             ? "No network database yet — the router starts once your server hands "
-                              + "it one, which happens the first time a profile connects."
+                              + "it one, which happens the first time an account connects."
                             : "Router is starting up — it stays on while enabled, warming the "
                               + "network database in the background."
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
@@ -313,7 +313,7 @@ Popup {
                                     }
                                 }
                                 // Its own line: the counts do not fit beside a name that
-                                // may already carry a profile prefix.
+                                // may already carry an account prefix.
                                 Label {
                                     // LeaseSets, not peers: one encrypted address costs two
                                     // of them, so the count is not a headcount of who is on

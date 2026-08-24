@@ -15,7 +15,7 @@ struct sqlite3;
 namespace bazarish::app {
 
 // One stored conversation entry. Mirrors the rendered message; bodies live in
-// a per-profile SQLite database under the profile directory.
+// a per-account SQLite database under the account directory.
 struct StoredMessage {
     qint64 id = 0;
     QString peer;          // contact fingerprint
@@ -27,13 +27,13 @@ struct StoredMessage {
     QString attMime;
     qint64 attSize = 0;
     qint64 attDurationMs = 0;  // a voice message's length
-    QString attWave;       // a voice message's loudness profile, one hex digit a bar
+    QString attWave;       // a voice message's loudness account, one hex digit a bar
     QString attRef;        // content-store id
     QString attKey;        // base64 content key
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
     QString savedPath;     // where an incoming attachment was last saved (local path)
     bool blobGone = false; // incoming attachment whose blob is gone from the store
-    // A picture this profile holds in its database (drawn in the bubble).
+    // A picture this account holds in its database (drawn in the bubble).
     bool hasPicture = false;
                            // (download returned 404/410); shows "Not found", no Save
     QString keyboard;      // inline-keyboard JSON (empty when none)
@@ -62,20 +62,20 @@ struct Reaction {
     QString emoji;
 };
 
-// Persistent local message log for one profile, in the profile's SQLCipher
+// Persistent local message log for one account, in the account's SQLCipher
 // database. The file is encrypted page by page, so a message is written where it
 // belongs instead of re-sealing the whole history on every change. The database
-// key is the random one kept beside the file (see ProfileKey), so opening costs
-// nothing once the profile is unlocked.
+// key is the random one kept beside the file (see AccountKey), so opening costs
+// nothing once the account is unlocked.
 class TranscriptStore {
 public:
     TranscriptStore();
     ~TranscriptStore();
 
-    // Opens (and creates) the database for this profile id. Returns false when it
+    // Opens (and creates) the database for this account id. Returns false when it
     // cannot be opened - a wrong passphrase is a failed open, never an empty
     // transcript.
-    bool open(const QString& profileId, const QString& dbPath, const QString& passphrase = {});
+    bool open(const QString& accountId, const QString& dbPath, const QString& passphrase = {});
 
     qint64 append(const StoredMessage& message);
     void updateStatus(qint64 id, int status);
@@ -97,13 +97,13 @@ public:
     // Marks an incoming attachment whose blob is no longer on the store (the
     // download returned 404/410): the bubble then shows "Not found" with no Save,
     // a state that survives a restart.
-    // A media blob kept in the profile (a picture, a voice message), by the same
+    // A media blob kept in the account (a picture, a voice message), by the same
     // key the core stores it under. Read here rather than through the session
-    // worker: this side already holds the profile open, and a picture must not
+    // worker: this side already holds the account open, and a picture must not
     // wait behind a sync for its turn to be drawn.
     QByteArray media(const QString& key) const;
 
-    // Marks a message whose picture this profile holds.
+    // Marks a message whose picture this account holds.
     void setHasPicture(qint64 id, bool has);
     void setBlobGone(qint64 id, bool gone);
     // The row id of an outgoing message with this protocol id (0 if none).

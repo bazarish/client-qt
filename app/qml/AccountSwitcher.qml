@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// The unified account list: every profile on this device, with live status.
+// The unified account list: every account on this device, with live status.
 // Tap a row to make it the active (focused) account; flip its switch to take it
 // online (receiving) or offline. Several accounts stay online at once.
 Popup {
@@ -12,7 +12,7 @@ Popup {
     // has done its job.
     Connections {
         target: App
-        function onProfileOpened() { root.close() }
+        function onAccountOpened() { root.close() }
     }
 
     modal: true
@@ -49,7 +49,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            Label { text: "Profiles"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: "Accounts"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -158,7 +158,7 @@ Popup {
                             }
                             // The active connection, as a chip of fixed width: a
                             // positive green "I2P" over an I2P facade, grey "web"
-                            // over a clearnet one, and "OFF" when the profile is
+                            // over a clearnet one, and "OFF" when the account is
                             // not connected at all. Every row carries one.
                             Rectangle {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -195,7 +195,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 12
             // The picker behind this button also opens, removes and imports
-            // profiles, so it is not an "add" button.
+            // accounts, so it is not an "add" button.
             text: "Manage"
             hoverEnabled: true
             onClicked: { root.close(); App.requestAddAccount() }

@@ -33,8 +33,8 @@ find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
 # libi2pd), so the previously-vendored trimmed libi2pd "keys" lib and the i2pd
 # submodule are gone. OpenSSL is still needed for the crypto and for the TLS
 # client common's HTTP engine uses on a clearnet facade.
-# 3.2 is where Argon2id arrived, and a profile key is Argon2id: an older OpenSSL
-# builds a client that cannot create a profile, so it is refused here rather than
+# 3.2 is where Argon2id arrived, and a account key is Argon2id: an older OpenSSL
+# builds a client that cannot create a account, so it is refused here rather than
 # at the first passphrase.
 find_package(OpenSSL 3.2 REQUIRED)
 
@@ -47,7 +47,7 @@ if(BAZARISH_SANITIZE)
     add_link_options(-fsanitize=${BAZARISH_SANITIZE})
 endif()
 
-# The profile store is SQLCipher (an encrypted SQLite): one file per profile,
+# The account store is SQLCipher (an encrypted SQLite): one file per account,
 # unreadable without its key. It is a fork of SQLite exporting the same symbols,
 # so nothing in this project may link plain libsqlite3 next to it.
 find_library(SQLCIPHER_LIBRARY NAMES sqlcipher REQUIRED)
@@ -65,9 +65,9 @@ add_library(bazarish_client_lib STATIC
     src/I2pRouter.cpp
     src/Invite.cpp
     src/FileTransfer.cpp
-    src/ProfileDb.cpp
-    src/ProfileKey.cpp
-    src/ProfileManager.cpp
+    src/AccountDb.cpp
+    src/AccountKey.cpp
+    src/AccountManager.cpp
     src/Qr.cpp
     src/Session.cpp
     src/WarmDestPool.cpp
@@ -172,8 +172,8 @@ if(Qt6_FOUND)
             app/qml/Main.qml
             app/qml/Theme.qml
             app/qml/DeliveryStatus.qml
-            app/qml/ProfilePicker.qml
-            app/qml/CreateProfileWizard.qml
+            app/qml/AccountPicker.qml
+            app/qml/CreateAccountWizard.qml
             app/qml/ConnectServerPage.qml
             app/qml/MainView.qml
             app/qml/ChatList.qml
@@ -239,7 +239,7 @@ bazarish_client_add_test(TestFileTransfer)
 bazarish_client_add_test(TestI2pKeys)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestLogin)
-bazarish_client_add_test(TestProfile)
+bazarish_client_add_test(TestAccount)
 
 # The transcript store needs Qt SQL and direct SQLite, so it has its own target.
 if(Qt6_FOUND)

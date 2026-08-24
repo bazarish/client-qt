@@ -2,7 +2,7 @@
 #pragma once
 
 #include "Models.hpp"
-#include "ProfileManager.hpp"
+#include "AccountManager.hpp"
 #include "SessionController.hpp"
 
 #include <bazarish/Limits.hpp>
@@ -17,17 +17,17 @@
 
 namespace bazarish::app {
 
-// Root application object: owns the profile manager and the set of currently
+// Root application object: owns the account manager and the set of currently
 // open accounts. Several accounts can be open at once - each keeps its own
 // SessionController (worker thread + background sync), so all of them receive -
 // and one is "active" (the one the UI is bound to). Drives the launch flow
-// (pick or create a profile, then unlock it) and account switching/removal.
+// (pick or create an account, then unlock it) and account switching/removal.
 class AppController : public QObject {
     Q_OBJECT
-    Q_PROPERTY(QObject* profiles READ profiles CONSTANT)
+    Q_PROPERTY(QObject* accountList READ accountList CONSTANT)
     Q_PROPERTY(QObject* accounts READ accounts CONSTANT)
     Q_PROPERTY(QObject* session READ session NOTIFY sessionChanged)
-    Q_PROPERTY(bool hasProfiles READ hasProfiles NOTIFY profilesChanged)
+    Q_PROPERTY(bool hasAccounts READ hasAccounts NOTIFY accountListChanged)
     Q_PROPERTY(bool hasOpenAccounts READ hasOpenAccounts NOTIFY accountsChanged)
     // Unread waiting in accounts other than the one on screen: the switcher is
     // the only place they would ever be noticed.
@@ -35,7 +35,7 @@ class AppController : public QObject {
     // What a contact request leaves for a person to write: the protocol's cap,
     // so the field cannot be filled past what the recipient's server accepts.
     Q_PROPERTY(int maxGreetingLength READ maxGreetingLength CONSTANT)
-    // --- Global (app-wide) settings, shared by every profile ---
+    // --- Global (app-wide) settings, shared by every account ---
     // Full privacy mode: forbid connecting through any clearnet client-facade, so
     // all traffic runs over I2P only. Persisted across runs and applied process-wide.
     Q_PROPERTY(bool fullPrivacyMode READ fullPrivacyMode WRITE setFullPrivacyMode
@@ -45,32 +45,32 @@ class AppController : public QObject {
 public:
     explicit AppController(QObject* parent = nullptr);
 
-    QObject* profiles() { return &profiles_; }
+    QObject* accountList() { return &accountList_; }
     QObject* accounts() { return &accounts_; }
     int unreadElsewhere() const;
     // Hands the core every clearnet facade this application knows of, from all
-    // open profiles. Bootstrapping I2P is the application's job: with three
+    // open accounts. Bootstrapping I2P is the application's job: with three
     // accounts there are three servers to ask before reaching for a public
     // reseed host.
     void publishReseedFacades();
     static int maxGreetingLength() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
     QObject* session();
-    bool hasProfiles() const { return haveProfiles_; }
+    bool hasAccounts() const { return haveAccounts_; }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }
     bool fullPrivacyMode() const { return fullPrivacy_; }
     void setFullPrivacyMode(bool on);
     QString i2pdVersion() const;
 
-    Q_INVOKABLE void refreshProfiles();
-    Q_INVOKABLE void createProfile(const QString& name, const QString& passphrase);
-    Q_INVOKABLE void openProfile(const QString& id, const QString& passphrase);
+    Q_INVOKABLE void refreshAccountList();
+    Q_INVOKABLE void createAccount(const QString& name, const QString& passphrase);
+    Q_INVOKABLE void openAccount(const QString& id, const QString& passphrase);
     // The unlock prompt was dismissed. Whatever was waiting on it does not
     // happen: an account asked to come online stays off, and its switch goes
     // back to what is on disk.
     Q_INVOKABLE void cancelUnlock();
-    Q_INVOKABLE void importProfile(const QString& name, const QString& fileUrl,
+    Q_INVOKABLE void importAccount(const QString& name, const QString& fileUrl,
         const QString& password, const QString& atRestPassphrase);
-    Q_INVOKABLE void deleteProfile(const QString& id);
+    Q_INVOKABLE void deleteAccount(const QString& id);
     // Makes an account the active (focused) one, opening it first if needed.
     // An encrypted, not-yet-open account emits needPassphrase instead.
     Q_INVOKABLE void switchTo(const QString& id);
@@ -96,7 +96,7 @@ public:
     // closing the open ones.
     Q_INVOKABLE void requestAddAccount();
     // Signs out (closes) the active account; switches to another if any remain.
-    Q_INVOKABLE void closeProfile();
+    Q_INVOKABLE void closeAccount();
     // A writable path for a short-lived working file (the cropped avatar on its
     // way to the compressor). QML resolves relative names against the qrc bundle,
     // which is read-only, so the location has to come from here.
@@ -137,12 +137,12 @@ signals:
     void portableChanged();
     // The data moved; the app must be started again to use it.
     void restartRequired(const QString& message);
-    void profilesChanged();
+    void accountListChanged();
     void accountsChanged();
     void sessionChanged();
     void fullPrivacyModeChanged();
-    void profileOpened();
-    void profileOpenFailed(const QString& error);
+    void accountOpened();
+    void accountOpenFailed(const QString& error);
     void createFailed(const QString& error);
     void showPicker();
     // An encrypted account needs its passphrase before it can be opened.
@@ -150,20 +150,20 @@ signals:
     // An unlock attempt failed. It belongs on the unlock screen, where the
     // passphrase was typed, and not in a notice at the bottom of the window.
     void unlockFailed(const QString& error);
-    // A profile opened with the passphrase that was just typed. The prompt closes
+    // An account opened with the passphrase that was just typed. The prompt closes
     // on this and on nothing else: pressing the button is not the same as being
     // let in.
-    void profileUnlocked(const QString& id);
+    void accountUnlocked(const QString& id);
 
 private:
     SessionController* sessionFor(const QString& id) const;
     SessionController* activeController() const;
-    // Opens a profile into a SessionController. makeActive focuses it (and
+    // Opens an account into a SessionController. makeActive focuses it (and
     // routes the UI to it); pass it false to open in the background. Encrypted
-    // profiles opened with an empty passphrase are reported via needPassphrase.
+    // accounts opened with an empty passphrase are reported via needPassphrase.
     void openSession(const QString& id, const QString& passphrase, bool makeActive);
-    // Opens every unencrypted profile in the background at startup.
-    void openAllProfiles();
+    // Opens every unencrypted account in the background at startup.
+    void openAllAccounts();
     // Removes and tears down an open account's controller. deferred uses
     // deleteLater (required when called from within the controller's own
     // signal); otherwise the controller is destroyed synchronously, so its
@@ -173,40 +173,40 @@ private:
     // transcript open while the data directory moves.
     void closeAllSessions();
     void refreshAccounts();
-    // Patches the listed profiles with what the open sessions know.
-    void refreshProfileRows();
+    // Patches the listed accounts with what the open sessions know.
+    void refreshAccountRows();
     void setActive(const QString& id);
     // The last active account is remembered across runs (a file under the
-    // profiles root), so the app reopens straight into it with no picker.
+    // accounts root), so the app reopens straight into it with no picker.
     QString readLastActive() const;
     void writeLastActive(const QString& id) const;
 
     // Accounts the user turned offline are remembered across runs (a file under
-    // the profiles root) and are NOT auto-opened at startup, so a disabled
+    // the accounts root) and are NOT auto-opened at startup, so a disabled
     // account stays offline. Loaded once at construction; persisted on toggle.
     void loadOfflineSet();
     void persistOfflineSet() const;
     void setAccountOffline(const QString& id, bool offline);
 
-    // Global settings (a small JSON file under the profiles root), loaded once at
+    // Global settings (a small JSON file under the accounts root), loaded once at
     // construction and persisted on change. Currently just full privacy mode.
     void loadSettings();
     void persistSettings() const;
 
-    std::unique_ptr<client::ProfileManager> manager_;
-    ProfileListModel profiles_;
-    // The profiles found on disk at the last refresh. The accounts list is
-    // rebuilt on every unread count change and must not reopen a profile
+    std::unique_ptr<client::AccountManager> manager_;
+    AccountListModel accountList_;
+    // The accounts found on disk at the last refresh. The accounts list is
+    // rebuilt on every unread count change and must not reopen an account
     // database to do it - each open runs the key derivation.
-    QVector<ProfileRow> profileRows_;
+    QVector<AccountListRow> accountRows_;
     OpenAccountsModel accounts_;
     QList<SessionController*> sessions_;  // open accounts, owned (parented here)
     QString activeId_;
-    bool haveProfiles_ = false;
+    bool haveAccounts_ = false;
     // Ids of accounts the user turned offline (persisted; not auto-opened).
     QSet<QString> offline_;
     // The account an unlock prompt is open for, and whether unlocking it was
-    // asked for in order to bring it online. A profile unlocked just to be read
+    // asked for in order to bring it online. An account unlocked just to be read
     // keeps whatever the switch says.
     QString unlockingId_;
     bool unlockToBringOnline_ = false;

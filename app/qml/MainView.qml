@@ -202,14 +202,14 @@ Item {
             unlockDialog.open()
         }
         // A wrong passphrase belongs here, on the screen where it was typed. The
-        // prompt has not closed - it closes when the profile opens, or when the
+        // prompt has not closed - it closes when the account opens, or when the
         // user says Cancel - so the reason lands on it.
         function onUnlockFailed(error) {
             unlockError.text = error
             unlockField.text = ""
             unlockField.forceActiveFocus()
         }
-        function onProfileUnlocked(id) {
+        function onAccountUnlocked(id) {
             unlockError.text = ""
             unlockDialog.close()
         }
@@ -223,7 +223,7 @@ Item {
         // before anyone knew whether the passphrase worked.
         function submit() {
             if (root.unlockId.length > 0) {
-                App.openProfile(root.unlockId, unlockField.text)
+                App.openAccount(root.unlockId, unlockField.text)
             }
         }
         // Dismissed: whatever was waiting on it does not happen, and the account's

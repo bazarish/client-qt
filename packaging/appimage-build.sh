@@ -29,9 +29,9 @@ if [ ! -x "$QTDIR/bin/qmake" ]; then
 fi
 test -x "$QTDIR/bin/qmake"
 
-# OpenSSL: 24.04 ships 3.0, which has no Argon2id (3.2+), and a profile key is
+# OpenSSL: 24.04 ships 3.0, which has no Argon2id (3.2+), and a account key is
 # Argon2id. Built and bundled here so the host's version does not decide whether
-# a profile can be created at all.
+# a account can be created at all.
 OPENSSL_VERSION=3.5.7
 if [ ! -f /opt/openssl/lib64/libcrypto.so.3 ]; then
     cd /work-openssl 2>/dev/null || { mkdir -p /work-openssl; cd /work-openssl; }

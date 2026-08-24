@@ -1,7 +1,7 @@
 // Bazarish project (c) 2026
 #include "Session.hpp"
 
-#include "ProfileDb.hpp"
+#include "AccountDb.hpp"
 
 #include "FederationFetch.hpp"
 #include "I2pKeys.hpp"
@@ -43,11 +43,11 @@ const char* const kTypeVoice = "voice";
 namespace fs = std::filesystem;
 
 // The embedded router's state directory. One engine serves the whole
-// installation, so it does not sit among the profiles it serves: it lives one
-// level up, beside the profiles directory.
-fs::path i2pDirFor(const fs::path& profileFile)
+// installation, so it does not sit among the accounts it serves: it lives one
+// level up, beside the accounts directory.
+fs::path i2pDirFor(const fs::path& accountFile)
 {
-    return profileFile.parent_path().parent_path() / "i2p";
+    return accountFile.parent_path().parent_path() / "i2p";
 }
 
 // Tokens minted per batch handed to a contact. When a peer's stash of our
@@ -76,7 +76,7 @@ constexpr std::int64_t kSecondsPerDay = 24 * 3600;
 // Host form of a standard-LeaseSet I2P address (the per-user destination).
 constexpr const char* kI2pHostSuffix = ".b32.i2p";
 
-// Applied to every profile opened afterwards (the CLI's BAZARISH_ALLOW_CLEARNET).
+// Applied to every account opened afterwards (the CLI's BAZARISH_ALLOW_CLEARNET).
 std::atomic<bool> g_allowClearnetDefault{false};
 
 std::int64_t nowSeconds()
@@ -296,9 +296,9 @@ std::string inlineKeyboardJson(const InlineKeyboard& keyboard)
     return keyboardToJson(keyboard).dump();
 }
 
-Session::Session(fs::path profileFile, std::unique_ptr<Client> client, Key sealingKey,
+Session::Session(fs::path accountFile, std::unique_ptr<Client> client, Key sealingKey,
     std::map<std::string, Contact> contacts)
-    : profilePath_(std::move(profileFile))
+    : accountPath_(std::move(accountFile))
     , client_(std::move(client))
     , sealingKey_(std::move(sealingKey))
     , contacts_(std::move(contacts))
@@ -320,10 +320,10 @@ Session::Session(fs::path profileFile, std::unique_ptr<Client> client, Key seali
 bazarish::i2p::Router& Session::i2pRouter() const
 {
     // The embedded router is process-global (one per process), so share it across
-    // all profiles: its state lives beside the profiles directory, so it is
-    // reused regardless of which profile starts it first. Started lazily on
+    // all accounts: its state lives beside the accounts directory, so it is
+    // reused regardless of which account starts it first. Started lazily on
     // first transport use; client role (notransit).
-    const fs::path dataDir = i2pDirFor(profilePath_);
+    const fs::path dataDir = i2pDirFor(accountPath_);
     // On a first-ever start, take the netDb from our own server over the clearnet
     // facade rather than announcing an I2P bootstrap to a public reseed host.
     seedRouterOnce(dataDir, [this]() { return client_->fetchReseed(); });
@@ -335,11 +335,11 @@ Session::Session(Session&&) noexcept = default;
 Session& Session::operator=(Session&&) noexcept = default;
 
 Session Session::create(
-    const fs::path& profileFile, const std::string& passphrase, const std::string& name)
+    const fs::path& accountFile, const std::string& passphrase, const std::string& name)
 {
     // The database is the protection: it is keyed with the passphrase (or with
     // the default key when there is none), so what goes inside is stored as it is.
-    auto db = std::make_unique<ProfileDb>(profileFile, passphrase);
+    auto db = std::make_unique<AccountDb>(accountFile, passphrase);
 
     Identity identity = Identity::generate();
     db->putText("identity.pem", identity.privatePem());
@@ -351,7 +351,7 @@ Session Session::create(
     const bool encrypted = !passphrase.empty();
     const std::string fingerprint = identity.fingerprint();
 
-    // A fresh profile has no server yet: an empty facade list marks "unconnected".
+    // A fresh account has no server yet: an empty facade list marks "unconnected".
     const ServerEndpoint endpoint;
 
     const nlohmann::json meta = {
@@ -369,8 +369,8 @@ Session Session::create(
     db->putText("meta", meta.dump(2));
 
     auto client = std::make_unique<Client>(
-        std::move(identity), clientId, endpoint, i2pDirFor(profileFile));
-    Session session(profileFile, std::move(client), std::move(sealing), {});
+        std::move(identity), clientId, endpoint, i2pDirFor(accountFile));
+    Session session(accountFile, std::move(client), std::move(sealing), {});
     session.db_ = std::move(db);
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
@@ -379,10 +379,10 @@ Session Session::create(
     return session;
 }
 
-Session Session::create(const fs::path& profileFile, const ServerEndpoint& endpoint,
+Session Session::create(const fs::path& accountFile, const ServerEndpoint& endpoint,
     const std::string& passphrase)
 {
-    Session session = create(profileFile, passphrase);
+    Session session = create(accountFile, passphrase);
     session.connectServer(endpoint);
     return session;
 }
@@ -394,7 +394,7 @@ void Session::connectServer(const ServerEndpoint& endpoint)
     // the at-rest passphrase.
     client_ = std::make_unique<Client>(
         Identity::fromPrivatePem(client_->identity().privatePem()), client_->clientId(), endpoint,
-        i2pDirFor(profilePath_));
+        i2pDirFor(accountPath_));
     persistMeta();
 }
 
@@ -422,11 +422,11 @@ std::vector<std::string> Session::facadeUrls() const
     return urls;
 }
 
-Session Session::open(const fs::path& profileFile, const std::string& passphrase)
+Session Session::open(const fs::path& accountFile, const std::string& passphrase)
 {
     // Opening the database is the passphrase check: with the wrong key the pages
-    // do not decrypt and this throws rather than reading an empty profile.
-    auto db = std::make_unique<ProfileDb>(profileFile, passphrase);
+    // do not decrypt and this throws rather than reading an empty account.
+    auto db = std::make_unique<AccountDb>(accountFile, passphrase);
     const nlohmann::json meta = nlohmann::json::parse(db->text("meta"));
     ServerEndpoint endpoint;
     const nlohmann::json& endpointJson = meta.at("endpoint");
@@ -452,7 +452,7 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
             contact.sendTokens = entry.at("sendTokens").get<std::vector<std::string>>();
             contact.issuedToThem = entry.at("issuedToThem").get<bool>();
             // Display name and avatar metadata are newer fields: tolerate their
-            // absence in profiles written before they existed.
+            // absence in accounts written before they existed.
             contact.displayName = entry.value("displayName", std::string());
             contact.avatarMime = entry.value("avatarMime", std::string());
             contact.avatarSentToPeer = entry.value("avatarSentToPeer", false);
@@ -464,8 +464,8 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
     }
 
     auto client = std::make_unique<Client>(
-        std::move(identity), clientId, endpoint, i2pDirFor(profileFile));
-    Session session(profileFile, std::move(client), std::move(sealing), std::move(contacts));
+        std::move(identity), clientId, endpoint, i2pDirFor(accountFile));
+    Session session(accountFile, std::move(client), std::move(sealing), std::move(contacts));
     session.db_ = std::move(db);
     session.acceptCalls_ = meta.value("acceptCalls", true);
     session.client_->setI2pProven(meta.value("i2pProven", false));
@@ -490,7 +490,7 @@ Session Session::open(const fs::path& profileFile, const std::string& passphrase
     session.client_->setDestinationOwner(session.destinationOwner());
     session.loadSentFiles();
 
-    // Load the user-owned I2P destination, if this profile has one (per-user
+    // Load the user-owned I2P destination, if this account has one (per-user
     // path).
     const auto loadBlob = [&session](const std::string& name) -> Bytes {
         return session.db_->get(name).value_or(Bytes{});
@@ -614,7 +614,7 @@ void Session::persistMeta() const
         {"delegationDays", delegationDays_},
         {"encrypted", encrypted_},
         {"avatarMime", avatarMime_},
-        // Sticky I2P: once this profile has reached its server over I2P it keeps
+        // Sticky I2P: once this account has reached its server over I2P it keeps
         // refusing clearnet across restarts, unless the user allowed it again.
         {"acceptCalls", acceptCalls_},
         {"i2pProven", client_->i2pProven()},
@@ -647,7 +647,7 @@ nlohmann::json Session::contactsToJson() const
 void Session::persistContacts() const
 {
     // Delivery tokens are write capabilities into a peer's mailbox; they live in
-    // the profile database, which is where the protection is.
+    // the account database, which is where the protection is.
     db_->putText("contacts", contactsToJson().dump());
 }
 
@@ -686,7 +686,7 @@ void Session::registerAccount()
     client_->registerThisClient();
 
     // Every account routes through a destination of its own, so mint the master
-    // if this profile has none. The delegation can only be handed over once the
+    // if this account has none. The delegation can only be handed over once the
     // account exists, which is what the call above created - hence the second,
     // routing-carrying card published right after it.
     ensureI2pDestination();
@@ -769,7 +769,7 @@ void Session::persistSealedBlob(const std::string& name, const Bytes& blob) cons
 void Session::persistI2pBlob(const std::string& name, const Bytes& blob) const
 {
     // The master is the user's long-term routing identity and the transient is a
-    // live delegation key: they sit in the profile database like the private-key
+    // live delegation key: they sit in the account database like the private-key
     // PEMs, never beside it.
     persistSealedBlob(name, blob);
 }
@@ -838,7 +838,7 @@ std::string Session::loadI2pDestination(const Bytes& privateKeysDat)
 void Session::disableI2pDest()
 {
     // Revoking is an empty delegation: the server tears the destination down and
-    // holds nothing. The master stays in the profile, so publishing again later
+    // holds nothing. The master stays in the account, so publishing again later
     // restores the same address.
     client_->sendI2pTransient(std::string(), 0);
     i2pTransient_.clear();
@@ -1055,7 +1055,7 @@ void Session::removeContact(const std::string& peerFingerprint)
     if (contacts_.erase(peerFingerprint) == 0) {
         return;  // unknown contact
     }
-    // Drop the avatar too, so nothing of the contact lingers in the profile.
+    // Drop the avatar too, so nothing of the contact lingers in the account.
     db_->erase("avatar-" + peerFingerprint);
     persistContacts();
 }
@@ -1339,7 +1339,7 @@ Session::ContactFetchContext Session::contactFetchContext() const
     ctx.identityPem = client_->identity().privatePem();  // unencrypted in memory
     ctx.clientId = client_->clientId();
     ctx.endpoint = endpoint();
-    ctx.i2pDataDir = i2pDirFor(profilePath_);
+    ctx.i2pDataDir = i2pDirFor(accountPath_);
     ctx.resolver = resolverCoordinate_;
     ctx.i2pEnabled = i2pEnabled();
     ctx.blobFetchPrivacy = transferPrivacy();
@@ -1999,11 +1999,11 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
         return;
     }
     const fs::path source = found->second.path;
-    // The only thing besides the database that a profile ever writes: the sealed
-    // copy of a file being served, in a scratch directory beside the profiles. It
+    // The only thing besides the database that an account ever writes: the sealed
+    // copy of a file being served, in a scratch directory beside the accounts. It
     // holds ciphertext under a key that travels in the offer, and it is removed
     // when the transfer window closes.
-    const fs::path scratch = profilePath_.parent_path() / ".transfers";
+    const fs::path scratch = accountPath_.parent_path() / ".transfers";
     fs::create_directories(scratch);
     const fs::path ciphertextPath = scratch / ("file-serve-" + toHex(randomBytes(8)) + ".tmp");
 
@@ -2375,7 +2375,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.contentType = type;
                 message.text = body.value("text", std::string());
             } else if (type == kTypeImage) {
-                // The bytes came with the message: keep them in the profile and
+                // The bytes came with the message: keep them in the account and
                 // let the message carry only what the chat shows.
                 message.contentType = type;
                 const nlohmann::json& picture = body.at("image");
@@ -2764,7 +2764,7 @@ std::size_t Session::sendCapacity(const std::string& peerFingerprint) const
 
 namespace {
 
-// Where a message's picture is kept in the profile database.
+// Where a message's picture is kept in the account database.
 std::string pictureKey(const std::string& messageId)
 {
     return "picture:" + messageId;
@@ -3154,7 +3154,7 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
             return;
         }
         if (!acceptCalls_) {
-            // This profile does not take calls right now. Answer at once so the
+            // This account does not take calls right now. Answer at once so the
             // caller sees a refusal instead of ringing into nothing; the setting
             // can be turned back on any time, which is why the caller's call
             // button stays where it is.
@@ -3340,7 +3340,7 @@ std::string Session::contactInviteUri(const std::string& peerFingerprint) const
 
 std::string Session::destinationOwner() const
 {
-    // Enough of a fingerprint to tell two unnamed profiles apart at a glance.
+    // Enough of a fingerprint to tell two unnamed accounts apart at a glance.
     constexpr std::size_t kOwnerFingerprintChars = 8;
     return name_.empty() ? fingerprint().substr(0, kOwnerFingerprintChars) : name_;
 }
@@ -3357,12 +3357,12 @@ std::string Session::inviteUri() const
     descriptor.fingerprint = fingerprint();
     descriptor.dest = myDest_;
     descriptor.view = view_;
-    // Advertise our profile name so the contact can adopt it as our display name.
+    // Advertise our account name so the contact can adopt it as our display name.
     descriptor.name = name_;
     return encodeDescriptor(descriptor);
 }
 
-void Session::exportProfile(const fs::path& outFile, const std::string& password) const
+void Session::exportAccount(const fs::path& outFile, const std::string& password) const
 {
     const nlohmann::json meta = nlohmann::json::parse(db_->text("meta"));
     // Use the in-memory contacts; the bundle carries them in the clear (the
@@ -3371,7 +3371,7 @@ void Session::exportProfile(const fs::path& outFile, const std::string& password
 
     // The keys are re-serialized unencrypted inside the bundle; the password
     // protects the bundle as a whole, decoupling the export from whatever
-    // at-rest passphrase this profile directory happens to use.
+    // at-rest passphrase this account directory happens to use.
     const nlohmann::json bundle = {
         {"v", 1},
         {"identityPem", client_->identity().privatePem()},
@@ -3384,7 +3384,7 @@ void Session::exportProfile(const fs::path& outFile, const std::string& password
     writeFileText(outFile, std::string(sealed.begin(), sealed.end()));
 }
 
-void Session::importProfile(const fs::path& bundleFile, const fs::path& profileFile,
+void Session::importAccount(const fs::path& bundleFile, const fs::path& accountFile,
     const std::string& password, const std::string& atRestPassphrase)
 {
     const std::string sealedText = readFileText(bundleFile);
@@ -3392,9 +3392,9 @@ void Session::importProfile(const fs::path& bundleFile, const fs::path& profileF
         = cms::unsealWithPassword(Bytes(sealedText.begin(), sealedText.end()), password);
     const nlohmann::json bundle = nlohmann::json::parse(plain.begin(), plain.end());
 
-    // The new profile's database is keyed with the chosen passphrase; the keys go
+    // The new account's database is keyed with the chosen passphrase; the keys go
     // inside it as they are.
-    ProfileDb db(profileFile, atRestPassphrase);
+    AccountDb db(accountFile, atRestPassphrase);
     const Identity identity = Identity::fromPrivatePem(bundle.at("identityPem").get<std::string>());
     const Key sealing = Key::fromPrivatePem(bundle.at("sealingPem").get<std::string>());
     db.putText("identity.pem", identity.privatePem());
@@ -3402,7 +3402,7 @@ void Session::importProfile(const fs::path& bundleFile, const fs::path& profileF
 
     nlohmann::json meta = bundle.at("meta");
     meta["encrypted"] = !atRestPassphrase.empty();
-    // A client id names a DEVICE, not a profile. Carried over from the bundle,
+    // A client id names a DEVICE, not an account. Carried over from the bundle,
     // both devices would present the same one: the server would hold a single
     // pending list for them, and whichever fetched first would ack the mail away
     // from the other. A fresh id makes this an added device, which is what an

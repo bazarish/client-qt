@@ -155,7 +155,7 @@ public:
     // for the account list's positive "connected over I2P" marking.
     bool activeFacadeIsI2p() const;
 
-    // Sticky-I2P state (see i2pProven_). The session persists it per profile and
+    // Sticky-I2P state (see i2pProven_). The session persists it per account and
     // restores it on open; the user can allow clearnet again explicitly.
     void setI2pProven(bool proven);
     bool i2pProven() const;
@@ -163,8 +163,8 @@ public:
     bool allowClearnet() const;
     // Invoked once when this client first completes a request over I2P.
     void setOnI2pProven(std::function<void()> callback);
-    // Names this profile on the destinations this client creates, so a router
-    // shared by several profiles says whose dialer is whose.
+    // Names this account on the destinations this client creates, so a router
+    // shared by several accounts says whose dialer is whose.
     void setDestinationOwner(std::string owner);
     // Drops this client's I2P destination, tearing down its tunnels. The next
     // request over an I2P facade builds a fresh one. Used when an account goes
@@ -178,7 +178,7 @@ public:
     // and the key to unseal nothing with - the server only answers with an id.
     void setSessionSealingKey(Bytes servingSealingKeyDer);
     // What this client's outbound destination is called in the router status
-    // view. A profile keeps two: the one its session dials with, and the one that
+    // view. An account keeps two: the one its session dials with, and the one that
     // holds the long poll open (they are separate so a wait never blocks a send).
 
 private:
@@ -224,7 +224,7 @@ private:
     // The embedded router's data dir (empty -> no I2P transport; i2p facades are
     // then unreachable).
     const std::filesystem::path i2pDataDir_;
-    // Profile name carried onto this client's destinations (status view only).
+    // Account name carried onto this client's destinations (status view only).
     std::string destinationOwner_;
 
     // Session authentication. sessionUntil_ is what the server told us, so a
@@ -256,7 +256,7 @@ private:
     // Index of the last facade that worked; the GUI "connected via" reads it.
     std::size_t activeFacade_ = 0;
     // Sticky I2P: once a request has actually gone over an I2P facade, this
-    // profile refuses clearnet ones. Otherwise a flaky I2P link quietly moves the
+    // account refuses clearnet ones. Otherwise a flaky I2P link quietly moves the
     // user onto the clearnet - binding their account to an IP at the server -
     // exactly when the network is being interfered with. Cleared only by the user
     // (allowClearnet), never automatically.

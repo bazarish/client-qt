@@ -25,7 +25,7 @@
 
 namespace bazarish::client {
 
-class ProfileDb;
+class AccountDb;
 
 // One button of an inline keyboard attached to a message. Carries a label and
 // exactly one action: a callback (sends a bot.callback when tapped) or a
@@ -197,7 +197,7 @@ struct TransferEvent {
 
 using TransferEventFn = std::function<void(const TransferEvent&)>;
 
-// bookkeeping persisted under a profile directory, layered over the stateless
+// bookkeeping persisted under an account directory, layered over the stateless
 // Client API wrappers. This is the logic a GUI or CLI front-end drives.
 //
 // Token model (per Contacts.md): to let a peer write to us we generate a
@@ -207,21 +207,21 @@ using TransferEventFn = std::function<void(const TransferEvent&)>;
 // its reply.
 class Session {
 public:
-    // Creates a fresh identity and sealing key under profileFile, with no server
+    // Creates a fresh identity and sealing key under accountFile, with no server
     // connection yet. A non-empty passphrase encrypts the private key PEMs at
     // rest (AES-256-CBC); name is a human label stored in the clear for the
-    // profile picker. Use connectServer() + subscribe() to attach a server.
-    static Session create(const std::filesystem::path& profileFile,
+    // account picker. Use connectServer() + subscribe() to attach a server.
+    static Session create(const std::filesystem::path& accountFile,
         const std::string& passphrase = {}, const std::string& name = {});
-    // Creates a profile already bound to a server (convenience for the CLI and
+    // Creates an account already bound to a server (convenience for the CLI and
     // tests): equivalent to create() followed by connectServer().
-    static Session create(const std::filesystem::path& profileFile, const ServerEndpoint& endpoint,
+    static Session create(const std::filesystem::path& accountFile, const ServerEndpoint& endpoint,
         const std::string& passphrase);
     // Opens an existing session. The passphrase is required when the keys
     // were created encrypted; it is ignored for unencrypted keys.
-    static Session open(const std::filesystem::path& profileFile, const std::string& passphrase = {});
+    static Session open(const std::filesystem::path& accountFile, const std::string& passphrase = {});
 
-    // Binds the profile to a serving server (or changes it). Rebinds the
+    // Binds the account to a serving server (or changes it). Rebinds the
     // transport to the new endpoint and persists it; subscribe() afterwards.
     void connectServer(const ServerEndpoint& endpoint);
     // Whether a serving server is configured (a non-empty host).
@@ -235,19 +235,19 @@ public:
     // Exports the whole session (identity, sealing key, routing meta and
     // contacts) into a single password-encrypted file (CMS PWRI). The bundle
     // holds the keys in plain PEM internally - the password protects the file.
-    void exportProfile(
+    void exportAccount(
         const std::filesystem::path& outFile, const std::string& password) const;
-    // Imports an exported bundle into a fresh profileFile. A non-empty
+    // Imports an exported bundle into a fresh accountFile. A non-empty
     // atRestPassphrase re-encrypts the imported keys on disk.
-    static void importProfile(const std::filesystem::path& bundleFile,
-        const std::filesystem::path& profileFile, const std::string& password,
+    static void importAccount(const std::filesystem::path& bundleFile,
+        const std::filesystem::path& accountFile, const std::string& password,
         const std::string& atRestPassphrase = {});
 
     std::string fingerprint() const;
     std::string sealingPublicB64() const;
     // The human label set at creation (may be empty).
     const std::string& displayName() const;
-    // Changes the account's own display name. Local only: it rewrites the profile
+    // Changes the account's own display name. Local only: it rewrites the account
     // meta and so the name carried in future invite descriptors (inviteUri), but it
     // is NEVER sent to contacts - each contact controls the name they keep for us.
     void setDisplayName(const std::string& name);
@@ -282,28 +282,28 @@ public:
     // told. No-op for an unknown contact. The caller wipes the local transcript.
     void removeContact(const std::string& peerFingerprint);
 
-    // Sticky I2P: once a profile has reached its server over I2P it refuses
+    // Sticky I2P: once an account has reached its server over I2P it refuses
     // clearnet facades, so a flaky link cannot quietly move the user onto the
-    // clearnet. This is the deliberate way back, per profile and persisted; the
-    // process-wide default is applied to every profile opened afterwards.
+    // clearnet. This is the deliberate way back, per account and persisted; the
+    // process-wide default is applied to every account opened afterwards.
     void setAllowClearnet(bool allow);
     bool allowClearnet() const;
 
-    // Whether this profile takes incoming calls at all. Off, an invitation is
+    // Whether this account takes incoming calls at all. Off, an invitation is
     // answered with a refusal the moment it arrives - the caller learns it now
-    // rather than ringing into nothing. Persisted with the profile; on by default.
+    // rather than ringing into nothing. Persisted with the account; on by default.
     bool acceptCalls() const { return acceptCalls_; }
     void setAcceptCalls(bool accept);
     static void setAllowClearnetDefault(bool allow);
 
     // Redeems the portal registration on the configured server and registers
-    // this client ID. Mints this profile's own I2P destination if it has none
+    // this client ID. Mints this account's own I2P destination if it has none
     // and publishes the routing (see publishRouting), so the contact card is
     // reachable as soon as the destination's tunnels are up. The account has no
     // term: it lives while the destination stays delegated.
     void registerAccount();
 
-    // Hands the serving server a fresh transient for this profile's destination
+    // Hands the serving server a fresh transient for this account's destination
     // and re-issues the contact card with the routing folded in, inside the term
     // already held (so it grants nothing and consumes no registration grant).
     // Called by subscribe; call it again after a moderated server approves the
@@ -313,14 +313,14 @@ public:
 
     // --- Pictures ---
     //
-    // A picture that has arrived (or one being sent) lives in the profile
+    // A picture that has arrived (or one being sent) lives in the account
     // database like everything else this client keeps: encrypted at rest, gone
-    // when the profile is deleted, and never a plaintext copy sitting in a cache
+    // when the account is deleted, and never a plaintext copy sitting in a cache
     // directory. It is small by construction - the composer shrinks it before
     // sending - so it costs the database little.
 
     // A voice message: Opus frames, small enough to ride inside the message, kept
-    // in the profile like a picture.
+    // in the account like a picture.
     bool sendVoice(const std::string& peerFingerprint, const Bytes& opus, std::int64_t durationMs,
         const std::string& messageId = {},
         const std::function<void()>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
@@ -328,7 +328,7 @@ public:
 
     // Stores a picture's bytes against the message that announced it.
     void putPicture(const std::string& messageId, const Bytes& bytes);
-    // The picture of a message, or nothing when this profile does not hold it.
+    // The picture of a message, or nothing when this account does not hold it.
     std::optional<Bytes> picture(const std::string& messageId) const;
     bool hasPicture(const std::string& messageId) const;
     // The same for a voice message's audio.
@@ -347,7 +347,7 @@ public:
     // registered yet. Requires a configured server (facades).
     PortalInfo serverPortalInfo();
 
-    // This profile's own I2P destination - every account has one, it is how the
+    // This account's own I2P destination - every account has one, it is how the
     // account is reachable at all.
     // ensureI2pDestination mints the permanent ("master") key the first time
     // and persists it sealed at rest, returning the stable base32 address;
@@ -355,19 +355,19 @@ public:
     std::string ensureI2pDestination();
     // Adopts an existing user-owned master from a .dat the user already holds
     // (validated as an unencrypted Ed25519 destination), persisting it sealed at
-    // rest and returning its base32. Throws if the profile already has a master
+    // rest and returning its base32. Throws if the account already has a master
     // (a different key would change the user's address) or the blob is invalid.
     std::string loadI2pDestination(const Bytes& privateKeysDat);
     bool hasI2pDestination() const;
     // The stable base32 address (without the ".b32.i2p" suffix), or empty.
     std::string i2pAddress() const;
     // Permanently removes the user-owned master (and any transient) from this
-    // profile. The deleted key is gone for good; publishing again later would
+    // account. The deleted key is gone for good; publishing again later would
     // mint a fresh, different address.
     void deleteI2pDestination();
 
     // Revokes the destination server-side (an empty delegation): the server
-    // tears it down and holds nothing. The master stays in the profile, so
+    // tears it down and holds nothing. The master stays in the account, so
     // publishRouting later restores the same address.
     void disableI2pDest();
     // The per-user i2p-dest status from the server (for display and decisions).
@@ -385,7 +385,7 @@ public:
     };
     ApprovalState approvalState() const { return approval_; }
     // The user's own storage usage on the mailbox + blob backends (used/quota each),
-    // for the per-profile settings view. Best effort - never throws.
+    // for the per-account settings view. Best effort - never throws.
     StorageUsage storageUsage();
     // Keeps the personal destination's transient fresh: polls the server status,
     // and if the option is active and the current transient is within
@@ -393,7 +393,7 @@ public:
     // - but only after the poll, so when another of the user's devices has
     // already renewed, this one stands down (the multi-device race). Returns
     // true if it uploaded a new transient. A no-op without a personal dest.
-    // The delegation term this profile uses, in days, and setting it (which
+    // The delegation term this account uses, in days, and setting it (which
     // re-issues at once). Bounded by the protocol: kMinDelegationDays ..
     // kMaxDelegationDays.
     std::int64_t delegationDays() const;
@@ -404,7 +404,7 @@ public:
     bool refreshI2pTransientIfDue(std::int64_t now, std::int64_t leadSeconds);
     // Issues a fresh time-boxed transient (offline keys) from the master, valid
     // until expiresUnix - the delegation handed to the serving server to operate
-    // the destination for the subscription window. Throws if the profile has no
+    // the destination for the subscription window. Throws if the account has no
     // user-owned destination. subscribe() calls this automatically when one
     // exists, for the subscription period.
     void renewI2pTransient(std::int64_t expiresUnix);
@@ -430,7 +430,7 @@ public:
     // wrote to, and the alternative is retyping a fingerprint that reaches
     // nobody. Throws when we hold no routing for them yet.
     std::string contactInviteUri(const std::string& peerFingerprint) const;
-    // Whether this profile's own card carries routing (destination + the serving
+    // Whether this account's own card carries routing (destination + the serving
     // sealing key the server answers card fetches with). False means no invite
     // can be formed yet, however healthy the destination looks server-side.
     bool hasOwnRouting() const;
@@ -443,8 +443,8 @@ public:
     // (one request, no delegation, no grant) and the repair for a card that was
     // stored before the server had raised the destination.
     void refreshOwnCard();
-    // How this profile names itself on the destinations it creates, so a router
-    // shared by several profiles says whose is whose: the profile name, or the
+    // How this account names itself on the destinations it creates, so a router
+    // shared by several accounts says whose is whose: the account name, or the
     // head of its fingerprint when it has none.
     std::string destinationOwner() const;
 
@@ -474,7 +474,7 @@ public:
     // addByInvite / addByUsername above are synchronous: they block on a federated
     // card fetch (the serving server dials the peer over I2P, tens of seconds when
     // the peer is slow or unreachable). A GUI must never run that on the thread that
-    // also drives sync and the connection, or the whole profile freezes until the
+    // also drives sync and the connection, or the whole account freezes until the
     // fetch returns. The three steps below split it so the slow fetch runs off the
     // worker thread on its own transport, and only the fast finalize touches the
     // session - keeping the connection live throughout.
@@ -489,7 +489,7 @@ public:
         ResolverCoordinate resolver;
         bool i2pEnabled = false;
         bazarish::i2p::Privacy blobFetchPrivacy = bazarish::i2p::Privacy::eMax;
-        std::string destinationOwner;   // profile name, for the router status view
+        std::string destinationOwner;   // account name, for the router status view
         Bytes servingSealingKeyDer;     // what a session secret is sealed to
     };
     // An add to resolve: an invite URI (byUsername=false) or an alias.
@@ -517,7 +517,7 @@ public:
     // transport (its own connection, so it never contends with the session's sync
     // transport). Touches no session state; never throws.
     // Holds a request open on the server's event face until something arrives for
-    // this profile (or the wait passes), then returns whether anything is
+    // this account (or the wait passes), then returns whether anything is
     // pending. Static and context-based like resolveContactCard: it runs on its
     // own connection so a long wait never blocks the session's own transport.
     // Throws when the server has no event face, so the caller can go back to
@@ -671,10 +671,10 @@ public:
 
     // Overrides the I2P tunnel privacy profile used for direct transfers (both
     // serving and fetching, always over one-time destinations). Unset, transfers
-    // follow the process-wide profile.
+    // follow the process-wide account.
     void setTransferPrivacy(bazarish::i2p::Privacy privacy);
 
-    // Lets go of the I2P destinations this profile holds open, tearing down their
+    // Lets go of the I2P destinations this account holds open, tearing down their
     // tunnels. Called when the account goes offline: it is no longer reachable
     // and no longer sending, so keeping tunnels alive only announces to the
     // network that somebody is there. The next request builds a fresh
@@ -793,20 +793,20 @@ public:
     std::vector<std::string> contactFingerprints() const;
 
 
-    // Declared here and defined in the .cpp so the profile database stays an
+    // Declared here and defined in the .cpp so the account database stays an
     // incomplete type everywhere else; a session is moved, never copied.
     ~Session();
     Session(Session&&) noexcept;
     Session& operator=(Session&&) noexcept;
 
 private:
-    Session(std::filesystem::path profileFile, std::unique_ptr<Client> client, Key sealingKey,
+    Session(std::filesystem::path accountFile, std::unique_ptr<Client> client, Key sealingKey,
         std::map<std::string, Contact> contacts);
 
     // Persists a subscribe/renew result: the card we just signed and the routing
     // it carries.
     void storeCard(const PublishResult& result);
-    // This profile's own destination as a routing host, empty without a master.
+    // This account's own destination as a routing host, empty without a master.
     std::string ownRoutingHost() const;
 
     // Generates a token batch for ourselves: registers the hashes with our
@@ -920,7 +920,7 @@ private:
     // Persists a contact's received avatar bytes (sealed at rest) and its mime.
     void storeContactAvatar(
         const std::string& peerFingerprint, const Bytes& data, const std::string& mime);
-    // Writes a profile blob, sealed under the passphrase when the profile is
+    // Writes an account blob, sealed under the passphrase when the account is
     // encrypted (the generic form behind persistI2pBlob, reused for avatars).
     void persistSealedBlob(const std::string& filename, const Bytes& blob) const;
 
@@ -973,10 +973,10 @@ private:
     nlohmann::json contactsToJson() const;
 
 
-    std::filesystem::path profilePath_;
-    // The profile's storage: one encrypted file holding keys, metadata, contacts
+    std::filesystem::path accountPath_;
+    // The account's storage: one encrypted file holding keys, metadata, contacts
     // and blobs. Opened for the session's lifetime.
-    std::unique_ptr<ProfileDb> db_;
+    std::unique_ptr<AccountDb> db_;
     // A peer asked for a file we announced: encrypt it to a temp ciphertext, raise
     // a one-time destination, seal the offer back and serve until the window
     // closes. Runs on its own thread - building tunnels takes tens of seconds.
@@ -1001,14 +1001,14 @@ private:
     void persistSentFiles() const;
 
     std::unique_ptr<Client> client_;
-    // The central alias resolver this profile resolves usernames against.
+    // The central alias resolver this account resolves usernames against.
     ResolverCoordinate resolverCoordinate_ = defaultResolverCoordinate();
-    // The profile in force for a transfer: the override if one was set, else the
-    // process-wide profile.
+    // The account in force for a transfer: the override if one was set, else the
+    // process-wide account.
     bazarish::i2p::Privacy transferPrivacy() const;
     std::optional<bazarish::i2p::Privacy> transferPrivacy_;
     // The embedded I2P router is process-global (the i2pd engine allows only one
-    // per process), so every profile shares the one instance (see sharedI2pRouter).
+    // per process), so every account shares the one instance (see sharedI2pRouter).
     // It is started lazily on first transport use, so offline operations and tests
     // that never reach the network pay nothing.
     bazarish::i2p::Router& i2pRouter() const;
@@ -1070,16 +1070,16 @@ private:
     // The capability our server issued for reading our card: what an invite
     // carries so a contact can fetch it, and nothing else.
     std::string view_;
-    // How long this profile delegates its destination for, in days. The user
+    // How long this account delegates its destination for, in days. The user
     // picks it inside the protocol's ceiling: shorter means leaving a server
     // takes effect sooner, longer means an absent client stays reachable.
     std::int64_t delegationDays_ = kDefaultDelegationDays;
     // Set only by a test harness (see setFetchTransport).
     FetchTransport fetchTransportOverride_;
-    // Human label for the profile picker (stored in the clear in meta.json).
+    // Human label for the account picker (stored in the clear in meta.json).
     std::string name_;
     // The user's own avatar (compressed PNG/JPEG bytes) and its mime. The bytes
-    // live in a sealed profile file; the mime is recorded in meta.json. Empty
+    // live in a sealed account file; the mime is recorded in meta.json. Empty
     // when no avatar is set.
     Bytes avatar_;
     std::string avatarMime_;
@@ -1095,13 +1095,13 @@ private:
     bool acceptCalls_ = true;
     // The at-rest passphrase, retained for the session lifetime so contacts
     // (delivery tokens) can be re-sealed on every change. Empty when the
-    // profile is unencrypted.
+    // account is unencrypted.
     std::string passphrase_;
-    // This profile's own I2P destination, empty until it is minted (subscribing
+    // This account's own I2P destination, empty until it is minted (subscribing
     // mints one). The master private key (i2p-master.dat) is the user's
     // long-term routing identity; the active
     // transient (i2p-transient.dat) is the time-boxed delegation for the
-    // current serving server. Both are sealed at rest when the profile is
+    // current serving server. Both are sealed at rest when the account is
     // encrypted.
     Bytes i2pMaster_;
     std::string i2pAddress_;

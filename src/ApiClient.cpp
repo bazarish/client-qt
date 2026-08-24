@@ -218,7 +218,7 @@ void ApiClient::markI2pProven()
         return;
     }
     i2pProven_ = true;
-    bazarish::log::info("this profile now reaches its server over I2P; clearnet is refused");
+    bazarish::log::info("this account now reaches its server over I2P; clearnet is refused");
     if (onI2pProven_) {
         onI2pProven_();
     }
@@ -365,7 +365,7 @@ std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const st
     sharedI2pRouter(i2pDataDir_);  // started here if it is not up yet
     if (!i2pOut_) {
         reportConnectProgress(40, "Building your I2P tunnels");
-        // One destination per profile, shared with everything else that dials its
+        // One destination per account, shared with everything else that dials its
         // facade: streams multiplex over it, so a second one would only mean a
         // second set of tunnels.
         i2pOut_ = facadeLinkFor(destinationOwner_, tunnelPrivacy());
@@ -514,7 +514,7 @@ void ApiClient::seedRouterFromServer()
             bazarish::log::info("own server did not reseed: {}", error.what());
         }
         // Every other server this application holds an account with, in turn:
-        // bootstrapping is the application's job, not one profile's, and a
+        // bootstrapping is the application's job, not one account's, and a
         // client with three accounts has three places to ask before it reaches
         // outside. Started at a rotating position so one unreachable facade is
         // not always the first thing tried.
@@ -731,18 +731,18 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
 
         // The reseed is the one clearnet request that stays allowed: it carries no
         // identity, and it is what makes I2P possible at all - refusing it would
-        // leave a fresh profile with no way to ever reach an I2P facade.
+        // leave a fresh account with no way to ever reach an I2P facade.
         if (!clearnetOnly) {
             if (fullPrivacy()) {
                 // Full privacy mode: never touch a clearnet facade. With no reachable
-                // I2P facade the loop ends in an explicit error and the profile is offline.
+                // I2P facade the loop ends in an explicit error and the account is offline.
                 lastError = "full privacy mode (I2P only): " + facade.host;
                 continue;
             }
             if (i2pProven_ && !allowClearnet_) {
-                // This profile has already talked over I2P, so a clearnet request
+                // This account has already talked over I2P, so a clearnet request
                 // now would be a silent downgrade, not a first connection.
-                lastError = "this profile reaches its server over I2P; clearnet refused: "
+                lastError = "this account reaches its server over I2P; clearnet refused: "
                     + facade.host;
                 continue;
             }
@@ -900,7 +900,7 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
             continue;
         }
         if (i2pProven_ && !allowClearnet_) {
-            lastError = "this profile reaches its server over I2P; clearnet refused: "
+            lastError = "this account reaches its server over I2P; clearnet refused: "
                 + facade.host;
             continue;
         }

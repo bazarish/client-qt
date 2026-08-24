@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 
     const fs::path dir = fs::temp_directory_path() / ("bz-transcript-" + toHex(randomBytes(8)));
     fs::create_directories(dir);
-    const QString db = QString::fromStdString((dir / "profile.db").string());
+    const QString db = QString::fromStdString((dir / "account.db").string());
 
     // The database is encrypted in place: one file, written as it goes.
     {

@@ -1,7 +1,7 @@
 // Bazarish project (c) 2026
-#include "ProfileDb.hpp"
+#include "AccountDb.hpp"
 
-#include "ProfileKey.hpp"
+#include "AccountKey.hpp"
 
 #include <bazarish/Bytes.hpp>
 
@@ -22,7 +22,7 @@ constexpr int kBusyTimeoutMs = 5000;
 
 // The database is opened with a raw key, so SQLCipher derives nothing: the
 // passphrase guards the key file beside it, and that is where the expensive
-// derivation lives (see ProfileKey).
+// derivation lives (see AccountKey).
 
 // A raw key is given to SQLCipher as hex in a blob literal: x'<64 hex chars>'.
 std::string rawKeyLiteral(const Bytes& key)
@@ -36,7 +36,7 @@ void run(sqlite3* const db, const std::string& sql)
     if (sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &message) != SQLITE_OK) {
         const std::string reason = message == nullptr ? "unknown error" : message;
         sqlite3_free(message);
-        throw std::runtime_error("profile database: " + reason);
+        throw std::runtime_error("account database: " + reason);
     }
 }
 
@@ -72,36 +72,36 @@ sqlite3* openKeyed(const fs::path& file, const Bytes& key)
 
 }  // namespace
 
-ProfileDb::ProfileDb(const fs::path& file, const std::string& passphrase)
+AccountDb::AccountDb(const fs::path& file, const std::string& passphrase)
     : file_(file)
 {
     if (file.has_parent_path()) {
         fs::create_directories(file.parent_path());
     }
     // Unwrapping the key is where a wrong passphrase is caught; this throws.
-    db_ = openKeyed(file, profilekey::keyFor(file, passphrase));
+    db_ = openKeyed(file, accountkey::keyFor(file, passphrase));
     if (db_ == nullptr) {
-        throw std::runtime_error("profile database: " + file.string() + " is unreadable");
+        throw std::runtime_error("account database: " + file.string() + " is unreadable");
     }
     run(db_, "CREATE TABLE IF NOT EXISTS state (name TEXT PRIMARY KEY, value BLOB)");
 }
 
-ProfileDb::~ProfileDb()
+AccountDb::~AccountDb()
 {
     sqlite3_close(db_);
 }
 
-bool ProfileDb::opens(const fs::path& file, const std::string& passphrase)
+bool AccountDb::opens(const fs::path& file, const std::string& passphrase)
 {
-    return fs::exists(file) && profilekey::unlocks(file, passphrase);
+    return fs::exists(file) && accountkey::unlocks(file, passphrase);
 }
 
-std::optional<Bytes> ProfileDb::get(const std::string& name) const
+std::optional<Bytes> AccountDb::get(const std::string& name) const
 {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(db_, "SELECT value FROM state WHERE name = ?", -1, &statement, nullptr)
         != SQLITE_OK) {
-        throw std::runtime_error(std::string("profile database: ") + sqlite3_errmsg(db_));
+        throw std::runtime_error(std::string("account database: ") + sqlite3_errmsg(db_));
     }
     sqlite3_bind_text(statement, 1, name.c_str(), static_cast<int>(name.size()), SQLITE_TRANSIENT);
     std::optional<Bytes> value;
@@ -114,13 +114,13 @@ std::optional<Bytes> ProfileDb::get(const std::string& name) const
     return value;
 }
 
-std::string ProfileDb::text(const std::string& name) const
+std::string AccountDb::text(const std::string& name) const
 {
     const std::optional<Bytes> value = get(name);
     return value.has_value() ? std::string(value->begin(), value->end()) : std::string();
 }
 
-void ProfileDb::put(const std::string& name, const Bytes& value)
+void AccountDb::put(const std::string& name, const Bytes& value)
 {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(db_,
@@ -128,7 +128,7 @@ void ProfileDb::put(const std::string& name, const Bytes& value)
             " ON CONFLICT(name) DO UPDATE SET value = excluded.value",
             -1, &statement, nullptr)
         != SQLITE_OK) {
-        throw std::runtime_error(std::string("profile database: ") + sqlite3_errmsg(db_));
+        throw std::runtime_error(std::string("account database: ") + sqlite3_errmsg(db_));
     }
     sqlite3_bind_text(statement, 1, name.c_str(), static_cast<int>(name.size()), SQLITE_TRANSIENT);
     // A zero-length blob still needs a non-null pointer.
@@ -138,40 +138,40 @@ void ProfileDb::put(const std::string& name, const Bytes& value)
     const int status = sqlite3_step(statement);
     sqlite3_finalize(statement);
     if (status != SQLITE_DONE) {
-        throw std::runtime_error(std::string("profile database: ") + sqlite3_errmsg(db_));
+        throw std::runtime_error(std::string("account database: ") + sqlite3_errmsg(db_));
     }
 }
 
-void ProfileDb::putText(const std::string& name, const std::string& value)
+void AccountDb::putText(const std::string& name, const std::string& value)
 {
     put(name, Bytes(value.begin(), value.end()));
 }
 
-void ProfileDb::erase(const std::string& name)
+void AccountDb::erase(const std::string& name)
 {
     sqlite3_stmt* statement = nullptr;
     if (sqlite3_prepare_v2(db_, "DELETE FROM state WHERE name = ?", -1, &statement, nullptr)
         != SQLITE_OK) {
-        throw std::runtime_error(std::string("profile database: ") + sqlite3_errmsg(db_));
+        throw std::runtime_error(std::string("account database: ") + sqlite3_errmsg(db_));
     }
     sqlite3_bind_text(statement, 1, name.c_str(), static_cast<int>(name.size()), SQLITE_TRANSIENT);
     const int status = sqlite3_step(statement);
     sqlite3_finalize(statement);
     if (status != SQLITE_DONE) {
-        throw std::runtime_error(std::string("profile database: ") + sqlite3_errmsg(db_));
+        throw std::runtime_error(std::string("account database: ") + sqlite3_errmsg(db_));
     }
 }
 
-bool ProfileDb::has(const std::string& name) const
+bool AccountDb::has(const std::string& name) const
 {
     return get(name).has_value();
 }
 
-void ProfileDb::rekey(const std::string& passphrase)
+void AccountDb::rekey(const std::string& passphrase)
 {
     // Only the hundred bytes beside the database change: the database key stays
     // what it was, so not a page of it is rewritten.
-    profilekey::rewrap(file_, passphrase);
+    accountkey::rewrap(file_, passphrase);
 }
 
 }  // namespace bazarish::client

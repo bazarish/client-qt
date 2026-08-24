@@ -12,7 +12,7 @@
 namespace bazarish::app {
 
 // The pictures of the conversations that have been on screen, keyed by the
-// message that carries them. The bytes come out of the profile database - the
+// message that carries them. The bytes come out of the account database - the
 // only place they are kept - and are decoded when something actually draws them,
 // on the thread that draws.
 //
@@ -45,7 +45,7 @@ public:
     // The bytes as they were stored, for writing the picture out or copying it.
     QByteArray bytes(const QString& messageId) const;
 
-    // Drops everything (a profile closing).
+    // Drops everything (an account closing).
     void clear();
 
 signals:

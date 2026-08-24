@@ -21,7 +21,7 @@ Popup {
 
     // Refresh the per-user I2P destination status and storage usage on open.
     onOpened: if (session) { session.refreshI2pStatus(); session.refreshStorageUsage();
-        session.refreshDevices() }
+        session.refreshDevices(); delegationDaysBox.value = session.delegationDays }
 
     // Ticks every few seconds while Settings is open so the storage "updated N ago"
     // age stays current without the user reopening the page.
@@ -73,7 +73,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            Label { text: "Profile"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: "Account"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
@@ -93,7 +93,7 @@ Popup {
                 width: settingsScroll.availableWidth
                 spacing: 14
 
-                // Profile
+                // Account
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -196,22 +196,22 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                // App & privacy — GLOBAL settings, shared by every profile on this
-                // device (the per-profile sections are below).
+                // App & privacy — GLOBAL settings, shared by every account on this
+                // device (the per-account sections are below).
                 // Connection
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 6
                     Label { text: "Server connection"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    // Under full privacy mode a profile with no I2P facade cannot
+                    // Under full privacy mode an account with no I2P facade cannot
                     // reach its server at all (clearnet is refused), so its status is
                     // an explicit I2P-only offline error rather than a vague "connecting".
                     readonly property bool i2pOnlyBlocked: App.fullPrivacyMode
                         && root.session && root.session.connected && !root.session.hasI2pFacade
                     Label {
                         text: parent.i2pOnlyBlocked
-                            ? "Offline — full privacy mode is on, but this profile has no I2P facade. Add one (or turn privacy mode off) to connect."
+                            ? "Offline — full privacy mode is on, but this account has no I2P facade. Add one (or turn privacy mode off) to connect."
                             : (!(root.session && root.session.connected)
                                 ? "Not configured"
                                 : (root.session.reachable
@@ -246,7 +246,7 @@ Popup {
                         text: root.session ? (root.session.configuredFacades.length + " facades configured (failover)") : ""
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
-                    // What this profile is holding on its server, as one line and a
+                    // What this account is holding on its server, as one line and a
                     // bar. Tapping it re-polls the server and tints the row, so the
                     // figures are refreshed where they are read.
                     ColumnLayout {
@@ -464,7 +464,7 @@ Popup {
                             }
                             Label {
                                 visible: root.session && !root.session.i2pHasKey
-                                text: "No destination key on this profile yet."
+                                text: "No destination key on this account yet."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -509,7 +509,7 @@ Popup {
                             onClicked: { if (root.session) root.session.refreshI2pStatus(); i2pFlash.restart() }
                         }
                     }
-                    // Permanently drop this profile's master key: nobody can reach it again
+                    // Permanently drop this account's master key: nobody can reach it again
                     // until a fresh destination is published.
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey
@@ -522,14 +522,14 @@ Popup {
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 // Backup
-                // What this profile alone does. The switches above are the app's;
-                // these follow the profile wherever it is opened.
+                // What this account alone does. The switches above are the app's;
+                // these follow the account wherever it is opened.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
                     Label { text: "Privacy"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    // Sticky I2P: once this profile has reached its server over I2P it
+                    // Sticky I2P: once this account has reached its server over I2P it
                     // refuses clearnet, so a flaky link cannot move it back silently.
                     // This is the deliberate way back.
                     // Two switches decide this, and the app's wins. Rather than
@@ -572,7 +572,7 @@ Popup {
                             onToggled: root.session.allowClearnet(checked)
                         }
                     }
-                    // How long this profile hands its address to the server for.
+                    // How long this account hands its address to the server for.
                     // It is the only thing that ties an account to a server in
                     // time, so the user - not the operator - sets it.
                     RowLayout {
@@ -594,15 +594,17 @@ Popup {
                             Layout.alignment: Qt.AlignVCenter
                             Layout.rightMargin: 2
                             spacing: 6
+                            // One width for both rows: an editable SpinBox asks
+                            // for far more room than it needs, and two stacked
+                            // controls of different widths read as two unrelated
+                            // things. Sized to hold the button's label.
+                            readonly property int controlWidth: 140
                             RowLayout {
-                                Layout.alignment: Qt.AlignRight
+                                Layout.preferredWidth: parent.controlWidth
                                 spacing: 6
-                                // Bounded width: an editable SpinBox asks for far
-                                // more room than it needs, and a control that asks
-                                // for more than the page has pushes the page wider.
                                 SpinBox {
                                     id: delegationDaysBox
-                                    Layout.preferredWidth: 108
+                                    Layout.fillWidth: true
                                     from: root.session ? root.session.minDelegationDays : 1
                                     to: root.session ? root.session.maxDelegationDays : 30
                                     value: root.session ? root.session.delegationDays : 14
@@ -619,11 +621,21 @@ Popup {
                             // change re-issues the delegation, and typing "30"
                             // would issue one for three days on the way.
                             MenuButton {
-                                Layout.alignment: Qt.AlignRight
+                                id: saveTermButton
+                                Layout.preferredWidth: parent.controlWidth
                                 text: "Save the term"
                                 enabled: root.session
                                     && delegationDaysBox.value !== root.session.delegationDays
                                 onClicked: root.session.delegationDays = delegationDaysBox.value
+                            }
+                            // The saved term is the truth: a number typed and left
+                            // unsaved must not come back on the next open, and one
+                            // this account's other devices changed must.
+                            Connections {
+                                target: root.session
+                                function onDelegationDaysChanged() {
+                                    delegationDaysBox.value = root.session.delegationDays
+                                }
                             }
                         }
                     }
@@ -679,7 +691,7 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             text: "Sign out"
-                            onClicked: { root.close(); App.closeProfile() }
+                            onClicked: { root.close(); App.closeAccount() }
                         }
                         MenuButton {
                             Layout.fillWidth: true
@@ -693,7 +705,7 @@ Popup {
         }
     }
 
-    // The whole profile (keys, routing meta and contacts) exports to one
+    // The whole account (keys, routing meta and contacts) exports to one
     // password-protected <username>.bazarish file; the same file restores it.
     property string backupName: (root.session && root.session.displayName.length > 0
         ? root.session.displayName.replace(/[^A-Za-z0-9._-]+/g, "_") : "bazarish")
@@ -797,7 +809,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         title: "Backup password"
-        onAccepted: root.session.exportProfile(root.pendingExportFile, exportPass.text)
+        onAccepted: root.session.exportAccount(root.pendingExportFile, exportPass.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Backup password"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { onAccepted: exportPassDialog.accept(); onRejected: exportPassDialog.reject() }
@@ -806,7 +818,7 @@ Popup {
     }
 
     // Full server-connection editor: the same descriptor flow as first connect,
-    // reachable any time so a profile stuck unconnected can be repaired (re-point
+    // reachable any time so an account stuck unconnected can be repaired (re-point
     // the server, or Connect again once registered on the portal). The form
     // carries its own Connect action, so the dialog has no footer.
     Dialog {
@@ -857,7 +869,7 @@ Popup {
             const id = root.session ? root.session.accountId : ""
             root.close()
             if (id.length > 0) {
-                App.deleteProfile(id)
+                App.deleteAccount(id)
             }
         }
         // Exceptional/destructive: brightest-neon outline so it is unmistakable,

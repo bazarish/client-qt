@@ -5,9 +5,9 @@ import Bazarish
 
 Item {
     id: root
-    objectName: "profilePicker"
+    objectName: "accountPicker"
 
-    Component { id: wizardComponent; CreateProfileWizard {} }
+    Component { id: wizardComponent; CreateAccountWizard {} }
 
     property string pendingId: ""
     property string pendingDeleteId: ""
@@ -35,7 +35,7 @@ Item {
         if (typeof window !== "undefined") window.showToast("Fingerprint copied")
     }
 
-    // The application's own settings, reachable before any profile is open: the
+    // The application's own settings, reachable before any account is open: the
     // I2P router status lives behind them, and a client stuck building tunnels
     // has nowhere else to look.
     IconButton {
@@ -69,32 +69,32 @@ Item {
             smooth: true
         }
         Label {
-            text: App.hasOpenAccounts ? "Add or switch profile"
-                : (App.hasProfiles ? "Choose a profile" : "Create your first profile to begin")
+            text: App.hasOpenAccounts ? "Add or switch account"
+                : (App.hasAccounts ? "Choose an account" : "Create your first account to begin")
             color: Theme.textDim
             Layout.alignment: Qt.AlignHCenter
         }
 
         Frame {
             Layout.fillWidth: true
-            visible: App.hasProfiles
+            visible: App.hasAccounts
             background: Rectangle { color: Theme.surface; radius: Theme.radius; border.color: Theme.border }
             ListView {
                 id: list
                 implicitHeight: Math.min(contentHeight, 320)
                 width: parent.width
                 clip: true
-                model: App.profiles
+                model: App.accountList
                 delegate: ItemDelegate {
                     width: ListView.view.width
                     height: 64
                     onClicked: {
                         if (model.encrypted) {
-                            root.pendingId = model.profileId
+                            root.pendingId = model.accountId
                             passField.text = ""
                             passDialog.open()
                         } else {
-                            App.openProfile(model.profileId, "")
+                            App.openAccount(model.accountId, "")
                             root.closeIfSwitching()
                         }
                     }
@@ -132,7 +132,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                         }
-                        // One chip per row, always: a profile with no server says
+                        // One chip per row, always: an account with no server says
                         // so instead of leaving a hole where the others have text.
                         StatusChip {
                             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
@@ -150,7 +150,7 @@ Item {
                             iconName: "more"
                             onClicked: {
                                 root.rowFingerprint = model.fingerprint
-                                root.pendingDeleteId = model.profileId
+                                root.pendingDeleteId = model.accountId
                                 root.pendingDeleteName = model.name
                                 rowMenu.popup()
                             }
@@ -162,7 +162,7 @@ Item {
 
         Button {
             Layout.fillWidth: true
-            text: "Create profile"
+            text: "Create account"
             hoverEnabled: true
             onClicked: root.StackView.view.push(wizardComponent)
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
@@ -175,20 +175,20 @@ Item {
         id: passDialog
         anchors.centerIn: parent
         modal: true
-        title: "Unlock profile"
+        title: "Unlock account"
         closePolicy: Popup.CloseOnEscape
         // Submitting is not closing. Dialog.accept() takes the prompt away the
         // moment the button is pressed, which is before anyone knows whether the
         // passphrase worked - and then there is nowhere to say that it did not.
-        // This prompt closes when the profile opens, or when the user cancels.
+        // This prompt closes when the account opens, or when the user cancels.
         function submit() {
             passError.text = ""
-            App.openProfile(root.pendingId, passField.text)
+            App.openAccount(root.pendingId, passField.text)
         }
         onRejected: App.cancelUnlock()
         onOpened: passField.forceActiveFocus()
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        header: Label { text: "Unlock profile"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: "Unlock account"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.submit(); onRejected: passDialog.reject() }
         contentItem: ColumnLayout {
             spacing: 6
@@ -202,7 +202,7 @@ Item {
                 onAccepted: passDialog.submit()
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: passField.activeFocus ? Theme.accent : Theme.border }
             }
-            // The reason a passphrase did not open the profile belongs here.
+            // The reason a passphrase did not open the account belongs here.
             Label {
                 id: passError
                 visible: text.length > 0
@@ -224,8 +224,8 @@ Item {
                 passDialog.open()
             }
         }
-        // The profile opened: the prompt has done its job and this screen with it.
-        function onProfileUnlocked(id) {
+        // The account opened: the prompt has done its job and this screen with it.
+        function onAccountUnlocked(id) {
             passError.text = ""
             passDialog.close()
             root.closeIfSwitching()
@@ -237,12 +237,12 @@ Item {
         anchors.centerIn: parent
         modal: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
-        title: "Delete profile"
+        title: "Delete account"
         footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteDialog.accept(); onRejected: deleteDialog.reject() }
-        onAccepted: App.deleteProfile(root.pendingDeleteId)
+        onAccepted: App.deleteAccount(root.pendingDeleteId)
         // Destructive: brightest-neon outline, dark surface, light text.
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
-        header: Label { text: "Delete profile"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: "Delete account"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "Permanently delete \"" + root.pendingDeleteName + "\" and all its "
                 + "messages from this device? This cannot be undone."
@@ -259,7 +259,7 @@ Item {
             onTriggered: root.copyFingerprint(root.rowFingerprint)
         }
         ContextMenuItem {
-            text: "Delete profile"
+            text: "Delete account"
             danger: true
             onTriggered: deleteDialog.open()
         }

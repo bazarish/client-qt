@@ -35,17 +35,17 @@ Item {
     // An attachment card is shown both for an incoming message (which carries a
     // content-store ref) and for one's own outgoing file (which has the type set
     // locally before the upload finishes, so the ref is not there yet).
-    // A picture is its own kind of message: its bytes are in the profile, it is
+    // A picture is its own kind of message: its bytes are in the account, it is
     // drawn where it stands, and it never becomes a file card.
     readonly property bool isPicture: model.type === "image"
     readonly property bool isVoice: model.type === "voice"
     readonly property bool voicePlaying: delegate.isVoice && delegate.session
         && delegate.session.voicePlaying === model.protocolId
-    // The picture as this profile holds it. The revision in the URL is what makes
+    // The picture as this account holds it. The revision in the URL is what makes
     // an Image reload when the bytes arrive.
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
         ? "image://picture/" + model.protocolId + "?r=" + Pictures.revision : ""
-    // The profile holds no drawable picture for this message: the bytes came with
+    // The account holds no drawable picture for this message: the bytes came with
     // it, so nothing is on its way and there is nothing to ask for. No fallback,
     // no Save button - it says it is broken.
     readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
@@ -482,7 +482,7 @@ Item {
             }
 
             // A voice message: the shape of what was said, how long it runs and
-            // what it weighs. The audio is in the profile, decoded straight into
+            // what it weighs. The audio is in the account, decoded straight into
             // the speaker; the waveform was drawn from that same audio when the
             // message was stored.
             RowLayout {
@@ -497,7 +497,7 @@ Item {
                 }
 
                 // One bar per slice of the recording, read out of the stored hex
-                // profile. A message stored without one draws nothing rather
+                // account. A message stored without one draws nothing rather
                 // than an invented shape.
                 Row {
                     id: wave
@@ -803,14 +803,14 @@ Item {
                 onTriggered: delegate.reactRequested(model.protocolId)
             }
             ContextMenuItem {
-                // From the profile straight to the clipboard: no file in between.
+                // From the account straight to the clipboard: no file in between.
                 text: "Copy picture"
                 visible: delegate.pictureUrl.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.session.copyPicture(model.protocolId)
             }
             ContextMenuItem {
-                // A picture lives in the profile database; this is how it leaves
+                // A picture lives in the account database; this is how it leaves
                 // it as a file.
                 text: "Save as"
                 visible: delegate.pictureUrl.length > 0

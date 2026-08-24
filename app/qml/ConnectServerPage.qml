@@ -7,7 +7,7 @@ Item {
     id: root
     property var session: null
 
-    // Back to the profile list (no server needed to switch/create a profile).
+    // Back to the account list (no server needed to switch/create an account).
     IconButton {
         iconName: "back"
         font.pixelSize: 26
@@ -21,8 +21,8 @@ Item {
     // Connecting is minutes of real work over I2P: show it, with steps.
     ConnectProgressDialog { id: connectDialog; session: root.session }
 
-    // The same gear as on the profile list: a client waiting on I2P needs the
-    // router status, and there is no profile open to reach it through.
+    // The same gear as on the account list: a client waiting on I2P needs the
+    // router status, and there is no account open to reach it through.
     IconButton {
         iconName: "gear"
         anchors.top: parent.top
@@ -52,7 +52,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
         }
         Label {
-            text: "Your profile needs a serving server to send and receive. "
+            text: "Your account needs a serving server to send and receive. "
                 + "Everything stays end-to-end encrypted; a facade is just the last mile."
             color: Theme.textDim
             wrapMode: Text.Wrap
@@ -60,7 +60,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        // Which profile is being connected: name and fingerprint.
+        // Which account is being connected: name and fingerprint.
         Rectangle {
             visible: root.session && root.session.fingerprint.length > 0
             Layout.fillWidth: true
@@ -75,7 +75,7 @@ Item {
                 spacing: 2
                 Label {
                     text: root.session && root.session.displayName.length > 0
-                        ? root.session.displayName : "This profile"
+                        ? root.session.displayName : "This account"
                     color: Theme.text
                     font.weight: Font.Medium
                 }
@@ -91,7 +91,7 @@ Item {
 
         // The descriptor form (link paste or manual facades + fingerprint). The
         // user registers on the server's portal; this only connects.
-        // Prefilled from what the profile already holds: a connect that failed
+        // Prefilled from what the account already holds: a connect that failed
         // does not throw the server away - it is stored the moment it is
         // entered - and asking for the descriptor again reads as if it had.
         ServerConnectForm {

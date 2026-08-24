@@ -3,10 +3,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Settings that belong to the app rather than to any one profile: the embedded
-// I2P router is one engine for every profile, and the privacy switch here
-// overrides what each profile is allowed to do. They live in their own window so
-// a per-profile setting and an app-wide one can never be read as the same thing.
+// Settings that belong to the app rather than to any one account: the embedded
+// I2P router is one engine for every account, and the privacy switch here
+// overrides what each account is allowed to do. They live in their own window so
+// a per-account setting and an app-wide one can never be read as the same thing.
 Popup {
     id: root
     // Back to the page this opened from (Settings); the close button exits.
@@ -56,10 +56,10 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "I2P only, every profile"; color: Theme.text }
+                            Label { text: "I2P only, every account"; color: Theme.text }
                             Label {
-                                text: "Refuses clearnet for every profile, whatever each one allows on its "
-                                    + "own - this switch wins. A profile whose server publishes no I2P "
+                                text: "Refuses clearnet for every account, whatever each one allows on its "
+                                    + "own - this switch wins. An account whose server publishes no I2P "
                                     + "address goes offline while it is on. Fetching the I2P network "
                                     + "database stays allowed either way: it carries no identity, and "
                                     + "without it there is no I2P to use."
@@ -81,10 +81,10 @@ Popup {
                             Layout.fillWidth: true
                             Label { text: "Portable mode"; color: Theme.text }
                             Label {
-                                text: "Profiles, history and the I2P router's state live in a "
+                                text: "Accounts, history and the I2P router's state live in a "
                                     + "bazarish_data folder next to the program instead of your user "
                                     + "folder, so a copy on a stick carries everything with it. "
-                                    + "Switching moves what is already there, closes every profile "
+                                    + "Switching moves what is already there, closes every account "
                                     + "and needs the app started again."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
@@ -114,8 +114,8 @@ Popup {
                     spacing: 8
                     Label { text: "Embedded I2P router"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     Label {
-                        text: "One router serves every profile: its tunnels, its network database and "
-                            + "the addresses each profile is reached at."
+                        text: "One router serves every account: its tunnels, its network database and "
+                            + "the addresses each account is reached at."
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -159,7 +159,7 @@ Popup {
             wrapMode: Text.Wrap
             color: Theme.textDim
             padding: 14
-            text: "Every profile closes, the data is moved, and Bazarish has to be started "
+            text: "Every account closes, the data is moved, and Bazarish has to be started "
                 + "again. Nothing is deleted."
         }
     }

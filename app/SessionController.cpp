@@ -137,7 +137,7 @@ private:
     QString status_ = QStringLiteral("Failed");
 };
 
-// Keeping this profile's delegation alive. The transient the server operates the
+// Keeping this account's delegation alive. The transient the server operates the
 // destination with lasts 7 days, so it is re-issued about 2 days early, with a
 // few hours of per-device jitter so several devices do not all issue at once
 // (the poll-before-issue inside stands the losers down). Checked at most hourly:
@@ -387,7 +387,7 @@ void SessionWorker::startEventWaiter()
     }
     eventWaiterRunning_ = std::make_shared<std::atomic<bool>>(true);
     // The loop owns a copy of everything it touches and a shared flag, so closing
-    // the profile can leave it to finish on its own.
+    // the account can leave it to finish on its own.
     eventWaiter_ = std::thread([this, context, running = eventWaiterRunning_]() {
         // One client for the whole loop: each one raises an outbound destination,
         // and building a fresh one per wait meant a new dialer every time.
@@ -438,7 +438,7 @@ void SessionWorker::stopEventWaiter()
     }
 }
 
-void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
+void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
 {
     // Bound concurrent downloads so a burst never spawns an unreasonable number of
     // throwaway I2P destinations at once.
@@ -464,9 +464,9 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected,
         connected ? "connected" : "");
-    // Settings the profile carries, so the window shows what is actually in force
+    // Settings the account carries, so the window shows what is actually in force
     // rather than its own defaults.
-    emit profileSettings(session_->acceptCalls(), session_->allowClearnet());
+    emit accountSettings(session_->acceptCalls(), session_->allowClearnet());
     emitContacts();
     // Seed the avatar store from disk: our own avatar plus every contact that has
     // one, so faces appear before any sync runs.
@@ -488,7 +488,7 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
     }
     emitFacadeInfo();
     // Serving a file is the sender's half of a transfer, and it reports through
-    // the same channel as a download. Installed once, for as long as the profile
+    // the same channel as a download. Installed once, for as long as the account
     // is open; the download path re-points it at itself while it runs.
     session_->setTransferHandler([this](const bazarish::client::TransferEvent& event) {
         const QString id = QString::fromStdString(event.messageId);
@@ -511,9 +511,9 @@ void SessionWorker::openProfile(const QString& dir, const QString& passphrase)
             break;  // a stage, not bytes: the line above is the whole report
         }
     });
-    // Local facts, before anything that touches a server: whether this profile
+    // Local facts, before anything that touches a server: whether this account
     // holds a destination key and at what address.
-    // The invite is data this profile already holds; hand it over at open so the
+    // The invite is data this account already holds; hand it over at open so the
     // sheet has something to show without a request.
     try {
         emit inviteReady(QString::fromStdString(session_->inviteUri()));
@@ -692,7 +692,7 @@ void SessionWorker::sync()
             messages = session_->sync(false);
         } catch (const bazarish::client::ApiError& error) {
             // A connect that died halfway - no I2P yet, the server unreachable -
-            // leaves the profile holding a server this device was never
+            // leaves the account holding a server this device was never
             // registered with, and nothing else would ever register it: the
             // account is on the server, the device is not. Finish that here
             // rather than answering "not reachable" until the user reconnects
@@ -714,7 +714,7 @@ void SessionWorker::sync()
         emit syncReachable(false, QString::fromUtf8(error.what()));
         // Fetching the mailbox and asking after a send are separate requests, and
         // one failing says nothing about the other. Leaving this out kept every
-        // message this profile had sent at "at your server" for as long as the
+        // message this account had sent at "at your server" for as long as the
         // fetch kept failing - long after the recipient's server had it.
         reconcilePendingSends();
         return;  // transient (server momentarily unreachable); next tick retries
@@ -746,7 +746,7 @@ void SessionWorker::sync()
                 = static_cast<qint64>(bazarish::randomBytes(1)[0]) * kTransientJitterSeconds / 255;
             if (session_->refreshI2pTransientIfDue(
                     QDateTime::currentSecsSinceEpoch(), kTransientRenewLeadSeconds - jitter)) {
-                bazarish::log::info("delegation re-issued for this profile");
+                bazarish::log::info("delegation re-issued for this account");
                 refreshI2pStatus();
             }
         } catch (const std::exception& error) {
@@ -1195,8 +1195,8 @@ void SessionWorker::startContactAdd(const bool byUsername, const QString& uriOrA
     const QString& intro, const QString& opId)
 {
     if (!session_) {
-        emit contactAddDone(opId, false, QStringLiteral("no profile open"));
-        emit actionFailed(QStringLiteral("no profile open"));
+        emit contactAddDone(opId, false, QStringLiteral("no account open"));
+        emit actionFailed(QStringLiteral("no account open"));
         return;
     }
     // Snapshot the transport context on this (worker) thread; resolveContactCard
@@ -1222,7 +1222,7 @@ void SessionWorker::startContactAdd(const bool byUsername, const QString& uriOrA
         resolvedAdds_ = std::make_shared<ResolvedContactAddQueue>();
     }
     // The detached thread captures only copies and a shared_ptr to the result
-    // queue - never session_ or this - so it is safe even if the profile is closed
+    // queue - never session_ or this - so it is safe even if the account is closed
     // while the fetch is in flight. The worker finalizes the result on a later sync.
     std::shared_ptr<ResolvedContactAddQueue> queue = resolvedAdds_;
     try {
@@ -1440,7 +1440,7 @@ void SessionWorker::clearChatForEveryone(const QString& peer)
 void SessionWorker::signLogin(const QString& challenge)
 {
     if (!session_) {
-        emit actionFailed(QStringLiteral("no profile open"));
+        emit actionFailed(QStringLiteral("no account open"));
         return;
     }
     try {
@@ -1657,8 +1657,8 @@ void SessionWorker::allowClearnet(const bool allow)
     }
     try {
         session_->setAllowClearnet(allow);
-        emit actionOk(allow ? "Clearnet allowed again for this profile."
-                            : "This profile is back to I2P only.");
+        emit actionOk(allow ? "Clearnet allowed again for this account."
+                            : "This account is back to I2P only.");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1713,7 +1713,7 @@ void SessionWorker::saveAttachment(
     // Run the request off the worker thread (on the pool) so waiting on the peer
     // never blocks sends or sync; the transfer itself uses its own one-time I2P
     // endpoints. The task captures `this`, session_ and the cancel flag, all kept
-    // alive until the pool is drained (see the destructor and openProfile). Emits
+    // alive until the pool is drained (see the destructor and openAccount). Emits
     // are skipped once cancelled, so a tearing-down session is never signalled.
     Session* const session = session_.get();
     if (session == nullptr) {
@@ -1727,7 +1727,7 @@ void SessionWorker::saveAttachment(
     const std::string destStd = destPath.toStdString();
     downloadPool_.start([this, session, messageIdStd, peerStd, destStd, token]() {
         try {
-            // The handler installed when the profile opened reports every transfer,
+            // The handler installed when the account opened reports every transfer,
             // in both directions, keyed by peer and file id. Replacing it here left
             // the receiving side with no stages and pointed a concurrent send's
             // events at this one download.
@@ -1742,10 +1742,10 @@ void SessionWorker::saveAttachment(
     });
 }
 
-void SessionWorker::exportProfile(const QString& path, const QString& password)
+void SessionWorker::exportAccount(const QString& path, const QString& password)
 {
     try {
-        session_->exportProfile(path.toStdString(), password.toStdString());
+        session_->exportAccount(path.toStdString(), password.toStdString());
         emit actionOk("Backup exported.");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1770,7 +1770,7 @@ SessionController::SessionController(QObject* parent)
 
 
     // Commands -> worker (queued across threads).
-    connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openProfile);
+    connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openAccount);
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndRegister);
     connect(worker_, &SessionWorker::connectProgress, this, &SessionController::onConnectProgress);
     connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
@@ -1809,7 +1809,7 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onDownloadStage);
     connect(worker_, &SessionWorker::downloadFinished, this,
         &SessionController::onDownloadFinished);
-    connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportProfile);
+    connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportAccount);
     connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
     connect(this, &SessionController::requestRebuildI2p, worker_, &SessionWorker::rebuildI2pLinks);
     connect(this, &SessionController::requestCancelTransfer, worker_,
@@ -1842,7 +1842,7 @@ SessionController::SessionController(QObject* parent)
 
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
-    connect(worker_, &SessionWorker::profileSettings, this,
+    connect(worker_, &SessionWorker::accountSettings, this,
         [this](const bool acceptCalls, const bool allowClearnet) {
             if (acceptCalls_ != acceptCalls) {
                 acceptCalls_ = acceptCalls;
@@ -1986,28 +1986,28 @@ SessionController::~SessionController()
     thread_.wait();
 }
 
-// The profile's own store, opened on demand: a second connection to the same
+// The account's own store, opened on demand: a second connection to the same
 // database the worker's session holds, which is what SQLite is built for.
-client::ProfileDb& SessionController::profileDb()
+client::AccountDb& SessionController::accountDb()
 {
-    if (!profileDb_) {
-        profileDb_ = std::make_unique<client::ProfileDb>(
-            profilePath_.toStdString(), profilePassphrase_.toStdString());
+    if (!accountDb_) {
+        accountDb_ = std::make_unique<client::AccountDb>(
+            accountPath_.toStdString(), accountPassphrase_.toStdString());
     }
-    return *profileDb_;
+    return *accountDb_;
 }
 
 void SessionController::open(
-    const QString& file, const QString& profileId, const QString& passphrase)
+    const QString& file, const QString& accountId, const QString& passphrase)
 {
-    profileId_ = profileId;
-    profilePath_ = file;
-    profilePassphrase_ = passphrase;
-    // Everything a profile keeps lives in its one encrypted database; the
+    accountId_ = accountId;
+    accountPath_ = file;
+    accountPassphrase_ = passphrase;
+    // Everything an account keeps lives in its one encrypted database; the
     // transcript is its largest table, the rest are named rows.
-    store_.open(profileId, file, passphrase);
+    store_.open(accountId, file, passphrase);
     const QJsonDocument recents = QJsonDocument::fromJson(
-        QByteArray::fromStdString(profileDb().text("recent-reactions")));
+        QByteArray::fromStdString(accountDb().text("recent-reactions")));
     for (const QJsonValue& entry : recents.array()) {
         recentReactions_ << entry.toString();
     }
@@ -2567,7 +2567,7 @@ void SessionController::sendPicture(const QString& fileUrl)
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
     // The prepared file is right here, so the sender's bubble draws it without
-    // asking anyone: the core stores the same bytes in the profile.
+    // asking anyone: the core stores the same bytes in the account.
     pictureOwners_.insert(m.protocolId, m.id);
     QFile prepared(localPath);
     const bool drawable = prepared.open(QIODevice::ReadOnly)
@@ -2955,7 +2955,7 @@ QUrl SessionController::defaultSaveUrl(const QString& fileName) const
     return QUrl::fromLocalFile(QDir(dir).filePath(name));
 }
 
-void SessionController::exportProfile(const QString& fileUrl, const QString& password)
+void SessionController::exportAccount(const QString& fileUrl, const QString& password)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (!localPath.isEmpty()) {
@@ -3365,7 +3365,7 @@ void SessionController::onVoiceLoaded(const QString& messageId, const QByteArray
 
 
 // Brings the pictures of the messages now on screen into the cache. The bytes
-// come out of the profile through this side's own connection: routing the read
+// come out of the account through this side's own connection: routing the read
 // through the session worker put it behind whatever that thread was doing - a
 // connect, a sync - which is why a chat opened on grey squares and filled in
 // minutes later.
@@ -3475,7 +3475,7 @@ void SessionController::onOpened(const QString& fingerprint, const QString& disp
     connectionNote_ = connectionNote;
     emit identityChanged();
     emit connectedChanged();
-    // A connected profile starts syncing on open, so it comes up online.
+    // A connected account starts syncing on open, so it comes up online.
     if (online_ != connected) {
         online_ = connected;
         emit onlineChanged();
@@ -3749,7 +3749,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
 
     showInActiveView(m, false);
     // A picture arrives inside the message, so there is nothing to fetch: the
-    // core has already put it in the profile, and this reads it back to draw.
+    // core has already put it in the account, and this reads it back to draw.
     if (m.type == QStringLiteral("image") && !m.protocolId.isEmpty()) {
         pictureOwners_.insert(m.protocolId, m.id);
         // The core has just stored it; read it back through this side's own
@@ -4161,7 +4161,7 @@ void SessionController::rememberReaction(const QString& emoji)
         array.append(entry);
     }
     const QByteArray text = QJsonDocument(array).toJson(QJsonDocument::Compact);
-    profileDb().putText("recent-reactions", text.toStdString());
+    accountDb().putText("recent-reactions", text.toStdString());
     emit recentReactionsChanged();
 }
 

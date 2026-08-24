@@ -14,7 +14,7 @@ namespace bazarish::client {
 // across serving servers.
 struct I2pMasterKey {
     // Serialized i2pd PrivateKeys for the master destination. Persist this at
-    // rest under the profile passphrase - it is the user's long-term routing
+    // rest under the account passphrase - it is the user's long-term routing
     // identity, as sensitive as the messaging identity key.
     Bytes privateKeys;
     // The destination's base32 address, without the ".b32.i2p" suffix.

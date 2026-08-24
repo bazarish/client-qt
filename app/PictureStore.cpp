@@ -150,7 +150,7 @@ void PictureStore::evictLocked()
             continue;
         }
         // The picture on the way out costs nothing to bring back: its bytes are
-        // in the profile, and this is a cache, not the copy.
+        // in the account, and this is a cache, not the copy.
         decodedBytes_ -= decodedSize(found->decoded);
         storedBytes_ -= found->bytes.size();
         entries_.erase(found);

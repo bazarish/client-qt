@@ -7,7 +7,7 @@ Item {
     property int size: Theme.avatar
     // When true, tapping the avatar opens a large, full-image preview. Off by
     // default so avatars inside a clickable row (chat list, account switcher) keep
-    // routing the tap to the row; enabled on the profile/contact/call views.
+    // routing the tap to the row; enabled on the account/contact/call views.
     property bool enlargeable: false
     width: size
     height: size

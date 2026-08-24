@@ -57,20 +57,20 @@ ApplicationWindow {
         initialItem: App.session ? mainComponent : pickerComponent
     }
 
-    Component { id: pickerComponent; ProfilePicker {} }
+    Component { id: pickerComponent; AccountPicker {} }
     Component { id: mainComponent; MainView {} }
 
     Connections {
         target: App
-        function onProfileOpened() { stack.replace(null, mainComponent) }
-        function onProfileOpenFailed(error) { window.showToast(error) }
+        function onAccountOpened() { stack.replace(null, mainComponent) }
+        function onAccountOpenFailed(error) { window.showToast(error) }
         // The data moved: the embedded router holds its directory for the life of
         // the process, so there is nothing to do here but say so and stand down.
         function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
         // "Add account": show the picker over the running session(s).
         function onShowPicker() {
-            if (stack.currentItem && stack.currentItem.objectName !== "profilePicker") {
+            if (stack.currentItem && stack.currentItem.objectName !== "accountPicker") {
                 stack.push(pickerComponent)
             }
         }
@@ -176,7 +176,7 @@ ApplicationWindow {
             font.weight: Font.DemiBold
             padding: 14
         }
-        // No way out but out: the data has already moved, every profile is
+        // No way out but out: the data has already moved, every account is
         // closed, and the embedded router still points at the directory that is
         // no longer there. Carrying on in this window would be pretending.
         footer: DialogButtons {

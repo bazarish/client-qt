@@ -97,7 +97,7 @@ void testLoadMaster()
     CHECK(threw);
 }
 
-// A profile with no destination adopts an existing master from a .dat blob; the
+// A account with no destination adopts an existing master from a .dat blob; the
 // address persists across reopen, and a second load is refused (a different key
 // would change the user's address).
 void testSessionLoadsDat()
@@ -138,7 +138,7 @@ void testSessionPersistsAndDelegates()
     std::string address;
     {
         Session session = Session::create(dir, "pw", "alice");
-        CHECK(!session.hasI2pDestination());  // free profiles use the server pool
+        CHECK(!session.hasI2pDestination());  // free accounts use the server pool
         address = session.ensureI2pDestination();
         CHECK(address.size() == 52);
         CHECK(session.hasI2pDestination());

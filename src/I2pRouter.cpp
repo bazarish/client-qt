@@ -86,7 +86,7 @@ ConnectProgressFn& progressSink()
     return sink;
 }
 // Full privacy mode (default off): when on, the transport refuses every clearnet
-// facade, so all traffic runs over I2P (and a profile with no I2P facade is
+// facade, so all traffic runs over I2P (and an account with no I2P facade is
 // explicitly offline). Consulted at request time, like g_i2pEnabled.
 std::atomic<bool> g_fullPrivacy{false};
 }  // namespace
@@ -253,7 +253,7 @@ std::shared_ptr<bazarish::i2p::Endpoint> facadeLinkFor(
             bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
             bazarish::i2p::kDefaultTunnelQuantity, /*published=*/false, "Facade link", owner});
     };
-    // One per profile. Both of a profile's clients - the transport and the request
+    // One per account. Both of an account's clients - the transport and the request
     // parked waiting for news - dial through it; they need their own request
     // queues, not their own addresses, and a destination carries many streams at
     // once. Held by weak_ptr, so it goes down with its last user.
@@ -283,7 +283,7 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
     if (g_i2pEnabled.load()) {
         // An engine started on an empty netDb has nobody to learn the network
         // from: it builds no tunnel, and every destination it is asked for dies
-        // waiting. Left down until a profile hands it a netDb (or public reseeds
+        // waiting. Left down until an account hands it a netDb (or public reseeds
         // are allowed), which is also what starts it.
         if (!router && !g_publicReseedAllowed.load()
             && knownRouterCount(dataDir) < kMinKnownRouters) {

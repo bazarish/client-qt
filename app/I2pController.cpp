@@ -4,7 +4,7 @@
 #include <QVariantMap>
 
 #include "I2pRouter.hpp"
-#include "ProfileManager.hpp"
+#include "AccountManager.hpp"
 
 #include <bazarish/I2p.hpp>
 
@@ -18,23 +18,23 @@
 namespace bazarish::app {
 
 namespace {
-std::filesystem::path profilesRoot()
+std::filesystem::path accountsRoot()
 {
-    if (const char* const env = std::getenv("BAZARISH_PROFILES_DIR");
+    if (const char* const env = std::getenv("BAZARISH_ACCOUNTS_DIR");
         env != nullptr && env[0] != '\0') {
         return std::filesystem::path(env);
     }
-    return client::ProfileManager::defaultRoot();
+    return client::AccountManager::defaultRoot();
 }
 
 // The router serves the whole installation, so its state sits beside the
-// profiles directory rather than among the profiles themselves.
+// accounts directory rather than among the accounts themselves.
 std::filesystem::path i2pRoot()
 {
-    return profilesRoot().parent_path() / "i2p";
+    return accountsRoot().parent_path() / "i2p";
 }
 
-bazarish::i2p::Privacy privacyToProfile(const int level)
+bazarish::i2p::Privacy privacyForLevel(const int level)
 {
     switch (level) {
         case kMinimalPrivacyLevel: return bazarish::i2p::Privacy::eMinimal;
@@ -74,7 +74,7 @@ I2pController::I2pController(QObject* parent)
     }
     client::setI2pEnabled(enabled_);
     bazarish::i2p::setI2pLogging(loggingEnabled_);
-    client::setTunnelPrivacy(privacyToProfile(privacyLevel_));
+    client::setTunnelPrivacy(privacyForLevel(privacyLevel_));
     // When enabled, bring the embedded router up at launch so it passively learns
     // the network (routers + floodfills) even before any session uses it; when
     // disabled it stays down.
@@ -84,17 +84,17 @@ I2pController::I2pController(QObject* parent)
 
 std::filesystem::path I2pController::settingPath() const
 {
-    return profilesRoot() / ".i2p-enabled";
+    return accountsRoot() / ".i2p-enabled";
 }
 
 std::filesystem::path I2pController::loggingPath() const
 {
-    return profilesRoot() / ".i2p-logging";
+    return accountsRoot() / ".i2p-logging";
 }
 
 std::filesystem::path I2pController::privacyPath() const
 {
-    return profilesRoot() / ".i2p-privacy";
+    return accountsRoot() / ".i2p-privacy";
 }
 
 void I2pController::reconcileRouter()
@@ -140,7 +140,7 @@ void I2pController::setPrivacyLevel(const int level)
         return;
     }
     privacyLevel_ = wanted;
-    client::setTunnelPrivacy(privacyToProfile(wanted));
+    client::setTunnelPrivacy(privacyForLevel(wanted));
     std::ofstream out(privacyPath(), std::ios::trunc);
     out << wanted;
     emit privacyLevelChanged();
@@ -185,14 +185,14 @@ void I2pController::refresh()
             transports << row;
         }
         transports.sort();
-        // One router serves every open profile, so a destination says whose it is
-        // as soon as there is more than one profile to confuse it with.
-        const bool manyProfiles = client::ProfileManager(profilesRoot()).list().size() > 1;
+        // One router serves every open account, so a destination says whose it is
+        // as soon as there is more than one account to confuse it with.
+        const bool manyAccounts = client::AccountManager(accountsRoot()).list().size() > 1;
         for (const bazarish::i2p::LocalDestination& dest : router->localDestinations()) {
             QVariantMap row;
             const QString what = dest.label.empty() ? QStringLiteral("Destination")
                                                     : QString::fromStdString(dest.label);
-            row[QStringLiteral("label")] = (manyProfiles && !dest.owner.empty())
+            row[QStringLiteral("label")] = (manyAccounts && !dest.owner.empty())
                 ? (QString::fromStdString(dest.owner) + QStringLiteral(": ") + what)
                 : what;
             row[QStringLiteral("host")] = QString::fromStdString(dest.host);

@@ -1,5 +1,5 @@
 // Bazarish project (c) 2026
-#include "ProfileKey.hpp"
+#include "AccountKey.hpp"
 
 #include <openssl/evp.h>
 #include <openssl/kdf.h>
@@ -15,7 +15,7 @@
 #include <mutex>
 #include <stdexcept>
 
-namespace bazarish::client::profilekey {
+namespace bazarish::client::accountkey {
 
 namespace {
 
@@ -29,13 +29,13 @@ constexpr std::size_t kSaltBytes = 16;     // Argon2id salt
 constexpr std::size_t kNonceBytes = 12;    // AES-GCM nonce
 constexpr std::size_t kTagBytes = 16;      // AES-GCM tag
 
-// Argon2id cost for a profile the user gave a passphrase: memory-hard, so a
+// Argon2id cost for an account the user gave a passphrase: memory-hard, so a
 // stolen sidecar is expensive to attack with a GPU rather than merely slow.
 // Roughly a third of a second on a desktop; the numbers are written into the
-// sidecar, so they can be raised later without stranding existing profiles.
+// sidecar, so they can be raised later without stranding existing accounts.
 constexpr std::uint32_t kMemoryKiB = 64 * 1024;
 constexpr std::uint32_t kPasses = 3;
-// A profile with no passphrase has nothing to stretch - the wrapping "secret" is
+// An account with no passphrase has nothing to stretch - the wrapping "secret" is
 // a constant in this file - so it pays the smallest cost the format allows
 // instead of a third of a second for nothing.
 constexpr std::uint32_t kOpenMemoryKiB = 8 * 1024;
@@ -44,7 +44,7 @@ constexpr std::uint32_t kOpenPasses = 1;
 // context; one lane needs no such setup.
 constexpr std::uint32_t kLanes = 1;
 
-// What a profile with no passphrase is wrapped under. It is not a secret - it is
+// What an account with no passphrase is wrapped under. It is not a secret - it is
 // right here - so it protects nothing; it keeps one code path and stops the file
 // from being readable by accident.
 constexpr const char* kOpenSecret = "bazarish";
@@ -58,7 +58,7 @@ struct Sidecar {
     std::array<unsigned char, kTagBytes> tag{};
 };
 
-// The unwrapped keys of the profiles opened in this process: a profile is opened
+// The unwrapped keys of the accounts opened in this process: an account is opened
 // by more than one connection (its state and its transcript), and the derivation
 // is the whole cost of opening it. The entry remembers which passphrase produced
 // it, so the cache can never hand the key to a caller that does not have it.
@@ -74,10 +74,10 @@ Bytes verifierOf(const std::string& passphrase)
 {
     Bytes digest(EVP_MAX_MD_SIZE);
     unsigned int size = 0;
-    const std::string labelled = "bazarish-profile-key\0" + passphrase;
+    const std::string labelled = "bazarish-account-key\0" + passphrase;
     if (EVP_Digest(labelled.data(), labelled.size(), digest.data(), &size, EVP_sha256(), nullptr)
         != 1) {
-        throw std::runtime_error("profile key: could not hash the passphrase");
+        throw std::runtime_error("account key: could not hash the passphrase");
     }
     digest.resize(size);
     return digest;
@@ -91,7 +91,7 @@ std::string secretOf(const std::string& passphrase)
 void fill(unsigned char* const out, const std::size_t size)
 {
     if (RAND_bytes(out, static_cast<int>(size)) != 1) {
-        throw std::runtime_error("profile key: no randomness available");
+        throw std::runtime_error("account key: no randomness available");
     }
 }
 
@@ -100,12 +100,12 @@ Bytes wrappingKey(const std::string& passphrase, const Sidecar& sidecar)
 {
     EVP_KDF* const kdf = EVP_KDF_fetch(nullptr, "ARGON2ID", nullptr);
     if (kdf == nullptr) {
-        throw std::runtime_error("profile key: this OpenSSL has no Argon2id");
+        throw std::runtime_error("account key: this OpenSSL has no Argon2id");
     }
     EVP_KDF_CTX* const ctx = EVP_KDF_CTX_new(kdf);
     EVP_KDF_free(kdf);
     if (ctx == nullptr) {
-        throw std::runtime_error("profile key: could not start the derivation");
+        throw std::runtime_error("account key: could not start the derivation");
     }
     const std::string secret = secretOf(passphrase);
     std::uint32_t memory = sidecar.memoryKiB;
@@ -126,7 +126,7 @@ Bytes wrappingKey(const std::string& passphrase, const Sidecar& sidecar)
     const int ok = EVP_KDF_derive(ctx, derived.data(), derived.size(), params);
     EVP_KDF_CTX_free(ctx);
     if (ok <= 0) {
-        throw std::runtime_error("profile key: the derivation failed");
+        throw std::runtime_error("account key: the derivation failed");
     }
     return derived;
 }
@@ -137,7 +137,7 @@ void seal(const Bytes& wrapping, Sidecar& sidecar, const Bytes& key)
 {
     EVP_CIPHER_CTX* const ctx = EVP_CIPHER_CTX_new();
     if (ctx == nullptr) {
-        throw std::runtime_error("profile key: no cipher context");
+        throw std::runtime_error("account key: no cipher context");
     }
     int length = 0;
     const bool ok
@@ -152,7 +152,7 @@ void seal(const Bytes& wrapping, Sidecar& sidecar, const Bytes& key)
             == 1;
     EVP_CIPHER_CTX_free(ctx);
     if (!ok) {
-        throw std::runtime_error("profile key: could not seal the key");
+        throw std::runtime_error("account key: could not seal the key");
     }
 }
 
@@ -160,7 +160,7 @@ bool unseal(const Bytes& wrapping, const Sidecar& sidecar, Bytes& key)
 {
     EVP_CIPHER_CTX* const ctx = EVP_CIPHER_CTX_new();
     if (ctx == nullptr) {
-        throw std::runtime_error("profile key: no cipher context");
+        throw std::runtime_error("account key: no cipher context");
     }
     key.assign(kKeyBytes, 0);
     int length = 0;
@@ -198,7 +198,7 @@ void write(const fs::path& file, const Sidecar& sidecar)
     out.write(reinterpret_cast<const char*>(sidecar.sealed.data()), sidecar.sealed.size());
     out.write(reinterpret_cast<const char*>(sidecar.tag.data()), sidecar.tag.size());
     if (!out) {
-        throw std::runtime_error("profile key: could not write " + file.string());
+        throw std::runtime_error("account key: could not write " + file.string());
     }
 }
 
@@ -208,7 +208,7 @@ Sidecar read(const fs::path& file)
     std::array<char, sizeof kMagic> magic{};
     in.read(magic.data(), magic.size());
     if (!in || std::memcmp(magic.data(), kMagic, sizeof kMagic) != 0) {
-        throw std::runtime_error("profile key: " + file.string() + " is not a key file");
+        throw std::runtime_error("account key: " + file.string() + " is not a key file");
     }
     Sidecar sidecar;
     for (std::uint32_t* const value : {&sidecar.memoryKiB, &sidecar.passes}) {
@@ -224,12 +224,12 @@ Sidecar read(const fs::path& file)
     in.read(reinterpret_cast<char*>(sidecar.sealed.data()), sidecar.sealed.size());
     in.read(reinterpret_cast<char*>(sidecar.tag.data()), sidecar.tag.size());
     if (!in) {
-        throw std::runtime_error("profile key: " + file.string() + " is truncated");
+        throw std::runtime_error("account key: " + file.string() + " is truncated");
     }
     return sidecar;
 }
 
-// Creates the sidecar for a profile that has none: a fresh database key, sealed.
+// Creates the sidecar for an account that has none: a fresh database key, sealed.
 Bytes create(const fs::path& file, const std::string& passphrase)
 {
     Sidecar sidecar;
@@ -251,7 +251,7 @@ Bytes open(const fs::path& file, const std::string& passphrase)
     const Sidecar sidecar = read(file);
     Bytes key;
     if (!unseal(wrappingKey(passphrase, sidecar), sidecar, key)) {
-        throw std::runtime_error("profile key: wrong passphrase");
+        throw std::runtime_error("account key: wrong passphrase");
     }
     return key;
 }
@@ -301,7 +301,7 @@ void rewrap(const fs::path& databaseFile, const std::string& passphrase)
         const std::lock_guard<std::mutex> lock(g_cacheMutex);
         const auto found = g_cache.find(databaseFile);
         if (found == g_cache.end()) {
-            throw std::runtime_error("profile key: the profile is not open");
+            throw std::runtime_error("account key: the account is not open");
         }
         key = found->second.key;
     }
@@ -322,4 +322,4 @@ void forget(const fs::path& databaseFile)
     g_cache.erase(databaseFile);
 }
 
-}  // namespace bazarish::client::profilekey
+}  // namespace bazarish::client::accountkey

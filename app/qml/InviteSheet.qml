@@ -18,7 +18,7 @@ Popup {
     width: Math.min(460, parent ? parent.width - 24 : 460)
     padding: 18
     onOpened: {
-        // Straight from what this profile stores - no request, works offline.
+        // Straight from what this account stores - no request, works offline.
         uri = session ? session.ownInvite : ""
         unavailable = ""
         // Only when there is nothing stored is anything asked of the server: that

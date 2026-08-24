@@ -59,34 +59,34 @@ void printUsage()
         "A stateful command-line messenger client.\n"
         "\n"
         "Usage:\n"
-        "  bazarish-client init <profile> <facade-url[,facade-url...]> <server-fp>\n"
-        "  bazarish-client subscribe <profile> [days]\n"
-        "  bazarish-client whoami <profile>\n"
-        "  bazarish-client i2p-enable <profile> [keyfile.dat]\n"
-        "  bazarish-client i2p-publish <profile>\n"
-        "  bazarish-client i2p-cancel <profile>\n"
-        "  bazarish-client i2p-status <profile>\n"
-        "  bazarish-client devices <profile>\n"
-        "  bazarish-client forget-device <profile> <client-id>\n"
-        "  bazarish-client sign-login <profile> <challenge>\n"
-        "  bazarish-client invite <profile>\n"
-        "  bazarish-client request <profile> <peer-fp> <text>\n"
-        "  bazarish-client add-invite <profile> <invite-file> <text>\n"
-        "  bazarish-client add-user <profile> <alias> <text>\n"
-        "  bazarish-client alias-cert <profile> <alias>\n"
-        "  bazarish-client send <profile> <peer-fp> <text>\n"
-        "  bazarish-client send-file <profile> <peer-fp> <file>\n"
-        "  bazarish-client send-command <profile> <peer-fp> <command> [args]\n"
-        "  bazarish-client send-callback <profile> <peer-fp> <data> [ref]\n"
-        "  bazarish-client call <profile> <peer-fp> [seconds]\n"
-        "  bazarish-client call-answer <profile> [seconds]\n"
-        "  bazarish-client get-file <profile> <peer-fp> <message-id> <out>\n"
-        "  bazarish-client unsend <profile> <message-id>\n"
-        "  bazarish-client sync <profile> [--privacy <minimal|middle|max>]\n"
-        "  bazarish-client export <profile> <out-file>\n"
-        "  bazarish-client import <in-file> <profile>\n"
+        "  bazarish-client init <account> <facade-url[,facade-url...]> <server-fp>\n"
+        "  bazarish-client subscribe <account> [days]\n"
+        "  bazarish-client whoami <account>\n"
+        "  bazarish-client i2p-enable <account> [keyfile.dat]\n"
+        "  bazarish-client i2p-publish <account>\n"
+        "  bazarish-client i2p-cancel <account>\n"
+        "  bazarish-client i2p-status <account>\n"
+        "  bazarish-client devices <account>\n"
+        "  bazarish-client forget-device <account> <client-id>\n"
+        "  bazarish-client sign-login <account> <challenge>\n"
+        "  bazarish-client invite <account>\n"
+        "  bazarish-client request <account> <peer-fp> <text>\n"
+        "  bazarish-client add-invite <account> <invite-file> <text>\n"
+        "  bazarish-client add-user <account> <alias> <text>\n"
+        "  bazarish-client alias-cert <account> <alias>\n"
+        "  bazarish-client send <account> <peer-fp> <text>\n"
+        "  bazarish-client send-file <account> <peer-fp> <file>\n"
+        "  bazarish-client send-command <account> <peer-fp> <command> [args]\n"
+        "  bazarish-client send-callback <account> <peer-fp> <data> [ref]\n"
+        "  bazarish-client call <account> <peer-fp> [seconds]\n"
+        "  bazarish-client call-answer <account> [seconds]\n"
+        "  bazarish-client get-file <account> <peer-fp> <message-id> <out>\n"
+        "  bazarish-client unsend <account> <message-id>\n"
+        "  bazarish-client sync <account> [--privacy <minimal|middle|max>]\n"
+        "  bazarish-client export <account> <out-file>\n"
+        "  bazarish-client import <in-file> <account>\n"
         "\n"
-        "<profile> is a directory holding this client's identity and contacts.\n"
+        "<account> is a directory holding this client's identity and contacts.\n"
         "request/add-* bootstrap a contact (E2E-encrypted to the peer's prekey).\n"
         "invite prints a self-verifying bazarish:// link and QR codes carrying the\n"
         "full trust chain (no server trust needed). add-invite consumes such a\n"
@@ -106,7 +106,7 @@ void printUsage()
 
 int runInit(const std::vector<std::string>& args)
 {
-    // init <profile> <facade-url[,facade-url...]> <server-fp>
+    // init <account> <facade-url[,facade-url...]> <server-fp>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -170,7 +170,7 @@ int runWhoami(const std::vector<std::string>& args)
 
 int runI2pEnable(const std::vector<std::string>& args)
 {
-    // i2p-enable <profile> [keyfile.dat]: set up a user-owned I2P destination.
+    // i2p-enable <account> [keyfile.dat]: set up a user-owned I2P destination.
     // With no file it mints a fresh random master; with a .dat it adopts an
     // existing unencrypted Ed25519 destination key. The master never leaves the
     // client.
@@ -198,7 +198,7 @@ int runI2pEnable(const std::vector<std::string>& args)
 
 int runI2pPublish(const std::vector<std::string>& args)
 {
-    // i2p-publish <profile>: delegate a fresh transient and re-issue the contact
+    // i2p-publish <account>: delegate a fresh transient and re-issue the contact
     // card with the routing in it. Subscribing does this already; it is needed
     // again only after a moderated server approves the account.
     if (args.size() != 2) {
@@ -213,21 +213,21 @@ int runI2pPublish(const std::vector<std::string>& args)
 
 int runI2pCancel(const std::vector<std::string>& args)
 {
-    // i2p-cancel <profile>: revoke the destination server-side. The master stays
-    // in the profile, so i2p-publish later restores the same address.
+    // i2p-cancel <account>: revoke the destination server-side. The master stays
+    // in the account, so i2p-publish later restores the same address.
     if (args.size() != 2) {
         printUsage();
         return 2;
     }
     Session session = Session::open(args[1], keyPassphrase());
     session.disableI2pDest();
-    std::printf("I2P destination revoked; the profile keeps its master key\n");
+    std::printf("I2P destination revoked; the account keeps its master key\n");
     return 0;
 }
 
 int runI2pStatus(const std::vector<std::string>& args)
 {
-    // i2p-status <profile>: print the per-user i2p-dest status from the server.
+    // i2p-status <account>: print the per-user i2p-dest status from the server.
     if (args.size() != 2) {
         printUsage();
         return 2;
@@ -246,7 +246,7 @@ int runI2pStatus(const std::vector<std::string>& args)
     return 0;
 }
 
-// devices <profile>: the devices registered on this account. A message is kept
+// devices <account>: the devices registered on this account. A message is kept
 // until every one of them has acked it, so a device nobody uses any more holds
 // the mailbox until retention runs out.
 int runDevices(const std::vector<std::string>& args)
@@ -262,7 +262,7 @@ int runDevices(const std::vector<std::string>& args)
     return 0;
 }
 
-// forget-device <profile> <client-id>: drop a device's registration so its
+// forget-device <account> <client-id>: drop a device's registration so its
 // unacked mail stops being held.
 int runForgetDevice(const std::vector<std::string>& args)
 {
@@ -278,7 +278,7 @@ int runForgetDevice(const std::vector<std::string>& args)
 
 int runSignLogin(const std::vector<std::string>& args)
 {
-    // sign-login <profile> <challenge>: prove key ownership to a service portal by
+    // sign-login <account> <challenge>: prove key ownership to a service portal by
     // signing its challenge; print the blob to paste back into the site.
     if (args.size() != 3) {
         printUsage();
@@ -308,7 +308,7 @@ int runInvite(const std::vector<std::string>& args)
 
 int runAddInvite(const std::vector<std::string>& args)
 {
-    // add-invite <profile> <invite-file> <text>
+    // add-invite <account> <invite-file> <text>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -330,7 +330,7 @@ int runAddInvite(const std::vector<std::string>& args)
 
 int runAddUser(const std::vector<std::string>& args)
 {
-    // add-user <profile> <alias> <text>  (alias resolves on the central resolver
+    // add-user <account> <alias> <text>  (alias resolves on the central resolver
     // over a signed, self-verifying record)
     if (args.size() != 4) {
         printUsage();
@@ -347,7 +347,7 @@ int runAddUser(const std::vector<std::string>& args)
 
 int runAliasCert(const std::vector<std::string>& args)
 {
-    // alias-cert <profile> <alias>: emit (as JSON) the signed artifacts the central
+    // alias-cert <account> <alias>: emit (as JSON) the signed artifacts the central
     // resolver's portal needs to claim a name for this identity - the alias, the
     // user's serving destination + sealing key, and a user-signed alias
     // certificate. POST it to the resolver's /portal/buy (the key never leaves the
@@ -375,7 +375,7 @@ int runSend(const std::vector<std::string>& args)
 
 int runSendFile(const std::vector<std::string>& args)
 {
-    // send-file <profile> <peer-fp> <file>
+    // send-file <account> <peer-fp> <file>
     if (args.size() != 4) {
         printUsage();
         return 2;
@@ -388,7 +388,7 @@ int runSendFile(const std::vector<std::string>& args)
 
 int runSendCommand(const std::vector<std::string>& args)
 {
-    // send-command <profile> <peer-fp> <command> [args]
+    // send-command <account> <peer-fp> <command> [args]
     if (args.size() < 4 || args.size() > 5) {
         printUsage();
         return 2;
@@ -402,7 +402,7 @@ int runSendCommand(const std::vector<std::string>& args)
 
 int runSendCallback(const std::vector<std::string>& args)
 {
-    // send-callback <profile> <peer-fp> <data> [ref]
+    // send-callback <account> <peer-fp> <data> [ref]
     if (args.size() < 4 || args.size() > 5) {
         printUsage();
         return 2;
@@ -416,7 +416,7 @@ int runSendCallback(const std::vector<std::string>& args)
 
 int runGetFile(const std::vector<std::string>& args)
 {
-    // get-file <profile> <peer-fp> <message-id> <out>
+    // get-file <account> <peer-fp> <message-id> <out>
     if (args.size() != 5) {
         printUsage();
         return 2;
@@ -457,7 +457,7 @@ int runGetFile(const std::vector<std::string>& args)
 
 int runUnsend(const std::vector<std::string>& args)
 {
-    // unsend <profile> <message-id>
+    // unsend <account> <message-id>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -470,7 +470,7 @@ int runUnsend(const std::vector<std::string>& args)
 
 int runExport(const std::vector<std::string>& args)
 {
-    // export <profile> <out-file>
+    // export <account> <out-file>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -481,14 +481,14 @@ int runExport(const std::vector<std::string>& args)
         return 1;
     }
     const Session session = Session::open(args[1], keyPassphrase());
-    session.exportProfile(args[2], password);
+    session.exportAccount(args[2], password);
     std::printf("exported encrypted session to %s\n", args[2].c_str());
     return 0;
 }
 
 int runImport(const std::vector<std::string>& args)
 {
-    // import <in-file> <profile>
+    // import <in-file> <account>
     if (args.size() != 3) {
         printUsage();
         return 2;
@@ -499,7 +499,7 @@ int runImport(const std::vector<std::string>& args)
         return 1;
     }
     // The imported keys adopt the at-rest passphrase (if any) of this host.
-    Session::importProfile(args[1], args[2], password, keyPassphrase());
+    Session::importAccount(args[1], args[2], password, keyPassphrase());
     std::printf("imported session into %s\n", args[2].c_str());
     return 0;
 }
@@ -520,7 +520,7 @@ int runSync(const std::vector<std::string>& args)
         session.setTransferPrivacy(parsed.value());
     }
     const std::vector<IncomingMessage> messages = session.sync();
-    // Keep a personal destination's transient fresh (a no-op for free profiles).
+    // Keep a personal destination's transient fresh (a no-op for free accounts).
     // Re-issue ~2 days before the 7-day transient lapses, with a few hours of
     // per-device jitter so concurrent devices do not all issue at once; the
     // poll-before-issue inside stands the losers down.
@@ -577,7 +577,7 @@ int runSync(const std::vector<std::string>& args)
 // working transport startAudioCall throws a readable error and nothing is dialled.
 int runCall(const std::vector<std::string>& args)
 {
-    // call <profile-dir> <peer-fp> [seconds]
+    // call <account-dir> <peer-fp> [seconds]
     if (args.size() < 3 || args.size() > 4) {
         printUsage();
         return 2;
@@ -616,7 +616,7 @@ int runCall(const std::vector<std::string>& args)
 // runs media for the window, then ends. STRICT I2P applies on accept.
 int runCallAnswer(const std::vector<std::string>& args)
 {
-    // call-answer <profile-dir> [seconds]
+    // call-answer <account-dir> [seconds]
     if (args.size() < 2 || args.size() > 3) {
         printUsage();
         return 2;

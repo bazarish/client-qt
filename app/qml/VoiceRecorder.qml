@@ -138,7 +138,7 @@ Popup {
                         color: root.recording ? Theme.danger : Theme.accent
                         opacity: root.recording || root.takeReady ? 1.0 : 0.35
 
-                        // Reads one bar out of the stored hex profile, stretched
+                        // Reads one bar out of the stored hex account, stretched
                         // over however many bars are drawn here.
                         function waveBar(hex, at, bars) {
                             if (!hex || hex.length === 0) {

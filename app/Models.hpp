@@ -10,8 +10,8 @@
 
 namespace bazarish::app {
 
-// Profiles shown in the picker (public metadata only).
-struct ProfileRow {
+// Accounts shown in the picker (public metadata only).
+struct AccountListRow {
     QString id;
     QString name;
     QString fingerprint;
@@ -19,7 +19,7 @@ struct ProfileRow {
     bool connected = false;
 };
 
-class ProfileListModel : public QAbstractListModel {
+class AccountListModel : public QAbstractListModel {
     Q_OBJECT
 public:
     enum Roles { IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole, ConnectedRole };
@@ -29,10 +29,10 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setProfiles(QVector<ProfileRow> profiles);
+    void setAccounts(QVector<AccountListRow> accounts);
 
 private:
-    QVector<ProfileRow> profiles_;
+    QVector<AccountListRow> accounts_;
 };
 
 // The chat list: one row per contact, with a last-message preview.
@@ -134,8 +134,8 @@ public:
     // Records where an incoming attachment was saved, so the bubble can offer to
     // open it instead of re-saving.
     void setSavedPathForId(qint64 id, const QString& path);
-    // Marks a message whose picture this profile now holds, so the bubble draws
-    // it. What it draws is served out of the profile database, not off disk.
+    // Marks a message whose picture this account now holds, so the bubble draws
+    // it. What it draws is served out of the account database, not off disk.
     void setPictureReadyForId(qint64 id, bool ready);
     // Marks an incoming attachment as gone from the store (404/410): the bubble
     // shows "Not found" and drops the Save button.
@@ -161,7 +161,7 @@ private:
     QHash<qint64, QString> transferStageById_;
 };
 
-// One account in the unified account list. Covers every on-disk profile, with
+// One account in the unified account list. Covers every on-disk account, with
 // live status merged in for the ones that are currently open.
 struct AccountRow {
     QString id;

@@ -166,7 +166,7 @@ int main()
           };
     server.post("/v1/account/card", stub(handlePublishCard));
 
-    // Registering delegates this profile's offline transient before republishing
+    // Registering delegates this account's offline transient before republishing
     // the card with its routing, so the account API must take one.
     server.post("/v1/account/i2p-dest",
         stub([&](const http::Request& request, http::Response& response) {

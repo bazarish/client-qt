@@ -380,7 +380,7 @@ Item {
                     positionViewAtIndex(Math.min(count - 1, Math.max(0, idx)), ListView.Beginning)
                     autoScrolling = false
                 }
-                // The active account changed (the user switched local profiles): the
+                // The active account changed (the user switched local accounts): the
                 // model is now the new account's conversation. Restore that
                 // conversation's last scroll position instead of resetting to the top.
                 onModelChanged: if (model) { autoScrolling = true; Qt.callLater(restoreScroll) }

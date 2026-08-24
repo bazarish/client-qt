@@ -12,26 +12,26 @@ struct sqlite3;
 
 namespace bazarish::client {
 
-// A profile's storage: one encrypted SQLite (SQLCipher) file holding everything
-// the profile is - keys, metadata, contacts, blobs and the message transcript.
-// The file is the profile: it lives in the profiles directory under the profile's
+// An account's storage: one encrypted SQLite (SQLCipher) file holding everything
+// the account is - keys, metadata, contacts, blobs and the message transcript.
+// The file is the account: it lives in the accounts directory under the account's
 // own name, and without its key it gives up nothing but that name.
 //
 // This class owns the small named values; the transcript owns its own tables on
 // the same file through its own connection.
-class ProfileDb {
+class AccountDb {
 public:
     // Opens (creating it when absent) the database at `file`. The database key is
     // a random 32 bytes kept in "<file>.key" beside it, sealed under `passphrase`;
     // opening throws when the passphrase does not unseal it - a wrong passphrase
-    // must not read as an empty profile.
-    ProfileDb(const std::filesystem::path& file, const std::string& passphrase);
-    ~ProfileDb();
+    // must not read as an empty account.
+    AccountDb(const std::filesystem::path& file, const std::string& passphrase);
+    ~AccountDb();
 
-    ProfileDb(const ProfileDb&) = delete;
-    ProfileDb& operator=(const ProfileDb&) = delete;
+    AccountDb(const AccountDb&) = delete;
+    AccountDb& operator=(const AccountDb&) = delete;
 
-    // Whether the key opens this database. Used to tell a locked profile from an
+    // Whether the key opens this database. Used to tell a locked account from an
     // unlocked one without throwing.
     static bool opens(const std::filesystem::path& file, const std::string& passphrase);
 

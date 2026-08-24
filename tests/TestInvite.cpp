@@ -45,14 +45,14 @@ namespace {
 
 namespace fs = std::filesystem;
 
-// A profile is one file; the tests keep each in a directory of its own so a run
+// A account is one file; the tests keep each in a directory of its own so a run
 // can wipe it whole.
-fs::path uniqueProfileFile(const std::string& tag)
+fs::path uniqueAccountFile(const std::string& tag)
 {
     const fs::path dir
         = fs::temp_directory_path() / ("bazarish-test-" + tag + "-" + toHex(randomBytes(8)));
     fs::create_directories(dir);
-    return dir / "profile.db";
+    return dir / "account.db";
 }
 
 }  // namespace
@@ -99,7 +99,7 @@ int main()
     endpoint.serverFingerprint = serverFp;
     endpoint.facades = {Facade{false, "127.0.0.1", 9, {}}};
 
-    const fs::path fileA = uniqueProfileFile("a");
+    const fs::path fileA = uniqueAccountFile("a");
     const std::string passphrase = "at-rest secret";
     const std::string fingerprintA = Session::create(fileA, endpoint, passphrase).fingerprint();
 
@@ -111,19 +111,19 @@ int main()
 
     // Export to a password-protected bundle, then import into a fresh dir with
     // no at-rest passphrase: the identity survives the round trip.
-    const fs::path bundle = uniqueProfileFile("bundle").parent_path() / "session.baz";
+    const fs::path bundle = uniqueAccountFile("bundle").parent_path() / "session.baz";
     const std::string exportPw = "export password";
-    Session::open(fileA, passphrase).exportProfile(bundle, exportPw);
+    Session::open(fileA, passphrase).exportAccount(bundle, exportPw);
 
-    const fs::path fileB = uniqueProfileFile("b");
-    CHECK_THROWS(Session::importProfile(bundle, fileB, "bad password"));
-    Session::importProfile(bundle, fileB, exportPw);
+    const fs::path fileB = uniqueAccountFile("b");
+    CHECK_THROWS(Session::importAccount(bundle, fileB, "bad password"));
+    Session::importAccount(bundle, fileB, exportPw);
     // No at-rest passphrase on the imported copy: it opens with none.
     CHECK(Session::open(fileB).fingerprint() == fingerprintA);
 
     // Import again, this time re-encrypting at rest under a new passphrase.
-    const fs::path fileC = uniqueProfileFile("c");
-    Session::importProfile(bundle, fileC, exportPw, "new at-rest");
+    const fs::path fileC = uniqueAccountFile("c");
+    Session::importAccount(bundle, fileC, exportPw, "new at-rest");
     CHECK_THROWS(Session::open(fileC));
     CHECK(Session::open(fileC, "new at-rest").fingerprint() == fingerprintA);
 

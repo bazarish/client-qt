@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// The one-word state of a profile's link to its server, as a fixed-size chip.
+// The one-word state of an account's link to its server, as a fixed-size chip.
 // Every row carries one whatever the state is - a row with nothing to say used to
 // leave a hole where its neighbours had text, and the grid drifted with it.
 Item {

@@ -1,7 +1,7 @@
 // Bazarish project (c) 2026
 #include "TranscriptStore.hpp"
 
-#include "ProfileKey.hpp"
+#include "AccountKey.hpp"
 
 #include <bazarish/Bytes.hpp>
 // Qt makes `emit` a macro and the log header declares a function of that name,
@@ -203,7 +203,7 @@ sqlite3* openKeyed(const QString& path, const Bytes& key)
     // through the return value instead, so the library's own chatter is off.
     sqlite3_exec(db, "PRAGMA cipher_log_level = NONE", nullptr, nullptr, nullptr);
     // The raw key goes in as a blob literal, so SQLCipher derives nothing: the
-    // passphrase guards the key file beside the database (see ProfileKey).
+    // passphrase guards the key file beside the database (see AccountKey).
     const std::string pragma = "PRAGMA key = \"x'" + toHex(key) + "'\"";
     if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
         sqlite3_close(db);
@@ -222,15 +222,15 @@ bool readable(sqlite3* const db)
 
 }  // namespace
 
-bool TranscriptStore::open(const QString& profileId, const QString& dbPath, const QString& passphrase)
+bool TranscriptStore::open(const QString& accountId, const QString& dbPath, const QString& passphrase)
 {
-    (void)profileId;  // one connection per store now; the id no longer names it
-    // The same key the profile store holds: unwrapped once per process. A wrong
+    (void)accountId;  // one connection per store now; the id no longer names it
+    // The same key the account store holds: unwrapped once per process. A wrong
     // passphrase cannot unwrap it, and this store answers that with false rather
     // than an exception - a failed open, never an empty transcript.
     Bytes key;
     try {
-        key = client::profilekey::keyFor(dbPath.toStdString(), passphrase.toStdString());
+        key = client::accountkey::keyFor(dbPath.toStdString(), passphrase.toStdString());
     } catch (const std::exception& error) {
         bazarish::log::warn("transcript: {}", error.what());
         return false;
@@ -521,7 +521,7 @@ void TranscriptStore::setBlobGone(qint64 id, bool gone)
 QByteArray TranscriptStore::media(const QString& key) const
 {
     Query query(db_);
-    // The same table the core keeps its state in: one profile, one database.
+    // The same table the core keeps its state in: one account, one database.
     if (!query.prepare("SELECT value FROM state WHERE name = ?")) {
         return {};
     }

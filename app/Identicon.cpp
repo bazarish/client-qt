@@ -49,7 +49,7 @@ QImage renderIdenticon(const QString& id, const int dim)
 }
 
 IdenticonProvider::IdenticonProvider()
-    // Asynchronous: drawing a face is cheap, but a list rebuilding after a profile
+    // Asynchronous: drawing a face is cheap, but a list rebuilding after an account
     // switch asks for every visible one at once, and on the GUI thread that is the
     // click that does not answer. The store behind them is lock-guarded, and an
     // identicon is derived from its fingerprint alone, so both are safe off-thread.

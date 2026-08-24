@@ -47,7 +47,7 @@ struct I2pDestStatus {
     bool approved() const { return approval == "approved"; }
 };
 
-// The user's own storage usage on its two backends, polled for the per-profile
+// The user's own storage usage on its two backends, polled for the per-account
 // settings view. Each half has an `ok` flag: a backend that did not answer (e.g.
 // offline) leaves its figures at zero with ok=false, so the UI can show the part
 // that succeeded and mark the rest stale.
@@ -62,7 +62,7 @@ struct StorageUsage {
 struct PublishResult {
     std::uint64_t quotaBytes = 0;
     // The card-read capability the node issued for this account: it goes in
-    // every invite this profile makes.
+    // every invite this account makes.
     std::string view;
     // The user's assigned serving destination and its serving sealing key.
     std::string dest;
@@ -153,14 +153,14 @@ public:
     // Whether that facade is an I2P facade (for the account list marking).
     bool activeFacadeIsI2p() const;
 
-    // Sticky I2P (see ApiClient): this profile refuses clearnet once it has
+    // Sticky I2P (see ApiClient): this account refuses clearnet once it has
     // reached its server over I2P, until the user allows it again.
     void setI2pProven(bool proven);
     bool i2pProven() const;
     void setAllowClearnet(bool allow);
     bool allowClearnet() const;
     void setOnI2pProven(std::function<void()> callback);
-    // Names this profile on the destinations this client creates (status view).
+    // Names this account on the destinations this client creates (status view).
     void setDestinationOwner(std::string owner);
     // Drops the destination this client dials through; the next request builds a
     // fresh one.
@@ -177,7 +177,7 @@ public:
     // whenever the routing changes - there is no term to renew.
     //
     // sealingPrekeyDer, when non-empty, is published in the card so contacts can
-    // E2E-encrypt their first message. ownDest is this profile's own destination
+    // E2E-encrypt their first message. ownDest is this account's own destination
     // host: the card carries it while the server has not published the
     // destination yet (tunnels take minutes), since the address is the user's
     // master b32 either way.

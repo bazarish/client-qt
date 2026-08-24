@@ -20,8 +20,8 @@ Item {
         onClicked: root.StackView.view.pop()
     }
 
-    // The same gear as on the profile list: a client waiting on I2P needs the
-    // router status, and there is no profile open to reach it through.
+    // The same gear as on the account list: a client waiting on I2P needs the
+    // router status, and there is no account open to reach it through.
     IconButton {
         iconName: "gear"
         anchors.top: parent.top
@@ -44,7 +44,7 @@ Item {
         spacing: 16
 
         Label {
-            text: "New profile"
+            text: "New account"
             color: Theme.green
             font.pixelSize: 24
             font.weight: Font.DemiBold
@@ -58,7 +58,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        FormField { id: nameField; label: "Profile name"; placeholder: "e.g. Mr. Who" }
+        FormField { id: nameField; label: "Account name"; placeholder: "e.g. Mr. Who" }
         FormField { id: passField; label: "Passphrase (optional, encrypts keys at rest)"; echoMode: TextInput.Password; placeholder: "leave empty for none" }
         FormField { id: confirmField; label: "Confirm passphrase"; echoMode: TextInput.Password }
 
@@ -81,7 +81,7 @@ Item {
                     return
                 }
                 errorLabel.text = ""
-                App.createProfile(nameField.text.trim(), passField.text)
+                App.createAccount(nameField.text.trim(), passField.text)
             }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
             contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
@@ -90,7 +90,7 @@ Item {
         // Restore everything (keys, routing and contacts) from a .bazarish backup
         // instead of creating a fresh identity. Uses the name and passphrase above.
         // The display name is restored from the backup itself, so a name is not
-        // required here; if one is typed it only picks the on-disk profile id.
+        // required here; if one is typed it only picks the on-disk account id.
         Button {
             Layout.fillWidth: true
             text: "Restore from backup…"
@@ -122,7 +122,7 @@ Item {
         title: "Backup password"
         // name + at-rest passphrase come from the wizard fields; this asks only
         // for the password the backup file was sealed with.
-        onAccepted: App.importProfile(nameField.text.trim(), root.pendingBackupFile,
+        onAccepted: App.importAccount(nameField.text.trim(), root.pendingBackupFile,
             backupPass.text, passField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Backup password"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }

@@ -64,11 +64,11 @@ void testKeyboardJson()
 
 void testDispatch()
 {
-    const fs::path profileDir = fs::temp_directory_path() / "bz-testbot-state";
-    fs::remove_all(profileDir);
+    const fs::path accountDir = fs::temp_directory_path() / "bz-testbot-state";
+    fs::remove_all(accountDir);
     // A connection-less Session is enough to construct a Bot; dispatch never
     // touches the network, and the recording handlers never send a reply.
-    Session session = Session::create(profileDir, std::string{}, "testbot");
+    Session session = Session::create(accountDir, std::string{}, "testbot");
 
     Trace trace;
     Bot bot(session);
@@ -171,16 +171,16 @@ void testDispatch()
         CHECK(trace.callbacks.size() == callbacksBefore);
     }
 
-    fs::remove_all(profileDir);
+    fs::remove_all(accountDir);
 }
 
 // Without an explicit contact handler, a new contact falls back to the "start"
 // command when one is registered.
 void testContactFallsBackToStart()
 {
-    const fs::path profileDir = fs::temp_directory_path() / "bz-testbot-state2";
-    fs::remove_all(profileDir);
-    Session session = Session::create(profileDir, std::string{}, "testbot2");
+    const fs::path accountDir = fs::temp_directory_path() / "bz-testbot-state2";
+    fs::remove_all(accountDir);
+    Session session = Session::create(accountDir, std::string{}, "testbot2");
 
     bool started = false;
     Bot bot(session);
@@ -190,7 +190,7 @@ void testContactFallsBackToStart()
     bot.dispatch(make("contact.request", "peer3"));
     CHECK(started);
 
-    fs::remove_all(profileDir);
+    fs::remove_all(accountDir);
 }
 
 }  // namespace

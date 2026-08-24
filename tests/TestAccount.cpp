@@ -1,5 +1,5 @@
 // Bazarish project (c) 2026
-#include "ProfileManager.hpp"
+#include "AccountManager.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Bytes.hpp>
@@ -41,21 +41,21 @@ int main()
 {
     namespace fs = std::filesystem;
     const fs::path root
-        = fs::temp_directory_path() / ("bazarish-profiles-" + toHex(randomBytes(8)));
+        = fs::temp_directory_path() / ("bazarish-accounts-" + toHex(randomBytes(8)));
 
-    ProfileManager manager(root);
+    AccountManager manager(root);
     CHECK(manager.list().empty());
 
-    // Create two profiles, one encrypted. A profile is one file named after it,
+    // Create two accounts, one encrypted. A account is one file named after it,
     // so the name is the id.
-    const ProfileInfo a = manager.create("Acetone", "secret");
+    const AccountInfo a = manager.create("Acetone", "secret");
     CHECK(a.id == "Acetone");
     CHECK(a.name == "Acetone");
     CHECK(a.encrypted);
     CHECK(!a.connected);
     CHECK(a.fingerprint.size() == kFingerprintTextLength);
 
-    const ProfileInfo b = manager.create("Work Alias");
+    const AccountInfo b = manager.create("Work Alias");
     CHECK(b.id == "Work Alias");
     CHECK(!b.encrypted);
 
@@ -65,18 +65,18 @@ int main()
 
     // The name is kept as it was typed, Unicode and all; only what a file system
     // refuses is replaced.
-    const ProfileInfo cyrillic = manager.create("клирнет");
+    const AccountInfo cyrillic = manager.create("клирнет");
     CHECK(cyrillic.id == "клирнет");
     CHECK(cyrillic.name == "клирнет");
-    const ProfileInfo slashed = manager.create("home/work: notes");
+    const AccountInfo slashed = manager.create("home/work: notes");
     CHECK(slashed.id == "home_work_ notes");
 
-    // Listing gives up nothing about a profile that has a passphrase: everything
+    // Listing gives up nothing about a account that has a passphrase: everything
     // it could say lives inside the keyed database. It is listed by its directory
-    // id, marked locked, with no fingerprint. A profile without a passphrase opens
+    // id, marked locked, with no fingerprint. A account without a passphrase opens
     // with the default key, so its name and fingerprint do show.
     CHECK(manager.list().size() == 4);
-    for (const ProfileInfo& listed : manager.list()) {
+    for (const AccountInfo& listed : manager.list()) {
         if (listed.id == "Acetone") {
             CHECK(listed.encrypted);
             CHECK(listed.fingerprint.empty());
@@ -87,14 +87,14 @@ int main()
         }
     }
 
-    // Encrypted profile needs its passphrase to open.
+    // Encrypted account needs its passphrase to open.
     CHECK_THROWS(manager.open("Acetone"));
     Session sa = manager.open("Acetone", "secret");
     CHECK(sa.fingerprint() == a.fingerprint);
     CHECK(sa.displayName() == "Acetone");
     CHECK(!sa.isConnected());
 
-    // Connecting a profile to a server persists the endpoint and flips the
+    // Connecting a account to a server persists the endpoint and flips the
     // connected flag seen by the picker.
     ServerEndpoint endpoint;
     endpoint.serverFingerprint = "serverfp";
@@ -103,11 +103,11 @@ int main()
     CHECK(sa.isConnected());
     CHECK(sa.endpoint().facades.at(0).port == 18000);
 
-    // Whether a locked profile has a server is part of what its database keeps,
-    // so the listing cannot say: it only reports the profile as locked. With the
+    // Whether a locked account has a server is part of what its database keeps,
+    // so the listing cannot say: it only reports the account as locked. With the
     // passphrase in hand the full picture is there.
     bool foundLocked = false;
-    for (const ProfileInfo& info : manager.list()) {
+    for (const AccountInfo& info : manager.list()) {
         if (info.id == "Acetone") {
             CHECK(info.encrypted);
             CHECK(!info.connected);
@@ -121,10 +121,10 @@ int main()
     CHECK(reopened.isConnected());
     CHECK(reopened.endpoint().serverFingerprint == "serverfp");
 
-    // Export the encrypted profile, then re-import it twice - once with an
+    // Export the encrypted account, then re-import it twice - once with an
     // at-rest passphrase, once without - and check that each import is one keyed
     // database that opens with its own key and nothing else.
-    // A profile is its database plus the small key file beside it, and nothing
+    // A account is its database plus the small key file beside it, and nothing
     // else: an import writes exactly that pair.
     const auto onlyTheDatabase = [](const fs::path& file) {
         CHECK(fs::is_regular_file(file));
@@ -135,21 +135,21 @@ int main()
         }
     };
 
-    // Kept outside the manager root so the imported profiles do not show up in
+    // Kept outside the manager root so the imported accounts do not show up in
     // manager.list().
     const fs::path scratch
         = fs::temp_directory_path() / ("bazarish-export-" + toHex(randomBytes(8)));
     fs::create_directories(scratch);
     const fs::path bundle = scratch / "acetone.bundle";
-    sa.exportProfile(bundle, "bundle-pw");
+    sa.exportAccount(bundle, "bundle-pw");
 
-    Session::importProfile(bundle, scratch / "imported-enc.db", "bundle-pw", "atrest-pw");
+    Session::importAccount(bundle, scratch / "imported-enc.db", "bundle-pw", "atrest-pw");
     onlyTheDatabase(scratch / "imported-enc.db");
     const Session importedEnc = Session::open(scratch / "imported-enc.db", "atrest-pw");
     CHECK(importedEnc.fingerprint() == a.fingerprint);
     CHECK_THROWS(Session::open(scratch / "imported-enc.db"));
 
-    Session::importProfile(bundle, scratch / "imported-plain.db", "bundle-pw");
+    Session::importAccount(bundle, scratch / "imported-plain.db", "bundle-pw");
     onlyTheDatabase(scratch / "imported-plain.db");
     const Session importedPlain = Session::open(scratch / "imported-plain.db");
     CHECK(importedPlain.fingerprint() == a.fingerprint);
@@ -159,13 +159,13 @@ int main()
     // explicit name only chooses the id (the display name still comes from the
     // bundle). Use a fresh root so the derived "acetone" id does not collide.
     const fs::path root2
-        = fs::temp_directory_path() / ("bazarish-profiles-" + toHex(randomBytes(8)));
-    ProfileManager manager2(root2);
-    const ProfileInfo imp1 = manager2.import("", bundle, "bundle-pw");
+        = fs::temp_directory_path() / ("bazarish-accounts-" + toHex(randomBytes(8)));
+    AccountManager manager2(root2);
+    const AccountInfo imp1 = manager2.import("", bundle, "bundle-pw");
     CHECK(imp1.id == "Acetone");
     CHECK(imp1.name == "Acetone");
     CHECK(imp1.fingerprint == a.fingerprint);
-    const ProfileInfo imp2 = manager2.import("Other Name", bundle, "bundle-pw");
+    const AccountInfo imp2 = manager2.import("Other Name", bundle, "bundle-pw");
     CHECK(imp2.id == "Other Name");
     CHECK(imp2.name == "Acetone");
     CHECK(manager2.list().size() == 2);
@@ -174,12 +174,12 @@ int main()
 
     fs::remove_all(scratch);
 
-    // Removal drops the profile.
+    // Removal drops the account.
     manager.remove("Work Alias");
     CHECK(!manager.exists("Work Alias"));
     CHECK(manager.list().size() == 3);
 
     fs::remove_all(root);
-    std::fprintf(stderr, "TestProfile passed\n");
+    std::fprintf(stderr, "TestAccount passed\n");
     return 0;
 }

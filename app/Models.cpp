@@ -9,19 +9,19 @@
 
 namespace bazarish::app {
 
-// ---------------- ProfileListModel ----------------
+// ---------------- AccountListModel ----------------
 
-int ProfileListModel::rowCount(const QModelIndex&) const
+int AccountListModel::rowCount(const QModelIndex&) const
 {
-    return static_cast<int>(profiles_.size());
+    return static_cast<int>(accounts_.size());
 }
 
-QVariant ProfileListModel::data(const QModelIndex& index, int role) const
+QVariant AccountListModel::data(const QModelIndex& index, int role) const
 {
-    if (index.row() < 0 || index.row() >= profiles_.size()) {
+    if (index.row() < 0 || index.row() >= accounts_.size()) {
         return {};
     }
-    const ProfileRow& p = profiles_[index.row()];
+    const AccountListRow& p = accounts_[index.row()];
     switch (role) {
     case IdRole: return p.id;
     case NameRole: return p.name;
@@ -32,16 +32,16 @@ QVariant ProfileListModel::data(const QModelIndex& index, int role) const
     }
 }
 
-QHash<int, QByteArray> ProfileListModel::roleNames() const
+QHash<int, QByteArray> AccountListModel::roleNames() const
 {
-    return {{IdRole, "profileId"}, {NameRole, "name"}, {FingerprintRole, "fingerprint"},
+    return {{IdRole, "accountId"}, {NameRole, "name"}, {FingerprintRole, "fingerprint"},
         {EncryptedRole, "encrypted"}, {ConnectedRole, "connected"}};
 }
 
-void ProfileListModel::setProfiles(QVector<ProfileRow> profiles)
+void AccountListModel::setAccounts(QVector<AccountListRow> accounts)
 {
     beginResetModel();
-    profiles_ = std::move(profiles);
+    accounts_ = std::move(accounts);
     endResetModel();
 }
 
