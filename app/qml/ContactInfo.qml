@@ -8,6 +8,9 @@ Popup {
     property var session: null
     readonly property string shareLink: (session && session.activePeer.length > 0)
         ? session.contactInvite(session.activePeer) : ""
+    // Whether the contact said no, rather than simply not having told us yet.
+    readonly property bool sharingRefused: session && session.activePeer.length > 0
+        && session.contactSharingRefused(session.activePeer)
     signal shareRequested()
 
     modal: true
@@ -119,19 +122,23 @@ Popup {
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
 
 
+        // The label stays short in every state - a button is not the place for a
+        // sentence; the reason is written under it.
         MenuButton {
             Layout.fillWidth: true
             enabled: root.shareLink.length > 0
-            text: "Share this contact…"
+            text: root.shareLink.length > 0
+                ? "Share contact…"
+                : (root.sharingRefused ? "Sharing is off" : "Not shareable yet")
             onClicked: { root.close(); root.shareRequested() }
         }
         // Said under the button, not on it: the reason is a sentence, and a
         // button wearing one cuts it off in the middle.
         Label {
             visible: root.shareLink.length === 0
-            text: (root.session && root.session.contactSharingRefused(root.session.activePeer))
-                ? "Not allowed — this contact has turned off being passed on."
-                : "Not yet — this contact's descriptor arrives with their next message."
+            text: root.sharingRefused
+                ? "This contact has turned off being passed on."
+                : "Their descriptor arrives with their next message."
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

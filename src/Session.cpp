@@ -1841,9 +1841,9 @@ void Session::setSharingAllowed(const bool allowed)
     }
     sharingAllowed_ = allowed;
     persistMeta();
-    // Said now rather than at the next message each: a contact who was told they
-    // may pass us on keeps thinking so until something says otherwise.
-    pushRoutingToContacts({});
+    // Not announced on its own: every message already carries the capability (or
+    // the lack of one), and the one place that tells every contact at once is the
+    // key rotation - which is where this setting is made.
 }
 
 void Session::rotateServingKey(const std::function<void(const std::string&)>& onStage)

@@ -703,11 +703,9 @@ Item {
                     Rectangle {
                         required property var modelData
                         height: 18
-                        width: chipRow.implicitWidth + 10
-                        radius: 9
+                        width: chipRow.implicitWidth + 8
+                        radius: 4
                         color: modelData.mine ? Qt.rgba(0.66, 0.93, 0.62, 1) : Theme.accent
-                        border.width: 1
-                        border.color: modelData.mine ? Theme.green : Theme.border2
                         Row {
                             id: chipRow
                             anchors.centerIn: parent
