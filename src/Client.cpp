@@ -168,7 +168,18 @@ PortalInfo Client::fetchPortalInfo()
             }
         }
     }
+    if (const auto registration = body.find("registration");
+        registration != body.end() && registration->is_object()) {
+        info.captcha = registration->value("captcha", true);
+    }
     return info;
+}
+
+void Client::registerHere()
+{
+    // The answer is the ack: a refusal (a server that registers on its portal,
+    // or a banned key) throws, and the caller keeps sending the user to the page.
+    (void)api_.postJson("/v1/account/registration", nlohmann::json::object()).json();
 }
 
 void Client::sendI2pTransient(const std::string& transientB64, const std::int64_t expiresUnix)

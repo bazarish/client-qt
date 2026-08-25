@@ -690,11 +690,22 @@ bool Session::allowClearnet() const
 
 void Session::registerAccount()
 {
-    // Publishing our card is what turns the portal registration into an account,
-    // and it publishes our sealing key as a prekey so contacts can encrypt their
-    // very first message to us before any token exchange.
-    const PublishResult result
-        = client_->publishCard(sealingKey_.publicDer(), ownRoutingHost());
+    // Publishing our card is what turns the registration into an account, and it
+    // publishes our sealing key as a prekey so contacts can encrypt their very
+    // first message to us before any token exchange. A server that asks for no
+    // captcha registers us right here, so connecting is the whole flow and there
+    // is no page to visit; one that does asks for a portal visit, and says so.
+    PublishResult result;
+    try {
+        result = client_->publishCard(sealingKey_.publicDer(), ownRoutingHost());
+    } catch (const ApiError& error) {
+        if (error.code != ErrorCode::eDeliveryRejected || client_->fetchPortalInfo().captcha) {
+            throw;
+        }
+        reportConnectProgress(60, "Registering with this server");
+        client_->registerHere();
+        result = client_->publishCard(sealingKey_.publicDer(), ownRoutingHost());
+    }
     // Reported here, not on entry: the call above is what brings the transport
     // up, so its own milestones (reseed, router, dial) come first.
     reportConnectProgress(70, "Registered; registering this device");
