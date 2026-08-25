@@ -22,8 +22,14 @@ Item {
     implicitHeight: size
 
     Shape {
+        id: shape
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
+        // Set rather than declared: the curve renderer arrived in Qt 6.6, and a
+        // declared property that does not exist is an error the whole file dies
+        // on. Where it is missing the shape draws with the older renderer.
+        Component.onCompleted: if (shape.hasOwnProperty("preferredRendererType")) {
+            shape.preferredRendererType = Shape.CurveRenderer
+        }
         scale: root.size / 24
         transformOrigin: Item.TopLeft
         width: 24

@@ -171,6 +171,9 @@ if(Qt6_FOUND)
     qt_add_qml_module(bazarish-app
         URI Bazarish
         VERSION 1.0
+        # Said rather than left to the default, which moved in Qt 6.5: the engine
+        # is handed one URL, and it has to name the same place on either version.
+        RESOURCE_PREFIX "/qt/qml"
         QML_FILES
             app/qml/Main.qml
             app/qml/Theme.qml
