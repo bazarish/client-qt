@@ -821,13 +821,22 @@ Item {
 
         // Right-click or long-press a message to open its context menu (copy /
         // edit own text / delete).
+        // Where the menu was opened, in scene coordinates: what the window that
+        // opens from it anchors to.
+        property point menuAt: Qt.point(0, 0)
         TapHandler {
             acceptedButtons: Qt.RightButton
-            onTapped: contextMenu.popup()
+            onTapped: function(point) {
+                delegate.menuAt = delegate.mapToItem(null, point.position.x, point.position.y)
+                contextMenu.popup()
+            }
         }
         TapHandler {
             acceptedButtons: Qt.LeftButton
-            onLongPressed: contextMenu.popup()
+            onLongPressed: function(point) {
+                delegate.menuAt = delegate.mapToItem(null, point.position.x, point.position.y)
+                contextMenu.popup()
+            }
         }
         FileDialog {
             id: pictureSaveDialog
@@ -846,13 +855,8 @@ Item {
                 iconName: "smile"
                 visible: delegate.reactable
                 height: visible ? implicitHeight : 0
-                onTriggered: {
-                    // Where this entry itself is: the picker opens on the spot the
-                    // user pressed, not somewhere near the message.
-                    const at = delegate.mapToItem(null, contextMenu.x + reactEntry.x,
-                        contextMenu.y + reactEntry.y)
-                    delegate.reactRequested(model.protocolId, at.x, at.y)
-                }
+                onTriggered: delegate.reactRequested(model.protocolId,
+                    delegate.menuAt.x, delegate.menuAt.y)
             }
             ContextMenuItem {
                 // From the account straight to the clipboard: no file in between.

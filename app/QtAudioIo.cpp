@@ -3,6 +3,11 @@
 
 #include "AudioCodec.hpp"
 
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
+
 #include <QAudioSink>
 #include <QAudioSource>
 #include <QIODevice>
@@ -12,6 +17,7 @@
 #include <condition_variable>
 #include <cstring>
 #include <deque>
+#include <stdexcept>
 #include <mutex>
 
 namespace bazarish::app {
@@ -104,6 +110,17 @@ void QtAudioSource::start()
 {
     device_->setRunning(true);
     source_->start(device_.get());
+    // A microphone that did not open is the difference between a quiet call and a
+    // dead one, and it used to be reported by nothing at all.
+    const QAudioDevice input = QMediaDevices::defaultAudioInput();
+    if (input.isNull()) {
+        throw std::runtime_error("no microphone: this system offers no audio input");
+    }
+    if (source_->error() != QAudio::NoError) {
+        throw std::runtime_error("the microphone did not start (" + input.description().toStdString()
+            + "): audio error " + std::to_string(static_cast<int>(source_->error())));
+    }
+    bazarish::log::info("capture started on {}", input.description().toStdString());
 }
 
 void QtAudioSource::stop()
@@ -181,6 +198,15 @@ QtAudioSink::~QtAudioSink()
 void QtAudioSink::start()
 {
     sink_->start(device_.get());
+    const QAudioDevice output = QMediaDevices::defaultAudioOutput();
+    if (output.isNull()) {
+        throw std::runtime_error("no speaker: this system offers no audio output");
+    }
+    if (sink_->error() != QAudio::NoError) {
+        throw std::runtime_error("the speaker did not start (" + output.description().toStdString()
+            + "): audio error " + std::to_string(static_cast<int>(sink_->error())));
+    }
+    bazarish::log::info("playback started on {}", output.description().toStdString());
 }
 
 void QtAudioSink::stop()

@@ -65,6 +65,9 @@ constexpr std::size_t kRefillThreshold = 16;
 // taken the invitation there is nobody ringing yet - that is delivery, and it
 // travels the federation. Only once it lands does the peer's phone ring.
 constexpr std::int64_t kInviteDeliveryTimeoutMs = 120000;
+// How long an active call may hear nothing at all before it is over. Media
+// carries a keep-alive twice a second, so this is silence, not a pause.
+constexpr std::int64_t kMediaSilenceTimeoutMs = 20000;
 constexpr std::int64_t kRingTimeoutMs = 60000;
 
 // Inner end-to-end payload format version (see docs Messages.md).
@@ -400,6 +403,10 @@ void Session::connectServer(const ServerEndpoint& endpoint)
     client_ = std::make_unique<Client>(
         Identity::fromPrivatePem(client_->identity().privatePem()), client_->clientId(), endpoint,
         i2pDirFor(accountPath_));
+    // The new transport starts out owning nothing, and an unowned facade link is
+    // shared with nobody: every dial then built its own destination, which is how
+    // a single account came to hold several "Facade link" addresses.
+    client_->setDestinationOwner(destinationOwner());
     persistMeta();
 }
 
@@ -3108,6 +3115,8 @@ void Session::clearCall()
     call_.muted = false;
     call_.startedAtMs = 0;
     call_.connectedAtMs = 0;
+    call_.lastPacketsReceived = 0;
+    call_.lastPacketAtMs = 0;
 }
 
 bool Session::sendCallSignal(
@@ -3406,6 +3415,25 @@ void Session::tickCalls()
         bazarish::log::warn("call invitation to {} never reached their server",
             bazarish::log::redact(peer));
         return;
+    }
+    // A call the other side has left: their "end" travels the mailbox and can be
+    // lost or slow, and media stops the moment they hang up. Keep-alives run
+    // twice a second, so silence this long is unambiguous - without it the call
+    // sat at "in call" forever, holding its media destination up with it.
+    if (call_.state == CallState::eActive && call_.media) {
+        const std::uint64_t received = call_.media->packetsReceived();
+        if (received != call_.lastPacketsReceived) {
+            call_.lastPacketsReceived = received;
+            call_.lastPacketAtMs = nowMillis();
+        } else if (call_.lastPacketAtMs > 0
+            && nowMillis() - call_.lastPacketAtMs > kMediaSilenceTimeoutMs) {
+            const std::string peer = call_.peerFingerprint;
+            logCompletedCall(CallOutcome::eAnswered);
+            clearCall();
+            bazarish::log::info("call with {} ended: media went silent",
+                bazarish::log::redact(peer));
+            return;
+        }
     }
     const std::int64_t since
         = call_.deliveredAtMs > 0 ? call_.deliveredAtMs : call_.startedAtMs;

@@ -1086,6 +1086,10 @@ private:
         std::int64_t deliveredAtMs = 0;
         std::string stage;
         std::int64_t connectedAtMs = 0;
+        // What the media engine had received when it was last looked at, and
+        // when that was: a call whose media has gone quiet has been left.
+        std::uint64_t lastPacketsReceived = 0;
+        std::int64_t lastPacketAtMs = 0;
         std::shared_ptr<bazarish::i2p::Endpoint> dgram;
         std::unique_ptr<I2pCallTransport> transport;
         std::unique_ptr<CallMedia> media;
