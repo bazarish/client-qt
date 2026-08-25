@@ -768,6 +768,8 @@ public:
         // What the caller is waiting on: the invitation being delivered, then the
         // peer answering, then media. Empty once the call is running.
         std::string stage;
+        // The peer's device is showing the call and nobody has answered yet.
+        bool peerRinging = false;
         // Unix ms when media was proven in both directions; 0 until then.
         std::int64_t connectedAtMs = 0;
         // Loudness in each direction, 0..1: what this microphone hears and what
@@ -991,6 +993,9 @@ private:
     void clearCall();
     // Sends a call.* signalling content message (E2E, content class) to a peer.
     // Returns whether the peer's server took it (see the call stages).
+    // Tells this account's other devices that this one answered or refused the
+    // call they are all showing.
+    void announceCallTaken(const std::string& callId);
     bool sendCallSignal(
         const std::string& peerFingerprint, const std::string& type, nlohmann::json extra);
     // Dispatches a decrypted call.* signal during sync(), updating call state and
@@ -1085,6 +1090,9 @@ private:
         std::int64_t invitedAtMs = 0;
         std::int64_t deliveredAtMs = 0;
         std::string stage;
+        // Unix ms when the peer's device confirmed it is showing the call. Until
+        // then the invitation is only known to have reached their server.
+        std::int64_t peerRingingAtMs = 0;
         std::int64_t connectedAtMs = 0;
         // What the media engine had received when it was last looked at, and
         // when that was: a call whose media has gone quiet has been left.

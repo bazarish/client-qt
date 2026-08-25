@@ -247,7 +247,8 @@ signals:
     // Call lifecycle: state is 0 idle / 1 outgoing / 2 incoming / 3 active,
     // matching Session::CallState. Emitted after every sync and call action.
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
+        const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
+        float outputLevel);
     // A call finished: its peer, direction (incoming), how it ended (a
     // Session::CallOutcome as an int) and connected duration - for a chat-history
     // entry. Emitted after sync and after any call action.
@@ -985,7 +986,8 @@ private slots:
     void requestPicturesFor(const QList<StoredMessage>& messages);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
+        const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
+        float outputLevel);
     // Appends a finished call to the peer's transcript as a clear system line.
     void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 

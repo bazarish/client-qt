@@ -125,25 +125,31 @@ Popup {
 
     // A round, coloured action button.
     component CallButton: Button {
+        id: callButton
         property color fill: Theme.accent
         property color label: "white"
         // One width for every call action: a row of buttons that size themselves
         // to their labels is a row that is never centred under the avatar.
         Layout.preferredWidth: 120
         padding: 0
+        hoverEnabled: true
+        HoverHandler { enabled: callButton.enabled; cursorShape: Qt.PointingHandCursor }
         background: Rectangle {
             radius: 24
             // A request in flight dims its button, so a press that is already
             // being carried out does not look like one that was ignored.
-            color: !parent.enabled ? Theme.surfaceAlt
-                : (parent.down ? Qt.darker(parent.fill, 1.2) : parent.fill)
-            border.color: Theme.border
+            color: !callButton.enabled ? Theme.surfaceAlt
+                : callButton.down ? Qt.darker(callButton.fill, 1.2)
+                : callButton.hovered ? Qt.lighter(callButton.fill, 1.15)
+                : callButton.fill
+            border.color: callButton.hovered && callButton.enabled ? Theme.text : Theme.border
             implicitWidth: 120
             implicitHeight: 48
+            Behavior on color { ColorAnimation { duration: 90 } }
         }
         contentItem: Label {
-            text: parent.text
-            color: parent.enabled ? parent.label : Theme.textDim
+            text: callButton.text
+            color: callButton.enabled ? callButton.label : Theme.textDim
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
@@ -160,12 +166,17 @@ Popup {
         readonly property real iconSize: 22
         Layout.preferredWidth: diameter
         padding: 0
+        hoverEnabled: true
+        HoverHandler { cursorShape: Qt.PointingHandCursor }
         background: Rectangle {
             radius: iconButton.diameter / 2
-            color: iconButton.down ? Qt.darker(iconButton.fill, 1.2) : iconButton.fill
-            border.color: Theme.border
+            color: iconButton.down ? Qt.darker(iconButton.fill, 1.2)
+                : iconButton.hovered ? Qt.lighter(iconButton.fill, 1.35)
+                : iconButton.fill
+            border.color: iconButton.hovered ? Theme.text : Theme.border
             implicitWidth: iconButton.diameter
             implicitHeight: iconButton.diameter
+            Behavior on color { ColorAnimation { duration: 90 } }
         }
         contentItem: Item {
             Icon {

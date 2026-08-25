@@ -901,7 +901,8 @@ void SessionWorker::emitCallState()
     const Session::CallInfo call = session_->currentCall();
     emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
         QString::fromStdString(call.callId), call.muted, QString::fromStdString(call.stage),
-        static_cast<qint64>(call.connectedAtMs), call.inputLevel, call.outputLevel);
+        call.peerRinging, static_cast<qint64>(call.connectedAtMs), call.inputLevel,
+        call.outputLevel);
     reconcileCallTimer();
 }
 
@@ -4531,8 +4532,8 @@ void SessionController::setCallMuted(const bool muted)
 }
 
 void SessionController::onCallStateChanged(const int state, const QString& peer,
-    const QString& callId, const bool muted, const QString& stage, const qint64 connectedAtMs,
-    const float inputLevel, const float outputLevel)
+    const QString& callId, const bool muted, const QString& stage, const bool peerRinging,
+    const qint64 connectedAtMs, const float inputLevel, const float outputLevel)
 {
     // The levels move on every tick and nothing else does: they have their own
     // signal, so a level meter does not re-evaluate the whole call window.
@@ -4558,9 +4559,11 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
     emit callChanged();
 
     // Call-progress tones: silence while the invitation is still travelling, a
-    // ringback while the audio path is being opened, and nothing at all once there
+    // ringback from the moment a device of theirs is showing the call until there
     // is a voice to hear.
-    if (name == QLatin1String("active") && connectedAtMs == 0) {
+    const bool waitingOnThem = (name == QLatin1String("outgoing") && peerRinging)
+        || (name == QLatin1String("active") && connectedAtMs == 0);
+    if (waitingOnThem) {
         callTones_.ringback();
     } else if (name == QLatin1String("idle")) {
         callTones_.endRingback();

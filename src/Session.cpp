@@ -40,6 +40,12 @@ const char* const kTypeImage = "image";
 const char* const kTypeVoice = "voice";
 // What both sides show between accepting a call and the first media packet.
 const char* const kCallOpeningStage = "Opening the audio path";
+// The invitation reached the peer's server, and no device has picked it up yet:
+// stored is not the same as ringing, and saying "ringing" here was a guess.
+const char* const kCallDeliveredStage = "Invitation delivered";
+// A device of theirs answered the invitation by showing the call. This is the
+// first proof anything of theirs is listening, and where the ringing tone starts.
+const char* const kCallAlertingStage = "Their device is ringing";
 
 
 namespace fs = std::filesystem;
@@ -2630,7 +2636,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                     continue;
                 }
             } else if (type == "call.invite" || type == "call.accept" || type == "call.decline"
-                || type == "call.end") {
+                || type == "call.end" || type == "call.ring" || type == "call.taken") {
                 // Audio-call signalling: update call state and start/stop media. The
                 // media itself never touches the server (it rides I2P datagrams).
                 handleCallSignal(type, message.fromFingerprint, body, message);
@@ -3125,9 +3131,36 @@ void Session::clearCall()
     call_.initiator = false;
     call_.muted = false;
     call_.startedAtMs = 0;
+    call_.peerRingingAtMs = 0;
     call_.connectedAtMs = 0;
     call_.lastPacketsReceived = 0;
     call_.lastPacketAtMs = 0;
+}
+
+void Session::announceCallTaken(const std::string& callId)
+{
+    // Every device of this account is shown the same invitation, and every one of
+    // them keeps ringing until it hears otherwise. The device that answers or
+    // refuses says so, and the rest drop the call without recording anything: the
+    // device that took it owns the outcome.
+    const nlohmann::json inner = {
+        {"v", kMessageFormatVersion},
+        {"type", "call.taken"},
+        {"id", toHex(randomBytes(16))},
+        {"from", fingerprint()},
+        {"sentAt", nowMillis()},
+        {"device", client_->clientId()},
+        {"callId", callId},
+    };
+    try {
+        const Bytes innerBytes = encodedBody(inner);
+        const Key ownSealing = Key::fromPublicDer(sealingKey_.publicDer());
+        client_->submitSelf(toHex(randomBytes(16)), cms::seal(innerBytes, ownSealing));
+    } catch (const std::exception& error) {
+        // The call this device is taking matters more than the other devices'
+        // ringing, which stops on its own at the ring timeout.
+        bazarish::log::warn("other devices not told the call was taken: {}", error.what());
+    }
 }
 
 bool Session::sendCallSignal(
@@ -3181,7 +3214,7 @@ void Session::startCall(const std::string& peerFingerprint)
     call_.dgram = std::move(dgram);
     if (delivered) {
         call_.deliveredAtMs = nowMillis();
-        call_.stage = "Ringing";
+        call_.stage = kCallDeliveredStage;
     } else {
         call_.stage = "Delivering the invitation";
     }
@@ -3201,6 +3234,7 @@ void Session::acceptCall(const std::string& callId)
     sendCallSignal(call_.peerFingerprint, "call.accept",
         {{"callId", callId}, {"media", "audio"},
             {"dest", dgram->routingHost()}});
+    announceCallTaken(callId);
     call_.dgram = std::move(dgram);
     call_.state = CallState::eActive;
     // Accepted is not connected: the tunnels between the two media destinations
@@ -3227,6 +3261,7 @@ void Session::declineCall(const std::string& callId)
     const std::string peer = call_.peerFingerprint;
     logCompletedCall(CallOutcome::eDeclined);
     clearCall();
+    announceCallTaken(callId);
     try {
         sendCallSignal(peer, "call.decline", {{"callId", callId}, {"reason", "declined"}});
     } catch (const std::exception& error) {
@@ -3278,6 +3313,7 @@ Session::CallInfo Session::currentCall() const
         info.inputLevel = call_.media->inputLevel();
         info.outputLevel = call_.media->outputLevel();
     }
+    info.peerRinging = call_.peerRingingAtMs > 0;
     info.connectedAtMs = call_.connectedAtMs;
     if (call_.media) {
         info.packetsSent = call_.media->packetsSent();
@@ -3347,7 +3383,37 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
         call_.mediaKey = std::move(key);
         call_.initiator = false;
         call_.muted = false;
-            return;
+        // Without this the ring timeout never ran on this side, and an invitation
+        // nobody answered rang until the application was closed.
+        call_.startedAtMs = nowMillis();
+        try {
+            // Tell the caller a device of ours is showing the call: that is the
+            // moment their side can stop guessing and start ringing.
+            sendCallSignal(from, "call.ring", {{"callId", message.callId}});
+        } catch (const std::exception& error) {
+            bazarish::log::warn("ring signal not delivered: {}", error.what());
+        }
+        return;
+    }
+
+    if (type == "call.ring") {
+        if (call_.state == CallState::eOutgoing && call_.callId == message.callId
+            && from == call_.peerFingerprint) {
+            call_.peerRingingAtMs = nowMillis();
+            call_.stage = kCallAlertingStage;
+        }
+        return;
+    }
+
+    if (type == "call.taken") {
+        // Another device of this account answered or declined the very call this
+        // one is showing. It is not a missed call and not one to record: the
+        // device that took it owns the outcome.
+        if (body.value("device", std::string()) != client_->clientId()
+            && call_.state == CallState::eIncoming && call_.callId == message.callId) {
+            clearCall();
+        }
+        return;
     }
 
     if (type == "call.accept") {
@@ -3365,6 +3431,11 @@ void Session::handleCallSignal(const std::string& type, const std::string& from,
     // the one we track.
     if (call_.state != CallState::eIdle && call_.callId == message.callId
         && from == call_.peerFingerprint) {
+        if (type == "call.decline" && call_.state != CallState::eOutgoing) {
+            // A decline from an account with several devices: one of them took the
+            // call, another said no. The one that answered is the one that counts.
+            return;
+        }
         CallOutcome outcome;
         if (type == "call.decline") {
             // The peer rejected our outgoing call (busy vs an explicit decline).
@@ -3446,8 +3517,12 @@ void Session::tickCalls()
             return;
         }
     }
-    const std::int64_t since
-        = call_.deliveredAtMs > 0 ? call_.deliveredAtMs : call_.startedAtMs;
+    // The ring window runs from the moment their device started showing the call
+    // when it said so, and from delivery to their server otherwise: giving up
+    // while the far end has only just begun ringing is what leaves one side
+    // ringing after the other has given up.
+    const std::int64_t since = call_.peerRingingAtMs > 0 ? call_.peerRingingAtMs
+        : (call_.deliveredAtMs > 0 ? call_.deliveredAtMs : call_.startedAtMs);
     if (nowMillis() - since <= kRingTimeoutMs) {
         return;  // still ringing (active calls sit here too, which is intended)
     }
