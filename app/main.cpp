@@ -3,6 +3,7 @@
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
 #include "I2pController.hpp"
+#include "DesktopEntry.hpp"
 #include "Identicon.hpp"
 #include "TrayIcon.hpp"
 
@@ -98,6 +99,15 @@ int main(int argc, char** argv)
     // carries no icon - Wayland, and shells that match windows to installed
     // entries - this name is what they look it up by.
     QGuiApplication::setDesktopFileName("bazarish");
+    // ...and, running from an AppImage, make sure that entry exists: a Wayland
+    // shell has nothing else to draw the dock icon from.
+    try {
+        bazarish::app::ensureDesktopEntry();
+    } catch (const std::exception& error) {
+        // A messenger that will not start because a desktop file could not be
+        // written would be the worse failure of the two.
+        bazarish::log::warn("desktop entry not installed: {}", error.what());
+    }
 
     // A dark brand palette so default-styled controls are legible: the Basic
     // style reads palette.placeholderText for input placeholders, palette.text
@@ -158,12 +168,20 @@ int main(int argc, char** argv)
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {
         tray = std::make_unique<bazarish::app::TrayIcon>(controller);
+        // Closing the window puts the application in the tray instead of ending it:
+        // an account only receives while it runs, and the tray is the way back.
+        // Without a tray this would leave no way back at all, so the window keeps
+        // being the end of the application there.
+        QApplication::setQuitOnLastWindowClosed(false);
         QObject::connect(tray.get(), &bazarish::app::TrayIcon::showWindowRequested, &app,
             [&engine]() {
                 auto* const window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
                 if (window == nullptr) {
                     return;
                 }
+                // Only the minimised bit is cleared: a window that was maximised
+                // comes back maximised, which is how it was left.
+                window->setWindowStates(window->windowStates() & ~Qt::WindowMinimized);
                 window->show();
                 window->raise();
                 window->requestActivate();

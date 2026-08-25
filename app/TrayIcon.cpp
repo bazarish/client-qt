@@ -108,8 +108,6 @@ void TrayIcon::rebuildMenu()
             = account.unread > 0 ? QStringLiteral(" - %1 unread").arg(account.unread) : QString();
         QAction* const action = menu_.addAction(
             QStringLiteral("%1: %2%3").arg(account.name, statusOf(account), unread));
-        action->setCheckable(true);
-        action->setChecked(account.active);
         const QString id = account.id;
         connect(action, &QAction::triggered, this, [this, id]() {
             app_.switchTo(id);

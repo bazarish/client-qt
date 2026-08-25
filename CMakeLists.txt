@@ -126,6 +126,8 @@ if(Qt6_FOUND)
         app/QtAudioIo.hpp
         app/CallTones.cpp
         app/CallTones.hpp
+        app/DesktopEntry.cpp
+        app/DesktopEntry.hpp
         app/NotifySound.cpp
         app/NotifySound.hpp
         app/TrayIcon.cpp
