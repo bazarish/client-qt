@@ -163,6 +163,15 @@ if(Qt6_FOUND)
             app/fonts/TwemojiMozilla.ttf
     )
 
+    # The notification sound, carried rather than looked for: a system sound theme
+    # is not something this application can count on being installed.
+    qt_add_resources(bazarish-app appsound
+        PREFIX "/sound"
+        BASE app/sound
+        FILES
+            app/sound/notify.wav
+    )
+
     # The brand app icon (rendered from the brand kit's icon.svg) and the brand
     # wordmark logo as SVG (scales crisply at any size / DPI).
     qt_add_resources(bazarish-app appicon
