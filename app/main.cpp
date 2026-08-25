@@ -173,19 +173,7 @@ int main(int argc, char** argv)
         // Without a tray this would leave no way back at all, so the window keeps
         // being the end of the application there.
         QApplication::setQuitOnLastWindowClosed(false);
-        QObject::connect(tray.get(), &bazarish::app::TrayIcon::showWindowRequested, &app,
-            [&engine]() {
-                auto* const window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
-                if (window == nullptr) {
-                    return;
-                }
-                // Only the minimised bit is cleared: a window that was maximised
-                // comes back maximised, which is how it was left.
-                window->setWindowStates(window->windowStates() & ~Qt::WindowMinimized);
-                window->show();
-                window->raise();
-                window->requestActivate();
-            });
+        tray->attachWindow(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));
         QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &app,
             &QApplication::quit);
     } else {

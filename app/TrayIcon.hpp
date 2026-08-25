@@ -3,10 +3,13 @@
 
 #include "NotifySound.hpp"
 
+#include <QElapsedTimer>
 #include <QIcon>
 #include <QMenu>
 #include <QObject>
 #include <QSystemTrayIcon>
+
+class QWindow;
 
 namespace bazarish::app {
 
@@ -25,14 +28,20 @@ public:
     // window is the only way in.
     static bool available();
 
+    // The window the tray shows, hides and brings back.
+    void attachWindow(QWindow* window);
+
 signals:
-    void showWindowRequested();
     void quitRequested();
 
 private:
     void rebuildMenu();
     void refreshIcon();
     void notify(const QString& title, const QString& body);
+    // Brings the window back the way it was left.
+    void showWindow();
+    // The tray icon itself: away if the window is in front, back if it is not.
+    void toggleWindow();
 
     AppController& app_;
     QSystemTrayIcon tray_;
@@ -44,6 +53,11 @@ private:
     // What the icon is currently showing, so it is only replaced when the answer
     // changes rather than on every unread count that moves.
     bool showingUnread_ = false;
+    QWindow* window_ = nullptr;
+    // Running since the window stopped being the active one, invalid while it is.
+    // Clicking a panel can take the keyboard focus with it, so "was in front a
+    // moment ago" is what a tray click has to go by.
+    QElapsedTimer sinceInactive_;
 };
 
 }  // namespace bazarish::app

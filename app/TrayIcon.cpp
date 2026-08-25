@@ -13,6 +13,7 @@
 #include <QImage>
 #include <QPainter>
 #include <QPixmap>
+#include <QWindow>
 
 #include <array>
 
@@ -30,6 +31,9 @@ constexpr int kUnreadTintAlpha = 140;
 // How long a popup stays up. Long enough to read a name, short enough not to sit
 // over other work.
 constexpr int kPopupMs = 6000;
+// How recently the window must have been the active one for a tray click to read
+// as "put it away" rather than "bring it here".
+constexpr int kRecentlyActiveMs = 400;
 
 QIcon iconFromMaster(const QImage& master, const QColor& tint)
 {
@@ -89,12 +93,58 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
     connect(&tray_, &QSystemTrayIcon::activated, this,
         [this](const QSystemTrayIcon::ActivationReason reason) {
             if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) {
-                emit showWindowRequested();
+                toggleWindow();
             }
         });
-    connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::showWindowRequested);
+    // A popup that is clicked is a request to see what it was about, never to put
+    // the window away.
+    connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::showWindow);
     connect(&app_, &AppController::accountsChanged, this, &TrayIcon::refreshIcon);
     connect(&app_, &AppController::notificationRequested, this, &TrayIcon::notify);
+}
+
+void TrayIcon::attachWindow(QWindow* const window)
+{
+    window_ = window;
+    if (window_ == nullptr) {
+        return;
+    }
+    connect(window_, &QWindow::activeChanged, this, [this]() {
+        if (window_->isActive()) {
+            sinceInactive_.invalidate();
+        } else {
+            sinceInactive_.start();
+        }
+    });
+}
+
+void TrayIcon::showWindow()
+{
+    if (window_ == nullptr) {
+        return;
+    }
+    // Only the minimised bit is cleared: a window that was maximised comes back
+    // maximised, which is how it was left.
+    window_->setWindowStates(window_->windowStates() & ~Qt::WindowMinimized);
+    window_->show();
+    window_->raise();
+    window_->requestActivate();
+}
+
+void TrayIcon::toggleWindow()
+{
+    if (window_ == nullptr) {
+        return;
+    }
+    const bool wasActive = window_->isActive()
+        || (sinceInactive_.isValid() && sinceInactive_.elapsed() < kRecentlyActiveMs);
+    const bool inFront = window_->isVisible()
+        && (window_->windowStates() & Qt::WindowMinimized) == 0 && wasActive;
+    if (inFront) {
+        window_->hide();
+        return;
+    }
+    showWindow();
 }
 
 void TrayIcon::rebuildMenu()
@@ -111,7 +161,7 @@ void TrayIcon::rebuildMenu()
         const QString id = account.id;
         connect(action, &QAction::triggered, this, [this, id]() {
             app_.switchTo(id);
-            emit showWindowRequested();
+            showWindow();
         });
     }
     if (!accounts.isEmpty()) {
