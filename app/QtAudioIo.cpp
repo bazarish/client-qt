@@ -12,6 +12,8 @@
 #include <QAudioSource>
 #include <QIODevice>
 #include <QMediaDevices>
+#include <QMetaObject>
+#include <QThread>
 
 #include <chrono>
 #include <condition_variable>
@@ -106,27 +108,55 @@ QtAudioSource::~QtAudioSource()
     stop();
 }
 
+namespace {
+
+// The QAudio objects belong to the thread that created them - the account
+// worker, which runs an event loop - and they drive themselves with timers that
+// only tick there. The call engine starts and stops them from its own plain
+// threads, so the calls are handed over instead of made directly; without that
+// the device opens, no timer ever fires, and the call is silent both ways with
+// nothing reported.
+template <typename Fn>
+void onOwnerThread(QObject* const owner, Fn&& body)
+{
+    if (owner->thread() == QThread::currentThread()) {
+        body();
+        return;
+    }
+    QMetaObject::invokeMethod(owner, std::forward<Fn>(body), Qt::BlockingQueuedConnection);
+}
+
+}  // namespace
+
 void QtAudioSource::start()
 {
-    device_->setRunning(true);
-    source_->start(device_.get());
     // A microphone that did not open is the difference between a quiet call and a
     // dead one, and it used to be reported by nothing at all.
-    const QAudioDevice input = QMediaDevices::defaultAudioInput();
-    if (input.isNull()) {
-        throw std::runtime_error("no microphone: this system offers no audio input");
+    std::string failure;
+    onOwnerThread(source_.get(), [this, &failure]() {
+        device_->setRunning(true);
+        source_->start(device_.get());
+        const QAudioDevice input = QMediaDevices::defaultAudioInput();
+        if (input.isNull()) {
+            failure = "no microphone: this system offers no audio input";
+            return;
+        }
+        if (source_->error() != QAudio::NoError) {
+            failure = "the microphone did not start (" + input.description().toStdString()
+                + "): audio error " + std::to_string(static_cast<int>(source_->error()));
+            return;
+        }
+        bazarish::log::info("capture started on {}", input.description().toStdString());
+    });
+    if (!failure.empty()) {
+        throw std::runtime_error(failure);
     }
-    if (source_->error() != QAudio::NoError) {
-        throw std::runtime_error("the microphone did not start (" + input.description().toStdString()
-            + "): audio error " + std::to_string(static_cast<int>(source_->error())));
-    }
-    bazarish::log::info("capture started on {}", input.description().toStdString());
 }
 
 void QtAudioSource::stop()
 {
     device_->setRunning(false);  // unblock a reader waiting on popFrame
-    source_->stop();
+    onOwnerThread(source_.get(), [this]() { source_->stop(); });
 }
 
 std::vector<std::int16_t> QtAudioSource::readFrame()
@@ -197,21 +227,29 @@ QtAudioSink::~QtAudioSink()
 
 void QtAudioSink::start()
 {
-    sink_->start(device_.get());
-    const QAudioDevice output = QMediaDevices::defaultAudioOutput();
-    if (output.isNull()) {
-        throw std::runtime_error("no speaker: this system offers no audio output");
+    std::string failure;
+    onOwnerThread(sink_.get(), [this, &failure]() {
+        sink_->start(device_.get());
+        const QAudioDevice output = QMediaDevices::defaultAudioOutput();
+        if (output.isNull()) {
+            failure = "no speaker: this system offers no audio output";
+            return;
+        }
+        if (sink_->error() != QAudio::NoError) {
+            failure = "the speaker did not start (" + output.description().toStdString()
+                + "): audio error " + std::to_string(static_cast<int>(sink_->error()));
+            return;
+        }
+        bazarish::log::info("playback started on {}", output.description().toStdString());
+    });
+    if (!failure.empty()) {
+        throw std::runtime_error(failure);
     }
-    if (sink_->error() != QAudio::NoError) {
-        throw std::runtime_error("the speaker did not start (" + output.description().toStdString()
-            + "): audio error " + std::to_string(static_cast<int>(sink_->error())));
-    }
-    bazarish::log::info("playback started on {}", output.description().toStdString());
 }
 
 void QtAudioSink::stop()
 {
-    sink_->stop();
+    onOwnerThread(sink_.get(), [this]() { sink_->stop(); });
 }
 
 void QtAudioSink::writeFrame(const std::vector<std::int16_t>& pcm)
