@@ -122,12 +122,14 @@ void AppController::writeLastActive(const QString& id) const
 void AppController::loadSettings()
 {
     fullPrivacy_ = false;
+    notifications_ = true;
     try {
         std::ifstream in(settingsPath());
         if (in.good()) {
             nlohmann::json j;
             in >> j;
             fullPrivacy_ = j.value("fullPrivacyMode", false);
+            notifications_ = j.value("notifications", true);
         }
     } catch (const std::exception& error) {
         // A missing or malformed settings file just means defaults - but silently
@@ -139,7 +141,8 @@ void AppController::loadSettings()
 
 void AppController::persistSettings() const
 {
-    const nlohmann::json j = {{"fullPrivacyMode", fullPrivacy_}};
+    const nlohmann::json j
+        = {{"fullPrivacyMode", fullPrivacy_}, {"notifications", notifications_}};
     std::ofstream out(settingsPath(), std::ios::trunc);
     out << j.dump();
 }
@@ -153,6 +156,30 @@ void AppController::setFullPrivacyMode(bool on)
     client::setFullPrivacy(on);  // takes effect on the next request, process-wide
     persistSettings();
     emit fullPrivacyModeChanged();
+}
+
+QString AppController::notificationBody(
+    const SessionController* const ctrl, const QString& what) const
+{
+    if (sessions_.size() < 2 || ctrl == nullptr || ctrl->displayName().isEmpty()) {
+        return what;
+    }
+    return what + QStringLiteral(" - ") + ctrl->displayName();
+}
+
+QString AppController::soundFolder() const
+{
+    return QString::fromStdString(accountsRoot().string());
+}
+
+void AppController::setNotificationsEnabled(const bool on)
+{
+    if (notifications_ == on) {
+        return;
+    }
+    notifications_ = on;
+    persistSettings();
+    emit notificationsEnabledChanged();
 }
 
 QString AppController::i2pdVersion() const
@@ -303,6 +330,7 @@ void AppController::refreshAccounts()
         }
         rows.push_back(std::move(row));
     }
+    accountStatuses_ = rows;
     accounts_.setAccounts(std::move(rows));
     // Warm spares are only ever handed to a lookup an open account makes. With
     // every account offline nobody will ask, so the pool stops holding tunnels
@@ -389,6 +417,21 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
             return;
         }
         emit accountOpenFailed(error);
+    });
+    connect(ctrl, &SessionController::messageNotification, this,
+        [this, ctrl](const QString& fromName) {
+            emit notificationRequested(fromName, notificationBody(ctrl, tr("New message")));
+        });
+    // A call is announced when it starts ringing: the state is republished on
+    // every sync tick, and only the change into "incoming" is news.
+    connect(ctrl, &SessionController::callChanged, this, [this, ctrl]() {
+        const QString state = ctrl->callState();
+        const QString previous = callStates_.value(ctrl->accountId());
+        callStates_.insert(ctrl->accountId(), state);
+        if (state == QLatin1String("incoming") && previous != state) {
+            emit notificationRequested(
+                ctrl->callPeerName(), notificationBody(ctrl, tr("Incoming call")));
+        }
     });
     connect(ctrl, &SessionController::unreadTotalChanged, this, &AppController::refreshAccounts);
     connect(ctrl, &SessionController::onlineChanged, this, &AppController::refreshAccounts);

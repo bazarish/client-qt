@@ -853,6 +853,10 @@ signals:
     void contactsRevisionChanged();
     void reactionsRevisionChanged();
     void unreadTotalChanged();
+    // Something arrived that a person would want to be told about, by the name it
+    // came from. Everything that is not a message - receipts, refills, control
+    // traffic - is filtered out before this.
+    void messageNotification(const QString& fromName);
     void operationsChanged();
     void onlineChanged();
     void reachableChanged();

@@ -4,11 +4,18 @@
 #include "PictureStore.hpp"
 #include "I2pController.hpp"
 #include "Identicon.hpp"
+#include "TrayIcon.hpp"
+
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
 
 #include <QColor>
 #include <QFile>
 #include <QFont>
 #include <QFontDatabase>
+#include <QApplication>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QImage>
@@ -18,9 +25,11 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QQuickWindow>
 #include <QUrl>
 
 #include <array>
+#include <memory>
 #include <utility>
 
 int main(int argc, char** argv)
@@ -48,7 +57,9 @@ int main(int argc, char** argv)
         }
     }
 
-    QGuiApplication app(argc, argv);
+    // A widgets application, not a plain GUI one: the tray icon and its menu are
+    // QtWidgets, and there is no tray without them.
+    QApplication app(argc, argv);
     QGuiApplication::setApplicationName("Bazarish");
     QGuiApplication::setOrganizationName("Bazarish");
 
@@ -140,6 +151,27 @@ int main(int argc, char** argv)
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Bazarish/app/qml/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
         return -1;
+    }
+
+    // The tray, where the desktop has one: the accounts and what they are doing,
+    // notifications, and a way back to the window.
+    std::unique_ptr<bazarish::app::TrayIcon> tray;
+    if (bazarish::app::TrayIcon::available()) {
+        tray = std::make_unique<bazarish::app::TrayIcon>(controller);
+        QObject::connect(tray.get(), &bazarish::app::TrayIcon::showWindowRequested, &app,
+            [&engine]() {
+                auto* const window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+                if (window == nullptr) {
+                    return;
+                }
+                window->show();
+                window->raise();
+                window->requestActivate();
+            });
+        QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &app,
+            &QApplication::quit);
+    } else {
+        bazarish::log::info("tray: this desktop offers none; the window is the only way in");
     }
     return app.exec();
 }

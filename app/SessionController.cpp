@@ -3934,6 +3934,10 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // high-water (set when messages actually scroll into view), not a running
     // increment - so it stays accurate across restarts and partial reads.
     contacts_.setUnread(peer, store_.unreadCount(peer));
+    if (!m.outgoing) {
+        // An echo of our own message from another device is not news to anybody.
+        emit messageNotification(peerName(peer));
+    }
     // No receipt is sent on arrival: the green "read" state is reported only when
     // the user actually reads the message (chat open + window focused + the message
     // in view), driven by markReadThroughRow.

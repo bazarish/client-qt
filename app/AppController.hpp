@@ -7,11 +7,13 @@
 
 #include <bazarish/Limits.hpp>
 
+#include <QHash>
 #include <QList>
 #include <QImage>
 #include <QObject>
 #include <QSet>
 #include <QString>
+#include <QVector>
 
 #include <memory>
 
@@ -38,6 +40,9 @@ class AppController : public QObject {
     // --- Global (app-wide) settings, shared by every account ---
     // Full privacy mode: forbid connecting through any clearnet client-facade, so
     // all traffic runs over I2P only. Persisted across runs and applied process-wide.
+    // Popup notifications (with their sound), on unless the user turns them off.
+    Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled
+            NOTIFY notificationsEnabledChanged)
     Q_PROPERTY(bool fullPrivacyMode READ fullPrivacyMode WRITE setFullPrivacyMode
             NOTIFY fullPrivacyModeChanged)
     // The embedded upstream i2pd engine version (e.g. "2.60.0"), for display.
@@ -78,6 +83,14 @@ public:
     // independently of which account is active. Bringing an encrypted, unopened
     // account online emits needPassphrase.
     Q_INVOKABLE void setOnline(const QString& id, bool on);
+
+    bool notificationsEnabled() const { return notifications_; }
+    void setNotificationsEnabled(bool on);
+    // Where a notification sound of the user's own is looked for, and where the
+    // settings live: the accounts folder.
+    QString soundFolder() const;
+    // The account rows behind the model, for the tray menu: name, status, unread.
+    QVector<AccountRow> accountStatuses() const { return accountStatuses_; }
     // Rebuilds every open account's I2P destinations, so a change of tunnel
     // profile reaches destinations that are already up instead of only the next
     // one built.
@@ -139,6 +152,10 @@ signals:
     void restartRequired(const QString& message);
     void accountListChanged();
     void accountsChanged();
+    void notificationsEnabledChanged();
+    // Worth telling the user about even when they are not looking: an arrived
+    // message, an incoming call.
+    void notificationRequested(const QString& title, const QString& body);
     void sessionChanged();
     void fullPrivacyModeChanged();
     void accountOpened();
@@ -199,7 +216,16 @@ private:
     // rebuilt on every unread count change and must not reopen an account
     // database to do it - each open runs the key derivation.
     QVector<AccountListRow> accountRows_;
+    // What a popup says under its title: what happened, and - when more than one
+    // account is open - which of them it happened to.
+    QString notificationBody(const SessionController* ctrl, const QString& what) const;
+
     OpenAccountsModel accounts_;
+    QVector<AccountRow> accountStatuses_;
+    bool notifications_ = true;
+    // The call state each account was last seen in, so a call is announced when it
+    // starts ringing and not again on every tick that follows.
+    QHash<QString, QString> callStates_;
     QList<SessionController*> sessions_;  // open accounts, owned (parented here)
     QString activeId_;
     bool haveAccounts_ = false;
