@@ -18,7 +18,10 @@ Item {
     // Carries where the message is on screen, so the picker opens beside it.
     signal reactRequested(string protocolId, real sceneX, real sceneY)
     // Where the context menu was opened, in scene coordinates: what the window
-    // that opens from it anchors to.
+    // that opens from it anchors to. Taken from the event rather than mapped from
+    // this delegate - the handlers sit on the bubble, which is pushed to the right
+    // for one's own messages, and mapping through the delegate dropped exactly
+    // that offset.
     property point menuAt: Qt.point(0, 0)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
@@ -827,14 +830,14 @@ Item {
         TapHandler {
             acceptedButtons: Qt.RightButton
             onTapped: function(point) {
-                delegate.menuAt = delegate.mapToItem(null, point.position.x, point.position.y)
+                delegate.menuAt = Qt.point(point.scenePosition.x, point.scenePosition.y)
                 contextMenu.popup()
             }
         }
         TapHandler {
             acceptedButtons: Qt.LeftButton
             onLongPressed: function(point) {
-                delegate.menuAt = delegate.mapToItem(null, point.position.x, point.position.y)
+                delegate.menuAt = Qt.point(point.scenePosition.x, point.scenePosition.y)
                 contextMenu.popup()
             }
         }
