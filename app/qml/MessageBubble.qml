@@ -17,6 +17,9 @@ Item {
     signal imageRequested(url source, string messageId, string name)
     // Carries where the message is on screen, so the picker opens beside it.
     signal reactRequested(string protocolId, real sceneX, real sceneY)
+    // Where the context menu was opened, in scene coordinates: what the window
+    // that opens from it anchors to.
+    property point menuAt: Qt.point(0, 0)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
 
@@ -821,9 +824,6 @@ Item {
 
         // Right-click or long-press a message to open its context menu (copy /
         // edit own text / delete).
-        // Where the menu was opened, in scene coordinates: what the window that
-        // opens from it anchors to.
-        property point menuAt: Qt.point(0, 0)
         TapHandler {
             acceptedButtons: Qt.RightButton
             onTapped: function(point) {
