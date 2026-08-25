@@ -74,11 +74,7 @@ Bytes verifierOf(const std::string& passphrase)
 {
     Bytes digest(EVP_MAX_MD_SIZE);
     unsigned int size = 0;
-    // Not a name but part of the format: it goes into the key that unwraps the
-    // sidecar, so changing it makes every account on disk unreadable. It says
-    // "profile" because that is what an account was called when the first one was
-    // written, and that is exactly why it must stay.
-    const std::string labelled = "bazarish-profile-key\0" + passphrase;
+    const std::string labelled = "bazarish-account-key\0" + passphrase;
     if (EVP_Digest(labelled.data(), labelled.size(), digest.data(), &size, EVP_sha256(), nullptr)
         != 1) {
         throw std::runtime_error("account key: could not hash the passphrase");
