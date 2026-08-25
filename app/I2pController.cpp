@@ -169,7 +169,10 @@ void I2pController::refresh()
                 ? (QString::fromStdString(dest.owner) + QStringLiteral(": ") + what)
                 : what;
             row[QStringLiteral("host")] = QString::fromStdString(dest.host);
-            row[QStringLiteral("state")] = dest.ready
+            // A destination on its way out has no tunnels either, and calling that
+            // "building" said the opposite of what was happening.
+            row[QStringLiteral("state")] = dest.closing ? QStringLiteral("closing")
+                : dest.ready
                 ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
                 : QStringLiteral("building");
             row[QStringLiteral("tunnelsIn")] = dest.inboundTunnels;

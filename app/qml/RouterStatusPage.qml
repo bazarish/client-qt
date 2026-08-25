@@ -173,7 +173,11 @@ Popup {
                                     Rectangle {
                                         Layout.alignment: Qt.AlignVCenter
                                         implicitWidth: 8; implicitHeight: 8; radius: 4
-                                        color: modelData.state === "building" ? Theme.warn : Theme.success
+                                        // Coming up is amber, going away is grey, serving
+                                        // is green: three different things, three colours.
+                                        color: modelData.state === "building" ? Theme.warn
+                                            : modelData.state === "closing" ? Theme.textDim
+                                            : Theme.success
                                     }
                                     Label {
                                         text: modelData.label
