@@ -71,6 +71,10 @@ Exec=bazarish-app
 Icon=bazarish
 Categories=Network;InstantMessaging;
 Terminal=false
+# What the window says it is (Qt reports the application name as the WM class):
+# a shell that maps windows to installed entries needs the two to match, and the
+# instance name it would otherwise use is the AppImage's file name.
+StartupWMClass=Bazarish
 DESKTOP
 
 mkdir -p /work

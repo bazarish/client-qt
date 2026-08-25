@@ -11,8 +11,10 @@
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QIcon>
+#include <QImage>
 #include <QLibraryInfo>
 #include <QPalette>
+#include <QPixmap>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -69,8 +71,22 @@ int main(int argc, char** argv)
     baseFont.setPixelSize(14);
     QGuiApplication::setFont(baseFont);
 
-    // The brand app icon (CRT phosphor "b").
-    QGuiApplication::setWindowIcon(QIcon(":/icon/bazarish.png"));
+    // The brand app icon (CRT phosphor "b"). The master is 512x512 and was
+    // published at that one size alone, which is not a size window lists and
+    // panels ask for; they look for the small ones, and several show nothing at
+    // all rather than scale a large icon down themselves.
+    constexpr std::array<int, 7> kIconSizes{16, 22, 24, 32, 48, 64, 128};
+    const QImage iconMaster(":/icon/bazarish.png");
+    QIcon appIcon;
+    for (const int size : kIconSizes) {
+        appIcon.addPixmap(QPixmap::fromImage(
+            iconMaster.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+    }
+    QGuiApplication::setWindowIcon(appIcon);
+    // The desktop entry this application belongs to: where the window itself
+    // carries no icon - Wayland, and shells that match windows to installed
+    // entries - this name is what they look it up by.
+    QGuiApplication::setDesktopFileName("bazarish");
 
     // A dark brand palette so default-styled controls are legible: the Basic
     // style reads palette.placeholderText for input placeholders, palette.text
