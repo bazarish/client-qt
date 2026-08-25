@@ -1,8 +1,9 @@
 #!/bin/bash
-# Portable Bazarish AppImage. Built on Ubuntu 24.04 (glibc 2.39, GCC 13 for
-# std::format) against an upstream Qt 6.8 (the code calls loadFromModule, which
-# is Qt 6.5+, while 24.04 ships 6.4): the oldest glibc that can build it, with a
-# Qt new enough for it, bundled so the host needs neither.
+# Portable Bazarish AppImage. Built on Debian 12 (glibc 2.36) against an upstream
+# Qt 6.8: the oldest glibc worth supporting, with everything the host would
+# otherwise have to provide - Qt, OpenSSL 3.5, SQLCipher - carried inside. A
+# binary built here runs on Debian 12 and on anything newer; the reverse is not
+# true, which is why the base is the older distribution and not the newer one.
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 export APPIMAGE_EXTRACT_AND_RUN=1
@@ -19,8 +20,9 @@ apt-get install -y -qq --no-install-recommends \
   libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 \
   libwayland-client0 libwayland-cursor0 libwayland-egl1 \
   libxrandr2 libxext6 libxfixes3 libxdamage1 libxi6 libxtst6 libxrender1 libsm6 libice6 \
-  libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 libasound2t64 libpulse0 libsndfile1
+  libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 libasound2 libpulse0 libsndfile1
 
+# Qt 6.8's own Linux binaries are built for glibc 2.28+, so they run on this base.
 QTDIR=/opt/Qt/6.8.2/gcc_64
 if [ ! -x "$QTDIR/bin/qmake" ]; then
     pip install --break-system-packages -q aqtinstall
@@ -80,13 +82,19 @@ export QML_SOURCES_PATHS=/src/app/qml
 export QMAKE="$QTDIR/bin/qmake"
 export LD_LIBRARY_PATH="$QTDIR/lib:/opt/openssl/lib64:${LD_LIBRARY_PATH:-}"
 export EXTRA_QT_MODULES="multimedia"
-# The C++ runtime travels too: the binary is compiled by GCC 13 and a host with
-# an older one would refuse it.
+# The C++ runtime is NOT bundled: this base has the oldest libstdc++ we support,
+# so every host that can run this image already has one at least as new. Carrying
+# it would put it ahead of the host's own on the library path, where the host's
+# graphics stack picks it up too - and Mesa built against a newer libstdc++ then
+# fails to load, which reads as "Could not initialize GLX" and no window at all.
+# libxcb-glx belongs to the host's graphics stack, not to this bundle: carried
+# along from an older base it is loaded next to the host's own libxcb, and GLX
+# then fails to initialize on a newer system ("Could not initialize GLX").
 ./linuxdeploy-x86_64.AppImage --appdir "$APPDIR" \
   -e "$APPDIR/usr/bin/bazarish-app" \
   -d "$APPDIR/usr/share/applications/bazarish.desktop" \
   -i "$APPDIR/usr/share/icons/hicolor/512x512/apps/bazarish.png" \
-  -l /usr/lib/x86_64-linux-gnu/libstdc++.so.6 \
+  --exclude-library "libxcb-glx.so*" \
   --plugin qt --output appimage
 
 mv /work/Bazarish*.AppImage /out/
