@@ -278,6 +278,13 @@ Bytes keyFor(const fs::path& databaseFile, const std::string& passphrase)
         }
     }
     const fs::path sidecar = sidecarFor(databaseFile);
+    // A database with no key beside it is not a new account: minting one here
+    // would hand back a key the database was never written with, and the account
+    // would be lost behind an "unreadable database" that no passphrase can fix.
+    if (!fs::exists(sidecar) && fs::exists(databaseFile)) {
+        throw std::runtime_error("account key: " + sidecarFor(databaseFile).string()
+            + " is missing - the account cannot be opened without it");
+    }
     Bytes key = fs::exists(sidecar) ? open(sidecar, passphrase) : create(sidecar, passphrase);
     const std::lock_guard<std::mutex> lock(g_cacheMutex);
     g_cache[databaseFile] = Cached{verifier, key};
