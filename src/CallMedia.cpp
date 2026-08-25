@@ -2,6 +2,7 @@
 #include "CallMedia.hpp"
 
 #include <bazarish/Crypto.hpp>
+#include <bazarish/Log.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -128,6 +129,18 @@ void CallMedia::start()
     if (running_.exchange(true)) {
         return;
     }
+    // The devices are opened and closed here, on the thread that drives the call,
+    // and never from the media threads: an audio backend may hand its work back
+    // to the thread that owns it, and a media thread waiting on this one is a
+    // teardown that never finishes, because stop() joins those very threads.
+    audioSink_->start();
+    try {
+        audioSource_->start();
+    } catch (const std::exception& error) {
+        // A call with no usable microphone is still a call: this side can listen,
+        // and the keep-alive keeps the path proven with nothing to send.
+        bazarish::log::error("call microphone unavailable: {}", error.what());
+    }
     audioCaptureThread_ = std::thread(&CallMedia::audioCaptureLoop, this);
     receiveThread_ = std::thread(&CallMedia::receiveLoop, this);
 }
@@ -137,7 +150,7 @@ void CallMedia::stop()
     if (!running_.exchange(false)) {
         return;
     }
-    // Unblock the capture loops' blocking readFrame; the receive loop unblocks on
+    // Unblock the capture loop's blocking readFrame; the receive loop unblocks on
     // its own poll timeout.
     audioSource_->stop();
     if (audioCaptureThread_.joinable()) {
@@ -146,6 +159,7 @@ void CallMedia::stop()
     if (receiveThread_.joinable()) {
         receiveThread_.join();
     }
+    audioSink_->stop();
 }
 
 void CallMedia::setMuted(const bool muted)
@@ -205,7 +219,6 @@ constexpr int kIdlePollMs = 20;
 
 void CallMedia::audioCaptureLoop()
 {
-    audioSource_->start();
     auto lastSent = std::chrono::steady_clock::now();
     const auto keepAlive = [&]() {
         // An empty payload decodes as concealment silence on the other side. It
@@ -243,7 +256,6 @@ void CallMedia::audioCaptureLoop()
 
 void CallMedia::receiveLoop()
 {
-    audioSink_->start();
     bool audioHavePlayed = false;
     std::uint64_t audioLastPlayed = 0;
     while (running_.load()) {
@@ -273,7 +285,6 @@ void CallMedia::receiveLoop()
             onConnected_();
         }
     }
-    audioSink_->stop();
 }
 
 void CallMedia::handleAudioPacket(const std::uint64_t sequence, const Bytes& opus,
@@ -282,16 +293,25 @@ void CallMedia::handleAudioPacket(const std::uint64_t sequence, const Bytes& opu
     if (havePlayed && sequence <= lastPlayed) {
         return;  // a late or duplicate frame: its slot has passed
     }
+    // Nothing reaches the speaker before media is proven in both directions: what
+    // arrives until then is one half of a path still being opened, and playing it
+    // is the burst of broken audio heard just before the call begins.
+    const bool audible = reportedConnected_.load();
     if (havePlayed && sequence > lastPlayed + 1) {
         // Conceal a bounded run of missing frames so playback keeps pace.
         const std::uint64_t missing = std::min(sequence - lastPlayed - 1, kMaxPlcGap);
         for (std::uint64_t i = 0; i < missing; ++i) {
-            audioSink_->writeFrame(decoder_.decode(Bytes{}));
+            const std::vector<std::int16_t> concealed = decoder_.decode(Bytes{});
+            if (audible) {
+                audioSink_->writeFrame(concealed);
+            }
         }
     }
     const std::vector<std::int16_t> decoded = decoder_.decode(opus);
     outputLevel_.store(frameLevel(decoded));
-    audioSink_->writeFrame(decoded);
+    if (audible) {
+        audioSink_->writeFrame(decoded);
+    }
     lastPlayed = sequence;
     havePlayed = true;
     packetsReceived_.fetch_add(1, std::memory_order_relaxed);

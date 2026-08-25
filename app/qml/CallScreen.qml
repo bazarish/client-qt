@@ -58,6 +58,7 @@ Popup {
     // line keeps scrolling instead of freezing at whatever it last was - which is
     // the difference between "quiet" and "dead".
     component LevelMeter: ColumnLayout {
+        id: meter
         property real level: 0
         property color tint: Theme.accent
         property string caption: ""
@@ -66,45 +67,57 @@ Popup {
         // which is how the buttons came to sit right of centre.
         readonly property int bars: 24
         readonly property int barHeight: 22
+        readonly property int barWidth: 3
+        readonly property int barGap: 2
         readonly property int sampleMs: 100
+        // Speech sits low in the range a level meter can show, so what is drawn is
+        // lifted to where the eye reads it.
+        readonly property real gain: 4
         property var history: []
         spacing: 2
 
         Timer {
             running: root.connected
-            interval: parent.sampleMs
+            interval: meter.sampleMs
             repeat: true
             onTriggered: {
-                const next = parent.history.slice(-(parent.bars - 1))
-                next.push(parent.level)
-                parent.history = next
+                const next = meter.history.slice(-(meter.bars - 1))
+                next.push(meter.level)
+                meter.history = next
             }
         }
         Label {
             Layout.alignment: Qt.AlignHCenter
-            text: parent.caption
+            text: meter.caption
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
         }
-        Row {
+        // A block exactly as tall as the tallest bar can be. The bars rise and
+        // fall inside it, so a voice no longer moves everything else in the window
+        // up and down with it.
+        Item {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 2
-            Repeater {
-                model: parent.parent.bars
-                delegate: Rectangle {
-                    required property int index
-                    readonly property var meter: parent.parent
-                    // The history fills from the right: the leftmost bars are
-                    // empty until enough has been heard to fill them.
-                    readonly property real value: {
-                        const at = index - (meter.bars - meter.history.length)
-                        return at >= 0 ? Math.min(1, meter.history[at] * 4) : 0
+            implicitWidth: meter.bars * meter.barWidth + (meter.bars - 1) * meter.barGap
+            implicitHeight: meter.barHeight
+            Row {
+                anchors.centerIn: parent
+                spacing: meter.barGap
+                Repeater {
+                    model: meter.bars
+                    delegate: Rectangle {
+                        required property int index
+                        // The history fills from the right: the leftmost bars are
+                        // empty until enough has been heard to fill them.
+                        readonly property real value: {
+                            const at = index - (meter.bars - meter.history.length)
+                            return at >= 0 ? Math.min(1, meter.history[at] * meter.gain) : 0
+                        }
+                        width: meter.barWidth
+                        height: Math.max(2, value * meter.barHeight)
+                        anchors.verticalCenter: parent.verticalCenter
+                        radius: 1
+                        color: value > 0.02 ? meter.tint : Theme.border2
                     }
-                    width: 3
-                    height: Math.max(2, value * meter.barHeight)
-                    anchors.verticalCenter: parent.verticalCenter
-                    radius: 1
-                    color: value > 0.02 ? meter.tint : Theme.border2
                 }
             }
         }
@@ -133,6 +146,43 @@ Popup {
             color: parent.enabled ? parent.label : Theme.textDim
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
+        }
+    }
+
+    // A round icon action. The microphone toggle is one: a drawn mic says what it
+    // is, and crossed out in red says it is off, in the one glance a call allows.
+    component CallIconButton: Button {
+        id: iconButton
+        property color fill: Theme.surface
+        property string iconName: ""
+        property bool crossed: false
+        readonly property int diameter: 48
+        readonly property real iconSize: 22
+        Layout.preferredWidth: diameter
+        padding: 0
+        background: Rectangle {
+            radius: iconButton.diameter / 2
+            color: iconButton.down ? Qt.darker(iconButton.fill, 1.2) : iconButton.fill
+            border.color: Theme.border
+            implicitWidth: iconButton.diameter
+            implicitHeight: iconButton.diameter
+        }
+        contentItem: Item {
+            Icon {
+                anchors.centerIn: parent
+                name: iconButton.iconName
+                color: Theme.text
+                size: iconButton.iconSize
+            }
+            Rectangle {
+                visible: iconButton.crossed
+                anchors.centerIn: parent
+                width: iconButton.iconSize * 1.3
+                height: 2
+                radius: 1
+                rotation: -45
+                color: Theme.danger
+            }
         }
     }
 
@@ -243,10 +293,14 @@ Popup {
         }
 
         // Active: mute, end.
-        CallButton {
+        CallIconButton {
             visible: root.callState === "active"
-            text: (root.session && root.session.callMuted) ? "Mic on" : "Mic off"
-            fill: Theme.surface; label: Theme.text
+            iconName: "mic"
+            crossed: root.session && root.session.callMuted
+            Accessible.name: (root.session && root.session.callMuted)
+                ? "Turn the microphone on" : "Turn the microphone off"
+            ToolTip.visible: hovered
+            ToolTip.text: Accessible.name
             onClicked: root.session.setCallMuted(!root.session.callMuted)
         }
         CallButton {

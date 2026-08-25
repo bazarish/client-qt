@@ -15,6 +15,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <atomic>
 #include <thread>
 #include <algorithm>
 #include <vector>
@@ -31,6 +32,59 @@ using namespace bazarish;
     } while (false)
 
 namespace {
+
+// Audio devices that record which thread opened and closed them. Qt's real ones
+// hand their work back to the thread that owns them, so a device opened or closed
+// from a media thread blocks that thread on the call's own thread - the one that
+// then joins it, which is a hang-up that never finishes.
+class ThreadWatchingSource : public SineAudioSource {
+public:
+    ThreadWatchingSource()
+        : SineAudioSource(440.0)
+    {
+    }
+
+    void start() override
+    {
+        startedOn_ = std::this_thread::get_id();
+        SineAudioSource::start();
+    }
+
+    void stop() override
+    {
+        stoppedOn_ = std::this_thread::get_id();
+        SineAudioSource::stop();
+    }
+
+    std::thread::id startedOn() const { return startedOn_; }
+    std::thread::id stoppedOn() const { return stoppedOn_; }
+
+private:
+    std::atomic<std::thread::id> startedOn_{};
+    std::atomic<std::thread::id> stoppedOn_{};
+};
+
+class ThreadWatchingSink : public CapturingAudioSink {
+public:
+    void start() override
+    {
+        startedOn_ = std::this_thread::get_id();
+        CapturingAudioSink::start();
+    }
+
+    void stop() override
+    {
+        stoppedOn_ = std::this_thread::get_id();
+        CapturingAudioSink::stop();
+    }
+
+    std::thread::id startedOn() const { return startedOn_; }
+    std::thread::id stoppedOn() const { return stoppedOn_; }
+
+private:
+    std::atomic<std::thread::id> startedOn_{};
+    std::atomic<std::thread::id> stoppedOn_{};
+};
 
 // A thread-safe in-memory datagram queue: one direction of a loopback link.
 class LoopbackChannel {
@@ -346,6 +400,37 @@ int main()
         CHECK(caller.packetsSent() >= 5);       // datagrams really were sent
         CHECK(calleeSinkRaw->frameCount() == 0);  // none opened with the wrong key
         CHECK(callee.packetsReceived() == 0);
+    }
+
+    // 4) The audio devices are opened and closed by the thread that drives the
+    //    call, never by the media threads: anything else can wedge the teardown.
+    {
+        LoopbackChannel aToB;
+        LoopbackChannel bToA;
+        LoopbackTransport callerTransport(aToB, bToA);
+        LoopbackTransport calleeTransport(bToA, aToB);
+
+        const Bytes key(kAeadKeyBytes, 0x7c);
+        auto source = std::make_unique<ThreadWatchingSource>();
+        auto sink = std::make_unique<ThreadWatchingSink>();
+        ThreadWatchingSource* const sourceRaw = source.get();
+        ThreadWatchingSink* const sinkRaw = sink.get();
+
+        CallMedia caller(
+            callerTransport, std::move(source), std::move(sink), key, CallRole::eCaller);
+        CallMedia callee(calleeTransport, std::make_unique<SineAudioSource>(660.0),
+            std::make_unique<CapturingAudioSink>(), key, CallRole::eCallee);
+
+        const std::thread::id driver = std::this_thread::get_id();
+        caller.start();
+        callee.start();
+        CHECK(sourceRaw->startedOn() == driver);
+        CHECK(sinkRaw->startedOn() == driver);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        caller.stop();
+        callee.stop();
+        CHECK(sourceRaw->stoppedOn() == driver);
+        CHECK(sinkRaw->stoppedOn() == driver);
     }
 
     std::printf("TestCallMedia OK\n");

@@ -4511,11 +4511,17 @@ void SessionController::acceptCall()
 
 void SessionController::declineCall()
 {
+    callEndedLocally_ = true;
+    callTones_.stop();
     emit requestDeclineCall(callId_);
 }
 
 void SessionController::endCall()
 {
+    // Hanging up is not a call that failed: it ends the tones here rather than
+    // letting the outcome speak for it.
+    callEndedLocally_ = true;
+    callTones_.stop();
     emit requestEndCall();
 }
 
@@ -4551,6 +4557,18 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
     callMuted_ = muted;
     emit callChanged();
 
+    // Call-progress tones: silence while the invitation is still travelling, a
+    // ringback while the audio path is being opened, and nothing at all once there
+    // is a voice to hear.
+    if (name == QLatin1String("active") && connectedAtMs == 0) {
+        callTones_.ringback();
+    } else if (name == QLatin1String("idle")) {
+        callTones_.endRingback();
+        callEndedLocally_ = false;
+    } else {
+        callTones_.stop();
+    }
+
     // Surface the call as a background operation: it begins on an outgoing/incoming
     // invite and the active leg, and finishes when the call returns to idle.
     if (state == 0) {  // idle: the call (if any) ended
@@ -4581,6 +4599,15 @@ void SessionController::onCallLogged(
     }
     // Outcome ints mirror Session::CallOutcome: 0 answered, 1 no-answer, 2 declined,
     // 3 missed, 4 cancelled, 5 busy, 6 refused (the peer takes no calls).
+    // A call of ours that did not happen says so out loud: the user is not
+    // necessarily looking at the window when the far end refuses.
+    if (!incoming && !callEndedLocally_
+        && (outcome == static_cast<int>(Session::CallOutcome::eNoAnswer)
+            || outcome == static_cast<int>(Session::CallOutcome::eDeclined)
+            || outcome == static_cast<int>(Session::CallOutcome::eBusy)
+            || outcome == static_cast<int>(Session::CallOutcome::eRefused))) {
+        callTones_.failure();
+    }
     const QString dir
         = incoming ? QStringLiteral("Incoming call") : QStringLiteral("Outgoing call");
     QString text;

@@ -6,6 +6,7 @@
 #include "AccountDb.hpp"
 #include "TranscriptStore.hpp"
 #include "VoiceNote.hpp"
+#include "CallTones.hpp"
 
 #include <QObject>
 #include <QSortFilterProxyModel>
@@ -1195,6 +1196,10 @@ private:
     // no call id). Empty when there is no active call row.
     QString callOpId_;
     bool callMuted_ = false;
+    // Call-progress tones, and the one thing the call state alone cannot tell:
+    // whether it was this side that hung up (which is not a call that failed).
+    CallTones callTones_;
+    bool callEndedLocally_ = false;
     // Rebuilds the chat list from the cached contacts.
     void rebuildChatList();
     int unreadTotal_ = 0;

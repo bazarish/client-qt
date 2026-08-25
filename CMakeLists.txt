@@ -124,6 +124,8 @@ if(Qt6_FOUND)
         app/TranscriptStore.hpp
         app/QtAudioIo.cpp
         app/QtAudioIo.hpp
+        app/CallTones.cpp
+        app/CallTones.hpp
         app/Identicon.cpp
         app/Identicon.hpp
         app/AvatarStore.cpp

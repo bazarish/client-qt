@@ -110,12 +110,13 @@ QtAudioSource::~QtAudioSource()
 
 namespace {
 
-// The QAudio objects belong to the thread that created them - the account
-// worker, which runs an event loop - and they drive themselves with timers that
-// only tick there. The call engine starts and stops them from its own plain
-// threads, so the calls are handed over instead of made directly; without that
-// the device opens, no timer ever fires, and the call is silent both ways with
-// nothing reported.
+// The QAudio objects belong to the thread that created them and drive themselves
+// with timers that only tick there, so a start or stop made from anywhere else is
+// handed over rather than performed on the spot; without that the device opens,
+// no timer ever fires, and the call is silent both ways with nothing reported.
+// Callers are expected to open and close them from their owning thread anyway:
+// this hand-over blocks, and a thread that the owner is waiting on must never
+// make it.
 template <typename Fn>
 void onOwnerThread(QObject* const owner, Fn&& body)
 {
