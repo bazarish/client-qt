@@ -4299,9 +4299,13 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
 {
-    // Persist the green high-water (covers paged-out rows too)...
+    // Persist the green high-water (covers paged-out rows too). Only messages
+    // known to have reached the recipient's server are carried up by a later
+    // receipt: reading one message says the earlier ones were seen, but says
+    // nothing about one that never got there, and a message still sitting in our
+    // own server's queue was turning green on the strength of the next one.
     store_.markOutgoingReadUpTo(peer, uptoId, DeliveryStatus::Delivered,
-        DeliveryStatus::AtSenderServer, DeliveryStatus::AtRecipientServer);
+        DeliveryStatus::AtRecipientServer, DeliveryStatus::AtRecipientServer);
     // ...and reflect it in the open window.
     if (peer == activePeer_) {
         for (const qint64 id : conversation_.markDeliveredThrough(uptoId)) {
