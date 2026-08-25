@@ -96,7 +96,7 @@ target_compile_options(bazarish-bot PRIVATE -Wall -Wextra -Werror)
 # (imageformats/libqsvg), so we do NOT require the Qt6::Svg CMake component here -
 # requiring it would fail the whole Qt6 find on systems that ship the plugin but
 # not the Svg dev config, and silently skip the GUI target.
-find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Multimedia Widgets QUIET)
+find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Multimedia Widgets Network QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
 
@@ -128,6 +128,8 @@ if(Qt6_FOUND)
         app/CallTones.hpp
         app/DesktopEntry.cpp
         app/DesktopEntry.hpp
+        app/SingleInstance.cpp
+        app/SingleInstance.hpp
         app/NotifySound.cpp
         app/NotifySound.hpp
         app/TrayIcon.cpp
@@ -142,7 +144,8 @@ if(Qt6_FOUND)
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(bazarish-app PRIVATE
         bazarish_client_lib ${QRENCODE_LIBRARY} ${SQLCIPHER_LIBRARY}
-        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Multimedia Qt6::Widgets)
+        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Multimedia Qt6::Widgets
+        Qt6::Network)
     target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 

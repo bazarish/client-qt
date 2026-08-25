@@ -167,9 +167,14 @@ QString AppController::notificationBody(
     return what + QStringLiteral(" - ") + ctrl->displayName();
 }
 
+std::filesystem::path AppController::accountsFolder()
+{
+    return accountsRoot();
+}
+
 QString AppController::soundFolder() const
 {
-    return QString::fromStdString(accountsRoot().string());
+    return QString::fromStdString(accountsFolder().string());
 }
 
 void AppController::setNotificationsEnabled(const bool on)

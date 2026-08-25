@@ -15,6 +15,7 @@
 #include <QString>
 #include <QVector>
 
+#include <filesystem>
 #include <memory>
 
 namespace bazarish::app {
@@ -86,8 +87,10 @@ public:
 
     bool notificationsEnabled() const { return notifications_; }
     void setNotificationsEnabled(bool on);
-    // Where a notification sound of the user's own is looked for, and where the
-    // settings live: the accounts folder.
+    // The folder every account, the global settings and a notification sound of the
+    // user's own live in. Static: the application decides whether it may run at all
+    // by this path, before anything is opened.
+    static std::filesystem::path accountsFolder();
     QString soundFolder() const;
     // The account rows behind the model, for the tray menu: name, status, unread.
     QVector<AccountRow> accountStatuses() const { return accountStatuses_; }

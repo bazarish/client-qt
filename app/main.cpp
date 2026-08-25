@@ -5,6 +5,7 @@
 #include "I2pController.hpp"
 #include "DesktopEntry.hpp"
 #include "Identicon.hpp"
+#include "SingleInstance.hpp"
 #include "TrayIcon.hpp"
 
 #pragma push_macro("emit")
@@ -128,6 +129,18 @@ int main(int argc, char** argv)
     palette.setColor(QPalette::ToolTipText, QColor("#d7dbd8"));
     QGuiApplication::setPalette(palette);
 
+    // One application per account folder: two sharing one folder each hold their
+    // own view of the same database and register as the same device, and messages
+    // then land in whichever asked first.
+    bazarish::app::SingleInstance instance(
+        QString::fromStdString(bazarish::app::AppController::accountsFolder().string()));
+    if (!instance.claim()) {
+        const bool handed = instance.handOver();
+        bazarish::log::info("another Bazarish already has this account folder; {}",
+            handed ? "brought its window forward" : "it is not answering");
+        return handed ? 0 : 1;
+    }
+
     QQmlApplicationEngine engine;
     engine.addImageProvider("identicon", new bazarish::app::IdenticonProvider());
     engine.addImageProvider("avatar", new bazarish::app::AvatarProvider());
@@ -165,6 +178,20 @@ int main(int argc, char** argv)
 
     // The tray, where the desktop has one: the accounts and what they are doing,
     // notifications, and a way back to the window.
+    const auto raiseWindow = [&engine]() {
+        auto* const window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+        if (window == nullptr) {
+            return;
+        }
+        window->setWindowStates(window->windowStates() & ~Qt::WindowMinimized);
+        window->show();
+        window->raise();
+        window->requestActivate();
+    };
+    // Starting the application again is a request to see it, whether it is behind
+    // other windows or has been put away in the tray.
+    QObject::connect(&instance, &bazarish::app::SingleInstance::showRequested, &app, raiseWindow);
+
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {
         tray = std::make_unique<bazarish::app::TrayIcon>(controller);
