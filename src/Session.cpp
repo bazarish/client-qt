@@ -1674,7 +1674,7 @@ void Session::acceptContactRequest(const std::string& peerFingerprint)
 
 bool Session::sendMessage(const std::string& peerFingerprint, const std::string& text,
     const std::string& e2eId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
-    std::string* outAttemptId, const std::string& replyTo)
+    std::string* outAttemptId, const std::string& replyTo, const bool forwarded)
 {
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -1684,6 +1684,12 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
         {"sentAt", nowMillis()},
         {"text", text},
     };
+    if (forwarded) {
+        // A bare mark: this was passed on rather than written here. It names
+        // nobody - not who wrote it, not who passed it on before - and proves
+        // nothing about the text it travels with.
+        inner["forwarded"] = true;
+    }
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
@@ -1751,7 +1757,7 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
 bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
     const std::int64_t durationMs, const std::string& e2eId,
     const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
-    const std::string& replyTo)
+    const std::string& replyTo, const bool forwarded)
 {
     if (opus.empty()) {
         throw std::runtime_error("there is nothing recorded to send");
@@ -1775,6 +1781,9 @@ bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
                 {"data", nlohmann::json::binary(opus)},
             }},
     };
+    if (forwarded) {
+        inner["forwarded"] = true;
+    }
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
@@ -2510,6 +2519,9 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             message.fromFingerprint = body.at("from").get<std::string>();
             message.e2eId = body.value("id", std::string());
             message.sentAt = body.value("sentAt", static_cast<std::int64_t>(0));
+            // Passed on rather than written here. Taken as the bare fact it is:
+            // it names nobody and is not evidence of anything.
+            message.forwarded = body.value("forwarded", false);
             std::string type = body.value("type", std::string("text"));
 
             // Their routing rides on every message: adopt it the moment it moves.

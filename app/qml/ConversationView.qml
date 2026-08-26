@@ -135,6 +135,7 @@ Item {
     ImageViewer { id: imageViewer; session: root.session }
 
     ReactionPicker { id: reactionPicker; session: root.session }
+    ForwardSheet { id: forwardSheet; session: root.session }
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
     Dialog {
@@ -273,6 +274,7 @@ Item {
                     onReactRequested: function(e2eId, sceneX, sceneY) {
                         reactionPicker.openAt(e2eId, sceneX, sceneY)
                     }
+                    onForwardRequested: function(e2eId) { forwardSheet.openFor(e2eId) }
                     onImageRequested: function(url, localId, name) {
                         imageViewer.show(url, localId, name)
                     }

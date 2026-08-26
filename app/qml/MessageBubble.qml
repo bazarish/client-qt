@@ -17,6 +17,8 @@ Item {
     signal imageRequested(url source, string e2eId, string name)
     // Carries where the message is on screen, so the picker opens beside it.
     signal reactRequested(string e2eId, real sceneX, real sceneY)
+    // Pass this message on to another chat: the view asks which one.
+    signal forwardRequested(string e2eId)
     // Where the context menu was opened, in scene coordinates: what the window
     // that opens from it anchors to. Taken from the event rather than mapped from
     // this delegate - the handlers sit on the bubble, which is pushed to the right
@@ -786,6 +788,22 @@ Item {
                 }
             }
 
+            // Passed on, not written here. The mark is all it is: it names nobody
+            // and says nothing about who wrote what follows.
+            RowLayout {
+                visible: model.forwarded === true
+                Layout.fillWidth: true
+                Layout.bottomMargin: 2
+                spacing: 5
+                Icon { name: "forwarded"; color: Theme.textDim; size: 13 }
+                Label {
+                    text: "Forwarded"
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                    Layout.fillWidth: true
+                }
+            }
+
             // What is happening to a send that has not gone through yet, in the same
             // grey as the chip: a message our server is still retrying says so on
             // itself, instead of looking like one nobody is carrying.
@@ -896,6 +914,17 @@ Item {
                     pictureSaveDialog.e2eId = model.e2eId
                     pictureSaveDialog.open()
                 }
+            }
+            ContextMenuItem {
+                text: "Forward"
+                iconName: "forward"
+                // Anything a person wrote or sent can be passed on; service notices
+                // and requests cannot.
+                visible: !delegate.isSystem && !delegate.isUnsupported
+                    && !delegate.isContactRequest
+                    && model.e2eId && model.e2eId.length > 0
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.forwardRequested(model.e2eId)
             }
             ContextMenuItem {
                 text: "Reply"

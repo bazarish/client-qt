@@ -187,6 +187,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case KeyboardRole: return m.keyboard;
     case E2eIdRole: return m.e2eId;
     case EditedRole: return m.edited;
+    case ForwardedRole: return m.forwarded;
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
@@ -220,7 +221,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
     return {{OutgoingRole, "outgoing"}, {TypeRole, "type"}, {TextRole, "text"},
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
-        {E2eIdRole, "e2eId"}, {EditedRole, "edited"},
+        {E2eIdRole, "e2eId"}, {EditedRole, "edited"}, {ForwardedRole, "forwarded"},
         {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"},
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},

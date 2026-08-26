@@ -209,6 +209,7 @@ if(Qt6_FOUND)
             app/qml/MessageBubble.qml
             app/qml/SearchPopup.qml
             app/qml/ReactionPicker.qml
+            app/qml/ForwardSheet.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
             app/qml/VoiceRecorder.qml

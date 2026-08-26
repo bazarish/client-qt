@@ -83,6 +83,7 @@ public:
     enum Roles {
         OutgoingRole = Qt::UserRole + 1, TypeRole, TextRole, AttNameRole, AttMimeRole,
         AttSizeRole, AttRefRole, AttKeyRole, KeyboardRole, E2eIdRole, EditedRole,
+        ForwardedRole,
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
         BlobGoneRole, DownloadStageRole, TransferStageRole, ReplyToRole, PictureRole,

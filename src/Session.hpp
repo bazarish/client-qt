@@ -112,6 +112,9 @@ struct IncomingMessage {
     // The sender's protocol message id (envelope "id"), used to send a
     // delivery receipt back for it.
     std::string e2eId;
+    // The sender passed this on rather than writing it: a bare mark, carrying
+    // nothing about where it came from or who wrote it first.
+    bool forwarded = false;
     // The server-side pending-blob id this item was fetched as. NOT acked during
     // sync(): the surfaced item is acked only after the client has durably stored
     // it (ackPending, driven by the GUI after persistence), so a crash/restart
@@ -333,7 +336,7 @@ public:
     bool sendVoice(const std::string& peerFingerprint, const Bytes& opus, std::int64_t durationMs,
         const std::string& e2eId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
-        const std::string& replyTo = {});
+        const std::string& replyTo = {}, bool forwarded = false);
 
     // Stores a picture's bytes against the message that announced it.
     void putPicture(const std::string& e2eId, const Bytes& bytes);
@@ -571,7 +574,8 @@ public:
     bool sendMessage(const std::string& peerFingerprint, const std::string& text,
         const std::string& e2eId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, const std::string& replyTo = {});
+        std::string* outAttemptId = nullptr, const std::string& replyTo = {},
+        bool forwarded = false);
 
     // Announces a file as a "file" content message: name, size and digest only.
     // The bytes never leave this machine until the recipient asks for them, so

@@ -50,13 +50,13 @@ public slots:
     void setSyncEnabled(bool on);
     void rebuildI2pLinks();
     void sendText(const QString& peer, const QString& text, qint64 localId,
-        const QString& e2eId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo);
     void sendPicture(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo);
     void sendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs, qint64 localId,
-        const QString& e2eId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendReceipt(const QString& peer, const QString& refId);
     // Acks a pending mailbox item (deferred ack): called by the controller after it
     // has durably stored the item, so the server only drops it once it is safe.
@@ -629,6 +629,11 @@ public:
     // of {id, text, time, outgoing, author} maps for the search popup.
     Q_INVOKABLE QVariantList searchMessages(const QString& query);
     Q_INVOKABLE void sendText(const QString& text);
+    // Passes a message this account holds on to another chat as a message of its
+    // own, marked forwarded. The mark says only that: it names nobody and proves
+    // nothing about who wrote what it carries. Text, pictures and voice travel;
+    // a file only when this device still has the bytes.
+    Q_INVOKABLE void forwardMessage(const QString& e2eId, const QString& toPeer);
     // Re-dispatches a failed outgoing text message (same protocol id) after the
     // user taps "Resend" on its bubble.
     Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& e2eId);
@@ -892,13 +897,13 @@ signals:
 signals:  // to worker
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
-        const QString& e2eId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo);
     void requestSendPicture(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo);
     void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
-        qint64 localId, const QString& e2eId, const QString& replyTo);
+        qint64 localId, const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
@@ -1218,6 +1223,8 @@ private:
     // Rebuilds the chat list from the cached contacts.
     void rebuildChatList();
     int unreadTotal_ = 0;
+    // Shows a forward where it belongs and starts its activity row.
+    void forwardShown(const StoredMessage& m, const QString& toPeer, const QString& preview);
     // Recomputes unreadTotal_ from the contacts model and notifies on change.
     void refreshUnreadTotal();
 };

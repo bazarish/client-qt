@@ -826,6 +826,7 @@ void SessionWorker::sync()
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
         map["e2eId"] = QString::fromStdString(m.e2eId);
+        map["forwarded"] = m.forwarded;
         map["ref"] = QString::fromStdString(m.refId);
         map["replyTo"] = QString::fromStdString(m.replyTo);
         map["sentAt"] = static_cast<qint64>(m.sentAt);
@@ -1008,7 +1009,7 @@ void SessionWorker::setCallMuted(const bool muted)
 }
 
 void SessionWorker::sendText(const QString& peer, const QString& text, qint64 localId,
-    const QString& e2eId, const QString& replyTo)
+    const QString& e2eId, const QString& replyTo, const bool forwarded)
 {
     try {
         // The callback fires "grey" the instant our own server accepts the
@@ -1022,7 +1023,7 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
                 emit sendProgress(localId, DeliveryStatus::AtSenderServer);
                 emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
             },
-            &attemptId, replyTo.toStdString());
+            &attemptId, replyTo.toStdString(), forwarded);
         if (delivered) {
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
@@ -1064,7 +1065,7 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
 
 void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
     const qint64 durationMs, const qint64 localId, const QString& e2eId,
-    const QString& replyTo)
+    const QString& replyTo, const bool forwarded)
 {
     try {
         std::string attemptId;
@@ -1075,7 +1076,7 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
                 emit sendProgress(localId, DeliveryStatus::AtSenderServer);
                 emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
             },
-            &attemptId, replyTo.toStdString());
+            &attemptId, replyTo.toStdString(), forwarded);
         if (delivered) {
             pendingSends_.erase(localId);
             emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
@@ -3496,6 +3497,97 @@ void SessionController::sendVoiceTake()
     emit requestSendVoice(activePeer_, audio, durationMs, m.id, m.e2eId, replyTo);
 }
 
+void SessionController::forwardMessage(const QString& e2eId, const QString& toPeer)
+{
+    if (e2eId.isEmpty() || toPeer.isEmpty()) {
+        return;
+    }
+    const StoredMessage source = store_.messageByE2e(e2eId, activePeer_);
+    if (source.id == 0) {
+        return;  // not a message this chat holds
+    }
+    // A forward is a message of this account's own: new id, new row, the content
+    // carried over and marked. Nothing of the original travels - not its sender,
+    // not its id, not its history of being passed on before.
+    StoredMessage m;
+    m.peer = toPeer;
+    m.outgoing = true;
+    m.type = source.type;
+    m.e2eId = SessionController_genE2eId();
+    m.text = source.text;
+    m.forwarded = true;
+    m.ts = nowMillis();
+    m.orderKey = m.ts;
+    m.status = DeliveryStatus::Sending;
+
+    if (source.type == QStringLiteral("voice")) {
+        const QByteArray audio = store_.media(QStringLiteral("voice:") + source.e2eId);
+        if (audio.isEmpty()) {
+            emit actionFailed(tr("this voice message is no longer on this device"));
+            return;
+        }
+        m.attMime = source.attMime;
+        m.attSize = audio.size();
+        m.attDurationMs = source.attDurationMs;
+        m.attWave = source.attWave;
+        m.id = store_.append(m);
+        // The core keeps its own copy under the new id when it sends it.
+        forwardShown(m, toPeer, QStringLiteral("[voice]"));
+        emit requestSendVoice(toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
+        return;
+    }
+    if (source.type == QStringLiteral("text")) {
+        m.id = store_.append(m);
+        forwardShown(m, toPeer, m.text);
+        emit requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
+        return;
+    }
+    // A picture or a file is announced from a path, so it can only be passed on
+    // while this device still holds the bytes. A picture it does hold - they ride
+    // inside the message - is written out for the send to read.
+    QString path = source.savedPath;
+    if (source.type == QStringLiteral("image")) {
+        const QByteArray picture = store_.media(QStringLiteral("picture:") + source.e2eId);
+        if (!picture.isEmpty()) {
+            const QString scratch = QStandardPaths::writableLocation(QStandardPaths::TempLocation)
+                + QStringLiteral("/bazarish-forward-") + m.e2eId + QStringLiteral(".bin");
+            QFile out(scratch);
+            if (out.open(QIODevice::WriteOnly | QIODevice::Truncate)
+                && out.write(picture) == picture.size()) {
+                out.close();
+                path = scratch;
+            }
+        }
+    }
+    if (path.isEmpty() || !QFileInfo::exists(path)) {
+        emit actionFailed(tr("save this to your device first, then it can be forwarded"));
+        return;
+    }
+    m.attName = source.attName;
+    m.attMime = source.attMime;
+    m.attSize = source.attSize;
+    m.attSrcPath = path;
+    m.id = store_.append(m);
+    forwardShown(m, toPeer, source.attName.isEmpty() ? QStringLiteral("[file]") : source.attName);
+    if (source.type == QStringLiteral("image")) {
+        emit requestSendPicture(toPeer, path, m.id, m.e2eId, QString());
+    } else {
+        emit requestSendFile(toPeer, path, m.id, m.e2eId, QString());
+    }
+}
+
+void SessionController::forwardShown(
+    const StoredMessage& m, const QString& toPeer, const QString& preview)
+{
+    statusById_[m.id] = DeliveryStatus::Sending;
+    if (toPeer == activePeer_) {
+        showInActiveView(m, true);
+    }
+    contacts_.touch(toPeer, peerName(toPeer), preview, m.ts, false);
+    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
+        QStringLiteral("To ") + peerName(toPeer), QStringLiteral("Forwarding…"), toPeer);
+}
+
 void SessionController::cancelVoiceRecording()
 {
     if (voiceRecording_ && voice_) {
@@ -3940,6 +4032,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.e2eId = message.value("e2eId").toString();
     m.text = message.value("text").toString();
     m.replyTo = message.value("replyTo").toString();
+    m.forwarded = message.value("forwarded").toBool();
     m.attName = message.value("attName").toString();
     m.attMime = message.value("attMime").toString();
     m.attSize = message.value("attSize").toLongLong();

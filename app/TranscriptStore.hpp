@@ -40,6 +40,9 @@ struct StoredMessage {
     QString replyTo;       // protocol id of the message this one replies to (empty
                            // when not a reply); the UI resolves it to a local row
     bool edited = false;   // true once the message was edited in place
+    // The sender passed this on rather than writing it. A bare mark: it names
+    // nobody, and says nothing about who wrote what it carries.
+    bool forwarded = false;
     qint64 ts = 0;         // unix milliseconds - the message's sentAt (display time)
     qint64 orderKey = 0;   // unix ms sort position: sentAt for a recent arrival,
                            // the local arrival time for a late one (see append path)

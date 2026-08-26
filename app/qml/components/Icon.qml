@@ -10,7 +10,7 @@ import Bazarish
 Item {
     id: root
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
-    // refresh, edit, more, plus, check, up, down, forward, link, bang, dot,
+    // refresh, edit, more, plus, check, up, down, forward, forwarded, link, bang, dot,
     // stop, send, person, burger.
     property string name: ""
     property color color: Theme.text
@@ -48,6 +48,8 @@ Item {
                     case "close":   return "M 6 6 L 18 18 M 18 6 L 6 18"
                     case "back":    return "M 15 5 L 8 12 L 15 19"
                     case "forward": return "M 9 5 L 16 12 L 9 19"
+                    // Two of the same chevron, one behind the other: passed on.
+                    case "forwarded": return "M 5 6 L 11 12 L 5 18 M 12 6 L 18 12 L 12 18"
                     // Two half-links, each an arc capped by a straight run, meeting
                     // over a shared bar - the chain that reads as "a link to this".
                     case "link":    return "M 10 14 A 4 4 0 0 0 15.7 14 L 18.2 11.5 "

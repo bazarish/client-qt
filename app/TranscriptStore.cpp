@@ -133,7 +133,7 @@ private:
 const char* const kMessageColumns = "id, peer, outgoing, type, e2eId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, blobGone, replyTo,"
-                                    " hasPicture, attDurationMs, attWave";
+                                    " hasPicture, attDurationMs, attWave, forwarded";
 
 // Orders a loaded window oldest-first by the sort position (orderKey), then id as
 // a stable tiebreak. Each window is a contiguous id-range, so this repairs an
@@ -176,6 +176,7 @@ StoredMessage readMessageRow(const Query& query)
     m.attDurationMs = query.value(21).toLongLong();
     m.attWave = query.value(22).toString();
     m.replyTo = query.value(19).toString();
+    m.forwarded = query.value(23).toInt() != 0;
     return m;
 }
 
@@ -263,6 +264,17 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     const bool hasTables
         = written.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'messages'")
         && written.next();
+    if (hasTables) {
+        // The number alone cannot catch a column added before the first release,
+        // when the number is frozen: ask the table itself whether it holds what
+        // this build writes.
+        Query columns(db_);
+        if (!columns.exec(QStringLiteral("SELECT %1 FROM messages LIMIT 1").arg(kMessageColumns))) {
+            throw std::runtime_error(
+                "this account was written against a different set of columns and cannot be read;"
+                " create it again");
+        }
+    }
     if (hasTables && schema != kAccountSchemaVersion) {
         // Either older than the numbering or newer than this build understands.
         // Both are refused with the number, because a migration that does not
@@ -278,7 +290,7 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
             " blobGone INTEGER, replyTo TEXT, hasPicture INTEGER,"
-            " attDurationMs INTEGER, attWave TEXT)")) {
+            " attDurationMs INTEGER, attWave TEXT, forwarded INTEGER)")) {
         return false;
     }
 
@@ -320,8 +332,8 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, e2eId, text, attName, attMime,"
         " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo,"
-        " attDurationMs, attWave)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " attDurationMs, attWave, forwarded)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -341,6 +353,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.replyTo);
     query.addBindValue(message.attDurationMs);
     query.addBindValue(message.attWave);
+    query.addBindValue(message.forwarded ? 1 : 0);
     if (!query.exec()) {
         return 0;
     }
