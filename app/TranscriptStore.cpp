@@ -247,15 +247,14 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     }
 
     Query query(db_);
-    // An account written before the column was named after what it holds keeps its
-    // rows; the name is what changes. Nothing else does, so there is no migration
-    // beyond this line.
-    Query columns(db_);
-    if (columns.exec("SELECT protocolId FROM messages LIMIT 1")) {
-        Query rename(db_);
-        if (!rename.exec("ALTER TABLE messages RENAME COLUMN protocolId TO e2eId")) {
-            return false;
-        }
+    // An account written before the column was named after what it holds is not
+    // read. There is no release to be compatible with, and a database that half
+    // works - reads returning nothing, writes failing - is worse than one that
+    // says plainly it is from before.
+    Query previous(db_);
+    if (previous.exec("SELECT protocolId FROM messages LIMIT 1")) {
+        throw std::runtime_error(
+            "this account was written before the e2eId rename and cannot be read; create it again");
     }
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS messages ("
