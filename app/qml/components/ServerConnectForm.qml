@@ -22,6 +22,9 @@ ColumnLayout {
     // Reveal the per-field inputs straight away (true when editing) or keep the
     // link field as the only surface until a link parses or manual entry is asked.
     property bool showManual: false
+    // Where a router with no peers can ask for a slice of netdb: taken from the
+    // pasted descriptor, never typed by hand - a user has no way to know them.
+    property var reseedUrls: []
     // Emitted right after the action runs, so a host dialog can close.
     signal submitted()
 
@@ -83,6 +86,7 @@ ColumnLayout {
         }
         var info = form.session ? form.session.parseServerLink(t) : null
         if (info && info.serverFp && info.serverFp.length > 0) {
+            form.reseedUrls = info.reseeds || []
             facadeModel.clear()
             for (var i = 0; i < info.facades.length; ++i) {
                 facadeModel.append({ url: info.facades[i] })
@@ -189,7 +193,8 @@ ColumnLayout {
             enabled: form.session && !form.session.connecting
                 && form.facadeList().length > 0 && fpField.text.trim().length > 0
             onClicked: {
-                form.session.connectServer(form.facadeList(), fpField.text.trim())
+                form.session.connectServer(form.facadeList(), fpField.text.trim(),
+                    form.reseedUrls)
                 form.submitted()
             }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }

@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "ApiClient.hpp"
+#include <bazarish/ServerDescriptor.hpp>
 #include "Invite.hpp"
 
 #include <cstdio>
@@ -138,16 +139,18 @@ void testServerLink()
     CHECK(threw);
 }
 
-// I2P facades (host ends in ".b32.i2p") are preferred over clearnet, but only
-// when an I2P transport is configured; the active-facade reporting that drives
-// the account list marking reflects this. No network is touched: constructing
-// the client only computes the facade order (the router starts on first request).
-void testI2pPriority()
+// The API is spoken over I2P and nothing else: a facade that is not an I2P
+// address is not tried at all, and the one way round that is the switch a stand
+// on a LAN turns on. No network is touched - constructing the client only
+// computes the facade order.
+void testI2pOnly()
 {
     const bazarish::Identity id = bazarish::Identity::generate();
+    bazarish::setAllowFacadeWithoutI2pForDevPurposes(false);
 
     {
-        // I2P transport present: the I2P facade is preferred and reported active.
+        // A clearnet facade beside an I2P one is skipped, whatever order they
+        // were configured in.
         ServerEndpoint endpoint;
         endpoint.serverFingerprint = "srvfp";
         endpoint.facades
@@ -157,37 +160,42 @@ void testI2pPriority()
         CHECK(api.activeFacadeUrl() == "http://abc.b32.i2p");
     }
     {
-        // No I2P transport: the I2P facade is unreachable, so clearnet is active
-        // and the connection is not falsely marked as I2P.
-        ServerEndpoint endpoint;
-        endpoint.serverFingerprint = "srvfp";
-        endpoint.facades
-            = {parseFacadeUrl("https://clear.example:8443"), parseFacadeUrl("http://abc.b32.i2p")};
-        ApiClient api(id, "cid", endpoint, {});
-        CHECK(!api.activeFacadeIsI2p());
-        CHECK(api.activeFacadeUrl() == "https://clear.example:8443");
-    }
-    {
-        // All-clearnet is never marked I2P, transport or not.
+        // Nothing but clearnet facades: there is nothing to talk to, and the
+        // connection is certainly not reported as I2P.
         ServerEndpoint endpoint;
         endpoint.serverFingerprint = "srvfp";
         endpoint.facades = {parseFacadeUrl("http://a:1"), parseFacadeUrl("https://b:2/x")};
         ApiClient api(id, "cid", endpoint, "/tmp/bazarish-test/i2p");
         CHECK(!api.activeFacadeIsI2p());
-        CHECK(api.activeFacadeUrl() == "http://a:1");
+    }
+    {
+        // With the stand switch on, everything is tried in the order configured.
+        bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
+        ServerEndpoint endpoint;
+        endpoint.serverFingerprint = "srvfp";
+        endpoint.facades
+            = {parseFacadeUrl("https://clear.example:8443"), parseFacadeUrl("http://abc.b32.i2p")};
+        ApiClient api(id, "cid", endpoint, "/tmp/bazarish-test/i2p");
+        CHECK(!api.activeFacadeIsI2p());
+        CHECK(api.activeFacadeUrl() == "https://clear.example:8443");
     }
 }
 
 }  // namespace
 
+// The stub server these tests talk to is a plain HTTP listener on localhost -
+// the same shape as a stand on a LAN, and the reason that switch exists.
 int main()
 {
+    bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
     testParse();
     testFormatRoundTrip();
     testInvalid();
     testEndpointFacades();
     testServerLink();
-    testI2pPriority();
+    testI2pOnly();
+    // Left on for the stub server the other cases talk to.
+    bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
     std::fprintf(stderr, "TestFacade passed\n");
     return 0;
 }

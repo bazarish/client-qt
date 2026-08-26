@@ -586,7 +586,8 @@ void SessionWorker::emitFacadeInfo()
         QString::fromStdString(session_->endpoint().serverFingerprint));
 }
 
-void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QString& serverFp)
+void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
+    const QStringList& reseedUrls)
 {
     if (!session_) {
         return;
@@ -610,6 +611,13 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
             const QString trimmed = url.trimmed();
             if (!trimmed.isEmpty()) {
                 endpoint.facades.push_back(
+                    bazarish::client::parseFacadeUrl(trimmed.toStdString()));
+            }
+        }
+        for (const QString& url : reseedUrls) {
+            const QString trimmed = url.trimmed();
+            if (!trimmed.isEmpty()) {
+                endpoint.reseeds.push_back(
                     bazarish::client::parseFacadeUrl(trimmed.toStdString()));
             }
         }
@@ -2169,7 +2177,8 @@ void SessionController::open(
     emit requestOpen(file, passphrase);
 }
 
-void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp)
+void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp,
+    const QStringList& reseedUrls)
 {
     connecting_ = true;
     connectPercent_ = 0;
@@ -2178,7 +2187,7 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
     beginOperation(kConnectOperationId, QStringLiteral("connect"),
         QStringLiteral("Connecting this account"), connectPhase_);
     emit connectStateChanged();
-    emit requestConnect(facadeUrls, serverFp);
+    emit requestConnect(facadeUrls, serverFp, reseedUrls);
 }
 
 void SessionController::onConnectProgress(const int percent, const QString& phase)
@@ -2231,6 +2240,11 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
             facades << QString::fromStdString(url);
         }
         result["facades"] = facades;
+        QStringList reseeds;
+        for (const std::string& url : link.reseedUrls) {
+            reseeds << QString::fromStdString(url);
+        }
+        result["reseeds"] = reseeds;
     } catch (const std::exception& error) {
         // Malformed link: return an empty map (the caller checks).
         bazarish::log::debug("server link not parsed: {}", error.what());

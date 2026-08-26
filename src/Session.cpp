@@ -463,6 +463,11 @@ Session Session::open(const fs::path& accountFile, const std::string& passphrase
     for (const nlohmann::json& url : endpointJson.at("facades")) {
         endpoint.facades.push_back(parseFacadeUrl(url.get<std::string>()));
     }
+    if (endpointJson.contains("reseeds")) {
+        for (const nlohmann::json& url : endpointJson.at("reseeds")) {
+            endpoint.reseeds.push_back(parseFacadeUrl(url.get<std::string>()));
+        }
+    }
 
     const bool encrypted = meta.value("encrypted", false);
 
@@ -642,6 +647,10 @@ void Session::persistMeta() const
     for (const Facade& facade : endpoint.facades) {
         facades.push_back(facadeToUrl(facade));
     }
+    nlohmann::json reseeds = nlohmann::json::array();
+    for (const Facade& reseed : endpoint.reseeds) {
+        reseeds.push_back(facadeToUrl(reseed));
+    }
     const nlohmann::json meta = {
         {"clientId", client_->clientId()},
         {"name", name_},
@@ -650,6 +659,7 @@ void Session::persistMeta() const
             {
                 {"serverFingerprint", endpoint.serverFingerprint},
                 {"facades", facades},
+                {"reseeds", reseeds},
             }},
         {"card", cardB64_},
         {"deliveryIdSeed", deliveryIdSeed_},

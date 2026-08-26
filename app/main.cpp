@@ -11,6 +11,7 @@
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
+#include <bazarish/ServerDescriptor.hpp>
 #pragma pop_macro("emit")
 
 #include <QColor>
@@ -31,6 +32,7 @@
 #include <QUrl>
 
 #include <array>
+#include <cstring>
 #include <memory>
 #include <utility>
 
@@ -62,6 +64,15 @@ int main(int argc, char** argv)
     // A widgets application, not a plain GUI one: the tray icon and its menu are
     // QtWidgets, and there is no tray without them.
     QApplication app(argc, argv);
+    // The one way to talk to a server over anything but I2P, for a stand on a LAN.
+    // Named at length so it cannot be turned on by accident or by habit.
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--allow-facade-without-i2p-for-dev-purposes") == 0) {
+            bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
+            bazarish::log::warn("talking to facades without I2P: every request leaves this"
+                                " machine in the clear. Development only.");
+        }
+    }
     QGuiApplication::setApplicationName("Bazarish");
     QGuiApplication::setOrganizationName("Bazarish");
 

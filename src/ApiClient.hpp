@@ -52,9 +52,16 @@ struct ServerEndpoint {
     // Fingerprint of the server root key (from the registration info). Used to
     // name subscription certificates and as the local mailbox server.
     std::string serverFingerprint;
-    // The ordered facades; empty means "not connected to a server yet".
+    // The ordered facades; empty means "not connected to a server yet". Every one
+    // of them is an I2P address: this client talks to its server over I2P and
+    // nothing else.
     std::vector<Facade> facades;
+    // Clearnet addresses used for exactly one request - the slice of netdb a
+    // router with no peers starts from. No API is spoken here, and once the
+    // router is up they are not asked again.
+    std::vector<Facade> reseeds;
 };
+
 
 // A server response. Non-2xx statuses are turned into ApiError by ApiClient,
 // so callers only ever see successful responses here.

@@ -3,6 +3,7 @@
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
+#include <bazarish/ServerDescriptor.hpp>
 
 #include <cstdio>
 #include <cstdlib>
@@ -55,8 +56,11 @@ FetchAttemptFn servingFrom(const Bytes& ciphertext, const std::size_t limit)
 
 }  // namespace
 
+// The stub server these tests talk to is a plain HTTP listener on localhost -
+// the same shape as a stand on a LAN, and the reason that switch exists.
 int main()
 {
+    bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
     const fs::path root = fs::temp_directory_path() / ("bazarish-xfer-" + toHex(randomBytes(8)));
     fs::create_directories(root);
 

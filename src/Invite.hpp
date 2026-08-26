@@ -16,7 +16,11 @@ namespace bazarish::client {
 // the server signs is verified against it as usual.)
 struct ServerLink {
     std::string serverFingerprint;
+    // I2P addresses: where the client talks to the server.
     std::vector<std::string> facadeUrls;
+    // Clearnet addresses: where a client with no router yet asks for a slice of
+    // netdb, and nothing else.
+    std::vector<std::string> reseedUrls;
 };
 
 // Encodes a server link as the human-readable URI

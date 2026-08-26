@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "Bot.hpp"
+#include <bazarish/ServerDescriptor.hpp>
 #include "Session.hpp"
 
 #include <nlohmann/json.hpp>
@@ -195,8 +196,11 @@ void testContactFallsBackToStart()
 
 }  // namespace
 
+// The stub server these tests talk to is a plain HTTP listener on localhost -
+// the same shape as a stand on a LAN, and the reason that switch exists.
 int main()
 {
+    bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
     testKeyboardJson();
     testDispatch();
     testContactFallsBackToStart();

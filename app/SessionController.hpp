@@ -44,7 +44,8 @@ public:
 
 public slots:
     void openAccount(const QString& dir, const QString& passphrase);
-    void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp);
+    void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
+        const QStringList& reseedUrls);
     void sync();
     // Starts or stops background syncing (the account going online/offline).
     void setSyncEnabled(bool on);
@@ -590,7 +591,8 @@ public:
 
     // Connects (and subscribes) through an ordered list of facade URLs
     // (http[s]://host[:port][/secret]). The client fails over across them.
-    Q_INVOKABLE void connectServer(const QStringList& facadeUrls, const QString& serverFp);
+    Q_INVOKABLE void connectServer(const QStringList& facadeUrls, const QString& serverFp,
+        const QStringList& reseedUrls = {});
     // Decodes a bazarish://server/... link into { serverFp, facades } for the
     // connect form to prefill; returns an empty map on a malformed link.
     Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
@@ -895,7 +897,8 @@ signals:
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
 signals:  // to worker
-    void requestConnect(const QStringList& facadeUrls, const QString& serverFp);
+    void requestConnect(const QStringList& facadeUrls, const QString& serverFp,
+        const QStringList& reseedUrls);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,

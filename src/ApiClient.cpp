@@ -6,6 +6,7 @@
 #include <bazarish/Auth.hpp>
 #include <bazarish/Cms.hpp>
 #include <bazarish/Log.hpp>
+#include <bazarish/ServerDescriptor.hpp>
 #include <bazarish/I2pHttp.hpp>
 
 #include <bazarish/HttpClient.hpp>
@@ -182,20 +183,16 @@ bool ApiClient::facadeIsI2p(const Facade& facade)
 
 std::vector<std::size_t> ApiClient::facadeOrder() const
 {
-    // I2P facades are preferred, but only when an I2P transport is configured;
-    // without one they are unreachable, so clearnet goes first instead (and the
-    // "connected via" display does not falsely claim I2P). The preferred group is
-    // emitted first, each group keeping its configured order.
-    const bool preferI2p = !i2pDataDir_.empty();
+    // The API is spoken over I2P and nothing else, so a facade that is not an I2P
+    // address is not tried at all - there is no "first connection over clearnet"
+    // to be had, which is when a client would otherwise show its address to the
+    // server it is about to register with. A stand on a LAN turns the whole rule
+    // off with one switch that says what it costs.
+    const bool anything = bazarish::allowFacadeWithoutI2pForDevPurposes();
     std::vector<std::size_t> order;
     order.reserve(endpoint_.facades.size());
     for (std::size_t i = 0; i < endpoint_.facades.size(); ++i) {
-        if (facadeIsI2p(endpoint_.facades[i]) == preferI2p) {
-            order.push_back(i);
-        }
-    }
-    for (std::size_t i = 0; i < endpoint_.facades.size(); ++i) {
-        if (facadeIsI2p(endpoint_.facades[i]) != preferI2p) {
+        if (anything || facadeIsI2p(endpoint_.facades[i])) {
             order.push_back(i);
         }
     }
@@ -684,12 +681,24 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
             facade.host, facade.port, out, facadeOptions(facade, readTimeoutSeconds));
     };
 
-    // Try facades in priority order (I2P first), failing over only when a facade
-    // is unreachable. A reachable facade that returns an error response is final
-    // (no failover); the caller's retry loop re-enters here so failover continues.
-    const std::vector<Facade>& facades = endpoint_.facades;
+    // The API goes to the facades, in order, failing over only when one is
+    // unreachable; a facade that answers with an error is final (no failover) and
+    // the caller's retry loop re-enters here. A clearnet-only request is the
+    // reseed, and it goes to the reseed addresses instead - they are a different
+    // list precisely because they serve a different purpose.
+    const std::vector<Facade>& facades
+        = clearnetOnly && !endpoint_.reseeds.empty() ? endpoint_.reseeds : endpoint_.facades;
+    std::vector<std::size_t> attempts;
+    if (&facades == &endpoint_.reseeds) {
+        attempts.resize(facades.size());
+        for (std::size_t i = 0; i < facades.size(); ++i) {
+            attempts[i] = i;
+        }
+    } else {
+        attempts = facadeOrder();
+    }
     std::string lastError = "no facade configured";
-    for (const std::size_t index : facadeOrder()) {
+    for (const std::size_t index : attempts) {
         const Facade& facade = facades[index];
 
         if (facadeIsI2p(facade)) {
@@ -729,23 +738,12 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
             return *response;
         }
 
-        // The reseed is the one clearnet request that stays allowed: it carries no
-        // identity, and it is what makes I2P possible at all - refusing it would
-        // leave a fresh account with no way to ever reach an I2P facade.
-        if (!clearnetOnly) {
-            if (fullPrivacy()) {
-                // Full privacy mode: never touch a clearnet facade. With no reachable
-                // I2P facade the loop ends in an explicit error and the account is offline.
-                lastError = "full privacy mode (I2P only): " + facade.host;
-                continue;
-            }
-            if (i2pProven_ && !allowClearnet_) {
-                // This account has already talked over I2P, so a clearnet request
-                // now would be a silent downgrade, not a first connection.
-                lastError = "this account reaches its server over I2P; clearnet refused: "
-                    + facade.host;
-                continue;
-            }
+        // Only two things reach a clearnet address: the reseed, which carries no
+        // identity and is what makes I2P possible at all, and everything at all
+        // when a stand is being talked to without I2P on purpose.
+        if (!clearnetOnly && !bazarish::allowFacadeWithoutI2pForDevPurposes()) {
+            lastError = "this client speaks to its server over I2P only: " + facade.host;
+            continue;
         }
         const bazarish::http::ClientResponse result = clearnetAttempt(facade);
         if (result.status == 0) {
@@ -758,19 +756,6 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
                     + "s: " + facade.host
                 : "transport failure: " + result.error;
             continue;  // try the next facade
-        }
-        // A request that leaves over clearnet binds this account's keys to this
-        // IP at the server, and shows an on-path observer which server the user
-        // talks to. It is a downgrade, so say it out loud rather than let a flaky
-        // I2P link move a user onto the clearnet unannounced.
-        if (index != activeFacade_ && !endpoint_.facades.empty() && i2pDataDir_.empty() == false) {
-            const bool i2pConfigured = std::any_of(endpoint_.facades.begin(),
-                endpoint_.facades.end(), [](const Facade& f) { return facadeIsI2p(f); });
-            if (i2pConfigured) {
-                bazarish::log::warn(
-                    "falling back to the clearnet facade {}: this request leaves I2P",
-                    facade.host);
-            }
         }
         activeFacade_ = index;  // remember the working facade for next time
 
@@ -894,14 +879,8 @@ ApiResponse ApiClient::putFile(const std::string& path, const std::filesystem::p
             return *response;
         }
 
-        if (fullPrivacy()) {
-            // Full privacy mode: never touch a clearnet facade (see send()).
-            lastError = "full privacy mode (I2P only): " + facade.host;
-            continue;
-        }
-        if (i2pProven_ && !allowClearnet_) {
-            lastError = "this account reaches its server over I2P; clearnet refused: "
-                + facade.host;
+        if (!bazarish::allowFacadeWithoutI2pForDevPurposes()) {
+            lastError = "this client speaks to its server over I2P only: " + facade.host;
             continue;
         }
         const bazarish::http::ClientResponse result = clearnetAttempt(facade);
