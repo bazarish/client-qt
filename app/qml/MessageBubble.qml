@@ -786,6 +786,20 @@ Item {
                 }
             }
 
+            // What is happening to a send that has not gone through yet, in the same
+            // grey as the chip: a message our server is still retrying says so on
+            // itself, instead of looking like one nobody is carrying.
+            Label {
+                visible: model.outgoing && model.status === DeliveryStatus.AtSenderServer
+                    && model.error && model.error.length > 0
+                Layout.fillWidth: true
+                Layout.topMargin: 2
+                text: model.error
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+            }
+
             // Delivery-failure notice for an outgoing message: the reason and a
             // resend action, shown on the message itself rather than as an
             // application-wide banner.

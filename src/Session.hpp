@@ -699,6 +699,15 @@ public:
     // caller marks them failed so the user can send them again when they choose.
     // Never throws - a server that cannot answer is asked again next sync.
     std::vector<std::string> takeUndelivered();
+    // Sends our server is still working on, by delivery messageId, with the attempt
+    // it is on: what the sender's own message says about itself while it waits.
+    // Never throws.
+    struct WaitingSend {
+        std::string deliveryId;
+        int attempts = 0;
+        int of = 0;
+    };
+    std::vector<WaitingSend> waitingSends();
 
     // Asks the sender of an announced file to serve it, and downloads it to dest
     // when the sealed offer comes back. Returns at once: the transfer runs in the

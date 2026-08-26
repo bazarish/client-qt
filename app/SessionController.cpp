@@ -838,6 +838,11 @@ void SessionWorker::sync()
     emitFacadeInfo();
     // Resolve any sends still in flight from earlier (late delivery or failure).
     reconcilePendingSends();
+    // Sends our server is still working on: the message says which attempt it is
+    // on rather than sitting there looking ignored.
+    for (const Session::WaitingSend& waiting : session_->waitingSends()) {
+        emit sendWaiting(QString::fromStdString(waiting.deliveryId), waiting.attempts, waiting.of);
+    }
     // Sends our server carried as far as it could and then gave up on: shown as
     // failed, with the reason, so the user can send them again when they choose.
     for (const std::string& messageId : session_->takeUndelivered()) {
@@ -2029,6 +2034,15 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::sendDeliveryId, this,
         [this](const qint64 localId, const QString& deliveryId) {
             store_.noteDelivery(deliveryId, localId);
+        });
+    connect(worker_, &SessionWorker::sendWaiting, this,
+        [this](const QString& deliveryId, const int attempts, const int of) {
+            const qint64 localId = store_.idForDelivery(deliveryId);
+            if (localId == 0 || attempts <= 0) {
+                return;  // not ours, or not retried yet - nothing to say
+            }
+            conversation_.setErrorForId(
+                localId, tr("retrying delivery %1 of %2").arg(attempts).arg(of));
         });
     connect(worker_, &SessionWorker::sendUndelivered, this,
         [this](const QString& deliveryId) {

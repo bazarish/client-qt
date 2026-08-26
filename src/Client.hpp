@@ -263,6 +263,13 @@ public:
     std::vector<PendingEntry> listPending();
     // Sends our server carried as far as it could and then gave up on, by delivery
     // messageId. Reported once: taking one is acknowledged with clearUndelivered.
+    // A send this server is still trying to deliver, with how far along it is.
+    struct OutboundSend {
+        std::string messageId;
+        int attempts = 0;
+        int of = 0;
+    };
+    std::vector<OutboundSend> listOutbound();
     std::vector<std::string> listUndelivered();
     void clearUndelivered(const std::string& messageId);
     // Asks the server to hold the request until something arrives for this client

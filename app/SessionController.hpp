@@ -166,6 +166,9 @@ signals:
     // so a send it later gives up on can be found again, on any page and after a
     // restart.
     void sendDeliveryId(qint64 localId, const QString& deliveryId);
+    // Our server is still trying to deliver this send, and is on this attempt of
+    // that many.
+    void sendWaiting(const QString& deliveryId, int attempts, int of);
     // Our server carried a send as far as it could and gave up on it.
     void sendUndelivered(const QString& deliveryId);
     // Our server stopped tracking the send without a delivered-ack (retries

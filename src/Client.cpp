@@ -389,6 +389,18 @@ std::vector<PendingEntry> Client::listPending()
     return entries;
 }
 
+std::vector<Client::OutboundSend> Client::listOutbound()
+{
+    const ApiResponse response = api_.get("/v1/messaging/outbound");
+    const nlohmann::json body = response.json();
+    std::vector<OutboundSend> waiting;
+    for (const nlohmann::json& entry : body.at("outbound")) {
+        waiting.push_back(OutboundSend{entry.at("messageId").get<std::string>(),
+            entry.value("attempts", 0), entry.value("of", 0)});
+    }
+    return waiting;
+}
+
 std::vector<std::string> Client::listUndelivered()
 {
     const ApiResponse response = api_.get("/v1/messaging/undelivered");

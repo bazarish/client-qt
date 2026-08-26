@@ -2395,6 +2395,21 @@ void Session::persistSentFiles() const
 }
 
 
+std::vector<Session::WaitingSend> Session::waitingSends()
+{
+    std::vector<WaitingSend> waiting;
+    try {
+        for (const Client::OutboundSend& entry : client_->listOutbound()) {
+            waiting.push_back(WaitingSend{entry.messageId, entry.attempts, entry.of});
+        }
+    } catch (const std::exception& error) {
+        // Only what a message says about itself while it waits; asked again next
+        // sync.
+        bazarish::log::warn("outbound sends not read: {}", error.what());
+    }
+    return waiting;
+}
+
 std::vector<std::string> Session::takeUndelivered()
 {
     std::vector<std::string> ids;
