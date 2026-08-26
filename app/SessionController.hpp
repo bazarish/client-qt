@@ -90,7 +90,7 @@ public slots:
     // Signs a portal/third-party login challenge with this account's key. Local
     // only - no server is contacted - so it works before a server is connected.
     void signLogin(const QString& challenge);
-    void saveAttachment(const QString& peer, const QString& messageId, const QString& destPath, qint64 token);
+    void saveAttachment(const QString& peer, const QString& protocolId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
     void changePassphrase(const QString& passphrase);
     void rotateServingKey();
@@ -607,7 +607,7 @@ public:
     Q_INVOKABLE void closeConversation();
     // Opens a conversation positioned at a specific message (a search hit): loads
     // a window ending at it and asks the view to scroll there.
-    Q_INVOKABLE void openConversationAtMessage(const QString& peer, qint64 messageId);
+    Q_INVOKABLE void openConversationAtMessage(const QString& peer, qint64 localId);
     // Pages the open conversation: loads the next batch of older (top) / newer
     // (bottom) messages into the model and returns how many were added.
     Q_INVOKABLE int loadOlderMessages();
@@ -640,10 +640,10 @@ public:
     // it instead of being offered a Save button.
     Q_INVOKABLE void sendPicture(const QString& fileUrl);
     // Writes a picture this account holds out to a file the user chose.
-    Q_INVOKABLE void savePictureAs(const QString& messageId, const QString& fileUrl);
+    Q_INVOKABLE void savePictureAs(const QString& protocolId, const QString& fileUrl);
     // Puts it on the clipboard as an image: it goes from memory to memory, and
     // never becomes a plaintext file on the way.
-    Q_INVOKABLE void copyPicture(const QString& messageId);
+    Q_INVOKABLE void copyPicture(const QString& protocolId);
 
     // --- Voice messages ---
     //
@@ -663,12 +663,12 @@ public:
     // Plays a voice message. fromMs of -1 means "the play button": start from
     // the beginning, or stop if this message is the one already playing. A real
     // position means the waveform was tapped there, and playback moves to it.
-    Q_INVOKABLE void playVoice(const QString& messageId, qint64 fromMs = -1);
+    Q_INVOKABLE void playVoice(const QString& protocolId, qint64 fromMs = -1);
     Q_INVOKABLE void stopVoice();
     // Steps the playback speed through the offered rates and back to normal.
     Q_INVOKABLE void cycleVoiceSpeed();
     // A name to suggest for that file.
-    Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& messageId, const QString& name) const;
+    Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& protocolId, const QString& name) const;
     // Re-dispatches a failed outgoing file from the saved source path (reusing the
     // bubble); if that file is gone, emits resendFilePickRequested so the UI can
     // offer to pick a file to send instead.
@@ -782,13 +782,13 @@ public:
     // Signs a sign-in-with-key challenge with this account's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
-    Q_INVOKABLE void saveAttachment(const QString& peer, const QString& messageId, const QString& fileUrl);
+    Q_INVOKABLE void saveAttachment(const QString& peer, const QString& protocolId, const QString& fileUrl);
     // Saves a received attachment to the file the user picked in the native Save
     // dialog (which already resolved any name conflict), reporting byte progress
     // and the outcome back onto the message identified by token.
     // A file is fetched from the peer that announced it, by the announcing
     // message's protocol id - there is no store to fetch it from.
-    Q_INVOKABLE void saveAttachmentToFile(const QString& peer, const QString& messageId,
+    Q_INVOKABLE void saveAttachmentToFile(const QString& peer, const QString& protocolId,
         const QString& fileUrl, qint64 token);
     // A suggested save location (the Downloads folder joined with fileName) as a
     // file URL, used to pre-fill the native Save dialog's name and folder.
@@ -843,7 +843,7 @@ signals:
     // The open conversation's paging state changed (atNewest / hasMoreOlder).
     void pagingChanged();
     // Asks the view to scroll the given message into view (a search jump).
-    void scrollToMessage(qint64 messageId);
+    void scrollToMessage(qint64 localId);
     // Asks the view to position the first unread message near the top and briefly
     // highlight the unread tail (a conversation opened with unread messages).
     void scrollToUnread(qint64 firstUnreadId);
@@ -994,7 +994,7 @@ private slots:
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
-    void onVoiceLoaded(const QString& messageId, const QByteArray& bytes);
+    void onVoiceLoaded(const QString& protocolId, const QByteArray& bytes);
     // Pulls a small incoming picture into the media cache without being asked.
     void requestPicturesFor(const QList<StoredMessage>& messages);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);

@@ -364,5 +364,21 @@ int main()
     server.stop();
 
     std::fprintf(stderr, "TestClient passed\n");
+    // The name one envelope is called by: the same message to the same mailbox
+    // keeps it, so a resend is the delivery the recipient's server already has.
+    {
+        const std::string key = "0123456789abcdef0123456789abcdef";
+        const std::string first = deliveryIdFor(key, "msg-1", "mailbox-a");
+        CHECK(first.size() == 32);
+        CHECK(deliveryIdFor(key, "msg-1", "mailbox-a") == first);  // a resend
+        // The copy that goes elsewhere - our own devices, another contact - is
+        // named differently, so two servers holding them can match nothing.
+        CHECK(deliveryIdFor(key, "msg-1", "mailbox-b") != first);
+        CHECK(deliveryIdFor(key, "msg-2", "mailbox-a") != first);
+        // And nobody without the account's secret can work out what a message of
+        // theirs will be called.
+        CHECK(deliveryIdFor("another-secret", "msg-1", "mailbox-a") != first);
+    }
+
     return 0;
 }

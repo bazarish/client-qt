@@ -111,7 +111,7 @@ struct IncomingMessage {
     std::string rawType;
     // The sender's protocol message id (envelope "id"), used to send a
     // delivery receipt back for it.
-    std::string messageId;
+    std::string protocolId;
     // The server-side pending-blob id this item was fetched as. NOT acked during
     // sync(): the surfaced item is acked only after the client has durably stored
     // it (ackPending, driven by the GUI after persistence), so a crash/restart
@@ -184,7 +184,7 @@ enum class TransferState {
 };
 
 struct TransferEvent {
-    std::string messageId;
+    std::string protocolId;
     // Whose transfer this is. Carried so the view can keep a transfer's state
     // while the user is looking at another conversation, or none.
     std::string peer;
@@ -331,18 +331,18 @@ public:
     // A voice message: Opus frames, small enough to ride inside the message, kept
     // in the account like a picture.
     bool sendVoice(const std::string& peerFingerprint, const Bytes& opus, std::int64_t durationMs,
-        const std::string& messageId = {},
+        const std::string& protocolId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
         const std::string& replyTo = {});
 
     // Stores a picture's bytes against the message that announced it.
-    void putPicture(const std::string& messageId, const Bytes& bytes);
+    void putPicture(const std::string& protocolId, const Bytes& bytes);
     // The picture of a message, or nothing when this account does not hold it.
-    std::optional<Bytes> picture(const std::string& messageId) const;
-    bool hasPicture(const std::string& messageId) const;
+    std::optional<Bytes> picture(const std::string& protocolId) const;
+    bool hasPicture(const std::string& protocolId) const;
     // The same for a voice message's audio.
-    void putVoice(const std::string& messageId, const Bytes& bytes);
-    std::optional<Bytes> voice(const std::string& messageId) const;
+    void putVoice(const std::string& protocolId, const Bytes& bytes);
+    std::optional<Bytes> voice(const std::string& protocolId) const;
 
     // The devices registered on this account, and dropping one. A device that is
     // gone for good keeps every message in the mailbox until the server's
@@ -559,7 +559,7 @@ public:
     // of the peer's tokens. Throws if the contact is unknown or out of
     // tokens. When the contact has no reciprocal tokens from us yet (the
     // first reply), a fresh batch for the peer is registered and attached.
-    // messageId, when given, is used as the protocol message id (so a delivery
+    // protocolId, when given, is used as the protocol message id (so a delivery
     // receipt can be matched back). onAcceptedByOwnServer fires once when our
     // own server has accepted the envelope into its buffer (the "grey" state).
     // Returns true if the recipient server confirmed storage within the poll
@@ -569,7 +569,7 @@ public:
     // it rides in the envelope so the recipient can render a quote and link to
     // the original (a no-op reference if they do not hold it locally).
     bool sendMessage(const std::string& peerFingerprint, const std::string& text,
-        const std::string& messageId = {},
+        const std::string& protocolId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, const std::string& replyTo = {});
 
@@ -578,7 +578,7 @@ public:
     // the send itself is instant regardless of file size - and the file must
     // still be at this path, and this client online, when they do.
     bool sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
-        const std::string& messageId = {},
+        const std::string& protocolId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, const std::string& replyTo = {});
 
@@ -586,20 +586,20 @@ public:
     // it is shown. The recipient fetches it without being asked and draws it;
     // what it never becomes is a file card with a Save button.
     bool sendPicture(const std::string& peerFingerprint, const std::filesystem::path& path,
-        const std::string& messageId = {},
+        const std::string& protocolId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
         const std::string& replyTo = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.
     void sendInteractive(const std::string& peerFingerprint, const std::string& text,
-        const InlineKeyboard& keyboard, const std::string& messageId = {},
+        const InlineKeyboard& keyboard, const std::string& protocolId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {});
 
     // Sends a command invocation (content type "bot.command") to a peer: a bot
     // dispatches on the command name. args is the raw argument string.
     void sendCommand(const std::string& peerFingerprint, const std::string& command,
-        const std::string& args = {}, const std::string& messageId = {},
+        const std::string& args = {}, const std::string& protocolId = {},
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {});
 
     // Sends a button-press callback (content type "bot.callback") to a peer:
@@ -695,11 +695,11 @@ public:
     // Re-polls a previously submitted send by its server attempt id to resolve a
     // delivery that was still pending when the send call returned. Never throws.
     AttemptOutcome pollAttempt(const std::string& attemptId);
-    // Sends our server gave up on, by delivery messageId, taken from it once: the
+    // Sends our server gave up on, by delivery protocolId, taken from it once: the
     // caller marks them failed so the user can send them again when they choose.
     // Never throws - a server that cannot answer is asked again next sync.
     std::vector<std::string> takeUndelivered();
-    // Sends our server is still working on, by delivery messageId, with the attempt
+    // Sends our server is still working on, by delivery protocolId, with the attempt
     // it is on: what the sender's own message says about itself while it waits.
     // Never throws.
     struct WaitingSend {
@@ -713,11 +713,11 @@ public:
     // when the sealed offer comes back. Returns at once: the transfer runs in the
     // background and reports through the transfer handler, because it depends on
     // the other side being online and can take as long as I2P takes.
-    void requestFile(const std::string& peerFingerprint, const std::string& messageId,
+    void requestFile(const std::string& peerFingerprint, const std::string& protocolId,
         const std::filesystem::path& dest);
 
     // Abandons a running or requested transfer.
-    void cancelTransfer(const std::string& messageId);
+    void cancelTransfer(const std::string& protocolId);
 
     // Where transfer progress and outcomes are reported. One handler for the
     // whole session; events carry the message id they belong to.
@@ -726,7 +726,7 @@ public:
     // Sender unsend: forgets the file announced for a message we sent, so a later
     // request from the recipient is answered "no longer available". Nothing has
     // to be deleted anywhere else - the bytes were never copied off this machine.
-    void unsend(const std::string& messageId);
+    void unsend(const std::string& protocolId);
 
     // Overrides the I2P tunnel privacy profile used for direct transfers (both
     // serving and fetching, always over one-time destinations). Unset, transfers
@@ -1030,11 +1030,20 @@ private:
     // skips the poll entirely: it submits, fires the grey callback and returns
     // false at once (used for large sends so the upload never adds a poll wait on
     // top; the caller reconciles the outcome on a later sync).
+    // protocolId, when given, is the message this envelope carries: the delivery
+    // id is derived from it, so sending the same message again is recognised as
+    // the same delivery rather than stored twice. Empty for what carries no
+    // message of its own (an ack, a receipt).
     bool deliver(const std::string& toDest, const Key& servingSealingKey,
         const std::string& deliveryClass, const std::string& mailbox,
         const std::optional<Bytes>& token, const Bytes& payload,
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, bool waitForOutcome = true);
+        std::string* outAttemptId = nullptr, bool waitForOutcome = true,
+        const std::string& protocolId = {});
+    // What this account names one envelope to a mailbox: keyed with its own secret
+    // and bound to the mailbox, so the same message keeps its name on a resend and
+    // the copies in two different mailboxes cannot be matched to each other.
+    std::string deliveryIdFor(const std::string& protocolId, const std::string& mailbox) const;
     void persistContacts() const;
     void persistMeta() const;
     // Serializes the in-memory contacts into the on-disk JSON shape.
@@ -1053,7 +1062,7 @@ private:
     // is not for them.
     // Shared by sendFile and sendPicture: the announcement differs only in type.
     bool announceTransfer(const std::string& type, const std::string& peerFingerprint,
-        const std::filesystem::path& path, const std::string& messageId,
+        const std::filesystem::path& path, const std::string& protocolId,
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
         const std::string& replyTo);
 
@@ -1061,7 +1070,7 @@ private:
         const std::string& forDevice);
     // A sealed offer came back for a file we asked for: fetch it. Also threaded.
     void startAnnouncedFetch(const FileOffer& offer, const std::string& peer);
-    void emitTransfer(const std::string& messageId, TransferState state, std::uint64_t bytes,
+    void emitTransfer(const std::string& protocolId, TransferState state, std::uint64_t bytes,
         std::uint64_t total, const std::string& error = {},
         const std::string& stage = {},
         const std::string& peer = {});
@@ -1136,6 +1145,9 @@ private:
     };
     std::shared_ptr<TransferRegistry> transfers_ = std::make_shared<TransferRegistry>();
     Key sealingKey_;
+    // Secret behind deliveryIdFor: never leaves this account, and only ever names
+    // envelopes.
+    std::string deliveryIdKey_;
     std::map<std::string, Contact> contacts_;
     // Our own serving destination + serving sealing key (SPKI DER, base64),
     // learned on subscribe (GET /v1/messaging/destination) and forwarded to

@@ -497,7 +497,7 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
     // the same channel as a download. Installed once, for as long as the account
     // is open; the download path re-points it at itself while it runs.
     session_->setTransferHandler([this](const bazarish::client::TransferEvent& event) {
-        const QString id = QString::fromStdString(event.messageId);
+        const QString id = QString::fromStdString(event.protocolId);
         const QString peer = QString::fromStdString(event.peer);
         if (!event.stage.empty()) {
             emit transferStage(peer, id, QString::fromStdString(event.stage));
@@ -817,7 +817,7 @@ void SessionWorker::sync()
         // The audio came inside the message, so its waveform is drawn from the
         // real thing - computed here, on the worker, and stored with the row.
         if (m.contentType == "voice") {
-            const std::optional<Bytes> audio = session_->voice(m.messageId);
+            const std::optional<Bytes> audio = session_->voice(m.protocolId);
             if (audio.has_value()) {
                 map["attWave"] = waveformHex(*audio);
             }
@@ -825,7 +825,7 @@ void SessionWorker::sync()
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
-        map["messageId"] = QString::fromStdString(m.messageId);
+        map["protocolId"] = QString::fromStdString(m.protocolId);
         map["ref"] = QString::fromStdString(m.refId);
         map["replyTo"] = QString::fromStdString(m.replyTo);
         map["sentAt"] = static_cast<qint64>(m.sentAt);
@@ -845,8 +845,8 @@ void SessionWorker::sync()
     }
     // Sends our server carried as far as it could and then gave up on: shown as
     // failed, with the reason, so the user can send them again when they choose.
-    for (const std::string& messageId : session_->takeUndelivered()) {
-        emit sendUndelivered(QString::fromStdString(messageId));
+    for (const std::string& deliveryId : session_->takeUndelivered()) {
+        emit sendUndelivered(QString::fromStdString(deliveryId));
     }
     // Advance call ring/answer timeouts so a call never rings forever, then flush any
     // finished-call chat-history entries (peer hang-ups handled during the pull above,
@@ -1138,7 +1138,7 @@ void SessionWorker::ackPending(const QString& pendingId)
         session_->ackPending(pendingId.toStdString());
     } catch (const std::exception& error) {
         // The server was momentarily unreachable: leave the item un-acked so the
-        // next sync re-offers it (the GUI dedups by messageId, so no duplicate).
+        // next sync re-offers it (the GUI dedups by protocol id, so no duplicate).
         bazarish::log::warn("pending item not acked: {}", error.what());
     }
 }
@@ -1766,7 +1766,7 @@ void SessionWorker::disablePersonalDest()
 }
 
 void SessionWorker::saveAttachment(
-    const QString& peer, const QString& messageId, const QString& destPath, qint64 token)
+    const QString& peer, const QString& protocolId, const QString& destPath, qint64 token)
 {
     // Run the request off the worker thread (on the pool) so waiting on the peer
     // never blocks sends or sync; the transfer itself uses its own one-time I2P
@@ -1780,10 +1780,10 @@ void SessionWorker::saveAttachment(
     }
     // The download is a request to the peer that announced the file, not a fetch
     // from a store, so it only completes once they answer with an offer.
-    const std::string messageIdStd = messageId.toStdString();
+    const std::string protocolIdStd = protocolId.toStdString();
     const std::string peerStd = peer.toStdString();
     const std::string destStd = destPath.toStdString();
-    downloadPool_.start([this, session, messageIdStd, peerStd, destStd, token]() {
+    downloadPool_.start([this, session, protocolIdStd, peerStd, destStd, token]() {
         try {
             // The handler installed when the account opened reports every transfer,
             // in both directions, keyed by peer and file id. Replacing it here left
@@ -1791,7 +1791,7 @@ void SessionWorker::saveAttachment(
             // events at this one download.
             // Returns at once: the transfer only starts when the sender answers
             // with an offer, so completion is reported by that handler.
-            session->requestFile(peerStd, messageIdStd, destStd);
+            session->requestFile(peerStd, protocolIdStd, destStd);
         } catch (const std::exception& e) {
             if (!downloadsCancelled_.load()) {
                 emit downloadFinished(token, false, QString::fromUtf8(e.what()));
@@ -2358,12 +2358,12 @@ QVariantMap SessionController::scrollFor(const QString& peer) const
     return m;
 }
 
-void SessionController::openConversationAtMessage(const QString& peer, qint64 messageId)
+void SessionController::openConversationAtMessage(const QString& peer, qint64 localId)
 {
     activateConversation(peer);
     // A window ending at the target message (it sits at the window's newest edge),
     // so older context pages in above and newer messages page in below.
-    const QVector<StoredMessage> win = store_.olderMessages(peer, messageId + 1, kPageSize);
+    const QVector<StoredMessage> win = store_.olderMessages(peer, localId + 1, kPageSize);
     oldestLoadedId_ = win.isEmpty() ? 0 : win.front().id;
     newestLoadedId_ = win.isEmpty() ? 0 : win.back().id;
     hasMoreOlder_ = !win.isEmpty() && store_.hasMessagesBefore(peer, oldestLoadedId_);
@@ -2372,7 +2372,7 @@ void SessionController::openConversationAtMessage(const QString& peer, qint64 me
     requestPicturesFor(win);
     replayTransfersForActivePeer();
     emit pagingChanged();
-    emit scrollToMessage(messageId);
+    emit scrollToMessage(localId);
 }
 
 int SessionController::loadOlderMessages()
@@ -3060,15 +3060,15 @@ void SessionController::signLogin(const QString& challenge)
 }
 
 void SessionController::saveAttachment(
-    const QString& peer, const QString& messageId, const QString& fileUrl)
+    const QString& peer, const QString& protocolId, const QString& fileUrl)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (!localPath.isEmpty()) {
-        emit requestSaveAttachment(peer, messageId, localPath, 0);
+        emit requestSaveAttachment(peer, protocolId, localPath, 0);
     }
 }
 
-void SessionController::saveAttachmentToFile(const QString& peer, const QString& messageId,
+void SessionController::saveAttachmentToFile(const QString& peer, const QString& protocolId,
     const QString& fileUrl, qint64 token)
 {
     const QString dest = QUrl(fileUrl).toLocalFile();
@@ -3087,8 +3087,8 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
     // has outlived its point must be endable from the activity panel, the same
     // way a send is.
     beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
-        QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_, messageId);
-    emit requestSaveAttachment(peer, messageId, dest, token);
+        QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_, protocolId);
+    emit requestSaveAttachment(peer, protocolId, dest, token);
 }
 
 QUrl SessionController::defaultSaveUrl(const QString& fileName) const
@@ -3524,22 +3524,22 @@ void SessionController::cycleVoiceSpeed()
     }
 }
 
-void SessionController::playVoice(const QString& messageId, const qint64 fromMs)
+void SessionController::playVoice(const QString& protocolId, const qint64 fromMs)
 {
     // The play button on the message that is playing stops it; a tap on its
     // waveform moves playback instead, which is why the position decides.
-    if (voicePlaying_ == messageId && fromMs < 0) {
+    if (voicePlaying_ == protocolId && fromMs < 0) {
         stopVoice();
         return;
     }
     stopVoiceTake();
     voiceNote();
-    voicePlaying_ = messageId;
+    voicePlaying_ = protocolId;
     voiceSeekMs_ = std::max<qint64>(0, fromMs);
     voicePositionMs_ = voiceSeekMs_;
     emit voiceChanged();
     // Read here, like a picture: a press on play must not wait for the worker.
-    onVoiceLoaded(messageId, store_.media(QStringLiteral("voice:") + messageId));
+    onVoiceLoaded(protocolId, store_.media(QStringLiteral("voice:") + protocolId));
 }
 
 void SessionController::stopVoice()
@@ -3553,9 +3553,9 @@ void SessionController::stopVoice()
     emit voiceChanged();
 }
 
-void SessionController::onVoiceLoaded(const QString& messageId, const QByteArray& bytes)
+void SessionController::onVoiceLoaded(const QString& protocolId, const QByteArray& bytes)
 {
-    if (voicePlaying_ != messageId || !voice_) {
+    if (voicePlaying_ != protocolId || !voice_) {
         return;
     }
     try {
@@ -3600,10 +3600,10 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
     }
 }
 
-void SessionController::savePictureAs(const QString& messageId, const QString& fileUrl)
+void SessionController::savePictureAs(const QString& protocolId, const QString& fileUrl)
 {
     const QString path = QUrl(fileUrl).toLocalFile();
-    const QByteArray bytes = PictureStore::instance().bytes(messageId);
+    const QByteArray bytes = PictureStore::instance().bytes(protocolId);
     if (path.isEmpty() || bytes.isEmpty()) {
         emit actionFailed(QStringLiteral("This picture is not here to save."));
         return;
@@ -3616,9 +3616,9 @@ void SessionController::savePictureAs(const QString& messageId, const QString& f
     emit actionOk(QStringLiteral("Picture saved."));
 }
 
-void SessionController::copyPicture(const QString& messageId)
+void SessionController::copyPicture(const QString& protocolId)
 {
-    const QImage picture = PictureStore::instance().image(messageId);
+    const QImage picture = PictureStore::instance().image(protocolId);
     if (picture.isNull()) {
         emit actionFailed(QStringLiteral("This picture is not here to copy."));
         return;
@@ -3632,9 +3632,9 @@ void SessionController::copyPicture(const QString& messageId)
     emit actionOk(QStringLiteral("Picture copied."));
 }
 
-QUrl SessionController::defaultPictureSaveUrl(const QString& messageId, const QString& name) const
+QUrl SessionController::defaultPictureSaveUrl(const QString& protocolId, const QString& name) const
 {
-    const QByteArray bytes = PictureStore::instance().bytes(messageId);
+    const QByteArray bytes = PictureStore::instance().bytes(protocolId);
     // The extension follows what the bytes are, not what the message called them.
     const QString suffix = bytes.startsWith(QByteArray::fromHex("89504E47"))
         ? QStringLiteral(".png") : QStringLiteral(".jpg");
@@ -3773,7 +3773,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
 {
     const QString peer = message.value("peer").toString();
     const QString type = message.value("type").toString();
-    const QString incomingId = message.value("messageId").toString();
+    const QString incomingId = message.value("protocolId").toString();
 
     // Idempotent receive, before anything acts on the message. The mailbox is
     // at-least-once: an item whose ack was lost, or that a sender retried, is
@@ -3937,7 +3937,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // Another device of ours sent this; it belongs on our side of the chat.
     m.outgoing = message.value("sentByUs").toBool();
     m.type = type;
-    m.protocolId = message.value("messageId").toString();
+    m.protocolId = message.value("protocolId").toString();
     m.text = message.value("text").toString();
     m.replyTo = message.value("replyTo").toString();
     m.attName = message.value("attName").toString();

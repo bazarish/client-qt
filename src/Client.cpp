@@ -3,6 +3,7 @@
 
 #include <bazarish/Log.hpp>
 #include <bazarish/Cms.hpp>
+#include <bazarish/Hmac.hpp>
 #include <bazarish/I2pAddress.hpp>
 #include <bazarish/Resolve.hpp>
 
@@ -23,13 +24,13 @@ Bytes cardQueryBytes(const CardFetchQuery& query)
 }  // namespace
 
 Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& mailbox,
-    const std::string& messageId, const std::optional<Bytes>& token,
+    const std::string& deliveryId, const std::optional<Bytes>& token,
     const Key& recipientSealingKey)
 {
     nlohmann::json inner = {
         {"class", deliveryClass},
         {"mailbox", mailbox},
-        {"messageId", messageId},
+        {"messageId", deliveryId},
     };
     if (token.has_value()) {
         inner["token"] = toBase64(*token);
@@ -389,6 +390,16 @@ std::vector<PendingEntry> Client::listPending()
     return entries;
 }
 
+std::string deliveryIdFor(
+    const std::string& secretKey, const std::string& protocolId, const std::string& mailbox)
+{
+    // Half a SHA-256 is what the id has always been the size of; the other half
+    // adds nothing to a name.
+    constexpr std::size_t kDeliveryIdHexChars = 32;
+    return bazarish::service::hmacSha256Hex(secretKey, protocolId + "|" + mailbox)
+        .substr(0, kDeliveryIdHexChars);
+}
+
 std::vector<Client::OutboundSend> Client::listOutbound()
 {
     const ApiResponse response = api_.get("/v1/messaging/outbound");
@@ -412,9 +423,9 @@ std::vector<std::string> Client::listUndelivered()
     return ids;
 }
 
-void Client::clearUndelivered(const std::string& messageId)
+void Client::clearUndelivered(const std::string& deliveryId)
 {
-    api_.del("/v1/messaging/undelivered/" + messageId);
+    api_.del("/v1/messaging/undelivered/" + deliveryId);
 }
 
 Bytes Client::fetchBlob(const std::string& blobId)
@@ -439,21 +450,21 @@ void Client::ack(const std::string& blobId)
     api_.postJson("/v1/messaging/ack", {{"blobId", blobId}});
 }
 
-void Client::submitSelf(const std::string& messageId, const Bytes& payload)
+void Client::submitSelf(const std::string& deliveryId, const Bytes& payload)
 {
     api_.postJson("/v1/messaging/self",
-        {{"messageId", messageId}, {"payload", toBase64(payload)}});
+        {{"messageId", deliveryId}, {"payload", toBase64(payload)}});
 }
 
 std::string Client::submitSend(
-    const std::string& toDest, const Bytes& sealed, const Bytes& payload, const std::string& messageId)
+    const std::string& toDest, const Bytes& sealed, const Bytes& payload, const std::string& deliveryId)
 {
     const ApiResponse response = api_.postJson("/v1/messaging/send",
         {
             {"toDest", toDest},
             {"sealed", toBase64(sealed)},
             {"payload", toBase64(payload)},
-            {"messageId", messageId},
+            {"messageId", deliveryId},
         });
     return response.json().at("attemptId").get<std::string>();
 }

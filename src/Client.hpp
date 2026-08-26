@@ -127,12 +127,21 @@ using FetchTransport
 
 // Seals a delivery envelope to a destination server. deliveryClass is the
 // server-visible admission selector ("content" or "contact"); mailbox is the
-// recipient's fingerprint, messageId deduplicates retries, token is the
+// recipient's fingerprint, deliveryId deduplicates retries, token is the
 // one-time delivery token for "content" (absent for "contact"). The result is
 // the opaque sealed blob the send endpoint expects.
 Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& mailbox,
-    const std::string& messageId, const std::optional<Bytes>& token,
+    const std::string& deliveryId, const std::optional<Bytes>& token,
     const Key& recipientSealingKey);
+
+// What one envelope is called on the wire, derived rather than drawn fresh: the
+// same message to the same mailbox always gets the same name, so sending it again
+// is recognised by the recipient's server as the delivery it already has - no
+// second copy, no second token. Keyed with a secret of the sender's own and bound
+// to the mailbox, so the copy that goes to their own devices and the copy that
+// goes to the recipient share nothing the two servers holding them could match.
+std::string deliveryIdFor(
+    const std::string& secretKey, const std::string& protocolId, const std::string& mailbox);
 
 // The client-side messenger: typed wrappers over the full client API,
 // reusing the shared identity, certificate and crypto primitives. Owns the
@@ -262,16 +271,16 @@ public:
     void deleteTokenHashes(const std::vector<Bytes>& hashes);
     std::vector<PendingEntry> listPending();
     // Sends our server carried as far as it could and then gave up on, by delivery
-    // messageId. Reported once: taking one is acknowledged with clearUndelivered.
+    // deliveryId. Reported once: taking one is acknowledged with clearUndelivered.
     // A send this server is still trying to deliver, with how far along it is.
     struct OutboundSend {
-        std::string messageId;
+        std::string deliveryId;
         int attempts = 0;
         int of = 0;
     };
     std::vector<OutboundSend> listOutbound();
     std::vector<std::string> listUndelivered();
-    void clearUndelivered(const std::string& messageId);
+    void clearUndelivered(const std::string& deliveryId);
     // Asks the server to hold the request until something arrives for this client
     // (or waitSeconds passes), and returns what is pending then. Throws with a 404
     // when the server has no event face, so the caller can fall back to polling.
@@ -282,7 +291,7 @@ public:
     // this runs before the client has any transport at all.
     std::vector<Bytes> fetchReseed();
     void ack(const std::string& blobId);
-    // messageId is the delivery id (also sealed inside the envelope): sent in the
+    // deliveryId is the delivery id (also sealed inside the envelope): sent in the
     // clear so our own server can correlate the recipient's signed delivered-ack
     // back to this attempt (the amber state).
     // Writes a blob into this account's own mailbox for its other devices. The
@@ -290,10 +299,10 @@ public:
     // mailbox, so there is no token to spend, no destination to dial and nothing
     // to federate - and it stays out of the tokenless budget, which is there to
     // bound strangers.
-    void submitSelf(const std::string& messageId, const Bytes& payload);
+    void submitSelf(const std::string& deliveryId, const Bytes& payload);
 
     std::string submitSend(const std::string& toDest, const Bytes& sealed, const Bytes& payload,
-        const std::string& messageId = {});
+        const std::string& deliveryId = {});
     SendStatus pollSend(const std::string& attemptId);
 
 private:

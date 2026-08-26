@@ -145,9 +145,9 @@ std::size_t Bot::poll()
         dispatch(update);
         // Acknowledge receipt so the sender's tick advances to delivered (the
         // "green" state). Best-effort: a failed receipt must not stop the bot.
-        if (warrantsReceipt(update.contentType) && !update.messageId.empty()) {
+        if (warrantsReceipt(update.contentType) && !update.protocolId.empty()) {
             try {
-                session_.sendReceipt(update.fromFingerprint, update.messageId);
+                session_.sendReceipt(update.fromFingerprint, update.protocolId);
             } catch (const std::exception& error) {
                 // Non-fatal: the sender simply stays at the "yellow" state.
                 bazarish::log::warn("bot: receipt not sent: {}", error.what());

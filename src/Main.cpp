@@ -551,7 +551,7 @@ int runSync(const std::vector<std::string>& args)
         } else if (!message.attachmentName.empty()) {
             // An announcement: `get-file` pulls it straight from the sender.
             body = message.attachmentName + " (" + std::to_string(message.attachmentSize)
-                + " bytes) id=" + message.messageId;
+                + " bytes) id=" + message.protocolId;
         } else if (message.contentType == "bot.callback") {
             body = "data=" + message.callbackData + " ref=" + message.refId;
         } else {
@@ -566,7 +566,7 @@ int runSync(const std::vector<std::string>& args)
         // of a send-callback, so a bot can edit it in place).
         std::printf("[%s] from %s: %s  id=%s%s\n",
             message.contentType.c_str(), message.fromFingerprint.c_str(), body.c_str(),
-            message.messageId.c_str(),
+            message.protocolId.c_str(),
             message.establishedContact ? "  (contact established)" : "");
     }
     return 0;

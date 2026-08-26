@@ -46,14 +46,14 @@ PictureStore& PictureStore::instance()
     return store;
 }
 
-bool PictureStore::put(const QString& messageId, const QByteArray& data)
+bool PictureStore::put(const QString& protocolId, const QByteArray& data)
 {
     if (!looksLikeAPicture(data)) {
         return false;
     }
     {
         const QWriteLocker locker(&lock_);
-        const auto existing = entries_.constFind(messageId);
+        const auto existing = entries_.constFind(protocolId);
         if (existing != entries_.constEnd()) {
             return true;  // already here, and the bytes cannot have changed
         }
@@ -61,7 +61,7 @@ bool PictureStore::put(const QString& messageId, const QByteArray& data)
         entry.bytes = data;
         entry.usedAt = ++clock_;
         storedBytes_ += data.size();
-        entries_.insert(messageId, entry);
+        entries_.insert(protocolId, entry);
         evictLocked();
         ++revision_;
     }
@@ -69,17 +69,17 @@ bool PictureStore::put(const QString& messageId, const QByteArray& data)
     return true;
 }
 
-bool PictureStore::has(const QString& messageId) const
+bool PictureStore::has(const QString& protocolId) const
 {
     const QReadLocker locker(&lock_);
-    return entries_.contains(messageId);
+    return entries_.contains(protocolId);
 }
 
-QImage PictureStore::image(const QString& messageId)
+QImage PictureStore::image(const QString& protocolId)
 {
     {
         const QReadLocker locker(&lock_);
-        const auto found = entries_.constFind(messageId);
+        const auto found = entries_.constFind(protocolId);
         if (found == entries_.constEnd()) {
             return {};
         }
@@ -95,7 +95,7 @@ QImage PictureStore::image(const QString& messageId)
     QByteArray data;
     {
         const QReadLocker locker(&lock_);
-        const auto found = entries_.constFind(messageId);
+        const auto found = entries_.constFind(protocolId);
         if (found == entries_.constEnd()) {
             return {};
         }
@@ -110,7 +110,7 @@ QImage PictureStore::image(const QString& messageId)
     }
 
     const QWriteLocker locker(&lock_);
-    const auto found = entries_.find(messageId);
+    const auto found = entries_.find(protocolId);
     if (found == entries_.end()) {
         return decoded;  // dropped while decoding; the caller still gets it
     }
@@ -123,10 +123,10 @@ QImage PictureStore::image(const QString& messageId)
     return decoded;
 }
 
-QByteArray PictureStore::bytes(const QString& messageId) const
+QByteArray PictureStore::bytes(const QString& protocolId) const
 {
     const QReadLocker locker(&lock_);
-    const auto found = entries_.constFind(messageId);
+    const auto found = entries_.constFind(protocolId);
     return found == entries_.constEnd() ? QByteArray() : found->bytes;
 }
 
@@ -173,8 +173,8 @@ QImage PictureProvider::requestImage(const QString& id, QSize* size, const QSize
 {
     // The id carries a cache-busting revision after "?"; the picture is what is
     // before it.
-    const QString messageId = id.section(QLatin1Char('?'), 0, 0);
-    const QImage image = PictureStore::instance().image(messageId);
+    const QString protocolId = id.section(QLatin1Char('?'), 0, 0);
+    const QImage image = PictureStore::instance().image(protocolId);
     if (image.isNull()) {
         return image;
     }
