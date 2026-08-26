@@ -14,7 +14,7 @@ Item {
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
     // Asks the view to open the emoji picker for this message (handled by a single
     // shared popup, not one per bubble).
-    signal imageRequested(url source, string messageId, string name)
+    signal imageRequested(url source, string e2eId, string name)
     // Carries where the message is on screen, so the picker opens beside it.
     signal reactRequested(string e2eId, real sceneX, real sceneY)
     // Where the context menu was opened, in scene coordinates: what the window
@@ -430,7 +430,7 @@ Item {
                             // suggested name in SaveFile mode here - matching the export
                             // backup dialog, which is the pattern that actually pre-fills.
                             saveDialog.peer = delegate.session.activePeer
-                            saveDialog.messageId = model.e2eId
+                            saveDialog.e2eId = model.e2eId
                             saveDialog.token = model.msgId
                             saveDialog.currentFile = delegate.session.defaultSaveUrl(model.attName)
                             saveDialog.open()
@@ -857,9 +857,9 @@ Item {
         }
         FileDialog {
             id: pictureSaveDialog
-            property string messageId
+            property string e2eId
             fileMode: FileDialog.SaveFile
-            onAccepted: delegate.session.savePictureAs(pictureSaveDialog.messageId, selectedFile)
+            onAccepted: delegate.session.savePictureAs(pictureSaveDialog.e2eId, selectedFile)
         }
         ContextMenu {
             id: contextMenu
@@ -893,7 +893,7 @@ Item {
                 onTriggered: {
                     pictureSaveDialog.currentFile = delegate.session.defaultPictureSaveUrl(
                         model.e2eId, model.attName)
-                    pictureSaveDialog.messageId = model.e2eId
+                    pictureSaveDialog.e2eId = model.e2eId
                     pictureSaveDialog.open()
                 }
             }
@@ -940,19 +940,19 @@ Item {
 
     // Native Save dialog: the OS file picker pre-filled with the message's file
     // name, so it resolves any name conflict itself. On accept the download runs in
-    // the background with its byte progress shown on this bubble. peer/messageId/token
+    // the background with its byte progress shown on this bubble. peer/e2eId/token
     // are snapshotted on open so a recycled delegate cannot misroute the result.
     FileDialog {
         id: saveDialog
         property string peer: ""
-        property string messageId: ""
+        property string e2eId: ""
         property var token: 0
         title: "Save file"
         fileMode: FileDialog.SaveFile
         onAccepted: {
             if (delegate.session) {
                 delegate.session.saveAttachmentToFile(
-                    saveDialog.peer, saveDialog.messageId, "" + saveDialog.selectedFile,
+                    saveDialog.peer, saveDialog.e2eId, "" + saveDialog.selectedFile,
                     saveDialog.token)
             }
         }

@@ -8,7 +8,7 @@ import Bazarish
 Popup {
     id: popup
     property var session: null
-    signal jumpRequested(var messageId)
+    signal jumpRequested(var localId)
 
     property var results: []
 

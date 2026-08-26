@@ -247,14 +247,28 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     }
 
     Query query(db_);
-    // An account written before the column was named after what it holds is not
-    // read. There is no release to be compatible with, and a database that half
-    // works - reads returning nothing, writes failing - is worse than one that
-    // says plainly it is from before.
-    Query previous(db_);
-    if (previous.exec("SELECT protocolId FROM messages LIMIT 1")) {
-        throw std::runtime_error(
-            "this account was written before the e2eId rename and cannot be read; create it again");
+    // What schema this database was written against. SQLite carries the number
+    // itself (user_version), so it costs no table and cannot get out of step with
+    // the tables it describes. A database from before the number existed reads as
+    // 0 and is told apart from a fresh one by whether it holds anything.
+    Query version(db_);
+    std::int64_t schema = 0;
+    if (version.exec("PRAGMA user_version") && version.next()) {
+        schema = version.value(0).toLongLong();
+    }
+    // Asked of the catalogue rather than of the table itself: a fresh database has
+    // no messages table, and probing for one would report a failure that is the
+    // normal case for every account ever created.
+    Query written(db_);
+    const bool hasTables
+        = written.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'messages'")
+        && written.next();
+    if (hasTables && schema != kAccountSchemaVersion) {
+        // Either older than the numbering or newer than this build understands.
+        // Both are refused with the number, because a migration that does not
+        // exist yet must not be improvised at runtime.
+        throw std::runtime_error("this account is schema version " + std::to_string(schema)
+            + ", and this build reads version " + std::to_string(kAccountSchemaVersion));
     }
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS messages ("
@@ -277,6 +291,12 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     if (!query.exec("CREATE TABLE IF NOT EXISTS reactions ("
                     "peer TEXT, target TEXT, reactor TEXT, emoji TEXT,"
                     " PRIMARY KEY (peer, target, reactor))")) {
+        return false;
+    }
+    // Stamp the number on a database that has just been laid out.
+    if (!hasTables
+        && !query.exec(
+            "PRAGMA user_version = " + QString::number(kAccountSchemaVersion))) {
         return false;
     }
     // Chats the user pinned to the top of the list (one row per pinned peer).

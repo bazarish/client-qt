@@ -74,14 +74,14 @@ Item {
         function onContactRetryExhausted(fingerprint) { root.retryPeer = fingerprint }
         function onResendFilePickRequested() { resendPickDialog.open() }
         // Search jump: scroll the chosen message into view and flash it.
-        function onScrollToMessage(messageId) {
+        function onScrollToMessage(localId) {
             Qt.callLater(function() {
-                const r = messages.model ? messages.model.rowForId(messageId) : -1
+                const r = messages.model ? messages.model.rowForId(localId) : -1
                 if (r >= 0) {
                     messages.autoScrolling = true
                     messages.positionViewAtIndex(r, ListView.Center)
                     messages.autoScrolling = false
-                    messages.highlightId = messageId
+                    messages.highlightId = localId
                     highlightTimer.restart()
                 }
             })
@@ -122,10 +122,10 @@ Item {
         id: searchPopup
         session: root.session
         anchors.centerIn: Overlay.overlay
-        onJumpRequested: function(messageId) {
+        onJumpRequested: function(localId) {
             close()
             if (root.session) {
-                root.session.openConversationAtMessage(root.session.activePeer, messageId)
+                root.session.openConversationAtMessage(root.session.activePeer, localId)
             }
         }
     }
@@ -273,8 +273,8 @@ Item {
                     onReactRequested: function(e2eId, sceneX, sceneY) {
                         reactionPicker.openAt(e2eId, sceneX, sceneY)
                     }
-                    onImageRequested: function(url, messageId, name) {
-                        imageViewer.show(url, messageId, name)
+                    onImageRequested: function(url, localId, name) {
+                        imageViewer.show(url, localId, name)
                     }
                 }
 

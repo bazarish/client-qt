@@ -241,7 +241,7 @@ int main()
             const nlohmann::json inner = nlohmann::json::parse(plain.begin(), plain.end());
             CHECK(inner.at("class") == "content");
             CHECK(inner.at("mailbox") == bob.fingerprint());
-            CHECK(inner.at("messageId") == "msg-1");
+            CHECK(inner.at("deliveryId") == "msg-1");
             CHECK(inner.contains("token"));
             respondJson(response, {{"attemptId", "deadbeef"}});
         }));

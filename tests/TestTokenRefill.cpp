@@ -114,7 +114,7 @@ struct Mock {
     std::map<std::string, std::vector<Item>> mailbox;         // recipient fp -> stored items
     std::map<std::string, std::set<std::string>> registered;  // owner fp -> valid token hashes (b64)
     std::map<std::string, std::set<std::string>> singletons;  // owner fp -> hashes registered 1-at-a-time
-    std::map<std::string, std::set<std::string>> seenIds;     // recipient fp -> admitted messageIds
+    std::map<std::string, std::set<std::string>> seenIds;     // recipient fp -> admitted deliveryIds
     int nextId = 1;
     // A delivery into this mailbox that spends one of the mailbox owner's OWN
     // singleton-registered tokens sets the flag: that is exactly the prepaid-token
@@ -182,7 +182,7 @@ int main()
             const std::string caller = requireCaller(request);
             const nlohmann::json body = nlohmann::json::parse(request.body);
             std::lock_guard<std::mutex> lock(m.mu);
-            m.mailbox[caller].push_back({body.at("messageId").get<std::string>(), "device",
+            m.mailbox[caller].push_back({body.at("deliveryId").get<std::string>(), "device",
                 fromBase64(body.at("payload").get<std::string>())});
             respondJson(response, {{"ok", true}});
         }));
@@ -238,10 +238,10 @@ int main()
             const nlohmann::json inner = nlohmann::json::parse(cms::unseal(sealed, m.serverSealing));
             const std::string cls = inner.at("class").get<std::string>();
             const std::string mailbox = inner.at("mailbox").get<std::string>();
-            const std::string messageId = inner.at("messageId").get<std::string>();
+            const std::string deliveryId = inner.at("deliveryId").get<std::string>();
 
             std::lock_guard<std::mutex> lock(m.mu);
-            const bool fresh = m.seenIds[mailbox].insert(messageId).second;
+            const bool fresh = m.seenIds[mailbox].insert(deliveryId).second;
             if (cls == "content" && fresh) {
                 // Consume the presented token: it must be one the mailbox owner
                 // registered (else the real server would reject the delivery).

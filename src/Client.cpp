@@ -30,7 +30,7 @@ Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& 
     nlohmann::json inner = {
         {"class", deliveryClass},
         {"mailbox", mailbox},
-        {"messageId", deliveryId},
+        {"deliveryId", deliveryId},
     };
     if (token.has_value()) {
         inner["token"] = toBase64(*token);
@@ -406,7 +406,7 @@ std::vector<Client::OutboundSend> Client::listOutbound()
     const nlohmann::json body = response.json();
     std::vector<OutboundSend> waiting;
     for (const nlohmann::json& entry : body.at("outbound")) {
-        waiting.push_back(OutboundSend{entry.at("messageId").get<std::string>(),
+        waiting.push_back(OutboundSend{entry.at("deliveryId").get<std::string>(),
             entry.value("attempts", 0), entry.value("of", 0)});
     }
     return waiting;
@@ -453,7 +453,7 @@ void Client::ack(const std::string& blobId)
 void Client::submitSelf(const std::string& deliveryId, const Bytes& payload)
 {
     api_.postJson("/v1/messaging/self",
-        {{"messageId", deliveryId}, {"payload", toBase64(payload)}});
+        {{"deliveryId", deliveryId}, {"payload", toBase64(payload)}});
 }
 
 std::string Client::submitSend(
@@ -464,7 +464,7 @@ std::string Client::submitSend(
             {"toDest", toDest},
             {"sealed", toBase64(sealed)},
             {"payload", toBase64(payload)},
-            {"messageId", deliveryId},
+            {"deliveryId", deliveryId},
         });
     return response.json().at("attemptId").get<std::string>();
 }

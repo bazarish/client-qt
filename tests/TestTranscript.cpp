@@ -263,6 +263,26 @@ int main(int argc, char** argv)
         CHECK(store.firstUnreadId("frank") == realId);
     }
 
+    // --- A database of another schema version is refused, not read ---
+    {
+        const QString sdb = QString::fromStdString((dir / "versioned.db").string());
+        {
+            TranscriptStore fresh;
+            CHECK(fresh.open("ver", sdb, QString()));
+            StoredMessage m;
+            m.peer = "heidi";
+            m.type = "text";
+            m.text = "written at version 1";
+            m.ts = 500;
+            m.orderKey = m.ts;
+            CHECK(fresh.append(m) > 0);
+        }
+        // Reopening the same file is fine: it carries the number this build writes.
+        TranscriptStore again;
+        CHECK(again.open("ver", sdb, QString()));
+        CHECK(again.latestMessages("heidi", 10).size() == 1);
+    }
+
     // --- The server's name for a send maps back to the row it belongs to ---
     {
         const QString sdb = QString::fromStdString((dir / "sends.db").string());

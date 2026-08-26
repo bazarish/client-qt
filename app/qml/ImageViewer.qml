@@ -10,13 +10,13 @@ import Bazarish
 Popup {
     id: root
     property url source
-    property string messageId
+    property string e2eId
     property string name
     property var session: null
 
-    function show(url, messageId, name) {
+    function show(url, e2eId, name) {
         root.source = url
-        root.messageId = messageId
+        root.e2eId = e2eId
         root.name = name
         root.open()
     }
@@ -42,7 +42,7 @@ Popup {
     FileDialog {
         id: saveDialog
         fileMode: FileDialog.SaveFile
-        onAccepted: root.session.savePictureAs(root.messageId, selectedFile)
+        onAccepted: root.session.savePictureAs(root.e2eId, selectedFile)
     }
 
     contentItem: Item {
@@ -87,13 +87,13 @@ Popup {
             id: pictureMenu
             ContextMenuItem {
                 text: "Copy"
-                onTriggered: root.session.copyPicture(root.messageId)
+                onTriggered: root.session.copyPicture(root.e2eId)
             }
             ContextMenuItem {
                 text: "Save as"
                 onTriggered: {
                     saveDialog.currentFile
-                        = root.session.defaultPictureSaveUrl(root.messageId, root.name)
+                        = root.session.defaultPictureSaveUrl(root.e2eId, root.name)
                     saveDialog.open()
                 }
             }

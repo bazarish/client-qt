@@ -67,6 +67,14 @@ struct Reaction {
 // belongs instead of re-sealing the whole history on every change. The database
 // key is the random one kept beside the file (see AccountKey), so opening costs
 // nothing once the account is unlocked.
+// The schema every account database is written against. It is stamped into the
+// file (SQLite's user_version) when the tables are laid out and checked on every
+// open: a database written against another number is refused rather than read
+// through guesswork. Frozen at 1 until the first release - before then a schema
+// change means a new account, not a migration; after it, this is the number a
+// migration steps from.
+inline constexpr int kAccountSchemaVersion = 1;
+
 class TranscriptStore {
 public:
     TranscriptStore();
