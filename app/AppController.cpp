@@ -585,6 +585,13 @@ void AppController::deleteAccount(const QString& id)
         }
     }
     pendingDeleteId_.clear();
+    if (ctrl->configuredFacades().isEmpty()) {
+        // A profile that never reached a server: there is no registration to end,
+        // no destination to revoke and no mailbox to drop, so asking would only
+        // fail and put a warning in front of the user about nothing.
+        forgetAccountLocally(id);
+        return;
+    }
     // One answer, whichever way it goes, and then this connection is done with.
     const auto connection = std::make_shared<QMetaObject::Connection>();
     *connection = connect(ctrl, &SessionController::accountClosedOnServer, this,
