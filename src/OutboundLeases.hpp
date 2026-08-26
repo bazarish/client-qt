@@ -65,6 +65,9 @@ private:
     struct Lease {
         std::shared_ptr<bazarish::i2p::Endpoint> endpoint;
         std::chrono::steady_clock::time_point expiresAt;
+        // The hop length it was built at. A user who shortens or lengthens their
+        // tunnels means it from the next message, not from the next term.
+        bazarish::i2p::Privacy privacy = bazarish::i2p::Privacy::eMax;
     };
 
     bazarish::i2p::Router& router_;

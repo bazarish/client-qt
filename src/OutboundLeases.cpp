@@ -65,10 +65,12 @@ OutboundLeases::~OutboundLeases()
 
 void OutboundLeases::dropExpired(const std::chrono::steady_clock::time_point now)
 {
+    const bazarish::i2p::Privacy privacy = tunnelPrivacy();
     for (auto it = leases_.begin(); it != leases_.end();) {
-        if (it->second.expiresAt <= now) {
+        if (it->second.expiresAt <= now || it->second.privacy != privacy) {
             // Unconditionally: a destination that has carried one correspondent's
-            // mail is not handed to another and is not kept because it was busy.
+            // mail is not handed to another, is not kept because it was busy, and
+            // does not outlive the tunnel profile it was built under.
             it = leases_.erase(it);
         } else {
             ++it;
@@ -107,7 +109,8 @@ bool OutboundLeases::prepare(const std::string& toDest)
         if (found != leases_.end() && found->second.expiresAt > now) {
             endpoint = found->second.endpoint;  // another send got there first
         } else {
-            leases_[toDest] = Lease{endpoint, now + std::chrono::seconds(kLeaseTermSeconds)};
+            leases_[toDest]
+                = Lease{endpoint, now + std::chrono::seconds(kLeaseTermSeconds), tunnelPrivacy()};
         }
     }
     return endpoint->waitReady(std::chrono::seconds(kOutboundDestReadySeconds));
