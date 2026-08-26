@@ -332,14 +332,6 @@ void Client::registerTokenHashes(const std::vector<Bytes>& hashes)
     api_.postJson("/v1/messaging/tokens", {{"hashes", encoded}});
 }
 
-void Client::deleteTokenHashes(const std::vector<Bytes>& hashes)
-{
-    nlohmann::json encoded = nlohmann::json::array();
-    for (const Bytes& hash : hashes) {
-        encoded.push_back(toBase64(hash));
-    }
-    api_.del("/v1/messaging/tokens", {{"hashes", encoded}});
-}
 
 std::vector<PendingEntry> Client::waitForPending(const int waitSeconds)
 {

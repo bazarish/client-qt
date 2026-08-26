@@ -113,6 +113,10 @@ public slots:
     // The devices registered on this account, and dropping one.
     void refreshDevices();
     void forgetDevice(const QString& clientId);
+    // Ends the account on its server. Reported through accountClosed, because
+    // the caller has to know whether it happened before it deletes the profile
+    // that holds the only key able to ask again.
+    void closeAccountOnServer();
     // Calls: each runs the matching Session method (strict I2P, so a failure
     // surfaces as actionFailed) and then re-emits the call state.
     void startCall(const QString& peer);
@@ -133,6 +137,9 @@ signals:
     void opDone(const QString& opId, bool ok, const QString& status);
     // A row's status line changed while it is still running.
     void opProgress(const QString& opId, const QString& status);
+    // The account was ended on its server, or the attempt failed with this
+    // reason. Nothing may be deleted locally until this says it happened.
+    void accountClosed(bool ok, const QString& error);
     // What the opened account has stored for the settings the window shows.
     void accountSettings(bool acceptCalls, bool allowClearnet, bool sharingAllowed);
     // One step of a serving-key rotation, as it happens.
@@ -815,6 +822,8 @@ public:
     // Drops a device's registration: its unacked mail stops being held, and the
     // device registers again the next time it connects.
     Q_INVOKABLE void forgetDevice(const QString& clientId);
+    // Ends this account on its server; the answer arrives as accountClosedOnServer.
+    void closeAccountOnServer();
     // Audio calls. startCall dials the active/given peer; accept/decline act on
     // the current incoming call; end hangs up; setCallMuted toggles the mic.
     Q_INVOKABLE void startCall(const QString& peer);
@@ -839,6 +848,8 @@ signals:
     void scrollToUnread(qint64 firstUnreadId);
     // Asks the view to scroll to the bottom (jump-to-latest).
     void scrollToBottom();
+    // Mirrors the worker's accountClosed to whoever asked for the deletion.
+    void accountClosedOnServer(bool ok, const QString& error);
     void facadeInfoChanged();
     void connectStateChanged();
     void sendReceiptsChanged();
@@ -934,6 +945,7 @@ signals:  // to worker
     void requestRefreshStorageUsage();
     void requestRefreshDevices();
     void requestForgetDevice(const QString& clientId);
+    void requestCloseAccountOnServer();
     void requestStartCall(const QString& peer);
     void requestAcceptCall(const QString& callId);
     void requestDeclineCall(const QString& callId);

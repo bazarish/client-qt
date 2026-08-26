@@ -1530,6 +1530,24 @@ void SessionWorker::forgetDevice(const QString& clientId)
     refreshDevices();
 }
 
+void SessionWorker::closeAccountOnServer()
+{
+    if (!session_) {
+        emit accountClosed(false, QStringLiteral("this account is not open"));
+        return;
+    }
+    WorkerOp op(this, QStringLiteral("account-close"), QStringLiteral("status"),
+        QStringLiteral("Deleting the account"), QStringLiteral("Telling your server…"));
+    try {
+        session_->closeAccountOnServer();
+        op.succeed(QStringLiteral("Deleted on the server"));
+        emit accountClosed(true, {});
+    } catch (const std::exception& error) {
+        op.fail(QString::fromUtf8(error.what()));
+        emit accountClosed(false, QString::fromUtf8(error.what()));
+    }
+}
+
 void SessionWorker::generatePersonalKey()
 {
     if (!session_) {
@@ -1953,6 +1971,10 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestRefreshDevices, worker_,
         &SessionWorker::refreshDevices);
     connect(this, &SessionController::requestForgetDevice, worker_, &SessionWorker::forgetDevice);
+    connect(this, &SessionController::requestCloseAccountOnServer, worker_,
+        &SessionWorker::closeAccountOnServer);
+    connect(worker_, &SessionWorker::accountClosed, this,
+        &SessionController::accountClosedOnServer);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
@@ -3200,6 +3222,11 @@ void SessionController::refreshDevices()
 void SessionController::forgetDevice(const QString& clientId)
 {
     emit requestForgetDevice(clientId);
+}
+
+void SessionController::closeAccountOnServer()
+{
+    emit requestCloseAccountOnServer();
 }
 
 // The one VoiceNote this controller records and plays through, built on first

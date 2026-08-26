@@ -527,6 +527,11 @@ void AppController::openAccount(const QString& id, const QString& passphrase)
     unlockingId_.clear();
     unlockToBringOnline_ = false;
     emit accountUnlocked(id);
+    if (pendingDeleteId_ == id) {
+        // It was unlocked to be deleted; now it can be.
+        deleteAccount(id);
+        return;
+    }
     if (bringOnline) {
         setAccountOffline(id, false);
     }
@@ -565,6 +570,39 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
 }
 
 void AppController::deleteAccount(const QString& id)
+{
+    SessionController* ctrl = sessionFor(id);
+    if (ctrl == nullptr) {
+        // Only the account itself can end itself: the server is told by a request
+        // signed with the identity key, and that key is inside the profile. So the
+        // profile is opened first - which may mean asking for its passphrase, and
+        // the deletion resumes once it is unlocked.
+        pendingDeleteId_ = id;
+        openSession(id, {}, /*makeActive=*/false);
+        ctrl = sessionFor(id);
+        if (ctrl == nullptr) {
+            return;
+        }
+    }
+    pendingDeleteId_.clear();
+    // One answer, whichever way it goes, and then this connection is done with.
+    const auto connection = std::make_shared<QMetaObject::Connection>();
+    *connection = connect(ctrl, &SessionController::accountClosedOnServer, this,
+        [this, id, connection](const bool ok, const QString& error) {
+            disconnect(*connection);
+            if (!ok) {
+                // The profile stays: it holds the only key that can ask again, and
+                // deleting it here would leave an account on the server that
+                // nobody can ever end.
+                emit accountDeleteFailed(id, error);
+                return;
+            }
+            forgetAccountLocally(id);
+        });
+    ctrl->closeAccountOnServer();
+}
+
+void AppController::forgetAccountLocally(const QString& id)
 {
     // If the account is open, tear its session down first (synchronously, so the
     // transcript is flushed and closed) before removing the directory.

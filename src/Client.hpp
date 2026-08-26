@@ -253,7 +253,6 @@ public:
     std::vector<DeviceEntry> listClients();
     void retireClient(const std::string& clientId);
     void registerTokenHashes(const std::vector<Bytes>& hashes);
-    void deleteTokenHashes(const std::vector<Bytes>& hashes);
     std::vector<PendingEntry> listPending();
     // Asks the server to hold the request until something arrives for this client
     // (or waitSeconds passes), and returns what is pending then. Throws with a 404

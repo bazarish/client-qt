@@ -362,6 +362,12 @@ public:
     // owner has to be able to see the list and end one.
     std::vector<Client::DeviceEntry> devices();
     void retireDevice(const std::string& clientId);
+    // Ends this account on its server: the destination is revoked, the mailbox
+    // and everything else held for it is dropped, and the registration is gone.
+    // Throws when the server refused or could not be reached - the profile it
+    // was asked from holds the only key that can ask again, so a caller must not
+    // delete that on a failure.
+    void closeAccountOnServer();
 
     // The serving server's onboarding info (message + registration links),
     // shown when a connect/subscribe is refused because this key is not

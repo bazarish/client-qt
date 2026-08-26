@@ -2981,6 +2981,11 @@ void Session::retireDevice(const std::string& clientId)
     client_->retireClient(clientId);
 }
 
+void Session::closeAccountOnServer()
+{
+    client_->closeAccount();
+}
+
 void Session::echoSentToSelf(const std::string& peerFingerprint, const nlohmann::json& inner)
 {
     if (myDest_.empty() || myServingKeyB64_.empty()) {

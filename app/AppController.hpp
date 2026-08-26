@@ -76,7 +76,18 @@ public:
     Q_INVOKABLE void cancelUnlock();
     Q_INVOKABLE void importAccount(const QString& name, const QString& fileUrl,
         const QString& password, const QString& atRestPassphrase);
+    // Ends the account for good: the server drops the registration, the
+    // destination and the mailbox, and only then is the profile removed from this
+    // device. An account that is not open is opened first (its identity key is
+    // what authorises the deletion), which may ask for its passphrase. A server
+    // that refused or could not be reached leaves everything as it was and
+    // reports accountDeleteFailed - the profile is the only thing that can ask
+    // again, so it is never thrown away on a failure.
     Q_INVOKABLE void deleteAccount(const QString& id);
+    // Removes the profile from this device and nothing else: the account goes on
+    // existing on its server, with its destination and its mail, and no key left
+    // anywhere to end it. Offered only after a full deletion failed.
+    Q_INVOKABLE void forgetAccountLocally(const QString& id);
     // Makes an account the active (focused) one, opening it first if needed.
     // An encrypted, not-yet-open account emits needPassphrase instead.
     Q_INVOKABLE void switchTo(const QString& id);
@@ -167,6 +178,8 @@ signals:
     void showPicker();
     // An encrypted account needs its passphrase before it can be opened.
     void needPassphrase(const QString& id, const QString& name);
+    // The account could not be ended on its server, so nothing was deleted.
+    void accountDeleteFailed(const QString& id, const QString& error);
     // An unlock attempt failed. It belongs on the unlock screen, where the
     // passphrase was typed, and not in a notice at the bottom of the window.
     void unlockFailed(const QString& error);
@@ -238,6 +251,8 @@ private:
     // asked for in order to bring it online. An account unlocked just to be read
     // keeps whatever the switch says.
     QString unlockingId_;
+    // An account unlocked for the sole purpose of deleting it.
+    QString pendingDeleteId_;
     bool unlockToBringOnline_ = false;
     // Global full-privacy mode (persisted; applied process-wide on load/change).
     bool fullPrivacy_ = false;

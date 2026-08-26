@@ -243,8 +243,9 @@ Item {
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
         header: Label { text: "Delete account"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
-            text: "Permanently delete \"" + root.pendingDeleteName + "\" and all its "
-                + "messages from this device? This cannot be undone."
+            text: "Permanently delete \"" + root.pendingDeleteName + "\"? Your server ends "
+                + "the account - its address, its mailbox and everything it holds - and then "
+                + "the profile and its messages go from this device. This cannot be undone."
             color: Theme.text
             wrapMode: Text.Wrap
         }
