@@ -231,24 +231,9 @@ Item {
         }
     }
 
-    Dialog {
+    AccountDeleteConfirmDialog {
         id: deleteDialog
-        anchors.centerIn: parent
-        modal: true
-        width: Math.min(360, parent ? parent.width - 24 : 360)
-        title: "Delete account"
-        footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteDialog.accept(); onRejected: deleteDialog.reject() }
-        onAccepted: App.deleteAccount(root.pendingDeleteId)
-        // Destructive: brightest-neon outline, dark surface, light text.
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
-        header: Label { text: "Delete account"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
-        contentItem: Label {
-            text: "Permanently delete \"" + root.pendingDeleteName + "\"? Your server ends "
-                + "the account - its address, its mailbox and everything it holds - and then "
-                + "the profile and its messages go from this device. This cannot be undone."
-            color: Theme.text
-            wrapMode: Text.Wrap
-        }
+        onConfirmed: (id) => App.deleteAccount(id)
     }
 
     // Per-row actions on a narrow window (the row fields are stashed on open).
@@ -261,7 +246,7 @@ Item {
         ContextMenuItem {
             text: "Delete account"
             danger: true
-            onTriggered: deleteDialog.open()
+            onTriggered: deleteDialog.show(root.pendingDeleteId, root.pendingDeleteName)
         }
     }
 }
