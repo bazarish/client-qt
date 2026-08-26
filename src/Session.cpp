@@ -1240,7 +1240,7 @@ std::string Session::issueOneToken()
 }
 
 std::string Session::deliveryIdFor(
-    const std::string& protocolId, const std::string& mailbox) const
+    const std::string& e2eId, const std::string& mailbox) const
 {
     // What one envelope is called on the wire. Derived rather than drawn fresh so
     // that sending the same message again produces the same name and the
@@ -1250,21 +1250,21 @@ std::string Session::deliveryIdFor(
     // goes to our own devices is named differently from the copy the recipient
     // gets, so the two servers holding them have nothing to match on. Without a
     // message to name - an ack, a receipt of ours - a fresh name is right.
-    if (protocolId.empty()) {
+    if (e2eId.empty()) {
         return toHex(randomBytes(kDeliveryIdBytes));
     }
-    return bazarish::client::deliveryIdFor(deliveryIdKey_, protocolId, mailbox);
+    return bazarish::client::deliveryIdFor(deliveryIdKey_, e2eId, mailbox);
 }
 
 bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     const std::string& kind, const std::string& mailbox, const std::optional<Bytes>& token,
     const Bytes& payload, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
-    std::string* outAttemptId, bool waitForOutcome, const std::string& protocolId)
+    std::string* outAttemptId, bool waitForOutcome, const std::string& e2eId)
 {
     // The envelope is sealed to the recipient destination's serving sealing key,
     // so the routing metadata is readable only by the server operating that
     // destination.
-    const std::string deliveryId = deliveryIdFor(protocolId, mailbox);
+    const std::string deliveryId = deliveryIdFor(e2eId, mailbox);
     const Bytes sealed = sealDeliveryEnvelope(kind, mailbox, deliveryId, token, servingSealingKey);
 
     // Hand the envelope to our own server. With store-and-forward it accepts the
@@ -1664,13 +1664,13 @@ void Session::acceptContactRequest(const std::string& peerFingerprint)
 }
 
 bool Session::sendMessage(const std::string& peerFingerprint, const std::string& text,
-    const std::string& protocolId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
+    const std::string& e2eId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "text"},
-        {"id", protocolId.empty() ? toHex(randomBytes(8)) : protocolId},
+        {"id", e2eId.empty() ? toHex(randomBytes(8)) : e2eId},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"text", text},
@@ -1690,15 +1690,15 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
 }
 
 bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& protocolId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
+    const std::string& e2eId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
     return announceTransfer(
-        kTypeFile, peerFingerprint, path, protocolId, onAcceptedByOwnServer, outAttemptId, replyTo);
+        kTypeFile, peerFingerprint, path, e2eId, onAcceptedByOwnServer, outAttemptId, replyTo);
 }
 
 bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& protocolId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
+    const std::string& e2eId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
     // A picture rides inside the message. It is small by construction - the
@@ -1715,7 +1715,7 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
         throw std::runtime_error("the picture is empty: " + path.string());
     }
 
-    const std::string id = protocolId.empty() ? toHex(randomBytes(8)) : protocolId;
+    const std::string id = e2eId.empty() ? toHex(randomBytes(8)) : e2eId;
     // The sender's own chat draws it from the same place the recipient will.
     putPicture(id, bytes);
 
@@ -1740,14 +1740,14 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
 }
 
 bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
-    const std::int64_t durationMs, const std::string& protocolId,
+    const std::int64_t durationMs, const std::string& e2eId,
     const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
     const std::string& replyTo)
 {
     if (opus.empty()) {
         throw std::runtime_error("there is nothing recorded to send");
     }
-    const std::string id = protocolId.empty() ? toHex(randomBytes(8)) : protocolId;
+    const std::string id = e2eId.empty() ? toHex(randomBytes(8)) : e2eId;
     putVoice(id, opus);
 
     nlohmann::json inner = {
@@ -1776,11 +1776,11 @@ bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
 // and a picture: the bytes travel the same way, and what the type decides is
 // what the other side does when they arrive.
 bool Session::announceTransfer(const std::string& type, const std::string& peerFingerprint,
-    const fs::path& path, const std::string& protocolId,
+    const fs::path& path, const std::string& e2eId,
     const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
     const std::string& replyTo)
 {
-    const std::string id = protocolId.empty() ? toHex(randomBytes(8)) : protocolId;
+    const std::string id = e2eId.empty() ? toHex(randomBytes(8)) : e2eId;
     // Only metadata travels. The digest is over the plaintext, so the recipient
     // can check that what it finally holds is what was announced, independently
     // of how many transfer attempts it took.
@@ -1810,7 +1810,7 @@ bool Session::announceTransfer(const std::string& type, const std::string& peerF
 }
 
 void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
-    const InlineKeyboard& keyboard, const std::string& protocolId,
+    const InlineKeyboard& keyboard, const std::string& e2eId,
     const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer)
 {
     // An interactive message is a "text" message that additionally carries an
@@ -1819,7 +1819,7 @@ void Session::sendInteractive(const std::string& peerFingerprint, const std::str
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "text"},
-        {"id", protocolId.empty() ? toHex(randomBytes(8)) : protocolId},
+        {"id", e2eId.empty() ? toHex(randomBytes(8)) : e2eId},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"text", text},
@@ -1829,13 +1829,13 @@ void Session::sendInteractive(const std::string& peerFingerprint, const std::str
 }
 
 void Session::sendCommand(const std::string& peerFingerprint, const std::string& command,
-    const std::string& args, const std::string& protocolId,
+    const std::string& args, const std::string& e2eId,
     const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer)
 {
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
         {"type", "bot.command"},
-        {"id", protocolId.empty() ? toHex(randomBytes(8)) : protocolId},
+        {"id", e2eId.empty() ? toHex(randomBytes(8)) : e2eId},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         {"command", command},
@@ -2036,7 +2036,7 @@ void Session::setTransferHandler(TransferEventFn handler)
     transfers_->onEvent = std::move(handler);
 }
 
-void Session::emitTransfer(const std::string& protocolId, const TransferState state,
+void Session::emitTransfer(const std::string& e2eId, const TransferState state,
     const std::uint64_t bytes, const std::uint64_t total, const std::string& error,
     const std::string& stage, const std::string& peer)
 {
@@ -2046,20 +2046,20 @@ void Session::emitTransfer(const std::string& protocolId, const TransferState st
         handler = transfers_->onEvent;
     }
     if (handler) {
-        handler(TransferEvent{protocolId, peer, state, bytes, total, error, stage});
+        handler(TransferEvent{e2eId, peer, state, bytes, total, error, stage});
     }
 }
 
 void Session::requestFile(
-    const std::string& peerFingerprint, const std::string& protocolId, const fs::path& dest)
+    const std::string& peerFingerprint, const std::string& e2eId, const fs::path& dest)
 {
 
     {
         const std::lock_guard<std::mutex> lock(transfers_->mutex);
-        transfers_->pending[protocolId]
+        transfers_->pending[e2eId]
             = PendingTransfer{dest, std::make_shared<std::atomic<bool>>(false)};
     }
-    emitTransfer(protocolId, TransferState::eRequested, 0, 0, {}, "Asking the sender",
+    emitTransfer(e2eId, TransferState::eRequested, 0, 0, {}, "Asking the sender",
         peerFingerprint);
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -2067,7 +2067,7 @@ void Session::requestFile(
         {"id", toHex(randomBytes(8))},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
-        {"fileId", protocolId},
+        {"fileId", e2eId},
         // Which of our devices is waiting. Their devices all see the answer, and
         // the one-time address in it belongs to this one; the others leave it and
         // ask for their own copy if they want the file.
@@ -2076,28 +2076,28 @@ void Session::requestFile(
     sendContent(peerFingerprint, std::move(inner));
 }
 
-void Session::cancelTransfer(const std::string& protocolId)
+void Session::cancelTransfer(const std::string& e2eId)
 {
     const std::lock_guard<std::mutex> lock(transfers_->mutex);
-    const auto found = transfers_->pending.find(protocolId);
+    const auto found = transfers_->pending.find(e2eId);
     if (found != transfers_->pending.end()) {
         found->second.cancel->store(true);
         transfers_->pending.erase(found);
     }
     // The same id on the other side of a transfer: we are serving this file and
     // the user wants it stopped. The serve loop checks the flag between chunks.
-    const auto serving = transfers_->serving.find(protocolId);
+    const auto serving = transfers_->serving.find(e2eId);
     if (serving != transfers_->serving.end()) {
         serving->second->store(true);
         transfers_->serving.erase(serving);
     }
 }
 
-void Session::unsend(const std::string& protocolId)
+void Session::unsend(const std::string& e2eId)
 {
     // Nothing was ever copied off this machine, so unsending is just forgetting:
     // a later request is answered "no longer available".
-    if (sentFiles_.erase(protocolId) > 0) {
+    if (sentFiles_.erase(e2eId) > 0) {
         persistSentFiles();
     }
 }
@@ -2448,8 +2448,8 @@ std::vector<std::string> Session::takeUndelivered()
     std::vector<std::string> ids;
     try {
         ids = client_->listUndelivered();
-        for (const std::string& protocolId : ids) {
-            client_->clearUndelivered(protocolId);
+        for (const std::string& e2eId : ids) {
+            client_->clearUndelivered(e2eId);
         }
     } catch (const std::exception& error) {
         // Nothing is lost by asking again: the server keeps them until they are
@@ -2499,7 +2499,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.sentByUs = true;
             }
             message.fromFingerprint = body.at("from").get<std::string>();
-            message.protocolId = body.value("id", std::string());
+            message.e2eId = body.value("id", std::string());
             message.sentAt = body.value("sentAt", static_cast<std::int64_t>(0));
             std::string type = body.value("type", std::string("text"));
 
@@ -2591,7 +2591,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.attachmentMime = picture.value("mime", std::string());
                 message.attachmentSize = picture.value("size", std::uint64_t{0});
                 const nlohmann::json::binary_t& data = picture.at("data").get_binary();
-                putPicture(message.protocolId, Bytes(data.begin(), data.end()));
+                putPicture(message.e2eId, Bytes(data.begin(), data.end()));
             } else if (type == kTypeVoice) {
                 // The audio came with the message, like a picture does.
                 message.contentType = type;
@@ -2600,7 +2600,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
                 message.attachmentSize = voice.value("size", std::uint64_t{0});
                 message.attachmentDurationMs = voice.value("durationMs", std::int64_t{0});
                 const nlohmann::json::binary_t& data = voice.at("data").get_binary();
-                putVoice(message.protocolId, Bytes(data.begin(), data.end()));
+                putVoice(message.e2eId, Bytes(data.begin(), data.end()));
             } else if (type == kTypeFile || type == "audio") {
                 // An announcement, not a delivery: the bytes are still on the
                 // sender's disk until we ask for them.
@@ -2855,7 +2855,7 @@ std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
             // surfaced item only after the client has durably stored it, so a
             // crash/restart between fetch and store never loses it. Re-processing on
             // a pre-ack re-fetch is safe - applyBootstrap dedups tokens and the GUI
-            // dedups by protocolId.
+            // dedups by e2eId.
             if (autoAckSurfaced) {
                 client_->ack(entry.id);
             } else {
@@ -2974,41 +2974,41 @@ std::size_t Session::sendCapacity(const std::string& peerFingerprint) const
 namespace {
 
 // Where a message's picture is kept in the account database.
-std::string pictureKey(const std::string& protocolId)
+std::string pictureKey(const std::string& e2eId)
 {
-    return "picture:" + protocolId;
+    return "picture:" + e2eId;
 }
 
-std::string voiceKey(const std::string& protocolId)
+std::string voiceKey(const std::string& e2eId)
 {
-    return "voice:" + protocolId;
+    return "voice:" + e2eId;
 }
 
 }  // namespace
 
-void Session::putPicture(const std::string& protocolId, const Bytes& bytes)
+void Session::putPicture(const std::string& e2eId, const Bytes& bytes)
 {
-    db_->put(pictureKey(protocolId), bytes);
+    db_->put(pictureKey(e2eId), bytes);
 }
 
-std::optional<Bytes> Session::picture(const std::string& protocolId) const
+std::optional<Bytes> Session::picture(const std::string& e2eId) const
 {
-    return db_->get(pictureKey(protocolId));
+    return db_->get(pictureKey(e2eId));
 }
 
-bool Session::hasPicture(const std::string& protocolId) const
+bool Session::hasPicture(const std::string& e2eId) const
 {
-    return db_->has(pictureKey(protocolId));
+    return db_->has(pictureKey(e2eId));
 }
 
-void Session::putVoice(const std::string& protocolId, const Bytes& bytes)
+void Session::putVoice(const std::string& e2eId, const Bytes& bytes)
 {
-    db_->put(voiceKey(protocolId), bytes);
+    db_->put(voiceKey(e2eId), bytes);
 }
 
-std::optional<Bytes> Session::voice(const std::string& protocolId) const
+std::optional<Bytes> Session::voice(const std::string& e2eId) const
 {
-    return db_->get(voiceKey(protocolId));
+    return db_->get(voiceKey(e2eId));
 }
 
 std::vector<Client::DeviceEntry> Session::devices()

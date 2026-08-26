@@ -185,7 +185,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case AttRefRole: return m.attRef;
     case AttKeyRole: return m.attKey;
     case KeyboardRole: return m.keyboard;
-    case ProtocolIdRole: return m.protocolId;
+    case E2eIdRole: return m.e2eId;
     case EditedRole: return m.edited;
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
@@ -220,7 +220,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
     return {{OutgoingRole, "outgoing"}, {TypeRole, "type"}, {TextRole, "text"},
         {AttNameRole, "attName"}, {AttMimeRole, "attMime"}, {AttSizeRole, "attSize"},
         {AttRefRole, "attRef"}, {AttKeyRole, "attKey"}, {KeyboardRole, "keyboard"},
-        {ProtocolIdRole, "protocolId"}, {EditedRole, "edited"},
+        {E2eIdRole, "e2eId"}, {EditedRole, "edited"},
         {TimeRole, "time"}, {StatusRole, "status"}, {MsgIdRole, "msgId"}, {ErrorRole, "error"},
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
@@ -323,9 +323,9 @@ bool ConversationModel::newestIncomingThrough(int row, qint64& outId, QString& o
     const int start = std::min(row, static_cast<int>(messages_.size()) - 1);
     for (int i = start; i >= 0; --i) {
         const StoredMessage& m = messages_[i];
-        if (!m.outgoing && !m.protocolId.isEmpty() && m.type != "system") {
+        if (!m.outgoing && !m.e2eId.isEmpty() && m.type != "system") {
             outId = m.id;
-            outProtocol = m.protocolId;
+            outProtocol = m.e2eId;
             return true;
         }
     }

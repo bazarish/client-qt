@@ -11,12 +11,12 @@ Item {
     property bool highlighted: false
     // Asks the view to confirm and delete this message (irreversible; for one's
     // own one-to-one message it is removed at the recipient too).
-    signal deleteRequested(var msgId, string protocolId, bool outgoing)
+    signal deleteRequested(var msgId, string e2eId, bool outgoing)
     // Asks the view to open the emoji picker for this message (handled by a single
     // shared popup, not one per bubble).
     signal imageRequested(url source, string messageId, string name)
     // Carries where the message is on screen, so the picker opens beside it.
-    signal reactRequested(string protocolId, real sceneX, real sceneY)
+    signal reactRequested(string e2eId, real sceneX, real sceneY)
     // Where the context menu was opened, in scene coordinates: what the window
     // that opens from it anchors to. Taken from the event rather than mapped from
     // this delegate - the handlers sit on the bubble, which is pushed to the right
@@ -46,11 +46,11 @@ Item {
     readonly property bool isPicture: model.type === "image"
     readonly property bool isVoice: model.type === "voice"
     readonly property bool voicePlaying: delegate.isVoice && delegate.session
-        && delegate.session.voicePlaying === model.protocolId
+        && delegate.session.voicePlaying === model.e2eId
     // The picture as this account holds it. The revision in the URL is what makes
     // an Image reload when the bytes arrive.
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
-        ? "image://picture/" + model.protocolId + "?r=" + Pictures.revision : ""
+        ? "image://picture/" + model.e2eId + "?r=" + Pictures.revision : ""
     // The account holds no drawable picture for this message: the bytes came with
     // it, so nothing is on its way and there is nothing to ask for. No fallback,
     // no Save button - it says it is broken.
@@ -78,7 +78,7 @@ Item {
     // placeholder, and it must have a protocol id to reference).
     readonly property bool reactable: !delegate.isSystem && !delegate.isUnsupported
         && !delegate.isContactRequest
-        && model.protocolId && model.protocolId.length > 0
+        && model.e2eId && model.e2eId.length > 0
     // The reaction chips for this message: [{ emoji, count, mine }], re-queried
     // whenever any reaction changes (reactionsRevision drives the binding).
     // Whether a reaction is ordinary printable text rather than an emoji: the
@@ -89,7 +89,7 @@ Item {
     }
     readonly property var reactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
-        ? delegate.session.reactionSummary(model.protocolId) : []
+        ? delegate.session.reactionSummary(model.e2eId) : []
 
     // Centered system notice (e.g. a cleared-chat note).
     Label {
@@ -112,7 +112,7 @@ Item {
         try { return JSON.parse(model.keyboard) } catch (e) { return [] }
     }
     // The keyboard message's protocol id, sent back as a callback's ref.
-    readonly property string msgProtocolId: model.protocolId
+    readonly property string msgE2eId: model.e2eId
 
     // True for an own text message that can be edited (not an attachment or an
     // unsupported placeholder).
@@ -430,7 +430,7 @@ Item {
                             // suggested name in SaveFile mode here - matching the export
                             // backup dialog, which is the pattern that actually pre-fills.
                             saveDialog.peer = delegate.session.activePeer
-                            saveDialog.messageId = model.protocolId
+                            saveDialog.messageId = model.e2eId
                             saveDialog.token = model.msgId
                             saveDialog.currentFile = delegate.session.defaultSaveUrl(model.attName)
                             saveDialog.open()
@@ -473,7 +473,7 @@ Item {
                     sourceSize.width: maxEdge * 2
                     TapHandler {
                         onTapped: delegate.imageRequested(delegate.pictureUrl,
-                            model.protocolId, model.attName)
+                            model.e2eId, model.attName)
                     }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                 }
@@ -499,7 +499,7 @@ Item {
                 IconButton {
                     iconName: delegate.voicePlaying ? "close" : "play"
                     tint: Theme.accent
-                    onClicked: delegate.session.playVoice(model.protocolId)
+                    onClicked: delegate.session.playVoice(model.e2eId)
                 }
 
                 // One bar per slice of the recording, read out of the stored hex
@@ -546,7 +546,7 @@ Item {
                                 return
                             }
                             const fraction = Math.min(1, Math.max(0, point.position.x / wave.width))
-                            delegate.session.playVoice(model.protocolId,
+                            delegate.session.playVoice(model.e2eId,
                                 Math.round(fraction * model.attDurationMs))
                         }
                     }
@@ -651,7 +651,7 @@ Item {
                                         delegate.busy = true
                                         busyTimer.restart()
                                         if (modelData.data !== undefined)
-                                            delegate.session.sendCallback(modelData.data, delegate.msgProtocolId)
+                                            delegate.session.sendCallback(modelData.data, delegate.msgE2eId)
                                         else if (modelData.command !== undefined)
                                             delegate.session.sendCommand(modelData.command, "")
                                     }
@@ -747,7 +747,7 @@ Item {
                             }
                         }
                         TapHandler {
-                            onTapped: delegate.session.react(model.protocolId, modelData.emoji)
+                            onTapped: delegate.session.react(model.e2eId, modelData.emoji)
                         }
                         HoverHandler { cursorShape: Qt.PointingHandCursor }
                     }
@@ -829,9 +829,9 @@ Item {
                         onTapped: {
                             if (model.type === "text") {
                                 delegate.session.resendText(
-                                    model.msgId, model.text, model.protocolId)
+                                    model.msgId, model.text, model.e2eId)
                             } else {
-                                delegate.session.resendFile(model.msgId, model.protocolId)
+                                delegate.session.resendFile(model.msgId, model.e2eId)
                             }
                         }
                     }
@@ -872,7 +872,7 @@ Item {
                 iconName: "smile"
                 visible: delegate.reactable
                 height: visible ? implicitHeight : 0
-                onTriggered: delegate.reactRequested(model.protocolId,
+                onTriggered: delegate.reactRequested(model.e2eId,
                     delegate.menuAt.x, delegate.menuAt.y)
             }
             ContextMenuItem {
@@ -881,7 +881,7 @@ Item {
                 iconName: "copy"
                 visible: delegate.pictureUrl.length > 0
                 height: visible ? implicitHeight : 0
-                onTriggered: delegate.session.copyPicture(model.protocolId)
+                onTriggered: delegate.session.copyPicture(model.e2eId)
             }
             ContextMenuItem {
                 // A picture lives in the account database; this is how it leaves
@@ -892,8 +892,8 @@ Item {
                 height: visible ? implicitHeight : 0
                 onTriggered: {
                     pictureSaveDialog.currentFile = delegate.session.defaultPictureSaveUrl(
-                        model.protocolId, model.attName)
-                    pictureSaveDialog.messageId = model.protocolId
+                        model.e2eId, model.attName)
+                    pictureSaveDialog.messageId = model.e2eId
                     pictureSaveDialog.open()
                 }
             }
@@ -904,13 +904,13 @@ Item {
                 // notices, requests and unsupported placeholders cannot.
                 visible: !delegate.isSystem && !delegate.isUnsupported
                     && !delegate.isContactRequest
-                    && model.protocolId && model.protocolId.length > 0
+                    && model.e2eId && model.e2eId.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: {
                     var preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
                     var who = model.outgoing ? "You"
                         : (delegate.session ? delegate.session.activePeerName : "")
-                    delegate.session.beginReply(model.protocolId, preview, who)
+                    delegate.session.beginReply(model.e2eId, preview, who)
                 }
             }
             ContextMenuItem {
@@ -928,12 +928,12 @@ Item {
                 iconName: "edit"
                 visible: delegate.canEdit
                 height: visible ? implicitHeight : 0
-                onTriggered: delegate.session.beginEdit(model.msgId, model.protocolId, model.text)
+                onTriggered: delegate.session.beginEdit(model.msgId, model.e2eId, model.text)
             }
             ContextMenuItem {
                 text: "Delete"
                 iconName: "trash"
-                onTriggered: delegate.deleteRequested(model.msgId, model.protocolId, model.outgoing)
+                onTriggered: delegate.deleteRequested(model.msgId, model.e2eId, model.outgoing)
             }
         }
     }

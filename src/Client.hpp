@@ -141,7 +141,7 @@ Bytes sealDeliveryEnvelope(const std::string& deliveryClass, const std::string& 
 // to the mailbox, so the copy that goes to their own devices and the copy that
 // goes to the recipient share nothing the two servers holding them could match.
 std::string deliveryIdFor(
-    const std::string& secretKey, const std::string& protocolId, const std::string& mailbox);
+    const std::string& secretKey, const std::string& e2eId, const std::string& mailbox);
 
 // The client-side messenger: typed wrappers over the full client API,
 // reusing the shared identity, certificate and crypto primitives. Owns the

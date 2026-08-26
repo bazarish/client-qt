@@ -34,16 +34,16 @@ public:
 
     // Keeps a picture's bytes. Returns false when they are not a picture at all -
     // the message that carried them is broken, and says so.
-    bool put(const QString& protocolId, const QByteArray& bytes);
+    bool put(const QString& e2eId, const QByteArray& bytes);
 
     // Whether this message's bytes are here.
-    bool has(const QString& protocolId) const;
+    bool has(const QString& e2eId) const;
 
     // The picture, decoded on first use and kept while it fits in the budget.
-    QImage image(const QString& protocolId);
+    QImage image(const QString& e2eId);
 
     // The bytes as they were stored, for writing the picture out or copying it.
-    QByteArray bytes(const QString& protocolId) const;
+    QByteArray bytes(const QString& e2eId) const;
 
     // Drops everything (an account closing).
     void clear();
@@ -74,7 +74,7 @@ private:
     int revision_ = 0;
 };
 
-// Serves image://picture/<protocolId>.
+// Serves image://picture/<e2eId>.
 class PictureProvider : public QQuickImageProvider {
 public:
     PictureProvider()

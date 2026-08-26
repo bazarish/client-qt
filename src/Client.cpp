@@ -391,12 +391,12 @@ std::vector<PendingEntry> Client::listPending()
 }
 
 std::string deliveryIdFor(
-    const std::string& secretKey, const std::string& protocolId, const std::string& mailbox)
+    const std::string& secretKey, const std::string& e2eId, const std::string& mailbox)
 {
     // Half a SHA-256 is what the id has always been the size of; the other half
     // adds nothing to a name.
     constexpr std::size_t kDeliveryIdHexChars = 32;
-    return bazarish::service::hmacSha256Hex(secretKey, protocolId + "|" + mailbox)
+    return bazarish::service::hmacSha256Hex(secretKey, e2eId + "|" + mailbox)
         .substr(0, kDeliveryIdHexChars);
 }
 

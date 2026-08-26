@@ -50,13 +50,13 @@ public slots:
     void setSyncEnabled(bool on);
     void rebuildI2pLinks();
     void sendText(const QString& peer, const QString& text, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo);
     void sendPicture(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo);
     void sendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo);
     void sendReceipt(const QString& peer, const QString& refId);
     // Acks a pending mailbox item (deferred ack): called by the controller after it
     // has durably stored the item, so the server only drops it once it is safe.
@@ -90,7 +90,7 @@ public slots:
     // Signs a portal/third-party login challenge with this account's key. Local
     // only - no server is contacted - so it works before a server is connected.
     void signLogin(const QString& challenge);
-    void saveAttachment(const QString& peer, const QString& protocolId, const QString& destPath, qint64 token);
+    void saveAttachment(const QString& peer, const QString& e2eId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
     void changePassphrase(const QString& passphrase);
     void rotateServingKey();
@@ -103,7 +103,7 @@ public slots:
     void allowClearnet(bool allow);
     void setAcceptCalls(bool accept);
     void setDelegationDays(int days);
-    void cancelTransfer(const QString& protocolId);
+    void cancelTransfer(const QString& e2eId);
     void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
@@ -186,10 +186,10 @@ signals:
     // Bytes leaving this device for a file we are serving, by the announced file
     // id (the outgoing message's protocol id): the sender watches the transfer in
     // the bubble it sent, not in a panel somewhere else.
-    void servedProgress(const QString& peer, const QString& protocolId, qint64 sent, qint64 total);
+    void servedProgress(const QString& peer, const QString& e2eId, qint64 sent, qint64 total);
     // What the transfer is doing before (and between) bytes, for the bubble.
-    void transferStage(const QString& peer, const QString& protocolId, const QString& stage);
-    void servedFinished(const QString& peer, const QString& protocolId, bool ok,
+    void transferStage(const QString& peer, const QString& e2eId, const QString& stage);
+    void servedFinished(const QString& peer, const QString& e2eId, bool ok,
         const QString& error);
     // Download stage for an incoming attachment (token = message id): the int is a
     // bazarish::client::BlobFetchStage (0 connecting, 1 downloading, 2 reconnecting),
@@ -631,7 +631,7 @@ public:
     Q_INVOKABLE void sendText(const QString& text);
     // Re-dispatches a failed outgoing text message (same protocol id) after the
     // user taps "Resend" on its bubble.
-    Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& protocolId);
+    Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& e2eId);
     // Sends a picked file. Nothing to choose: the bytes go device to device over a
     // one-time destination, so there is no store to keep them in and no retention
     // to set; only the offer travels through the servers.
@@ -640,10 +640,10 @@ public:
     // it instead of being offered a Save button.
     Q_INVOKABLE void sendPicture(const QString& fileUrl);
     // Writes a picture this account holds out to a file the user chose.
-    Q_INVOKABLE void savePictureAs(const QString& protocolId, const QString& fileUrl);
+    Q_INVOKABLE void savePictureAs(const QString& e2eId, const QString& fileUrl);
     // Puts it on the clipboard as an image: it goes from memory to memory, and
     // never becomes a plaintext file on the way.
-    Q_INVOKABLE void copyPicture(const QString& protocolId);
+    Q_INVOKABLE void copyPicture(const QString& e2eId);
 
     // --- Voice messages ---
     //
@@ -663,16 +663,16 @@ public:
     // Plays a voice message. fromMs of -1 means "the play button": start from
     // the beginning, or stop if this message is the one already playing. A real
     // position means the waveform was tapped there, and playback moves to it.
-    Q_INVOKABLE void playVoice(const QString& protocolId, qint64 fromMs = -1);
+    Q_INVOKABLE void playVoice(const QString& e2eId, qint64 fromMs = -1);
     Q_INVOKABLE void stopVoice();
     // Steps the playback speed through the offered rates and back to normal.
     Q_INVOKABLE void cycleVoiceSpeed();
     // A name to suggest for that file.
-    Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& protocolId, const QString& name) const;
+    Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& e2eId, const QString& name) const;
     // Re-dispatches a failed outgoing file from the saved source path (reusing the
     // bubble); if that file is gone, emits resendFilePickRequested so the UI can
     // offer to pick a file to send instead.
-    Q_INVOKABLE void resendFile(qint64 localId, const QString& protocolId);
+    Q_INVOKABLE void resendFile(qint64 localId, const QString& e2eId);
     // A display name for any peer.
     Q_INVOKABLE QString peerName(const QString& id) const;
     // The contact's stored local display name, empty when unnamed (so a rename
@@ -698,7 +698,7 @@ public:
     // --- Reactions + read receipts ---
     // Sets our reaction emoji on a message (by its protocol id) in the active chat:
     // optimistic local store + send. Tapping the emoji we already set removes it.
-    Q_INVOKABLE void react(const QString& protocolId, const QString& emoji);
+    Q_INVOKABLE void react(const QString& e2eId, const QString& emoji);
     // Reactions this user reached for that are not in the standard set, newest
     // first. Kept per account so the picker offers what this person actually uses.
     // The set the picker offers by default. Held here because it also decides
@@ -710,10 +710,10 @@ public:
     QStringList recentReactions() const { return recentReactions_; }
     Q_INVOKABLE void rememberReaction(const QString& emoji);
     // Our current reaction emoji on a message (empty when none) - for the toggle.
-    Q_INVOKABLE QString myReaction(const QString& protocolId) const;
+    Q_INVOKABLE QString myReaction(const QString& e2eId) const;
     // The reaction chips for a message: a list of { emoji, count, mine } aggregated
     // across reactors, in first-seen order.
-    Q_INVOKABLE QVariantList reactionSummary(const QString& protocolId) const;
+    Q_INVOKABLE QVariantList reactionSummary(const QString& e2eId) const;
     // Renames a contact locally (mirrored to the account's own other devices).
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     // A shareable link for a contact we hold: the same artifact as our own
@@ -746,21 +746,21 @@ public:
     Q_INVOKABLE void sendCommand(const QString& command, const QString& args);
     // Editing one's own message: start (prefilling the composer), commit the new
     // text (updates our copy and sends an edit to the peer), or cancel.
-    Q_INVOKABLE void beginEdit(qint64 localId, const QString& protocolId, const QString& text);
+    Q_INVOKABLE void beginEdit(qint64 localId, const QString& e2eId, const QString& text);
     Q_INVOKABLE void commitEdit(const QString& newText);
     Q_INVOKABLE void cancelEdit();
     // Reply: start replying to a message (the composer shows a quote banner), or
     // cancel. The next sent message carries the referenced protocol id.
     Q_INVOKABLE void beginReply(
-        const QString& protocolId, const QString& previewText, const QString& sender);
+        const QString& e2eId, const QString& previewText, const QString& sender);
     Q_INVOKABLE void cancelReply();
     // Resolves a reply reference to the original message in the open conversation:
     // { found, localId, text, sender } so a bubble can render a clickable quote.
-    Q_INVOKABLE QVariantMap replyPreview(const QString& protocolId) const;
+    Q_INVOKABLE QVariantMap replyPreview(const QString& e2eId) const;
     // Deletes a message with no trace. The local copy is always removed; for one's
-    // own one-to-one message (outgoing, protocolId set) the recipient is asked to
+    // own one-to-one message (outgoing, e2eId set) the recipient is asked to
     // remove its copy too. A received message is removed locally only.
-    Q_INVOKABLE void deleteMessage(qint64 localId, const QString& protocolId, bool outgoing);
+    Q_INVOKABLE void deleteMessage(qint64 localId, const QString& e2eId, bool outgoing);
     // Copies arbitrary text (a whole message) to the system clipboard.
     Q_INVOKABLE void copyText(const QString& text) const;
     // Why this text is not a usable invite, or empty when it parses. Local and
@@ -782,13 +782,13 @@ public:
     // Signs a sign-in-with-key challenge with this account's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
-    Q_INVOKABLE void saveAttachment(const QString& peer, const QString& protocolId, const QString& fileUrl);
+    Q_INVOKABLE void saveAttachment(const QString& peer, const QString& e2eId, const QString& fileUrl);
     // Saves a received attachment to the file the user picked in the native Save
     // dialog (which already resolved any name conflict), reporting byte progress
     // and the outcome back onto the message identified by token.
     // A file is fetched from the peer that announced it, by the announcing
     // message's protocol id - there is no store to fetch it from.
-    Q_INVOKABLE void saveAttachmentToFile(const QString& peer, const QString& protocolId,
+    Q_INVOKABLE void saveAttachmentToFile(const QString& peer, const QString& e2eId,
         const QString& fileUrl, qint64 token);
     // A suggested save location (the Downloads folder joined with fileName) as a
     // file URL, used to pre-fill the native Save dialog's name and folder.
@@ -813,7 +813,7 @@ public:
     Q_INVOKABLE void allowClearnet(bool allow);
     // Stops a file transfer in either direction, by the file's protocol id (the
     // activity panel offers this on a running transfer).
-    Q_INVOKABLE void cancelTransfer(const QString& protocolId);
+    Q_INVOKABLE void cancelTransfer(const QString& e2eId);
     Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
@@ -892,13 +892,13 @@ signals:
 signals:  // to worker
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo);
     void requestSendPicture(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& protocolId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo);
     void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
-        qint64 localId, const QString& protocolId, const QString& replyTo);
+        qint64 localId, const QString& e2eId, const QString& replyTo);
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
@@ -930,7 +930,7 @@ signals:  // to worker
     void requestOpen(const QString& dir, const QString& passphrase);
     void requestSetSync(bool on);
     void requestRebuildI2p();
-    void requestCancelTransfer(const QString& protocolId);
+    void requestCancelTransfer(const QString& e2eId);
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);
     void requestDeletePersonalKey();
@@ -974,10 +974,10 @@ private slots:
     void onSendProgress(qint64 localId, int state);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onDownloadProgress(qint64 token, qint64 received, qint64 total);
-    void onServedProgress(const QString& peer, const QString& protocolId, qint64 sent,
+    void onServedProgress(const QString& peer, const QString& e2eId, qint64 sent,
         qint64 total);
-    void onTransferStage(const QString& peer, const QString& protocolId, const QString& stage);
-    void onServedFinished(const QString& peer, const QString& protocolId, bool ok,
+    void onTransferStage(const QString& peer, const QString& e2eId, const QString& stage);
+    void onServedFinished(const QString& peer, const QString& e2eId, bool ok,
         const QString& error);
     void onDownloadStage(qint64 token, int stage);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
@@ -994,7 +994,7 @@ private slots:
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
-    void onVoiceLoaded(const QString& protocolId, const QByteArray& bytes);
+    void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
     // Pulls a small incoming picture into the media cache without being asked.
     void requestPicturesFor(const QList<StoredMessage>& messages);
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
@@ -1051,11 +1051,11 @@ private:
     // Edit-in-progress state for the composer (0 / empty when not editing).
     bool editing_ = false;
     qint64 editingLocalId_ = 0;
-    QString editingProtocolId_;
+    QString editingE2eId_;
     QString editingText_;
     // Reply-in-progress state for the composer (empty when not replying).
     bool replying_ = false;
-    QString replyingProtocolId_;
+    QString replyingE2eId_;
     QString replyingText_;
     QString replyingSender_;
     // Contacts we received a request from but have not accepted yet (their

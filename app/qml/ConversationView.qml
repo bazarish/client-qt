@@ -36,9 +36,9 @@ Item {
         return d.toLocaleDateString(Qt.locale(), "d MMMM yyyy")
     }
 
-    function confirmDeleteMessage(msgId, protocolId, outgoing) {
+    function confirmDeleteMessage(msgId, e2eId, outgoing) {
         root.pendingDeleteId = msgId
-        root.pendingDeleteProtocol = protocolId
+        root.pendingDeleteProtocol = e2eId
         root.pendingDeleteOutgoing = outgoing
         deleteMessageDialog.open()
     }
@@ -267,11 +267,11 @@ Item {
                         && (ListView.view.highlightId === model.msgId
                             || (ListView.view.unreadFlashFromId >= 0 && !model.outgoing
                                 && model.msgId >= ListView.view.unreadFlashFromId))
-                    onDeleteRequested: function(msgId, protocolId, outgoing) {
-                        root.confirmDeleteMessage(msgId, protocolId, outgoing)
+                    onDeleteRequested: function(msgId, e2eId, outgoing) {
+                        root.confirmDeleteMessage(msgId, e2eId, outgoing)
                     }
-                    onReactRequested: function(protocolId, sceneX, sceneY) {
-                        reactionPicker.openAt(protocolId, sceneX, sceneY)
+                    onReactRequested: function(e2eId, sceneX, sceneY) {
+                        reactionPicker.openAt(e2eId, sceneX, sceneY)
                     }
                     onImageRequested: function(url, messageId, name) {
                         imageViewer.show(url, messageId, name)

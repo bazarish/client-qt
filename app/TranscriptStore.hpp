@@ -21,7 +21,7 @@ struct StoredMessage {
     QString peer;          // contact fingerprint
     bool outgoing = false;
     QString type;          // content type: text/file/photo/... or "system"
-    QString protocolId;    // envelope message id (to match delivery receipts)
+    QString e2eId;    // envelope message id (to match delivery receipts)
     QString text;
     QString attName;
     QString attMime;
@@ -113,17 +113,17 @@ public:
     void noteDelivery(const QString& deliveryId, qint64 localId);
     qint64 idForDelivery(const QString& deliveryId) const;
     void forgetDeliveries(qint64 localId);
-    qint64 idForProtocol(const QString& protocolId) const;
+    qint64 idForE2e(const QString& e2eId) const;
     // The row id of an incoming message from peer with this protocol id, the
     // target of an edit (0 if none). Scoping to incoming-from-peer is the
     // security check: a peer can only edit a message it actually sent.
-    qint64 idForIncomingProtocol(const QString& protocolId, const QString& peer) const;
+    qint64 idForIncomingE2e(const QString& e2eId, const QString& peer) const;
     // The row id of a message under `peer` with this protocol id, either direction
     // (0 if none). Used to resolve a reply reference to a local message to jump to.
-    qint64 idForAnyProtocol(const QString& protocolId, const QString& peer) const;
+    qint64 idForAnyProtocol(const QString& e2eId, const QString& peer) const;
     // The full row for a protocol id under `peer`, either direction (id 0 when not
     // found). Used to render a reply quote (author + text/file name of the original).
-    StoredMessage messageByProtocol(const QString& protocolId, const QString& peer) const;
+    StoredMessage messageByE2e(const QString& e2eId, const QString& peer) const;
     // Replaces a message's text and keyboard and marks it edited.
     void editContent(qint64 id, const QString& text, const QString& keyboard);
     // Permanently removes a message (delete with no trace).

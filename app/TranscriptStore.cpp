@@ -130,7 +130,7 @@ private:
 
 // Column list shared by every full-row query, so the indices below stay aligned.
 // orderKey is appended last so the existing 0..16 indices are unchanged.
-const char* const kMessageColumns = "id, peer, outgoing, type, protocolId, text, attName,"
+const char* const kMessageColumns = "id, peer, outgoing, type, e2eId, text, attName,"
                                     " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, blobGone, replyTo,"
                                     " hasPicture, attDurationMs, attWave";
@@ -157,7 +157,7 @@ StoredMessage readMessageRow(const Query& query)
     m.peer = query.value(1).toString();
     m.outgoing = query.value(2).toInt() != 0;
     m.type = query.value(3).toString();
-    m.protocolId = query.value(4).toString();
+    m.e2eId = query.value(4).toString();
     m.text = query.value(5).toString();
     m.attName = query.value(6).toString();
     m.attMime = query.value(7).toString();
@@ -247,10 +247,20 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     }
 
     Query query(db_);
+    // An account written before the column was named after what it holds keeps its
+    // rows; the name is what changes. Nothing else does, so there is no migration
+    // beyond this line.
+    Query columns(db_);
+    if (columns.exec("SELECT protocolId FROM messages LIMIT 1")) {
+        Query rename(db_);
+        if (!rename.exec("ALTER TABLE messages RENAME COLUMN protocolId TO e2eId")) {
+            return false;
+        }
+    }
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS messages ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-            "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, protocolId TEXT,"
+            "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, e2eId TEXT,"
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
@@ -289,14 +299,14 @@ qint64 TranscriptStore::append(const StoredMessage& message)
 {
     Query query(db_);
     query.prepare(
-        "INSERT INTO messages (peer, outgoing, type, protocolId, text, attName, attMime,"
+        "INSERT INTO messages (peer, outgoing, type, e2eId, text, attName, attMime,"
         " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo,"
         " attDurationMs, attWave)"
         " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
-    query.addBindValue(message.protocolId);
+    query.addBindValue(message.e2eId);
     query.addBindValue(message.text);
     query.addBindValue(message.attName);
     query.addBindValue(message.attMime);
@@ -604,29 +614,29 @@ void TranscriptStore::forgetDeliveries(const qint64 localId)
     }
 }
 
-qint64 TranscriptStore::idForProtocol(const QString& protocolId) const
+qint64 TranscriptStore::idForE2e(const QString& e2eId) const
 {
-    if (protocolId.isEmpty()) {
+    if (e2eId.isEmpty()) {
         return 0;
     }
     Query query(db_);
-    query.prepare("SELECT id FROM messages WHERE protocolId = ? AND outgoing = 1 LIMIT 1");
-    query.addBindValue(protocolId);
+    query.prepare("SELECT id FROM messages WHERE e2eId = ? AND outgoing = 1 LIMIT 1");
+    query.addBindValue(e2eId);
     if (query.exec() && query.next()) {
         return query.value(0).toLongLong();
     }
     return 0;
 }
 
-qint64 TranscriptStore::idForIncomingProtocol(const QString& protocolId, const QString& peer) const
+qint64 TranscriptStore::idForIncomingE2e(const QString& e2eId, const QString& peer) const
 {
-    if (protocolId.isEmpty()) {
+    if (e2eId.isEmpty()) {
         return 0;
     }
     Query query(db_);
     query.prepare(
-        "SELECT id FROM messages WHERE protocolId = ? AND peer = ? AND outgoing = 0 LIMIT 1");
-    query.addBindValue(protocolId);
+        "SELECT id FROM messages WHERE e2eId = ? AND peer = ? AND outgoing = 0 LIMIT 1");
+    query.addBindValue(e2eId);
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         return query.value(0).toLongLong();
@@ -634,14 +644,14 @@ qint64 TranscriptStore::idForIncomingProtocol(const QString& protocolId, const Q
     return 0;
 }
 
-qint64 TranscriptStore::idForAnyProtocol(const QString& protocolId, const QString& peer) const
+qint64 TranscriptStore::idForAnyProtocol(const QString& e2eId, const QString& peer) const
 {
-    if (protocolId.isEmpty()) {
+    if (e2eId.isEmpty()) {
         return 0;
     }
     Query query(db_);
-    query.prepare("SELECT id FROM messages WHERE protocolId = ? AND peer = ? ORDER BY id LIMIT 1");
-    query.addBindValue(protocolId);
+    query.prepare("SELECT id FROM messages WHERE e2eId = ? AND peer = ? ORDER BY id LIMIT 1");
+    query.addBindValue(e2eId);
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         return query.value(0).toLongLong();
@@ -649,18 +659,18 @@ qint64 TranscriptStore::idForAnyProtocol(const QString& protocolId, const QStrin
     return 0;
 }
 
-StoredMessage TranscriptStore::messageByProtocol(
-    const QString& protocolId, const QString& peer) const
+StoredMessage TranscriptStore::messageByE2e(
+    const QString& e2eId, const QString& peer) const
 {
     StoredMessage m;
-    if (protocolId.isEmpty()) {
+    if (e2eId.isEmpty()) {
         return m;
     }
     Query query(db_);
-    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE protocolId = ? AND peer = ?"
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE e2eId = ? AND peer = ?"
                                  " ORDER BY id LIMIT 1")
                       .arg(kMessageColumns));
-    query.addBindValue(protocolId);
+    query.addBindValue(e2eId);
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         m = readMessageRow(query);

@@ -497,7 +497,7 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
     // the same channel as a download. Installed once, for as long as the account
     // is open; the download path re-points it at itself while it runs.
     session_->setTransferHandler([this](const bazarish::client::TransferEvent& event) {
-        const QString id = QString::fromStdString(event.protocolId);
+        const QString id = QString::fromStdString(event.e2eId);
         const QString peer = QString::fromStdString(event.peer);
         if (!event.stage.empty()) {
             emit transferStage(peer, id, QString::fromStdString(event.stage));
@@ -817,7 +817,7 @@ void SessionWorker::sync()
         // The audio came inside the message, so its waveform is drawn from the
         // real thing - computed here, on the worker, and stored with the row.
         if (m.contentType == "voice") {
-            const std::optional<Bytes> audio = session_->voice(m.protocolId);
+            const std::optional<Bytes> audio = session_->voice(m.e2eId);
             if (audio.has_value()) {
                 map["attWave"] = waveformHex(*audio);
             }
@@ -825,7 +825,7 @@ void SessionWorker::sync()
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
-        map["protocolId"] = QString::fromStdString(m.protocolId);
+        map["e2eId"] = QString::fromStdString(m.e2eId);
         map["ref"] = QString::fromStdString(m.refId);
         map["replyTo"] = QString::fromStdString(m.replyTo);
         map["sentAt"] = static_cast<qint64>(m.sentAt);
@@ -1008,7 +1008,7 @@ void SessionWorker::setCallMuted(const bool muted)
 }
 
 void SessionWorker::sendText(const QString& peer, const QString& text, qint64 localId,
-    const QString& protocolId, const QString& replyTo)
+    const QString& e2eId, const QString& replyTo)
 {
     try {
         // The callback fires "grey" the instant our own server accepts the
@@ -1017,7 +1017,7 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
         // and is reconciled on later syncs via its attempt id.
         std::string attemptId;
         const bool delivered = session_->sendMessage(peer.toStdString(), text.toStdString(),
-            protocolId.toStdString(),
+            e2eId.toStdString(),
             [this, localId](const std::string& deliveryId) {
                 emit sendProgress(localId, DeliveryStatus::AtSenderServer);
                 emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
@@ -1037,12 +1037,12 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
 }
 
 void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint64 localId,
-    const QString& protocolId, const QString& replyTo)
+    const QString& e2eId, const QString& replyTo)
 {
     try {
         std::string attemptId;
         const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
-            protocolId.toStdString(),
+            e2eId.toStdString(),
             [this, localId](const std::string& deliveryId) {
                 emit sendProgress(localId, DeliveryStatus::AtSenderServer);
                 emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
@@ -1063,14 +1063,14 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
 
 
 void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
-    const qint64 durationMs, const qint64 localId, const QString& protocolId,
+    const qint64 durationMs, const qint64 localId, const QString& e2eId,
     const QString& replyTo)
 {
     try {
         std::string attemptId;
         const Bytes audio(opus.begin(), opus.end());
         const bool delivered = session_->sendVoice(peer.toStdString(), audio, durationMs,
-            protocolId.toStdString(),
+            e2eId.toStdString(),
             [this, localId](const std::string& deliveryId) {
                 emit sendProgress(localId, DeliveryStatus::AtSenderServer);
                 emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
@@ -1092,12 +1092,12 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
 
 
 void SessionWorker::sendPicture(const QString& peer, const QString& localPath, qint64 localId,
-    const QString& protocolId, const QString& replyTo)
+    const QString& e2eId, const QString& replyTo)
 {
     try {
         std::string attemptId;
         const bool delivered = session_->sendPicture(peer.toStdString(), localPath.toStdString(),
-            protocolId.toStdString(),
+            e2eId.toStdString(),
             [this, localId](const std::string& deliveryId) {
                 emit sendProgress(localId, DeliveryStatus::AtSenderServer);
                 emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
@@ -1722,12 +1722,12 @@ void SessionWorker::allowClearnet(const bool allow)
     }
 }
 
-void SessionWorker::cancelTransfer(const QString& protocolId)
+void SessionWorker::cancelTransfer(const QString& e2eId)
 {
     if (!session_) {
         return;
     }
-    session_->cancelTransfer(protocolId.toStdString());
+    session_->cancelTransfer(e2eId.toStdString());
 }
 
 void SessionWorker::publishPersonalDest()
@@ -1766,7 +1766,7 @@ void SessionWorker::disablePersonalDest()
 }
 
 void SessionWorker::saveAttachment(
-    const QString& peer, const QString& protocolId, const QString& destPath, qint64 token)
+    const QString& peer, const QString& e2eId, const QString& destPath, qint64 token)
 {
     // Run the request off the worker thread (on the pool) so waiting on the peer
     // never blocks sends or sync; the transfer itself uses its own one-time I2P
@@ -1780,10 +1780,10 @@ void SessionWorker::saveAttachment(
     }
     // The download is a request to the peer that announced the file, not a fetch
     // from a store, so it only completes once they answer with an offer.
-    const std::string protocolIdStd = protocolId.toStdString();
+    const std::string e2eIdStd = e2eId.toStdString();
     const std::string peerStd = peer.toStdString();
     const std::string destStd = destPath.toStdString();
-    downloadPool_.start([this, session, protocolIdStd, peerStd, destStd, token]() {
+    downloadPool_.start([this, session, e2eIdStd, peerStd, destStd, token]() {
         try {
             // The handler installed when the account opened reports every transfer,
             // in both directions, keyed by peer and file id. Replacing it here left
@@ -1791,7 +1791,7 @@ void SessionWorker::saveAttachment(
             // events at this one download.
             // Returns at once: the transfer only starts when the sender answers
             // with an offer, so completion is reported by that handler.
-            session->requestFile(peerStd, protocolIdStd, destStd);
+            session->requestFile(peerStd, e2eIdStd, destStd);
         } catch (const std::exception& e) {
             if (!downloadsCancelled_.load()) {
                 emit downloadFinished(token, false, QString::fromUtf8(e.what()));
@@ -2601,7 +2601,7 @@ void SessionController::deleteContact()
     emit requestRemoveContact(peer);
 }
 
-QString SessionController_genProtocolId()
+QString SessionController_genE2eId()
 {
     return QString::number(QRandomGenerator::global()->generate64(), 16);
 }
@@ -2612,7 +2612,7 @@ void SessionController::sendText(const QString& text)
         return;
     }
     // Consume any reply-in-progress: the reference rides with this one message.
-    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
         cancelReply();
     }
@@ -2620,7 +2620,7 @@ void SessionController::sendText(const QString& text)
     m.peer = activePeer_;
     m.outgoing = true;
     m.type = "text";
-    m.protocolId = SessionController_genProtocolId();
+    m.e2eId = SessionController_genE2eId();
     m.text = text;
     m.replyTo = replyTo;
     m.ts = nowMillis();
@@ -2632,7 +2632,7 @@ void SessionController::sendText(const QString& text)
     contacts_.touch(activePeer_, {}, text, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
         QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending…"), activePeer_);
-    emit requestSendText(activePeer_, text, m.id, m.protocolId, replyTo);
+    emit requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
 }
 
 void SessionController::sendFile(const QString& fileUrl)
@@ -2644,7 +2644,7 @@ void SessionController::sendFile(const QString& fileUrl)
     if (localPath.isEmpty()) {
         return;
     }
-    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
         cancelReply();
     }
@@ -2652,7 +2652,7 @@ void SessionController::sendFile(const QString& fileUrl)
     m.peer = activePeer_;
     m.outgoing = true;
     m.type = "file";
-    m.protocolId = SessionController_genProtocolId();
+    m.e2eId = SessionController_genE2eId();
     m.replyTo = replyTo;
     m.attName = QUrl(fileUrl).fileName();
     // Record the local size and mime so the sender's own bubble renders a real
@@ -2672,7 +2672,7 @@ void SessionController::sendFile(const QString& fileUrl)
     contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
-    emit requestSendFile(activePeer_, localPath, m.id, m.protocolId, replyTo);
+    emit requestSendFile(activePeer_, localPath, m.id, m.e2eId, replyTo);
 }
 
 void SessionController::sendPicture(const QString& fileUrl)
@@ -2684,7 +2684,7 @@ void SessionController::sendPicture(const QString& fileUrl)
     if (localPath.isEmpty()) {
         return;
     }
-    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
         cancelReply();
     }
@@ -2692,7 +2692,7 @@ void SessionController::sendPicture(const QString& fileUrl)
     m.peer = activePeer_;
     m.outgoing = true;
     m.type = "image";
-    m.protocolId = SessionController_genProtocolId();
+    m.e2eId = SessionController_genE2eId();
     m.replyTo = replyTo;
     m.attName = QUrl(fileUrl).fileName();
     // Record the local size and mime so the sender's own bubble renders a real
@@ -2714,13 +2714,13 @@ void SessionController::sendPicture(const QString& fileUrl)
         m.attName, QStringLiteral("Sending…"), activePeer_);
     // The prepared file is right here, so the sender's bubble draws it without
     // asking anyone: the core stores the same bytes in the account.
-    pictureOwners_.insert(m.protocolId, m.id);
+    pictureOwners_.insert(m.e2eId, m.id);
     QFile prepared(localPath);
     const bool drawable = prepared.open(QIODevice::ReadOnly)
-        && PictureStore::instance().put(m.protocolId, prepared.readAll());
+        && PictureStore::instance().put(m.e2eId, prepared.readAll());
     store_.setHasPicture(m.id, drawable);
     conversation_.setPictureReadyForId(m.id, drawable);
-    emit requestSendPicture(activePeer_, localPath, m.id, m.protocolId, replyTo);
+    emit requestSendPicture(activePeer_, localPath, m.id, m.e2eId, replyTo);
 }
 
 void SessionController::sendCallback(const QString& data, const QString& refMsgId)
@@ -2741,29 +2741,29 @@ void SessionController::sendCommand(const QString& command, const QString& args)
     emit requestSendCommand(activePeer_, command, args);
 }
 
-void SessionController::beginEdit(qint64 localId, const QString& protocolId, const QString& text)
+void SessionController::beginEdit(qint64 localId, const QString& e2eId, const QString& text)
 {
     if (replying_) {
         cancelReply();  // editing and replying are mutually exclusive composer modes
     }
     editing_ = true;
     editingLocalId_ = localId;
-    editingProtocolId_ = protocolId;
+    editingE2eId_ = e2eId;
     editingText_ = text;
     emit editingChanged();
 }
 
 void SessionController::beginReply(
-    const QString& protocolId, const QString& previewText, const QString& sender)
+    const QString& e2eId, const QString& previewText, const QString& sender)
 {
-    if (protocolId.isEmpty()) {
+    if (e2eId.isEmpty()) {
         return;
     }
     if (editing_) {
         cancelEdit();  // mutually exclusive composer modes
     }
     replying_ = true;
-    replyingProtocolId_ = protocolId;
+    replyingE2eId_ = e2eId;
     replyingText_ = previewText;
     replyingSender_ = sender;
     emit replyingChanged();
@@ -2775,23 +2775,23 @@ void SessionController::cancelReply()
         return;
     }
     replying_ = false;
-    replyingProtocolId_.clear();
+    replyingE2eId_.clear();
     replyingText_.clear();
     replyingSender_.clear();
     emit replyingChanged();
 }
 
-QVariantMap SessionController::replyPreview(const QString& protocolId) const
+QVariantMap SessionController::replyPreview(const QString& e2eId) const
 {
     QVariantMap info;
     info[QStringLiteral("found")] = false;
     info[QStringLiteral("localId")] = 0;
     info[QStringLiteral("text")] = QString();
     info[QStringLiteral("sender")] = QString();
-    if (protocolId.isEmpty() || activePeer_.isEmpty()) {
+    if (e2eId.isEmpty() || activePeer_.isEmpty()) {
         return info;
     }
-    const StoredMessage m = store_.messageByProtocol(protocolId, activePeer_);
+    const StoredMessage m = store_.messageByE2e(e2eId, activePeer_);
     if (m.id == 0) {
         return info;  // the original is not in our local history: a dead reference
     }
@@ -2832,7 +2832,7 @@ void SessionController::commitEdit(const QString& newText)
         store_.updateStatus(editingLocalId_, DeliveryStatus::Sending);
         conversation_.setStatusForId(editingLocalId_, DeliveryStatus::Sending);
         conversation_.setErrorForId(editingLocalId_, {});
-        emit requestSendEdit(activePeer_, editingProtocolId_, editingLocalId_, trimmed);
+        emit requestSendEdit(activePeer_, editingE2eId_, editingLocalId_, trimmed);
     }
     cancelEdit();
 }
@@ -2844,12 +2844,12 @@ void SessionController::cancelEdit()
     }
     editing_ = false;
     editingLocalId_ = 0;
-    editingProtocolId_.clear();
+    editingE2eId_.clear();
     editingText_.clear();
     emit editingChanged();
 }
 
-void SessionController::deleteMessage(qint64 localId, const QString& protocolId, bool outgoing)
+void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool outgoing)
 {
     if (activePeer_.isEmpty() || localId == 0) {
         return;
@@ -2863,8 +2863,8 @@ void SessionController::deleteMessage(qint64 localId, const QString& protocolId,
         false);
     // Ask the recipient to delete it too, but only for our own message: a peer cannot
     // be told to drop a message we received from them.
-    if (outgoing && !protocolId.isEmpty()) {
-        emit requestSendDelete(activePeer_, protocolId);
+    if (outgoing && !e2eId.isEmpty()) {
+        emit requestSendDelete(activePeer_, e2eId);
     }
 }
 
@@ -2906,7 +2906,7 @@ void SessionController::addByInvite(const QString& uri, const QString& intro)
         emit actionFailed(problem);
         return;  // no background row for something that cannot be attempted
     }
-    const QString opId = QStringLiteral("contact:") + SessionController_genProtocolId();
+    const QString opId = QStringLiteral("contact:") + SessionController_genE2eId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding contact"),
         QStringLiteral("Preparing…"));
     // An invite carries who it is for, so the conversation can exist before the
@@ -2969,7 +2969,7 @@ void SessionController::retryContactRequest(const QString& fingerprint)
 
 void SessionController::addByUsername(const QString& alias, const QString& intro)
 {
-    const QString opId = QStringLiteral("contact:") + SessionController_genProtocolId();
+    const QString opId = QStringLiteral("contact:") + SessionController_genE2eId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding ") + alias,
         QStringLiteral("Preparing…"));
     // Who the alias belongs to is only known once the resolver answers, so the
@@ -3060,15 +3060,15 @@ void SessionController::signLogin(const QString& challenge)
 }
 
 void SessionController::saveAttachment(
-    const QString& peer, const QString& protocolId, const QString& fileUrl)
+    const QString& peer, const QString& e2eId, const QString& fileUrl)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (!localPath.isEmpty()) {
-        emit requestSaveAttachment(peer, protocolId, localPath, 0);
+        emit requestSaveAttachment(peer, e2eId, localPath, 0);
     }
 }
 
-void SessionController::saveAttachmentToFile(const QString& peer, const QString& protocolId,
+void SessionController::saveAttachmentToFile(const QString& peer, const QString& e2eId,
     const QString& fileUrl, qint64 token)
 {
     const QString dest = QUrl(fileUrl).toLocalFile();
@@ -3087,8 +3087,8 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
     // has outlived its point must be endable from the activity panel, the same
     // way a send is.
     beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
-        QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_, protocolId);
-    emit requestSaveAttachment(peer, protocolId, dest, token);
+        QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_, e2eId);
+    emit requestSaveAttachment(peer, e2eId, dest, token);
 }
 
 QUrl SessionController::defaultSaveUrl(const QString& fileName) const
@@ -3336,13 +3336,13 @@ VoiceNote* SessionController::voiceNote()
             // By protocol id in this conversation, either direction: the
             // outgoing-only lookup that serves delivery receipts found nothing
             // for a message we had received, and the run stopped at the first one.
-            const qint64 playedId = store_.messageByProtocol(finished, activePeer_).id;
+            const qint64 playedId = store_.messageByE2e(finished, activePeer_).id;
             if (playedId == 0) {
                 return;
             }
             const StoredMessage next = store_.nextVoiceAfter(activePeer_, playedId);
-            if (!next.protocolId.isEmpty()) {
-                playVoice(next.protocolId, 0);
+            if (!next.e2eId.isEmpty()) {
+                playVoice(next.e2eId, 0);
             }
         });
         playbackTimer_.setInterval(kVoiceTickMs);
@@ -3472,7 +3472,7 @@ void SessionController::sendVoiceTake()
     const QString wave = voiceTakeWave_;
     discardVoiceTake();
 
-    const QString replyTo = replying_ ? replyingProtocolId_ : QString();
+    const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
         cancelReply();
     }
@@ -3480,7 +3480,7 @@ void SessionController::sendVoiceTake()
     m.peer = activePeer_;
     m.outgoing = true;
     m.type = "voice";
-    m.protocolId = SessionController_genProtocolId();
+    m.e2eId = SessionController_genE2eId();
     m.replyTo = replyTo;
     m.attMime = QStringLiteral("audio/opus");
     m.attSize = audio.size();
@@ -3493,7 +3493,7 @@ void SessionController::sendVoiceTake()
     showInActiveView(m, true);
     contacts_.touch(activePeer_, peerName(activePeer_), QStringLiteral("[voice]"), m.ts, true);
 
-    emit requestSendVoice(activePeer_, audio, durationMs, m.id, m.protocolId, replyTo);
+    emit requestSendVoice(activePeer_, audio, durationMs, m.id, m.e2eId, replyTo);
 }
 
 void SessionController::cancelVoiceRecording()
@@ -3524,22 +3524,22 @@ void SessionController::cycleVoiceSpeed()
     }
 }
 
-void SessionController::playVoice(const QString& protocolId, const qint64 fromMs)
+void SessionController::playVoice(const QString& e2eId, const qint64 fromMs)
 {
     // The play button on the message that is playing stops it; a tap on its
     // waveform moves playback instead, which is why the position decides.
-    if (voicePlaying_ == protocolId && fromMs < 0) {
+    if (voicePlaying_ == e2eId && fromMs < 0) {
         stopVoice();
         return;
     }
     stopVoiceTake();
     voiceNote();
-    voicePlaying_ = protocolId;
+    voicePlaying_ = e2eId;
     voiceSeekMs_ = std::max<qint64>(0, fromMs);
     voicePositionMs_ = voiceSeekMs_;
     emit voiceChanged();
     // Read here, like a picture: a press on play must not wait for the worker.
-    onVoiceLoaded(protocolId, store_.media(QStringLiteral("voice:") + protocolId));
+    onVoiceLoaded(e2eId, store_.media(QStringLiteral("voice:") + e2eId));
 }
 
 void SessionController::stopVoice()
@@ -3553,9 +3553,9 @@ void SessionController::stopVoice()
     emit voiceChanged();
 }
 
-void SessionController::onVoiceLoaded(const QString& protocolId, const QByteArray& bytes)
+void SessionController::onVoiceLoaded(const QString& e2eId, const QByteArray& bytes)
 {
-    if (voicePlaying_ != protocolId || !voice_) {
+    if (voicePlaying_ != e2eId || !voice_) {
         return;
     }
     try {
@@ -3580,18 +3580,18 @@ void SessionController::onVoiceLoaded(const QString& protocolId, const QByteArra
 void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
 {
     for (const StoredMessage& message : messages) {
-        if (!message.hasPicture || message.protocolId.isEmpty()) {
+        if (!message.hasPicture || message.e2eId.isEmpty()) {
             continue;
         }
-        pictureOwners_.insert(message.protocolId, message.id);
-        if (PictureStore::instance().has(message.protocolId)) {
+        pictureOwners_.insert(message.e2eId, message.id);
+        if (PictureStore::instance().has(message.e2eId)) {
             continue;
         }
-        const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.protocolId);
+        const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.e2eId);
         if (bytes.isEmpty()) {
             continue;  // nothing stored for it: the bubble stays as it is
         }
-        if (!PictureStore::instance().put(message.protocolId, bytes)) {
+        if (!PictureStore::instance().put(message.e2eId, bytes)) {
             // What was stored is not a picture: the message is broken and stays
             // marked so.
             store_.setHasPicture(message.id, false);
@@ -3600,10 +3600,10 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
     }
 }
 
-void SessionController::savePictureAs(const QString& protocolId, const QString& fileUrl)
+void SessionController::savePictureAs(const QString& e2eId, const QString& fileUrl)
 {
     const QString path = QUrl(fileUrl).toLocalFile();
-    const QByteArray bytes = PictureStore::instance().bytes(protocolId);
+    const QByteArray bytes = PictureStore::instance().bytes(e2eId);
     if (path.isEmpty() || bytes.isEmpty()) {
         emit actionFailed(QStringLiteral("This picture is not here to save."));
         return;
@@ -3616,9 +3616,9 @@ void SessionController::savePictureAs(const QString& protocolId, const QString& 
     emit actionOk(QStringLiteral("Picture saved."));
 }
 
-void SessionController::copyPicture(const QString& protocolId)
+void SessionController::copyPicture(const QString& e2eId)
 {
-    const QImage picture = PictureStore::instance().image(protocolId);
+    const QImage picture = PictureStore::instance().image(e2eId);
     if (picture.isNull()) {
         emit actionFailed(QStringLiteral("This picture is not here to copy."));
         return;
@@ -3632,9 +3632,9 @@ void SessionController::copyPicture(const QString& protocolId)
     emit actionOk(QStringLiteral("Picture copied."));
 }
 
-QUrl SessionController::defaultPictureSaveUrl(const QString& protocolId, const QString& name) const
+QUrl SessionController::defaultPictureSaveUrl(const QString& e2eId, const QString& name) const
 {
-    const QByteArray bytes = PictureStore::instance().bytes(protocolId);
+    const QByteArray bytes = PictureStore::instance().bytes(e2eId);
     // The extension follows what the bytes are, not what the message called them.
     const QString suffix = bytes.startsWith(QByteArray::fromHex("89504E47"))
         ? QStringLiteral(".png") : QStringLiteral(".jpg");
@@ -3773,7 +3773,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
 {
     const QString peer = message.value("peer").toString();
     const QString type = message.value("type").toString();
-    const QString incomingId = message.value("protocolId").toString();
+    const QString incomingId = message.value("e2eId").toString();
 
     // Idempotent receive, before anything acts on the message. The mailbox is
     // at-least-once: an item whose ack was lost, or that a sender retried, is
@@ -3784,7 +3784,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // request agreed to, a cleared chat) would otherwise be written once per
     // redelivery. (A read receipt is only sent on a real read, handled by
     // markReadThroughRow.)
-    if (!incomingId.isEmpty() && store_.idForIncomingProtocol(incomingId, peer) != 0) {
+    if (!incomingId.isEmpty() && store_.idForIncomingE2e(incomingId, peer) != 0) {
         return;
     }
 
@@ -3809,7 +3809,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // by the read high-water everything we sent them before it too. Not shown.
     if (type == "receipt") {
         const QString ref = message.value("ref").toString();
-        const qint64 localId = store_.idForProtocol(ref);
+        const qint64 localId = store_.idForE2e(ref);
         if (localId != 0) {
             markOutgoingRead(peer, localId);
         }
@@ -3833,7 +3833,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         // Scoped to incoming-from-peer in the store, so a peer can only edit its
         // own messages.
         const qint64 localId
-            = store_.idForIncomingProtocol(message.value("ref").toString(), peer);
+            = store_.idForIncomingE2e(message.value("ref").toString(), peer);
         if (localId != 0) {
             const QString newText = message.value("text").toString();
             const QString newKeyboard = message.value("keyboard").toString();
@@ -3862,7 +3862,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // delete its own messages.
     if (type == "delete") {
         const qint64 localId
-            = store_.idForIncomingProtocol(message.value("ref").toString(), peer);
+            = store_.idForIncomingE2e(message.value("ref").toString(), peer);
         if (localId != 0) {
             store_.removeById(localId);
             if (peer == activePeer_) {
@@ -3880,7 +3880,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         store_.clearPeer(peer);
         StoredMessage sys;
         sys.peer = peer;
-        sys.protocolId = incomingId;  // so a redelivery is recognised as one
+        sys.e2eId = incomingId;  // so a redelivery is recognised as one
         sys.type = QStringLiteral("system");
         sys.text = peerName(peer) + QStringLiteral(" cleared the chat.");
         sys.ts = nowMillis();
@@ -3901,7 +3901,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (type == "contact.accept") {
         StoredMessage sys;
         sys.peer = peer;
-        sys.protocolId = incomingId;  // so a redelivery is recognised as one
+        sys.e2eId = incomingId;  // so a redelivery is recognised as one
         sys.type = QStringLiteral("system");
         sys.text = peerName(peer) + QStringLiteral(" accepted your contact request.");
         sys.ts = nowMillis();
@@ -3937,7 +3937,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // Another device of ours sent this; it belongs on our side of the chat.
     m.outgoing = message.value("sentByUs").toBool();
     m.type = type;
-    m.protocolId = message.value("protocolId").toString();
+    m.e2eId = message.value("e2eId").toString();
     m.text = message.value("text").toString();
     m.replyTo = message.value("replyTo").toString();
     m.attName = message.value("attName").toString();
@@ -3962,12 +3962,12 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     showInActiveView(m, false);
     // A picture arrives inside the message, so there is nothing to fetch: the
     // core has already put it in the account, and this reads it back to draw.
-    if (m.type == QStringLiteral("image") && !m.protocolId.isEmpty()) {
-        pictureOwners_.insert(m.protocolId, m.id);
+    if (m.type == QStringLiteral("image") && !m.e2eId.isEmpty()) {
+        pictureOwners_.insert(m.e2eId, m.id);
         // The core has just stored it; read it back through this side's own
         // connection so the bubble draws it now, not after the next sync.
         const bool drawable = PictureStore::instance().put(
-            m.protocolId, store_.media(QStringLiteral("picture:") + m.protocolId));
+            m.e2eId, store_.media(QStringLiteral("picture:") + m.e2eId));
         store_.setHasPicture(m.id, drawable);
         conversation_.setPictureReadyForId(m.id, drawable);
     }
@@ -4049,12 +4049,12 @@ void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64
 }
 
 void SessionController::onTransferStage(
-    const QString& peer, const QString& protocolId, const QString& stage)
+    const QString& peer, const QString& e2eId, const QString& stage)
 {
-    TransferProgress& progress = transfers_[protocolId];
+    TransferProgress& progress = transfers_[e2eId];
     progress.peer = peer;
     progress.stage = stage;
-    const StoredMessage m = store_.messageByProtocol(protocolId, peer);
+    const StoredMessage m = store_.messageByE2e(e2eId, peer);
     if (m.id == 0) {
         return;
     }
@@ -4064,7 +4064,7 @@ void SessionController::onTransferStage(
         + QString::number(m.id);
     if (operations_.indexOf(opId) < 0) {
         beginOperation(opId, m.outgoing ? QStringLiteral("file-up") : QStringLiteral("file-down"),
-            m.attName.isEmpty() ? QStringLiteral("file") : m.attName, stage, peer, protocolId);
+            m.attName.isEmpty() ? QStringLiteral("file") : m.attName, stage, peer, e2eId);
     }
     // The row exists whether or not this conversation is on screen; the model
     // only has it while it is, and replayTransfersForActivePeer puts it back.
@@ -4077,13 +4077,13 @@ void SessionController::onTransferStage(
 }
 
 void SessionController::onServedProgress(
-    const QString& peer, const QString& protocolId, qint64 sent, qint64 total)
+    const QString& peer, const QString& e2eId, qint64 sent, qint64 total)
 {
-    TransferProgress& progress = transfers_[protocolId];
+    TransferProgress& progress = transfers_[e2eId];
     progress.peer = peer;
     progress.sent = sent;
     progress.total = total;
-    const StoredMessage m = store_.messageByProtocol(protocolId, peer);
+    const StoredMessage m = store_.messageByE2e(e2eId, peer);
     if (m.id == 0) {
         return;
     }
@@ -4104,13 +4104,13 @@ void SessionController::onServedProgress(
 }
 
 void SessionController::onServedFinished(
-    const QString& peer, const QString& protocolId, const bool ok, const QString& error)
+    const QString& peer, const QString& e2eId, const bool ok, const QString& error)
 {
-    const StoredMessage m = store_.messageByProtocol(protocolId, peer);
+    const StoredMessage m = store_.messageByE2e(e2eId, peer);
     if (m.id == 0 || peer != activePeer_) {
         // Nobody is looking at this conversation: remember the outcome so opening
         // it shows what happened, instead of a bubble that quietly lost its bar.
-        TransferProgress& kept = transfers_[protocolId];
+        TransferProgress& kept = transfers_[e2eId];
         kept.peer = peer;
         kept.stage.clear();
         kept.finished = true;
@@ -4126,7 +4126,7 @@ void SessionController::onServedFinished(
         }
         return;
     }
-    transfers_.remove(protocolId);
+    transfers_.remove(e2eId);
     if (!m.outgoing) {
         // An incoming transfer ends where a download ends: the saved path, the
         // bubble's own state and its row, all keyed by the message id.
@@ -4146,9 +4146,9 @@ void SessionController::onServedFinished(
         ok, ok ? QStringLiteral("Transferred") : error);
 }
 
-void SessionController::cancelTransfer(const QString& protocolId)
+void SessionController::cancelTransfer(const QString& e2eId)
 {
-    emit requestCancelTransfer(protocolId);
+    emit requestCancelTransfer(e2eId);
 }
 
 void SessionController::replayTransfersForActivePeer()
@@ -4158,7 +4158,7 @@ void SessionController::replayTransfersForActivePeer()
         if (it.value().peer != activePeer_) {
             continue;
         }
-        const StoredMessage m = store_.messageByProtocol(it.key(), activePeer_);
+        const StoredMessage m = store_.messageByE2e(it.key(), activePeer_);
         if (m.id == 0) {
             continue;
         }
@@ -4300,7 +4300,7 @@ void SessionController::onSendSettled(qint64 localId, const QString& note)
                                               : QStringLiteral("Sent"));
 }
 
-void SessionController::resendText(qint64 localId, const QString& text, const QString& protocolId)
+void SessionController::resendText(qint64 localId, const QString& text, const QString& e2eId)
 {
     if (activePeer_.isEmpty() || text.isEmpty()) {
         return;
@@ -4313,16 +4313,16 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
     // Preserve the original reply reference on a resend.
-    const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
+    const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     // A resend is a send: it travels the same way and takes the same time, so it
     // belongs in the activity panel like the first attempt did.
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
         QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending again…"),
         activePeer_);
-    emit requestSendText(activePeer_, text, localId, protocolId, replyTo);
+    emit requestSendText(activePeer_, text, localId, e2eId, replyTo);
 }
 
-void SessionController::resendFile(qint64 localId, const QString& protocolId)
+void SessionController::resendFile(qint64 localId, const QString& e2eId)
 {
     if (activePeer_.isEmpty()) {
         return;
@@ -4341,12 +4341,12 @@ void SessionController::resendFile(qint64 localId, const QString& protocolId)
     store_.updateStatus(localId, DeliveryStatus::Sending);
     conversation_.setStatusForId(localId, DeliveryStatus::Sending);
     conversation_.setErrorForId(localId, {});
-    const QString replyTo = store_.messageByProtocol(protocolId, activePeer_).replyTo;
-    const StoredMessage stored = store_.messageByProtocol(protocolId, activePeer_);
+    const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
+    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
         stored.attName.isEmpty() ? QStringLiteral("file") : stored.attName,
         QStringLiteral("Sending again…"), activePeer_);
-    emit requestSendFile(activePeer_, srcPath, localId, protocolId, replyTo);
+    emit requestSendFile(activePeer_, srcPath, localId, e2eId, replyTo);
 }
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
@@ -4391,27 +4391,27 @@ void SessionController::rememberReaction(const QString& emoji)
     emit recentReactionsChanged();
 }
 
-void SessionController::react(const QString& protocolId, const QString& emoji)
+void SessionController::react(const QString& e2eId, const QString& emoji)
 {
-    if (activePeer_.isEmpty() || protocolId.isEmpty()) {
+    if (activePeer_.isEmpty() || e2eId.isEmpty()) {
         return;
     }
     // Toggle: tapping the emoji we already set removes our reaction.
-    const QString next = (myReaction(protocolId) == emoji) ? QString() : emoji;
+    const QString next = (myReaction(e2eId) == emoji) ? QString() : emoji;
     // Setting one they reached for outside the standard set - typed, or tapped on
     // somebody else's chip - puts it in their recents. Removing one does not.
     if (!next.isEmpty() && !kStandardReactions.contains(next)) {
         rememberReaction(next);
     }
-    store_.setReaction(activePeer_, protocolId, fingerprint_, next);
-    emit requestSendReaction(activePeer_, protocolId, next);
+    store_.setReaction(activePeer_, e2eId, fingerprint_, next);
+    emit requestSendReaction(activePeer_, e2eId, next);
     ++reactionsRevision_;
     emit reactionsRevisionChanged();
 }
 
-QString SessionController::myReaction(const QString& protocolId) const
+QString SessionController::myReaction(const QString& e2eId) const
 {
-    for (const Reaction& r : store_.reactionsFor(activePeer_, protocolId)) {
+    for (const Reaction& r : store_.reactionsFor(activePeer_, e2eId)) {
         if (r.reactor == fingerprint_) {
             return r.emoji;
         }
@@ -4419,17 +4419,17 @@ QString SessionController::myReaction(const QString& protocolId) const
     return {};
 }
 
-QVariantList SessionController::reactionSummary(const QString& protocolId) const
+QVariantList SessionController::reactionSummary(const QString& e2eId) const
 {
     QVariantList out;
-    if (activePeer_.isEmpty() || protocolId.isEmpty()) {
+    if (activePeer_.isEmpty() || e2eId.isEmpty()) {
         return out;
     }
     // Aggregate by emoji, preserving the order each emoji was first seen.
     QStringList order;
     QHash<QString, int> counts;
     QString mine;
-    for (const Reaction& r : store_.reactionsFor(activePeer_, protocolId)) {
+    for (const Reaction& r : store_.reactionsFor(activePeer_, e2eId)) {
         if (!counts.contains(r.emoji)) {
             order << r.emoji;
         }
@@ -4457,8 +4457,8 @@ void SessionController::markReadThroughRow(int row)
         return;
     }
     qint64 id = 0;
-    QString protocolId;
-    if (!conversation_.newestIncomingThrough(row, id, protocolId)) {
+    QString e2eId;
+    if (!conversation_.newestIncomingThrough(row, id, e2eId)) {
         return;
     }
     // Persist the read high-water and refresh the unread badge: the count drops as
@@ -4478,7 +4478,7 @@ void SessionController::markReadThroughRow(int row)
         return;
     }
     // A read sends a delivery receipt so the sender's bubble greens.
-    emit requestSendReceipt(activePeer_, protocolId);
+    emit requestSendReceipt(activePeer_, e2eId);
 }
 
 void SessionController::onContactAddStage(const QString& opId, const QString& status)
@@ -4543,7 +4543,7 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
     m.peer = fingerprint;
     m.outgoing = true;
     m.type = "contact.request";
-    m.protocolId = SessionController_genProtocolId();
+    m.e2eId = SessionController_genE2eId();
     m.text = body;
     m.ts = nowMillis();
     m.orderKey = m.ts;

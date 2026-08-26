@@ -28,8 +28,8 @@ Popup {
     // Kept off the edges by this much when the asked-for spot is too near one.
     readonly property int kEdgeGap: 12
 
-    function openAt(protocolId, sceneX, sceneY) {
-        root.target = protocolId
+    function openAt(e2eId, sceneX, sceneY) {
+        root.target = e2eId
         customField.text = ""
         root.askedX = sceneX
         root.askedY = sceneY

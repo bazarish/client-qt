@@ -273,7 +273,7 @@ int main(int argc, char** argv)
         sent.outgoing = true;
         sent.type = "text";
         sent.text = "waiting on the far end";
-        sent.protocolId = "proto-1";
+        sent.e2eId = "proto-1";
         sent.ts = 400;
         sent.orderKey = sent.ts;
         const qint64 sentId = store.append(sent);
@@ -281,7 +281,7 @@ int main(int argc, char** argv)
         // lookup by the wrong one is what silently found nothing.
         store.noteDelivery("d1e2l3i4v5", sentId);
         CHECK(store.idForDelivery("d1e2l3i4v5") == sentId);
-        CHECK(store.idForProtocol("d1e2l3i4v5") == 0);
+        CHECK(store.idForE2e("d1e2l3i4v5") == 0);
         CHECK(store.idForDelivery("proto-1") == 0);
         store.forgetDeliveries(sentId);
         CHECK(store.idForDelivery("d1e2l3i4v5") == 0);
