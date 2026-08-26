@@ -261,6 +261,10 @@ public:
     void registerTokenHashes(const std::vector<Bytes>& hashes);
     void deleteTokenHashes(const std::vector<Bytes>& hashes);
     std::vector<PendingEntry> listPending();
+    // Sends our server carried as far as it could and then gave up on, by delivery
+    // messageId. Reported once: taking one is acknowledged with clearUndelivered.
+    std::vector<std::string> listUndelivered();
+    void clearUndelivered(const std::string& messageId);
     // Asks the server to hold the request until something arrives for this client
     // (or waitSeconds passes), and returns what is pending then. Throws with a 404
     // when the server has no event face, so the caller can fall back to polling.

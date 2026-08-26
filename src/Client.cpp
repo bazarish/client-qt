@@ -389,6 +389,22 @@ std::vector<PendingEntry> Client::listPending()
     return entries;
 }
 
+std::vector<std::string> Client::listUndelivered()
+{
+    const ApiResponse response = api_.get("/v1/messaging/undelivered");
+    const nlohmann::json body = response.json();
+    std::vector<std::string> ids;
+    for (const nlohmann::json& entry : body.at("undelivered")) {
+        ids.push_back(entry.get<std::string>());
+    }
+    return ids;
+}
+
+void Client::clearUndelivered(const std::string& messageId)
+{
+    api_.del("/v1/messaging/undelivered/" + messageId);
+}
+
 Bytes Client::fetchBlob(const std::string& blobId)
 {
     const ApiResponse response = api_.get("/v1/messaging/pending/" + blobId);

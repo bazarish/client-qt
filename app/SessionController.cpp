@@ -838,6 +838,11 @@ void SessionWorker::sync()
     emitFacadeInfo();
     // Resolve any sends still in flight from earlier (late delivery or failure).
     reconcilePendingSends();
+    // Sends our server carried as far as it could and then gave up on: shown as
+    // failed, with the reason, so the user can send them again when they choose.
+    for (const std::string& messageId : session_->takeUndelivered()) {
+        emit sendUndelivered(QString::fromStdString(messageId));
+    }
     // Advance call ring/answer timeouts so a call never rings forever, then flush any
     // finished-call chat-history entries (peer hang-ups handled during the pull above,
     // timeouts here).
@@ -2006,6 +2011,14 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::uploadProgress, this, &SessionController::onUploadProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
+    connect(worker_, &SessionWorker::sendUndelivered, this,
+        [this](const QString& protocolId) {
+            const qint64 localId = store_.idForProtocol(protocolId);
+            if (localId == 0) {
+                return;  // not ours, or already gone
+            }
+            onSendResult(localId, false, tr("the recipient could not be reached"));
+        });
     connect(worker_, &SessionWorker::sendSettled, this, &SessionController::onSendSettled);
     connect(worker_, &SessionWorker::sendPhase, this, &SessionController::onSendPhase);
     connect(worker_, &SessionWorker::contactRequestSent, this,

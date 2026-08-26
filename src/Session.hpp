@@ -695,6 +695,10 @@ public:
     // Re-polls a previously submitted send by its server attempt id to resolve a
     // delivery that was still pending when the send call returned. Never throws.
     AttemptOutcome pollAttempt(const std::string& attemptId);
+    // Sends our server gave up on, by delivery messageId, taken from it once: the
+    // caller marks them failed so the user can send them again when they choose.
+    // Never throws - a server that cannot answer is asked again next sync.
+    std::vector<std::string> takeUndelivered();
 
     // Asks the sender of an announced file to serve it, and downloads it to dest
     // when the sealed offer comes back. Returns at once: the transfer runs in the

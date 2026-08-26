@@ -2392,6 +2392,22 @@ void Session::persistSentFiles() const
 }
 
 
+std::vector<std::string> Session::takeUndelivered()
+{
+    std::vector<std::string> ids;
+    try {
+        ids = client_->listUndelivered();
+        for (const std::string& messageId : ids) {
+            client_->clearUndelivered(messageId);
+        }
+    } catch (const std::exception& error) {
+        // Nothing is lost by asking again: the server keeps them until they are
+        // taken, and a message already taken is not reported twice.
+        bazarish::log::warn("undelivered sends not read: {}", error.what());
+    }
+    return ids;
+}
+
 std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
 {
     std::vector<IncomingMessage> result;
