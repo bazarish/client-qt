@@ -1013,7 +1013,10 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
         std::string attemptId;
         const bool delivered = session_->sendMessage(peer.toStdString(), text.toStdString(),
             protocolId.toStdString(),
-            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            [this, localId](const std::string& deliveryId) {
+                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
+                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
+            },
             &attemptId, replyTo.toStdString());
         if (delivered) {
             pendingSends_.erase(localId);
@@ -1035,7 +1038,10 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
         std::string attemptId;
         const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
             protocolId.toStdString(),
-            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            [this, localId](const std::string& deliveryId) {
+                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
+                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
+            },
             &attemptId, replyTo.toStdString());
         if (delivered) {
             pendingSends_.erase(localId);
@@ -1060,7 +1066,10 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
         const Bytes audio(opus.begin(), opus.end());
         const bool delivered = session_->sendVoice(peer.toStdString(), audio, durationMs,
             protocolId.toStdString(),
-            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            [this, localId](const std::string& deliveryId) {
+                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
+                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
+            },
             &attemptId, replyTo.toStdString());
         if (delivered) {
             pendingSends_.erase(localId);
@@ -1084,7 +1093,10 @@ void SessionWorker::sendPicture(const QString& peer, const QString& localPath, q
         std::string attemptId;
         const bool delivered = session_->sendPicture(peer.toStdString(), localPath.toStdString(),
             protocolId.toStdString(),
-            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            [this, localId](const std::string& deliveryId) {
+                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
+                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
+            },
             &attemptId, replyTo.toStdString());
         if (delivered) {
             pendingSends_.erase(localId);
@@ -1173,7 +1185,10 @@ void SessionWorker::sendEdit(
         std::string attemptId;
         const bool delivered = session_->sendEdit(peer.toStdString(), refId.toStdString(),
             text.toStdString(), {},
-            [this, localId]() { emit sendProgress(localId, DeliveryStatus::AtSenderServer); },
+            [this, localId](const std::string& deliveryId) {
+                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
+                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
+            },
             &attemptId);
         if (delivered) {
             pendingSends_.erase(localId);
@@ -2011,11 +2026,15 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::uploadProgress, this, &SessionController::onUploadProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
+    connect(worker_, &SessionWorker::sendDeliveryId, this,
+        [this](const qint64 localId, const QString& deliveryId) {
+            store_.noteDelivery(deliveryId, localId);
+        });
     connect(worker_, &SessionWorker::sendUndelivered, this,
-        [this](const QString& protocolId) {
-            const qint64 localId = store_.idForProtocol(protocolId);
+        [this](const QString& deliveryId) {
+            const qint64 localId = store_.idForDelivery(deliveryId);
             if (localId == 0) {
-                return;  // not ours, or already gone
+                return;  // not ours, or settled long ago
             }
             onSendResult(localId, false, tr("the recipient could not be reached"));
         });
@@ -3976,6 +3995,12 @@ void SessionController::bumpStatus(qint64 localId, int status)
     statusById_[localId] = status;
     store_.updateStatus(localId, status);
     conversation_.setStatusForId(localId, status);
+    // Settled one way or the other: our server has nothing left to tell us about
+    // this send, so the delivery id it was tracked by can go.
+    if (status == DeliveryStatus::AtRecipientServer || status == DeliveryStatus::Delivered
+        || status == DeliveryStatus::Failed) {
+        store_.forgetDeliveries(localId);
+    }
 }
 
 void SessionController::onSendProgress(qint64 localId, int state)

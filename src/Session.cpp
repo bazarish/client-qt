@@ -1227,7 +1227,7 @@ std::string Session::issueOneToken()
 
 bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     const std::string& kind, const std::string& mailbox, const std::optional<Bytes>& token,
-    const Bytes& payload, const std::function<void()>& onAcceptedByOwnServer,
+    const Bytes& payload, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
     std::string* outAttemptId, bool waitForOutcome)
 {
     // The envelope is sealed to the recipient destination's serving sealing key,
@@ -1251,7 +1251,10 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
         *outAttemptId = attemptId;  // so the caller can reconcile a late outcome
     }
     if (onAcceptedByOwnServer) {
-        onAcceptedByOwnServer();  // grey: our own server accepted the envelope
+        // Grey: our own server accepted the envelope. The delivery id goes with it -
+        // it is what the server calls this send, and the only name it has to report
+        // one it later gives up on.
+        onAcceptedByOwnServer(messageId);
     }
     if (!waitForOutcome) {
         // The caller does not want to block on the outcome (e.g. a file send,
@@ -1631,7 +1634,7 @@ void Session::acceptContactRequest(const std::string& peerFingerprint)
 }
 
 bool Session::sendMessage(const std::string& peerFingerprint, const std::string& text,
-    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
+    const std::string& messageId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
     nlohmann::json inner = {
@@ -1657,7 +1660,7 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
 }
 
 bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
+    const std::string& messageId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
     return announceTransfer(
@@ -1665,7 +1668,7 @@ bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
 }
 
 bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& messageId, const std::function<void()>& onAcceptedByOwnServer,
+    const std::string& messageId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
     std::string* outAttemptId, const std::string& replyTo)
 {
     // A picture rides inside the message. It is small by construction - the
@@ -1708,7 +1711,7 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
 
 bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
     const std::int64_t durationMs, const std::string& messageId,
-    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
     const std::string& replyTo)
 {
     if (opus.empty()) {
@@ -1744,7 +1747,7 @@ bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
 // what the other side does when they arrive.
 bool Session::announceTransfer(const std::string& type, const std::string& peerFingerprint,
     const fs::path& path, const std::string& messageId,
-    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
     const std::string& replyTo)
 {
     const std::string id = messageId.empty() ? toHex(randomBytes(8)) : messageId;
@@ -1778,7 +1781,7 @@ bool Session::announceTransfer(const std::string& type, const std::string& peerF
 
 void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
     const InlineKeyboard& keyboard, const std::string& messageId,
-    const std::function<void()>& onAcceptedByOwnServer)
+    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer)
 {
     // An interactive message is a "text" message that additionally carries an
     // inline keyboard. A recipient that does not understand keyboards still
@@ -1797,7 +1800,7 @@ void Session::sendInteractive(const std::string& peerFingerprint, const std::str
 
 void Session::sendCommand(const std::string& peerFingerprint, const std::string& command,
     const std::string& args, const std::string& messageId,
-    const std::function<void()>& onAcceptedByOwnServer)
+    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer)
 {
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -1828,7 +1831,7 @@ void Session::sendCallback(
 
 bool Session::sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
     const std::string& text, const InlineKeyboard& keyboard,
-    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId)
+    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId)
 {
     // An edit fully replaces the target's text and keyboard; the keyboard is
     // always carried (an empty array clears it) so the shape is unambiguous.
@@ -2250,7 +2253,7 @@ void Session::startAnnouncedFetch(const FileOffer& offer, const std::string& pee
 }
 
 bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
-    const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
     bool waitForOutcome, bool establishOnFirstReply, const std::string& overrideToken)
 {
     const auto found = contacts_.find(peerFingerprint);

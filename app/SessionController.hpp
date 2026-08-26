@@ -162,9 +162,12 @@ signals:
     void avatarReady(const QString& fingerprint, const QByteArray& data);
     void sendProgress(qint64 localId, int state);  // 1 = accepted by own server (grey)
     void sendResult(qint64 localId, bool ok, const QString& error);
-    // Our server carried this message as far as it could and gave up: the row is
-    // marked failed by its protocol id, whatever page it is on.
-    void sendUndelivered(const QString& protocolId);
+    // Our own server accepted this send and calls it by this delivery id: recorded
+    // so a send it later gives up on can be found again, on any page and after a
+    // restart.
+    void sendDeliveryId(qint64 localId, const QString& deliveryId);
+    // Our server carried a send as far as it could and gave up on it.
+    void sendUndelivered(const QString& deliveryId);
     // Our server stopped tracking the send without a delivered-ack (retries
     // exhausted / attempt forgotten): the message stays grey but its activity-panel
     // operation must settle. Carries a short note.

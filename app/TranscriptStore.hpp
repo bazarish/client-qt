@@ -107,6 +107,12 @@ public:
     void setHasPicture(qint64 id, bool has);
     void setBlobGone(qint64 id, bool gone);
     // The row id of an outgoing message with this protocol id (0 if none).
+    // What our server calls a send of ours, and back again: the delivery id is the
+    // server's, the protocol id is the message's, and only this maps one to the
+    // other. Cleared once the send is settled.
+    void noteDelivery(const QString& deliveryId, qint64 localId);
+    qint64 idForDelivery(const QString& deliveryId) const;
+    void forgetDeliveries(qint64 localId);
     qint64 idForProtocol(const QString& protocolId) const;
     // The row id of an incoming message from peer with this protocol id, the
     // target of an edit (0 if none). Scoping to incoming-from-peer is the

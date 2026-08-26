@@ -332,7 +332,7 @@ public:
     // in the account like a picture.
     bool sendVoice(const std::string& peerFingerprint, const Bytes& opus, std::int64_t durationMs,
         const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
         const std::string& replyTo = {});
 
     // Stores a picture's bytes against the message that announced it.
@@ -570,7 +570,7 @@ public:
     // the original (a no-op reference if they do not hold it locally).
     bool sendMessage(const std::string& peerFingerprint, const std::string& text,
         const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {},
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, const std::string& replyTo = {});
 
     // Announces a file as a "file" content message: name, size and digest only.
@@ -579,7 +579,7 @@ public:
     // still be at this path, and this client online, when they do.
     bool sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {},
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, const std::string& replyTo = {});
 
     // The same transfer, announced as a picture: a message whose point is that
@@ -587,20 +587,20 @@ public:
     // what it never becomes is a file card with a Save button.
     bool sendPicture(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
         const std::string& replyTo = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.
     void sendInteractive(const std::string& peerFingerprint, const std::string& text,
         const InlineKeyboard& keyboard, const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {});
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {});
 
     // Sends a command invocation (content type "bot.command") to a peer: a bot
     // dispatches on the command name. args is the raw argument string.
     void sendCommand(const std::string& peerFingerprint, const std::string& command,
         const std::string& args = {}, const std::string& messageId = {},
-        const std::function<void()>& onAcceptedByOwnServer = {});
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {});
 
     // Sends a button-press callback (content type "bot.callback") to a peer:
     // data is the tapped button's payload, refMessageId the keyboard message it
@@ -618,7 +618,7 @@ public:
     // delivery status instead of the original's.
     bool sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
         const std::string& text, const InlineKeyboard& keyboard = {},
-        const std::function<void()>& onAcceptedByOwnServer = {},
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr);
 
     // Deletes a previously sent message for everyone (content type "delete"): the
@@ -908,7 +908,7 @@ private:
     // for a token-refill reply, which the peer's request prepaid with a fresh token,
     // so the reply is deliverable even when we hold none of their tokens.
     bool sendContent(const std::string& peerFingerprint, nlohmann::json inner,
-        const std::function<void()>& onAcceptedByOwnServer = {},
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, bool waitForOutcome = false,
         bool establishOnFirstReply = true, const std::string& overrideToken = {});
 
@@ -1024,7 +1024,7 @@ private:
     bool deliver(const std::string& toDest, const Key& servingSealingKey,
         const std::string& deliveryClass, const std::string& mailbox,
         const std::optional<Bytes>& token, const Bytes& payload,
-        const std::function<void()>& onAcceptedByOwnServer = {},
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, bool waitForOutcome = true);
     void persistContacts() const;
     void persistMeta() const;
@@ -1045,7 +1045,7 @@ private:
     // Shared by sendFile and sendPicture: the announcement differs only in type.
     bool announceTransfer(const std::string& type, const std::string& peerFingerprint,
         const std::filesystem::path& path, const std::string& messageId,
-        const std::function<void()>& onAcceptedByOwnServer, std::string* outAttemptId,
+        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
         const std::string& replyTo);
 
     void serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId,

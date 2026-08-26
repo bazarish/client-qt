@@ -263,6 +263,30 @@ int main(int argc, char** argv)
         CHECK(store.firstUnreadId("frank") == realId);
     }
 
+    // --- The server's name for a send maps back to the row it belongs to ---
+    {
+        const QString sdb = QString::fromStdString((dir / "sends.db").string());
+        TranscriptStore store;
+        CHECK(store.open("sn", sdb, ""));
+        StoredMessage sent;
+        sent.peer = "grace";
+        sent.outgoing = true;
+        sent.type = "text";
+        sent.text = "waiting on the far end";
+        sent.protocolId = "proto-1";
+        sent.ts = 400;
+        sent.orderKey = sent.ts;
+        const qint64 sentId = store.append(sent);
+        // The delivery id is the server's and is nothing like the protocol id: a
+        // lookup by the wrong one is what silently found nothing.
+        store.noteDelivery("d1e2l3i4v5", sentId);
+        CHECK(store.idForDelivery("d1e2l3i4v5") == sentId);
+        CHECK(store.idForProtocol("d1e2l3i4v5") == 0);
+        CHECK(store.idForDelivery("proto-1") == 0);
+        store.forgetDeliveries(sentId);
+        CHECK(store.idForDelivery("d1e2l3i4v5") == 0);
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;
