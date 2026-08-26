@@ -70,6 +70,8 @@ ApplicationWindow {
         function onCreateFailed(error) { window.showToast(error) }
         // The server would not end the account, so nothing was deleted anywhere.
         function onAccountDeleteFailed(id, error) { deleteFailedDialog.show(id, error) }
+        // The profile is locked, and its key is what ends the account on the server.
+        function onAccountDeleteNeedsUnlock(id, name) { deleteLockedDialog.show(id, name) }
         // "Add account": show the picker over the running session(s).
         function onShowPicker() {
             if (stack.currentItem && stack.currentItem.objectName !== "accountPicker") {
@@ -162,6 +164,76 @@ ApplicationWindow {
         }
     }
 
+    // A locked profile: its key is the only thing that can end the account on the
+    // server, so unlocking it is the difference between deleting the account and
+    // deleting this device's copy of it.
+    Dialog {
+        id: deleteLockedDialog
+        property string accountId: ""
+        property string accountName: ""
+        function show(id, name) { accountId = id; accountName = name; open() }
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(400, parent ? parent.width - 24 : 400)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        header: Label {
+            text: "This account is locked"
+            color: Theme.neon
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Unlock and delete"
+            rejectText: "Cancel"
+            onAccepted: deleteLockedDialog.accept()
+            onRejected: deleteLockedDialog.reject()
+        }
+        onAccepted: App.deleteAccountAfterUnlock(deleteLockedDialog.accountId)
+        contentItem: ColumnLayout {
+            spacing: 10
+            Label {
+                Layout.fillWidth: true
+                Layout.margins: 14
+                Layout.bottomMargin: 0
+                wrapMode: Text.Wrap
+                color: Theme.text
+                text: "\"" + deleteLockedDialog.accountName + "\" is encrypted, and the key "
+                    + "inside it is the only thing that can tell its server to end the account. "
+                    + "Unlock it and the account is deleted everywhere."
+            }
+            Label {
+                Layout.fillWidth: true
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
+                Layout.bottomMargin: 4
+                wrapMode: Text.Wrap
+                color: Theme.danger
+                font.pixelSize: Theme.fontSmall
+                text: "Delete this device's copy only"
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
+                        App.forgetAccountLocally(deleteLockedDialog.accountId)
+                        deleteLockedDialog.close()
+                    }
+                }
+            }
+            Label {
+                Layout.fillWidth: true
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
+                Layout.bottomMargin: 10
+                wrapMode: Text.Wrap
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                text: "Without the passphrase nothing can be said to the server. If it still "
+                    + "holds this account, it keeps it - address, mailbox and all - and there "
+                    + "will be no key left to end it."
+            }
+        }
+    }
+
     // A deletion the server refused or could not answer. Nothing has been
     // removed: the profile is what holds the key that can ask again, so the
     // choice between trying later and walking away belongs to the user.
@@ -196,9 +268,10 @@ ApplicationWindow {
                 Layout.bottomMargin: 0
                 wrapMode: Text.Wrap
                 color: Theme.text
-                text: "Your server did not end the account: " + deleteFailedDialog.reason
-                    + "\n\nNothing was deleted. Try again when the server is reachable - "
-                    + "this profile holds the only key that can ask it to."
+                text: "Your server did not answer, so the account was not ended: "
+                    + deleteFailedDialog.reason
+                    + "\n\nNothing was deleted. Try again when it is reachable - this profile "
+                    + "holds the only key that can ask it to."
             }
             Label {
                 Layout.fillWidth: true

@@ -84,9 +84,12 @@ public:
     // reports accountDeleteFailed - the profile is the only thing that can ask
     // again, so it is never thrown away on a failure.
     Q_INVOKABLE void deleteAccount(const QString& id);
+    // Asks for a locked profile's passphrase and deletes it once it opens.
+    Q_INVOKABLE void deleteAccountAfterUnlock(const QString& id);
     // Removes the profile from this device and nothing else: the account goes on
     // existing on its server, with its destination and its mail, and no key left
-    // anywhere to end it. Offered only after a full deletion failed.
+    // anywhere to end it. Offered when a full deletion cannot be made - a locked
+    // profile the user will not unlock, or a server that did not answer.
     Q_INVOKABLE void forgetAccountLocally(const QString& id);
     // Makes an account the active (focused) one, opening it first if needed.
     // An encrypted, not-yet-open account emits needPassphrase instead.
@@ -180,6 +183,9 @@ signals:
     void needPassphrase(const QString& id, const QString& name);
     // The account could not be ended on its server, so nothing was deleted.
     void accountDeleteFailed(const QString& id, const QString& error);
+    // The profile is locked, and ending the account on its server needs the key
+    // inside it. The UI offers unlocking it or deleting this device's copy alone.
+    void accountDeleteNeedsUnlock(const QString& id, const QString& name);
     // An unlock attempt failed. It belongs on the unlock screen, where the
     // passphrase was typed, and not in a notice at the bottom of the window.
     void unlockFailed(const QString& error);

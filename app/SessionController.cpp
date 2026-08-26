@@ -1542,6 +1542,24 @@ void SessionWorker::closeAccountOnServer()
         session_->closeAccountOnServer();
         op.succeed(QStringLiteral("Deleted on the server"));
         emit accountClosed(true, {});
+    } catch (const bazarish::client::ApiError& error) {
+        // An answer is an answer. A server that refuses to end this account has
+        // nothing of it left to end - an operator deleted it first, or the key is
+        // not one it knows - and holding on to the profile for that would leave
+        // the user unable to finish. A server that did not answer at all, or
+        // answered that it is broken, is a different matter: nothing is deleted
+        // on a maybe.
+        constexpr int kFirstServerErrorStatus = 500;
+        if (error.httpStatus > 0 && error.httpStatus < kFirstServerErrorStatus) {
+            bazarish::log::info("the server has no account of ours to end ({}); only this "
+                                "device's copy goes",
+                error.what());
+            op.succeed(QStringLiteral("Already gone from the server"));
+            emit accountClosed(true, {});
+            return;
+        }
+        op.fail(QString::fromUtf8(error.what()));
+        emit accountClosed(false, QString::fromUtf8(error.what()));
     } catch (const std::exception& error) {
         op.fail(QString::fromUtf8(error.what()));
         emit accountClosed(false, QString::fromUtf8(error.what()));

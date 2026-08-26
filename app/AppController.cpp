@@ -547,6 +547,9 @@ void AppController::cancelUnlock()
 {
     unlockingId_.clear();
     unlockToBringOnline_ = false;
+    // A deletion waiting on this unlock is off as well: nothing was deleted, and
+    // the user has to say so again.
+    pendingDeleteId_.clear();
     // Nothing changed on disk while the prompt was open, so redrawing the rows
     // puts every switch back to what it says there.
     refreshAccounts();
@@ -574,9 +577,17 @@ void AppController::deleteAccount(const QString& id)
     SessionController* ctrl = sessionFor(id);
     if (ctrl == nullptr) {
         // Only the account itself can end itself: the server is told by a request
-        // signed with the identity key, and that key is inside the profile. So the
-        // profile is opened first - which may mean asking for its passphrase, and
-        // the deletion resumes once it is unlocked.
+        // signed with the identity key, and that key is inside the profile. A
+        // locked profile therefore has to be unlocked first - or deleted from this
+        // device alone, which leaves the account standing on its server. That is a
+        // real choice with a real consequence, so it is put to the user rather
+        // than decided here.
+        for (const AccountListRow& info : accountRows_) {
+            if (info.id == id && info.encrypted) {
+                emit accountDeleteNeedsUnlock(id, info.name);
+                return;
+            }
+        }
         pendingDeleteId_ = id;
         openSession(id, {}, /*makeActive=*/false);
         ctrl = sessionFor(id);
@@ -607,6 +618,16 @@ void AppController::deleteAccount(const QString& id)
             forgetAccountLocally(id);
         });
     ctrl->closeAccountOnServer();
+}
+
+void AppController::deleteAccountAfterUnlock(const QString& id)
+{
+    pendingDeleteId_ = id;
+    // Asks for the passphrase; the deletion goes on from where the unlock lands.
+    openSession(id, {}, /*makeActive=*/false);
+    if (sessionFor(id) != nullptr) {
+        deleteAccount(id);
+    }
 }
 
 void AppController::forgetAccountLocally(const QString& id)
