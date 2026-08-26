@@ -145,55 +145,53 @@ int main()
                 {{"dest", aliceDest}, {"servingKey", toBase64(serverSealing.publicDer())}});
         }));
 
-    // First-contact card-fetch relay: unseal the query with our serving key,
-    // build bob's contact card, seal the response to the query's response key.
-    server.post("/v1/messaging/fetch",
-        stub([&](const http::Request& request, http::Response& response) {
-            (void)requireCaller(request);
-            const nlohmann::json req = nlohmann::json::parse(request.body);
-            const std::string op = req.at("op").get<std::string>();
-            const Bytes sealed = fromBase64(req.at("sealed").get<std::string>());
+    // The far side of a first-contact fetch, in process: the client dials a
+    // destination directly, so what stands in for that dial here is a transport,
+    // not a route. It answers exactly as a serving destination would.
+    const FetchTransport directDial = [&](const std::string& toDest, const std::string& op,
+                                          const Bytes& sealed) {
+        FetchOutcome outcome;
+        if (op == "card") {
+            CHECK(toDest == bobDest);
+            // The query travels in the clear: the stream it rides is already
+            // encrypted to the destination, and nothing relays it.
+            const CardFetchQuery query = cardFetchQueryFromJson(nlohmann::json::parse(sealed));
+            CHECK(query.fingerprint == bob.fingerprint());
+            // The asker brings back the capability from the descriptor; without
+            // it no card is served.
+            CHECK(query.view == bobView);
+            const Key bobSealing = Key::generateSealing();
+            outcome.ok = true;
+            outcome.sealed = ContactCard::issue(
+                bob, bobDest, bobSealing.publicDer(), serverSealing.publicDer());
+            return outcome;
+        }
 
-            if (op == "card") {
-                CHECK(req.at("toDest") == bobDest);
-                // The query travels in the clear: the stream it rides is already
-                // encrypted to the destination, and nothing relays it.
-                const CardFetchQuery query = cardFetchQueryFromJson(nlohmann::json::parse(sealed));
-                CHECK(query.fingerprint == bob.fingerprint());
-                // The asker brings back the capability from the descriptor;
-                // without it no card is served.
-                CHECK(query.view == bobView);
-                const Key bobSealing = Key::generateSealing();
-                const Bytes bobCard = ContactCard::issue(
-                    bob, bobDest, bobSealing.publicDer(), serverSealing.publicDer());
-                respondJson(response, {{"ok", true}, {"sealed", toBase64(bobCard)}});
-                return;
-            }
-
-            // op == "resolve": the central resolver unseals the query with its
-            // serving key, signs a self-verifying record (delegated key) and seals
-            // it to the response key. An unknown alias answers ALIAS_UNKNOWN.
-            CHECK(op == "resolve");
-            CHECK(req.at("toDest") == resolverDest);
-            const Bytes queryBytes
-                = cms::unseal(sealed, Key::fromPrivatePem(resolverSealing.privatePem()));
-            const ResolveQuery query = resolveQueryFromJson(nlohmann::json::parse(queryBytes));
-            if (query.alias == "ghost") {
-                respondJson(response, {{"ok", false}, {"errorCode", "ALIAS_UNKNOWN"}});
-                return;
-            }
-            // "swap" exercises the client-side guard: the resolver answers a
-            // record bound to a different alias than the one queried.
-            const std::string recordAlias = query.alias == "swap" ? "other" : query.alias;
-            const Descriptor descriptor{bob.fingerprint(), bobDest, bobView};
-            const ResolveRecord record{recordAlias, descriptor, now, now + resolverWeek};
-            const ResolveResponse resp{
-                signResolveRecord(record, resolverDelegated), resolverDelegationDer};
-            const std::string respJson = toJson(resp).dump();
-            const Bytes sealedResp = cms::seal(Bytes(respJson.begin(), respJson.end()),
-                Key::fromPublicDer(query.responseKeyDer));
-            respondJson(response, {{"ok", true}, {"sealed", toBase64(sealedResp)}});
-        }));
+        // op == "resolve": the central resolver unseals the query with its
+        // serving key, signs a self-verifying record (delegated key) and seals it
+        // to the response key. An unknown alias answers ALIAS_UNKNOWN.
+        CHECK(op == "resolve");
+        CHECK(toDest == resolverDest);
+        const Bytes queryBytes
+            = cms::unseal(sealed, Key::fromPrivatePem(resolverSealing.privatePem()));
+        const ResolveQuery query = resolveQueryFromJson(nlohmann::json::parse(queryBytes));
+        if (query.alias == "ghost") {
+            outcome.errorCode = "ALIAS_UNKNOWN";
+            return outcome;
+        }
+        // "swap" exercises the client-side guard: the resolver answers a record
+        // bound to a different alias than the one queried.
+        const std::string recordAlias = query.alias == "swap" ? "other" : query.alias;
+        const Descriptor descriptor{bob.fingerprint(), bobDest, bobView};
+        const ResolveRecord record{recordAlias, descriptor, now, now + resolverWeek};
+        const ResolveResponse resp{
+            signResolveRecord(record, resolverDelegated), resolverDelegationDer};
+        const std::string respJson = toJson(resp).dump();
+        outcome.ok = true;
+        outcome.sealed = cms::seal(
+            Bytes(respJson.begin(), respJson.end()), Key::fromPublicDer(query.responseKeyDer));
+        return outcome;
+    };
 
     // --- Messaging stub ---
 
@@ -243,14 +241,6 @@ int main()
 
     Client client(Identity::fromPrivatePem(alice.privatePem()), "client01", endpoint);
 
-    // The own-server proxy fetch transport (the path for a client with no I2P
-    // transport of its own): card and
-    // resolve frames ride through POST /v1/messaging/fetch (relayFetch).
-    const FetchTransport proxy
-        = [&client](const std::string& toDest, const std::string& op, const Bytes& sealed) {
-              return client.relayFetch(toDest, op, sealed);
-          };
-
     // Publishing a card returns what the account holds and the routing the
     // messaging server assigned.
     {
@@ -262,12 +252,12 @@ int main()
         CHECK(!result.cardDer.empty());
     }
 
-    // First-contact card fetch from a descriptor (via the own-server proxy): the
+    // First-contact card fetch from a descriptor (over a direct dial): the
     // query carries the descriptor's key, the verified card comes back and must
     // be for the descriptor's fingerprint - and names no server.
     {
         const Descriptor descriptor{bob.fingerprint(), bobDest, bobView};
-        const ContactInfo info = client.fetchCard(descriptor, proxy);
+        const ContactInfo info = client.fetchCard(descriptor, directDial);
         CHECK(info.card.user == bob.fingerprint());
         CHECK(info.card.dest == bobDest);
         CHECK(info.card.servingSealingKey().publicDer() == serverSealing.publicDer());
@@ -287,22 +277,22 @@ int main()
         return false;
     };
     {
-        const Descriptor descriptor = client.resolveAlias("bob", resolver, now, proxy);
+        const Descriptor descriptor = client.resolveAlias("bob", resolver, now, directDial);
         CHECK(descriptor.fingerprint == bob.fingerprint());
         CHECK(descriptor.dest == bobDest);
         CHECK(descriptor.view == bobView);
 
         // An unknown alias surfaces as a thrown ALIAS_UNKNOWN.
-        CHECK(rejects([&]() { (void)client.resolveAlias("ghost", resolver, now, proxy); }));
+        CHECK(rejects([&]() { (void)client.resolveAlias("ghost", resolver, now, directDial); }));
 
         // A record anchored to a different root is rejected (anti-MITM): even a
         // correctly-formed reply fails the chain check against our root.
         const ResolverCoordinate wrongRoot{
             Identity::generate().fingerprint(), resolverDest, resolverSealing.publicDer()};
-        CHECK(rejects([&]() { (void)client.resolveAlias("bob", wrongRoot, now, proxy); }));
+        CHECK(rejects([&]() { (void)client.resolveAlias("bob", wrongRoot, now, directDial); }));
 
         // A record whose alias differs from the one queried is rejected.
-        CHECK(rejects([&]() { (void)client.resolveAlias("swap", resolver, now, proxy); }));
+        CHECK(rejects([&]() { (void)client.resolveAlias("swap", resolver, now, directDial); }));
     }
 
     // Client registry and token registration.

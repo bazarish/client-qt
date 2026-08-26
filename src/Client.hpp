@@ -108,9 +108,10 @@ struct FetchOutcome {
 };
 
 // Moves one sealed fetch frame ({op, sealed}) to a .b32.i2p destination and
-// returns the sealed reply. Two implementations back this: a direct transient-I2P
-// dial (preferred, our server uninvolved) and the own-server proxy relay
-// (Client::relayFetch). The caller picks; the crypto stays in fetchCard/resolve.
+// returns the sealed reply, over a throwaway destination of this client's own.
+// There is no relay through our own server: a card fetch names the person being
+// added, so asking our server to move it would hand it exactly that. The crypto
+// stays in fetchCard/resolve; a test substitutes the transport.
 using FetchTransport
     = std::function<FetchOutcome(const std::string& toDest, const std::string& op, const Bytes& sealed)>;
 
@@ -218,16 +219,11 @@ public:
     // half is fetched independently; a backend that does not answer leaves its half
     // at zero with ok=false. Never throws - it is a best-effort status poll.
     StorageUsage storageUsage();
-    // Own-server proxy relay (POST /v1/messaging/fetch): moves a sealed fetch
-    // frame over I2P to toDest and returns the sealed reply opaquely. The
-    // fallback FetchTransport for clients with no I2P transport of their own.
-    FetchOutcome relayFetch(
-        const std::string& toDest, const std::string& op, const Bytes& sealed);
     // First-contact card fetch from a descriptor (fp + serving destination +
     // serving sealing key). The query (which fingerprint) is sealed to the
     // serving server's key so a relay cannot read it; the response is sealed to a
-    // fresh ephemeral key. The sealed frame is moved by `transport` (direct
-    // transient-I2P, or the own-server proxy). Verifies the card and that it is
+    // fresh ephemeral key. The sealed frame is moved by `transport` (a direct
+    // transient-I2P dial). Verifies the card and that it is
     // for the descriptor's fingerprint (see docs-main api/FederatedResolve.md).
     ContactInfo fetchCard(const Descriptor& descriptor, const FetchTransport& transport);
     // Resolves an alias to a descriptor via the central resolver: seals the query

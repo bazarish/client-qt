@@ -207,9 +207,8 @@ I2pDestStatus Client::i2pStatus()
 StorageUsage Client::storageUsage()
 {
     StorageUsage usage;
-    // Each backend is polled independently so one being offline does not hide the
-    // other. Both ride the same facade (server-core for /v1/messaging/*, blob
-    // storage for /v1/storage/*).
+    // Best effort: a server that does not answer leaves the figures stale rather
+    // than failing the settings page they are shown on.
     try {
         const nlohmann::json body = api_.get("/v1/messaging/storage-usage").json();
         usage.mailboxUsedBytes = body.value("usedBytes", std::uint64_t{0});
@@ -223,25 +222,6 @@ StorageUsage Client::storageUsage()
 }
 
 
-FetchOutcome Client::relayFetch(
-    const std::string& toDest, const std::string& op, const Bytes& sealed)
-{
-    const ApiResponse response = api_.postJson("/v1/messaging/fetch",
-        {
-            {"toDest", toDest},
-            {"op", op},
-            {"sealed", toBase64(sealed)},
-        },
-        ApiClient::kFetchReadTimeoutSeconds);
-    const nlohmann::json body = response.json();
-    FetchOutcome outcome;
-    outcome.ok = body.at("ok").get<bool>();
-    if (body.contains("sealed")) {
-        outcome.sealed = fromBase64(body.at("sealed").get<std::string>());
-    }
-    outcome.errorCode = body.value("errorCode", std::string());
-    return outcome;
-}
 
 ContactInfo Client::fetchCard(const Descriptor& descriptor, const FetchTransport& transport)
 {

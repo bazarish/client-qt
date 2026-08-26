@@ -93,16 +93,9 @@ public:
 // authenticated request with both identity keys.
 class ApiClient {
 public:
-    // Read timeout (seconds) for a normal request. Generous because a send may
-    // relay over I2P synchronously on the server side (tens of seconds).
+    // Read timeout (seconds) for a normal request. Generous because a mailbox
+    // fetch travels to this account's server over I2P (tens of seconds).
     static constexpr int kDefaultReadTimeoutSeconds = 240;
-    // Read timeout for an interactive federated fetch (card / alias resolve): the
-    // server federates to the target synchronously, so this bounds how long the
-    // (now off-thread, see Session::resolveContactCard) background fetch lives.
-    // Set above the server's own federation timeout so a reachable-but-slow peer
-    // still resolves rather than being cut off early; an unreachable one fails
-    // within it and surfaces an error instead of hanging forever.
-    static constexpr int kFetchReadTimeoutSeconds = 70;
     // Connecting is local (the facade is one TCP hop away), so a connect that
     // takes this long is a dead facade, not a slow one. Writing gets the same
     // budget as reading: an upload streams for as long as a response may take.
@@ -124,9 +117,7 @@ public:
     // timeout has to outlast the wait the server was asked for, or the client
     // would tear down its own long poll.
     ApiResponse getWaiting(const std::string& path, const std::string& query, int readTimeoutSeconds);
-    // readTimeoutSeconds bounds how long to wait for the response: the default is
-    // generous for sends; an interactive federated fetch passes the short
-    // kFetchReadTimeoutSeconds so it cannot freeze the worker thread for minutes.
+    // readTimeoutSeconds bounds how long to wait for the response.
     ApiResponse postJson(const std::string& path, const nlohmann::json& body,
         int readTimeoutSeconds = kDefaultReadTimeoutSeconds);
     ApiResponse postBytes(
