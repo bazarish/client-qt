@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "Client.hpp"
+#include "OutboundCourier.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Auth.hpp>
@@ -10,6 +11,7 @@
 #include <bazarish/Resolve.hpp>
 #include <bazarish/Tokens.hpp>
 
+#include <bazarish/FederationFrame.hpp>
 #include <bazarish/HttpServer.hpp>
 
 #include <functional>
@@ -124,6 +126,104 @@ struct Mock {
     bool refillUsedPrepaid = false;
 };
 
+// A send leaves on the courier's own thread, so a test that wants to see the far
+// side of one waits for it rather than assuming it has landed.
+bool waitFor(const std::function<bool()>& done)
+{
+    constexpr int kWaitMs = 5000;
+    constexpr int kPollMs = 10;
+    for (int waited = 0; waited < kWaitMs; waited += kPollMs) {
+        if (done()) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(kPollMs));
+    }
+    return done();
+}
+
+// The recipient's server at the other end of a delivery, in process. It reads
+// the frame the courier really writes, unseals the envelope, does the token
+// bookkeeping a delivery engine does, and signs the confirmation the same way -
+// so what is exercised here is the delivery, not a stub of one.
+class MockServerStream final : public DeliveryStream {
+public:
+    MockServerStream(Mock& mock, const Key& signingKey)
+        : mock_(mock)
+        , signingKey_(signingKey)
+    {
+    }
+
+    void writeAll(const void* const data, const std::size_t size) override
+    {
+        const auto* const in = static_cast<const char*>(data);
+        written_.append(in, size);
+    }
+
+    void readExact(void* const buffer, const std::size_t size) override
+    {
+        if (reply_.empty()) {
+            reply_ = serve();
+        }
+        CHECK(sent_ + size <= reply_.size());
+        std::memcpy(buffer, reply_.data() + sent_, size);
+        sent_ += size;
+    }
+
+    void close() override {}
+
+private:
+    std::string serve()
+    {
+        const std::size_t lineEnd = written_.find('\n');
+        CHECK(lineEnd != std::string::npos);
+        const nlohmann::json header = nlohmann::json::parse(written_.substr(0, lineEnd));
+        CHECK(header.at("op") == "deliver");
+        const std::size_t length = header.at("len").get<std::size_t>();
+        const std::string payloadText = written_.substr(lineEnd + 1, length);
+        CHECK(payloadText.size() == length);
+        const Bytes payload(payloadText.begin(), payloadText.end());
+        const Bytes sealed = fromBase64(header.at("sealed").get<std::string>());
+        const nlohmann::json inner = nlohmann::json::parse(cms::unseal(sealed, mock_.serverSealing));
+        const std::string cls = inner.at("class").get<std::string>();
+        const std::string mailbox = inner.at("mailbox").get<std::string>();
+        const std::string deliveryId = inner.at("deliveryId").get<std::string>();
+
+        {
+            std::lock_guard<std::mutex> lock(mock_.mu);
+            const bool fresh = mock_.seenIds[mailbox].insert(deliveryId).second;
+            if (cls == "content" && fresh) {
+                // Consume the presented token: it must be one the mailbox owner
+                // registered (else a real server would reject the delivery).
+                const std::string hashB64
+                    = toBase64(deliveryTokenHash(fromBase64(inner.at("token").get<std::string>())));
+                CHECK(mock_.registered[mailbox].erase(hashB64) == 1);
+                if (mailbox == mock_.watchMailbox
+                    && mock_.singletons[mailbox].count(hashB64) != 0) {
+                    mock_.refillUsedPrepaid = true;
+                }
+            }
+            if (fresh) {
+                mock_.mailbox[mailbox].push_back(
+                    {"m" + std::to_string(mock_.nextId++), cls, payload});
+            }
+        }
+        const Bytes signedBytes(deliveryId.begin(), deliveryId.end());
+        const nlohmann::json reply = {
+            {"delivered", true},
+            {"deliveryId", deliveryId},
+            {"signerPub", toBase64(signingKey_.publicDer())},
+            {"sig", toBase64(bazarish::sign(signingKey_, signedBytes))},
+        };
+        return reply.dump() + "\n";
+    }
+
+    Mock& mock_;
+    const Key& signingKey_;
+    std::string written_;
+    std::string reply_;
+    std::size_t sent_ = 0;
+};
+
 }  // namespace
 
 // The stub server these tests talk to is a plain HTTP listener on localhost -
@@ -234,41 +334,6 @@ int main()
             respondJson(response, {{"ok", true}});
         }));
 
-    server.post("/v1/messaging/send",
-        stub([&](const http::Request& request, http::Response& response) {
-            (void)requireCaller(request);
-            const nlohmann::json body = nlohmann::json::parse(request.body);
-            const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
-            const nlohmann::json inner = nlohmann::json::parse(cms::unseal(sealed, m.serverSealing));
-            const std::string cls = inner.at("class").get<std::string>();
-            const std::string mailbox = inner.at("mailbox").get<std::string>();
-            const std::string deliveryId = inner.at("deliveryId").get<std::string>();
-
-            std::lock_guard<std::mutex> lock(m.mu);
-            const bool fresh = m.seenIds[mailbox].insert(deliveryId).second;
-            if (cls == "content" && fresh) {
-                // Consume the presented token: it must be one the mailbox owner
-                // registered (else the real server would reject the delivery).
-                const std::string hashB64
-                    = toBase64(deliveryTokenHash(fromBase64(inner.at("token").get<std::string>())));
-                CHECK(m.registered[mailbox].erase(hashB64) == 1);
-                if (mailbox == m.watchMailbox && m.singletons[mailbox].count(hashB64) != 0) {
-                    m.refillUsedPrepaid = true;
-                }
-            }
-            if (fresh) {
-                m.mailbox[mailbox].push_back({"m" + std::to_string(m.nextId++), cls,
-                    fromBase64(body.at("payload").get<std::string>())});
-            }
-            respondJson(response, {{"attemptId", "att" + std::to_string(m.nextId)}});
-        }));
-
-    server.get(R"(/v1/messaging/send/(.+))",
-        stub([&](const http::Request& request, http::Response& response) {
-            (void)requireCaller(request);
-            respondJson(response, {{"status", "delivered"}});
-        }));
-
     server.get("/v1/messaging/pending",
         stub([&](const http::Request& request, http::Response& response) {
             const std::string caller = requireCaller(request);
@@ -357,6 +422,20 @@ int main()
     alice.setFetchTransport(directDial);
     bob.setFetchTransport(directDial);
 
+    // Outgoing mail leaves the client itself, so the harness stands in for the
+    // dial as well: every delivery reaches the mock server above over the real
+    // frame, with no router and no waiting.
+    const Key ackSigning = Key::generateSigning();
+    const auto courierFor = [&m, &ackSigning]() {
+        return std::make_unique<OutboundCourier>([](const std::string&) { return true; },
+            [&m, &ackSigning](const std::string&,
+                std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
+                return std::make_shared<MockServerStream>(m, ackSigning);
+            });
+    };
+    alice.setOutboundCourier(courierFor());
+    bob.setOutboundCourier(courierFor());
+
     // Establish the contact both ways: Alice adds Bob from his invite (the only
     // way in - a bare fingerprint would need a server to say who it hosts), Bob
     // accepts. Now Alice holds a batch of Bob's tokens and Bob holds a batch of
@@ -413,10 +492,10 @@ int main()
     // way that reply can be delivered is by spending the prepaid token Alice embedded.
     // Without the prepaid mechanism sendTokenRefill would bail on the empty stash.
     bob.sync();
-    {
+    CHECK(waitFor([&m]() {
         std::lock_guard<std::mutex> lock(m.mu);
-        CHECK(m.refillUsedPrepaid);
-    }
+        return m.refillUsedPrepaid;
+    }));
 
     // Alice syncs: she applies Bob's fresh batch, so her stash is replenished.
     bool gotRefill = false;

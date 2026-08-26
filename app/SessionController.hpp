@@ -161,23 +161,10 @@ signals:
     // A real avatar became available for an identity (own or a contact): the GUI
     // feeds it to the shared avatar store. Empty data clears it.
     void avatarReady(const QString& fingerprint, const QByteArray& data);
-    void sendProgress(qint64 localId, int state);  // 1 = accepted by own server (grey)
+    void sendProgress(qint64 localId, int state);
     void sendResult(qint64 localId, bool ok, const QString& error);
-    // Our own server accepted this send and calls it by this delivery id: recorded
-    // so a send it later gives up on can be found again, on any page and after a
-    // restart.
-    void sendDeliveryId(qint64 localId, const QString& deliveryId);
-    // Our server is still trying to deliver this send, and is on this attempt of
-    // that many.
-    void sendWaiting(const QString& deliveryId, int attempts, int of);
-    // Our server carried a send as far as it could and gave up on it.
-    void sendUndelivered(const QString& deliveryId);
-    // Our server stopped tracking the send without a delivered-ack (retries
-    // exhausted / attempt forgotten): the message stays grey but its activity-panel
-    // operation must settle. Carries a short note.
-    void sendSettled(qint64 localId, const QString& note);
-    // The server's live federation phase for a still-pending send (queued / dialing
-    // / sending / awaiting-ack), so the activity panel shows real delivery progress.
+    // Where a send has got to (preparing / dialing / sending / retry n of m), so
+    // the activity panel and a retrying bubble show real progress.
     void sendPhase(qint64 localId, const QString& phase);
     // Upload progress for an outgoing file (bytes sent so far, total bytes).
     void uploadProgress(qint64 localId, qint64 sent, qint64 total);
@@ -279,9 +266,6 @@ private:
     void reconcileCallTimer();
     // Drains finished calls from the session and emits callLogged for each.
     void flushCallLog();
-    // Re-polls sends still in flight after their initial submit window so a late
-    // delivery (yellow) or failure (red) reaches the message; run each sync.
-    void reconcilePendingSends();
     // Starts an asynchronous contact add: snapshots the transport context on this
     // thread, then runs the slow federated card fetch on a detached background
     // thread (its own transport) so sync and the connection are never blocked. The
@@ -311,9 +295,6 @@ private:
     qint64 lastApprovalCheckMs_ = 0;
     // When this device last tried to register itself with the server (never = 0).
     qint64 lastRegisterAttemptMs_ = 0;
-    // Outgoing messages accepted by our server but not yet confirmed delivered:
-    // local message id -> server attempt id, reconciled on each sync.
-    std::map<qint64, std::string> pendingSends_;
     // Set true to abort in-flight downloads (teardown / session switch); the fetch
     // polls it to close a parked read and stop retrying, and queued tasks skip
     // emitting onto a tearing-down session.
@@ -680,6 +661,8 @@ public:
     // bubble); if that file is gone, emits resendFilePickRequested so the UI can
     // offer to pick a file to send instead.
     Q_INVOKABLE void resendFile(qint64 localId, const QString& e2eId);
+    // Sends a failed voice take again from the recording kept in the account.
+    Q_INVOKABLE void resendVoice(qint64 localId, const QString& e2eId);
     // A display name for any peer.
     Q_INVOKABLE QString peerName(const QString& id) const;
     // The contact's stored local display name, empty when unnamed (so a rename
@@ -990,7 +973,6 @@ private slots:
     void onDownloadStage(qint64 token, int stage);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void onSendResult(qint64 localId, bool ok, const QString& error);
-    void onSendSettled(qint64 localId, const QString& note);
     void onSendPhase(qint64 localId, const QString& phase);
     void onContactRequestSent(const QString& fingerprint, const QString& intro);
     void onSyncReachable(bool ok, const QString& reason);

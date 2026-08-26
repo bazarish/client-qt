@@ -5,6 +5,7 @@
 #include "CallMedia.hpp"
 #include "Client.hpp"
 #include "FileTransfer.hpp"
+#include "OutboundLeases.hpp"
 
 #include <bazarish/Bytes.hpp>
 #include <bazarish/Crypto.hpp>
@@ -26,6 +27,14 @@
 namespace bazarish::client {
 
 class AccountDb;
+
+// How a send reports itself back to whoever asked for it: where it has got to,
+// and how it ended. Both callbacks run on a delivery worker thread, not on the
+// thread that asked for the send, and the outcome one runs exactly once.
+struct DeliveryWatch {
+    OutboundCourier::PhaseFn onPhase;
+    OutboundCourier::OutcomeFn onOutcome;
+};
 
 // One button of an inline keyboard attached to a message. Carries a label and
 // exactly one action: a callback (sends a bot.callback when tapped) or a
@@ -335,7 +344,7 @@ public:
     // in the account like a picture.
     bool sendVoice(const std::string& peerFingerprint, const Bytes& opus, std::int64_t durationMs,
         const std::string& e2eId = {},
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
+        const DeliveryWatch& watch = {},
         const std::string& replyTo = {}, bool forwarded = false);
 
     // Stores a picture's bytes against the message that announced it.
@@ -573,8 +582,7 @@ public:
     // the original (a no-op reference if they do not hold it locally).
     bool sendMessage(const std::string& peerFingerprint, const std::string& text,
         const std::string& e2eId = {},
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, const std::string& replyTo = {},
+        const DeliveryWatch& watch = {}, const std::string& replyTo = {},
         bool forwarded = false);
 
     // Announces a file as a "file" content message: name, size and digest only.
@@ -583,28 +591,27 @@ public:
     // still be at this path, and this client online, when they do.
     bool sendFile(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& e2eId = {},
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, const std::string& replyTo = {});
+        const DeliveryWatch& watch = {}, const std::string& replyTo = {});
 
     // The same transfer, announced as a picture: a message whose point is that
     // it is shown. The recipient fetches it without being asked and draws it;
     // what it never becomes is a file card with a Save button.
     bool sendPicture(const std::string& peerFingerprint, const std::filesystem::path& path,
         const std::string& e2eId = {},
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {}, std::string* outAttemptId = nullptr,
+        const DeliveryWatch& watch = {},
         const std::string& replyTo = {});
 
     // Sends an interactive message: a "text" content message carrying an inline
     // keyboard the recipient can tap to send a bot.callback / bot.command back.
     void sendInteractive(const std::string& peerFingerprint, const std::string& text,
         const InlineKeyboard& keyboard, const std::string& e2eId = {},
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {});
+        const DeliveryWatch& watch = {});
 
     // Sends a command invocation (content type "bot.command") to a peer: a bot
     // dispatches on the command name. args is the raw argument string.
     void sendCommand(const std::string& peerFingerprint, const std::string& command,
         const std::string& args = {}, const std::string& e2eId = {},
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {});
+        const DeliveryWatch& watch = {});
 
     // Sends a button-press callback (content type "bot.callback") to a peer:
     // data is the tapped button's payload, refMessageId the keyboard message it
@@ -617,13 +624,12 @@ public:
     // (an empty keyboard removes any buttons). Both a bot updating its own
     // keyboard message on a callback and a user revising their own line use
     // this. A client applies it only to a message the sender actually sent.
-    // Delivery is tracked like a normal send (onAcceptedByOwnServer / outAttemptId
-    // / return value), so the edited message's bubble can reflect the edit's own
-    // delivery status instead of the original's.
+    // Delivery is tracked like a normal send (the watch and the return value), so
+    // the edited message's bubble can reflect the edit's own delivery status
+    // instead of the original's.
     bool sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
         const std::string& text, const InlineKeyboard& keyboard = {},
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr);
+        const DeliveryWatch& watch = {});
 
     // Deletes a previously sent message for everyone (content type "delete"): the
     // peer removes the message whose id is refMessageId from its transcript, with
@@ -687,36 +693,11 @@ public:
 
     void sendChatClear(const std::string& peerFingerprint);
 
-    // The outcome of a still-in-flight send, re-polled after the initial submit
-    // window. status is "pending", "delivered", "failed", or "unknown" (the
-    // server no longer knows the attempt - it expired or the server restarted).
-    struct AttemptOutcome {
-        std::string status;
-        std::string errorMessage;
-        // The server's live federation phase while still pending (empty otherwise).
-        std::string phase;
-    };
-    // Re-polls a previously submitted send by its server attempt id to resolve a
-    // delivery that was still pending when the send call returned. Never throws.
-    AttemptOutcome pollAttempt(const std::string& attemptId);
     // What this account names one envelope to a mailbox: keyed with its own seed
     // and bound to the mailbox, so the same message keeps its name on a resend and
     // the copies in two different mailboxes cannot be matched to each other. Pure:
     // the same account always answers the same way, including after a restore.
     std::string deliveryIdFor(const std::string& e2eId, const std::string& mailbox) const;
-    // Sends our server gave up on, by delivery e2eId, taken from it once: the
-    // caller marks them failed so the user can send them again when they choose.
-    // Never throws - a server that cannot answer is asked again next sync.
-    std::vector<std::string> takeUndelivered();
-    // Sends our server is still working on, by delivery e2eId, with the attempt
-    // it is on: what the sender's own message says about itself while it waits.
-    // Never throws.
-    struct WaitingSend {
-        std::string deliveryId;
-        int attempts = 0;
-        int of = 0;
-    };
-    std::vector<WaitingSend> waitingSends();
 
     // Asks the sender of an announced file to serve it, and downloads it to dest
     // when the sealed offer comes back. Returns at once: the transfer runs in the
@@ -810,6 +791,9 @@ public:
     // this; a running client always uses the direct-I2P one, because a relayed
     // lookup would tell our own server who is being added.
     void setFetchTransport(FetchTransport transport);
+    // Replaces the courier outgoing mail is carried by. Only a test harness sets
+    // this; a running client always dials the recipient over I2P itself.
+    void setOutboundCourier(std::unique_ptr<OutboundCourier> courier);
 
     void setAudioBackend(AudioSourceFactory sourceFactory, AudioSinkFactory sinkFactory);
 
@@ -911,11 +895,11 @@ private:
     // Sends a built inner content envelope to an established contact: handles
     // the first-reply bootstrap, seals to the peer and spends one token. Returns
     // whether delivery was confirmed within the poll window (see deliver()).
-    // waitForOutcome defaults to false: the call returns as soon as our own server
-    // accepts the envelope (grey is instant and the single worker thread is never
-    // blocked on the federation/ack round-trip), and the caller reconciles the
-    // delivered/failed outcome on a later sync. (The amber state arrives via the
-    // recipient's signed delivered-ack, so the old inline poll is obsolete.)
+    // waitForOutcome defaults to false: the call returns as soon as the delivery
+    // is handed to the courier (the thread that asked is never blocked on a
+    // round-trip over I2P), and the watch reports where it got to and how it
+    // ended. True runs the whole attempt schedule on the calling thread, for a
+    // send whose caller is the one that must answer for it.
     // establishOnFirstReply (default true): on the FIRST content we send to a peer
     // that wrote to us first, attach our bootstrap (routing + a reply-token batch)
     // and mark the contact accepted (issuedToThem). A read receipt passes false so
@@ -926,8 +910,7 @@ private:
     // for a token-refill reply, which the peer's request prepaid with a fresh token,
     // so the reply is deliverable even when we hold none of their tokens.
     bool sendContent(const std::string& peerFingerprint, nlohmann::json inner,
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, bool waitForOutcome = false,
+        const DeliveryWatch& watch = {}, bool waitForOutcome = false,
         bool establishOnFirstReply = true, const std::string& overrideToken = {});
 
     // Sends the user-owned I2P master to the account's other devices: a
@@ -1028,17 +1011,15 @@ private:
     // its peer, direction and connected time). Call before clearCall().
     void logCompletedCall(CallOutcome outcome);
 
-    // Seals a delivery envelope to the destination server's sealing key and
-    // hands it to our own server, which accepts it at once (store-and-forward)
-    // and federates in the background. onAcceptedByOwnServer fires once on that
-    // acceptance (the "grey" delivery state). Returns true if the server
-    // confirmed the recipient server stored it within the poll window (the
-    // "yellow" state), false if it was accepted but is still being delivered
-    // (stays grey - the server keeps retrying and a read receipt confirms it
-    // later). Throws on a terminal failure. waitForOutcome=false
-    // skips the poll entirely: it submits, fires the grey callback and returns
-    // false at once (used for large sends so the upload never adds a poll wait on
-    // top; the caller reconciles the outcome on a later sync).
+    // Seals a delivery envelope to the recipient destination's sealing key and
+    // hands it to this client's own courier, which dials that destination over
+    // I2P. Nothing passes through this account's own server: it is never asked to
+    // dial anyone, so it never learns who is written to.
+    // waitForOutcome=false returns as soon as the delivery is queued and reports
+    // through the watch; true runs the attempt schedule here and returns true when
+    // the recipient's server signed for the envelope, throwing when it refused or
+    // could not be reached - then the return value is the outcome and the watch's
+    // outcome callback is not used.
     // e2eId, when given, is the message this envelope carries: the delivery
     // id is derived from it, so sending the same message again is recognised as
     // the same delivery rather than stored twice. Empty for what carries no
@@ -1046,9 +1027,12 @@ private:
     bool deliver(const std::string& toDest, const Key& servingSealingKey,
         const std::string& deliveryClass, const std::string& mailbox,
         const std::optional<Bytes>& token, const Bytes& payload,
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
-        std::string* outAttemptId = nullptr, bool waitForOutcome = true,
+        const DeliveryWatch& watch = {}, bool waitForOutcome = true,
         const std::string& e2eId = {});
+    // The courier this account delivers through, built on first use (the router
+    // has to be up first). Thread-safe: sends come from the worker thread and
+    // from a file transfer's own thread.
+    OutboundCourier& outboundCourier();
     void persistContacts() const;
     void persistMeta() const;
     // Serializes the in-memory contacts into the on-disk JSON shape.
@@ -1059,6 +1043,19 @@ private:
     // The account's storage: one encrypted file holding keys, metadata, contacts
     // and blobs. Opened for the session's lifetime.
     std::unique_ptr<AccountDb> db_;
+    // This account's outbound delivery: the destination held for each
+    // correspondent, and the workers that carry the envelopes over I2P. Built on
+    // the first send, because the router has to be up before either can exist.
+    // Held behind a shared pointer because the session is movable and a mutex is
+    // not, and because the delivery workers must not have it moved out from under
+    // them. The courier is declared last so it stops (joining its workers) before
+    // the leases it dials through are destroyed.
+    struct Outbound {
+        std::mutex mutex;
+        std::unique_ptr<OutboundLeases> leases;
+        std::unique_ptr<OutboundCourier> courier;
+    };
+    std::shared_ptr<Outbound> outbound_ = std::make_shared<Outbound>();
     // A peer asked for a file we announced: encrypt it to a temp ciphertext, raise
     // a one-time destination, seal the offer back and serve until the window
     // closes. Runs on its own thread - building tunnels takes tens of seconds.
@@ -1067,8 +1064,7 @@ private:
     // is not for them.
     // Shared by sendFile and sendPicture: the announcement differs only in type.
     bool announceTransfer(const std::string& type, const std::string& peerFingerprint,
-        const std::filesystem::path& path, const std::string& e2eId,
-        const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
+        const std::filesystem::path& path, const std::string& e2eId, const DeliveryWatch& watch,
         const std::string& replyTo);
 
     void serveRequestedFile(const std::string& peerFingerprint, const std::string& fileId,

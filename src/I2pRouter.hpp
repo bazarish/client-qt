@@ -29,10 +29,11 @@ bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir);
 // a stopped (disabled) router honestly as not running.
 bazarish::i2p::Router* sharedI2pRouterIfRunning();
 
-// A warm, single-use throwaway destination from the process-wide pool kept ready
-// while the router runs, or nullptr when none is warm yet (the caller then builds a
-// fresh dest cold). Used for the direct federation fetch (card / resolve) so it does
-// not pay cold tunnel-build latency. The endpoint is used once and then dropped.
+// A warm throwaway destination from the process-wide pool kept ready while the
+// router runs, or nullptr when none is warm yet (the caller then builds a fresh
+// dest cold), so nothing pays cold tunnel-build latency on a user's action. A
+// federation fetch (card / resolve) drops it when the answer is in; an outgoing
+// message holds it for one correspondent's term. It is never given out twice.
 std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest();
 
 // The one outbound destination an account talks to its facade through, shared by

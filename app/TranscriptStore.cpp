@@ -315,14 +315,6 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
         return false;
     }
-    // What our server calls each send we are still waiting on. The delivery id is
-    // the server's name for an envelope and has nothing to do with the protocol id
-    // inside it, so a send it later reports as undelivered can only be matched back
-    // through this. Rows are dropped as soon as the send is settled.
-    if (!query.exec("CREATE TABLE IF NOT EXISTS sends ("
-                    "deliveryId TEXT PRIMARY KEY, localId INTEGER NOT NULL)")) {
-        return false;
-    }
     return true;
 }
 
@@ -522,19 +514,19 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
     return hits;
 }
 
-int TranscriptStore::failUnsentOnLoad(int sendingStatus, int failedStatus)
+int TranscriptStore::failUnsentOnLoad(
+    const int preparingStatus, const int deliveringStatus, const int failedStatus)
 {
     Query query(db_);
-    query.prepare("UPDATE messages SET status = ? WHERE outgoing = 1 AND status = ?");
+    query.prepare(
+        "UPDATE messages SET status = ? WHERE outgoing = 1 AND status IN (?, ?)");
     query.addBindValue(failedStatus);
-    query.addBindValue(sendingStatus);
+    query.addBindValue(preparingStatus);
+    query.addBindValue(deliveringStatus);
     if (!query.exec()) {
         return 0;
     }
-    const int changed = query.numRowsAffected();
-    if (changed > 0) {
-    }
-    return changed;
+    return query.numRowsAffected();
 }
 
 void TranscriptStore::markOutgoingReadUpTo(
@@ -605,44 +597,6 @@ void TranscriptStore::setHasPicture(const qint64 id, const bool has)
     query.addBindValue(id);
     if (!query.exec()) {
         bazarish::log::warn("could not record that a message holds a picture");
-    }
-}
-
-void TranscriptStore::noteDelivery(const QString& deliveryId, const qint64 localId)
-{
-    if (deliveryId.isEmpty()) {
-        return;
-    }
-    Query query(db_);
-    query.prepare("INSERT OR REPLACE INTO sends (deliveryId, localId) VALUES (?, ?)");
-    query.addBindValue(deliveryId);
-    query.addBindValue(localId);
-    if (!query.exec()) {
-        throw std::runtime_error("transcript: delivery id not recorded");
-    }
-}
-
-qint64 TranscriptStore::idForDelivery(const QString& deliveryId) const
-{
-    if (deliveryId.isEmpty()) {
-        return 0;
-    }
-    Query query(db_);
-    query.prepare("SELECT localId FROM sends WHERE deliveryId = ? LIMIT 1");
-    query.addBindValue(deliveryId);
-    if (query.exec() && query.next()) {
-        return query.value(0).toLongLong();
-    }
-    return 0;
-}
-
-void TranscriptStore::forgetDeliveries(const qint64 localId)
-{
-    Query query(db_);
-    query.prepare("DELETE FROM sends WHERE localId = ?");
-    query.addBindValue(localId);
-    if (!query.exec()) {
-        throw std::runtime_error("transcript: delivery ids not cleared");
     }
 }
 

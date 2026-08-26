@@ -132,8 +132,19 @@ int main(int argc, char** argv)
 
         CHECK(store.sourcePathFor(ids[0]).isEmpty());
 
-        // failUnsentOnLoad: only outgoing status-0 rows become 4 (indices 0,2,4).
-        CHECK(store.failUnsentOnLoad(0, 4) == 3);
+        // failUnsentOnLoad: an outgoing row a delivery was still carrying comes
+        // back failed, whether it was preparing its address (0) or already on its
+        // way (1). Incoming rows are left alone.
+        StoredMessage onItsWay;
+        onItsWay.peer = "carol";
+        onItsWay.outgoing = true;
+        onItsWay.type = "text";
+        onItsWay.text = "left mid-flight";
+        onItsWay.ts = 200;
+        onItsWay.orderKey = onItsWay.ts;
+        onItsWay.status = 1;
+        CHECK(store.append(onItsWay) > 0);
+        CHECK(store.failUnsentOnLoad(0, 1, 4) == 4);
         for (const StoredMessage& m : store.messagesFor("carol")) {
             CHECK(m.status == (m.outgoing ? 4 : 0));
         }
@@ -281,30 +292,6 @@ int main(int argc, char** argv)
         TranscriptStore again;
         CHECK(again.open("ver", sdb, QString()));
         CHECK(again.latestMessages("heidi", 10).size() == 1);
-    }
-
-    // --- The server's name for a send maps back to the row it belongs to ---
-    {
-        const QString sdb = QString::fromStdString((dir / "sends.db").string());
-        TranscriptStore store;
-        CHECK(store.open("sn", sdb, ""));
-        StoredMessage sent;
-        sent.peer = "grace";
-        sent.outgoing = true;
-        sent.type = "text";
-        sent.text = "waiting on the far end";
-        sent.e2eId = "proto-1";
-        sent.ts = 400;
-        sent.orderKey = sent.ts;
-        const qint64 sentId = store.append(sent);
-        // The delivery id is the server's and is nothing like the protocol id: a
-        // lookup by the wrong one is what silently found nothing.
-        store.noteDelivery("d1e2l3i4v5", sentId);
-        CHECK(store.idForDelivery("d1e2l3i4v5") == sentId);
-        CHECK(store.idForE2e("d1e2l3i4v5") == 0);
-        CHECK(store.idForDelivery("proto-1") == 0);
-        store.forgetDeliveries(sentId);
-        CHECK(store.idForDelivery("d1e2l3i4v5") == 0);
     }
 
     fs::remove_all(dir);

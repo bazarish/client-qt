@@ -234,30 +234,6 @@ int main()
             respondJson(response, {{"ok", true}});
         }));
 
-    server.post("/v1/messaging/send",
-        stub([&](const http::Request& request, http::Response& response) {
-            (void)requireCaller(request);
-            const nlohmann::json body = nlohmann::json::parse(request.body);
-            CHECK(body.at("toDest") == serverFp);
-            // The sealed envelope must unseal and carry the expected fields.
-            const Bytes sealed = fromBase64(body.at("sealed").get<std::string>());
-            const Bytes plain = cms::unseal(sealed, serverSealing);
-            const nlohmann::json inner = nlohmann::json::parse(plain.begin(), plain.end());
-            CHECK(inner.at("class") == "content");
-            CHECK(inner.at("mailbox") == bob.fingerprint());
-            CHECK(inner.at("deliveryId") == "msg-1");
-            CHECK(inner.contains("token"));
-            respondJson(response, {{"attemptId", "deadbeef"}});
-        }));
-
-    server.get("/v1/messaging/send/deadbeef",
-        stub([&](const http::Request& request, http::Response& response) {
-            (void)requireCaller(request);
-            respondJson(response,
-                {{"status", "failed"},
-                    {"error", {{"code", "STORAGE_FULL"}, {"message", "recipient full"}}}});
-        }));
-
     const int port = server.start();
     CHECK(port > 0);
 
@@ -350,19 +326,19 @@ int main()
         client.ack("blob1");
     }
 
-    // Build and submit a sealed message, then poll the typed failure.
+    // The envelope a delivery is carried in. It goes out over I2P from this
+    // client, not through this server, so what matters here is that it seals to
+    // the recipient destination's serving key and names the delivery.
     {
         const Key recipientSealing = Key::fromPublicDer(serverSealing.publicDer());
         const Bytes sealed = sealDeliveryEnvelope(
             "content", bob.fingerprint(), "msg-1", Bytes(32, 0x33), recipientSealing);
-        const Bytes payload = {0x10, 0x20, 0x30};
-        const std::string attemptId = client.submitSend(serverFp, sealed, payload);
-        CHECK(attemptId == "deadbeef");
-
-        const SendStatus status = client.pollSend(attemptId);
-        CHECK(status.status == "failed");
-        CHECK(status.errorCode.has_value());
-        CHECK(status.errorCode.value() == ErrorCode::eStorageFull);
+        const Bytes plain = cms::unseal(sealed, serverSealing);
+        const nlohmann::json inner = nlohmann::json::parse(plain.begin(), plain.end());
+        CHECK(inner.at("class") == "content");
+        CHECK(inner.at("mailbox") == bob.fingerprint());
+        CHECK(inner.at("deliveryId") == "msg-1");
+        CHECK(inner.contains("token"));
     }
 
     server.stop();

@@ -48,6 +48,7 @@ std::shared_ptr<bazarish::i2p::Endpoint> WarmDestPool::acquire()
             dest = std::move(ready_.front());
             ready_.pop_front();
         }
+        refillWanted_ = true;
     }
     cv_.notify_all();  // wake the warmer to refill
     return dest;
@@ -59,6 +60,7 @@ void WarmDestPool::flush()
         const std::lock_guard<std::mutex> lock(mutex_);
         ready_.clear();
         ++generation_;
+        refillWanted_ = true;
     }
     cv_.notify_all();
 }
@@ -126,7 +128,8 @@ void WarmDestPool::warmerLoop()
         // ready() polling responsive while still building in the background.
         std::unique_lock<std::mutex> lock(mutex_);
         cv_.wait_for(lock, std::chrono::milliseconds(building.empty() ? 1000 : 300),
-            [this]() { return !running_.load(); });
+            [this]() { return !running_.load() || refillWanted_; });
+        refillWanted_ = false;
     }
 }
 

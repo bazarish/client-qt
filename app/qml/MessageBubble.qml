@@ -134,18 +134,18 @@ Item {
 
     // Single round indicator, coloured by delivery status (see DeliveryStatus).
     function statusColor(s) {
-        if (s === DeliveryStatus.AtSenderServer) return Theme.textDim   // grey
+        if (s === DeliveryStatus.Delivering) return Theme.textDim       // grey
         if (s === DeliveryStatus.AtRecipientServer) return Theme.warn    // amber
         if (s === DeliveryStatus.Delivered) return Theme.success        // green
         if (s === DeliveryStatus.Failed) return Theme.danger            // red
-        return "transparent"                                            // sending (hollow ring)
+        return "transparent"                                            // preparing (hollow ring)
     }
     function statusText(s) {
-        if (s === DeliveryStatus.AtSenderServer) return "Received by your server"
+        if (s === DeliveryStatus.Delivering) return "Sending to their server…"
         if (s === DeliveryStatus.AtRecipientServer) return "Handed to the recipient's server"
         if (s === DeliveryStatus.Delivered) return "Delivered"
         if (s === DeliveryStatus.Failed) return "Failed to send"
-        return "Sending…"
+        return "Preparing an address to send from…"
     }
 
     Rectangle {
@@ -780,7 +780,7 @@ Item {
                     implicitHeight: 9
                     radius: width / 2
                     color: delegate.statusColor(model.status)
-                    border.width: model.status === DeliveryStatus.Sending ? 1 : 0
+                    border.width: model.status === DeliveryStatus.Preparing ? 1 : 0
                     border.color: Theme.textDim
                     HoverHandler { id: statusHover }
                     ToolTip.visible: statusHover.hovered
@@ -805,10 +805,10 @@ Item {
             }
 
             // What is happening to a send that has not gone through yet, in the same
-            // grey as the chip: a message our server is still retrying says so on
-            // itself, instead of looking like one nobody is carrying.
+            // grey as the chip: a message being tried again says so on itself,
+            // instead of looking like one nobody is carrying.
             Label {
-                visible: model.outgoing && model.status === DeliveryStatus.AtSenderServer
+                visible: model.outgoing && model.status === DeliveryStatus.Delivering
                     && model.error && model.error.length > 0
                 Layout.fillWidth: true
                 Layout.topMargin: 2
@@ -833,11 +833,11 @@ Item {
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
                 }
-                // Resend covers text and files.
+                // Resend covers everything this device can send again by itself.
                 Label {
                     id: resendLink
                     visible: model.type === "text" || model.type === "file"
-                        || model.type === "photo" || model.type === "audio"
+                        || model.type === "image" || model.type === "voice"
                     text: "Resend"
                     color: Theme.accent
                     font.pixelSize: Theme.fontSmall
@@ -848,6 +848,8 @@ Item {
                             if (model.type === "text") {
                                 delegate.session.resendText(
                                     model.msgId, model.text, model.e2eId)
+                            } else if (model.type === "voice") {
+                                delegate.session.resendVoice(model.msgId, model.e2eId)
                             } else {
                                 delegate.session.resendFile(model.msgId, model.e2eId)
                             }

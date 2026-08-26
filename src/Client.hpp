@@ -97,17 +97,6 @@ struct PortalInfo {
     bool captcha = true;
 };
 
-// Outcome of a send attempt. status is "pending", "delivered" or "failed";
-// on failure errorCode carries the typed reason when recognized.
-struct SendStatus {
-    std::string status;
-    // The server's live federation phase while pending ("queued", "dialing",
-    // "connected", "sending", "awaiting-ack"); empty when not reported / terminal.
-    std::string phase;
-    std::optional<ErrorCode> errorCode;
-    std::string errorMessage;
-};
-
 // The opaque result of one federation fetch (card / alias resolve), as seen by
 // the client: the served reply is `ok` with a `sealed` body, or `ok == false`
 // with a typed errorCode (CARD_UNKNOWN / ALIAS_UNKNOWN). The transport is
@@ -270,17 +259,6 @@ public:
     void registerTokenHashes(const std::vector<Bytes>& hashes);
     void deleteTokenHashes(const std::vector<Bytes>& hashes);
     std::vector<PendingEntry> listPending();
-    // Sends our server carried as far as it could and then gave up on, by delivery
-    // deliveryId. Reported once: taking one is acknowledged with clearUndelivered.
-    // A send this server is still trying to deliver, with how far along it is.
-    struct OutboundSend {
-        std::string deliveryId;
-        int attempts = 0;
-        int of = 0;
-    };
-    std::vector<OutboundSend> listOutbound();
-    std::vector<std::string> listUndelivered();
-    void clearUndelivered(const std::string& deliveryId);
     // Asks the server to hold the request until something arrives for this client
     // (or waitSeconds passes), and returns what is pending then. Throws with a 404
     // when the server has no event face, so the caller can fall back to polling.
@@ -291,19 +269,12 @@ public:
     // this runs before the client has any transport at all.
     std::vector<Bytes> fetchReseed();
     void ack(const std::string& blobId);
-    // deliveryId is the delivery id (also sealed inside the envelope): sent in the
-    // clear so our own server can correlate the recipient's signed delivered-ack
-    // back to this attempt (the amber state).
     // Writes a blob into this account's own mailbox for its other devices. The
     // request's signature is the whole admission check: the caller owns the
     // mailbox, so there is no token to spend, no destination to dial and nothing
     // to federate - and it stays out of the tokenless budget, which is there to
     // bound strangers.
     void submitSelf(const std::string& deliveryId, const Bytes& payload);
-
-    std::string submitSend(const std::string& toDest, const Bytes& sealed, const Bytes& payload,
-        const std::string& deliveryId = {});
-    SendStatus pollSend(const std::string& attemptId);
 
 private:
     const Identity identity_;

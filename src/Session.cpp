@@ -1277,94 +1277,55 @@ std::string Session::deliveryIdFor(
 
 bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     const std::string& kind, const std::string& mailbox, const std::optional<Bytes>& token,
-    const Bytes& payload, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
-    std::string* outAttemptId, bool waitForOutcome, const std::string& e2eId)
+    const Bytes& payload, const DeliveryWatch& watch, const bool waitForOutcome,
+    const std::string& e2eId)
 {
     // The envelope is sealed to the recipient destination's serving sealing key,
     // so the routing metadata is readable only by the server operating that
     // destination.
     const std::string deliveryId = deliveryIdFor(e2eId, mailbox);
-    const Bytes sealed = sealDeliveryEnvelope(kind, mailbox, deliveryId, token, servingSealingKey);
-
-    // Hand the envelope to our own server. With store-and-forward it accepts the
-    // envelope at once and federates in the background (retrying a recipient
-    // whose I2P leaseset is still publishing), so this returns quickly. We poll
-    // the attempt for the outcome, but only for a bounded window: a delivery
-    // still in flight when the window passes is left "at our server" (grey) - the
-    // server keeps trying and the recipient's read receipt confirms it (green) -
-    // rather than blocking the caller for the whole federation.
-    // The delivery id is passed in the clear too, so our server can match the
-    // recipient server's signed delivered-ack (the amber state).
-    const std::string attemptId = client_->submitSend(toDest, sealed, payload, deliveryId);
-    if (outAttemptId != nullptr) {
-        *outAttemptId = attemptId;  // so the caller can reconcile a late outcome
-    }
-    if (onAcceptedByOwnServer) {
-        // Grey: our own server accepted the envelope. The delivery id goes with it -
-        // it is what the server calls this send, and the only name it has to report
-        // one it later gives up on.
-        onAcceptedByOwnServer(deliveryId);
-    }
+    OutboundCourier::Task task;
+    task.toDest = toDest;
+    task.sealed = sealDeliveryEnvelope(kind, mailbox, deliveryId, token, servingSealingKey);
+    task.payload = payload;
+    task.deliveryId = deliveryId;
+    task.onPhase = watch.onPhase;
+    task.onOutcome = watch.onOutcome;
+    OutboundCourier& courier = outboundCourier();
     if (!waitForOutcome) {
-        // The caller does not want to block on the outcome (e.g. a file send,
-        // where the upload already took the time budget): leave it grey and let
-        // the next sync reconcile the attempt to yellow/green/red.
+        courier.submit(std::move(task));
         return false;
     }
-    // Bounded by the clock, not by a poll count: over I2P one poll is seconds,
-    // not the 100 ms a request count silently assumes, and the "bounded" window
-    // becomes minutes of a caller waiting on a best-effort outcome.
-    constexpr int kOutcomeWaitSeconds = 15;
-    constexpr int kOutcomePollMillis = 100;
-    const std::chrono::steady_clock::time_point deadline
-        = std::chrono::steady_clock::now() + std::chrono::seconds(kOutcomeWaitSeconds);
-    while (std::chrono::steady_clock::now() < deadline) {
-        try {
-            const SendStatus status = client_->pollSend(attemptId);
-            if (status.status == "delivered") {
-                return true;  // recipient server stored it: yellow
-            }
-            if (status.status == "failed") {
-                // Typed, so a caller can tell a refusal it should repeat (the
-                // recipient's address is taking too many contact requests just
-                // now) from one it should not.
-                throw ApiError(status.errorCode, 0,
-                    status.errorMessage.empty() ? std::string("delivery failed")
-                                                : status.errorMessage);
-            }
-            if (status.status == "unconfirmed") {
-                // Our server gave up trying to confirm delivery, but the envelope
-                // may have been stored (only its ack was lost): leave it grey, not
-                // failed. A read receipt later confirms it (green).
-                return false;
-            }
-            // "pending": still being delivered server-side; keep waiting.
-        } catch (const ApiError&) {
-            // The attempt is momentarily unpollable (e.g. our own server restarted
-            // and forgot it). The envelope was accepted; leave it grey rather than
-            // failing the message.
-            return false;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(kOutcomePollMillis));
+    const OutboundCourier::Outcome outcome = courier.deliverNow(task);
+    if (!outcome.stored) {
+        // Typed, so a caller can tell a refusal it should repeat (the recipient's
+        // address is taking too many contact requests just now) from one it
+        // should not.
+        throw ApiError(bazarish::errorCodeFromString(outcome.errorCode), 0,
+            outcome.errorMessage.empty() ? std::string("delivery failed") : outcome.errorMessage);
     }
-    return false;  // accepted, still being delivered in the background
+    return true;
 }
 
-Session::AttemptOutcome Session::pollAttempt(const std::string& attemptId)
+OutboundCourier& Session::outboundCourier()
 {
-    try {
-        const SendStatus status = client_->pollSend(attemptId);
-        return AttemptOutcome{status.status, status.errorMessage, status.phase};
-    } catch (const ApiError& error) {
-        // A definite non-200 response means the server no longer knows this
-        // attempt (it expired or the server restarted): report "unknown" so the
-        // caller stops tracking it. A transport failure with no HTTP status is
-        // transient - report "pending" so the next sync retries.
-        if (error.httpStatus != 0) {
-            return AttemptOutcome{"unknown", error.what(), {}};
-        }
-        return AttemptOutcome{"pending", error.what(), {}};
+    const std::lock_guard<std::mutex> lock(outbound_->mutex);
+    if (!outbound_->courier) {
+        outbound_->leases = std::make_unique<OutboundLeases>(i2pRouter(), destinationOwner());
+        OutboundLeases& leases = *outbound_->leases;
+        outbound_->courier = std::make_unique<OutboundCourier>(
+            [&leases](const std::string& toDest) { return leases.prepare(toDest); },
+            [&leases](const std::string& toDest, const std::chrono::seconds timeout) {
+                return leases.openStream(toDest, timeout);
+            });
     }
+    return *outbound_->courier;
+}
+
+void Session::setOutboundCourier(std::unique_ptr<OutboundCourier> courier)
+{
+    const std::lock_guard<std::mutex> lock(outbound_->mutex);
+    outbound_->courier = std::move(courier);
 }
 
 void Session::setFetchTransport(FetchTransport transport)
@@ -1683,8 +1644,8 @@ void Session::acceptContactRequest(const std::string& peerFingerprint)
 }
 
 bool Session::sendMessage(const std::string& peerFingerprint, const std::string& text,
-    const std::string& e2eId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
-    std::string* outAttemptId, const std::string& replyTo, const bool forwarded)
+    const std::string& e2eId, const DeliveryWatch& watch, const std::string& replyTo,
+    const bool forwarded)
 {
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -1711,20 +1672,18 @@ bool Session::sendMessage(const std::string& peerFingerprint, const std::string&
     } catch (const std::exception& error) {
         bazarish::log::warn("could not echo a sent message to our own devices: {}", error.what());
     }
-    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+    return sendContent(peerFingerprint, std::move(inner), watch);
 }
 
 bool Session::sendFile(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& e2eId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
-    std::string* outAttemptId, const std::string& replyTo)
+    const std::string& e2eId, const DeliveryWatch& watch, const std::string& replyTo)
 {
     return announceTransfer(
-        kTypeFile, peerFingerprint, path, e2eId, onAcceptedByOwnServer, outAttemptId, replyTo);
+        kTypeFile, peerFingerprint, path, e2eId, watch, replyTo);
 }
 
 bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& path,
-    const std::string& e2eId, const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer,
-    std::string* outAttemptId, const std::string& replyTo)
+    const std::string& e2eId, const DeliveryWatch& watch, const std::string& replyTo)
 {
     // A picture rides inside the message. It is small by construction - the
     // composer shrinks it to well under the protocol's message limit, base64 and
@@ -1761,13 +1720,12 @@ bool Session::sendPicture(const std::string& peerFingerprint, const fs::path& pa
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
-    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+    return sendContent(peerFingerprint, std::move(inner), watch);
 }
 
 bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
     const std::int64_t durationMs, const std::string& e2eId,
-    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
-    const std::string& replyTo, const bool forwarded)
+    const DeliveryWatch& watch, const std::string& replyTo, const bool forwarded)
 {
     if (opus.empty()) {
         throw std::runtime_error("there is nothing recorded to send");
@@ -1797,7 +1755,7 @@ bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
-    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+    return sendContent(peerFingerprint, std::move(inner), watch);
 }
 
 // The message that announces a transfer. Only its type differs between a file
@@ -1805,8 +1763,7 @@ bool Session::sendVoice(const std::string& peerFingerprint, const Bytes& opus,
 // what the other side does when they arrive.
 bool Session::announceTransfer(const std::string& type, const std::string& peerFingerprint,
     const fs::path& path, const std::string& e2eId,
-    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
-    const std::string& replyTo)
+    const DeliveryWatch& watch, const std::string& replyTo)
 {
     const std::string id = e2eId.empty() ? toHex(randomBytes(8)) : e2eId;
     // Only metadata travels. The digest is over the plaintext, so the recipient
@@ -1834,12 +1791,12 @@ bool Session::announceTransfer(const std::string& type, const std::string& peerF
     if (!replyTo.empty()) {
         inner["replyTo"] = replyTo;
     }
-    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+    return sendContent(peerFingerprint, std::move(inner), watch);
 }
 
 void Session::sendInteractive(const std::string& peerFingerprint, const std::string& text,
     const InlineKeyboard& keyboard, const std::string& e2eId,
-    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer)
+    const DeliveryWatch& watch)
 {
     // An interactive message is a "text" message that additionally carries an
     // inline keyboard. A recipient that does not understand keyboards still
@@ -1853,12 +1810,12 @@ void Session::sendInteractive(const std::string& peerFingerprint, const std::str
         {"text", text},
         {"keyboard", keyboardToJson(keyboard)},
     };
-    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+    sendContent(peerFingerprint, std::move(inner), watch);
 }
 
 void Session::sendCommand(const std::string& peerFingerprint, const std::string& command,
     const std::string& args, const std::string& e2eId,
-    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer)
+    const DeliveryWatch& watch)
 {
     nlohmann::json inner = {
         {"v", kMessageFormatVersion},
@@ -1869,7 +1826,7 @@ void Session::sendCommand(const std::string& peerFingerprint, const std::string&
         {"command", command},
         {"args", args},
     };
-    sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer);
+    sendContent(peerFingerprint, std::move(inner), watch);
 }
 
 void Session::sendCallback(
@@ -1889,7 +1846,7 @@ void Session::sendCallback(
 
 bool Session::sendEdit(const std::string& peerFingerprint, const std::string& refMessageId,
     const std::string& text, const InlineKeyboard& keyboard,
-    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId)
+    const DeliveryWatch& watch)
 {
     // An edit fully replaces the target's text and keyboard; the keyboard is
     // always carried (an empty array clears it) so the shape is unambiguous.
@@ -1903,7 +1860,7 @@ bool Session::sendEdit(const std::string& peerFingerprint, const std::string& re
         {"text", text},
         {"keyboard", keyboardToJson(keyboard)},
     };
-    return sendContent(peerFingerprint, std::move(inner), onAcceptedByOwnServer, outAttemptId);
+    return sendContent(peerFingerprint, std::move(inner), watch);
 }
 
 void Session::sendDelete(const std::string& peerFingerprint, const std::string& refMessageId)
@@ -1991,7 +1948,7 @@ Session::RoutingPushResult Session::pushRoutingToContacts(
         try {
             // The routing block rides on every message; this one carries nothing
             // else, so it is a routing update and nothing more.
-            sendContent(peer, std::move(inner), {}, nullptr, false,
+            sendContent(peer, std::move(inner), {}, false,
                 /*establishOnFirstReply=*/false);
             ++result.told;
         } catch (const std::exception& error) {
@@ -2023,7 +1980,7 @@ void Session::sendReceipt(const std::string& peerFingerprint, const std::string&
         {"sentAt", nowMillis()},
         {"ref", refMessageId},
     };
-    sendContent(peerFingerprint, std::move(inner), {}, nullptr, false,
+    sendContent(peerFingerprint, std::move(inner), {}, false,
         /*establishOnFirstReply=*/false);
 }
 
@@ -2311,8 +2268,8 @@ void Session::startAnnouncedFetch(const FileOffer& offer, const std::string& pee
 }
 
 bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inner,
-    const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer, std::string* outAttemptId,
-    bool waitForOutcome, bool establishOnFirstReply, const std::string& overrideToken)
+    const DeliveryWatch& watch, bool waitForOutcome, bool establishOnFirstReply,
+    const std::string& overrideToken)
 {
     const auto found = contacts_.find(peerFingerprint);
     if (found == contacts_.end()) {
@@ -2403,20 +2360,23 @@ bool Session::sendContent(const std::string& peerFingerprint, nlohmann::json inn
     const Key peerServingKey = Key::fromPublicDer(fromBase64(contact.servingSealingB64));
 
     const std::string token = useOverrideToken ? overrideToken : contact.sendTokens.back();
-    // The message's own id goes down with it: the envelope is named after it, so
-    // sending this message again is the same delivery rather than a second one.
-    const bool delivered = deliver(contact.dest, peerServingKey, "content", peerFingerprint,
-        fromBase64(token), payload, onAcceptedByOwnServer, outAttemptId, waitForOutcome,
-        inner.value("id", std::string()));
-
-    // Spend the token: it is now committed to this message (consumed by the
-    // recipient on delivery, or in flight while the server keeps delivering).
-    // deliver() throws on a terminal failure, so a thrown send never spends one.
+    // Spent before the envelope leaves, not after it lands. A send this client
+    // gives up on may still have been stored by the recipient - only its
+    // confirmation was lost - and a token that may already have been consumed
+    // there must never be offered to a second message, or that message is the one
+    // that fails. Resending THIS message is free either way: the delivery id is
+    // derived from the message, so the recipient's server recognises the repeat
+    // and spends nothing for it.
     // A caller-supplied token is not from our stash, so the stash is left untouched.
     if (!useOverrideToken) {
         contact.sendTokens.pop_back();
         persistContacts();
     }
+
+    // The message's own id goes down with it: the envelope is named after it, so
+    // sending this message again is the same delivery rather than a second one.
+    const bool delivered = deliver(contact.dest, peerServingKey, "content", peerFingerprint,
+        fromBase64(token), payload, watch, waitForOutcome, inner.value("id", std::string()));
 
     // If this send is the first reply that just established the reverse direction
     // (we accepted their request), share our avatar now - consent-gated, exactly
@@ -2455,37 +2415,6 @@ void Session::persistSentFiles() const
     db_->putText("sent-files", stored.dump());
 }
 
-
-std::vector<Session::WaitingSend> Session::waitingSends()
-{
-    std::vector<WaitingSend> waiting;
-    try {
-        for (const Client::OutboundSend& entry : client_->listOutbound()) {
-            waiting.push_back(WaitingSend{entry.deliveryId, entry.attempts, entry.of});
-        }
-    } catch (const std::exception& error) {
-        // Only what a message says about itself while it waits; asked again next
-        // sync.
-        bazarish::log::warn("outbound sends not read: {}", error.what());
-    }
-    return waiting;
-}
-
-std::vector<std::string> Session::takeUndelivered()
-{
-    std::vector<std::string> ids;
-    try {
-        ids = client_->listUndelivered();
-        for (const std::string& e2eId : ids) {
-            client_->clearUndelivered(e2eId);
-        }
-    } catch (const std::exception& error) {
-        // Nothing is lost by asking again: the server keeps them until they are
-        // taken, and a message already taken is not reported twice.
-        bazarish::log::warn("undelivered sends not read: {}", error.what());
-    }
-    return ids;
-}
 
 std::vector<IncomingMessage> Session::sync(bool autoAckSurfaced)
 {
@@ -2982,7 +2911,7 @@ void Session::sendTokenRefill(const std::string& peerFingerprint, const std::str
             {{"dest", myDest_}, {"servingKey", myServingKeyB64_}, {"view", sharedView()}}},
     };
     if (!prepaidToken.empty() || !contact.sendTokens.empty()) {
-        sendContent(peerFingerprint, std::move(inner), {}, nullptr, false, true, prepaidToken);
+        sendContent(peerFingerprint, std::move(inner), {}, false, true, prepaidToken);
         return;
     }
     // Neither side has capacity for the other: their device asked because it had

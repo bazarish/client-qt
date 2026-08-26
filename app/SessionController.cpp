@@ -246,32 +246,59 @@ QString humanBytes(qint64 bytes)
         + QString::fromLatin1(kUnits[unit]);
 }
 
-// Maps a server-reported federation phase to a human-readable activity status.
-QString humanFederationPhase(const QString& phase)
+// Maps a delivery phase reported by the courier to a human-readable activity
+// status.
+QString humanDeliveryPhase(const QString& phase)
 {
-    if (phase == QStringLiteral("queued")) {
-        return QStringLiteral("Queued at your server…");
+    if (phase == QStringLiteral("preparing")) {
+        // Making the one-time address this correspondent's mail leaves from, and
+        // waiting for its tunnels when it had to be built cold.
+        return QStringLiteral("Preparing an address to send from…");
     }
     if (phase == QStringLiteral("dialing")) {
-        // The server is finding the recipient's server on I2P and opening a
-        // stream to it. Its own tunnels are usually already up, so naming this
-        // "building tunnels" described the rare case and misread the common one.
         return QStringLiteral("Reaching the recipient's server…");
-    }
-    if (phase == QStringLiteral("connected")) {
-        return QStringLiteral("Connected, sending…");
     }
     if (phase == QStringLiteral("sending")) {
         return QStringLiteral("Sending over I2P…");
     }
-    if (phase == QStringLiteral("awaiting-ack")) {
-        return QStringLiteral("Awaiting delivery confirmation…");
-    }
     if (phase.startsWith(QStringLiteral("retry"))) {
-        // "retry 3/12" -> "Retrying delivery (3/12)…"
-        return QStringLiteral("Retrying delivery (") + phase.mid(6).trimmed() + QStringLiteral(")…");
+        // "retry 3/4" -> "Trying again (3 of 4)…"
+        const QStringList parts = phase.mid(6).trimmed().split(QChar('/'));
+        if (parts.size() == 2) {
+            return QStringLiteral("Trying again (") + parts.at(0) + QStringLiteral(" of ")
+                + parts.at(1) + QStringLiteral(")…");
+        }
     }
     return phase;
+}
+
+// How a send reports itself back to the model. Both callbacks arrive on a
+// delivery worker thread, so they only emit: the signals are queued onto the
+// thread that owns the conversation.
+bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint64 localId)
+{
+    bazarish::client::DeliveryWatch watch;
+    watch.onPhase = [worker, localId](const std::string& phase) {
+        if (phase == bazarish::client::kPhaseDialing) {
+            // Past the local part: from here the message is on its way to the
+            // recipient's server, which is what the solid grey chip says.
+            emit worker->sendProgress(localId, DeliveryStatus::Delivering);
+        }
+        emit worker->sendPhase(localId, QString::fromStdString(phase));
+    };
+    watch.onOutcome
+        = [worker, localId](const bazarish::client::OutboundCourier::Outcome& outcome) {
+              if (outcome.stored) {
+                  emit worker->sendProgress(localId, DeliveryStatus::AtRecipientServer);
+                  emit worker->sendResult(localId, true, {});
+                  return;
+              }
+              emit worker->sendResult(localId, false,
+                  QString::fromStdString(outcome.errorMessage.empty()
+                          ? std::string("the recipient's server could not be reached")
+                          : outcome.errorMessage));
+          };
+    return watch;
 }
 
 // A received message whose sentAt is within this window of arrival is placed in
@@ -734,11 +761,8 @@ void SessionWorker::sync()
         // undiagnosable, and the reason is often nothing to do with reachability.
         bazarish::log::warn("sync failed: {}", error.what());
         emit syncReachable(false, QString::fromUtf8(error.what()));
-        // Fetching the mailbox and asking after a send are separate requests, and
-        // one failing says nothing about the other. Leaving this out kept every
-        // message this account had sent at "at your server" for as long as the
-        // fetch kept failing - long after the recipient's server had it.
-        reconcilePendingSends();
+        // A send does not go through this server and does not care that a mailbox
+        // fetch failed: it is already on its way over I2P and reports for itself.
         return;  // transient (server momentarily unreachable); next tick retries
     }
     // A server that has taken the account but not been told to serve it answers
@@ -845,18 +869,6 @@ void SessionWorker::sync()
     }
     emitContacts();
     emitFacadeInfo();
-    // Resolve any sends still in flight from earlier (late delivery or failure).
-    reconcilePendingSends();
-    // Sends our server is still working on: the message says which attempt it is
-    // on rather than sitting there looking ignored.
-    for (const Session::WaitingSend& waiting : session_->waitingSends()) {
-        emit sendWaiting(QString::fromStdString(waiting.deliveryId), waiting.attempts, waiting.of);
-    }
-    // Sends our server carried as far as it could and then gave up on: shown as
-    // failed, with the reason, so the user can send them again when they choose.
-    for (const std::string& deliveryId : session_->takeUndelivered()) {
-        emit sendUndelivered(QString::fromStdString(deliveryId));
-    }
     // Advance call ring/answer timeouts so a call never rings forever, then flush any
     // finished-call chat-history entries (peer hang-ups handled during the pull above,
     // timeouts here).
@@ -865,51 +877,6 @@ void SessionWorker::sync()
     // Surface any call state change picked up this sync (a new invite, the peer
     // accepting, or a hang-up) and refresh live media stats.
     emitCallState();
-}
-
-void SessionWorker::reconcilePendingSends()
-{
-    if (!session_ || pendingSends_.empty()) {
-        return;
-    }
-    std::vector<qint64> resolved;
-    for (const auto& [localId, attemptId] : pendingSends_) {
-        bazarish::client::Session::AttemptOutcome outcome;
-        try {
-            outcome = session_->pollAttempt(attemptId);
-        } catch (const std::exception& error) {
-            // The server did not answer this poll. The attempt is still live on it,
-            // so keep the message where it is and ask again next round.
-            bazarish::log::warn("send status unavailable: {}", error.what());
-            continue;
-        }
-        if (outcome.status == "delivered") {
-            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);  // grey -> yellow
-            resolved.push_back(localId);
-        } else if (outcome.status == "pending" && !outcome.phase.empty()) {
-            // Still in flight: surface the server's real federation phase so the
-            // activity panel reads as progress, not a frozen "sending".
-            emit sendPhase(localId, QString::fromStdString(outcome.phase));
-        } else if (outcome.status == "failed") {
-            // grey -> red, with the reason attached to the message.
-            emit sendResult(localId, false,
-                QString::fromStdString(outcome.errorMessage.empty() ? std::string("delivery failed")
-                                                                     : outcome.errorMessage));
-            resolved.push_back(localId);
-        } else if (outcome.status == "unconfirmed" || outcome.status == "unknown") {
-            // "unconfirmed": our server exhausted its retries without confirming
-            // delivery, but the envelope may still have been stored (only its ack
-            // was lost) - so this is NOT a failure. "unknown": the server forgot
-            // the attempt (expired or it restarted). Either way stop tracking it;
-            // the message stays grey and a read receipt can still turn it green.
-            emit sendSettled(localId, QString::fromStdString(outcome.status));
-            resolved.push_back(localId);
-        }
-        // "pending": still in flight; keep it for the next sync.
-    }
-    for (const qint64 localId : resolved) {
-        pendingSends_.erase(localId);
-    }
 }
 
 void SessionWorker::emitCallState()
@@ -1020,27 +987,11 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
     const QString& e2eId, const QString& replyTo, const bool forwarded)
 {
     try {
-        // The callback fires "grey" the instant our own server accepts the
-        // envelope; "delivered" (yellow) only when the server confirms the
-        // recipient stored it. A still-pending delivery leaves the message grey
-        // and is reconciled on later syncs via its attempt id.
-        std::string attemptId;
-        const bool delivered = session_->sendMessage(peer.toStdString(), text.toStdString(),
-            e2eId.toStdString(),
-            [this, localId](const std::string& deliveryId) {
-                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
-            },
-            &attemptId, replyTo.toStdString(), forwarded);
-        if (delivered) {
-            pendingSends_.erase(localId);
-            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
-        }
-        emit sendResult(localId, true, {});
+        // Returns as soon as the delivery is queued: the watch reports where it
+        // gets to and how it ends, from the courier's own thread.
+        session_->sendMessage(peer.toStdString(), text.toStdString(), e2eId.toStdString(),
+            watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
-        pendingSends_.erase(localId);
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
 }
@@ -1049,23 +1000,9 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
     const QString& e2eId, const QString& replyTo)
 {
     try {
-        std::string attemptId;
-        const bool delivered = session_->sendFile(peer.toStdString(), localPath.toStdString(),
-            e2eId.toStdString(),
-            [this, localId](const std::string& deliveryId) {
-                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
-            },
-            &attemptId, replyTo.toStdString());
-        if (delivered) {
-            pendingSends_.erase(localId);
-            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
-        }
-        emit sendResult(localId, true, {});
+        session_->sendFile(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
+            watchFor(this, localId), replyTo.toStdString());
     } catch (const std::exception& e) {
-        pendingSends_.erase(localId);
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
 }
@@ -1076,24 +1013,10 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
     const QString& replyTo, const bool forwarded)
 {
     try {
-        std::string attemptId;
         const Bytes audio(opus.begin(), opus.end());
-        const bool delivered = session_->sendVoice(peer.toStdString(), audio, durationMs,
-            e2eId.toStdString(),
-            [this, localId](const std::string& deliveryId) {
-                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
-            },
-            &attemptId, replyTo.toStdString(), forwarded);
-        if (delivered) {
-            pendingSends_.erase(localId);
-            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
-        }
-        emit sendResult(localId, true, {});
+        session_->sendVoice(peer.toStdString(), audio, durationMs, e2eId.toStdString(),
+            watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
-        pendingSends_.erase(localId);
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
 }
@@ -1104,23 +1027,9 @@ void SessionWorker::sendPicture(const QString& peer, const QString& localPath, q
     const QString& e2eId, const QString& replyTo)
 {
     try {
-        std::string attemptId;
-        const bool delivered = session_->sendPicture(peer.toStdString(), localPath.toStdString(),
-            e2eId.toStdString(),
-            [this, localId](const std::string& deliveryId) {
-                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
-            },
-            &attemptId, replyTo.toStdString());
-        if (delivered) {
-            pendingSends_.erase(localId);
-            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
-        }
-        emit sendResult(localId, true, {});
+        session_->sendPicture(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
+            watchFor(this, localId), replyTo.toStdString());
     } catch (const std::exception& e) {
-        pendingSends_.erase(localId);
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
 }
@@ -1193,26 +1102,10 @@ void SessionWorker::sendEdit(
     try {
         // A user edit replaces text only (the empty keyboard carries nothing, as
         // user messages have none). It is delivery-tracked exactly like a fresh
-        // send so the edited bubble's status reflects the edit, not the original:
-        // grey on our server's accept, yellow on the recipient server's confirm,
-        // and reconciled later via the attempt id.
-        std::string attemptId;
-        const bool delivered = session_->sendEdit(peer.toStdString(), refId.toStdString(),
-            text.toStdString(), {},
-            [this, localId](const std::string& deliveryId) {
-                emit sendProgress(localId, DeliveryStatus::AtSenderServer);
-                emit sendDeliveryId(localId, QString::fromStdString(deliveryId));
-            },
-            &attemptId);
-        if (delivered) {
-            pendingSends_.erase(localId);
-            emit sendProgress(localId, DeliveryStatus::AtRecipientServer);
-        } else if (!attemptId.empty()) {
-            pendingSends_[localId] = attemptId;
-        }
-        emit sendResult(localId, true, {});
+        // send so the edited bubble's status reflects the edit, not the original.
+        session_->sendEdit(peer.toStdString(), refId.toStdString(), text.toStdString(), {},
+            watchFor(this, localId));
     } catch (const std::exception& e) {
-        pendingSends_.erase(localId);
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
 }
@@ -2040,28 +1933,6 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
     connect(worker_, &SessionWorker::uploadProgress, this, &SessionController::onUploadProgress);
     connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
-    connect(worker_, &SessionWorker::sendDeliveryId, this,
-        [this](const qint64 localId, const QString& deliveryId) {
-            store_.noteDelivery(deliveryId, localId);
-        });
-    connect(worker_, &SessionWorker::sendWaiting, this,
-        [this](const QString& deliveryId, const int attempts, const int of) {
-            const qint64 localId = store_.idForDelivery(deliveryId);
-            if (localId == 0 || attempts <= 0) {
-                return;  // not ours, or not retried yet - nothing to say
-            }
-            conversation_.setErrorForId(
-                localId, tr("retrying delivery %1 of %2").arg(attempts).arg(of));
-        });
-    connect(worker_, &SessionWorker::sendUndelivered, this,
-        [this](const QString& deliveryId) {
-            const qint64 localId = store_.idForDelivery(deliveryId);
-            if (localId == 0) {
-                return;  // not ours, or settled long ago
-            }
-            onSendResult(localId, false, tr("the recipient could not be reached"));
-        });
-    connect(worker_, &SessionWorker::sendSettled, this, &SessionController::onSendSettled);
     connect(worker_, &SessionWorker::sendPhase, this, &SessionController::onSendPhase);
     connect(worker_, &SessionWorker::contactRequestSent, this,
         &SessionController::onContactRequestSent);
@@ -2169,11 +2040,12 @@ void SessionController::open(
     if (!recentReactions_.isEmpty()) {
         emit recentReactionsChanged();
     }
-    // There is no persistent outbound queue, so any outgoing message still at
-    // "sending" is an interrupted send (the app closed mid-upload), not one in
-    // flight. Mark these failed on load so they read as "not sent" with a resend
-    // option, instead of a perpetual upload animation.
-    store_.failUnsentOnLoad(DeliveryStatus::Sending, DeliveryStatus::Failed);
+    // There is no outbound queue on disk - by design - so an outgoing message
+    // still preparing or still being delivered is one this client was carrying
+    // when it closed, not one in flight. They come back explicitly failed, and
+    // sending them again is the user's decision, never this client's.
+    store_.failUnsentOnLoad(
+        DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed);
     emit requestOpen(file, passphrase);
 }
 
@@ -2640,9 +2512,9 @@ void SessionController::sendText(const QString& text)
     m.replyTo = replyTo;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = DeliveryStatus::Sending;
+    m.status = DeliveryStatus::Preparing;
     m.id = store_.append(m);
-    statusById_[m.id] = DeliveryStatus::Sending;
+    statusById_[m.id] = DeliveryStatus::Preparing;
     showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, text, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
@@ -2841,11 +2713,11 @@ void SessionController::commitEdit(const QString& newText)
         conversation_.editById(editingLocalId_, trimmed, {});
         contacts_.touch(activePeer_, {}, trimmed, nowMillis(), false);
         // The edited version starts its delivery afresh: reset the bubble's status
-        // to "sending" (grey) and clear any prior error, so it then advances on the
-        // edit's own delivery instead of showing the original message's state.
-        statusById_[editingLocalId_] = DeliveryStatus::Sending;
-        store_.updateStatus(editingLocalId_, DeliveryStatus::Sending);
-        conversation_.setStatusForId(editingLocalId_, DeliveryStatus::Sending);
+        // and clear any prior error, so it then advances on the edit's own
+        // delivery instead of showing the original message's state.
+        statusById_[editingLocalId_] = DeliveryStatus::Preparing;
+        store_.updateStatus(editingLocalId_, DeliveryStatus::Preparing);
+        conversation_.setStatusForId(editingLocalId_, DeliveryStatus::Preparing);
         conversation_.setErrorForId(editingLocalId_, {});
         emit requestSendEdit(activePeer_, editingE2eId_, editingLocalId_, trimmed);
     }
@@ -3503,10 +3375,13 @@ void SessionController::sendVoiceTake()
     m.attWave = wave;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = DeliveryStatus::Sending;
+    m.status = DeliveryStatus::Preparing;
     m.id = store_.append(m);
+    statusById_[m.id] = DeliveryStatus::Preparing;
     showInActiveView(m, true);
     contacts_.touch(activePeer_, peerName(activePeer_), QStringLiteral("[voice]"), m.ts, true);
+    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
+        QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending…"), activePeer_);
 
     emit requestSendVoice(activePeer_, audio, durationMs, m.id, m.e2eId, replyTo);
 }
@@ -3532,7 +3407,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     m.forwarded = true;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = DeliveryStatus::Sending;
+    m.status = DeliveryStatus::Preparing;
 
     if (source.type == QStringLiteral("voice")) {
         const QByteArray audio = store_.media(QStringLiteral("voice:") + source.e2eId);
@@ -3593,7 +3468,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
 void SessionController::forwardShown(
     const StoredMessage& m, const QString& toPeer, const QString& preview)
 {
-    statusById_[m.id] = DeliveryStatus::Sending;
+    statusById_[m.id] = DeliveryStatus::Preparing;
     if (toPeer == activePeer_) {
         showInActiveView(m, true);
     }
@@ -4063,7 +3938,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.orderKey = placement.orderKey;
     // An echo carries no delivery state of its own: the device that sent it owns
     // that, and a receipt from the contact will still arrive here.
-    m.status = m.outgoing ? DeliveryStatus::AtSenderServer : DeliveryStatus::Received;
+    m.status = m.outgoing ? DeliveryStatus::Delivering : DeliveryStatus::Received;
     m.id = store_.append(m);
 
     showInActiveView(m, false);
@@ -4109,30 +3984,24 @@ void SessionController::onAvatarReady(const QString& fingerprint, const QByteArr
 void SessionController::bumpStatus(qint64 localId, int status)
 {
     // Never downgrade (e.g. "yellow" arriving after "green"); failed is terminal.
-    const int current = statusById_.value(localId, DeliveryStatus::Sending);
+    const int current = statusById_.value(localId, DeliveryStatus::Preparing);
     if (status != DeliveryStatus::Failed && status <= current) {
         return;
     }
     statusById_[localId] = status;
     store_.updateStatus(localId, status);
     conversation_.setStatusForId(localId, status);
-    // Settled one way or the other: our server has nothing left to tell us about
-    // this send, so the delivery id it was tracked by can go.
-    if (status == DeliveryStatus::AtRecipientServer || status == DeliveryStatus::Delivered
-        || status == DeliveryStatus::Failed) {
-        store_.forgetDeliveries(localId);
-    }
 }
 
 void SessionController::onSendProgress(qint64 localId, int state)
 {
-    bumpStatus(localId, state);  // AtSenderServer (our own server accepted it)
-    const QString opId = QStringLiteral("send:") + QString::number(localId);
-    if (state == DeliveryStatus::AtSenderServer) {
-        // The registry follows the handover, not the journey: once our own server
-        // holds the envelope the row is done. Delivery and reading show up on the
-        // message itself, and a failure comes back from our server as its status.
-        finishOperation(opId, true, QStringLiteral("Accepted by your server"));
+    bumpStatus(localId, state);
+    if (state == DeliveryStatus::AtRecipientServer) {
+        // There is no handover to a server of ours any more, so the row follows
+        // the whole journey: it is done when the recipient's server has signed for
+        // the envelope. Reading shows up on the message itself.
+        finishOperation(QStringLiteral("send:") + QString::number(localId), true,
+            QStringLiteral("Handed to the recipient's server"));
     }
 }
 
@@ -4374,9 +4243,8 @@ void SessionController::showInFolder(const QString& path) const
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)
 {
     if (ok) {
-        // The grey state (and yellow, when the server confirmed the recipient
-        // stored it) were already set via sendProgress; a still-pending delivery
-        // stays grey on purpose. Just clear any prior failure note.
+        // The amber state was already set through sendProgress, which is also what
+        // closes the activity row. Just clear any prior failure note.
         conversation_.setErrorForId(localId, {});
         return;
     }
@@ -4391,20 +4259,14 @@ void SessionController::onSendResult(qint64 localId, bool ok, const QString& err
 
 void SessionController::onSendPhase(qint64 localId, const QString& phase)
 {
-    // Real server-reported delivery phase for a still-in-flight send, shown on its
-    // activity row (a no-op if the row already settled).
-    updateOperation(QStringLiteral("send:") + QString::number(localId), humanFederationPhase(phase));
-}
-
-void SessionController::onSendSettled(qint64 localId, const QString& note)
-{
-    // The send left our server but its delivery was never confirmed (retries
-    // exhausted or the attempt was forgotten). Settle the activity row as a
-    // non-failure: the message bubble stays grey and may still turn green on a
-    // later read receipt.
-    finishOperation(QStringLiteral("send:") + QString::number(localId), true,
-        note == QStringLiteral("unconfirmed") ? QStringLiteral("Sent — delivery unconfirmed")
-                                              : QStringLiteral("Sent"));
+    const QString human = humanDeliveryPhase(phase);
+    // Where the send has got to, on its activity row (a no-op if the row already
+    // settled) and, while it is retrying, under the bubble itself: a message that
+    // is being tried again should say so where the user is looking.
+    updateOperation(QStringLiteral("send:") + QString::number(localId), human);
+    if (phase.startsWith(QStringLiteral("retry"))) {
+        conversation_.setErrorForId(localId, human);
+    }
 }
 
 void SessionController::resendText(qint64 localId, const QString& text, const QString& e2eId)
@@ -4415,9 +4277,9 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     // Reset to "sending" and clear the prior error, then re-dispatch with the
     // SAME protocol id so the recipient's server still deduplicates it (a retry
     // must never double-deliver).
-    statusById_[localId] = DeliveryStatus::Sending;
-    store_.updateStatus(localId, DeliveryStatus::Sending);
-    conversation_.setStatusForId(localId, DeliveryStatus::Sending);
+    statusById_[localId] = DeliveryStatus::Preparing;
+    store_.updateStatus(localId, DeliveryStatus::Preparing);
+    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
     conversation_.setErrorForId(localId, {});
     // Preserve the original reply reference on a resend.
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
@@ -4444,9 +4306,9 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
     // Reset to "sending" and re-upload from the saved path, reusing this bubble.
     // Same protocol id as resendText: the inner content id is preserved so the
     // recipient still recognises the message.
-    statusById_[localId] = DeliveryStatus::Sending;
-    store_.updateStatus(localId, DeliveryStatus::Sending);
-    conversation_.setStatusForId(localId, DeliveryStatus::Sending);
+    statusById_[localId] = DeliveryStatus::Preparing;
+    store_.updateStatus(localId, DeliveryStatus::Preparing);
+    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
     conversation_.setErrorForId(localId, {});
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
@@ -4454,6 +4316,30 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
         stored.attName.isEmpty() ? QStringLiteral("file") : stored.attName,
         QStringLiteral("Sending again…"), activePeer_);
     emit requestSendFile(activePeer_, srcPath, localId, e2eId, replyTo);
+}
+
+void SessionController::resendVoice(qint64 localId, const QString& e2eId)
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    // A voice take has no file behind it: the recording lives in the account, so
+    // that is where a resend reads it from.
+    const QByteArray audio = store_.media(QStringLiteral("voice:") + e2eId);
+    if (audio.isEmpty()) {
+        emit actionFailed(tr("this voice message is no longer on this device"));
+        return;
+    }
+    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
+    statusById_[localId] = DeliveryStatus::Preparing;
+    store_.updateStatus(localId, DeliveryStatus::Preparing);
+    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
+    conversation_.setErrorForId(localId, {});
+    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
+        QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending again…"),
+        activePeer_);
+    emit requestSendVoice(
+        activePeer_, audio, stored.attDurationMs, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)

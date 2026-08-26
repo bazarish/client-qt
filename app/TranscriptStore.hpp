@@ -90,11 +90,12 @@ public:
 
     qint64 append(const StoredMessage& message);
     void updateStatus(qint64 id, int status);
-    // Marks every outgoing message still left at the "sending" status (there is no
-    // persistent outbound queue, so on load these are interrupted sends, not ones
-    // in flight) as failedStatus, so the UI shows "not sent" with a resend option
-    // instead of a perpetual upload animation. Returns the number changed.
-    int failUnsentOnLoad(int sendingStatus, int failedStatus);
+    // Marks every outgoing message left in a status only a running delivery can
+    // hold (there is no outbound queue on disk, so on load these are sends this
+    // client was carrying when it closed, not ones in flight) as failedStatus, so
+    // the UI shows "not sent" with a resend option instead of a perpetual upload
+    // animation. Returns the number changed.
+    int failUnsentOnLoad(int preparingStatus, int deliveringStatus, int failedStatus);
     // Marks outgoing messages to peer with id <= uptoId whose status is within
     // [minStatus, maxStatus] as readStatus (the recipient read up to uptoId). Used
     // to persist the green "read" state high-water, including paged-out rows.
@@ -117,13 +118,6 @@ public:
     // Marks a message whose picture this account holds.
     void setHasPicture(qint64 id, bool has);
     void setBlobGone(qint64 id, bool gone);
-    // The row id of an outgoing message with this protocol id (0 if none).
-    // What our server calls a send of ours, and back again: the delivery id is the
-    // server's, the protocol id is the message's, and only this maps one to the
-    // other. Cleared once the send is settled.
-    void noteDelivery(const QString& deliveryId, qint64 localId);
-    qint64 idForDelivery(const QString& deliveryId) const;
-    void forgetDeliveries(qint64 localId);
     qint64 idForE2e(const QString& e2eId) const;
     // The row id of an incoming message from peer with this protocol id, the
     // target of an edit (0 if none). Scoping to incoming-from-peer is the

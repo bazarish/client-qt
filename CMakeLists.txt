@@ -68,6 +68,8 @@ add_library(bazarish_client_lib STATIC
     src/I2pRouter.cpp
     src/Invite.cpp
     src/FileTransfer.cpp
+    src/OutboundCourier.cpp
+    src/OutboundLeases.cpp
     src/AccountDb.cpp
     src/AccountKey.cpp
     src/AccountManager.cpp
@@ -263,6 +265,7 @@ bazarish_client_add_test(TestFacade)
 bazarish_client_add_test(TestClient)
 bazarish_client_add_test(TestTokenRefill)
 bazarish_client_add_test(TestFileTransfer)
+bazarish_client_add_test(TestOutboundCourier)
 bazarish_client_add_test(TestI2pKeys)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestLogin)

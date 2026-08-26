@@ -14,12 +14,13 @@
 
 namespace bazarish::client {
 
-// A small pool of pre-built, SINGLE-USE transient outbound I2P destinations kept
-// warm (their tunnels already built) so a direct federation fetch - a contact-add
-// card fetch or an alias resolve - grabs a ready one instead of paying the cold
-// tunnel-build latency (seconds). Each acquired dest is used exactly once and then
-// dropped, never reused: two one-time lookups are therefore never linkable to the
-// same destination (the same anonymity invariant the throwaway dest exists for).
+// A small pool of pre-built, unattributed transient outbound I2P destinations kept
+// warm (their tunnels already built) so whoever needs one - a contact-card fetch,
+// an alias resolve, an outgoing message - grabs a ready one instead of paying the
+// cold tunnel-build latency (seconds). A spare belongs to nobody until it is taken
+// and is never handed out twice; what the taker does with it afterwards is the
+// taker's business: a lookup drops it when the answer is in, a delivery holds it
+// for one term and one correspondent.
 //
 // The client's mirror of the server's warm pool, but deliberately simple: a fixed
 // target size (no demand-driven sizing) and a small tunnel quantity. Best-effort -
@@ -38,9 +39,9 @@ public:
     // otherwise be handed out long after the user asked for a different one.
     void flush();
 
-    // A warm, single-use endpoint, or nullptr when none is ready (the caller then
-    // builds a fresh dest cold). The returned endpoint must be used once and dropped
-    // - never returned to the pool.
+    // A warm endpoint, or nullptr when none is ready (the caller then builds a
+    // fresh dest cold). It is the caller's from here and is never returned to the
+    // pool; the pool starts building a replacement at once.
     std::shared_ptr<bazarish::i2p::Endpoint> acquire();
 
 private:
@@ -54,6 +55,9 @@ private:
     };
 
     bazarish::i2p::Router& router_;
+    // A spare was taken (or thrown away): build the replacement now rather than
+    // at the next tick. Guarded by mutex_.
+    bool refillWanted_ = false;
     const std::size_t size_;
     const int tunnelQuantity_;
     // How long a freshly created dest is given to warm before it is abandoned.

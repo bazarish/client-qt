@@ -101,12 +101,13 @@ appears on the right edge while anything is running (opaque on hover); clicking 
 slides out a panel listing each operation with a live, human-readable status, a
 determinate progress bar for transfers, and an elapsed-time badge.
 
-For sends the status is the **real server-reported federation phase** - the server
-exposes it on `GET /v1/messaging/send/{attemptId}` as a `phase` field
-(`queued` -> `dialing`/building the tunnel -> `sending` -> `awaiting-ack`), which
-the client maps to human text. Contact-add additionally shows the off-thread card
-resolve (`Resolving recipient over i2p...` with a live timer) before the request is
-sent. See `docs-main/api/ClientApi.md` for the `phase` field.
+For sends the status is the client's own delivery phase - this client carries its
+outgoing mail itself (`preparing` the address it leaves from -> `dialing` the
+recipient's server -> `sending` -> `retry 2/4`), mapped to human text. The row
+lives until the message is handed over or fails, because there is no earlier
+handover to report. Contact-add additionally shows the off-thread card resolve
+(`Resolving recipient over i2p...` with a live timer) before the request is sent.
+See `docs-main/api/Federation.md` for the delivery flow.
 
 Implementation: `OperationListModel` (exposed as `App.session.operations` /
 `activeOperations`) is driven by `beginOperation`/`updateOperation`/`finishOperation`

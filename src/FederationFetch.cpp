@@ -3,39 +3,13 @@
 
 #include "I2pRouter.hpp"
 
-#include <bazarish/Crypto.hpp>
-
-#include <nlohmann/json.hpp>
+#include <bazarish/FederationFrame.hpp>
 
 #include <chrono>
 #include <memory>
 #include <stdexcept>
 
 namespace bazarish::client {
-
-namespace {
-
-// Reads a single newline-terminated header line from the stream (the federation
-// framing: one JSON object per line). Mirrors the server's reader, including the
-// 64 KiB guard against an unbounded line.
-std::string readHeaderLine(bazarish::i2p::Stream& stream)
-{
-    std::string line;
-    char c = 0;
-    while (true) {
-        stream.readExact(&c, 1);
-        if (c == '\n') {
-            break;
-        }
-        line.push_back(c);
-        if (line.size() > 64 * 1024) {
-            throw std::runtime_error("federation header line too long");
-        }
-    }
-    return line;
-}
-
-}  // namespace
 
 // A cold dest needs its own tunnels before it can dial; a warm one already has
 // them. Separate from the dial timeout, which is about reaching the far side.
@@ -72,17 +46,11 @@ FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::st
         throw std::runtime_error("federation fetch: cannot reach " + dest);
     }
 
-    const nlohmann::json header = {{"op", op}, {"sealed", toBase64(sealed)}};
-    const std::string line = header.dump() + "\n";
-    stream->writeAll(line.data(), line.size());
-
-    const nlohmann::json reply = nlohmann::json::parse(readHeaderLine(*stream));
+    const FederationFetchResult reply = federationSendFetch(*stream, op, sealed);
     FetchOutcome outcome;
-    outcome.ok = reply.at("ok").get<bool>();
-    if (reply.contains("sealed")) {
-        outcome.sealed = fromBase64(reply.at("sealed").get<std::string>());
-    }
-    outcome.errorCode = reply.value("errorCode", std::string());
+    outcome.ok = reply.ok;
+    outcome.sealed = reply.sealed;
+    outcome.errorCode = reply.errorCode;
     return outcome;
 }
 

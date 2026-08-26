@@ -400,34 +400,6 @@ std::string deliveryIdFor(
         .substr(0, kDeliveryIdHexChars);
 }
 
-std::vector<Client::OutboundSend> Client::listOutbound()
-{
-    const ApiResponse response = api_.get("/v1/messaging/outbound");
-    const nlohmann::json body = response.json();
-    std::vector<OutboundSend> waiting;
-    for (const nlohmann::json& entry : body.at("outbound")) {
-        waiting.push_back(OutboundSend{entry.at("deliveryId").get<std::string>(),
-            entry.value("attempts", 0), entry.value("of", 0)});
-    }
-    return waiting;
-}
-
-std::vector<std::string> Client::listUndelivered()
-{
-    const ApiResponse response = api_.get("/v1/messaging/undelivered");
-    const nlohmann::json body = response.json();
-    std::vector<std::string> ids;
-    for (const nlohmann::json& entry : body.at("undelivered")) {
-        ids.push_back(entry.get<std::string>());
-    }
-    return ids;
-}
-
-void Client::clearUndelivered(const std::string& deliveryId)
-{
-    api_.del("/v1/messaging/undelivered/" + deliveryId);
-}
-
 Bytes Client::fetchBlob(const std::string& blobId)
 {
     const ApiResponse response = api_.get("/v1/messaging/pending/" + blobId);
@@ -455,38 +427,5 @@ void Client::submitSelf(const std::string& deliveryId, const Bytes& payload)
     api_.postJson("/v1/messaging/self",
         {{"deliveryId", deliveryId}, {"payload", toBase64(payload)}});
 }
-
-std::string Client::submitSend(
-    const std::string& toDest, const Bytes& sealed, const Bytes& payload, const std::string& deliveryId)
-{
-    const ApiResponse response = api_.postJson("/v1/messaging/send",
-        {
-            {"toDest", toDest},
-            {"sealed", toBase64(sealed)},
-            {"payload", toBase64(payload)},
-            {"deliveryId", deliveryId},
-        });
-    return response.json().at("attemptId").get<std::string>();
-}
-
-SendStatus Client::pollSend(const std::string& attemptId)
-{
-    const ApiResponse response = api_.get("/v1/messaging/send/" + attemptId);
-    const nlohmann::json body = response.json();
-
-    SendStatus result;
-    result.status = body.at("status").get<std::string>();
-    result.phase = body.value("phase", std::string());
-    if (body.contains("error")) {
-        const nlohmann::json& error = body.at("error");
-        result.errorCode = errorCodeFromString(error.at("code").get<std::string>());
-        result.errorMessage = error.at("message").get<std::string>();
-    }
-    return result;
-}
-
-
-
-
 
 }  // namespace bazarish::client
