@@ -45,7 +45,7 @@ const char* const kCallOpeningStage = "Opening the audio path";
 // before hex encoding.
 constexpr std::size_t kDeliveryIdBytes = 16;
 // The account's own secret behind those names.
-constexpr std::size_t kDeliveryIdKeyBytes = 32;
+constexpr std::size_t kDeliveryIdSeedBytes = 32;
 // The invitation reached the peer's server, and no device has picked it up yet:
 // stored is not the same as ringing, and saying "ringing" here was a guess.
 const char* const kCallDeliveredStage = "Invitation delivered";
@@ -374,10 +374,12 @@ Session Session::create(
     // A fresh account has no server yet: an empty facade list marks "unconnected".
     const ServerEndpoint endpoint;
 
+    // Names every envelope this account will ever send; see deliveryIdFor. Drawn
+    // here and never redrawn - it is carried through backup and restore.
+    const std::string deliveryIdSeed = toHex(randomBytes(kDeliveryIdSeedBytes));
     const nlohmann::json meta = {
         {"clientId", clientId},
-        // Names the envelopes this account sends; see deliveryIdFor.
-        {"deliveryIdKey", toHex(randomBytes(kDeliveryIdKeyBytes))},
+        {"deliveryIdSeed", deliveryIdSeed},
         {"name", name},
         {"fingerprint", fingerprint},
         {"endpoint",
@@ -397,6 +399,7 @@ Session Session::create(
     session.encrypted_ = encrypted;
     session.passphrase_ = passphrase;
     session.name_ = name;
+    session.deliveryIdSeed_ = deliveryIdSeed;
     session.client_->setDestinationOwner(session.destinationOwner());
     return session;
 }
@@ -502,10 +505,16 @@ Session Session::open(const fs::path& accountFile, const std::string& passphrase
     session.view_ = meta.value("view", std::string{});
     session.sharingAllowed_ = meta.value("sharingAllowed", true);
     session.delegationDays_ = meta.value("delegationDays", kDefaultDelegationDays);
-    session.deliveryIdKey_ = meta.value("deliveryIdKey", std::string());
-    if (session.deliveryIdKey_.empty()) {
-        session.deliveryIdKey_ = toHex(randomBytes(kDeliveryIdKeyBytes));
-        session.persistMeta();
+    // Written once when the account is made and never again: every envelope this
+    // account has ever sent is named under it, so a new one would rename messages
+    // that already exist elsewhere. It travels in the backup bundle and comes back
+    // with it. An account without one was written before it existed and is not
+    // read - there is no release to be compatible with.
+    session.deliveryIdSeed_ = meta.value("deliveryIdSeed", std::string());
+    if (session.deliveryIdSeed_.empty()) {
+        throw std::runtime_error(
+            "this account was written before delivery ids were seeded and cannot be read;"
+            " create it again");
     }
     // Our own routing (dest + serving sealing key) lives in the card we signed;
     // recover it for invites and contact bootstraps.
@@ -643,7 +652,7 @@ void Session::persistMeta() const
                 {"facades", facades},
             }},
         {"card", cardB64_},
-        {"deliveryIdKey", deliveryIdKey_},
+        {"deliveryIdSeed", deliveryIdSeed_},
         {"view", view_},
         {"sharingAllowed", sharingAllowed_},
         {"delegationDays", delegationDays_},
@@ -1253,7 +1262,7 @@ std::string Session::deliveryIdFor(
     if (e2eId.empty()) {
         return toHex(randomBytes(kDeliveryIdBytes));
     }
-    return bazarish::client::deliveryIdFor(deliveryIdKey_, e2eId, mailbox);
+    return bazarish::client::deliveryIdFor(deliveryIdSeed_, e2eId, mailbox);
 }
 
 bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
@@ -3727,6 +3736,11 @@ void Session::importAccount(const fs::path& bundleFile, const fs::path& accountF
     // from the other. A fresh id makes this an added device, which is what an
     // import is, and each gets its own copy of everything that arrives.
     meta["clientId"] = toHex(randomBytes(8));
+    // Everything else in the meta is carried as it is - the delivery-id seed above
+    // all: it names the envelopes this account has already sent, and a restored
+    // account that renamed them would deliver copies of messages the recipients'
+    // servers would no longer recognise.
+
     db.putText("meta", meta.dump(2));
     db.putText("contacts", bundle.at("contacts").dump());
 }

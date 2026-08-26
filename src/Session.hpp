@@ -695,6 +695,11 @@ public:
     // Re-polls a previously submitted send by its server attempt id to resolve a
     // delivery that was still pending when the send call returned. Never throws.
     AttemptOutcome pollAttempt(const std::string& attemptId);
+    // What this account names one envelope to a mailbox: keyed with its own seed
+    // and bound to the mailbox, so the same message keeps its name on a resend and
+    // the copies in two different mailboxes cannot be matched to each other. Pure:
+    // the same account always answers the same way, including after a restore.
+    std::string deliveryIdFor(const std::string& e2eId, const std::string& mailbox) const;
     // Sends our server gave up on, by delivery e2eId, taken from it once: the
     // caller marks them failed so the user can send them again when they choose.
     // Never throws - a server that cannot answer is asked again next sync.
@@ -1040,10 +1045,6 @@ private:
         const std::function<void(const std::string& deliveryId)>& onAcceptedByOwnServer = {},
         std::string* outAttemptId = nullptr, bool waitForOutcome = true,
         const std::string& e2eId = {});
-    // What this account names one envelope to a mailbox: keyed with its own secret
-    // and bound to the mailbox, so the same message keeps its name on a resend and
-    // the copies in two different mailboxes cannot be matched to each other.
-    std::string deliveryIdFor(const std::string& e2eId, const std::string& mailbox) const;
     void persistContacts() const;
     void persistMeta() const;
     // Serializes the in-memory contacts into the on-disk JSON shape.
@@ -1145,9 +1146,10 @@ private:
     };
     std::shared_ptr<TransferRegistry> transfers_ = std::make_shared<TransferRegistry>();
     Key sealingKey_;
-    // Secret behind deliveryIdFor: never leaves this account, and only ever names
-    // envelopes.
-    std::string deliveryIdKey_;
+    // Secret behind deliveryIdFor: drawn once when the account is created, carried
+    // through backup and restore, and never changed - every envelope the account
+    // has sent is named under it. Never leaves the account.
+    std::string deliveryIdSeed_;
     std::map<std::string, Contact> contacts_;
     // Our own serving destination + serving sealing key (SPKI DER, base64),
     // learned on subscribe (GET /v1/messaging/destination) and forwarded to

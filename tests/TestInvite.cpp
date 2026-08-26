@@ -120,6 +120,10 @@ int main()
     Session::importAccount(bundle, fileB, exportPw);
     // No at-rest passphrase on the imported copy: it opens with none.
     CHECK(Session::open(fileB).fingerprint() == fingerprintA);
+    // The seed that names this account's envelopes comes back with the bundle: a
+    // restored account keeps calling its messages what it always called them.
+    CHECK(Session::open(fileB).deliveryIdFor("some-message", "some-mailbox")
+        == Session::open(fileA, passphrase).deliveryIdFor("some-message", "some-mailbox"));
 
     // Import again, this time re-encrypting at rest under a new passphrase.
     const fs::path fileC = uniqueAccountFile("c");
