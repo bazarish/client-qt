@@ -6,6 +6,24 @@ The desktop client operates an I2P router in its own process (libi2pd; no system
 daemon). This document specifies the router settings exposed to the user, their
 storage, and the constraints that apply to each.
 
+### Choosing the transport
+
+At the first start the client looks for an I2P router on this machine over SAM
+(127.0.0.1:7656 by default). One that answers is used, and the in-process engine
+is not started at all; nothing answering starts the in-process engine. The
+decision is written to `settings.json` and is not taken again.
+
+Settings -> I2P router carries the choice as a **SAM API** switch with the
+router's address and port, above the in-process engine's own controls. Changing
+it takes effect at the next start, because the in-process engine can be started
+only once in a process and the two cannot swap places while one is running - the
+dialog offers to close the application there and then.
+
+While an external router carries the traffic, what belongs to it rather than to
+this application is not shown: the network-database counters, the transport
+peers and the clearnet proxy. Tunnel length still applies - it is sent with every
+destination this client opens - and so does the list of local destinations.
+
 The transport is a facade over two engines. The desktop uses the in-process one,
 for the reasons this document sets out: the network database comes from the
 user's own server rather than a public reseed host, and the clearnet side can be
