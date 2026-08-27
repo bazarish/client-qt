@@ -356,18 +356,6 @@ Popup {
                             label: "Router connections"
                             value: I2p.proxyNtcp2.length > 0 ? I2p.proxyNtcp2 : "direct"
                         }
-                        StatRow {
-                            label: "Datagrams (SSU2)"
-                            value: I2p.proxySsu2Enabled ? "direct" : "off"
-                        }
-                        Label {
-                            visible: !I2p.proxySsu2Enabled
-                            text: "SSU2 is off while a proxy is set: its datagrams cannot go "
-                                + "through one, and running them around it would send traffic "
-                                + "the proxy never sees. The router works on NTCP2 alone."
-                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
                     }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
