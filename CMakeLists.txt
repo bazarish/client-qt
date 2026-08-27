@@ -224,6 +224,7 @@ if(Qt6_FOUND)
             app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml
+            app/qml/ProxyRestartDialog.qml
             app/qml/ServerHelloDialog.qml
             app/qml/AccountDeleteConfirmDialog.qml
             app/qml/AccountDeleteLockedDialog.qml
@@ -270,6 +271,7 @@ bazarish_client_add_test(TestTokenRefill)
 bazarish_client_add_test(TestFileTransfer)
 bazarish_client_add_test(TestOutboundCourier)
 bazarish_client_add_test(TestI2pKeys)
+bazarish_client_add_test(TestI2pProxy)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestLogin)
 bazarish_client_add_test(TestAccount)

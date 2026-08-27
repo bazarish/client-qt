@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -119,6 +120,21 @@ bool i2pEnabled();
 // Consulted at request time, so it takes effect on the next request.
 void setFullPrivacy(bool enabled);
 bool fullPrivacy();
+
+// A SOCKS5 proxy for the embedded router's clearnet side - NTCP2, SSU2 and the
+// built-in reseeds. Empty host (the default) means straight out. Read when the
+// router's network starts, so a change reaches a running router only through
+// restartI2pRouter below; setting it while none is up is enough on its own.
+void setI2pSocksProxy(std::string host, int port);
+std::string i2pSocksProxyHost();
+int i2pSocksProxyPort();
+// Stops the router's network and starts it again, so the transports come up
+// reading whatever the proxy setting says now. A no-op when no router is up -
+// the next start reads it anyway.
+void restartI2pRouter(const std::filesystem::path& dataDir);
+// What the engine made of the proxy setting: the options in force and whether it
+// considers itself proxied. Nothing when no router is running.
+std::optional<bazarish::i2p::ProxyState> i2pProxyState();
 
 // Process-wide tunnel privacy profile (default eMax), the hop length every
 // destination this process builds is given. Read when a destination is created,

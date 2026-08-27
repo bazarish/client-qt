@@ -73,6 +73,16 @@ std::atomic<bool> g_i2pEnabled{true};
 std::atomic<bazarish::i2p::Privacy> g_tunnelPrivacy{bazarish::i2p::Privacy::eMinimal};
 // Strict by default: the netDb comes from our own server, not a public host.
 std::atomic<bool> g_publicReseedAllowed{false};
+// The SOCKS5 proxy the router's clearnet side goes through, empty by default.
+// A string needs a mutex where a flag needs none.
+std::string g_proxyHost;
+int g_proxyPort = 0;
+
+std::mutex& proxyMutex()
+{
+    static std::mutex mutex;
+    return mutex;
+}
 
 std::mutex& progressMutex()
 {
@@ -223,7 +233,7 @@ bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
     if (!router) {
         router = std::make_unique<bazarish::i2p::Router>(
             bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient,
-                g_publicReseedAllowed.load()});
+                g_publicReseedAllowed.load(), i2pSocksProxyHost(), i2pSocksProxyPort()});
     } else if (!router->running()) {
         router->start();
     }
@@ -276,6 +286,57 @@ std::shared_ptr<bazarish::i2p::Endpoint> acquireWarmDest()
     return pool != nullptr ? pool->acquire() : nullptr;
 }
 
+void setI2pSocksProxy(std::string host, const int port)
+{
+    {
+        const std::lock_guard<std::mutex> lock(proxyMutex());
+        g_proxyHost = std::move(host);
+        g_proxyPort = port;
+    }
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    if (const std::unique_ptr<bazarish::i2p::Router>& router = routerSlot(); router) {
+        // Written into the engine now; the transports read it as they come up.
+        router->setSocksProxy(i2pSocksProxyHost(), i2pSocksProxyPort());
+    }
+}
+
+std::string i2pSocksProxyHost()
+{
+    const std::lock_guard<std::mutex> lock(proxyMutex());
+    return g_proxyHost;
+}
+
+int i2pSocksProxyPort()
+{
+    const std::lock_guard<std::mutex> lock(proxyMutex());
+    return g_proxyPort;
+}
+
+std::optional<bazarish::i2p::ProxyState> i2pProxyState()
+{
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    const std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
+    if (!router || !router->running()) {
+        return std::nullopt;
+    }
+    return router->proxyState();
+}
+
+void restartI2pRouter(const std::filesystem::path& dataDir)
+{
+    (void)dataDir;
+    const std::lock_guard<std::mutex> lock(routerMutex());
+    std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
+    if (!router) {
+        return;  // nothing running: the next start reads the setting
+    }
+    stopWarmPool();  // join the warmer before the router's network stops
+    router->stop();
+    router->setSocksProxy(i2pSocksProxyHost(), i2pSocksProxyPort());
+    router->start();
+    ensureWarmPool(*router);
+}
+
 void reconcileI2pRouter(const std::filesystem::path& dataDir)
 {
     const std::lock_guard<std::mutex> lock(routerMutex());
@@ -295,7 +356,7 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
         if (!router) {
             router = std::make_unique<bazarish::i2p::Router>(
                 bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient,
-                g_publicReseedAllowed.load()});
+                    g_publicReseedAllowed.load(), i2pSocksProxyHost(), i2pSocksProxyPort()});
         } else {
             router->start();
         }

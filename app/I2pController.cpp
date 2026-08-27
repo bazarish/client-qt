@@ -8,6 +8,12 @@
 
 #include <bazarish/I2p.hpp>
 
+// Qt's "emit" keyword macro collides with bazarish::log::emit.
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
+
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
@@ -64,6 +70,28 @@ I2pController::I2pController(QObject* parent)
         const int level = value.empty() ? kMinimalPrivacyLevel : std::atoi(value.c_str());
         privacyLevel_ = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
     }
+    // The clearnet side of the router: nothing by default, so it goes straight
+    // out. Read before the router is brought up, because the transports read it
+    // as they start.
+    {
+        std::ifstream in(proxyPath());
+        std::string value;
+        std::getline(in, value);
+        const std::size_t colon = value.rfind(':');
+        if (colon != std::string::npos) {
+            proxyHost_ = QString::fromStdString(value.substr(0, colon));
+            proxyPort_ = std::atoi(value.c_str() + colon + 1);
+        }
+        if (proxyHost_.isEmpty() || proxyPort_ <= 0) {
+            proxyHost_.clear();
+            proxyPort_ = 0;
+        }
+        client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
+        if (!proxyHost_.isEmpty()) {
+            bazarish::log::info("i2p: clearnet side goes through socks://{}:{}",
+                proxyHost_.toStdString(), proxyPort_);
+        }
+    }
     // The embedded router is the transport, not a feature: without it there is
     // no way to reach a server, so there is nothing to turn off.
     client::setI2pEnabled(true);
@@ -78,6 +106,33 @@ I2pController::I2pController(QObject* parent)
 std::filesystem::path I2pController::loggingPath() const
 {
     return accountsRoot() / ".i2p-logging";
+}
+
+std::filesystem::path I2pController::proxyPath() const
+{
+    return accountsRoot() / ".i2p-proxy";
+}
+
+void I2pController::saveProxy(const QString& host, const int port, const bool restartNow)
+{
+    const QString wantedHost = host.trimmed();
+    const bool clearing = wantedHost.isEmpty() || port <= 0;
+    proxyHost_ = clearing ? QString() : wantedHost;
+    proxyPort_ = clearing ? 0 : port;
+    {
+        std::ofstream out(proxyPath(), std::ios::trunc);
+        if (!clearing) {
+            out << proxyHost_.toStdString() << ":" << proxyPort_;
+        }
+    }
+    client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
+    emit proxyChanged();
+    if (restartNow) {
+        // Heavyweight (the engine's threads stop and start), so off the GUI thread.
+        const std::filesystem::path dataDir = i2pRoot();
+        std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
+    }
+    refresh();
 }
 
 std::filesystem::path I2pController::privacyPath() const
@@ -139,6 +194,19 @@ void I2pController::refresh()
     int outboundTunnels = 0;
     QStringList transports;
     QVariantList destinations;
+    bool proxyInForce = false;
+    QString proxyNtcp2;
+    QString proxySsu2;
+    QString proxyReseed;
+    bool proxySsu2Enabled = true;
+    if (const std::optional<bazarish::i2p::ProxyState> proxy = client::i2pProxyState();
+        proxy.has_value()) {
+        proxyInForce = proxy->routerReportsProxy;
+        proxyNtcp2 = QString::fromStdString(proxy->ntcp2);
+        proxySsu2 = QString::fromStdString(proxy->ssu2);
+        proxyReseed = QString::fromStdString(proxy->reseed);
+        proxySsu2Enabled = proxy->ssu2Enabled;
+    }
     if (running) {
         ready = router->ready();
         knownRouters = router->knownRouters();
@@ -184,9 +252,16 @@ void I2pController::refresh()
     if (running == running_ && ready == ready_ && knownRouters == knownRouters_
         && floodfills == floodfills_ && inboundTunnels == inboundTunnels_
         && outboundTunnels == outboundTunnels_ && transports == transports_
-        && destinations == destinations_) {
+        && destinations == destinations_ && proxyInForce == proxyInForce_
+        && proxyNtcp2 == proxyNtcp2_ && proxySsu2 == proxySsu2_
+        && proxyReseed == proxyReseed_ && proxySsu2Enabled == proxySsu2Enabled_) {
         return;
     }
+    proxyInForce_ = proxyInForce;
+    proxyNtcp2_ = proxyNtcp2;
+    proxySsu2_ = proxySsu2;
+    proxyReseed_ = proxyReseed;
+    proxySsu2Enabled_ = proxySsu2Enabled;
     running_ = running;
     ready_ = ready;
     knownRouters_ = knownRouters;

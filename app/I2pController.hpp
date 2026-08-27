@@ -46,6 +46,18 @@ class I2pController : public QObject {
     // "label", "host", "state" and "tunnels". Tunnel counts are per destination,
     // unlike the router-wide counts above.
     Q_PROPERTY(QVariantList destinations READ destinations NOTIFY statusChanged)
+    // The SOCKS5 proxy the router's clearnet side goes through - what is saved,
+    // which is not always what is in force (a change waits for a restart).
+    // Empty host = no proxy, which is the default.
+    Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
+    Q_PROPERTY(int proxyPort READ proxyPort NOTIFY proxyChanged)
+    // What the engine itself says about it, for the status page. Meaningful only
+    // while the router runs, and shown only when a proxy is configured at all.
+    Q_PROPERTY(bool proxyInForce READ proxyInForce NOTIFY statusChanged)
+    Q_PROPERTY(QString proxyNtcp2 READ proxyNtcp2 NOTIFY statusChanged)
+    Q_PROPERTY(QString proxySsu2 READ proxySsu2 NOTIFY statusChanged)
+    Q_PROPERTY(QString proxyReseed READ proxyReseed NOTIFY statusChanged)
+    Q_PROPERTY(bool proxySsu2Enabled READ proxySsu2Enabled NOTIFY statusChanged)
 public:
     explicit I2pController(QObject* parent = nullptr);
 
@@ -57,6 +69,17 @@ public:
     bool ready() const { return ready_; }
     int knownRouters() const { return knownRouters_; }
     int minKnownRouters() const;
+    QString proxyHost() const { return proxyHost_; }
+    int proxyPort() const { return proxyPort_; }
+    bool proxyInForce() const { return proxyInForce_; }
+    QString proxyNtcp2() const { return proxyNtcp2_; }
+    QString proxySsu2() const { return proxySsu2_; }
+    QString proxyReseed() const { return proxyReseed_; }
+    bool proxySsu2Enabled() const { return proxySsu2Enabled_; }
+    // Saves the proxy (an empty host clears it). restartNow also stops and starts
+    // the router's network, which is what puts it in force; without it the saved
+    // setting waits for the next start.
+    Q_INVOKABLE void saveProxy(const QString& host, int port, bool restartNow);
     int floodfills() const { return floodfills_; }
     int inboundTunnels() const { return inboundTunnels_; }
     int outboundTunnels() const { return outboundTunnels_; }
@@ -71,10 +94,12 @@ signals:
     void loggingChanged();
     void privacyLevelChanged();
     void statusChanged();
+    void proxyChanged();
 
 private:
     std::filesystem::path loggingPath() const;
     std::filesystem::path privacyPath() const;
+    std::filesystem::path proxyPath() const;
     // Brings the shared router into line with the enable flag off the GUI thread:
     // starts it (warming the netDb even with no active session) when enabled, stops
     // its network when disabled.
@@ -85,6 +110,13 @@ private:
     bool running_ = false;
     bool ready_ = false;
     int knownRouters_ = 0;
+    QString proxyHost_;
+    int proxyPort_ = 0;
+    bool proxyInForce_ = false;
+    QString proxyNtcp2_;
+    QString proxySsu2_;
+    QString proxyReseed_;
+    bool proxySsu2Enabled_ = true;
     int floodfills_ = 0;
     int inboundTunnels_ = 0;
     int outboundTunnels_ = 0;

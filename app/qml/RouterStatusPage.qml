@@ -43,6 +43,15 @@ Popup {
             + "build and to answer."
     }
 
+    // Saving is one thing and applying it is another: the transports read the
+    // proxy as they come up, so a change reaches a running router only through a
+    // restart of it. Both answers save; only one restarts.
+    ProxyRestartDialog {
+        id: proxyRestartDialog
+        onAnswered: (restartNow) => I2p.saveProxy(
+            proxyHostField.text, parseInt(proxyPortField.text || "0"), restartNow)
+    }
+
     // Poll the router diagnostics while the window is open.
     Timer {
         interval: 2000
@@ -282,6 +291,102 @@ Popup {
                         Label {
                             text: "Voice calls always use Min: longer tunnels would put "
                                 + "audible delay into a live call."
+                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                // Everything this router does outside I2P, through a SOCKS5 proxy.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+
+                    Label { text: "Clearnet proxy"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        text: "A SOCKS5 proxy for everything the router does outside I2P: its "
+                            + "connections to other routers and the network database it "
+                            + "bootstraps from. It hides that traffic from your network, and "
+                            + "shows all of it to the proxy. Leave empty to go straight out."
+                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        FormField {
+                            id: proxyHostField
+                            Layout.fillWidth: true
+                            placeholder: "Host or address"
+                            text: I2p.proxyHost
+                        }
+                        FormField {
+                            id: proxyPortField
+                            Layout.preferredWidth: 90
+                            placeholder: "Port"
+                            text: I2p.proxyPort > 0 ? String(I2p.proxyPort) : ""
+                            inputField.validator: IntValidator { bottom: 1; top: 65535 }
+                        }
+                    }
+                    // i2pd's SOCKS client offers no credentials at all - not for
+                    // the router connections, not for the reseed - so there is
+                    // nothing to type here and no field pretending otherwise.
+                    Label {
+                        text: "No username or password: the router's SOCKS client authenticates "
+                            + "with none, so the proxy has to accept it unauthenticated (a proxy "
+                            + "on this machine usually does)."
+                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                    MenuButton {
+                        text: "Save"
+                        Layout.alignment: Qt.AlignRight
+                        onClicked: proxyRestartDialog.open()
+                    }
+
+                    // What the engine made of it. Only when a proxy is set: with
+                    // none there is nothing here that "direct" does not already say.
+                    ColumnLayout {
+                        visible: I2p.proxyHost.length > 0
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        spacing: 6
+                        Label {
+                            text: "In force now"
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        }
+                        Label {
+                            visible: !I2p.running
+                            text: "The router is not running; these are what it will come up with."
+                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                        StatRow {
+                            visible: I2p.running
+                            label: "Router reports"
+                            value: I2p.proxyInForce ? "through a proxy" : "not proxied"
+                        }
+                        StatRow {
+                            label: "Router connections"
+                            value: I2p.proxyNtcp2.length > 0 ? I2p.proxyNtcp2 : "direct"
+                        }
+                        StatRow {
+                            label: "Datagrams"
+                            value: !I2p.proxySsu2Enabled ? "off — the proxy cannot carry them"
+                                : (I2p.proxySsu2.length > 0 ? I2p.proxySsu2 : "direct")
+                        }
+                        StatRow {
+                            label: "Network database"
+                            value: I2p.proxyReseed.length > 0 ? I2p.proxyReseed : "direct"
+                        }
+                        Label {
+                            visible: !I2p.proxySsu2Enabled
+                            text: "Datagram transport (SSU2) is switched off: it can only be "
+                                + "proxied by numeric address, and running it around the proxy "
+                                + "would send traffic your proxy never sees. The router keeps "
+                                + "working on its other transport."
                             color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
