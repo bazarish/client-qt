@@ -107,7 +107,9 @@ Environment variables:
 an account: the account last in the foreground, the accounts switched off,
 notifications, full-privacy mode and the embedded router's settings. It is read
 at start and rewritten whole on every change, so the file on disk is always a
-complete document.
+complete document. A file larger than 64 KiB at that path is refused unread and
+the defaults apply: settings run to a few hundred bytes, and nothing at that path
+is allowed to determine how much memory the application takes at start.
 
 ## GUI
 
