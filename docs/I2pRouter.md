@@ -2,9 +2,18 @@
 
 ## Scope
 
-The client operates an I2P router in its own process (libi2pd; no system daemon
-and no SAM bridge). This document specifies the router settings exposed to the
-user, their storage, and the constraints that apply to each.
+The desktop client operates an I2P router in its own process (libi2pd; no system
+daemon). This document specifies the router settings exposed to the user, their
+storage, and the constraints that apply to each.
+
+The transport is a facade over two engines. The desktop uses the in-process one,
+for the reasons this document sets out: the network database comes from the
+user's own server rather than a public reseed host, and the clearnet side can be
+put behind a proxy. A router outside the process, reached over SAM v3 on
+loopback, is the other engine; it exists for a service running many accounts,
+where one router serves every process. An external router answers none of the
+diagnostics below, and neither the proxy setting nor the private reseed applies
+to it - both belong to whoever operates it.
 
 The settings are presented in Settings -> I2P router, which also reports the
 engine's live diagnostics (network database size, floodfills, tunnel counts,
