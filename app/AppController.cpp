@@ -280,7 +280,6 @@ void AppController::refreshAccounts()
             // facade (host ends in ".b32.i2p") - drives the account list's
             // positive green marking vs grey for a clearnet facade.
             row.activeFacade = ctrl->activeFacade();
-            row.i2pFacade = row.activeFacade.contains(QStringLiteral(".b32.i2p"));
             row.name = ctrl->displayName().isEmpty() ? info.name : ctrl->displayName();
             row.fingerprint
                 = ctrl->fingerprint().isEmpty() ? info.fingerprint : ctrl->fingerprint();

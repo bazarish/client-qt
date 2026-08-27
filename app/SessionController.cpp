@@ -498,7 +498,7 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
         connected ? "connected" : "");
     // Settings the account carries, so the window shows what is actually in force
     // rather than its own defaults.
-    emit accountSettings(session_->acceptCalls(), session_->allowClearnet(),
+    emit accountSettings(session_->acceptCalls(),
         session_->sharingAllowed());
     emitContacts();
     // Seed the avatar store from disk: our own avatar plus every contact that has
@@ -1646,20 +1646,6 @@ void SessionWorker::setAcceptCalls(const bool accept)
     }
 }
 
-void SessionWorker::allowClearnet(const bool allow)
-{
-    if (!session_) {
-        return;
-    }
-    try {
-        session_->setAllowClearnet(allow);
-        emit actionOk(allow ? "Clearnet allowed again for this account."
-                            : "This account is back to I2P only.");
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
-}
-
 void SessionWorker::cancelTransfer(const QString& e2eId)
 {
     if (!session_) {
@@ -1765,7 +1751,7 @@ void SessionWorker::setSharingAllowed(const bool allowed)
 {
     try {
         session_->setSharingAllowed(allowed);
-        emit accountSettings(session_->acceptCalls(), session_->allowClearnet(),
+        emit accountSettings(session_->acceptCalls(),
             session_->sharingAllowed());
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1874,8 +1860,6 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::deletePersonalKey);
     connect(this, &SessionController::requestPublishPersonalDest, worker_,
         &SessionWorker::publishPersonalDest);
-    connect(this, &SessionController::requestAllowClearnet, worker_,
-        &SessionWorker::allowClearnet);
     connect(this, &SessionController::requestSetDelegationDays, worker_,
         &SessionWorker::setDelegationDays);
     connect(this, &SessionController::requestSetAcceptCalls, worker_,
@@ -1895,7 +1879,7 @@ SessionController::SessionController(QObject* parent)
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
     connect(worker_, &SessionWorker::accountSettings, this,
-        [this](const bool acceptCalls, const bool allowClearnet, const bool sharingAllowed) {
+        [this](const bool acceptCalls, const bool sharingAllowed) {
             if (sharingAllowed_ != sharingAllowed) {
                 sharingAllowed_ = sharingAllowed;
                 emit sharingAllowedChanged();
@@ -1903,10 +1887,6 @@ SessionController::SessionController(QObject* parent)
             if (acceptCalls_ != acceptCalls) {
                 acceptCalls_ = acceptCalls;
                 emit acceptCallsChanged();
-            }
-            if (clearnetAllowed_ != allowClearnet) {
-                clearnetAllowed_ = allowClearnet;
-                emit facadeInfoChanged();
             }
         });
     connect(worker_, &SessionWorker::renamed, this, [this](const QString& newName) {
@@ -3175,13 +3155,6 @@ void SessionController::setAcceptCalls(const bool on)
     acceptCalls_ = on;
     emit requestSetAcceptCalls(on);
     emit acceptCallsChanged();
-}
-
-void SessionController::allowClearnet(const bool allow)
-{
-    clearnetAllowed_ = allow;
-    emit requestAllowClearnet(allow);
-    emit facadeInfoChanged();
 }
 
 void SessionController::publishPersonalDest()

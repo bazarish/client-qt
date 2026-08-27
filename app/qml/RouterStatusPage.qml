@@ -310,7 +310,7 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
 
-                    Label { text: "Clearnet proxy"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: "Proxy"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     Label {
                         text: "A SOCKS5 proxy for what the router does outside I2P. It hides "
                             + "that traffic from your network, and shows all of it to the "

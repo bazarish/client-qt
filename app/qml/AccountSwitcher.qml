@@ -156,34 +156,6 @@ Popup {
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                             }
-                            // The active connection, as a chip of fixed width: a
-                            // positive green "I2P" over an I2P facade, grey "web"
-                            // over a clearnet one, and "OFF" when the account is
-                            // not connected at all. Every row carries one.
-                            Rectangle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                readonly property bool live: model.open && model.online
-                                    && model.connected && model.activeFacade.length > 0
-                                radius: Theme.radiusSmall
-                                color: live && model.i2pFacade ? Theme.green : "transparent"
-                                border.color: live
-                                    ? (model.i2pFacade ? Theme.green : Theme.border)
-                                    : Theme.border
-                                border.width: 1
-                                height: connLabel.implicitHeight + 4
-                                // Sized for the widest label so the row keeps its
-                                // shape when the state changes under it.
-                                width: 44
-                                Label {
-                                    id: connLabel
-                                    anchors.centerIn: parent
-                                    text: !parent.live ? "OFF" : (model.i2pFacade ? "I2P" : "web")
-                                    color: parent.live && model.i2pFacade
-                                        ? Theme.text : Theme.textDim
-                                    font.pixelSize: Theme.fontSmall - 1
-                                    font.weight: Font.Medium
-                                }
-                            }
                         }
                     }
                 }

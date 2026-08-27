@@ -209,38 +209,6 @@ const ServerEndpoint& ApiClient::endpoint() const
     return endpoint_;
 }
 
-void ApiClient::markI2pProven()
-{
-    if (i2pProven_) {
-        return;
-    }
-    i2pProven_ = true;
-    bazarish::log::info("this account now reaches its server over I2P; clearnet is refused");
-    if (onI2pProven_) {
-        onI2pProven_();
-    }
-}
-
-void ApiClient::setI2pProven(const bool proven)
-{
-    i2pProven_ = proven;
-}
-
-bool ApiClient::i2pProven() const
-{
-    return i2pProven_;
-}
-
-void ApiClient::setAllowClearnet(const bool allow)
-{
-    allowClearnet_ = allow;
-}
-
-bool ApiClient::allowClearnet() const
-{
-    return allowClearnet_;
-}
-
 bool ApiClient::ensureSessionLocked()
 {
     // Renewed before it lapses, not after: the server tells us when it expires
@@ -331,11 +299,6 @@ void ApiClient::releaseI2pLink()
     i2pOut_.reset();
 }
 
-void ApiClient::setOnI2pProven(std::function<void()> callback)
-{
-    onI2pProven_ = std::move(callback);
-}
-
 std::string ApiClient::activeFacadeUrl() const
 {
     if (endpoint_.facades.empty()) {
@@ -343,15 +306,6 @@ std::string ApiClient::activeFacadeUrl() const
     }
     const std::size_t index = activeFacade_ < endpoint_.facades.size() ? activeFacade_ : 0;
     return facadeToUrl(endpoint_.facades[index]);
-}
-
-bool ApiClient::activeFacadeIsI2p() const
-{
-    if (endpoint_.facades.empty()) {
-        return false;
-    }
-    const std::size_t index = activeFacade_ < endpoint_.facades.size() ? activeFacade_ : 0;
-    return facadeIsI2p(endpoint_.facades[index]);
 }
 
 std::optional<ApiResponse> ApiClient::i2pExchange(const Facade& facade, const std::string& method,
@@ -731,7 +685,6 @@ ApiResponse ApiClient::transmitLocked(const std::string& method, const std::stri
                 continue;
             }
             activeFacade_ = index;
-            markI2pProven();
             if (response->status < 200 || response->status >= 300) {
                 raiseFromResponse(response->status, response->body);
             }

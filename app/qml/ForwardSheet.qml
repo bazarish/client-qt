@@ -80,12 +80,15 @@ Popup {
                     }
                 }
                 onClicked: {
-                    // Closed first, and then the send: this sheet has done its
-                    // part the moment a chat is picked, and one left standing
-                    // invites the same message being passed on again.
+                    // Everything this needs is taken first, because closing tears
+                    // down the delegate this handler is running in - and then the
+                    // sheet goes, before the send, so one left standing cannot
+                    // invite the same message being passed on again.
+                    const session = root.session
+                    const message = root.e2eId
                     const target = model.fingerprint
                     root.close()
-                    root.session.forwardMessage(root.e2eId, target)
+                    session.forwardMessage(message, target)
                 }
             }
         }

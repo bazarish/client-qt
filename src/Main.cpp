@@ -94,7 +94,6 @@ void printUsage()
         "\n"
         "Environment:\n"
         "  BAZARISH_I2P_ONLY=1       refuse clearnet facades (I2P only)\n"
-        "  BAZARISH_ALLOW_CLEARNET=1 allow clearnet again after I2P has worked\n"
         "  BAZARISH_NO_I2P=1         clearnet facades only (no embedded router)\n"
         "  BAZARISH_PASSPHRASE       encrypts/decrypts the key PEMs at rest\n"
         "  BAZARISH_EXPORT_PASSWORD  protects the export/import bundle (required)\n"
@@ -664,10 +663,6 @@ void applyPrivacyEnv()
     const char* const i2pOnly = std::getenv("BAZARISH_I2P_ONLY");
     if (i2pOnly != nullptr && std::string(i2pOnly) != "0") {
         bazarish::client::setFullPrivacy(true);
-    }
-    const char* const allowClearnet = std::getenv("BAZARISH_ALLOW_CLEARNET");
-    if (allowClearnet != nullptr && std::string(allowClearnet) != "0") {
-        bazarish::client::Session::setAllowClearnetDefault(true);
     }
     const char* const noI2p = std::getenv("BAZARISH_NO_I2P");
     if (noI2p != nullptr && std::string(noI2p) != "0") {

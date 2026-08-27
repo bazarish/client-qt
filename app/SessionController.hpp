@@ -101,7 +101,6 @@ public slots:
     void generatePersonalKey();
     void loadPersonalKey(const QString& path);
     void deletePersonalKey();
-    void allowClearnet(bool allow);
     void setAcceptCalls(bool accept);
     void setDelegationDays(int days);
     void cancelTransfer(const QString& e2eId);
@@ -141,7 +140,7 @@ signals:
     // reason. Nothing may be deleted locally until this says it happened.
     void accountClosed(bool ok, const QString& error);
     // What the opened account has stored for the settings the window shows.
-    void accountSettings(bool acceptCalls, bool allowClearnet, bool sharingAllowed);
+    void accountSettings(bool acceptCalls, bool sharingAllowed);
     // One step of a serving-key rotation, as it happens.
     void servingKeyStage(const QString& stage);
     // The rotation finished: ok with the summary, or the reason it did not.
@@ -377,7 +376,6 @@ class SessionController : public QObject {
     // clearnet facade - which the chat view says out loud, because it is a
     // downgrade the user did not ask for.
     Q_PROPERTY(bool onI2p READ onI2p NOTIFY facadeInfoChanged)
-    Q_PROPERTY(bool clearnetAllowed READ clearnetAllowed NOTIFY facadeInfoChanged)
     // Connect-in-flight state for the connect screen: whether a connect is
     // running, what it is doing, and why the last one failed.
     Q_PROPERTY(bool connecting READ connecting NOTIFY connectStateChanged)
@@ -511,7 +509,6 @@ public:
     QStringList configuredFacades() const { return configuredFacades_; }
     bool hasI2pFacade() const;
     bool onI2p() const { return activeFacade_.contains(QStringLiteral(".b32.i2p")); }
-    bool clearnetAllowed() const { return clearnetAllowed_; }
     bool connecting() const { return connecting_; }
     QString connectPhase() const { return connectPhase_; }
     int connectPercent() const { return connectPercent_; }
@@ -807,7 +804,6 @@ public:
     Q_INVOKABLE void deletePersonalKey();
     // Sticky I2P's escape hatch: this account has reached its server over I2P and
     // refuses clearnet since; allowing it again is the user's call, never automatic.
-    Q_INVOKABLE void allowClearnet(bool allow);
     // Stops a file transfer in either direction, by the file's protocol id (the
     // activity panel offers this on a running transfer).
     Q_INVOKABLE void cancelTransfer(const QString& e2eId);
@@ -936,7 +932,6 @@ signals:  // to worker
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);
     void requestDeletePersonalKey();
-    void requestAllowClearnet(bool allow);
     void requestSetAcceptCalls(bool accept);
     void requestSetDelegationDays(int days);
     void requestPublishPersonalDest();
@@ -1163,7 +1158,6 @@ private:
     // The blob-retention chosen for each outgoing file (by local id), so a resend
     // reuses the same TTL / download cap. Session-only; a resend after a restart
     // falls back to the store default.
-    bool clearnetAllowed_ = false;
     bool connecting_ = false;
     QString connectPhase_;
     int connectPercent_ = 0;

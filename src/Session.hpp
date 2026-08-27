@@ -303,19 +303,11 @@ public:
     // told. No-op for an unknown contact. The caller wipes the local transcript.
     void removeContact(const std::string& peerFingerprint);
 
-    // Sticky I2P: once an account has reached its server over I2P it refuses
-    // clearnet facades, so a flaky link cannot quietly move the user onto the
-    // clearnet. This is the deliberate way back, per account and persisted; the
-    // process-wide default is applied to every account opened afterwards.
-    void setAllowClearnet(bool allow);
-    bool allowClearnet() const;
-
     // Whether this account takes incoming calls at all. Off, an invitation is
     // answered with a refusal the moment it arrives - the caller learns it now
     // rather than ringing into nothing. Persisted with the account; on by default.
     bool acceptCalls() const { return acceptCalls_; }
     void setAcceptCalls(bool accept);
-    static void setAllowClearnetDefault(bool allow);
 
     // Redeems the portal registration on the configured server and registers
     // this client ID. Mints this account's own I2P destination if it has none

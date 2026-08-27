@@ -93,8 +93,6 @@ constexpr std::int64_t kSecondsPerDay = 24 * 3600;
 // Host form of a standard-LeaseSet I2P address (the per-user destination).
 constexpr const char* kI2pHostSuffix = ".b32.i2p";
 
-// Applied to every account opened afterwards (the CLI's BAZARISH_ALLOW_CLEARNET).
-std::atomic<bool> g_allowClearnetDefault{false};
 
 std::int64_t nowSeconds()
 {
@@ -503,9 +501,6 @@ Session Session::open(const fs::path& accountFile, const std::string& passphrase
     Session session(accountFile, std::move(client), std::move(sealing), std::move(contacts));
     session.db_ = std::move(db);
     session.acceptCalls_ = meta.value("acceptCalls", true);
-    session.client_->setI2pProven(meta.value("i2pProven", false));
-    session.client_->setAllowClearnet(
-        meta.value("allowClearnet", false) || g_allowClearnetDefault.load());
     session.cardB64_ = meta.value("card", std::string{});
     session.view_ = meta.value("view", std::string{});
     session.sharingAllowed_ = meta.value("sharingAllowed", true);
@@ -671,8 +666,6 @@ void Session::persistMeta() const
         // Sticky I2P: once this account has reached its server over I2P it keeps
         // refusing clearnet across restarts, unless the user allowed it again.
         {"acceptCalls", acceptCalls_},
-        {"i2pProven", client_->i2pProven()},
-        {"allowClearnet", client_->allowClearnet()},
     };
     db_->putText("meta", meta.dump(2));
 }
@@ -709,22 +702,6 @@ void Session::persistContacts() const
 PortalInfo Session::serverPortalInfo()
 {
     return client_->fetchPortalInfo();
-}
-
-void Session::setAllowClearnetDefault(const bool allow)
-{
-    g_allowClearnetDefault.store(allow);
-}
-
-void Session::setAllowClearnet(const bool allow)
-{
-    client_->setAllowClearnet(allow);
-    persistMeta();
-}
-
-bool Session::allowClearnet() const
-{
-    return client_->allowClearnet();
 }
 
 void Session::registerAccount()

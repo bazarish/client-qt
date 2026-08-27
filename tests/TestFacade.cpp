@@ -156,17 +156,7 @@ void testI2pOnly()
         endpoint.facades
             = {parseFacadeUrl("https://clear.example:8443"), parseFacadeUrl("http://abc.b32.i2p")};
         ApiClient api(id, "cid", endpoint, "/tmp/bazarish-test/i2p");
-        CHECK(api.activeFacadeIsI2p());
         CHECK(api.activeFacadeUrl() == "http://abc.b32.i2p");
-    }
-    {
-        // Nothing but clearnet facades: there is nothing to talk to, and the
-        // connection is certainly not reported as I2P.
-        ServerEndpoint endpoint;
-        endpoint.serverFingerprint = "srvfp";
-        endpoint.facades = {parseFacadeUrl("http://a:1"), parseFacadeUrl("https://b:2/x")};
-        ApiClient api(id, "cid", endpoint, "/tmp/bazarish-test/i2p");
-        CHECK(!api.activeFacadeIsI2p());
     }
     {
         // With the stand switch on, everything is tried in the order configured.
@@ -176,7 +166,6 @@ void testI2pOnly()
         endpoint.facades
             = {parseFacadeUrl("https://clear.example:8443"), parseFacadeUrl("http://abc.b32.i2p")};
         ApiClient api(id, "cid", endpoint, "/tmp/bazarish-test/i2p");
-        CHECK(!api.activeFacadeIsI2p());
         CHECK(api.activeFacadeUrl() == "https://clear.example:8443");
     }
 }

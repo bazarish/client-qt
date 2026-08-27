@@ -205,7 +205,6 @@ int main()
         const ApiResponse response = api.getClearnet("/v1/messaging/reseed");
         CHECK(response.status == 200);
         CHECK(response.json().at("routers").size() == 1);
-        CHECK(!api.activeFacadeIsI2p());
     }
 
     server.stop();

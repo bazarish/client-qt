@@ -153,15 +153,9 @@ public:
     // The facade the transport is currently using (last that worked), as a URL.
     std::string activeFacadeUrl() const;
     // Whether that facade is an I2P facade (for the account list marking).
-    bool activeFacadeIsI2p() const;
 
     // Sticky I2P (see ApiClient): this account refuses clearnet once it has
     // reached its server over I2P, until the user allows it again.
-    void setI2pProven(bool proven);
-    bool i2pProven() const;
-    void setAllowClearnet(bool allow);
-    bool allowClearnet() const;
-    void setOnI2pProven(std::function<void()> callback);
     // Names this account on the destinations this client creates (status view).
     void setDestinationOwner(std::string owner);
     // Drops the destination this client dials through; the next request builds a

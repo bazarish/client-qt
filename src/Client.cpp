@@ -66,36 +66,6 @@ std::string Client::activeFacadeUrl() const
     return api_.activeFacadeUrl();
 }
 
-bool Client::activeFacadeIsI2p() const
-{
-    return api_.activeFacadeIsI2p();
-}
-
-void Client::setI2pProven(const bool proven)
-{
-    api_.setI2pProven(proven);
-}
-
-bool Client::i2pProven() const
-{
-    return api_.i2pProven();
-}
-
-void Client::setAllowClearnet(const bool allow)
-{
-    api_.setAllowClearnet(allow);
-}
-
-bool Client::allowClearnet() const
-{
-    return api_.allowClearnet();
-}
-
-void Client::setOnI2pProven(std::function<void()> callback)
-{
-    api_.setOnI2pProven(std::move(callback));
-}
-
 void Client::setDestinationOwner(std::string owner)
 {
     api_.setDestinationOwner(std::move(owner));

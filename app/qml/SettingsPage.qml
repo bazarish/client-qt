@@ -529,49 +529,6 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     Label { text: "Privacy"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    // Sticky I2P: once this account has reached its server over I2P it
-                    // refuses clearnet, so a flaky link cannot move it back silently.
-                    // This is the deliberate way back.
-                    // Two switches decide this, and the app's wins. Rather than
-                    // describe the rule, say what is in force right now.
-                    Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        font.pixelSize: Theme.fontSmall
-                        color: App.fullPrivacyMode || !clearnetSwitch.checked ? Theme.success : Theme.warn
-                        text: App.fullPrivacyMode
-                            ? "Now: I2P only. Global settings refuse clearnet for every account, "
-                              + "so the switch below has no effect until that is turned off."
-                            : (clearnetSwitch.checked
-                                ? "Now: this account may fall back to clearnet, and your server "
-                                  + "then sees this device's address."
-                                : "Now: this account uses I2P once it has reached its server that "
-                                  + "way, and refuses clearnet from then on.")
-                    }
-                    RowLayout {
-                        visible: root.session && root.session.hasI2pFacade
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label {
-                                text: "Allow clearnet for this account"
-                                color: App.fullPrivacyMode ? Theme.textDim : Theme.text
-                            }
-                            Label {
-                                text: "Until this account has reached its server over I2P once, "
-                                    + "clearnet is used anyway - there is no other way to fetch the "
-                                    + "network database and start. That first fetch carries no identity."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Toggle {
-                            id: clearnetSwitch
-                            enabled: !App.fullPrivacyMode
-                            checked: root.session && root.session.clearnetAllowed
-                            onToggled: root.session.allowClearnet(checked)
-                        }
-                    }
                     // How long this account hands its address to the server for.
                     // It is the only thing that ties an account to a server in
                     // time, so the user - not the operator - sets it.
