@@ -24,6 +24,12 @@ namespace {
 // The lowest tunnel-length level, and the count of them. Kept here rather than
 // taken from the I2P layer: this file stores a number, and what it selects is
 // the caller's business.
+// Where a SAM router listens unless the user says otherwise. Kept here rather
+// than taken from the SAM layer: this file stores a number, and the meaning of
+// it is the caller's business.
+constexpr const char* kDefaultSamHost = "127.0.0.1";
+constexpr int kDefaultSamPort = 7656;
+
 constexpr int kMinTunnelLength = 0;
 constexpr int kMaxTunnelLength = 2;
 
@@ -88,6 +94,16 @@ void AppSettings::load()
         i2pTunnelLength_
             = std::clamp(i2p.value("tunnelLength", kMinTunnelLength), kMinTunnelLength,
                 kMaxTunnelLength);
+        if (i2p.contains("sam")) {
+            const nlohmann::json sam = i2p.at("sam");
+            // The address may be written ahead of the choice; it is the choice
+            // itself that is missing until a first start makes one.
+            if (sam.contains("enabled")) {
+                samEnabled_ = sam.at("enabled").get<bool>();
+            }
+            samHost_ = sam.value("host", std::string(kDefaultSamHost));
+            samPort_ = sam.value("port", kDefaultSamPort);
+        }
         const nlohmann::json proxy = i2p.value("proxy", nlohmann::json::object());
         i2pProxyHost_ = proxy.value("host", std::string());
         i2pProxyPort_ = proxy.value("port", 0);
@@ -104,17 +120,20 @@ void AppSettings::load()
 
 void AppSettings::save() const
 {
+    nlohmann::json i2p = {
+        {"logging", i2pLogging_},
+        {"tunnelLength", i2pTunnelLength_},
+        {"proxy", {{"host", i2pProxyHost_}, {"port", i2pProxyPort_}}},
+    };
+    if (samEnabled_.has_value()) {
+        i2p["sam"] = {{"enabled", *samEnabled_}, {"host", samHost_}, {"port", samPort_}};
+    }
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
         {"offlineAccounts", offlineAccounts_},
         {"fullPrivacyMode", fullPrivacy_},
         {"notifications", notifications_},
-        {"i2p",
-            {
-                {"logging", i2pLogging_},
-                {"tunnelLength", i2pTunnelLength_},
-                {"proxy", {{"host", i2pProxyHost_}, {"port", i2pProxyPort_}}},
-            }},
+        {"i2p", i2p},
     };
     // Written beside the file and renamed over it: a crash mid-write leaves the
     // previous settings rather than half a document.
@@ -200,6 +219,29 @@ void AppSettings::setI2pTunnelLength(const int level)
 std::string AppSettings::i2pProxyHost() const { return i2pProxyHost_; }
 
 int AppSettings::i2pProxyPort() const { return i2pProxyPort_; }
+
+std::optional<bool> AppSettings::samEnabled() const { return samEnabled_; }
+
+std::string AppSettings::samHost() const
+{
+    return samHost_.empty() ? std::string(kDefaultSamHost) : samHost_;
+}
+
+int AppSettings::samPort() const { return samPort_ > 0 ? samPort_ : kDefaultSamPort; }
+
+void AppSettings::setSam(const bool enabled, const std::string& host, const int port)
+{
+    const std::string wantedHost = host.empty() ? std::string(kDefaultSamHost) : host;
+    const int wantedPort = port > 0 ? port : kDefaultSamPort;
+    if (samEnabled_.has_value() && *samEnabled_ == enabled && samHost_ == wantedHost
+        && samPort_ == wantedPort) {
+        return;
+    }
+    samEnabled_ = enabled;
+    samHost_ = wantedHost;
+    samPort_ = wantedPort;
+    save();
+}
 
 void AppSettings::setI2pProxy(const std::string& host, const int port)
 {

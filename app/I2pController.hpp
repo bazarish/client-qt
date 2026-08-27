@@ -6,6 +6,7 @@
 #include <QVariantList>
 
 #include <filesystem>
+#include <QString>
 
 namespace bazarish::app {
 
@@ -51,6 +52,13 @@ class I2pController : public QObject {
     // Empty host = no proxy, which is the default.
     Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
     Q_PROPERTY(int proxyPort READ proxyPort NOTIFY proxyChanged)
+    // The transport: an external router over SAM, or the engine in this process.
+    // Settled at the first start by looking for a router, and changed only with
+    // an application restart - the embedded engine cannot be started twice in one
+    // process, so the two cannot swap places while it runs.
+    Q_PROPERTY(bool samEnabled READ samEnabled NOTIFY samChanged)
+    Q_PROPERTY(QString samHost READ samHost NOTIFY samChanged)
+    Q_PROPERTY(int samPort READ samPort NOTIFY samChanged)
     // What the engine itself says about it, for the status page. Meaningful only
     // while the router runs, and shown only when a proxy is configured at all.
     Q_PROPERTY(QString proxyNtcp2 READ proxyNtcp2 NOTIFY statusChanged)
@@ -72,6 +80,15 @@ public:
     // the router's network, which is what puts it in force; without it the saved
     // setting waits for the next start.
     Q_INVOKABLE void saveProxy(const QString& host, int port, bool restartNow);
+    bool samEnabled() const { return samEnabled_; }
+    QString samHost() const { return samHost_; }
+    int samPort() const { return samPort_; }
+    // Stores the transport for the next start. Nothing changes in this process:
+    // the caller restarts the application, which is the only way to swap engines.
+    Q_INVOKABLE void saveSam(bool enabled, const QString& host, int port);
+    // Whether a router answers at that address right now, so the page can say so
+    // before the user commits to a restart.
+    Q_INVOKABLE bool samReachable(const QString& host, int port) const;
     int floodfills() const { return floodfills_; }
     int inboundTunnels() const { return inboundTunnels_; }
     int outboundTunnels() const { return outboundTunnels_; }
@@ -87,6 +104,7 @@ signals:
     void privacyLevelChanged();
     void statusChanged();
     void proxyChanged();
+    void samChanged();
 
 private:
     // Brings the shared router into line with the enable flag off the GUI thread:
@@ -102,6 +120,9 @@ private:
     QString proxyHost_;
     int proxyPort_ = 0;
     QString proxyNtcp2_;
+    bool samEnabled_ = false;
+    QString samHost_;
+    int samPort_ = 0;
     int floodfills_ = 0;
     int inboundTunnels_ = 0;
     int outboundTunnels_ = 0;

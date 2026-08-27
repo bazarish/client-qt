@@ -121,6 +121,16 @@ bool i2pEnabled();
 void setFullPrivacy(bool enabled);
 bool fullPrivacy();
 
+// Which transport this process uses. An empty host is the engine inside this
+// process; anything else is a router outside it, reached over SAM at that
+// address. Read when the router is built, so it has to be set before anything
+// asks for one - and changing it afterwards takes an application restart,
+// because the embedded engine cannot be initialised twice in one process.
+void setSamTransport(std::string host, int port);
+bool usingSamTransport();
+std::string samTransportHost();
+int samTransportPort();
+
 // A SOCKS5 proxy for the embedded router's clearnet side - NTCP2, SSU2 and the
 // built-in reseeds. Empty host (the default) means straight out. Read when the
 // router's network starts, so a change reaches a running router only through

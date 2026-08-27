@@ -76,6 +76,11 @@ std::atomic<bool> g_publicReseedAllowed{false};
 // The SOCKS5 proxy the router's clearnet side goes through, empty by default.
 // A string needs a mutex where a flag needs none.
 std::string g_proxyHost;
+// Where the external router is, when one is used at all. Empty means the engine
+// in this process. Shares the proxy mutex: both are settings read when a router
+// is built.
+std::string g_samHost;
+int g_samPort = 0;
 int g_proxyPort = 0;
 
 std::mutex& proxyMutex()
@@ -182,11 +187,39 @@ std::size_t knownRouterCount(const std::filesystem::path& dataDir, const std::si
     return count;
 }
 
+void setSamTransport(std::string host, const int port)
+{
+    const std::lock_guard<std::mutex> lock(proxyMutex());
+    g_samHost = std::move(host);
+    g_samPort = port;
+}
+
+bool usingSamTransport()
+{
+    const std::lock_guard<std::mutex> lock(proxyMutex());
+    return !g_samHost.empty();
+}
+
+std::string samTransportHost()
+{
+    const std::lock_guard<std::mutex> lock(proxyMutex());
+    return g_samHost;
+}
+
+int samTransportPort()
+{
+    const std::lock_guard<std::mutex> lock(proxyMutex());
+    return g_samPort;
+}
+
 bool seedRouterOnce(
     const std::filesystem::path& dataDir, const std::function<std::vector<Bytes>()>& fetch)
 {
     if (!fetch) {
         return false;
+    }
+    if (usingSamTransport()) {
+        return true;  // an external router keeps its own netDb
     }
     const std::lock_guard<std::mutex> lock(routerMutex());
     // Answered once: this sits on the path of every request that may go over I2P.
@@ -226,14 +259,30 @@ bool seedRouterOnce(
     return true;
 }
 
+// Everything a router needs to know about which transport it is, in one place:
+// two call sites build one, and they must not drift apart.
+bazarish::i2p::RouterConfig routerConfigFor(const std::filesystem::path& dataDir)
+{
+    bazarish::i2p::RouterConfig config;
+    config.dataDir = dataDir;
+    config.role = bazarish::i2p::Role::eClient;
+    config.allowPublicReseed = g_publicReseedAllowed.load();
+    config.socksProxyHost = i2pSocksProxyHost();
+    config.socksProxyPort = i2pSocksProxyPort();
+    if (usingSamTransport()) {
+        config.backend = bazarish::i2p::Backend::eSam;
+        config.samHost = samTransportHost();
+        config.samControlPort = samTransportPort();
+    }
+    return config;
+}
+
 bazarish::i2p::Router& sharedI2pRouter(const std::filesystem::path& dataDir)
 {
     const std::lock_guard<std::mutex> lock(routerMutex());
     std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
     if (!router) {
-        router = std::make_unique<bazarish::i2p::Router>(
-            bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient,
-                g_publicReseedAllowed.load(), i2pSocksProxyHost(), i2pSocksProxyPort()});
+        router = std::make_unique<bazarish::i2p::Router>(routerConfigFor(dataDir));
     } else if (!router->running()) {
         router->start();
     }
@@ -293,6 +342,9 @@ void setI2pSocksProxy(std::string host, const int port)
         g_proxyHost = std::move(host);
         g_proxyPort = port;
     }
+    if (usingSamTransport()) {
+        return;  // the clearnet side of an external router is its operator's
+    }
     const std::lock_guard<std::mutex> lock(routerMutex());
     if (const std::unique_ptr<bazarish::i2p::Router>& router = routerSlot(); router) {
         // Written into the engine now; the transports read it as they come up.
@@ -314,6 +366,9 @@ int i2pSocksProxyPort()
 
 std::optional<bazarish::i2p::ProxyState> i2pProxyState()
 {
+    if (usingSamTransport()) {
+        return std::nullopt;
+    }
     const std::lock_guard<std::mutex> lock(routerMutex());
     const std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
     if (!router || !router->running()) {
@@ -325,6 +380,9 @@ std::optional<bazarish::i2p::ProxyState> i2pProxyState()
 void restartI2pRouter(const std::filesystem::path& dataDir)
 {
     (void)dataDir;
+    if (usingSamTransport()) {
+        return;  // there is no engine here to cycle
+    }
     const std::lock_guard<std::mutex> lock(routerMutex());
     std::unique_ptr<bazarish::i2p::Router>& router = routerSlot();
     if (!router) {
@@ -346,7 +404,9 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
         // from: it builds no tunnel, and every destination it is asked for dies
         // waiting. Left down until an account hands it a netDb (or public reseeds
         // are allowed), which is also what starts it.
-        if (!router && !g_publicReseedAllowed.load()
+        // The gate below is about this process's own netDb, which an external
+        // router does not have and does not need.
+        if (!router && !usingSamTransport() && !g_publicReseedAllowed.load()
             && knownRouterCount(dataDir) < kMinKnownRouters) {
             bazarish::log::info(
                 "i2p: not starting on {} known routers - waiting for a bootstrap",
@@ -354,9 +414,15 @@ void reconcileI2pRouter(const std::filesystem::path& dataDir)
             return;
         }
         if (!router) {
-            router = std::make_unique<bazarish::i2p::Router>(
-                bazarish::i2p::RouterConfig{dataDir, bazarish::i2p::Role::eClient,
-                    g_publicReseedAllowed.load(), i2pSocksProxyHost(), i2pSocksProxyPort()});
+            try {
+                router = std::make_unique<bazarish::i2p::Router>(routerConfigFor(dataDir));
+            } catch (const std::exception& error) {
+                // An external router that is not answering leaves this process
+                // with no transport at all, which is worth saying rather than
+                // retrying silently on every reconcile.
+                bazarish::log::warn("i2p: no transport: {}", error.what());
+                return;
+            }
         } else {
             router->start();
         }

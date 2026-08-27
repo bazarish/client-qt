@@ -2,6 +2,7 @@
 #pragma once
 
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -52,6 +53,14 @@ public:
     void setI2pLogging(bool on);
     int i2pTunnelLength() const;
     void setI2pTunnelLength(int level);
+
+    // The transport: the engine in this process, or a router outside it reached
+    // over SAM. Nothing is stored until the first start settles it by looking for
+    // a router, so an unset value means "not decided yet" rather than "off".
+    std::optional<bool> samEnabled() const;
+    std::string samHost() const;
+    int samPort() const;
+    void setSam(bool enabled, const std::string& host, int port);
     std::string i2pProxyHost() const;
     int i2pProxyPort() const;
     void setI2pProxy(const std::string& host, int port);
@@ -71,6 +80,9 @@ private:
     int i2pTunnelLength_ = 0;
     std::string i2pProxyHost_;
     int i2pProxyPort_ = 0;
+    std::optional<bool> samEnabled_;
+    std::string samHost_;
+    int samPort_ = 0;
 };
 
 }  // namespace bazarish::app

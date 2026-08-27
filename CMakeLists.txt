@@ -226,6 +226,7 @@ if(Qt6_FOUND)
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml
             app/qml/ProxyRestartDialog.qml
+            app/qml/SamRestartDialog.qml
             app/qml/ServerHelloDialog.qml
             app/qml/AccountDeleteConfirmDialog.qml
             app/qml/AccountDeleteLockedDialog.qml
