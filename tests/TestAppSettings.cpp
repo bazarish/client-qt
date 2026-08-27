@@ -54,7 +54,6 @@ int main(int argc, char** argv)
     // Nothing written yet: the defaults, and no file created for reading alone.
     CHECK(settings.activeAccount().empty());
     CHECK(settings.offlineAccounts().empty());
-    CHECK(!settings.fullPrivacy());
     CHECK(settings.notifications());
     CHECK(!settings.i2pLogging());
     CHECK(settings.i2pTunnelLength() == 0);
@@ -71,7 +70,6 @@ int main(int argc, char** argv)
     // among the accounts.
     settings.setActiveAccount("alice");
     settings.setOfflineAccounts({"bob", "carol"});
-    settings.setFullPrivacy(true);
     settings.setNotifications(false);
     settings.setI2pLogging(true);
     settings.setI2pTunnelLength(2);
@@ -85,7 +83,6 @@ int main(int argc, char** argv)
         in >> document;
         CHECK(document.at("activeAccount") == "alice");
         CHECK(document.at("offlineAccounts").size() == 2);
-        CHECK(document.at("fullPrivacyMode") == true);
         CHECK(document.at("notifications") == false);
         CHECK(document.at("i2p").at("logging") == true);
         CHECK(document.at("i2p").at("tunnelLength") == 2);

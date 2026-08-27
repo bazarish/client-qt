@@ -93,7 +93,6 @@ void printUsage()
         "link; add-user resolves a username (trusts the resolver for the mapping).\n"
         "\n"
         "Environment:\n"
-        "  BAZARISH_I2P_ONLY=1       refuse clearnet facades (I2P only)\n"
         "  BAZARISH_NO_I2P=1         clearnet facades only (no embedded router)\n"
         "  BAZARISH_PASSPHRASE       encrypts/decrypts the key PEMs at rest\n"
         "  BAZARISH_EXPORT_PASSWORD  protects the export/import bundle (required)\n"
@@ -660,10 +659,6 @@ int runCallAnswer(const std::vector<std::string>& args)
 // downgrade the user never asked for.
 void applyPrivacyEnv()
 {
-    const char* const i2pOnly = std::getenv("BAZARISH_I2P_ONLY");
-    if (i2pOnly != nullptr && std::string(i2pOnly) != "0") {
-        bazarish::client::setFullPrivacy(true);
-    }
     const char* const noI2p = std::getenv("BAZARISH_NO_I2P");
     if (noI2p != nullptr && std::string(noI2p) != "0") {
         bazarish::client::setI2pEnabled(false);

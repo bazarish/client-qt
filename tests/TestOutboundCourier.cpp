@@ -122,7 +122,7 @@ int main()
     {
         std::vector<std::string> phases;
         int dials = 0;
-        OutboundCourier courier([](const std::string&) { return true; },
+        OutboundCourier courier([](const std::string&, const std::string&) { return true; },
             [&](const std::string&, std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
                 ++dials;
                 return std::make_shared<ScriptedStream>(
@@ -144,7 +144,7 @@ int main()
     // unreachable peer and ends failed, because anyone on the path could say it.
     {
         int dials = 0;
-        OutboundCourier courier([](const std::string&) { return true; },
+        OutboundCourier courier([](const std::string&, const std::string&) { return true; },
             [&](const std::string&, std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
                 ++dials;
                 return std::make_shared<ScriptedStream>(
@@ -161,7 +161,7 @@ int main()
     {
         int dials = 0;
         std::vector<std::string> retries;
-        OutboundCourier courier([](const std::string&) { return true; },
+        OutboundCourier courier([](const std::string&, const std::string&) { return true; },
             [&](const std::string&, std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
                 ++dials;
                 return nullptr;
@@ -184,7 +184,7 @@ int main()
     // A refusal is an answer: it is not repeated, and it carries its own reason.
     {
         int dials = 0;
-        OutboundCourier courier([](const std::string&) { return true; },
+        OutboundCourier courier([](const std::string&, const std::string&) { return true; },
             [&](const std::string&, std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
                 ++dials;
                 return std::make_shared<ScriptedStream>(
@@ -204,7 +204,7 @@ int main()
     // fails at once rather than spending four attempts on it.
     {
         int dials = 0;
-        OutboundCourier courier([](const std::string&) { return false; },
+        OutboundCourier courier([](const std::string&, const std::string&) { return false; },
             [&](const std::string&, std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
                 ++dials;
                 return nullptr;
@@ -226,7 +226,7 @@ int main()
         int maxInFlightSame = 0;
         int otherDials = 0;
         bool release = false;
-        OutboundCourier courier([](const std::string&) { return true; },
+        OutboundCourier courier([](const std::string&, const std::string&) { return true; },
             [&](const std::string& toDest,
                 std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
                 std::unique_lock<std::mutex> lock(mutex);

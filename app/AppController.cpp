@@ -93,26 +93,12 @@ void AppController::writeLastActive(const QString& id) const
 
 void AppController::loadSettings()
 {
-    fullPrivacy_ = AppSettings::instance().fullPrivacy();
     notifications_ = AppSettings::instance().notifications();
-    client::setFullPrivacy(fullPrivacy_);
 }
 
 void AppController::persistSettings() const
 {
-    AppSettings::instance().setFullPrivacy(fullPrivacy_);
     AppSettings::instance().setNotifications(notifications_);
-}
-
-void AppController::setFullPrivacyMode(bool on)
-{
-    if (fullPrivacy_ == on) {
-        return;
-    }
-    fullPrivacy_ = on;
-    client::setFullPrivacy(on);  // takes effect on the next request, process-wide
-    persistSettings();
-    emit fullPrivacyModeChanged();
 }
 
 QString AppController::notificationBody(

@@ -15,7 +15,11 @@ namespace {
 // go close to when it should be rather than at the next message.
 constexpr std::chrono::seconds kSweepInterval{30};
 // What the router status view calls these destinations.
+// What one correspondent's outbound address is called in the status view. The
+// name is the local one this account knows them by; before there is a name (a
+// contact request precedes the contact) the address stands unnamed.
 constexpr char kLeaseLabel[] = "Outbound delivery";
+constexpr char kLeaseLabelPrefix[] = "Outbound for ";
 
 // One I2P stream, holding the destination it was opened on: the stream is only
 // good for as long as that destination lives.
@@ -54,6 +58,11 @@ OutboundLeases::OutboundLeases(bazarish::i2p::Router& router, std::string owner)
     sweeper_ = std::thread(&OutboundLeases::sweeperLoop, this);
 }
 
+std::string OutboundLeases::labelFor(const std::string& peerName)
+{
+    return peerName.empty() ? std::string(kLeaseLabel) : kLeaseLabelPrefix + peerName;
+}
+
 OutboundLeases::~OutboundLeases()
 {
     running_ = false;
@@ -86,7 +95,7 @@ std::shared_ptr<bazarish::i2p::Endpoint> OutboundLeases::held(const std::string&
     return found == leases_.end() ? nullptr : found->second.endpoint;
 }
 
-bool OutboundLeases::prepare(const std::string& toDest)
+bool OutboundLeases::prepare(const std::string& toDest, const std::string& peerName)
 {
     std::shared_ptr<bazarish::i2p::Endpoint> endpoint = held(toDest);
     if (!endpoint) {
@@ -96,12 +105,12 @@ bool OutboundLeases::prepare(const std::string& toDest)
         if (endpoint) {
             // A spare belongs to nobody while it waits; from here it carries one
             // correspondent's mail, and the status view should say so.
-            router_.retagEndpoint(*endpoint, kLeaseLabel, owner_);
+            router_.retagEndpoint(*endpoint, labelFor(peerName), owner_);
         } else {
             endpoint = router_.createEndpoint(bazarish::i2p::EndpointConfig{
                 router_.generateKeys(), bazarish::i2p::LeaseSetKind::eEncrypted,
-                tunnelPrivacy(), bazarish::i2p::kDefaultTunnelQuantity, false, kLeaseLabel,
-                owner_});
+                tunnelPrivacy(), bazarish::i2p::kDefaultTunnelQuantity, false,
+                labelFor(peerName), owner_});
         }
         const std::lock_guard<std::mutex> lock(mutex_);
         const auto now = std::chrono::steady_clock::now();

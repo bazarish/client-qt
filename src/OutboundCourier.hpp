@@ -99,7 +99,10 @@ public:
     // device has no address to send from. Its wait is deliberately outside the
     // delivery budget below: building tunnels is a local condition, and failing
     // a message for it would blame the recipient for this device's cold start.
-    using PrepareFn = std::function<bool(const std::string& toDest)>;
+    // peerName is what this account calls the correspondent, for the router's
+    // status view; empty when there is no name yet.
+    using PrepareFn
+        = std::function<bool(const std::string& toDest, const std::string& peerName)>;
     // Dials the recipient's destination from that address. Null when the far
     // side cannot be reached inside the timeout.
     using OpenStreamFn = std::function<std::shared_ptr<DeliveryStream>(
@@ -107,6 +110,9 @@ public:
 
     struct Task {
         std::string toDest;
+        // Read where the contacts are, on the thread that owns them, so the
+        // courier's own threads never reach into the session for it.
+        std::string peerName;
         Bytes sealed;
         Bytes payload;
         // What the two servers call this delivery. Carried for the log and for

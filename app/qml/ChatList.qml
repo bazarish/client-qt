@@ -206,24 +206,15 @@ Item {
             Layout.fillWidth: true
             property bool isOffline: root.session && !root.session.online
             property bool isConnecting: root.session && root.session.online && !root.session.reachable
-            // Under full privacy mode an account with no I2P facade cannot connect at
-            // all: surface that as an explicit, emphasised offline error.
-            property bool i2pOnlyBlocked: App.fullPrivacyMode && root.session
-                && root.session.connected && !root.session.hasI2pFacade
-            // Connected, but not over I2P while this account has an I2P facade:
-            // traffic is on the clearnet, which ties this account to this IP at
-            // the server. Say so where the user actually looks.
-            property bool clearnetDowngrade: root.session && root.session.connected
-                && root.session.hasI2pFacade && !root.session.onI2p
             // The server took the account and serves nothing until an operator
             // approves it: connected, reachable, and unusable.
             property bool heldForApproval: root.session && root.session.awaitingApproval
-            visible: connPlate.isOffline || connPlate.isConnecting || connPlate.clearnetDowngrade
+            visible: connPlate.isOffline || connPlate.isConnecting
                 || connPlate.heldForApproval
             implicitHeight: plateRow.implicitHeight + 16
             color: Theme.surface
 
-            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: connPlate.i2pOnlyBlocked ? Theme.danger : Theme.border }
+            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.border }
 
             RowLayout {
                 id: plateRow
@@ -236,37 +227,27 @@ Item {
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
                     implicitWidth: 8; implicitHeight: 8; radius: 4
-                    color: connPlate.i2pOnlyBlocked ? Theme.danger
-                        : (connPlate.heldForApproval ? Theme.warn
-                        : (connPlate.clearnetDowngrade ? Theme.warn
-                        : (connPlate.isOffline ? Theme.textDim : Theme.warn)))
+                    color: connPlate.isOffline ? Theme.textDim : Theme.warn
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
                     Label {
-                        text: connPlate.i2pOnlyBlocked ? "Offline — no I2P facade"
-                            : (connPlate.heldForApproval ? "Waiting for approval"
-                            : (connPlate.clearnetDowngrade ? "Connected over clearnet"
-                            : (connPlate.isOffline ? "Offline" : "Connecting…")))
-                        color: connPlate.i2pOnlyBlocked ? Theme.danger
-                            : (connPlate.isOffline ? Theme.textDim : Theme.warn)
+                        text: connPlate.heldForApproval ? "Waiting for approval"
+                            : (connPlate.isOffline ? "Offline" : "Connecting…")
+                        color: connPlate.isOffline ? Theme.textDim : Theme.warn
                         font.pixelSize: Theme.fontSmall
-                        font.weight: connPlate.i2pOnlyBlocked ? Font.DemiBold : Font.Medium
+                        font.weight: Font.Medium
                     }
                     Label {
-                        text: connPlate.i2pOnlyBlocked
-                            ? "Privacy mode is on but this account has no I2P facade"
-                            : (connPlate.heldForApproval
-                                ? (root.session && root.session.approvalNote.length > 0
-                                    ? root.session.approvalNote
-                                    : "Your server holds this account until its operator approves it — you cannot send or receive yet")
-                            : (connPlate.clearnetDowngrade
-                                ? "Not over I2P — your server sees this device's address"
-                                : (connPlate.isOffline ? "This account is not syncing"
-                                    : (root.session && root.session.syncError.length > 0
-                                        ? root.session.syncError
-                                        : "No server connection yet"))))
+                        text: connPlate.heldForApproval
+                            ? (root.session && root.session.approvalNote.length > 0
+                                ? root.session.approvalNote
+                                : "Your server holds this account until its operator approves it — you cannot send or receive yet")
+                            : (connPlate.isOffline ? "This account is not syncing"
+                                : (root.session && root.session.syncError.length > 0
+                                    ? root.session.syncError
+                                    : "No server connection yet"))
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight

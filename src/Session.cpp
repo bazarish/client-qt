@@ -1263,6 +1263,10 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     const std::string deliveryId = deliveryIdFor(e2eId, mailbox);
     OutboundCourier::Task task;
     task.toDest = toDest;
+    // Read here, on the thread that owns the contacts: the status view names an
+    // outbound address by the correspondent it carries for.
+    const auto known = contacts_.find(mailbox);
+    task.peerName = known != contacts_.end() ? known->second.displayName : std::string();
     task.sealed = sealDeliveryEnvelope(kind, mailbox, deliveryId, token, servingSealingKey);
     task.payload = payload;
     task.deliveryId = deliveryId;
@@ -1291,7 +1295,9 @@ OutboundCourier& Session::outboundCourier()
         outbound_->leases = std::make_unique<OutboundLeases>(i2pRouter(), destinationOwner());
         OutboundLeases& leases = *outbound_->leases;
         outbound_->courier = std::make_unique<OutboundCourier>(
-            [&leases](const std::string& toDest) { return leases.prepare(toDest); },
+            [&leases](const std::string& toDest, const std::string& peerName) {
+                return leases.prepare(toDest, peerName);
+            },
             [&leases](const std::string& toDest, const std::chrono::seconds timeout) {
                 return leases.openStream(toDest, timeout);
             });

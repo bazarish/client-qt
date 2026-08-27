@@ -152,7 +152,7 @@ OutboundCourier::Outcome OutboundCourier::deliverNow(const Task& task)
     if (task.onPhase) {
         task.onPhase(kPhasePreparing);
     }
-    if (!prepare_(task.toDest)) {
+    if (!prepare_(task.toDest, task.peerName)) {
         Outcome local;
         local.errorMessage = "this device has no I2P address to send from yet";
         return local;

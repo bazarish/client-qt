@@ -44,8 +44,6 @@ class AppController : public QObject {
     // Popup notifications (with their sound), on unless the user turns them off.
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled
             NOTIFY notificationsEnabledChanged)
-    Q_PROPERTY(bool fullPrivacyMode READ fullPrivacyMode WRITE setFullPrivacyMode
-            NOTIFY fullPrivacyModeChanged)
     // The embedded upstream i2pd engine version (e.g. "2.60.0"), for display.
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
 public:
@@ -63,8 +61,6 @@ public:
     QObject* session();
     bool hasAccounts() const { return haveAccounts_; }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }
-    bool fullPrivacyMode() const { return fullPrivacy_; }
-    void setFullPrivacyMode(bool on);
     QString i2pdVersion() const;
 
     Q_INVOKABLE void refreshAccountList();
@@ -174,7 +170,6 @@ signals:
     // message, an incoming call.
     void notificationRequested(const QString& title, const QString& body);
     void sessionChanged();
-    void fullPrivacyModeChanged();
     void accountOpened();
     void accountOpenFailed(const QString& error);
     void createFailed(const QString& error);
@@ -264,7 +259,6 @@ private:
     QString pendingDeleteId_;
     bool unlockToBringOnline_ = false;
     // Global full-privacy mode (persisted; applied process-wide on load/change).
-    bool fullPrivacy_ = false;
 };
 
 }  // namespace bazarish::app

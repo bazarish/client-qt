@@ -204,24 +204,14 @@ Popup {
                     Layout.margins: 16
                     spacing: 6
                     Label { text: "Server connection"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    // Under full privacy mode an account with no I2P facade cannot
-                    // reach its server at all (clearnet is refused), so its status is
-                    // an explicit I2P-only offline error rather than a vague "connecting".
-                    readonly property bool i2pOnlyBlocked: App.fullPrivacyMode
-                        && root.session && root.session.connected && !root.session.hasI2pFacade
                     Label {
-                        text: parent.i2pOnlyBlocked
-                            ? "Offline — full privacy mode is on, but this account has no I2P facade. Add one (or turn privacy mode off) to connect."
-                            : (!(root.session && root.session.connected)
-                                ? "Not configured"
-                                : (root.session.reachable
-                                    ? "Connected"
-                                    : "Not reaching the server — Connect to finish setup"))
-                        color: parent.i2pOnlyBlocked
-                            ? Theme.danger
-                            : ((root.session && root.session.connected && !root.session.reachable)
-                                ? Theme.warn : Theme.text)
-                        font.weight: parent.i2pOnlyBlocked ? Font.DemiBold : Font.Normal
+                        text: !(root.session && root.session.connected)
+                            ? "Not configured"
+                            : (root.session.reachable
+                                ? "Connected"
+                                : "Not reaching the server — Connect to finish setup")
+                        color: (root.session && root.session.connected && !root.session.reachable)
+                            ? Theme.warn : Theme.text
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     RowLayout {

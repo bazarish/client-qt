@@ -427,7 +427,7 @@ int main()
     // frame, with no router and no waiting.
     const Key ackSigning = Key::generateSigning();
     const auto courierFor = [&m, &ackSigning]() {
-        return std::make_unique<OutboundCourier>([](const std::string&) { return true; },
+        return std::make_unique<OutboundCourier>([](const std::string&, const std::string&) { return true; },
             [&m, &ackSigning](const std::string&,
                 std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
                 return std::make_shared<MockServerStream>(m, ackSigning);

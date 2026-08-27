@@ -39,8 +39,6 @@ public:
     void setOfflineAccounts(std::vector<std::string> ids);
 
     // Refuse every clearnet facade, so all traffic goes over I2P only.
-    bool fullPrivacy() const;
-    void setFullPrivacy(bool on);
 
     // Desktop notifications for incoming messages and calls.
     bool notifications() const;
@@ -73,7 +71,6 @@ private:
     std::filesystem::path path_;
     std::string activeAccount_;
     std::vector<std::string> offlineAccounts_;
-    bool fullPrivacy_ = false;
     bool notifications_ = true;
     bool i2pLogging_ = false;
     int i2pTunnelLength_ = 0;

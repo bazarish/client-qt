@@ -103,7 +103,6 @@ ConnectProgressFn& progressSink()
 // Full privacy mode (default off): when on, the transport refuses every clearnet
 // facade, so all traffic runs over I2P (and an account with no I2P facade is
 // explicitly offline). Consulted at request time, like g_i2pEnabled.
-std::atomic<bool> g_fullPrivacy{false};
 }  // namespace
 
 namespace {
@@ -499,16 +498,6 @@ void flushWarmDests()
     if (WarmDestPool* const pool = warmPoolSlot().get(); pool != nullptr) {
         pool->flush();
     }
-}
-
-void setFullPrivacy(bool enabled)
-{
-    g_fullPrivacy.store(enabled);
-}
-
-bool fullPrivacy()
-{
-    return g_fullPrivacy.load();
 }
 
 }  // namespace bazarish::client

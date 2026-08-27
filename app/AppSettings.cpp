@@ -87,7 +87,6 @@ void AppSettings::load()
         const nlohmann::json document = nlohmann::json::parse(text);
         activeAccount_ = document.value("activeAccount", std::string());
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
-        fullPrivacy_ = document.value("fullPrivacyMode", false);
         notifications_ = document.value("notifications", true);
         const nlohmann::json i2p = document.value("i2p", nlohmann::json::object());
         i2pLogging_ = i2p.value("logging", false);
@@ -125,7 +124,6 @@ void AppSettings::save() const
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
         {"offlineAccounts", offlineAccounts_},
-        {"fullPrivacyMode", fullPrivacy_},
         {"notifications", notifications_},
         {"i2p", i2p},
     };
@@ -162,17 +160,6 @@ void AppSettings::setOfflineAccounts(std::vector<std::string> ids)
         return;
     }
     offlineAccounts_ = std::move(ids);
-    save();
-}
-
-bool AppSettings::fullPrivacy() const { return fullPrivacy_; }
-
-void AppSettings::setFullPrivacy(const bool on)
-{
-    if (fullPrivacy_ == on) {
-        return;
-    }
-    fullPrivacy_ = on;
     save();
 }
 

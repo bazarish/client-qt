@@ -51,28 +51,6 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 10
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: "I2P only, every account"; color: Theme.text }
-                            Label {
-                                text: "Refuses clearnet for every account, whatever each one allows on its "
-                                    + "own - this switch wins. An account whose server publishes no I2P "
-                                    + "address goes offline while it is on. Fetching the I2P network "
-                                    + "database stays allowed either way: it carries no identity, and "
-                                    + "without it there is no I2P to use."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Toggle {
-                            checked: App.fullPrivacyMode
-                            onToggled: App.setFullPrivacyMode(checked)
-                        }
-                    }
-
-                    Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                     RowLayout {
                         Layout.fillWidth: true

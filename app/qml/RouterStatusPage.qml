@@ -414,8 +414,6 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
                 // libi2pd's own logging - off by default, on demand for debugging.
                 ColumnLayout {
                     Layout.fillWidth: true

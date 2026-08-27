@@ -372,10 +372,6 @@ class SessionController : public QObject {
     // full privacy mode is on and this is false, the account cannot reach its server
     // (clearnet is refused), so its status reads as an explicit I2P-only offline error.
     Q_PROPERTY(bool hasI2pFacade READ hasI2pFacade NOTIFY facadeInfoChanged)
-    // Whether traffic is currently leaving over I2P. False while connected on a
-    // clearnet facade - which the chat view says out loud, because it is a
-    // downgrade the user did not ask for.
-    Q_PROPERTY(bool onI2p READ onI2p NOTIFY facadeInfoChanged)
     // Connect-in-flight state for the connect screen: whether a connect is
     // running, what it is doing, and why the last one failed.
     Q_PROPERTY(bool connecting READ connecting NOTIFY connectStateChanged)
@@ -508,7 +504,6 @@ public:
     QString activeFacadeHost() const;
     QStringList configuredFacades() const { return configuredFacades_; }
     bool hasI2pFacade() const;
-    bool onI2p() const { return activeFacade_.contains(QStringLiteral(".b32.i2p")); }
     bool connecting() const { return connecting_; }
     QString connectPhase() const { return connectPhase_; }
     int connectPercent() const { return connectPercent_; }

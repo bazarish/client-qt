@@ -114,13 +114,6 @@ void reportConnectProgress(int percent, const std::string& text);
 void setI2pEnabled(bool enabled);
 bool i2pEnabled();
 
-// Process-wide full-privacy flag (default false). When on, the transport refuses
-// every clearnet facade, so all traffic goes over I2P only; an account whose
-// facades are all clearnet then has nothing reachable and is explicitly offline.
-// Consulted at request time, so it takes effect on the next request.
-void setFullPrivacy(bool enabled);
-bool fullPrivacy();
-
 // Which transport this process uses. An empty host is the engine inside this
 // process; anything else is a router outside it, reached over SAM at that
 // address. Read when the router is built, so it has to be set before anything

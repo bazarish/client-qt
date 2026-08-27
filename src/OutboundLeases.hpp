@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <condition_variable>
 #include <map>
 #include <memory>
@@ -47,7 +48,7 @@ public:
     // Makes ready the address this correspondent's mail leaves from, taking a
     // fresh one when the last term is over. False when this device could not
     // build tunnels for it.
-    bool prepare(const std::string& toDest);
+    bool prepare(const std::string& toDest, const std::string& peerName);
     // Dials the correspondent from that address. Null when it cannot be reached
     // inside the timeout.
     std::shared_ptr<DeliveryStream> openStream(
@@ -57,6 +58,11 @@ public:
     void clear();
 
 private:
+    // What this correspondent's address is called in the status view: the name
+    // this account knows them by, or nothing when there is none yet - a contact
+    // request goes out before the contact exists.
+    static std::string labelFor(const std::string& peerName);
+
     void sweeperLoop();
     // Drops every term that has run out. Called with the lock held.
     void dropExpired(std::chrono::steady_clock::time_point now);
