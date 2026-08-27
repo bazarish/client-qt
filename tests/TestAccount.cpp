@@ -172,6 +172,49 @@ int main()
     CHECK(!fs::exists(root2 / ".import-tmp"));
     fs::remove_all(root2);
 
+    // The key file is a record of one exact size naming the cost of opening the
+    // account. Neither is taken from disk on trust: a file of another size is
+    // not this format, and a cost beyond what the derivation may be asked for is
+    // refused rather than spent. Copies are used because the unwrapped key is
+    // remembered per database path, and a path already opened would not read its
+    // key file again.
+    const auto copyOfPlainAccount = [&scratch](const std::string& name) {
+        const fs::path database = scratch / (name + ".db");
+        fs::copy_file(scratch / "imported-plain.db", database);
+        fs::copy_file(scratch / "imported-plain.key", fs::path(database).replace_extension(".key"));
+        return database;
+    };
+
+    const fs::path padded = copyOfPlainAccount("padded");
+    {
+        std::ofstream out(
+            fs::path(padded).replace_extension(".key"), std::ios::binary | std::ios::app);
+        out << 'x';
+    }
+    CHECK_THROWS(Session::open(padded));
+
+    const fs::path costly = copyOfPlainAccount("costly");
+    {
+        // The memory cost is the first field after the four-byte magic, little
+        // endian; asking for every kibibyte a 32-bit field can name is four
+        // terabytes of derivation memory.
+        constexpr std::streamoff kMemoryCostOffset = 4;
+        std::fstream out(fs::path(costly).replace_extension(".key"),
+            std::ios::binary | std::ios::in | std::ios::out);
+        out.seekp(kMemoryCostOffset);
+        const char every[] = {'\xFF', '\xFF', '\xFF', '\xFF'};
+        out.write(every, sizeof every);
+    }
+    // The message matters here: the cost has to be refused on sight, not found
+    // out by trying to spend it.
+    bool costRefused = false;
+    try {
+        (void)Session::open(costly);
+    } catch (const std::exception& error) {
+        costRefused = std::string(error.what()).find("derivation cost") != std::string::npos;
+    }
+    CHECK(costRefused);
+
     fs::remove_all(scratch);
 
     // Removal drops the account.

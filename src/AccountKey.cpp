@@ -14,6 +14,7 @@
 #include <map>
 #include <mutex>
 #include <stdexcept>
+#include <system_error>
 
 namespace bazarish::client::accountkey {
 
@@ -43,6 +44,20 @@ constexpr std::uint32_t kOpenPasses = 1;
 // Argon2id in OpenSSL runs multi-lane only with a thread pool on the library
 // context; one lane needs no such setup.
 constexpr std::uint32_t kLanes = 1;
+
+// The whole record: magic, the two cost values, and the fixed fields. The size
+// is exact, so a file of any other length is not this format whatever its first
+// bytes say.
+constexpr std::size_t kSidecarBytes = sizeof kMagic + 2 * sizeof(std::uint32_t) + kSaltBytes
+    + kNonceBytes + kKeyBytes + kTagBytes;
+
+// The most the file is allowed to ask the derivation for. The cost lives in the
+// sidecar so it can be raised later, but the sidecar is a file on disk: what it
+// asks for has to be something this machine can actually spend, or opening an
+// account is however much memory the file names. Raising the cost above these
+// means raising these first.
+constexpr std::uint32_t kMaxMemoryKiB = 1024 * 1024;  // 1 GiB
+constexpr std::uint32_t kMaxPasses = 16;
 
 // What an account with no passphrase is wrapped under. It is not a secret - it is
 // right here - so it protects nothing; it keeps one code path and stops the file
@@ -204,6 +219,16 @@ void write(const fs::path& file, const Sidecar& sidecar)
 
 Sidecar read(const fs::path& file)
 {
+    std::error_code failed;
+    const std::uintmax_t size = fs::file_size(file, failed);
+    if (failed) {
+        throw std::runtime_error(
+            "account key: could not read " + file.string() + ": " + failed.message());
+    }
+    if (size != kSidecarBytes) {
+        throw std::runtime_error("account key: " + file.string() + " is not a key file: "
+            + std::to_string(size) + " bytes, and the record is " + std::to_string(kSidecarBytes));
+    }
     std::ifstream in(file, std::ios::binary);
     std::array<char, sizeof kMagic> magic{};
     in.read(magic.data(), magic.size());
@@ -224,7 +249,12 @@ Sidecar read(const fs::path& file)
     in.read(reinterpret_cast<char*>(sidecar.sealed.data()), sidecar.sealed.size());
     in.read(reinterpret_cast<char*>(sidecar.tag.data()), sidecar.tag.size());
     if (!in) {
-        throw std::runtime_error("account key: " + file.string() + " is truncated");
+        throw std::runtime_error("account key: " + file.string() + " could not be read in full");
+    }
+    if (sidecar.memoryKiB > kMaxMemoryKiB || sidecar.passes > kMaxPasses) {
+        throw std::runtime_error("account key: " + file.string() + " asks for a derivation cost "
+            + "this build refuses: " + std::to_string(sidecar.memoryKiB) + " KiB over "
+            + std::to_string(sidecar.passes) + " passes");
     }
     return sidecar;
 }
