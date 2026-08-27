@@ -174,6 +174,24 @@ Item {
             width: parent.width - 20
             spacing: 4
 
+            // Passed on, not written here - said before the content rather than
+            // after it, because it is what the content should be read in the
+            // light of. The mark is all it is: it names nobody and says nothing
+            // about who wrote what follows.
+            RowLayout {
+                visible: model.forwarded === true
+                Layout.fillWidth: true
+                Layout.bottomMargin: 2
+                spacing: 5
+                Icon { name: "forwarded"; color: Theme.textDim; size: 13 }
+                Label {
+                    text: "Forwarded"
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                    Layout.fillWidth: true
+                }
+            }
+
             // Reply quote: the message this one replies to. Shown ONLY when the
             // original is in local history (then it is a clickable jump to it); a
             // reference we cannot resolve shows no quote at all.
@@ -785,22 +803,6 @@ Item {
                     HoverHandler { id: statusHover }
                     ToolTip.visible: statusHover.hovered
                     ToolTip.text: delegate.statusText(model.status)
-                }
-            }
-
-            // Passed on, not written here. The mark is all it is: it names nobody
-            // and says nothing about who wrote what follows.
-            RowLayout {
-                visible: model.forwarded === true
-                Layout.fillWidth: true
-                Layout.bottomMargin: 2
-                spacing: 5
-                Icon { name: "forwarded"; color: Theme.textDim; size: 13 }
-                Label {
-                    text: "Forwarded"
-                    color: Theme.textDim
-                    font.pixelSize: Theme.fontSmall
-                    Layout.fillWidth: true
                 }
             }
 

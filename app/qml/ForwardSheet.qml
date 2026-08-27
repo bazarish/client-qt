@@ -80,8 +80,12 @@ Popup {
                     }
                 }
                 onClicked: {
-                    root.session.forwardMessage(root.e2eId, model.fingerprint)
+                    // Closed first, and then the send: this sheet has done its
+                    // part the moment a chat is picked, and one left standing
+                    // invites the same message being passed on again.
+                    const target = model.fingerprint
                     root.close()
+                    root.session.forwardMessage(root.e2eId, target)
                 }
             }
         }
