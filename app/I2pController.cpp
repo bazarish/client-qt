@@ -17,7 +17,6 @@
 #pragma pop_macro("emit")
 
 #include <algorithm>
-#include <optional>
 #include <cstdlib>
 #include <fstream>
 #include <string>
@@ -66,20 +65,12 @@ I2pController::I2pController(QObject* parent)
                 proxyHost_.toStdString(), proxyPort_);
         }
     }
-    // Which transport carries this process. On the very first start nothing has
-    // been chosen, and the answer is whichever one is actually there: a router
-    // already running on this machine costs nothing to use and saves this process
-    // an engine of its own.
+    // Which transport carries this process. The engine inside it unless the user
+    // has said otherwise: a router outside is somebody else's process, and
+    // putting the traffic through it is a decision to make deliberately.
     samHost_ = QString::fromStdString(AppSettings::instance().samHost());
     samPort_ = AppSettings::instance().samPort();
-    const std::optional<bool> chosen = AppSettings::instance().samEnabled();
-    samEnabled_ = chosen.has_value() ? *chosen : samReachable(samHost_, samPort_);
-    if (!chosen.has_value()) {
-        AppSettings::instance().setSam(samEnabled_, samHost_.toStdString(), samPort_);
-        bazarish::log::info("i2p: first start, {}", samEnabled_
-                ? "a router answers over SAM - using it"
-                : "no router over SAM - starting the embedded engine");
-    }
+    samEnabled_ = AppSettings::instance().samEnabled();
     if (samEnabled_) {
         client::setSamTransport(samHost_.toStdString(), samPort_);
     }

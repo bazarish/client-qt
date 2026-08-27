@@ -60,6 +60,11 @@ int main(int argc, char** argv)
     CHECK(settings.i2pTunnelLength() == 0);
     CHECK(settings.i2pProxyHost().empty());
     CHECK(settings.i2pProxyPort() == 0);
+    // The transport is the engine in this process until the user says otherwise,
+    // whatever else may be listening on this machine.
+    CHECK(!settings.samEnabled());
+    CHECK(settings.samHost() == "127.0.0.1");
+    CHECK(settings.samPort() == 7656);
     CHECK(!fs::exists(file));
 
     // One document holds all of it, at the root of the installation rather than

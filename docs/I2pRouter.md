@@ -8,15 +8,14 @@ storage, and the constraints that apply to each.
 
 ### Choosing the transport
 
-At the first start the client looks for an I2P router on this machine over SAM
-(127.0.0.1:7656 by default). One that answers is used, and the in-process engine
-is not started at all; nothing answering starts the in-process engine. The
-decision is written to `settings.json` and is not taken again.
-
-The choice sits in Global settings as a **SAM API** switch with the router's
-address and port, directly above the block that names the in-process engine and
-its version - that block is dimmed while an external router carries the traffic.
-Settings -> I2P router then reports whichever transport is in force. Changing
+The in-process engine carries the traffic unless the user says otherwise. The
+choice sits at the foot of Global settings as a **SAM API** switch with the
+router's address and port (127.0.0.1:7656 by default), below the block that names
+the in-process engine and its version - that block is dimmed while an external
+router is selected. Turning the switch on asks the address whether anything is
+there and reports the answer in the same dialog that says the application has to
+be restarted for the change to take hold. Settings -> I2P router then reports
+whichever transport is in force. Changing
 it takes effect at the next start, because the in-process engine can be started
 only once in a process and the two cannot swap places while one is running - the
 dialog offers to close the application there and then.

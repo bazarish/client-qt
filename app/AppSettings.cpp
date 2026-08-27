@@ -96,11 +96,7 @@ void AppSettings::load()
                 kMaxTunnelLength);
         if (i2p.contains("sam")) {
             const nlohmann::json sam = i2p.at("sam");
-            // The address may be written ahead of the choice; it is the choice
-            // itself that is missing until a first start makes one.
-            if (sam.contains("enabled")) {
-                samEnabled_ = sam.at("enabled").get<bool>();
-            }
+            samEnabled_ = sam.value("enabled", false);
             samHost_ = sam.value("host", std::string(kDefaultSamHost));
             samPort_ = sam.value("port", kDefaultSamPort);
         }
@@ -125,9 +121,7 @@ void AppSettings::save() const
         {"tunnelLength", i2pTunnelLength_},
         {"proxy", {{"host", i2pProxyHost_}, {"port", i2pProxyPort_}}},
     };
-    if (samEnabled_.has_value()) {
-        i2p["sam"] = {{"enabled", *samEnabled_}, {"host", samHost_}, {"port", samPort_}};
-    }
+    i2p["sam"] = {{"enabled", samEnabled_}, {"host", samHost_}, {"port", samPort_}};
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
         {"offlineAccounts", offlineAccounts_},
@@ -220,7 +214,7 @@ std::string AppSettings::i2pProxyHost() const { return i2pProxyHost_; }
 
 int AppSettings::i2pProxyPort() const { return i2pProxyPort_; }
 
-std::optional<bool> AppSettings::samEnabled() const { return samEnabled_; }
+bool AppSettings::samEnabled() const { return samEnabled_; }
 
 std::string AppSettings::samHost() const
 {
@@ -233,8 +227,7 @@ void AppSettings::setSam(const bool enabled, const std::string& host, const int 
 {
     const std::string wantedHost = host.empty() ? std::string(kDefaultSamHost) : host;
     const int wantedPort = port > 0 ? port : kDefaultSamPort;
-    if (samEnabled_.has_value() && *samEnabled_ == enabled && samHost_ == wantedHost
-        && samPort_ == wantedPort) {
+    if (samEnabled_ == enabled && samHost_ == wantedHost && samPort_ == wantedPort) {
         return;
     }
     samEnabled_ = enabled;

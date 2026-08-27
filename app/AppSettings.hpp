@@ -2,7 +2,6 @@
 #pragma once
 
 #include <filesystem>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -55,9 +54,9 @@ public:
     void setI2pTunnelLength(int level);
 
     // The transport: the engine in this process, or a router outside it reached
-    // over SAM. Nothing is stored until the first start settles it by looking for
-    // a router, so an unset value means "not decided yet" rather than "off".
-    std::optional<bool> samEnabled() const;
+    // over SAM. Off unless the user turns it on - which router carries the
+    // traffic is not something to decide for them.
+    bool samEnabled() const;
     std::string samHost() const;
     int samPort() const;
     void setSam(bool enabled, const std::string& host, int port);
@@ -80,7 +79,7 @@ private:
     int i2pTunnelLength_ = 0;
     std::string i2pProxyHost_;
     int i2pProxyPort_ = 0;
-    std::optional<bool> samEnabled_;
+    bool samEnabled_ = false;
     std::string samHost_;
     int samPort_ = 0;
 };

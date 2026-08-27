@@ -107,20 +107,44 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                // Which router carries the traffic. Settled at the first start by
-                // looking for one on this machine; this is where it is changed.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        // Still linked into this application, but carrying nothing
+                        // while a router outside it does the work.
+                        enabled: !I2p.samEnabled
+                        opacity: enabled ? 1 : 0.4
+                        Label { text: "Embedded I2P router"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                        Label {
+                            text: "One router serves every account: its tunnels, its network database and "
+                                + "the addresses each account is reached at."
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Version"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                            Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
+                        }
+                    }
+
+                    // Which router carries the traffic. The engine above unless
+                    // this is turned on, and either way the choice takes hold at
+                    // the next start.
                     RowLayout {
                         Layout.fillWidth: true
+                        Layout.topMargin: 8
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label { text: "SAM API"; color: Theme.text }
                             Label {
                                 text: "Use an I2P router already running on this machine "
-                                    + "instead of the one inside this application."
+                                    + "instead of the one above. Takes effect after the "
+                                    + "application is restarted."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -153,35 +177,10 @@ Popup {
                         Layout.alignment: Qt.AlignRight
                         onClicked: samRestartDialog.open()
                     }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        // Still linked into this application, but carrying nothing
-                        // while a router outside it does the work.
-                        enabled: !I2p.samEnabled
-                        opacity: enabled ? 1 : 0.4
-                        Label { text: "Embedded I2P router"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                        Label {
-                            text: "One router serves every account: its tunnels, its network database and "
-                                + "the addresses each account is reached at."
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label { text: "Version"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
-                            Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
-                        }
-                    }
                     MenuButton {
                         Layout.fillWidth: true
+                        Layout.topMargin: 8
                         text: "I2P status…"
                         onClicked: { root.close(); root.showRouterStatus() }
                     }
@@ -196,6 +195,8 @@ Popup {
     SamRestartDialog {
         id: samRestartDialog
         samOn: samToggle.checked
+        host: samHostField.text
+        port: parseInt(samPortField.text || "0")
         onAnswered: (closeNow) => {
             I2p.saveSam(samToggle.checked, samHostField.text,
                 parseInt(samPortField.text || "0"))
