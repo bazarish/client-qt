@@ -13,8 +13,10 @@ At the first start the client looks for an I2P router on this machine over SAM
 is not started at all; nothing answering starts the in-process engine. The
 decision is written to `settings.json` and is not taken again.
 
-Settings -> I2P router carries the choice as a **SAM API** switch with the
-router's address and port, above the in-process engine's own controls. Changing
+The choice sits in Global settings as a **SAM API** switch with the router's
+address and port, directly above the block that names the in-process engine and
+its version - that block is dimmed while an external router carries the traffic.
+Settings -> I2P router then reports whichever transport is in force. Changing
 it takes effect at the next start, because the in-process engine can be started
 only once in a process and the two cannot swap places while one is running - the
 dialog offers to close the application there and then.
