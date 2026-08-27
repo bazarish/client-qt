@@ -3,9 +3,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// A deletion the server never answered. Nothing has been removed: the profile is
-// what holds the key that can ask again, so the choice between trying later and
-// walking away belongs to the user.
+// A deletion that did not go through, in one of two ways: the server never
+// answered, or the profile itself would not open. Nothing has been removed
+// either way, and the choice between trying later and walking away belongs to
+// the user - but only one of the two is worth trying again.
 Dialog {
     id: root
     property string accountId: ""
@@ -13,7 +14,16 @@ Dialog {
     signal retryRequested(string id)
     signal localOnlyRequested(string id)
 
-    function show(id, error) { accountId = id; reason = error; open() }
+    // The profile could not be opened at all, so there was nothing to ask the
+    // server with and nothing a second attempt would do differently.
+    property bool profileNotOpened: false
+
+    function show(id, error, notOpened) {
+        accountId = id
+        reason = error
+        profileNotOpened = notOpened === true
+        open()
+    }
 
     anchors.centerIn: Overlay.overlay
     modal: true
@@ -29,6 +39,8 @@ Dialog {
     footer: DialogButtons {
         acceptText: "Try again"
         rejectText: "Close"
+        // Nothing about a profile that will not open changes between attempts.
+        acceptEnabled: !root.profileNotOpened
         onAccepted: root.accept()
         onRejected: root.reject()
     }
@@ -41,7 +53,10 @@ Dialog {
             Layout.bottomMargin: 0
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "Your server did not answer, so the account was not ended:"
+            text: root.profileNotOpened
+                ? "This profile could not be opened, so the account on its server was "
+                  + "not ended:"
+                : "Your server did not answer, so the account was not ended:"
         }
         // The reason comes from the transport and can be any length; past a few
         // lines it would push the buttons out of a small window, and the whole of
@@ -62,8 +77,11 @@ Dialog {
             Layout.rightMargin: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "Nothing was deleted. Try again when it is reachable - this profile holds "
-                + "the only key that can ask it to."
+            text: root.profileNotOpened
+                ? "Nothing was deleted. The key that ends the account is inside this "
+                  + "profile, and this build cannot read it."
+                : "Nothing was deleted. Try again when it is reachable - this profile "
+                  + "holds the only key that can ask it to."
         }
         Label {
             Layout.fillWidth: true

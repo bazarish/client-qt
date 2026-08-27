@@ -212,7 +212,13 @@ OutboundCourier::Outcome OutboundCourier::attempt(
     if (task.onPhase) {
         task.onPhase(kPhaseSending);
     }
-    watch(stream, deadline);
+    // The watchdog is here for a peer that takes the envelope and goes quiet, not
+    // for one that is answering slowly: closing the stream mid-reply turns a
+    // delivery the far side has already stored into a failure the user is told
+    // about, while the recipient sees the message arrive.
+    watch(stream,
+        std::max(deadline,
+            std::chrono::steady_clock::now() + std::chrono::seconds(kReplyGraceSeconds)));
     FederationDeliverResult reply;
     try {
         reply = federationSendDeliver(*stream, task.sealed, task.payload);

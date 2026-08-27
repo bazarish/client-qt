@@ -376,6 +376,18 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
             emit unlockFailed(error);
             return;
         }
+        if (pendingDeleteId_ == id) {
+            // The profile was opened so the account could be ended on its server,
+            // and it did not open. The directory is still just files and can go,
+            // but the key that ends the account is inside it - so this is the
+            // user's call, not a silent return that leaves a profile nothing can
+            // remove.
+            pendingDeleteId_.clear();
+            bazarish::log::warn("account {} could not be opened to delete it: {}",
+                id.toStdString(), error.toStdString());
+            emit accountDeleteFailed(id, error, /*profileNotOpened=*/true);
+            return;
+        }
         emit accountOpenFailed(error);
     });
     connect(ctrl, &SessionController::messageNotification, this,
@@ -567,7 +579,7 @@ void AppController::deleteAccount(const QString& id)
                 // The profile stays: it holds the only key that can ask again, and
                 // deleting it here would leave an account on the server that
                 // nobody can ever end.
-                emit accountDeleteFailed(id, error);
+                emit accountDeleteFailed(id, error, /*profileNotOpened=*/false);
                 return;
             }
             forgetAccountLocally(id);

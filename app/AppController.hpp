@@ -182,7 +182,10 @@ signals:
     // An encrypted account needs its passphrase before it can be opened.
     void needPassphrase(const QString& id, const QString& name);
     // The account could not be ended on its server, so nothing was deleted.
-    void accountDeleteFailed(const QString& id, const QString& error);
+    // profileNotOpened separates "the server did not answer" from "this profile
+    // would not open at all": the first can be tried again, the second cannot,
+    // and only one of them leaves anything to say about the server.
+    void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened);
     // The profile is locked, and ending the account on its server needs the key
     // inside it. The UI offers unlocking it or deleting this device's copy alone.
     void accountDeleteNeedsUnlock(const QString& id, const QString& name);

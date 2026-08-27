@@ -69,7 +69,9 @@ ApplicationWindow {
         function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
         // The server would not end the account, so nothing was deleted anywhere.
-        function onAccountDeleteFailed(id, error) { deleteFailedDialog.show(id, error) }
+        function onAccountDeleteFailed(id, error, profileNotOpened) {
+            deleteFailedDialog.show(id, error, profileNotOpened)
+        }
         // The profile is locked, and its key is what ends the account on the server.
         function onAccountDeleteNeedsUnlock(id, name) { deleteLockedDialog.show(id, name) }
         // "Add account": show the picker over the running session(s).

@@ -50,6 +50,11 @@ inline constexpr int kDeliveryDialSeconds = 15;
 // a deadline so a peer that accepts the stream and then says nothing cannot
 // stretch one send past the minute the user was promised.
 inline constexpr int kDeliveryRunSeconds = 75;
+// Once the envelope has been written, the far side is going to answer or not -
+// and cutting that answer off at the run deadline is how a delivery the
+// recipient's server accepted gets reported as one that never arrived. So the
+// wait for the reply, and only that wait, may outlive the run by this much.
+inline constexpr int kReplyGraceSeconds = 30;
 
 // Phases of one send, in the transport's words. The chip and the activity row
 // both read from these, so they cannot disagree about where a message is.
