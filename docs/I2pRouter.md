@@ -1,65 +1,97 @@
-# The embedded I2P router
+# Embedded I2P router
 
-This client runs its own I2P router in-process (libi2pd, no system daemon, no
-SAM). Its window - Settings -> I2P router - shows what the engine is doing and
-holds the three settings below.
+## Scope
+
+The client operates an I2P router in its own process (libi2pd; no system daemon
+and no SAM bridge). This document specifies the router settings exposed to the
+user, their storage, and the constraints that apply to each.
+
+The settings are presented in Settings -> I2P router, which also reports the
+engine's live diagnostics (network database size, floodfills, tunnel counts,
+local destinations, active transport sessions).
+
+## Settings
+
+| Setting | Storage | Default |
+|---|---|---|
+| Tunnel length | `<accounts>/.i2p-privacy` | Minimal |
+| Engine logging | `<accounts>/.i2p-logging` | Disabled |
+| SOCKS5 proxy | `<accounts>/.i2p-proxy` | None |
+
+`<accounts>` is the accounts directory (overridable with `BAZARISH_ACCOUNTS_DIR`).
+Router state is kept separately, in `<accounts>/../i2p`.
 
 ## Tunnel length
 
-One choice for every destination this application builds: minimal (1 hop each
-way), middle (1 hop with a variance of 1, so I2P adds zero or one), or maximum (3
-hops, the depth I2P itself defaults to). The default is minimal, and the page
-says plainly what one hop does and does not hide.
+Applies to every destination the application builds:
 
-Call media always runs minimal whatever this says: three hops each way puts
-audible delay into a live call.
+| Level | Hops per direction | Variance |
+|---|---|---|
+| Minimal | 1 | 0 |
+| Middle | 1 | 1 (I2P adds zero or one hop) |
+| Maximum | 3 | 0 |
 
-## libi2pd logging
+Call media is exempt and always uses the minimal profile: additional hops
+introduce audible latency in a live call.
 
-Off by default and fully suppressed - the engine does not even format the
-messages. A debugging aid; turning it on puts libi2pd's own log lines into this
-application's log.
+A change applies to destinations created after it. Destinations already in use
+are rebuilt by the application so that the previous profile is not retained.
 
-## SOCKS proxy for the clearnet side
+## Engine logging
 
-Off by default. Host and port only. What it covers is everything the router does
-**outside** I2P: its connections to other routers, and the network database it
-bootstraps from. It hides that traffic from the local network and the operator of
-the link, and shows all of it to the proxy instead.
+Disabled by default; the engine's log messages are suppressed before formatting.
+When enabled, libi2pd log records are emitted through the application log. The
+setting is intended for diagnostics.
 
-The limits are worth knowing before turning it on:
+## SOCKS5 proxy
 
-- **SOCKS5 only, and no credentials.** libi2pd's SOCKS client offers no
-  authentication method other than "none", for router connections and for the
-  bootstrap alike. A proxy that demands a username and password will refuse it.
-  (Its HTTP-proxy path does support Basic auth, but that path cannot carry the
-  datagram transport at all, so this client does not offer it.)
-- **The datagram transport (SSU2) is switched off while a proxy is set.** Its
-  packets can only travel through SOCKS5's UDP ASSOCIATE, which many proxies -
-  Tor among them - do not implement, and which libi2pd will only attempt against
-  a literal address. Whatever the proxy will not carry, the transport sends
-  around it, which is the one outcome a proxy must not have. The router runs on
-  its other transport (NTCP2) alone; it is slower to find peers and nothing else.
-- **The router stops publishing an address for itself.** With a proxy configured
-  libi2pd advertises no NTCP2 address, so the router is outbound-only. For a
-  client that is the normal state anyway.
-- **A change applies when the router restarts.** The transports read the setting
-  as they come up, so saving asks whether to restart the router now (a minute or
-  two of rebuilding tunnels) or to leave it for the next start. The row under the
-  fields shows what the engine is running with, which is how a saved-but-not-yet-
-  applied setting is visible.
-- **The application's own clearnet request is not proxied.** The one request this
-  client makes outside I2P by itself - fetching a network database from a server's
-  clearnet address, once, before it has any I2P transport - goes through the
-  application's HTTP stack, which has no proxy support. Only the router's traffic
-  takes the proxy.
+Disabled by default. Configuration consists of a host (name or address) and a
+port. When set, the following router traffic is directed through the proxy:
 
-Stored in `<accounts>/.i2p-proxy` as `host:port`; absent means no proxy.
+- connections to other I2P routers (NTCP2 transport);
+- retrieval of the initial network database from libi2pd's built-in reseed hosts.
 
-## What a proxy does not do
+### Constraints
 
-It moves the question of who sees this router's clearnet traffic from the local
-network to the proxy operator, who then sees all of it: the addresses of the I2P
-peers it talks to and the server it bootstrapped from. It is a way to keep I2P
-traffic off a network that would notice it, not a way to be anonymous towards the
-proxy.
+1. **SOCKS5 only; no authentication.** The libi2pd SOCKS client offers the "no
+   authentication" method exclusively, both for transport connections and for
+   reseed retrieval. A proxy requiring credentials will reject the connection.
+   The engine's HTTP-proxy path supports Basic authentication but cannot carry
+   the datagram transport, and is therefore not offered by this client.
+2. **The datagram transport (SSU2) is disabled while a proxy is configured.**
+   SSU2 traffic can traverse a SOCKS5 proxy only through the UDP ASSOCIATE
+   command, which many proxies do not implement and which libi2pd attempts only
+   against a literal address. If the proxy does not carry it, the engine sends
+   these datagrams directly, bypassing the proxy. The transport is therefore
+   disabled unconditionally, and the router operates on NTCP2 alone.
+3. **The router publishes no transport address.** With a proxy configured,
+   libi2pd does not publish an NTCP2 address, so the router accepts no inbound
+   connections. This is the expected condition for a client installation.
+4. **Application requests are not proxied.** The single clearnet request the
+   application performs itself - retrieving a network database from a server's
+   clearnet address before an I2P transport exists - uses the application HTTP
+   stack, which does not implement proxy support. Only router traffic is subject
+   to the proxy setting.
+
+### Application of a change
+
+The transports read the proxy configuration when they start. Saving the setting
+therefore offers two outcomes:
+
+| Choice | Effect |
+|---|---|
+| Save and restart | The setting is stored and the router's network is stopped and started, which applies it immediately. Tunnels are rebuilt, which typically takes one to two minutes. |
+| Save only | The setting is stored and applied the next time the router starts. |
+
+The value reported under the input fields is read back from the engine, so a
+setting that has been stored but not yet applied is distinguishable from one in
+force.
+
+### Residual exposure
+
+A proxy relocates the observation of this router's clearnet traffic from the
+local network and the access provider to the proxy operator, who then observes
+all of it, including the addresses of the I2P peers contacted and the host used
+for the initial network database. It is a means of keeping I2P traffic off a
+network that would otherwise observe it, not a means of anonymity with respect to
+the proxy.

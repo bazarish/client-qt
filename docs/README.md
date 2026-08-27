@@ -1,18 +1,23 @@
 # Client documentation
 
-What is written here is what **this** client does: its settings, the policies it
-chose where the protocol left a choice, and the limits of its own machinery.
+## Scope
 
-The protocol itself - the wire formats, the delivery states, what a server is
-allowed to know - lives in `docs-main` and is the same for every client. When the
-two touch, this repository says "how", `docs-main` says "what": the delivery
-states are the protocol's, the number of attempts before this client gives up is
-not.
+This directory documents the Bazarish desktop client: its settings, the values it
+applies where the protocol specifies none, and the limits of its implementation.
+
+The protocol - wire formats, delivery states, admission rules, and the
+obligations of any implementation - is specified in the `docs-main` repository
+and is common to all clients. Where the two overlap, `docs-main` defines the
+requirement and this directory records how this client meets it. For example, the
+delivery states are specified by the protocol; the number of delivery attempts
+this client performs before reporting failure is not.
+
+## Contents
 
 | Document | Subject |
 |---|---|
-| [I2pRouter.md](I2pRouter.md) | The embedded I2P router: tunnel length, the SOCKS proxy for its clearnet side, and what each costs |
-| [Sending.md](Sending.md) | How this client carries its outgoing mail: attempts, what the ticks mean, resending |
+| [I2pRouter.md](I2pRouter.md) | The embedded I2P router: tunnel length, engine logging, and the SOCKS5 proxy applied to its clearnet traffic |
+| [Sending.md](Sending.md) | Outbound delivery: attempt schedule, reported states, failure handling, delivery-token accounting |
 
-The application itself (windows, background activity, packaging) is described in
-the repository `README.md`.
+Application structure, build instructions and packaging are described in the
+repository `README.md`.

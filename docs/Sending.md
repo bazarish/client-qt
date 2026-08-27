@@ -1,55 +1,92 @@
-# Sending, as this client does it
+# Outbound delivery
 
-The protocol says an outgoing message is delivered by its sender's client
-straight to the recipient's server, and what the four delivery states mean
-(`docs-main/Messages.md`, `docs-main/api/Federation.md`). What follows is this
-client's side of that: the numbers it chose and what the user sees.
+## Scope
 
-## Attempts
+The protocol specifies that a message is delivered by the sending client directly
+to the destination that serves its recipient, and defines the delivery states and
+their sources (`docs-main/Messages.md`, `docs-main/api/Federation.md`). This
+document specifies the parameters this client applies to that procedure and the
+behaviour it presents to the user.
 
-One send gets **four attempts inside about a minute** - a dial and one frame
-exchange each, with waits of 2, 4 and 8 seconds between them, and a hard limit of
-75 seconds on the whole run so a peer that accepts a stream and then says nothing
-cannot stretch it. Preparing the local address to send from is not one of the
-four and is not inside that budget: building tunnels is this device's condition,
-not the recipient's.
+## Procedure
 
-Only a failure to *get* an answer is repeated. An answer that refuses (an invalid
-token, a message over the size cap, a full mailbox, too many contact requests) is
-final on the first attempt and shown with its reason.
+For each outgoing message the client:
 
-## What the ticks mean here
+1. prepares the outbound destination held for the recipient's destination,
+   building one and waiting for its tunnels if none is held;
+2. dials the recipient's serving destination and performs one federation deliver
+   exchange;
+3. accepts the result only if the recipient's server returned a confirmation
+   signed over the delivery identifier that was sent;
+4. repeats step 2 on the schedule below while the outcome is "no answer".
 
-| Tick | This client is |
+Step 1 is not counted as a delivery attempt and is bounded separately: it is a
+local condition, not a property of the recipient.
+
+## Parameters
+
+| Parameter | Value |
 |---|---|
-| hollow grey ring | preparing the address this message leaves from |
-| grey | dialling the recipient's server and handing the envelope over |
-| yellow | done: the recipient's server signed for it |
-| green | told by the recipient's client that it was read |
+| Delivery attempts | 4 |
+| Interval between attempts | 2 s, 4 s, 8 s |
+| Dial timeout per attempt | 15 s |
+| Upper bound on one delivery run | 75 s |
+| Upper bound on preparing the outbound destination | 180 s |
+| Outbound destination term, per correspondent | 600 s |
+| Warm destination pool | 2 destinations, 3 tunnels each |
 
-While the attempts run, the bubble says which one it is on ("trying again (3 of
-4)"); the background-activity panel shows the same run as one row until it ends.
+The upper bound on a run also terminates an attempt in which the peer accepts the
+stream and returns no reply.
 
-## Failure, and resending
+## Classification of outcomes
 
-When the last attempt is spent the message turns **red** with the reason and a
-**Resend** the user presses. Nothing resends by itself.
+| Outcome | Treatment |
+|---|---|
+| No reply (dial failed, stream failed, reply unreadable) | Retried until the attempts or the run bound are exhausted |
+| Confirmation absent or not verifiable against the delivery identifier sent | Treated as no reply |
+| Typed refusal (invalid token, message too large, contact request too large, storage full, contact rate limit) | Final on the first attempt; reported with its reason |
+| Signed confirmation | Delivery complete; the message is recorded as stored by the recipient's server |
 
-There is no outbound queue on disk - deliberately, since a queue would be this
-client's own record of who its user writes to. So a client closed mid-send comes
-back with that message red: on the next start an unfinished send is one that did
-not happen, and sending it again is the user's decision.
+## Reported states
 
-A resend costs nothing even when the first copy did arrive and only its
-confirmation was lost: the delivery id is derived from the message and the
-mailbox, so the recipient's server recognises the repeat, stores no second copy
-and spends no second token. The token, though, is spent when the envelope leaves
-rather than when it lands - one that may already have been consumed at the far
-end must never be offered to a different message.
+| Protocol state | Presentation in this client |
+|---|---|
+| preparing | Hollow indicator |
+| in flight | Grey indicator; during retries the message reports the attempt in progress |
+| stored | Amber indicator |
+| read | Green indicator |
 
-## Addresses it sends from
+A delivery run is also listed in the background-activity panel for its duration.
 
-One destination per correspondent, held for ten minutes and then dropped, taken
-from a pool of two kept warm. One-time destinations are left to file transfers and
-calls. A destination that has carried one correspondent's mail is never handed to
-another.
+## Failure and resending
+
+When the attempts are exhausted the message is marked failed, with the reason,
+and a resend control is offered. The client performs no automatic resend.
+
+No outbound queue is written to disk. This is deliberate: such a queue would
+constitute a record, held by the client, of the correspondents its user writes to.
+Consequently, a message whose delivery was in progress when the application closed
+is reported as failed at the next start, and resending it is a user decision.
+
+Resending is safe in all cases, including one in which the message was stored by
+the recipient's server and only the confirmation was lost: the delivery identifier
+is derived from the message and the recipient mailbox, so the recipient's server
+recognises the repetition, stores no second copy and consumes no second token.
+
+## Delivery-token accounting
+
+The one-time delivery token is deducted from the local stash when the envelope is
+handed to the courier, not when delivery is confirmed. After the attempts are
+exhausted the client cannot establish whether the recipient's server stored the
+message; a token that may already have been consumed there must not be offered to
+a subsequent message, which would then be rejected. A resend of the same message
+consumes no further token, because the recipient's server matches it by delivery
+identifier before the token is examined.
+
+## Outbound addresses
+
+One destination is held per recipient destination for the term stated above, then
+discarded; a destination that has carried one correspondent's traffic is not
+reassigned to another. Destinations are taken from the warm pool, which is
+refilled immediately. Single-use destinations are retained for file transfers and
+call media only.

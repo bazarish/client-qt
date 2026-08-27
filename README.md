@@ -43,10 +43,10 @@ the name->fingerprint mapping).
 
 ## Documentation
 
-`docs/` holds what this client decides for itself - the embedded router's
-settings and the SOCKS proxy for its clearnet side ([docs/I2pRouter.md](docs/I2pRouter.md)),
-and how it carries outgoing mail ([docs/Sending.md](docs/Sending.md)). The
-protocol those sit on is in `docs-main`, and is the same for every client.
+`docs/` documents this client: the embedded router and its settings
+([docs/I2pRouter.md](docs/I2pRouter.md)) and outbound delivery
+([docs/Sending.md](docs/Sending.md)). The protocol itself is specified in
+`docs-main` and is common to all clients.
 
 ## Build
 
