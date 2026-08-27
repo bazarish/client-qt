@@ -52,21 +52,6 @@ Popup {
             proxyHostField.text, parseInt(proxyPortField.text || "0"), restartNow)
     }
 
-    // Swapping the transport is not something this process can do while it runs:
-    // the embedded engine cannot be started a second time in one process. So the
-    // choice is saved and the application closes.
-    SamRestartDialog {
-        id: samRestartDialog
-        samOn: samToggle.checked
-        onAnswered: (closeNow) => {
-            I2p.saveSam(samToggle.checked, samHostField.text,
-                parseInt(samPortField.text || "0"))
-            if (closeNow) {
-                Qt.quit()
-            }
-        }
-    }
-
     // Poll the router diagnostics while the window is open.
     Timer {
         interval: 2000
@@ -428,54 +413,6 @@ Popup {
                     }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
-                // The transport: a router running outside this application, or the
-                // engine inside it. Settled at the first start by looking for one.
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    RowLayout {
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Label { text: "SAM API"; color: Theme.text }
-                            Label {
-                                text: "Use an I2P router already running on this machine "
-                                    + "instead of the one inside this application."
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                        }
-                        Toggle {
-                            id: samToggle
-                            checked: I2p.samEnabled
-                            onToggled: samRestartDialog.open()
-                        }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        FormField {
-                            id: samHostField
-                            Layout.fillWidth: true
-                            placeholder: "Host or address"
-                            text: I2p.samHost
-                        }
-                        FormField {
-                            id: samPortField
-                            Layout.preferredWidth: 90
-                            placeholder: "Port"
-                            text: String(I2p.samPort)
-                            inputField.validator: IntValidator { bottom: 1; top: 65535 }
-                        }
-                    }
-                    MenuButton {
-                        text: "Save"
-                        Layout.alignment: Qt.AlignRight
-                        onClicked: samRestartDialog.open()
-                    }
-                }
 
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
