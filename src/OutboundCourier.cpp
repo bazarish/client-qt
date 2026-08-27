@@ -220,13 +220,19 @@ OutboundCourier::Outcome OutboundCourier::attempt(
         std::max(deadline,
             std::chrono::steady_clock::now() + std::chrono::seconds(kReplyGraceSeconds)));
     FederationDeliverResult reply;
+    const std::chrono::steady_clock::time_point wroteAt = std::chrono::steady_clock::now();
     try {
         reply = federationSendDeliver(*stream, task.sealed, task.payload);
     } catch (const std::exception& error) {
         unwatch(stream.get());
-        // No answer came back, which is exactly what another attempt is for.
-        bazarish::log::warn("delivery to {} did not complete: {}",
-            bazarish::log::redact(task.toDest), error.what());
+        // No answer came back, which is exactly what another attempt is for. How
+        // long it took to not come back separates a peer that refused the stream
+        // outright from one that took the envelope and then said nothing, and
+        // those are not the same problem.
+        const auto waited = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - wroteAt);
+        bazarish::log::warn("delivery to {} did not complete after {} ms: {}",
+            bazarish::log::redact(task.toDest), waited.count(), error.what());
         return outcome;
     }
     unwatch(stream.get());
