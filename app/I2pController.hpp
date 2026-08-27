@@ -53,7 +53,6 @@ class I2pController : public QObject {
     Q_PROPERTY(int proxyPort READ proxyPort NOTIFY proxyChanged)
     // What the engine itself says about it, for the status page. Meaningful only
     // while the router runs, and shown only when a proxy is configured at all.
-    Q_PROPERTY(bool proxyInForce READ proxyInForce NOTIFY statusChanged)
     Q_PROPERTY(QString proxyNtcp2 READ proxyNtcp2 NOTIFY statusChanged)
     Q_PROPERTY(QString proxySsu2 READ proxySsu2 NOTIFY statusChanged)
     Q_PROPERTY(QString proxyReseed READ proxyReseed NOTIFY statusChanged)
@@ -71,7 +70,6 @@ public:
     int minKnownRouters() const;
     QString proxyHost() const { return proxyHost_; }
     int proxyPort() const { return proxyPort_; }
-    bool proxyInForce() const { return proxyInForce_; }
     QString proxyNtcp2() const { return proxyNtcp2_; }
     QString proxySsu2() const { return proxySsu2_; }
     QString proxyReseed() const { return proxyReseed_; }
@@ -112,7 +110,6 @@ private:
     int knownRouters_ = 0;
     QString proxyHost_;
     int proxyPort_ = 0;
-    bool proxyInForce_ = false;
     QString proxyNtcp2_;
     QString proxySsu2_;
     QString proxyReseed_;

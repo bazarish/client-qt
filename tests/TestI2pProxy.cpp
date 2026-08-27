@@ -40,18 +40,17 @@ int main()
         CHECK(state.ssu2Enabled);
     }
 
-    // An address the datagram transport can be given: all three go through it.
+    // With a proxy set, the router connections and the reseed go through it and
+    // the datagram transport is off - always, whether the proxy is named by
+    // address or by host, because SSU2 is what would otherwise leave around it.
     {
         router.setSocksProxy("127.0.0.1", 9050);
         const bazarish::i2p::ProxyState state = router.proxyState();
         CHECK(state.ntcp2 == "socks://127.0.0.1:9050");
-        CHECK(state.ssu2 == "socks://127.0.0.1:9050");
         CHECK(state.reseed == "socks://127.0.0.1:9050");
-        CHECK(state.ssu2Enabled);
+        CHECK(state.ssu2.empty());
+        CHECK(!state.ssu2Enabled);
     }
-
-    // A name: i2pd's datagram transport takes only a literal address, and one it
-    // refuses would go on sending around the proxy. It is switched off instead.
     {
         router.setSocksProxy("proxy.lan", 1080);
         const bazarish::i2p::ProxyState state = router.proxyState();

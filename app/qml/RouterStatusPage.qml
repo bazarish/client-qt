@@ -330,16 +330,6 @@ Popup {
                             inputField.validator: IntValidator { bottom: 1; top: 65535 }
                         }
                     }
-                    // i2pd's SOCKS client offers no credentials at all - not for
-                    // the router connections, not for the reseed - so there is
-                    // nothing to type here and no field pretending otherwise.
-                    Label {
-                        text: "No username or password: the router's SOCKS client authenticates "
-                            + "with none, so the proxy has to accept it unauthenticated (a proxy "
-                            + "on this machine usually does)."
-                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap; Layout.fillWidth: true
-                    }
                     MenuButton {
                         text: "Save"
                         Layout.alignment: Qt.AlignRight
@@ -364,18 +354,12 @@ Popup {
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                         StatRow {
-                            visible: I2p.running
-                            label: "Router reports"
-                            value: I2p.proxyInForce ? "through a proxy" : "not proxied"
-                        }
-                        StatRow {
                             label: "Router connections"
                             value: I2p.proxyNtcp2.length > 0 ? I2p.proxyNtcp2 : "direct"
                         }
                         StatRow {
-                            label: "Datagrams"
-                            value: !I2p.proxySsu2Enabled ? "off — the proxy cannot carry them"
-                                : (I2p.proxySsu2.length > 0 ? I2p.proxySsu2 : "direct")
+                            label: "Datagrams (SSU2)"
+                            value: I2p.proxySsu2Enabled ? "direct" : "off"
                         }
                         StatRow {
                             label: "Network database"
@@ -383,10 +367,9 @@ Popup {
                         }
                         Label {
                             visible: !I2p.proxySsu2Enabled
-                            text: "Datagram transport (SSU2) is switched off: it can only be "
-                                + "proxied by numeric address, and running it around the proxy "
-                                + "would send traffic your proxy never sees. The router keeps "
-                                + "working on its other transport."
+                            text: "SSU2 is off while a proxy is set: its datagrams cannot go "
+                                + "through one, and running them around it would send traffic "
+                                + "the proxy never sees. The router works on NTCP2 alone."
                             color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
