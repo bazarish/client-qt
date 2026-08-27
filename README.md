@@ -41,6 +41,13 @@ trust (see the spec's *Out-of-band invites*): a fully offline **invite**
 **fingerprint**, or a **username** (convenient, but the resolver is trusted for
 the name->fingerprint mapping).
 
+## Documentation
+
+`docs/` holds what this client decides for itself - the embedded router's
+settings and the SOCKS proxy for its clearnet side ([docs/I2pRouter.md](docs/I2pRouter.md)),
+and how it carries outgoing mail ([docs/Sending.md](docs/Sending.md)). The
+protocol those sit on is in `docs-main`, and is the same for every client.
+
 ## Build
 
 Requires CMake >= 3.20, C++20, OpenSSL >= 3.0; Qt6 Widgets is optional (enables
