@@ -28,7 +28,7 @@ FetchOutcome federationFetchOverI2p(bazarish::i2p::Router& router, const std::st
     std::shared_ptr<bazarish::i2p::Endpoint> fresh;
     if (!warm) {
         fresh = router.createEndpoint(bazarish::i2p::EndpointConfig{
-            bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
+            router.generateKeys(), bazarish::i2p::LeaseSetKind::eEncrypted, privacy,
             bazarish::i2p::kDefaultTunnelQuantity, false, "Contact lookup", owner});
     }
     bazarish::i2p::Endpoint& endpoint = warm ? *warm : *fresh;

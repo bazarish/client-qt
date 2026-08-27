@@ -329,7 +329,7 @@ void fetchFileOverI2p(bazarish::i2p::Router& router, const FileOffer& offer,
     // is not linkable to the attempt it continues.
     const FetchAttemptFn fetch
         = [&router, &offer, privacy, &owner](const std::uint64_t offset, TransferSink& sink) {
-              bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
+              bazarish::i2p::EndpointConfig config{router.generateKeys()};
               config.privacy = privacy;
               config.tunnelQuantity = 2;
               config.published = false;

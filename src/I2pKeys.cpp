@@ -13,6 +13,9 @@ namespace bazarish::client {
 
 I2pMasterKey generateI2pMaster()
 {
+    // Minted locally rather than through the router, unlike every other
+    // destination this client makes: the master is what delegation withholds
+    // from whoever operates the address, so it must never leave this process.
     const bazarish::i2p::Keys keys = bazarish::i2p::Keys::generate();
     return {keys.blob(), keys.base32()};
 }

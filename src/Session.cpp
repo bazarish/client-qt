@@ -2164,7 +2164,7 @@ void Session::serveRequestedFile(const std::string& peerFingerprint, const std::
             const PreparedFile prepared = prepareFile(source, ciphertextPath);
             emitTransfer(serveId, TransferState::eRequested, 0, 0, {}, "Making an address",
                 peerFingerprint);
-            bazarish::i2p::EndpointConfig config{bazarish::i2p::Keys::generate()};
+            bazarish::i2p::EndpointConfig config{i2pRouter().generateKeys()};
             config.privacy = transferPrivacy();
             config.tunnelQuantity = 2;
             config.label = "File upload";
@@ -3118,7 +3118,7 @@ std::shared_ptr<bazarish::i2p::Endpoint> Session::openCallMediaSession()
     // the media destination is one-time and unlinked from the identity
     // destination, so a short tunnel never weakens identity anonymity.
     return i2pRouter().createEndpoint(bazarish::i2p::EndpointConfig{
-        bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
+        i2pRouter().generateKeys(), bazarish::i2p::LeaseSetKind::eEncrypted,
         bazarish::i2p::Privacy::eMinimal, bazarish::i2p::kDefaultTunnelQuantity, true,
         "Call media", destinationOwner()});
 }

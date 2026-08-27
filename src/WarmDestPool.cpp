@@ -90,7 +90,7 @@ void WarmDestPool::warmerLoop()
         for (std::size_t i = 0; i < toCreate && running_.load(); ++i) {
             try {
                 auto endpoint = router_.createEndpoint(bazarish::i2p::EndpointConfig{
-                    bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
+                    router_.generateKeys(), bazarish::i2p::LeaseSetKind::eEncrypted,
                     tunnelPrivacy(), tunnelQuantity_, /*published=*/false,
                     "Spare one-time address"});
                 if (endpoint) {

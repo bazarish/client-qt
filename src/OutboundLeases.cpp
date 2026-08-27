@@ -99,7 +99,7 @@ bool OutboundLeases::prepare(const std::string& toDest)
             router_.retagEndpoint(*endpoint, kLeaseLabel, owner_);
         } else {
             endpoint = router_.createEndpoint(bazarish::i2p::EndpointConfig{
-                bazarish::i2p::Keys::generate(), bazarish::i2p::LeaseSetKind::eEncrypted,
+                router_.generateKeys(), bazarish::i2p::LeaseSetKind::eEncrypted,
                 tunnelPrivacy(), bazarish::i2p::kDefaultTunnelQuantity, false, kLeaseLabel,
                 owner_});
         }
