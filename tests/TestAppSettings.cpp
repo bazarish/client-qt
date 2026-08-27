@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 
+// Padding that carries a valid document past the size the reader accepts.
+constexpr std::size_t kOversizedNoteBytes = 128 * 1024;
+
 #define CHECK(condition)                                                            \
     do {                                                                            \
         if (!(condition)) {                                                         \
@@ -22,8 +25,22 @@
 namespace fs = std::filesystem;
 using bazarish::app::AppSettings;
 
-int main()
+int main(int argc, char** argv)
 {
+    if (argc > 1) {
+        // The settings are read once, when the instance is first asked for, so
+        // reading a different file means a second process.
+        const std::string mode = argv[1];
+        const AppSettings& loaded = AppSettings::instance();
+        if (mode == "expect-active") {
+            CHECK(loaded.activeAccount() == "alice");
+        } else {
+            CHECK(mode == "expect-default");
+            CHECK(loaded.activeAccount().empty());
+        }
+        return 0;
+    }
+
     const fs::path root = fs::temp_directory_path() / "bazarish-settings-test";
     fs::remove_all(root);
     fs::create_directories(root / "accounts");
@@ -80,14 +97,36 @@ int main()
     CHECK(settings.i2pProxyHost().empty());
     CHECK(settings.i2pProxyPort() == 0);
 
-    // A malformed document is reported and the defaults stand; the settings that
-    // follow overwrite it with a whole one.
+    const auto readsAs = [self = fs::absolute(argv[0]).string()](const char* const mode) {
+        const std::string command = "\"" + self + "\" " + mode;
+        return std::system(command.c_str()) == 0;
+    };
+
+    // A document of the size settings actually reach is read as written.
+    const nlohmann::json document = {{"activeAccount", "alice"}};
+    {
+        std::ofstream out(file, std::ios::trunc);
+        out << document.dump();
+    }
+    CHECK(readsAs("expect-active"));
+
+    // The same document behind a large field is refused whole rather than read
+    // into memory: a file at this path is not allowed to size the process.
+    {
+        nlohmann::json oversized = document;
+        oversized["note"] = std::string(kOversizedNoteBytes, 'x');
+        std::ofstream out(file, std::ios::trunc);
+        out << oversized.dump();
+    }
+    CHECK(fs::file_size(file) > kOversizedNoteBytes);
+    CHECK(readsAs("expect-default"));
+
+    // A malformed document is reported and the defaults stand.
     {
         std::ofstream out(file, std::ios::trunc);
         out << "{ this is not json";
     }
-    fs::remove_all(root / "reopened");
-    CHECK(fs::exists(file));
+    CHECK(readsAs("expect-default"));
 
     fs::remove_all(root);
     std::fprintf(stderr, "TestAppSettings passed\n");

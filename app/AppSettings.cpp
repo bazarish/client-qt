@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
+#include <ios>
+#include <string>
 #include <utility>
 
 namespace bazarish::app {
@@ -24,6 +26,11 @@ namespace {
 // the caller's business.
 constexpr int kMinTunnelLength = 0;
 constexpr int kMaxTunnelLength = 2;
+
+// A settings document is a few hundred bytes; the only part that grows is the
+// list of switched-off accounts. Whatever sits at the path past this size is
+// not settings, and parsing it would spend memory on someone else's file.
+constexpr std::streamsize kMaxSettingsBytes = 64 * 1024;
 
 }  // namespace
 
@@ -55,13 +62,23 @@ AppSettings::AppSettings()
 
 void AppSettings::load()
 {
-    std::ifstream in(path_);
+    std::ifstream in(path_, std::ios::binary);
     if (!in.good()) {
         return;  // no file yet: the defaults above are the settings
     }
+    // One byte past the limit is read so an oversized file is recognised as
+    // such, and nothing larger is ever held in memory.
+    std::string text(static_cast<std::size_t>(kMaxSettingsBytes) + 1, '\0');
+    in.read(text.data(), static_cast<std::streamsize>(text.size()));
+    const std::streamsize taken = in.gcount();
+    if (taken > kMaxSettingsBytes) {
+        bazarish::log::warn("settings not read, using defaults: file is over {} bytes",
+            kMaxSettingsBytes);
+        return;
+    }
+    text.resize(static_cast<std::size_t>(taken));
     try {
-        nlohmann::json document;
-        in >> document;
+        const nlohmann::json document = nlohmann::json::parse(text);
         activeAccount_ = document.value("activeAccount", std::string());
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         fullPrivacy_ = document.value("fullPrivacyMode", false);
