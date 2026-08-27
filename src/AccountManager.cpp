@@ -73,8 +73,13 @@ AccountInfo readInfo(const std::string& id, const fs::path& file, const std::str
     std::unique_ptr<AccountDb> db;
     try {
         db = std::make_unique<AccountDb>(file, passphrase);
-    } catch (const std::exception&) {
-        info.encrypted = true;  // the key does not open it: locked
+    } catch (const std::exception& error) {
+        // Locked is one reason a database does not open; a build that cannot read
+        // it at all is another, and the two look identical from here. Say which
+        // one it was, or an account that is merely unreadable reads to the user
+        // as an account they have forgotten the passphrase for.
+        bazarish::log::info("account {} did not open: {}", id, error.what());
+        info.encrypted = true;
         return info;
     }
     const nlohmann::json meta = nlohmann::json::parse(db->text("meta"));

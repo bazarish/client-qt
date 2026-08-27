@@ -12,7 +12,7 @@ apt-get update -qq
 # qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
 # fontconfig, audio); the build itself uses the Qt under /opt.
 apt-get install -y -qq --no-install-recommends \
-  build-essential cmake git ca-certificates wget file rsync patchelf python3-pip \
+  build-essential cmake git ca-certificates wget file rsync patchelf python3-pip tcl \
   libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
   libboost-dev libboost-program-options-dev \
   qt6-base-dev qt6-declarative-dev qt6-multimedia-dev libgl-dev libxkbcommon-dev \
@@ -46,14 +46,36 @@ if [ ! -f /opt/openssl/lib64/libcrypto.so.3 ]; then
 fi
 export LD_LIBRARY_PATH=/opt/openssl/lib64:${LD_LIBRARY_PATH:-}
 
+# SQLCipher: this base ships 3.4.1, whose database format is not the one
+# SQLCipher 4 writes - an account made by any build with a 4.x library is simply
+# unreadable here, and the application can only report it as locked. Built from
+# source against the OpenSSL above so the account file means the same thing
+# wherever it was made.
+SQLCIPHER_VERSION=4.6.1
+if [ ! -f /opt/sqlcipher/lib/libsqlcipher.so ]; then
+    cd /work-sqlcipher 2>/dev/null || { mkdir -p /work-sqlcipher; cd /work-sqlcipher; }
+    wget -q -O "sqlcipher-${SQLCIPHER_VERSION}.tar.gz" \
+        "https://github.com/sqlcipher/sqlcipher/archive/refs/tags/v${SQLCIPHER_VERSION}.tar.gz"
+    tar xf "sqlcipher-${SQLCIPHER_VERSION}.tar.gz"
+    cd "sqlcipher-${SQLCIPHER_VERSION}"
+    ./configure --prefix=/opt/sqlcipher --enable-tempstore=yes --disable-tcl \
+        CFLAGS="-DSQLITE_HAS_CODEC -I/opt/openssl/include" \
+        LDFLAGS="-L/opt/openssl/lib64 -lcrypto"
+    make -j"$(nproc)"
+    make install
+fi
+export LD_LIBRARY_PATH=/opt/sqlcipher/lib:${LD_LIBRARY_PATH}
+
 rsync -a --exclude 'build' --exclude 'build-asan' --exclude 'AppDir' /host/ /src/
 cd /src
 git config --global --add safe.directory '*'
 
 # -U clears any OpenSSL paths a previous configure cached: the root below is
 # only consulted when they are not already set.
-cmake -S . -B build-appimage -DCMAKE_BUILD_TYPE=Release -UOPENSSL_* \
-    -DCMAKE_PREFIX_PATH="$QTDIR" -DOPENSSL_ROOT_DIR=/opt/openssl
+cmake -S . -B build-appimage -DCMAKE_BUILD_TYPE=Release -UOPENSSL_* -USQLCIPHER_* \
+    -DCMAKE_PREFIX_PATH="$QTDIR" -DOPENSSL_ROOT_DIR=/opt/openssl \
+    -DSQLCIPHER_LIBRARY=/opt/sqlcipher/lib/libsqlcipher.so \
+    -DSQLCIPHER_INCLUDE_DIR=/opt/sqlcipher/include
 cmake --build build-appimage -j"$(nproc)" --target bazarish-app
 
 APPDIR=/src/AppDir
