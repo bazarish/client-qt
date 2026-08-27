@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
 
+#include "AppSettings.hpp"
 #include "I2pRouter.hpp"
 
 #include <bazarish/I2p.hpp>
@@ -32,31 +33,6 @@
 
 namespace bazarish::app {
 
-namespace {
-std::filesystem::path accountsRoot()
-{
-    if (const char* const env = std::getenv("BAZARISH_ACCOUNTS_DIR");
-        env != nullptr && env[0] != '\0') {
-        return std::filesystem::path(env);
-    }
-    return client::AccountManager::defaultRoot();
-}
-
-std::filesystem::path lastActivePath()
-{
-    return accountsRoot() / ".active";
-}
-
-std::filesystem::path offlinePath()
-{
-    return accountsRoot() / ".offline";
-}
-
-std::filesystem::path settingsPath()
-{
-    return accountsRoot() / ".settings";
-}
-}  // namespace
 
 AppController::AppController(QObject* parent)
     : QObject(parent)
@@ -107,44 +83,25 @@ QObject* AppController::session()
 
 QString AppController::readLastActive() const
 {
-    std::ifstream in(lastActivePath());
-    std::string id;
-    std::getline(in, id);
-    return QString::fromStdString(id);
+    return QString::fromStdString(AppSettings::instance().activeAccount());
 }
 
 void AppController::writeLastActive(const QString& id) const
 {
-    std::ofstream out(lastActivePath(), std::ios::trunc);
-    out << id.toStdString();
+    AppSettings::instance().setActiveAccount(id.toStdString());
 }
 
 void AppController::loadSettings()
 {
-    fullPrivacy_ = false;
-    notifications_ = true;
-    try {
-        std::ifstream in(settingsPath());
-        if (in.good()) {
-            nlohmann::json j;
-            in >> j;
-            fullPrivacy_ = j.value("fullPrivacyMode", false);
-            notifications_ = j.value("notifications", true);
-        }
-    } catch (const std::exception& error) {
-        // A missing or malformed settings file just means defaults - but silently
-        // reverting privacy mode to off is exactly what must not go unsaid.
-        bazarish::log::warn("settings not read, using defaults: {}", error.what());
-    }
+    fullPrivacy_ = AppSettings::instance().fullPrivacy();
+    notifications_ = AppSettings::instance().notifications();
     client::setFullPrivacy(fullPrivacy_);
 }
 
 void AppController::persistSettings() const
 {
-    const nlohmann::json j
-        = {{"fullPrivacyMode", fullPrivacy_}, {"notifications", notifications_}};
-    std::ofstream out(settingsPath(), std::ios::trunc);
-    out << j.dump();
+    AppSettings::instance().setFullPrivacy(fullPrivacy_);
+    AppSettings::instance().setNotifications(notifications_);
 }
 
 void AppController::setFullPrivacyMode(bool on)
@@ -195,21 +152,19 @@ QString AppController::i2pdVersion() const
 void AppController::loadOfflineSet()
 {
     offline_.clear();
-    std::ifstream in(offlinePath());
-    std::string id;
-    while (std::getline(in, id)) {
-        if (!id.empty()) {
-            offline_.insert(QString::fromStdString(id));
-        }
+    for (const std::string& id : AppSettings::instance().offlineAccounts()) {
+        offline_.insert(QString::fromStdString(id));
     }
 }
 
 void AppController::persistOfflineSet() const
 {
-    std::ofstream out(offlinePath(), std::ios::trunc);
+    std::vector<std::string> ids;
+    ids.reserve(static_cast<std::size_t>(offline_.size()));
     for (const QString& id : offline_) {
-        out << id.toStdString() << '\n';
+        ids.push_back(id.toStdString());
     }
+    AppSettings::instance().setOfflineAccounts(std::move(ids));
 }
 
 void AppController::setAccountOffline(const QString& id, bool offline)

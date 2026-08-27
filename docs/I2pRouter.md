@@ -12,14 +12,16 @@ local destinations, active transport sessions).
 
 ## Settings
 
-| Setting | Storage | Default |
+| Setting | Key in `settings.json` | Default |
 |---|---|---|
-| Tunnel length | `<accounts>/.i2p-privacy` | Minimal |
-| Engine logging | `<accounts>/.i2p-logging` | Disabled |
-| SOCKS5 proxy | `<accounts>/.i2p-proxy` | None |
+| Tunnel length | `i2p.tunnelLength` | 0 (minimal) |
+| Engine logging | `i2p.logging` | `false` |
+| SOCKS5 proxy | `i2p.proxy.host`, `i2p.proxy.port` | empty, 0 (no proxy) |
 
-`<accounts>` is the accounts directory (overridable with `BAZARISH_ACCOUNTS_DIR`).
-Router state is kept separately, in `<accounts>/../i2p`.
+All application settings are held in one JSON document, `settings.json`, at the
+root of the installation; see the repository `README.md`. The accounts directory
+and the router's state directory (`i2p/`) are beside it. An empty proxy host or a
+port of zero is stored as "no proxy": neither half is retained on its own.
 
 ## Tunnel length
 

@@ -89,9 +89,6 @@ signals:
     void proxyChanged();
 
 private:
-    std::filesystem::path loggingPath() const;
-    std::filesystem::path privacyPath() const;
-    std::filesystem::path proxyPath() const;
     // Brings the shared router into line with the enable flag off the GUI thread:
     // starts it (warming the netDb even with no active session) when enabled, stops
     // its network when disabled.

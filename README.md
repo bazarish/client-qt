@@ -91,6 +91,23 @@ Environment variables:
   every other command needs it to open the state.
 - `BAZARISH_EXPORT_PASSWORD` - required by `export`/`import`; protects the
   bundle independently of the at-rest passphrase.
+- `BAZARISH_ACCOUNTS_DIR` - the accounts directory, overriding the default. A
+  second copy of the application runs beside the first by pointing it elsewhere.
+
+## Installation layout
+
+```
+<root>/
+  settings.json     application settings: one JSON document (see below)
+  accounts/         one directory per account
+  i2p/              the embedded router's state
+```
+
+`settings.json` holds everything that belongs to the installation rather than to
+an account: the account last in the foreground, the accounts switched off,
+notifications, full-privacy mode and the embedded router's settings. It is read
+at start and rewritten whole on every change, so the file on disk is always a
+complete document.
 
 ## GUI
 

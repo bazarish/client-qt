@@ -5,6 +5,7 @@
 
 #include "I2pRouter.hpp"
 #include "AccountManager.hpp"
+#include "AppSettings.hpp"
 
 #include <bazarish/I2p.hpp>
 
@@ -24,20 +25,11 @@
 namespace bazarish::app {
 
 namespace {
-std::filesystem::path accountsRoot()
-{
-    if (const char* const env = std::getenv("BAZARISH_ACCOUNTS_DIR");
-        env != nullptr && env[0] != '\0') {
-        return std::filesystem::path(env);
-    }
-    return client::AccountManager::defaultRoot();
-}
-
-// The router serves the whole installation, so its state sits beside the
-// accounts directory rather than among the accounts themselves.
+// The router serves the whole installation, so its state sits at the root of it
+// rather than among the accounts.
 std::filesystem::path i2pRoot()
 {
-    return accountsRoot().parent_path() / "i2p";
+    return appRoot() / "i2p";
 }
 
 bazarish::i2p::Privacy privacyForLevel(const int level)
@@ -53,39 +45,19 @@ bazarish::i2p::Privacy privacyForLevel(const int level)
 I2pController::I2pController(QObject* parent)
     : QObject(parent)
 {
-    // libi2pd logging is off unless a "1" was persisted (default fully silent).
-    {
-        std::ifstream in(loggingPath());
-        std::string value;
-        std::getline(in, value);
-        loggingEnabled_ = value == "1";
-    }
-    // Tunnel hop length. Absent => the shortest tunnels: the app has to be usable
-    // before it can be anything else, and the page says plainly what one hop does
-    // and does not hide.
-    {
-        std::ifstream in(privacyPath());
-        std::string value;
-        std::getline(in, value);
-        const int level = value.empty() ? kMinimalPrivacyLevel : std::atoi(value.c_str());
-        privacyLevel_ = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
-    }
+    // libi2pd logging is off by default: fully silent.
+    loggingEnabled_ = AppSettings::instance().i2pLogging();
+    // Tunnel hop length. The default is the shortest tunnels: the application has
+    // to be usable before it can be anything else, and the page states what one
+    // hop does and does not conceal.
+    privacyLevel_ = std::clamp(
+        AppSettings::instance().i2pTunnelLength(), kMinimalPrivacyLevel, kMaxPrivacyLevel);
     // The clearnet side of the router: nothing by default, so it goes straight
     // out. Read before the router is brought up, because the transports read it
     // as they start.
     {
-        std::ifstream in(proxyPath());
-        std::string value;
-        std::getline(in, value);
-        const std::size_t colon = value.rfind(':');
-        if (colon != std::string::npos) {
-            proxyHost_ = QString::fromStdString(value.substr(0, colon));
-            proxyPort_ = std::atoi(value.c_str() + colon + 1);
-        }
-        if (proxyHost_.isEmpty() || proxyPort_ <= 0) {
-            proxyHost_.clear();
-            proxyPort_ = 0;
-        }
+        proxyHost_ = QString::fromStdString(AppSettings::instance().i2pProxyHost());
+        proxyPort_ = AppSettings::instance().i2pProxyPort();
         client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
         if (!proxyHost_.isEmpty()) {
             bazarish::log::info("i2p: clearnet side goes through socks://{}:{}",
@@ -103,28 +75,13 @@ I2pController::I2pController(QObject* parent)
     refresh();
 }
 
-std::filesystem::path I2pController::loggingPath() const
-{
-    return accountsRoot() / ".i2p-logging";
-}
-
-std::filesystem::path I2pController::proxyPath() const
-{
-    return accountsRoot() / ".i2p-proxy";
-}
-
 void I2pController::saveProxy(const QString& host, const int port, const bool restartNow)
 {
     const QString wantedHost = host.trimmed();
     const bool clearing = wantedHost.isEmpty() || port <= 0;
     proxyHost_ = clearing ? QString() : wantedHost;
     proxyPort_ = clearing ? 0 : port;
-    {
-        std::ofstream out(proxyPath(), std::ios::trunc);
-        if (!clearing) {
-            out << proxyHost_.toStdString() << ":" << proxyPort_;
-        }
-    }
+    AppSettings::instance().setI2pProxy(proxyHost_.toStdString(), proxyPort_);
     client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
     emit proxyChanged();
     if (restartNow) {
@@ -133,11 +90,6 @@ void I2pController::saveProxy(const QString& host, const int port, const bool re
         std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
     }
     refresh();
-}
-
-std::filesystem::path I2pController::privacyPath() const
-{
-    return accountsRoot() / ".i2p-privacy";
 }
 
 void I2pController::reconcileRouter()
@@ -156,8 +108,7 @@ void I2pController::setLoggingEnabled(bool on)
     }
     loggingEnabled_ = on;
     bazarish::i2p::setI2pLogging(on);
-    std::ofstream out(loggingPath(), std::ios::trunc);
-    out << (on ? "1" : "0");
+    AppSettings::instance().setI2pLogging(on);
     emit loggingChanged();
 }
 
@@ -169,8 +120,7 @@ void I2pController::setPrivacyLevel(const int level)
     }
     privacyLevel_ = wanted;
     client::setTunnelPrivacy(privacyForLevel(wanted));
-    std::ofstream out(privacyPath(), std::ios::trunc);
-    out << wanted;
+    AppSettings::instance().setI2pTunnelLength(wanted);
     emit privacyLevelChanged();
 }
 

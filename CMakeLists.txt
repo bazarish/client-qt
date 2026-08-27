@@ -115,6 +115,7 @@ if(Qt6_FOUND)
     qt_add_executable(bazarish-app
         app/main.cpp
         app/AppController.cpp
+        app/AppSettings.cpp
         app/AppController.hpp
         app/I2pController.cpp
         app/I2pController.hpp
@@ -275,6 +276,14 @@ bazarish_client_add_test(TestI2pProxy)
 bazarish_client_add_test(TestInvite)
 bazarish_client_add_test(TestLogin)
 bazarish_client_add_test(TestAccount)
+
+# The settings document is plain JSON on disk, so it needs no Qt at all - but it
+# lives with the application sources rather than in the client library.
+add_executable(TestAppSettings tests/TestAppSettings.cpp app/AppSettings.cpp)
+target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+target_link_libraries(TestAppSettings PRIVATE bazarish_client_lib)
+target_compile_options(TestAppSettings PRIVATE -Wall -Wextra)
+add_test(NAME TestAppSettings COMMAND TestAppSettings)
 
 # The transcript store needs Qt SQL and direct SQLite, so it has its own target.
 if(Qt6_FOUND)
