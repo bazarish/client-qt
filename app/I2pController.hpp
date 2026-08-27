@@ -55,7 +55,6 @@ class I2pController : public QObject {
     // while the router runs, and shown only when a proxy is configured at all.
     Q_PROPERTY(QString proxyNtcp2 READ proxyNtcp2 NOTIFY statusChanged)
     Q_PROPERTY(QString proxySsu2 READ proxySsu2 NOTIFY statusChanged)
-    Q_PROPERTY(QString proxyReseed READ proxyReseed NOTIFY statusChanged)
     Q_PROPERTY(bool proxySsu2Enabled READ proxySsu2Enabled NOTIFY statusChanged)
 public:
     explicit I2pController(QObject* parent = nullptr);
@@ -72,7 +71,6 @@ public:
     int proxyPort() const { return proxyPort_; }
     QString proxyNtcp2() const { return proxyNtcp2_; }
     QString proxySsu2() const { return proxySsu2_; }
-    QString proxyReseed() const { return proxyReseed_; }
     bool proxySsu2Enabled() const { return proxySsu2Enabled_; }
     // Saves the proxy (an empty host clears it). restartNow also stops and starts
     // the router's network, which is what puts it in force; without it the saved
@@ -112,7 +110,6 @@ private:
     int proxyPort_ = 0;
     QString proxyNtcp2_;
     QString proxySsu2_;
-    QString proxyReseed_;
     bool proxySsu2Enabled_ = true;
     int floodfills_ = 0;
     int inboundTunnels_ = 0;

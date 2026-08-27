@@ -196,13 +196,11 @@ void I2pController::refresh()
     QVariantList destinations;
     QString proxyNtcp2;
     QString proxySsu2;
-    QString proxyReseed;
     bool proxySsu2Enabled = true;
     if (const std::optional<bazarish::i2p::ProxyState> proxy = client::i2pProxyState();
         proxy.has_value()) {
         proxyNtcp2 = QString::fromStdString(proxy->ntcp2);
         proxySsu2 = QString::fromStdString(proxy->ssu2);
-        proxyReseed = QString::fromStdString(proxy->reseed);
         proxySsu2Enabled = proxy->ssu2Enabled;
     }
     if (running) {
@@ -251,12 +249,11 @@ void I2pController::refresh()
         && floodfills == floodfills_ && inboundTunnels == inboundTunnels_
         && outboundTunnels == outboundTunnels_ && transports == transports_
         && destinations == destinations_ && proxyNtcp2 == proxyNtcp2_ && proxySsu2 == proxySsu2_
-        && proxyReseed == proxyReseed_ && proxySsu2Enabled == proxySsu2Enabled_) {
+        && proxySsu2Enabled == proxySsu2Enabled_) {
         return;
     }
     proxyNtcp2_ = proxyNtcp2;
     proxySsu2_ = proxySsu2;
-    proxyReseed_ = proxyReseed;
     proxySsu2Enabled_ = proxySsu2Enabled;
     running_ = running;
     ready_ = ready;

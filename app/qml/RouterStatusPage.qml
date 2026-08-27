@@ -306,10 +306,9 @@ Popup {
 
                     Label { text: "Clearnet proxy"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     Label {
-                        text: "A SOCKS5 proxy for everything the router does outside I2P: its "
-                            + "connections to other routers and the network database it "
-                            + "bootstraps from. It hides that traffic from your network, and "
-                            + "shows all of it to the proxy. Leave empty to go straight out."
+                        text: "A SOCKS5 proxy for what the router does outside I2P. It hides "
+                            + "that traffic from your network, and shows all of it to the "
+                            + "proxy. Leave empty to go straight out."
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -360,10 +359,6 @@ Popup {
                         StatRow {
                             label: "Datagrams (SSU2)"
                             value: I2p.proxySsu2Enabled ? "direct" : "off"
-                        }
-                        StatRow {
-                            label: "Network database"
-                            value: I2p.proxyReseed.length > 0 ? I2p.proxyReseed : "direct"
                         }
                         Label {
                             visible: !I2p.proxySsu2Enabled
