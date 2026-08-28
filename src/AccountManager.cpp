@@ -10,6 +10,10 @@
 
 #include <nlohmann/json.hpp>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <cstdlib>
 #include <stdexcept>
 
@@ -97,12 +101,22 @@ AccountInfo readInfo(const std::string& id, const fs::path& file, const std::str
 
 fs::path AccountManager::globalRoot()
 {
+#ifdef _WIN32
+    // The roaming application data directory, which is where a Windows user's
+    // own data belongs and what the environment names.
+    if (const char* const appData = std::getenv("APPDATA");
+        appData != nullptr && appData[0] != '\0') {
+        return fs::path(appData) / "Bazarish";
+    }
+    return fs::current_path() / "Bazarish";
+#else
     if (const char* const xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != '\0') {
         return fs::path(xdg) / "bazarish";
     }
     const char* const home = std::getenv("HOME");
     const fs::path base = home != nullptr ? fs::path(home) : fs::current_path();
     return base / ".local" / "share" / "bazarish";
+#endif
 }
 
 namespace {
@@ -114,6 +128,17 @@ namespace {
 // APPIMAGE (set by the AppImage runtime).
 fs::path executableDir()
 {
+#ifdef _WIN32
+    // The module path is the only thing that names this process's own file.
+    std::wstring path(MAX_PATH, L'\0');
+    const DWORD written = ::GetModuleFileNameW(nullptr, path.data(),
+        static_cast<DWORD>(path.size()));
+    if (written == 0 || written >= path.size()) {
+        return fs::current_path();
+    }
+    path.resize(written);
+    return fs::path(path).parent_path();
+#else
     if (const char* const bundle = std::getenv("APPIMAGE");
         bundle != nullptr && bundle[0] != '\0') {
         return fs::path(bundle).parent_path();
@@ -121,6 +146,7 @@ fs::path executableDir()
     std::error_code error;
     const fs::path self = fs::read_symlink("/proc/self/exe", error);
     return error ? fs::current_path() : self.parent_path();
+#endif
 }
 
 }  // namespace

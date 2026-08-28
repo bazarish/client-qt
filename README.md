@@ -57,6 +57,12 @@ SQLCipher 3 will link and will not read an account: the version-4 database forma
 is not the one it writes, and there is no compatibility pragma from that side. See
 [docs/AccountStorage.md](docs/AccountStorage.md).
 
+Linux is the platform this is built and tested on. The sources carry what a
+Windows (MSYS2/MinGW-w64) build needs - Winsock behind the SAM client's socket
+calls, the roaming application-data directory and the module path for the data
+root, and the platform libraries in CMake - but that build has not been run yet,
+so treat the first attempt as bringing it up rather than repeating it.
+
 ```bash
 git clone --recurse-submodules https://github.com/bazarish/client-qt6
 cmake -S . -B build && cmake --build build -j
