@@ -52,24 +52,28 @@ int main()
     namespace fs = std::filesystem;
     const fs::path dir = fs::temp_directory_path() / ("bazarish-login-" + toHex(randomBytes(8)));
 
-    const Session session = Session::create(dir, "pw", "alice");
-    const std::string fingerprint = session.fingerprint();
-    const std::string challenge = "portal-challenge-" + toHex(randomBytes(16));
+    // The account is removed once the session holding it is gone: an open
+    // database file is not one every platform lets go of.
+    {
+        const Session session = Session::create(dir, "pw", "alice");
+        const std::string fingerprint = session.fingerprint();
+        const std::string challenge = "portal-challenge-" + toHex(randomBytes(16));
 
-    const std::string blob = session.signLogin(challenge);
-    CHECK(!blob.empty());
+        const std::string blob = session.signLogin(challenge);
+        CHECK(!blob.empty());
 
-    // Round-trip: the verifier recovers exactly this user's fingerprint.
-    CHECK(verifyLoginBlob(blob, now(), challenge) == fingerprint);
+        // Round-trip: the verifier recovers exactly this user's fingerprint.
+        CHECK(verifyLoginBlob(blob, now(), challenge) == fingerprint);
 
-    // A signature bound to one challenge does not authenticate another.
-    CHECK_THROWS(verifyLoginBlob(blob, now(), "a-different-challenge"));
+        // A signature bound to one challenge does not authenticate another.
+        CHECK_THROWS(verifyLoginBlob(blob, now(), "a-different-challenge"));
 
-    // A tampered blob is rejected.
-    CHECK_THROWS(verifyLoginBlob(blob + "x", now(), challenge));
+        // A tampered blob is rejected.
+        CHECK_THROWS(verifyLoginBlob(blob + "x", now(), challenge));
 
-    // Stale beyond the auth freshness window is rejected (replay containment).
-    CHECK_THROWS(verifyLoginBlob(blob, now() + 100000, challenge));
+        // Stale beyond the auth freshness window is rejected (replay containment).
+        CHECK_THROWS(verifyLoginBlob(blob, now() + 100000, challenge));
+    }
 
     fs::remove_all(dir);
     std::printf("TestLogin: all checks passed\n");

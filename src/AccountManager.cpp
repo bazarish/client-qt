@@ -130,8 +130,8 @@ fs::path executableDir()
 {
 #ifdef _WIN32
     // The module path is the only thing that names this process's own file.
-    std::wstring path(MAX_PATH, L'\0');
-    const DWORD written = ::GetModuleFileNameW(nullptr, path.data(),
+    std::string path(MAX_PATH, '\0');
+    const DWORD written = ::GetModuleFileNameA(nullptr, path.data(),
         static_cast<DWORD>(path.size()));
     if (written == 0 || written >= path.size()) {
         return fs::current_path();

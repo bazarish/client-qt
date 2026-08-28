@@ -385,144 +385,150 @@ int main()
     fs::remove_all(aDir);
     fs::remove_all(bDir);
 
-    Session alice = Session::create(aDir, endpoint, std::string{});
-    Session bob = Session::create(bDir, endpoint, std::string{});
-    {
-        std::lock_guard<std::mutex> lock(m.mu);
-        m.destFor[alice.fingerprint()] = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
-        m.destFor[bob.fingerprint()] = "elkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
-        // Watch Alice's mailbox: the prepaid-token refill is a content delivery into
-        // it that spends one of Alice's own single-registered tokens.
-        m.watchMailbox = alice.fingerprint();
-    }
-
-    alice.registerAccount();
-    bob.registerAccount();
-
-    // A card fetch dials the peer's destination directly over I2P; there is no
-    // router here, so the harness stands in for that dial. It answers exactly as
-    // a serving destination does: the card when the query brings back the view
-    // capability, and the same nothing otherwise.
-    const auto directDial = [&m](const std::string& toDest, const std::string& op,
-                                const Bytes& query) {
-        CHECK(op == "card");
-        (void)toDest;
-        const CardFetchQuery asked = cardFetchQueryFromJson(nlohmann::json::parse(query));
-        std::lock_guard<std::mutex> lock(m.mu);
-        const auto found = m.certFor.find(asked.fingerprint);
-        FetchOutcome outcome;
-        if (found == m.certFor.end() || asked.view != m.viewFor[asked.fingerprint]) {
-            outcome.errorCode = "CARD_UNKNOWN";
-            return outcome;
-        }
-        outcome.ok = true;
-        outcome.sealed = fromBase64(found->second);
-        return outcome;
-    };
-    alice.setFetchTransport(directDial);
-    bob.setFetchTransport(directDial);
-
-    // Outgoing mail leaves the client itself, so the harness stands in for the
-    // dial as well: every delivery reaches the mock server above over the real
-    // frame, with no router and no waiting.
-    const Key ackSigning = Key::generateSigning();
-    const auto courierFor = [&m, &ackSigning]() {
-        return std::make_unique<OutboundCourier>([](const std::string&, const std::string&) { return true; },
-            [&m, &ackSigning](const std::string&,
-                std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
-                return std::make_shared<MockServerStream>(m, ackSigning);
-            });
-    };
-    alice.setOutboundCourier(courierFor());
-    bob.setOutboundCourier(courierFor());
-
-    // Establish the contact both ways: Alice adds Bob from his invite (the only
-    // way in - a bare fingerprint would need a server to say who it hosts), Bob
-    // accepts. Now Alice holds a batch of Bob's tokens and Bob holds a batch of
-    // Alice's.
-    alice.addByInvite(bob.inviteUri(), "hi bob");
-    bob.sync();
-    bob.acceptContactRequest(alice.fingerprint());
-    alice.sync();
-    CHECK(alice.hasContact(bob.fingerprint()));
-    CHECK(bob.hasContact(alice.fingerprint()));
-
-    // A batch that was addressed to nobody is not kept whole: each device takes
-    // one token out of it and spends that on a batch addressed to itself, so no
-    // two devices of an account hold the same one-time tokens. Two rounds of
-    // sync carry those requests and their answers.
-    for (int round = 0; round < 2; ++round) {
-        alice.sync();
-        bob.sync();
-    }
-    CHECK(alice.hasContact(bob.fingerprint()));
-    CHECK(bob.hasContact(alice.fingerprint()));
-
-    const auto rejects = [](const auto& fn) {
-        try {
-            fn();
-        } catch (const std::exception&) {
-            return true;
-        }
-        return false;
-    };
-
-    // Drain Bob's stash of Alice's tokens to EMPTY. Alice does NOT sync in between, so
-    // she never sees Bob's low-stash signal and never refills him: Bob ends holding
-    // none of Alice's tokens.
+    // Reported after the accounts are closed and removed.
     int bobSent = 0;
-    while (!rejects([&]() { bob.sendMessage(alice.fingerprint(), "b->a " + std::to_string(bobSent)); })) {
-        ++bobSent;
-    }
-    CHECK(bobSent > 0);
-    // Confirm the stash is truly empty: another send is rejected up front.
-    CHECK(rejects([&]() { bob.sendMessage(alice.fingerprint(), "overflow"); }));
-
-    // Drain Alice's stash too. Her low-stash sends embed a fresh prepaid token each
-    // (registered one-at-a-time with her own server); she ends empty as well.
     int aliceSent = 0;
-    while (!rejects([&]() { alice.sendMessage(bob.fingerprint(), "a->b " + std::to_string(aliceSent)); })) {
-        ++aliceSent;
-    }
-    CHECK(aliceSent > 0);
-    CHECK(rejects([&]() { alice.sendMessage(bob.fingerprint(), "overflow"); }));
 
-    // Bob syncs: he processes Alice's stream (the tail carries lowStash + refillToken)
-    // and must reply with a token-refill. He holds NONE of Alice's tokens, so the only
-    // way that reply can be delivered is by spending the prepaid token Alice embedded.
-    // Without the prepaid mechanism sendTokenRefill would bail on the empty stash.
-    bob.sync();
-    CHECK(waitFor([&m]() {
-        std::lock_guard<std::mutex> lock(m.mu);
-        return m.refillUsedPrepaid;
-    }));
-
-    // Alice syncs: she applies Bob's fresh batch, so her stash is replenished.
-    bool gotRefill = false;
-    for (const IncomingMessage& message : alice.sync()) {
-        if (message.contentType == "token-refill") {
-            gotRefill = true;
-        }
-    }
-    CHECK(gotRefill);
-
-    // Proof the refill actually restored Alice's sending capacity: she was empty, yet
-    // can send again now (this would throw "out of delivery tokens" otherwise).
-    alice.sendMessage(bob.fingerprint(), "after refill");
-
-    // Removing an avatar travels like setting one. Bob holds Alice's until she
-    // takes it back; a removal that is never sent would leave him holding it for
-    // good, which is what used to happen.
+    // Both accounts go once the sessions holding them are gone: an open database
+    // file is not one every platform lets go of.
     {
-        const Bytes face = {0xFF, 0xD8, 0xFF, 0xE0, 'j', 'p', 'g'};
-        alice.setAvatar(face, "image/jpeg");
-        bob.sync();
-        CHECK(bob.contactAvatar(alice.fingerprint()) == face);
+        Session alice = Session::create(aDir, endpoint, std::string{});
+        Session bob = Session::create(bDir, endpoint, std::string{});
+        {
+            std::lock_guard<std::mutex> lock(m.mu);
+            m.destFor[alice.fingerprint()] = "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
+            m.destFor[bob.fingerprint()] = "elkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p";
+            // Watch Alice's mailbox: the prepaid-token refill is a content delivery into
+            // it that spends one of Alice's own single-registered tokens.
+            m.watchMailbox = alice.fingerprint();
+        }
 
-        alice.setAvatar({}, {});
-        CHECK(alice.avatar().empty());
+        alice.registerAccount();
+        bob.registerAccount();
+
+        // A card fetch dials the peer's destination directly over I2P; there is no
+        // router here, so the harness stands in for that dial. It answers exactly as
+        // a serving destination does: the card when the query brings back the view
+        // capability, and the same nothing otherwise.
+        const auto directDial = [&m](const std::string& toDest, const std::string& op,
+                                    const Bytes& query) {
+            CHECK(op == "card");
+            (void)toDest;
+            const CardFetchQuery asked = cardFetchQueryFromJson(nlohmann::json::parse(query));
+            std::lock_guard<std::mutex> lock(m.mu);
+            const auto found = m.certFor.find(asked.fingerprint);
+            FetchOutcome outcome;
+            if (found == m.certFor.end() || asked.view != m.viewFor[asked.fingerprint]) {
+                outcome.errorCode = "CARD_UNKNOWN";
+                return outcome;
+            }
+            outcome.ok = true;
+            outcome.sealed = fromBase64(found->second);
+            return outcome;
+        };
+        alice.setFetchTransport(directDial);
+        bob.setFetchTransport(directDial);
+
+        // Outgoing mail leaves the client itself, so the harness stands in for the
+        // dial as well: every delivery reaches the mock server above over the real
+        // frame, with no router and no waiting.
+        const Key ackSigning = Key::generateSigning();
+        const auto courierFor = [&m, &ackSigning]() {
+            return std::make_unique<OutboundCourier>([](const std::string&, const std::string&) { return true; },
+                [&m, &ackSigning](const std::string&,
+                    std::chrono::seconds) -> std::shared_ptr<DeliveryStream> {
+                    return std::make_shared<MockServerStream>(m, ackSigning);
+                });
+        };
+        alice.setOutboundCourier(courierFor());
+        bob.setOutboundCourier(courierFor());
+
+        // Establish the contact both ways: Alice adds Bob from his invite (the only
+        // way in - a bare fingerprint would need a server to say who it hosts), Bob
+        // accepts. Now Alice holds a batch of Bob's tokens and Bob holds a batch of
+        // Alice's.
+        alice.addByInvite(bob.inviteUri(), "hi bob");
         bob.sync();
-        CHECK(bob.contactAvatar(alice.fingerprint()).empty());
+        bob.acceptContactRequest(alice.fingerprint());
+        alice.sync();
+        CHECK(alice.hasContact(bob.fingerprint()));
+        CHECK(bob.hasContact(alice.fingerprint()));
+
+        // A batch that was addressed to nobody is not kept whole: each device takes
+        // one token out of it and spends that on a batch addressed to itself, so no
+        // two devices of an account hold the same one-time tokens. Two rounds of
+        // sync carry those requests and their answers.
+        for (int round = 0; round < 2; ++round) {
+            alice.sync();
+            bob.sync();
+        }
+        CHECK(alice.hasContact(bob.fingerprint()));
+        CHECK(bob.hasContact(alice.fingerprint()));
+
+        const auto rejects = [](const auto& fn) {
+            try {
+                fn();
+            } catch (const std::exception&) {
+                return true;
+            }
+            return false;
+        };
+
+        // Drain Bob's stash of Alice's tokens to EMPTY. Alice does NOT sync in between, so
+        // she never sees Bob's low-stash signal and never refills him: Bob ends holding
+        // none of Alice's tokens.
+        while (!rejects([&]() { bob.sendMessage(alice.fingerprint(), "b->a " + std::to_string(bobSent)); })) {
+            ++bobSent;
+        }
+        CHECK(bobSent > 0);
+        // Confirm the stash is truly empty: another send is rejected up front.
+        CHECK(rejects([&]() { bob.sendMessage(alice.fingerprint(), "overflow"); }));
+
+        // Drain Alice's stash too. Her low-stash sends embed a fresh prepaid token each
+        // (registered one-at-a-time with her own server); she ends empty as well.
+        while (!rejects([&]() { alice.sendMessage(bob.fingerprint(), "a->b " + std::to_string(aliceSent)); })) {
+            ++aliceSent;
+        }
+        CHECK(aliceSent > 0);
+        CHECK(rejects([&]() { alice.sendMessage(bob.fingerprint(), "overflow"); }));
+
+        // Bob syncs: he processes Alice's stream (the tail carries lowStash + refillToken)
+        // and must reply with a token-refill. He holds NONE of Alice's tokens, so the only
+        // way that reply can be delivered is by spending the prepaid token Alice embedded.
+        // Without the prepaid mechanism sendTokenRefill would bail on the empty stash.
+        bob.sync();
+        CHECK(waitFor([&m]() {
+            std::lock_guard<std::mutex> lock(m.mu);
+            return m.refillUsedPrepaid;
+        }));
+
+        // Alice syncs: she applies Bob's fresh batch, so her stash is replenished.
+        bool gotRefill = false;
+        for (const IncomingMessage& message : alice.sync()) {
+            if (message.contentType == "token-refill") {
+                gotRefill = true;
+            }
+        }
+        CHECK(gotRefill);
+
+        // Proof the refill actually restored Alice's sending capacity: she was empty, yet
+        // can send again now (this would throw "out of delivery tokens" otherwise).
+        alice.sendMessage(bob.fingerprint(), "after refill");
+
+        // Removing an avatar travels like setting one. Bob holds Alice's until she
+        // takes it back; a removal that is never sent would leave him holding it for
+        // good, which is what used to happen.
+        {
+            const Bytes face = {0xFF, 0xD8, 0xFF, 0xE0, 'j', 'p', 'g'};
+            alice.setAvatar(face, "image/jpeg");
+            bob.sync();
+            CHECK(bob.contactAvatar(alice.fingerprint()) == face);
+
+            alice.setAvatar({}, {});
+            CHECK(alice.avatar().empty());
+            bob.sync();
+            CHECK(bob.contactAvatar(alice.fingerprint()).empty());
+        }
     }
 
     server.stop();

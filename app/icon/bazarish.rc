@@ -1,0 +1,10 @@
+// Bazarish project (c) 2026
+// The Windows resources of the application: the icon a shell draws, and the
+// manifest that settles what the narrow entry points mean by a byte.
+
+// A shell shows the lowest-numbered icon resource of an executable.
+1 ICON "bazarish.ico"
+
+// CREATEPROCESS_MANIFEST_RESOURCE_ID and RT_MANIFEST, by number: the resource
+// compiler is not given the headers that name them.
+1 24 "bazarish.manifest"

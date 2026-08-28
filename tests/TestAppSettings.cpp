@@ -46,7 +46,12 @@ int main(int argc, char** argv)
     fs::create_directories(root / "accounts");
     // The instance resolves its path once, from the accounts directory named by
     // the environment, and keeps the file at the root beside it.
-    CHECK(::setenv("BAZARISH_ACCOUNTS_DIR", (root / "accounts").c_str(), 1) == 0);
+    const std::string accountsDir = (root / "accounts").string();
+#ifdef _WIN32
+    CHECK(::_putenv_s("BAZARISH_ACCOUNTS_DIR", accountsDir.c_str()) == 0);
+#else
+    CHECK(::setenv("BAZARISH_ACCOUNTS_DIR", accountsDir.c_str(), 1) == 0);
+#endif
     const fs::path file = root / "settings.json";
 
     AppSettings& settings = AppSettings::instance();

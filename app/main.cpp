@@ -10,6 +10,12 @@
 
 #pragma push_macro("emit")
 #undef emit
+#ifdef _WIN32
+// Qt uses std::min and std::max, which the unguarded header takes for itself.
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 #include <bazarish/Log.hpp>
 #include <bazarish/ServerDescriptor.hpp>
 #pragma pop_macro("emit")
@@ -32,13 +38,51 @@
 #include <QUrl>
 
 #include <array>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <memory>
 #include <utility>
 
+#ifdef _WIN32
+
+namespace {
+
+// The console flag. Built for the GUI subsystem, this binary starts without a
+// console at all, which is what a desktop application should do and also where
+// its log would otherwise go.
+constexpr const char* kConsoleFlag = "--console";
+
+// Takes the console it was started from when there is one, and opens its own
+// otherwise, so the log can be read while the application runs.
+void attachConsole()
+{
+    if (::AttachConsole(ATTACH_PARENT_PROCESS) == 0 && ::AllocConsole() == 0) {
+        return;
+    }
+    if (std::freopen("CONOUT$", "w", stdout) == nullptr
+        || std::freopen("CONOUT$", "w", stderr) == nullptr) {
+        // There is no log to report this to: the log is what just failed.
+        ::MessageBoxA(nullptr, "Could not write to the console.", "Bazarish", MB_ICONWARNING);
+    }
+}
+
+}  // namespace
+
+#endif
+
 int main(int argc, char** argv)
 {
+#ifdef _WIN32
+    // Before anything that logs: the console has to be there to be written to.
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], kConsoleFlag) == 0) {
+            attachConsole();
+            break;
+        }
+    }
+#endif
+
     // Qt selects a platform theme from the desktop environment; that theme is what
     // provides the SYSTEM file dialog (the desktop's own chooser, with a pre-filled
     // save name). With no theme named - or one named whose plugin is not there -

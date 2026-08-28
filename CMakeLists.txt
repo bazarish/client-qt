@@ -152,6 +152,16 @@ if(Qt6_FOUND)
     target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 
+    if(WIN32)
+        # A GUI binary: started from the shell it opens no console window, and
+        # --console is what attaches one when the log has to be read. The icon
+        # the shell draws is the resource compiled in here.
+        set_target_properties(bazarish-app PROPERTIES WIN32_EXECUTABLE TRUE)
+        target_sources(bazarish-app PRIVATE app/icon/bazarish.rc)
+        set_source_files_properties(app/icon/bazarish.rc PROPERTIES
+            COMPILE_OPTIONS "-I${CMAKE_CURRENT_SOURCE_DIR}/app/icon")
+    endif()
+
     # Reveal-in-file-manager (FileManager1 over D-Bus) when the optional module is
     # present; otherwise the code path is compiled out and falls back gracefully.
     if(TARGET Qt6::DBus)

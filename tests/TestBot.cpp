@@ -67,109 +67,113 @@ void testDispatch()
 {
     const fs::path accountDir = fs::temp_directory_path() / "bz-testbot-state";
     fs::remove_all(accountDir);
-    // A connection-less Session is enough to construct a Bot; dispatch never
-    // touches the network, and the recording handlers never send a reply.
-    Session session = Session::create(accountDir, std::string{}, "testbot");
+    // The account is removed once the session holding it is gone: an open
+    // database file is not one every platform lets go of.
+    {
+        // A connection-less Session is enough to construct a Bot; dispatch never
+        // touches the network, and the recording handlers never send a reply.
+        Session session = Session::create(accountDir, std::string{}, "testbot");
 
-    Trace trace;
-    Bot bot(session);
-    bot.onCommand("start", [&trace](Bot&, const std::string&, const std::string& args) {
-        trace.commands.push_back("start|" + args);
-    });
-    bot.onCommand("echo", [&trace](Bot&, const std::string&, const std::string& args) {
-        trace.commands.push_back("echo|" + args);
-    });
-    bot.onText([&trace](Bot&, const std::string&, const std::string& text) {
-        trace.texts.push_back(text);
-    });
-    bot.onCallback(
-        [&trace](Bot&, const std::string&, const std::string& data, const std::string& ref) {
-            trace.callbacks.push_back(data + "|" + ref);
+        Trace trace;
+        Bot bot(session);
+        bot.onCommand("start", [&trace](Bot&, const std::string&, const std::string& args) {
+            trace.commands.push_back("start|" + args);
         });
-    bot.onUnknownCommand([&trace](Bot&, const std::string&, const std::string& name) {
-        trace.unknown.push_back(name);
-    });
-    bot.onContact([&trace](Bot&, const std::string&, const std::string& intro) {
-        trace.contacts.push_back(intro);
-    });
+        bot.onCommand("echo", [&trace](Bot&, const std::string&, const std::string& args) {
+            trace.commands.push_back("echo|" + args);
+        });
+        bot.onText([&trace](Bot&, const std::string&, const std::string& text) {
+            trace.texts.push_back(text);
+        });
+        bot.onCallback(
+            [&trace](Bot&, const std::string&, const std::string& data, const std::string& ref) {
+                trace.callbacks.push_back(data + "|" + ref);
+            });
+        bot.onUnknownCommand([&trace](Bot&, const std::string&, const std::string& name) {
+            trace.unknown.push_back(name);
+        });
+        bot.onContact([&trace](Bot&, const std::string&, const std::string& intro) {
+            trace.contacts.push_back(intro);
+        });
 
-    // bot.command routes to the named command handler with its args.
-    {
-        IncomingMessage message = make("bot.command", "peer1");
-        message.commandName = "echo";
-        message.commandArgs = "hello world";
-        bot.dispatch(message);
-        CHECK(trace.commands.size() == 1);
-        CHECK(trace.commands[0] == "echo|hello world");
-    }
+        // bot.command routes to the named command handler with its args.
+        {
+            IncomingMessage message = make("bot.command", "peer1");
+            message.commandName = "echo";
+            message.commandArgs = "hello world";
+            bot.dispatch(message);
+            CHECK(trace.commands.size() == 1);
+            CHECK(trace.commands[0] == "echo|hello world");
+        }
 
-    // A plain "/command args" text line routes to the same command handler.
-    {
-        IncomingMessage message = make("text", "peer1");
-        message.text = "/echo from text";
-        bot.dispatch(message);
-        CHECK(trace.commands.size() == 2);
-        CHECK(trace.commands[1] == "echo|from text");
-    }
+        // A plain "/command args" text line routes to the same command handler.
+        {
+            IncomingMessage message = make("text", "peer1");
+            message.text = "/echo from text";
+            bot.dispatch(message);
+            CHECK(trace.commands.size() == 2);
+            CHECK(trace.commands[1] == "echo|from text");
+        }
 
-    // A "/command" with no args dispatches with an empty argument string.
-    {
-        IncomingMessage message = make("text", "peer1");
-        message.text = "/start";
-        bot.dispatch(message);
-        CHECK(trace.commands.size() == 3);
-        CHECK(trace.commands[2] == "start|");
-    }
+        // A "/command" with no args dispatches with an empty argument string.
+        {
+            IncomingMessage message = make("text", "peer1");
+            message.text = "/start";
+            bot.dispatch(message);
+            CHECK(trace.commands.size() == 3);
+            CHECK(trace.commands[2] == "start|");
+        }
 
-    // Non-command text routes to the text handler verbatim.
-    {
-        IncomingMessage message = make("text", "peer1");
-        message.text = "just chatting";
-        bot.dispatch(message);
-        CHECK(trace.texts.size() == 1);
-        CHECK(trace.texts[0] == "just chatting");
-    }
+        // Non-command text routes to the text handler verbatim.
+        {
+            IncomingMessage message = make("text", "peer1");
+            message.text = "just chatting";
+            bot.dispatch(message);
+            CHECK(trace.texts.size() == 1);
+            CHECK(trace.texts[0] == "just chatting");
+        }
 
-    // An unknown command routes to the unknown-command handler.
-    {
-        IncomingMessage message = make("text", "peer1");
-        message.text = "/nope arg";
-        bot.dispatch(message);
-        CHECK(trace.unknown.size() == 1);
-        CHECK(trace.unknown[0] == "nope");
-    }
+        // An unknown command routes to the unknown-command handler.
+        {
+            IncomingMessage message = make("text", "peer1");
+            message.text = "/nope arg";
+            bot.dispatch(message);
+            CHECK(trace.unknown.size() == 1);
+            CHECK(trace.unknown[0] == "nope");
+        }
 
-    // A callback carries the button data and the referenced keyboard message.
-    {
-        IncomingMessage message = make("bot.callback", "peer1");
-        message.callbackData = "ping";
-        message.refId = "kbmsg42";
-        bot.dispatch(message);
-        CHECK(trace.callbacks.size() == 1);
-        CHECK(trace.callbacks[0] == "ping|kbmsg42");
-    }
+        // A callback carries the button data and the referenced keyboard message.
+        {
+            IncomingMessage message = make("bot.callback", "peer1");
+            message.callbackData = "ping";
+            message.refId = "kbmsg42";
+            bot.dispatch(message);
+            CHECK(trace.callbacks.size() == 1);
+            CHECK(trace.callbacks[0] == "ping|kbmsg42");
+        }
 
-    // A new contact routes to the contact handler with the intro text.
-    {
-        IncomingMessage message = make("contact.request", "peer2");
-        message.text = "hi bot";
-        bot.dispatch(message);
-        CHECK(trace.contacts.size() == 1);
-        CHECK(trace.contacts[0] == "hi bot");
-    }
+        // A new contact routes to the contact handler with the intro text.
+        {
+            IncomingMessage message = make("contact.request", "peer2");
+            message.text = "hi bot";
+            bot.dispatch(message);
+            CHECK(trace.contacts.size() == 1);
+            CHECK(trace.contacts[0] == "hi bot");
+        }
 
-    // Control/media types are ignored by dispatch (no handler fires).
-    {
-        const std::size_t commandsBefore = trace.commands.size();
-        const std::size_t textsBefore = trace.texts.size();
-        const std::size_t callbacksBefore = trace.callbacks.size();
-        bot.dispatch(make("receipt", "peer1"));
-        bot.dispatch(make("token-refill", "peer1"));
-        bot.dispatch(make("file", "peer1"));
-        bot.dispatch(make("edit", "peer1"));
-        CHECK(trace.commands.size() == commandsBefore);
-        CHECK(trace.texts.size() == textsBefore);
-        CHECK(trace.callbacks.size() == callbacksBefore);
+        // Control/media types are ignored by dispatch (no handler fires).
+        {
+            const std::size_t commandsBefore = trace.commands.size();
+            const std::size_t textsBefore = trace.texts.size();
+            const std::size_t callbacksBefore = trace.callbacks.size();
+            bot.dispatch(make("receipt", "peer1"));
+            bot.dispatch(make("token-refill", "peer1"));
+            bot.dispatch(make("file", "peer1"));
+            bot.dispatch(make("edit", "peer1"));
+            CHECK(trace.commands.size() == commandsBefore);
+            CHECK(trace.texts.size() == textsBefore);
+            CHECK(trace.callbacks.size() == callbacksBefore);
+        }
     }
 
     fs::remove_all(accountDir);
@@ -181,15 +185,18 @@ void testContactFallsBackToStart()
 {
     const fs::path accountDir = fs::temp_directory_path() / "bz-testbot-state2";
     fs::remove_all(accountDir);
-    Session session = Session::create(accountDir, std::string{}, "testbot2");
+    // Removed after the session, as above.
+    {
+        Session session = Session::create(accountDir, std::string{}, "testbot2");
 
-    bool started = false;
-    Bot bot(session);
-    bot.onCommand("start", [&started](Bot&, const std::string&, const std::string&) {
-        started = true;
-    });
-    bot.dispatch(make("contact.request", "peer3"));
-    CHECK(started);
+        bool started = false;
+        Bot bot(session);
+        bot.onCommand("start", [&started](Bot&, const std::string&, const std::string&) {
+            started = true;
+        });
+        bot.dispatch(make("contact.request", "peer3"));
+        CHECK(started);
+    }
 
     fs::remove_all(accountDir);
 }
