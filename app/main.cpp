@@ -127,14 +127,23 @@ int main(int argc, char** argv)
 
     // The brand is monospace everywhere: load the bundled Roboto Mono and make
     // it the application-wide default so every control inherits it.
-    QFontDatabase::addApplicationFont(":/fonts/RobotoMono-Regular.ttf");
-    QFontDatabase::addApplicationFont(":/fonts/RobotoMono-Bold.ttf");
+    // A font that does not load is not a cosmetic loss: every glyph then comes
+    // from whatever the system offers instead, which is the look this bundles
+    // the font to avoid.
+    for (const char* const font :
+        {":/fonts/RobotoMono-Regular.ttf", ":/fonts/RobotoMono-Bold.ttf"}) {
+        if (QFontDatabase::addApplicationFont(QString::fromLatin1(font)) < 0) {
+            bazarish::log::warn("brand font not loaded: {}", font);
+        }
+    }
     // Bundle a colour-emoji font (Twemoji Mozilla, COLR/CPAL) so reactions render in
     // colour regardless of the system fonts. Roboto Mono has no emoji glyphs, and a
     // monochrome fallback would be invisible on the dark theme; the UI selects this
     // family with Text.NativeRendering where it shows emoji (a colour font needs the
     // native rasterizer - Qt's default distance-field text is monochrome only).
-    QFontDatabase::addApplicationFont(":/fonts/TwemojiMozilla.ttf");
+    if (QFontDatabase::addApplicationFont(":/fonts/TwemojiMozilla.ttf") < 0) {
+        bazarish::log::warn("emoji font not loaded: reactions will be monochrome");
+    }
     QFont baseFont("Roboto Mono");
     baseFont.setStyleHint(QFont::Monospace);
     baseFont.setPixelSize(14);

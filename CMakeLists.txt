@@ -169,9 +169,10 @@ if(Qt6_FOUND)
         target_compile_definitions(bazarish-app PRIVATE BAZARISH_HAVE_QTDBUS)
     endif()
 
-    # Bundle the brand font (Roboto Mono, static Latin cuts) so the terminal/neon
-    # look renders identically regardless of what is installed; non-Latin text
-    # falls back to the system monospace.
+    # Bundle the brand font (Roboto Mono, Latin, Greek and Cyrillic) so the
+    # terminal/neon look renders identically regardless of what is installed.
+    # A script the font does not cover falls back to the system monospace, and
+    # what that is differs enough between desktops to be visible.
     qt_add_resources(bazarish-app appfonts
         PREFIX "/fonts"
         BASE app/fonts
