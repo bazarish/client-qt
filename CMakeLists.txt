@@ -17,28 +17,8 @@ if(NOT TARGET bazarish_common)
     add_subdirectory(${BAZARISH_COMMON_DIR} bazarish-common)
 endif()
 
-find_package(Threads REQUIRED)
-
-# libqrencode renders contact invites as QR codes (multi-symbol structured
-# append for the full self-verifying chain).
-find_library(QRENCODE_LIBRARY NAMES qrencode REQUIRED)
-find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
-
-# libopus encodes call audio (48 kHz mono, 20 ms Opus frames). The media rides
-# I2P datagrams; this is only the codec, so it stays private to the core lib.
-find_library(OPUS_LIBRARY NAMES opus REQUIRED)
-find_path(OPUS_INCLUDE_DIR NAMES opus/opus.h REQUIRED)
-
-# I2P key material + transport now come from common's bazarish::i2p (the embedded
-# libi2pd), so the previously-vendored trimmed libi2pd "keys" lib and the i2pd
-# submodule are gone. OpenSSL is still needed for the crypto and for the TLS
-# client common's HTTP engine uses on a clearnet facade.
-# 3.5 is where ML-DSA and ML-KEM arrived (every signature and sealed envelope is
-# hybrid) and 3.2 is where Argon2id did (an account key is Argon2id): an older
-# OpenSSL builds a client that can neither create an account nor speak the
-# protocol, so it is refused here rather than at the first passphrase.
-# Distributions that ship an older one (Debian 12 has 3.0) need one built
-# alongside: -DOPENSSL_ROOT_DIR=/path/to/openssl-3.5.
+# The client core lives in common: it has two front-ends, this application and
+# the daemon, and neither owns it. What stays here is the user interface.
 find_package(OpenSSL 3.5 REQUIRED)
 
 # Sanitizer build (address / undefined), for chasing a crash rather than for
@@ -50,46 +30,13 @@ if(BAZARISH_SANITIZE)
     add_link_options(-fsanitize=${BAZARISH_SANITIZE})
 endif()
 
-# The account store is SQLCipher (an encrypted SQLite): one file per account,
-# unreadable without its key. It is a fork of SQLite exporting the same symbols,
-# so nothing in this project may link plain libsqlite3 next to it.
-find_library(SQLCIPHER_LIBRARY NAMES sqlcipher REQUIRED)
-find_path(SQLCIPHER_INCLUDE_DIR NAMES sqlcipher/sqlite3.h REQUIRED)
-
-add_library(bazarish_client_lib STATIC
-    src/ApiClient.cpp
-    src/AudioCodec.cpp
-    src/AudioIo.cpp
-    src/Bot.cpp
-    src/Client.cpp
-    src/CallMedia.cpp
-    src/FederationFetch.cpp
-    src/I2pKeys.cpp
-    src/I2pRouter.cpp
-    src/Invite.cpp
-    src/FileTransfer.cpp
-    src/OutboundCourier.cpp
-    src/OutboundLeases.cpp
-    src/AccountDb.cpp
-    src/AccountKey.cpp
-    src/AccountManager.cpp
-    src/Qr.cpp
-    src/Session.cpp
-    src/WarmDestPool.cpp
-)
-target_include_directories(bazarish_client_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_include_directories(bazarish_client_lib PRIVATE ${QRENCODE_INCLUDE_DIR} ${OPUS_INCLUDE_DIR})
-target_link_libraries(bazarish_client_lib PUBLIC Bazarish::Common Threads::Threads
-    ${SQLCIPHER_LIBRARY})
-target_link_libraries(bazarish_client_lib PRIVATE ${QRENCODE_LIBRARY} ${OPUS_LIBRARY})
-target_compile_options(bazarish_client_lib PRIVATE -Wall -Wextra -Werror)
 add_executable(bazarish-client src/Main.cpp)
-target_link_libraries(bazarish-client PRIVATE bazarish_client_lib)
+target_link_libraries(bazarish-client PRIVATE bazarish_client)
 target_compile_options(bazarish-client PRIVATE -Wall -Wextra -Werror)
 
 # A demo chat bot over the same Session logic: commands and inline keyboards.
 add_executable(bazarish-bot src/BotMain.cpp)
-target_link_libraries(bazarish-bot PRIVATE bazarish_client_lib)
+target_link_libraries(bazarish-bot PRIVATE bazarish_client)
 target_compile_options(bazarish-bot PRIVATE -Wall -Wextra -Werror)
 
 # The Qt6 Quick (QML) desktop app - the primary front-end over the same
@@ -146,7 +93,7 @@ if(Qt6_FOUND)
     )
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(bazarish-app PRIVATE
-        bazarish_client_lib ${QRENCODE_LIBRARY} ${SQLCIPHER_LIBRARY}
+        bazarish_client ${QRENCODE_LIBRARY} ${SQLCIPHER_LIBRARY}
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Multimedia Qt6::Widgets
         Qt6::Network)
     target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
@@ -268,32 +215,11 @@ endif()
 
 enable_testing()
 
-function(bazarish_client_add_test name)
-    add_executable(${name} tests/${name}.cpp)
-    target_link_libraries(${name} PRIVATE bazarish_client_lib)
-    target_compile_options(${name} PRIVATE -Wall -Wextra -Werror)
-    add_test(NAME ${name} COMMAND ${name})
-endfunction()
-
-bazarish_client_add_test(TestApiClient)
-bazarish_client_add_test(TestBot)
-bazarish_client_add_test(TestCallMedia)
-bazarish_client_add_test(TestFacade)
-bazarish_client_add_test(TestClient)
-bazarish_client_add_test(TestTokenRefill)
-bazarish_client_add_test(TestFileTransfer)
-bazarish_client_add_test(TestOutboundCourier)
-bazarish_client_add_test(TestI2pKeys)
-bazarish_client_add_test(TestI2pProxy)
-bazarish_client_add_test(TestInvite)
-bazarish_client_add_test(TestLogin)
-bazarish_client_add_test(TestAccount)
-
-# The settings document is plain JSON on disk, so it needs no Qt at all - but it
-# lives with the application sources rather than in the client library.
+# The core's own tests moved into common with it; what is tested here is the
+# application. The settings document is plain JSON on disk, so it needs no Qt.
 add_executable(TestAppSettings tests/TestAppSettings.cpp app/AppSettings.cpp)
 target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-target_link_libraries(TestAppSettings PRIVATE bazarish_client_lib)
+target_link_libraries(TestAppSettings PRIVATE bazarish_client)
 target_compile_options(TestAppSettings PRIVATE -Wall -Wextra)
 add_test(NAME TestAppSettings COMMAND TestAppSettings)
 
@@ -303,7 +229,7 @@ if(Qt6_FOUND)
     target_include_directories(TestTranscript PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLITE3_INCLUDE_DIR})
     target_link_libraries(TestTranscript PRIVATE
-        bazarish_client_lib ${SQLCIPHER_LIBRARY} Qt6::Core)
+        bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core)
     target_compile_options(TestTranscript PRIVATE -Wall -Wextra)
     add_test(NAME TestTranscript COMMAND TestTranscript)
 endif()
