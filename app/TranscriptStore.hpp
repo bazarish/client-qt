@@ -96,6 +96,12 @@ public:
     // the UI shows "not sent" with a resend option instead of a perpetual upload
     // animation. Returns the number changed.
     int failUnsentOnLoad(int preparingStatus, int deliveringStatus, int failedStatus);
+    // A contact add writes its progress into the conversation and leaves the row
+    // in preparingStatus while it runs. A row still in that state at open belongs
+    // to a run that ended before the add did: nothing is working on it, and it
+    // must not go on saying that something is. Returns how many were settled.
+    int settleUnfinishedNotes(const QString& type, int preparingStatus, int settledStatus,
+        const QString& text);
     // Marks outgoing messages to peer with id <= uptoId whose status is within
     // [minStatus, maxStatus] as readStatus (the recipient read up to uptoId). Used
     // to persist the green "read" state high-water, including paged-out rows.

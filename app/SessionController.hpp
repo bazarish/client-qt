@@ -44,6 +44,8 @@ public:
 
 public slots:
     void openAccount(const QString& dir, const QString& passphrase);
+    // Drops the record of an add that has ended.
+    void forgetPendingAdd(const QString& opId);
     void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
         const QStringList& reseedUrls);
     void sync();
@@ -276,8 +278,10 @@ private:
     // thread, then runs the slow federated card fetch on a detached background
     // thread (its own transport) so sync and the connection are never blocked. The
     // result is drained and finalized by drainResolvedAdds on a later sync tick.
-    void startContactAdd(
-        bool byUsername, const QString& uriOrAlias, const QString& intro, const QString& opId);
+    void startContactAdd(bool byUsername, const QString& uriOrAlias, const QString& intro,
+        const QString& opId, const QString& requestId = {});
+    // Takes up every add the last run did not finish. Called once, at open.
+    void resumePendingAdds();
     // Finalizes any off-thread contact-card resolutions that have completed:
     // commits the add and emits the result. Run each sync.
     void drainResolvedAdds();
@@ -935,6 +939,8 @@ signals:  // to worker
     void requestRefreshStorageUsage();
     void requestRefreshDevices();
     void requestForgetDevice(const QString& clientId);
+    // An add that ended, whichever way: its intent is no longer worth keeping.
+    void requestForgetPendingAdd(const QString& opId);
     void requestCloseAccountOnServer();
     void requestStartCall(const QString& peer);
     void requestAcceptCall(const QString& callId);

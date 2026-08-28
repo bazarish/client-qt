@@ -85,6 +85,9 @@ using bazarish::client::Session;
 namespace {
 // Length of the "://" that separates a URL scheme from its authority.
 constexpr int kSchemeSeparatorLength = 3;
+// A contact request names itself with this many random bytes, and keeps the name
+// if the add has to be taken up again.
+constexpr std::size_t kContactRequestIdBytes = 8;
 
 // The facade as the status line shows it: host (with port, if any), without the
 // scheme and without the base path. Parsing by hand rather than through QUrl,
@@ -501,6 +504,9 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
     emit accountSettings(session_->acceptCalls(),
         session_->sharingAllowed());
     emitContacts();
+    // Whatever the last run left half-done is taken up before anything new is
+    // asked of this account.
+    resumePendingAdds();
     // Seed the avatar store from disk: our own avatar plus every contact that has
     // one, so faces appear before any sync runs.
     {
@@ -1152,7 +1158,7 @@ void SessionWorker::addByUsername(const QString& alias, const QString& intro, co
 }
 
 void SessionWorker::startContactAdd(const bool byUsername, const QString& uriOrAlias,
-    const QString& intro, const QString& opId)
+    const QString& intro, const QString& opId, const QString& requestId)
 {
     if (!session_) {
         emit contactAddDone(opId, false, QStringLiteral("no account open"));
@@ -1173,6 +1179,18 @@ void SessionWorker::startContactAdd(const bool byUsername, const QString& uriOrA
     request.byUsername = byUsername;
     request.uriOrAlias = uriOrAlias.toStdString();
     request.introText = intro.toStdString();
+    request.requestId = requestId.isEmpty()
+        ? bazarish::toHex(bazarish::randomBytes(kContactRequestIdBytes))
+        : requestId.toStdString();
+    // Written down before anything is attempted: a client that closes in the
+    // middle of an add loses the operation, and this is what lets the next one
+    // pick the intent up again. The request keeps its name across that, so what
+    // is sent afterwards is the same request and not a second one.
+    try {
+        session_->notePendingContactAdd({opId.toStdString(), request});
+    } catch (const std::exception& e) {
+        bazarish::log::warn("contact-add not recorded: {}", e.what());
+    }
     // The actual i2p work (build a transient tunnel, dial, fetch the card) happens
     // inside the detached resolve below; surface that we are now in it so the
     // activity panel shows real progress instead of a frozen UI.
@@ -1196,6 +1214,34 @@ void SessionWorker::startContactAdd(const bool byUsername, const QString& uriOrA
     } catch (const std::exception& e) {
         emit contactAddDone(opId, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::forgetPendingAdd(const QString& opId)
+{
+    if (!session_) {
+        return;
+    }
+    session_->forgetPendingContactAdd(opId.toStdString());
+}
+
+// An add the last run did not finish is taken up again here, with the request it
+// already had a name for: the recipient's server recognises the second copy as
+// the first and stores one request, not two.
+void SessionWorker::resumePendingAdds()
+{
+    if (!session_) {
+        return;
+    }
+    for (const bazarish::client::Session::PendingContactAdd& pending :
+        session_->pendingContactAdds()) {
+        const QString opId = QString::fromStdString(pending.opId);
+        emit opBegin(opId, QStringLiteral("contact"), QStringLiteral("Adding a contact"),
+            QStringLiteral("Resuming after a restart…"));
+        startContactAdd(pending.request.byUsername,
+            QString::fromStdString(pending.request.uriOrAlias),
+            QString::fromStdString(pending.request.introText), opId,
+            QString::fromStdString(pending.request.requestId));
     }
 }
 
@@ -1954,6 +2000,8 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onContactRequestSent);
     connect(worker_, &SessionWorker::contactAddStage, this,
         &SessionController::onContactAddStage);
+    connect(this, &SessionController::requestForgetPendingAdd, worker_,
+        &SessionWorker::forgetPendingAdd);
     connect(worker_, &SessionWorker::contactAddDone, this, &SessionController::onContactAddDone);
     connect(worker_, &SessionWorker::contactAddRateLimited, this,
         &SessionController::onContactAddRateLimited);
@@ -2066,6 +2114,12 @@ void SessionController::open(
     // sending them again is the user's decision, never this client's.
     store_.failUnsentOnLoad(
         DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed);
+    // A contact add that was still running when this client closed has nothing
+    // carrying it now. Its line in the conversation said what it was doing, and
+    // must stop saying it: it is picked up again below, and either way it is no
+    // longer a progress line for an operation that does not exist.
+    store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
+        DeliveryStatus::Received, QStringLiteral("The contact request did not finish."));
     emit requestOpen(file, passphrase);
 }
 
@@ -2916,7 +2970,9 @@ void SessionController::openContactProgress(
     note.text = QStringLiteral("Sending a contact request…");
     note.ts = nowMillis();
     note.orderKey = note.ts;
-    note.status = DeliveryStatus::Received;
+    // Preparing while the add runs, so a row left behind by a run that ended
+    // early is recognisable as one nothing is working on.
+    note.status = DeliveryStatus::Preparing;
     note.id = store_.append(note);
     contactProgressRows_[opId] = note.id;
     contacts_.touch(peer, name, note.text, note.ts, false);
@@ -4527,9 +4583,15 @@ void SessionController::onContactAccepted(const QString& peer, const bool ok,
 
 void SessionController::onContactAddDone(const QString& opId, bool ok, const QString& status)
 {
+    emit requestForgetPendingAdd(opId);
     finishOperation(opId, ok, status);
     // The note in the chat carries the outcome and then stops being a progress
-    // line: a failed add says why, right where the user was watching.
+    // line: a failed add says why, right where the user was watching. Its state
+    // settles with it, so the next open does not read it as still running.
+    const auto row = contactProgressRows_.constFind(opId);
+    if (row != contactProgressRows_.cend()) {
+        store_.updateStatus(row.value(), DeliveryStatus::Received);
+    }
     writeContactProgress(opId, ok ? status : QStringLiteral("Could not add: ") + status);
     contactProgressRows_.remove(opId);
 }

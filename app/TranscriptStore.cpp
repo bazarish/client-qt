@@ -529,6 +529,21 @@ int TranscriptStore::failUnsentOnLoad(
     return query.numRowsAffected();
 }
 
+int TranscriptStore::settleUnfinishedNotes(const QString& type, const int preparingStatus,
+    const int settledStatus, const QString& text)
+{
+    Query query(db_);
+    query.prepare("UPDATE messages SET status = ?, text = ? WHERE type = ? AND status = ?");
+    query.addBindValue(settledStatus);
+    query.addBindValue(text);
+    query.addBindValue(type);
+    query.addBindValue(preparingStatus);
+    if (!query.exec()) {
+        return 0;
+    }
+    return query.numRowsAffected();
+}
+
 void TranscriptStore::markOutgoingReadUpTo(
     const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus)
 {

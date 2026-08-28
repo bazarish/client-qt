@@ -45,6 +45,12 @@ const char* const kCallOpeningStage = "Opening the audio path";
 // before hex encoding.
 constexpr std::size_t kDeliveryIdBytes = 16;
 // The account's own secret behind those names.
+// A contact request names itself with this many random bytes; the name is what
+// makes sending the same request again the same delivery.
+constexpr std::size_t kRequestIdBytes = 8;
+// Where the intents of unfinished adds live in the account database.
+constexpr const char* kPendingAddsKey = "pending-contact-adds";
+
 constexpr std::size_t kDeliveryIdSeedBytes = 32;
 // The invitation reached the peer's server, and no device has picked it up yet:
 // stored is not the same as ringing, and saying "ringing" here was a guess.
@@ -1358,7 +1364,8 @@ std::string Session::addByInvite(const std::string& inviteUri, const std::string
     const Descriptor descriptor = parseDescriptor(inviteUri);
     const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
     // Adopt the name advertised in the invite as this contact's local label.
-    requestWithInfo(descriptor.fingerprint, text, info, descriptor.name, descriptor.view);
+    requestWithInfo(toHex(randomBytes(kRequestIdBytes)), descriptor.fingerprint, text, info,
+        descriptor.name, descriptor.view);
     return descriptor.fingerprint;
 }
 
@@ -1403,6 +1410,7 @@ Session::ContactCardResolved Session::resolveContactCard(
 {
     ContactCardResolved out;
     out.introText = request.introText;
+    out.requestId = request.requestId;
     // This runs on a background thread (the worker thread stays free for sync), so
     // time it to confirm the connection is never blocked by a slow/unreachable peer.
     const auto started = std::chrono::steady_clock::now();
@@ -1466,9 +1474,51 @@ std::string Session::commitContactAdd(const ContactCardResolved& resolved)
 {
     // Fast: register reply tokens, send the request, record the contact. The slow
     // card fetch already happened off-thread in resolveContactCard.
-    requestWithInfo(resolved.fingerprint, resolved.introText, resolved.info,
-        resolved.displayName, resolved.view);
+    requestWithInfo(resolved.requestId.empty() ? toHex(randomBytes(kRequestIdBytes))
+                                               : resolved.requestId,
+        resolved.fingerprint, resolved.introText, resolved.info, resolved.displayName,
+        resolved.view);
     return resolved.fingerprint;
+}
+
+std::vector<Session::PendingContactAdd> Session::pendingContactAdds() const
+{
+    if (!db_->has(kPendingAddsKey)) {
+        return {};
+    }
+    std::vector<PendingContactAdd> pending;
+    const nlohmann::json stored = nlohmann::json::parse(db_->text(kPendingAddsKey));
+    for (const auto& [opId, entry] : stored.items()) {
+        PendingContactAdd add;
+        add.opId = opId;
+        add.request.byUsername = entry.value("byUsername", false);
+        add.request.uriOrAlias = entry.value("uriOrAlias", std::string());
+        add.request.introText = entry.value("intro", std::string());
+        add.request.requestId = entry.value("requestId", std::string());
+        pending.push_back(std::move(add));
+    }
+    return pending;
+}
+
+void Session::notePendingContactAdd(const PendingContactAdd& pending)
+{
+    nlohmann::json stored = db_->has(kPendingAddsKey)
+        ? nlohmann::json::parse(db_->text(kPendingAddsKey))
+        : nlohmann::json::object();
+    stored[pending.opId] = {{"byUsername", pending.request.byUsername},
+        {"uriOrAlias", pending.request.uriOrAlias}, {"intro", pending.request.introText},
+        {"requestId", pending.request.requestId}};
+    db_->putText(kPendingAddsKey, stored.dump());
+}
+
+void Session::forgetPendingContactAdd(const std::string& opId)
+{
+    if (!db_->has(kPendingAddsKey)) {
+        return;
+    }
+    nlohmann::json stored = nlohmann::json::parse(db_->text(kPendingAddsKey));
+    stored.erase(opId);
+    db_->putText(kPendingAddsKey, stored.dump());
 }
 
 void Session::setResolverCoordinate(ResolverCoordinate coordinate)
@@ -1523,12 +1573,14 @@ std::string Session::addByUsername(const std::string& alias, const std::string& 
     // rule in Contacts.md).
     const ContactInfo info = client_->fetchCard(descriptor, fetchTransport());
     // The alias the user typed becomes this contact's local display name.
-    requestWithInfo(descriptor.fingerprint, text, info, alias, descriptor.view);
+    requestWithInfo(toHex(randomBytes(kRequestIdBytes)), descriptor.fingerprint, text, info,
+        alias, descriptor.view);
     return descriptor.fingerprint;
 }
 
-void Session::requestWithInfo(const std::string& peerFingerprint, const std::string& text,
-    const ContactInfo& info, const std::string& displayName, const std::string& descriptorView)
+void Session::requestWithInfo(const std::string& requestId, const std::string& peerFingerprint,
+    const std::string& text, const ContactInfo& info, const std::string& displayName,
+    const std::string& descriptorView)
 {
     if (info.card.user != peerFingerprint) {
         throw std::runtime_error("contact lookup returned a different user");
@@ -1553,7 +1605,10 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     const nlohmann::json payload = {
         {"v", kMessageFormatVersion},
         {"type", "contact.request"},
-        {"id", toHex(randomBytes(8))},
+        // The request names itself, and keeps that name across a resend: the
+        // recipient's server derives the delivery from it and recognises the
+        // second copy of a request as the first one rather than a new one.
+        {"id", requestId},
         {"from", fingerprint()},
         {"sentAt", nowMillis()},
         // Which of our devices is asking: the peer's reply addresses its token
@@ -1579,7 +1634,8 @@ void Session::requestWithInfo(const std::string& peerFingerprint, const std::str
     // E2E-encrypted to the peer's prekey: the first message is confidential.
     // Delivered tokenless under the "contact" admission class.
     const Bytes encrypted = cms::seal(encodedBody(payload), peerPrekey);
-    deliver(peerDest, peerServingKey, "contact", peerFingerprint, std::nullopt, encrypted);
+    deliver(peerDest, peerServingKey, "contact", peerFingerprint, std::nullopt, encrypted,
+        DeliveryWatch{}, /*waitForOutcome=*/true, requestId);
 
     // We now know how to reach the peer; reciprocal tokens arrive with the
     // peer's reply.

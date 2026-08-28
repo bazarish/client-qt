@@ -516,7 +516,22 @@ public:
         bool byUsername = false;
         std::string uriOrAlias;
         std::string introText;
+        // Names the request itself, so the same one sent again is recognised by
+        // the recipient's server as the same delivery rather than stored twice.
+        // Empty means a fresh one is drawn when the request is built.
+        std::string requestId;
     };
+
+    // An add this account started and has not finished. Written before the work
+    // begins and dropped when it ends, so closing the client in the middle of one
+    // loses the operation and not the intent.
+    struct PendingContactAdd {
+        std::string opId;
+        ContactCardRequest request;
+    };
+    std::vector<PendingContactAdd> pendingContactAdds() const;
+    void notePendingContactAdd(const PendingContactAdd& pending);
+    void forgetPendingContactAdd(const std::string& opId);
     // The outcome of an off-thread resolve, finalized by commitContactAdd. On
     // failure ok is false and error carries a human-readable reason (no throw).
     struct ContactCardResolved {
@@ -528,6 +543,9 @@ public:
         std::string introText;
         // The capability from the descriptor this was resolved from.
         std::string view;
+        // Carried from the request, so a resolve that is finished after a restart
+        // sends the same request rather than a second one.
+        std::string requestId;
     };
 
     // [worker thread] Snapshot the transport context for an off-thread resolve.
@@ -879,7 +897,8 @@ private:
     // alias used or the name carried in the invite) when non-empty.
     // descriptorView is the capability from the descriptor this contact was
     // added by: kept so their invite can be shared on.
-    void requestWithInfo(const std::string& peerFingerprint, const std::string& text,
+    void requestWithInfo(const std::string& requestId, const std::string& peerFingerprint,
+        const std::string& text,
         const ContactInfo& info, const std::string& displayName = {},
         const std::string& descriptorView = {});
 
