@@ -83,6 +83,17 @@ int main(int argc, char** argv)
     }
 #endif
 
+#ifdef _WIN32
+    // Colour emoji (the reactions) come out blank under the platform's own font
+    // engines: measured here, neither DirectWrite nor GDI draws anything at all
+    // for a COLR/CPAL font, while FreeType - what every other platform of this
+    // client already rasterises with - draws it. A platform the user named for
+    // themselves is left alone.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        qputenv("QT_QPA_PLATFORM", "windows:fontengine=freetype");
+    }
+#endif
+
     // Qt selects a platform theme from the desktop environment; that theme is what
     // provides the SYSTEM file dialog (the desktop's own chooser, with a pre-filled
     // save name). With no theme named - or one named whose plugin is not there -
