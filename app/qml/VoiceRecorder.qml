@@ -20,6 +20,10 @@ Popup {
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 
     readonly property bool recording: root.session ? root.session.voiceRecording : false
+    // The microphone is open and drawing, with nothing kept: what the window does
+    // from the moment it appears, so a microphone that is not working is visible
+    // before a take is spoken into it rather than after.
+    readonly property bool watching: root.session ? root.session.voiceMonitoring : false
     readonly property bool takeReady: root.session ? root.session.voiceTakeReady : false
     readonly property bool takePlaying: root.session ? root.session.voiceTakePlaying : false
 
@@ -68,10 +72,17 @@ Popup {
         root.clearLevels()
         if (root.session) {
             root.session.discardVoiceTake()
+            // The microphone opens with the window, so the line moves before the
+            // user commits to a take.
+            root.session.startVoiceMonitor()
         }
     }
     // Leaving throws the take away: a recording nobody confirmed is not a draft.
-    onClosed: if (root.session) { root.session.cancelVoiceRecording() }
+    // The microphone closes with it - nothing is watched once nobody is looking.
+    onClosed: if (root.session) {
+        root.session.cancelVoiceRecording()
+        root.session.stopVoiceMonitor()
+    }
 
     Connections {
         target: root.session
@@ -123,7 +134,7 @@ Popup {
                     delegate: Rectangle {
                         required property int index
                         readonly property real level: {
-                            if (root.recording) {
+                            if (root.recording || root.watching) {
                                 return root.levelHeight(root.levels[index] || 0)
                             }
                             if (root.takeReady) {
@@ -136,7 +147,7 @@ Popup {
                         anchors.verticalCenter: parent.verticalCenter
                         radius: 1
                         color: root.recording ? Theme.danger : Theme.accent
-                        opacity: root.recording || root.takeReady ? 1.0 : 0.35
+                        opacity: root.recording || root.takeReady || root.watching ? 1.0 : 0.35
 
                         // Reads one bar out of the stored hex account, stretched
                         // over however many bars are drawn here.

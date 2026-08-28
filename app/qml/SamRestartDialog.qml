@@ -25,8 +25,10 @@ Dialog {
         }
     }
     // true = save and close now, false = save and stay on this transport until
-    // the application is next started. Both answers save, as the proxy dialog does.
+    // the application is next started. Both of those save; cancelling changes
+    // nothing, which is why it is a third answer and not a variant of one.
     signal answered(bool closeNow)
+    signal cancelled()
 
     anchors.centerIn: Overlay.overlay
     modal: true
@@ -43,6 +45,12 @@ Dialog {
     footer: DialogButtons {
         acceptText: "Save and close"
         rejectText: "Save only"
+        showCancel: true
+        cancelText: "Cancel"
+        onCancelled: {
+            root.cancelled()
+            root.close()
+        }
         onAccepted: root.accept()
         onRejected: root.reject()
     }

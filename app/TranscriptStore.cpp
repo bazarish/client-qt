@@ -723,17 +723,22 @@ QStringList TranscriptStore::conversationPeers() const
 QString TranscriptStore::lastText(const QString& peer) const
 {
     Query query(db_);
-    query.prepare(
-        "SELECT text, type FROM messages WHERE peer = ? ORDER BY orderKey DESC, id DESC LIMIT 1");
+    query.prepare("SELECT text, type, attName FROM messages WHERE peer = ?"
+                  " ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         const QString text = query.value(0).toString();
         const QString type = query.value(1).toString();
+        const QString attachment = query.value(2).toString();
         if (!text.isEmpty()) {
             return text;
         }
-        if (type == "file" || type == "photo" || type == "audio" || type == "voice") {
-            return "[" + type + "]";
+        // A message with no words of its own is named by what it carries, so the
+        // chat list says something rather than nothing. The names are the ones
+        // the transcript stores, which is what a picture is written as.
+        if (type == "file" || type == "image" || type == "voice" || type == "audio"
+            || type == "photo") {
+            return attachment.isEmpty() ? "[" + type + "]" : "[" + type + "] " + attachment;
         }
     }
     return {};

@@ -2630,7 +2630,7 @@ void SessionController::sendFile(const QString& fileUrl)
     m.id = store_.append(m);
     statusById_[m.id] = 0;
     showInActiveView(m, true);
-    contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
+    contacts_.touch(activePeer_, {}, "[" + m.type + "] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
     emit requestSendFile(activePeer_, localPath, m.id, m.e2eId, replyTo);
@@ -2670,7 +2670,7 @@ void SessionController::sendPicture(const QString& fileUrl)
     m.id = store_.append(m);
     statusById_[m.id] = 0;
     showInActiveView(m, true);
-    contacts_.touch(activePeer_, {}, "[file] " + m.attName, m.ts, false);
+    contacts_.touch(activePeer_, {}, "[" + m.type + "] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
     // The prepared file is right here, so the sender's bubble draws it without
@@ -3313,8 +3313,12 @@ VoiceNote* SessionController::voiceNote()
         });
         voiceTimer_.setInterval(kVoiceTickMs);
         connect(&voiceTimer_, &QTimer::timeout, this, [this]() {
-            voiceElapsedMs_ = voice_->elapsedMs();
             voiceLevel_ = voice_->inputLevel();
+            if (!voiceRecording_) {
+                emit voiceChanged();  // watching the microphone, not filling a take
+                return;
+            }
+            voiceElapsedMs_ = voice_->elapsedMs();
             emit voiceChanged();
             // Full is full, by weight or by the clock. Recording stops on its
             // own - the take is kept, and the user still decides whether it goes.
@@ -3327,11 +3331,49 @@ VoiceNote* SessionController::voiceNote()
     return voice_.get();
 }
 
+void SessionController::startVoiceMonitor()
+{
+    if (voiceRecording_ || voiceMonitoring_) {
+        return;
+    }
+    voiceError_.clear();
+    try {
+        voiceNote()->startMonitoring();
+    } catch (const std::exception& error) {
+        // A microphone that cannot be opened is the very thing this is for.
+        voiceError_ = QString::fromUtf8(error.what());
+        emit voiceChanged();
+        return;
+    }
+    voiceMonitoring_ = true;
+    voiceLevel_ = 0.0;
+    voiceTimer_.start();
+    emit voiceChanged();
+}
+
+void SessionController::stopVoiceMonitor()
+{
+    if (!voiceMonitoring_) {
+        return;
+    }
+    voiceMonitoring_ = false;
+    if (voice_) {
+        voice_->stopMonitoring();
+    }
+    if (!voiceRecording_) {
+        voiceTimer_.stop();
+    }
+    voiceLevel_ = 0.0;
+    emit voiceChanged();
+}
+
 void SessionController::startVoiceRecording()
 {
     if (activePeer_.isEmpty() || voiceRecording_) {
         return;
     }
+    // The same microphone cannot be watched and recorded at once.
+    stopVoiceMonitor();
     discardVoiceTake();
     voiceError_.clear();
     try {

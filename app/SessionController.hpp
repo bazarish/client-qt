@@ -341,6 +341,9 @@ class SessionController : public QObject {
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     // Recording a voice message, and how long it has been running.
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
+    // The microphone is open and its level is being shown, with nothing kept:
+    // what the recorder window does before the user presses Record.
+    Q_PROPERTY(bool voiceMonitoring READ voiceMonitoring NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voiceElapsedMs READ voiceElapsedMs NOTIFY voiceChanged)
     // How far into the message being played back we are, in its own time; the
     // bubble fills its waveform up to here.
@@ -491,6 +494,10 @@ public:
     bool i2pBusy() const { return i2pBusy_; }
     QVariantList devices() const { return devices_; }
     bool voiceRecording() const { return voiceRecording_; }
+    bool voiceMonitoring() const { return voiceMonitoring_; }
+    // Starts and stops that watching; the recorder window owns both ends of it.
+    Q_INVOKABLE void startVoiceMonitor();
+    Q_INVOKABLE void stopVoiceMonitor();
     qint64 voiceElapsedMs() const { return voiceElapsedMs_; }
     qint64 voicePositionMs() const { return voicePositionMs_; }
     qreal voiceLevel() const { return voiceLevel_; }
@@ -1140,6 +1147,7 @@ private:
     std::unique_ptr<VoiceNote> voice_;
     QTimer voiceTimer_;
     bool voiceRecording_ = false;
+    bool voiceMonitoring_ = false;
     qint64 voiceElapsedMs_ = 0;
     qint64 voicePositionMs_ = 0;
     // Where the message being loaded for playback should start.

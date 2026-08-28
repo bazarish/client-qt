@@ -26,6 +26,11 @@ public:
 
     // Starts capturing. Throws when there is no microphone to capture from.
     void startRecording();
+    // Opens the microphone and reports its level without keeping anything: what
+    // the recorder window shows before the user has decided to record, so a dead
+    // microphone is visible before rather than after a take.
+    void startMonitoring();
+    void stopMonitoring();
     // Stops and hands over what was captured, levelled and encoded. The audio is
     // encoded here rather than while it is captured: the gain that levels a
     // recording is only knowable once all of it is in hand.
@@ -68,6 +73,8 @@ private:
     std::atomic<bool> recording_{false};
     std::atomic<bool> playing_{false};
     std::atomic<float> inputLevel_{0.0F};
+    // The capture loop keeps what it reads unless this is set.
+    std::atomic<bool> monitorOnly_{false};
     std::atomic<std::size_t> encodedBytes_{0};
     std::atomic<qint64> playedMs_{0};
     // The recording as captured, one run of samples; encoded on stop.

@@ -48,6 +48,9 @@ constexpr std::size_t kDeliveryIdBytes = 16;
 // A contact request names itself with this many random bytes; the name is what
 // makes sending the same request again the same delivery.
 constexpr std::size_t kRequestIdBytes = 8;
+// How much of a fingerprint stands in for a contact with no local name, where
+// one has to be named: enough to tell two apart at a glance.
+constexpr std::size_t kShortFingerprintChars = 8;
 // Where the intents of unfinished adds live in the account database.
 constexpr const char* kPendingAddsKey = "pending-contact-adds";
 
@@ -1270,9 +1273,14 @@ bool Session::deliver(const std::string& toDest, const Key& servingSealingKey,
     OutboundCourier::Task task;
     task.toDest = toDest;
     // Read here, on the thread that owns the contacts: the status view names an
-    // outbound address by the correspondent it carries for.
+    // outbound address by the correspondent it carries for. A contact with no
+    // local name is still worth telling apart from the others, so it is named by
+    // the start of its fingerprint rather than not at all.
     const auto known = contacts_.find(mailbox);
     task.peerName = known != contacts_.end() ? known->second.displayName : std::string();
+    if (task.peerName.empty() && !mailbox.empty()) {
+        task.peerName = mailbox.substr(0, std::min(mailbox.size(), kShortFingerprintChars));
+    }
     task.sealed = sealDeliveryEnvelope(kind, mailbox, deliveryId, token, servingSealingKey);
     task.payload = payload;
     task.deliveryId = deliveryId;

@@ -67,6 +67,24 @@ VoiceNote::~VoiceNote()
     stop();
 }
 
+void VoiceNote::startMonitoring()
+{
+    if (recording_.load()) {
+        return;
+    }
+    monitorOnly_.store(true);
+    startRecording();
+}
+
+void VoiceNote::stopMonitoring()
+{
+    if (!monitorOnly_.load()) {
+        return;  // a real take is running; it is not this to stop
+    }
+    stopCaptureThread();
+    monitorOnly_.store(false);
+}
+
 void VoiceNote::startRecording()
 {
     if (recording_.load()) {
@@ -96,6 +114,9 @@ void VoiceNote::startRecording()
                 continue;
             }
             inputLevel_.store(frameLevel(frame));
+            if (monitorOnly_.load()) {
+                continue;  // shown, not kept
+            }
             encodedBytes_.fetch_add(kFrameBytesEstimate);
             const std::lock_guard<std::mutex> lock(pcmMutex_);
             pcm_.insert(pcm_.end(), frame.begin(), frame.end());

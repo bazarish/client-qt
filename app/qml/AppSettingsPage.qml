@@ -175,6 +175,8 @@ Popup {
         samOn: samToggle.checked
         host: samHostField.text
         port: parseInt(samPortField.text || "0")
+        // Nothing was saved, so the switch goes back to what is in force.
+        onCancelled: samToggle.checked = I2p.samEnabled
         onAnswered: (closeNow) => {
             I2p.saveSam(samToggle.checked, samHostField.text,
                 parseInt(samPortField.text || "0"))
