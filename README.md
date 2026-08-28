@@ -50,8 +50,12 @@ the name->fingerprint mapping).
 
 ## Build
 
-Requires CMake >= 3.20, C++20, OpenSSL >= 3.0; Qt6 Widgets is optional (enables
-the GUI). `common` is a submodule.
+Requires CMake >= 3.20, C++20, OpenSSL >= 3.2 (Argon2id) and **SQLCipher 4**;
+Qt6 Widgets is optional (enables the GUI). `common` is a submodule.
+
+SQLCipher 3 will link and will not read an account: the version-4 database format
+is not the one it writes, and there is no compatibility pragma from that side. See
+[docs/AccountStorage.md](docs/AccountStorage.md).
 
 ```bash
 git clone --recurse-submodules https://github.com/bazarish/client-qt6
