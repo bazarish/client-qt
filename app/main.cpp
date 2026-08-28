@@ -33,6 +33,7 @@
 
 #include <array>
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <utility>
 
@@ -142,9 +143,11 @@ int main(int argc, char** argv)
 
     // One application per account folder: two sharing one folder each hold their
     // own view of the same database and register as the same device, and messages
-    // then land in whichever asked first.
-    bazarish::app::SingleInstance instance(
-        QString::fromStdString(bazarish::app::AppController::accountsFolder().string()));
+    // then land in whichever asked first. The lock lives in that folder, so on a
+    // first run the folder has to be there before it can be claimed.
+    const std::filesystem::path accounts = bazarish::app::AppController::accountsFolder();
+    std::filesystem::create_directories(accounts);
+    bazarish::app::SingleInstance instance(QString::fromStdString(accounts.string()));
     if (!instance.claim()) {
         const bool handed = instance.handOver();
         bazarish::log::info("another Bazarish already has this account folder; {}",

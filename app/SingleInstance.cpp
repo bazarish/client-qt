@@ -46,6 +46,12 @@ bool SingleInstance::claim()
     // A copy that was killed leaves its lock behind; QLockFile checks whether the
     // process it names is still alive, so only a live one keeps the folder.
     if (!lock_->tryLock()) {
+        // Held by a live copy is the expected refusal; anything else is a
+        // failure of the lock itself and must not be reported as a second copy.
+        if (lock_->error() != QLockFile::LockFailedError) {
+            bazarish::log::warn("account folder could not be locked: QLockFile error {}",
+                static_cast<int>(lock_->error()));
+        }
         lock_.reset();
         return false;
     }
