@@ -85,7 +85,7 @@ Item {
     // whenever any reaction changes (reactionsRevision drives the binding).
     // Whether a reaction is ordinary printable text rather than an emoji: the
     // bundled emoji font carries no glyphs for digits, so text drawn through it
-    // comes out blank.
+    // comes out blank. A chip holds one or the other, never both.
     function plainText(glyph) {
         return /^[\x20-\x7E]+$/.test(glyph)
     }
@@ -729,10 +729,10 @@ Item {
                     implicitHeight: 1
                 }
                 // Reaction chips, on the same line as the time and to the left of
-                // it: one per distinct emoji with its count, the one we set
-                // outlined. A chip is light, because a glyph is drawn in whatever
-                // colours it has and a dark chip loses the dark ones. Tapping a
-                // chip toggles our reaction to that emoji.
+                // it: one per distinct emoji with its count. Dark, like every
+                // other surface here: ours the darkest, a contact's a shade
+                // lighter, so whose it is reads without a second colour. Tapping
+                // a chip toggles our reaction to that emoji.
                 Repeater {
                     model: delegate.reactions
                     Rectangle {
@@ -740,16 +740,15 @@ Item {
                         height: 18
                         width: chipRow.implicitWidth + 8
                         radius: 4
-                        color: modelData.mine ? Qt.rgba(0.66, 0.93, 0.62, 1) : Theme.accent
+                        color: modelData.mine ? Theme.deep : Theme.surfaceAlt
+                        border.color: modelData.mine ? Theme.border2 : Theme.border
                         Row {
                             id: chipRow
                             anchors.centerIn: parent
                             spacing: 3
                             Label {
                                 text: modelData.emoji
-                                // Dark ink on the light chip; a plain character is
-                                // drawn as text and would otherwise be invisible.
-                                color: Theme.accentInk
+                                color: Theme.text
                                 font.pixelSize: 12
                                 // The emoji font only for what is emoji: it has no
                                 // glyphs for plain digits, which came out blank
@@ -761,7 +760,7 @@ Item {
                             Label {
                                 visible: modelData.count > 1
                                 text: modelData.count
-                                color: Theme.accentInk
+                                color: Theme.textDim
                                 font.pixelSize: 10
                                 anchors.verticalCenter: parent.verticalCenter
                             }

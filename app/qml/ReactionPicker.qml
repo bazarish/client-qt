@@ -152,11 +152,15 @@ Popup {
                 placeholderText: "Any unicode…"
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
-                // Emoji in colour, but only for what is emoji: the bundled emoji
-                // font has no glyphs for digits, and typing one into a field set
-                // in that font produced a blank.
-                font.family: /^[\x20-\x7E]*$/.test(customField.text)
-                    ? Theme.fontFamily : Theme.emojiFontFamily
+                // The brand font, and whatever it lacks is found by the engine's
+                // own fallback. A field holds emoji and plain characters at once,
+                // and setting the emoji font by what it holds so far left a digit
+                // typed after an emoji invisible - that font has no digits.
+                // Measured: a glyph the brand font lacks is drawn in colour here,
+                // except for the few (a heart, a tick) that a monochrome system
+                // font also carries and wins; those come out in colour once sent,
+                // where the chip picks the emoji font outright.
+                font.family: Theme.fontFamily
                 renderType: Text.NativeRendering
                 onAccepted: root.pick(customField.text)
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: customField.activeFocus ? Theme.accent : Theme.border }
