@@ -46,6 +46,30 @@ int main(int argc, char** argv)
         m.ts = 42;
         m.status = 1;
         CHECK(store.append(m) > 0);
+
+        // A bot's message carries its buttons in the row beside the text. The
+        // column list and the indices that read it back are written out by hand,
+        // so what goes in has to be shown to come out.
+        StoredMessage withKeyboard;
+        withKeyboard.peer = "botpeer";
+        withKeyboard.outgoing = false;
+        withKeyboard.type = "text";
+        withKeyboard.text = "pick one";
+        withKeyboard.e2eId = "abc123";
+        withKeyboard.keyboard
+            = R"([[{"text":"Ping","data":"ping"}],[{"text":"Help","command":"help"}]])";
+        withKeyboard.ts = 43;
+        withKeyboard.status = 1;
+        CHECK(store.append(withKeyboard) > 0);
+
+        const QVector<StoredMessage> loaded
+            = store.latestMessages(QStringLiteral("botpeer"), 10);
+        CHECK(loaded.size() == 1);
+        const StoredMessage& back = loaded.last();
+        CHECK(back.text == QStringLiteral("pick one"));
+        CHECK(back.keyboard == withKeyboard.keyboard);
+        CHECK(back.e2eId == QStringLiteral("abc123"));
+        CHECK(!back.outgoing);
     }
 
     // The file on disk is the database itself, and it carries neither the SQLite
