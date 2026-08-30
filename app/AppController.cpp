@@ -3,6 +3,7 @@
 
 #include "AppSettings.hpp"
 #include "I2pRouter.hpp"
+#include "Markup.hpp"
 
 #include <bazarish/I2p.hpp>
 
@@ -15,6 +16,7 @@
 
 #include <QBuffer>
 #include <QClipboard>
+#include <QColor>
 #include <QGuiApplication>
 #include <QImage>
 #include <QImageReader>
@@ -888,6 +890,19 @@ QString AppController::writePreparedImage(const QImage& image, const QString& ba
 bool AppController::looksLikeImage(const QString& mime) const
 {
     return mime.startsWith(QStringLiteral("image/"));
+}
+
+QString AppController::markupHtml(
+    const QString& text, const QColor& actionColor, const QColor& chipColor) const
+{
+    // name() and not the colour as QML would spell it: a document reads #rrggbb,
+    // and the alpha QML puts in front of it is not a colour it understands.
+    return markup::toHtml(text, actionColor.name(), chipColor.name());
+}
+
+QString AppController::markupPlain(const QString& text) const
+{
+    return markup::toPlain(text);
 }
 
 QString AppController::imageUrlIfSafe(const QString& localPath) const

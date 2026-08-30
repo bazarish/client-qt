@@ -75,6 +75,7 @@ Item {
                             narrow: chatPane.narrow
                             onContactInfoRequested: contactInfo.open()
                             onCallRequested: root.session.startCall("")
+                            onAddByNameRequested: function(alias) { newChat.openUsername(alias) }
                         }
                     }
                     Label {

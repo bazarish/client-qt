@@ -627,6 +627,10 @@ public:
     // of {id, text, time, outgoing, author} maps for the search popup.
     Q_INVOKABLE QVariantList searchMessages(const QString& query);
     Q_INVOKABLE void sendText(const QString& text);
+    // Sends text a message offered as one tap - a bot's command, written into it
+    // between the send markers. The composer is not touched: a draft being
+    // written and a reply being aimed at a message both stay where they are.
+    Q_INVOKABLE void sendOffered(const QString& text);
     // Passes a message this account holds on to another chat as a message of its
     // own, marked forwarded. The mark says only that: it names nobody and proves
     // nothing about who wrote what it carries. Text, pictures and voice travel;
@@ -1041,6 +1045,10 @@ private:
     void updateOperation(const QString& id, const QString& status, const QString& detail = {},
         double progress = -1.0);
     void finishOperation(const QString& id, bool ok, const QString& finalStatus);
+
+    // Records an outgoing text message and hands it to the courier. What the two
+    // ways of sending one share; the reply reference is what differs.
+    void deliverText(const QString& text, const QString& replyTo);
 
     QString accountId_;
     QString fingerprint_;

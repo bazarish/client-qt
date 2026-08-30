@@ -68,6 +68,8 @@ if(Qt6_FOUND)
         app/I2pController.hpp
         app/SessionController.cpp
         app/SessionController.hpp
+        app/Markup.cpp
+        app/Markup.hpp
         app/Models.cpp
         app/Models.hpp
         app/TranscriptStore.cpp
@@ -207,6 +209,7 @@ if(Qt6_FOUND)
             app/qml/components/FormField.qml
             app/qml/components/ServerConnectForm.qml
             app/qml/components/ConnectProgressDialog.qml
+            app/qml/components/LinkWarningDialog.qml
     )
     message(STATUS "Qt6 Quick found: building bazarish-app")
 else()
@@ -225,6 +228,14 @@ add_test(NAME TestAppSettings COMMAND TestAppSettings)
 
 # The transcript store needs Qt SQL and direct SQLite, so it has its own target.
 if(Qt6_FOUND)
+    # Message formatting: what a body is split into and the rich text built from
+    # it. Strings only - no window, no session.
+    add_executable(TestMarkup tests/TestMarkup.cpp app/Markup.cpp)
+    target_include_directories(TestMarkup PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestMarkup PRIVATE bazarish_client Qt6::Core)
+    target_compile_options(TestMarkup PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestMarkup COMMAND TestMarkup)
+
     add_executable(TestTranscript tests/TestTranscript.cpp app/TranscriptStore.cpp)
     target_include_directories(TestTranscript PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLITE3_INCLUDE_DIR})

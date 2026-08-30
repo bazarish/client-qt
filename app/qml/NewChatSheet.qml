@@ -13,8 +13,23 @@ Popup {
     padding: 18
     property string mode: "menu"
     property string errorText: ""
+    // A name to start from, set by openUsername; opening without one starts at
+    // the menu as before.
+    property string prefillUsername: ""
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    onOpened: { mode = "menu"; errorText = "" }
+    onOpened: {
+        mode = root.prefillUsername.length > 0 ? "username" : "menu"
+        usernameField.text = root.prefillUsername
+        errorText = ""
+    }
+
+    // Opens on the add-by-username page with the name filled in: the request is
+    // still the user's to send.
+    function openUsername(alias) {
+        root.prefillUsername = alias
+        root.open()
+        root.prefillUsername = ""
+    }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
 

@@ -105,7 +105,7 @@ Popup {
                     }
                     Label {
                         Layout.fillWidth: true
-                        text: modelData.text
+                        text: App.markupPlain(modelData.text)
                         color: Theme.text
                         wrapMode: Text.Wrap
                         maximumLineCount: 2

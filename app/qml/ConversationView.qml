@@ -11,6 +11,8 @@ Item {
     property bool narrow: false
     signal contactInfoRequested()
     signal callRequested()
+    // A username tapped in a message: the window offers the add-a-contact form.
+    signal addByNameRequested(string alias)
 
     // The message awaiting delete confirmation (set when a bubble asks to delete).
     property var pendingDeleteId: null
@@ -135,6 +137,9 @@ Item {
     ImageViewer { id: imageViewer; session: root.session }
 
     ReactionPicker { id: reactionPicker; session: root.session }
+    // One warning for the whole conversation: every web address in it is followed
+    // through here.
+    LinkWarningDialog { id: linkWarning }
     ForwardSheet { id: forwardSheet; session: root.session }
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
@@ -278,6 +283,8 @@ Item {
                     onImageRequested: function(url, localId, name) {
                         imageViewer.show(url, localId, name)
                     }
+                    onLinkRequested: function(url) { linkWarning.ask(url) }
+                    onAliasRequested: function(alias) { root.addByNameRequested(alias) }
                 }
 
                 // Section messages by calendar day and show a centered date

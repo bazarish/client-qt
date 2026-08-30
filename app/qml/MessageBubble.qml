@@ -19,6 +19,11 @@ Item {
     signal reactRequested(string e2eId, real sceneX, real sceneY)
     // Pass this message on to another chat: the view asks which one.
     signal forwardRequested(string e2eId)
+    // A username written in the body was tapped: the view offers the add-a-contact
+    // form with the name filled in. Nothing is sent.
+    signal aliasRequested(string alias)
+    // A web address in the body was tapped: the view warns before anything leaves.
+    signal linkRequested(string url)
     // Where the context menu was opened, in scene coordinates: what the window
     // that opens from it anchors to. Taken from the event rather than mapped from
     // this delegate - the handlers sit on the bubble, which is pushed to the right
@@ -27,6 +32,27 @@ Item {
     property point menuAt: Qt.point(0, 0)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
+
+    // How the body's clickable parts name themselves. The document is built from
+    // the message here, so these are the only schemes a tap can carry; a
+    // correspondent's own text is escaped and never becomes a reference.
+    readonly property string kSendScheme: "bz-send:"
+    readonly property string kAliasScheme: "bz-alias:"
+
+    // What a tap inside the body means: send back what the message offered, offer
+    // a name to the add-a-contact form, or ask the view about a web address.
+    function activateLink(link) {
+        if (link.startsWith(delegate.kSendScheme)) {
+            if (delegate.session) {
+                delegate.session.sendOffered(
+                    decodeURIComponent(link.substring(delegate.kSendScheme.length)))
+            }
+        } else if (link.startsWith(delegate.kAliasScheme)) {
+            delegate.aliasRequested(decodeURIComponent(link.substring(delegate.kAliasScheme.length)))
+        } else {
+            delegate.linkRequested(link)
+        }
+    }
 
     // Human-readable byte count for the download progress line.
     function humanSize(n) {
@@ -224,7 +250,8 @@ Item {
                         Layout.fillWidth: true
                     }
                     Label {
-                        text: delegate.replyInfo ? delegate.replyInfo.text : ""
+                        // One line of what was said, not a rendering of it.
+                        text: delegate.replyInfo ? App.markupPlain(delegate.replyInfo.text) : ""
                         color: Theme.textDim
                         font.pixelSize: 11
                         elide: Text.ElideRight
@@ -259,8 +286,10 @@ Item {
                     Layout.fillWidth: true
                 }
                 Label {
+                    // Written by someone who is not a contact yet: their words are
+                    // shown, their markup is not. Nothing here is tappable.
                     visible: model.text.length > 0
-                    text: model.text
+                    text: App.markupPlain(model.text)
                     color: Theme.text
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
@@ -626,22 +655,37 @@ Item {
                 Layout.fillWidth: true
             }
 
-            // Plain text. A read-only TextEdit (not a Label) so the user can
-            // select text with the mouse and copy it (Ctrl+C); "Copy all" in the
-            // context menu copies the whole message.
+            // The body. A read-only TextEdit (not a Label) so the user can select
+            // text with the mouse and copy it (Ctrl+C); "Copy all" in the context
+            // menu copies the message as it was written, markers and all.
+            //
+            // The document is built from the message rather than handed the
+            // message: a body drawn as rich text as it arrived would let a
+            // correspondent name a picture in it, and the picture would be
+            // fetched - from this machine, over the ordinary internet - as the
+            // bubble drew.
             TextEdit {
                 id: bodyText
                 visible: !delegate.isAttachment && !delegate.isUnsupported
                     && !delegate.isContactRequest && model.text.length > 0
-                text: model.text
+                text: App.markupHtml(model.text, Theme.accent, Theme.surfaceAlt)
                 color: Theme.text
                 readOnly: true
                 selectByMouse: true
-                wrapMode: TextEdit.Wrap
-                textFormat: TextEdit.PlainText
+                wrapMode: TextEdit.WrapAtWordBoundaryOrAnywhere
+                textFormat: TextEdit.RichText
                 selectionColor: Theme.accent
                 selectedTextColor: Theme.bg
                 Layout.fillWidth: true
+                onLinkActivated: function(link) { delegate.activateLink(link) }
+                // Where a web address leads is shown before it is followed; the
+                // dialog says it again, but the cursor gets there first.
+                ToolTip.visible: bodyText.hoveredLink.startsWith("http")
+                ToolTip.text: bodyText.hoveredLink
+                HoverHandler {
+                    cursorShape: bodyText.hoveredLink.length > 0
+                        ? Qt.PointingHandCursor : Qt.IBeamCursor
+                }
             }
 
             // Inline keyboard (interactive message): rows of tappable buttons.

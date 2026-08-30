@@ -138,7 +138,8 @@ Rectangle {
                 }
                 Label {
                     visible: root.session && root.session.replyingText.length > 0
-                    text: root.session ? root.session.replyingText : ""
+                    // The line being replied to, said rather than rendered.
+                    text: root.session ? App.markupPlain(root.session.replyingText) : ""
                     color: Theme.textDim
                     font.pixelSize: 11
                     elide: Text.ElideRight

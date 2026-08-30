@@ -2587,6 +2587,21 @@ void SessionController::sendText(const QString& text)
     if (replying_) {
         cancelReply();
     }
+    deliverText(text, replyTo);
+}
+
+void SessionController::sendOffered(const QString& text)
+{
+    if (activePeer_.isEmpty() || text.isEmpty()) {
+        return;
+    }
+    // A tap on what a message offers is not the composer: whatever is being
+    // written there, and whatever a reply is aimed at, is left alone.
+    deliverText(text, QString());
+}
+
+void SessionController::deliverText(const QString& text, const QString& replyTo)
+{
     StoredMessage m;
     m.peer = activePeer_;
     m.outgoing = true;

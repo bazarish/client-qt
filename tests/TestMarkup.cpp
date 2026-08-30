@@ -1,0 +1,218 @@
+// Bazarish project (c) 2026
+#include "Markup.hpp"
+
+#include <QString>
+
+#include <cstdio>
+#include <cstdlib>
+
+#define CHECK(condition)                                                            \
+    do {                                                                            \
+        if (!(condition)) {                                                         \
+            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
+                #condition);                                                        \
+            std::exit(1);                                                           \
+        }                                                                           \
+    } while (false)
+
+using namespace bazarish::app::markup;
+
+namespace {
+
+// A name one character past what the add-a-contact form takes.
+const QString kOverlongAlias = QString(33, QChar(u'a'));
+
+std::vector<Run> runsOf(const char* const text)
+{
+    return parse(QString::fromUtf8(text));
+}
+
+QString html(const char* const text)
+{
+    return toHtml(QString::fromUtf8(text), QStringLiteral("#f2f4f2"), QStringLiteral("#232a31"));
+}
+
+QString plain(const char* const text)
+{
+    return toPlain(QString::fromUtf8(text));
+}
+
+void testStyles()
+{
+    const std::vector<Run> bold = runsOf("say **loud** now");
+    CHECK(bold.size() == 3);
+    CHECK(bold[1].text == QStringLiteral("loud"));
+    CHECK(bold[1].bold && !bold[1].italic && !bold[1].strike);
+    CHECK(bold[2].text == QStringLiteral(" now"));
+
+    const std::vector<Run> italic = runsOf("*leaning*");
+    CHECK(italic.size() == 1);
+    CHECK(italic[0].italic && !italic[0].bold);
+
+    const std::vector<Run> strike = runsOf("~~gone~~");
+    CHECK(strike.size() == 1);
+    CHECK(strike[0].strike);
+    CHECK(strike[0].text == QStringLiteral("gone"));
+
+    // Arithmetic is not emphasis: a marker inside a word stays as typed.
+    CHECK(plain("2*3*4") == QStringLiteral("2*3*4"));
+    CHECK(runsOf("2*3*4").size() == 1);
+    CHECK(!runsOf("2*3*4")[0].italic);
+
+    // An opening marker against a space opens nothing.
+    CHECK(!runsOf("* not a list")[0].italic);
+    // Neither does one that is never closed.
+    CHECK(!runsOf("**hanging")[0].bold);
+    // A span stops at the end of its line.
+    CHECK(!runsOf("*over\nthe edge*")[0].italic);
+
+    // Styles do not nest: the inner markers are text.
+    const std::vector<Run> nested = runsOf("**bold *and* more**");
+    CHECK(nested.size() == 1);
+    CHECK(nested[0].bold && !nested[0].italic);
+    CHECK(nested[0].text == QStringLiteral("bold *and* more"));
+
+    // Cyrillic is a word like any other.
+    const std::vector<Run> cyrillic = runsOf("вот **жирный** текст");
+    CHECK(cyrillic.size() == 3);
+    CHECK(cyrillic[1].bold);
+    CHECK(cyrillic[1].text == QString::fromUtf8("жирный"));
+}
+
+void testSendable()
+{
+    const std::vector<Run> offered = runsOf("press !!/help!! for help");
+    CHECK(offered.size() == 3);
+    CHECK(offered[1].action == Action::eSend);
+    CHECK(offered[1].text == QStringLiteral("/help"));
+    CHECK(offered[1].target == QStringLiteral("/help"));
+
+    // Nothing to send is not an offer.
+    CHECK(runsOf("!!   !!")[0].action == Action::eNone);
+    CHECK(runsOf("!!!!")[0].action == Action::eNone);
+
+    // Whatever is between the markers goes as it stands, markup and all.
+    const std::vector<Run> literal = runsOf("!!**not bold**!!");
+    CHECK(literal.size() == 1);
+    CHECK(literal[0].action == Action::eSend);
+    CHECK(literal[0].text == QStringLiteral("**not bold**"));
+
+    // A style span carries the offer inside it.
+    const std::vector<Run> inside = runsOf("**press !!/help!!**");
+    CHECK(inside.size() == 2);
+    CHECK(inside[0].bold && inside[0].text == QStringLiteral("press "));
+    CHECK(inside[1].bold && inside[1].action == Action::eSend);
+    CHECK(inside[1].target == QStringLiteral("/help"));
+
+    // What is sent is percent-encoded into the anchor, so a space or a slash
+    // cannot end the reference early.
+    CHECK(html("!!/help me!!").contains(QStringLiteral("bz-send:%2Fhelp%20me")));
+}
+
+void testLinks()
+{
+    const std::vector<Run> plainLink = runsOf("see https://example.i2p/page now");
+    CHECK(plainLink.size() == 3);
+    CHECK(plainLink[1].action == Action::eLink);
+    CHECK(plainLink[1].target == QStringLiteral("https://example.i2p/page"));
+
+    // The full stop ends the sentence, not the address.
+    CHECK(runsOf("go to http://example.i2p.")[1].target == QStringLiteral("http://example.i2p"));
+    // A bracket the address did not open is not part of it.
+    CHECK(runsOf("(https://example.i2p)")[1].target == QStringLiteral("https://example.i2p"));
+    // One it did open is.
+    CHECK(runsOf("https://example.i2p/a_(b)")[0].target
+        == QStringLiteral("https://example.i2p/a_(b)"));
+
+    // Case is not how a scheme is recognised.
+    CHECK(runsOf("HTTPS://example.i2p")[0].action == Action::eLink);
+    // A scheme inside a word is not a link.
+    CHECK(runsOf("nothttps://example.i2p")[0].action == Action::eNone);
+    // Nor is a scheme with nothing behind it.
+    CHECK(runsOf("https://")[0].action == Action::eNone);
+    // Other schemes are text: only what the warning covers is offered.
+    CHECK(runsOf("file:///etc/passwd")[0].action == Action::eNone);
+    CHECK(runsOf("bazarish://invite")[0].action == Action::eNone);
+}
+
+void testAliases()
+{
+    const std::vector<Run> named = runsOf("ask !bob about it");
+    CHECK(named.size() == 3);
+    CHECK(named[1].action == Action::eAlias);
+    CHECK(named[1].text == QStringLiteral("!bob"));
+    CHECK(named[1].target == QStringLiteral("bob"));
+
+    // A name is looked up as typed; the lookup folds the case itself.
+    CHECK(runsOf("!Bob")[0].target == QStringLiteral("Bob"));
+    // An exclamation inside a sentence is not a name.
+    CHECK(runsOf("Wow!Great")[0].action == Action::eNone);
+    // The stop after a name is not part of it.
+    const std::vector<Run> stopped = runsOf("ask !bob.");
+    CHECK(stopped[1].target == QStringLiteral("bob"));
+    CHECK(stopped[2].text == QStringLiteral("."));
+    // A name the form would refuse is left alone rather than cut down to the
+    // part that would pass.
+    CHECK(runsOf("!bob_smith").size() == 1);
+    CHECK(runsOf("!bob_smith")[0].action == Action::eNone);
+    CHECK(runsOf("!bob.smith")[0].action == Action::eNone);
+    CHECK(parse(QChar(u'!') + kOverlongAlias)[0].action == Action::eNone);
+    CHECK(runsOf("!")[0].action == Action::eNone);
+    // The send marker wins over a name: !!x!! is an offer, not "!x".
+    CHECK(runsOf("!!bob!!")[0].action == Action::eSend);
+    // An unclosed send marker is text, and the second bang starts no name.
+    CHECK(runsOf("!!bob")[0].action == Action::eNone);
+}
+
+void testHtmlIsOurs()
+{
+    // A correspondent's tags are characters. Anything else and a message could
+    // name a picture, which a document would fetch as it drew.
+    const QString injected = html("<img src=\"http://tracker.example/x.png\">");
+    CHECK(!injected.contains(QStringLiteral("<img")));
+    CHECK(injected.contains(QStringLiteral("&lt;img")));
+    CHECK(injected.contains(QStringLiteral("&quot;")));
+    CHECK(html("a & b").contains(QStringLiteral("a &amp; b")));
+    CHECK(html("one\ntwo").contains(QStringLiteral("<br>")));
+    // A run of spaces is kept: a document folds them into one by default.
+    CHECK(html("a   b").contains(QStringLiteral("&nbsp;")));
+
+    // The style tags are the ones the document understands.
+    CHECK(html("**loud**").contains(QStringLiteral("<b>loud</b>")));
+    CHECK(html("*leaning*").contains(QStringLiteral("<i>leaning</i>")));
+    CHECK(html("~~gone~~").contains(QStringLiteral("<s>gone</s>")));
+
+    // Both of the things a tap acts on inside the client carry a ground; a web
+    // address, which leaves it, carries a line under it instead.
+    CHECK(html("!!/help!!").contains(QStringLiteral("background-color:#232a31")));
+    CHECK(html("!bob").contains(QStringLiteral("background-color:#232a31")));
+    CHECK(!html("https://example.i2p").contains(QStringLiteral("background-color")));
+    CHECK(html("https://example.i2p").contains(QStringLiteral("text-decoration:underline")));
+
+    // An address keeps its ampersands as an entity inside the reference.
+    CHECK(html("https://example.i2p/a?b=1&c=2")
+              .contains(QStringLiteral("href=\"https://example.i2p/a?b=1&amp;c=2\"")));
+}
+
+void testPlainProjection()
+{
+    CHECK(plain("**loud** and *soft* and ~~gone~~") == QStringLiteral("loud and soft and gone"));
+    CHECK(plain("press !!/help!!") == QStringLiteral("press /help"));
+    CHECK(plain("ask !bob at https://example.i2p")
+        == QStringLiteral("ask !bob at https://example.i2p"));
+    CHECK(plain("") == QString());
+}
+
+}  // namespace
+
+int main()
+{
+    testStyles();
+    testSendable();
+    testLinks();
+    testAliases();
+    testHtmlIsOurs();
+    testPlainProjection();
+    std::fprintf(stderr, "TestMarkup passed\n");
+    return 0;
+}

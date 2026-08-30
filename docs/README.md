@@ -19,6 +19,7 @@ this client performs before reporting failure is not.
 | [I2pRouter.md](I2pRouter.md) | The embedded I2P router: tunnel length, engine logging, and the SOCKS5 proxy applied to its clearnet traffic |
 | [Sending.md](Sending.md) | Outbound delivery: attempt schedule, reported states, failure handling, delivery-token accounting |
 | [AccountStorage.md](AccountStorage.md) | The account database: SQLCipher version and profile, the key sidecar, what a failed open reports |
+| [Formatting.md](Formatting.md) | Message formatting: the markers a body may carry, what a press on one does, and where a body is shown without them |
 
 Application structure, build instructions and packaging are described in the
 repository `README.md`.

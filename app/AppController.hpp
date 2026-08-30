@@ -151,6 +151,21 @@ public:
     // the sender declared. The bytes still decide (imageUrlIfSafe).
     Q_INVOKABLE bool looksLikeImage(const QString& mime) const;
 
+    // --- Message text ---
+    //
+    // A message body carries light markup, and a bubble draws it as a rich text
+    // document. The document is built here rather than in QML: the body is a
+    // correspondent's text, and building the tags ourselves is what keeps theirs
+    // out of it.
+
+    // A body as rich text, in the colour the theme gives interactive text and the
+    // ground a clickable offer sits on.
+    Q_INVOKABLE QString markupHtml(
+        const QString& text, const QColor& actionColor, const QColor& chipColor) const;
+    // The same body with the markers taken out: what a preview, a reply quote or
+    // a search hit shows.
+    Q_INVOKABLE QString markupPlain(const QString& text) const;
+
 private:
     // Encodes a prepared picture into the scratch directory and returns its URL.
     QString writePreparedImage(const QImage& image, const QString& baseName);

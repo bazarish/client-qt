@@ -25,7 +25,7 @@ Item {
         if (!s) {
             return ""
         }
-        const oneLine = s.replace(/\s+/g, " ").trim()
+        const oneLine = App.markupPlain(s).replace(/\s+/g, " ").trim()
         return oneLine.length > 30 ? oneLine.substring(0, 30) + "…" : oneLine
     }
 
