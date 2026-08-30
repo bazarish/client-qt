@@ -684,20 +684,31 @@ Item {
                                     enabled: !delegate.busy
                                     opacity: delegate.busy ? 0.5 : 1.0
                                     onClicked: {
+                                        // The press is dimmed until the reply
+                                        // lands, so it cannot be sent twice; what
+                                        // it is doing is said in the activity
+                                        // panel, not written on the message.
                                         delegate.busy = true
                                         busyTimer.restart()
                                         if (modelData.data !== undefined)
-                                            delegate.session.sendCallback(modelData.data, delegate.msgE2eId)
+                                            delegate.session.sendCallback(modelData.data,
+                                                delegate.msgE2eId, modelData.text)
                                         else if (modelData.command !== undefined)
-                                            delegate.session.sendCommand(modelData.command, "")
+                                            delegate.session.sendCommand(modelData.command, "",
+                                                modelData.text)
                                     }
                                     // Pointing-hand cursor over the button.
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                                     background: Rectangle {
                                         radius: 8
+                                        // At rest a shade above the bubble it sits
+                                        // on, with a border to match: on the
+                                        // bubble's own surface the buttons read as
+                                        // more text.
                                         color: kbButton.down ? Theme.accent
-                                            : kbButton.hovered ? Theme.bg : Theme.surface
-                                        border.color: kbButton.hovered ? Theme.accent : Theme.border
+                                            : kbButton.hovered ? Theme.bg : Theme.surfaceAlt
+                                        border.color: kbButton.hovered
+                                            ? Theme.accent : Theme.border2
                                         Behavior on color { ColorAnimation { duration: 90 } }
                                     }
                                     contentItem: Label {
@@ -713,15 +724,6 @@ Item {
                         }
                     }
                 }
-            }
-
-            // "Sending..." feedback while waiting for the bot's response to a tap.
-            RowLayout {
-                visible: delegate.busy
-                Layout.topMargin: 2
-                spacing: 6
-                BusyIndicator { running: delegate.busy; implicitWidth: 16; implicitHeight: 16 }
-                Label { text: "sending…"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
             }
 
             // Footer: edited marker + time + outgoing status, and for a voice

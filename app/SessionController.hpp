@@ -66,8 +66,10 @@ public slots:
     void ackPending(const QString& pendingId);
     // Sets our reaction emoji on a message; empty emoji removes it.
     void sendReaction(const QString& peer, const QString& refId, const QString& emoji);
-    void sendCallback(const QString& peer, const QString& data, const QString& ref);
-    void sendCommand(const QString& peer, const QString& command, const QString& args);
+    void sendCallback(
+        const QString& opId, const QString& peer, const QString& data, const QString& ref);
+    void sendCommand(
+        const QString& opId, const QString& peer, const QString& command, const QString& args);
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
     void sendDelete(const QString& peer, const QString& refId);
     // Compresses the picked image to a square avatar within the protocol cap and
@@ -196,6 +198,9 @@ signals:
     void downloadFinished(qint64 token, bool ok, const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
+    // A button press has left (or has not): the activity panel's row is closed
+    // by this, whichever way it went.
+    void botActionDone(const QString& opId, bool ok, const QString& error);
     // A contact request was sent (add-by-invite/username/fingerprint succeeded):
     // the resolved peer fingerprint and the intro text it carried, so the GUI can
     // open the chat and show the sent request straight away.
@@ -742,8 +747,12 @@ public:
     Q_INVOKABLE void deleteContact();
     // Inline-keyboard button presses in the active conversation: a callback
     // (button data + the keyboard message's protocol id) or a command button.
-    Q_INVOKABLE void sendCallback(const QString& data, const QString& refMsgId);
-    Q_INVOKABLE void sendCommand(const QString& command, const QString& args);
+    // A button press. The label is passed only so the activity panel can name
+    // what is in flight - the wire carries the payload, not the label.
+    Q_INVOKABLE void sendCallback(
+        const QString& data, const QString& refMsgId, const QString& label = {});
+    Q_INVOKABLE void sendCommand(
+        const QString& command, const QString& args, const QString& label = {});
     // Editing one's own message: start (prefilling the composer), commit the new
     // text (updates our copy and sends an edit to the peer), or cancel.
     Q_INVOKABLE void beginEdit(qint64 localId, const QString& e2eId, const QString& text);
@@ -906,8 +915,10 @@ signals:  // to worker
     void requestSendReceipt(const QString& peer, const QString& refId);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
-    void requestSendCallback(const QString& peer, const QString& data, const QString& ref);
-    void requestSendCommand(const QString& peer, const QString& command, const QString& args);
+    void requestSendCallback(
+        const QString& opId, const QString& peer, const QString& data, const QString& ref);
+    void requestSendCommand(
+        const QString& opId, const QString& peer, const QString& command, const QString& args);
     void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);

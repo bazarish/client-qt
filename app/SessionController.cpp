@@ -1084,21 +1084,25 @@ void SessionWorker::sendReaction(const QString& peer, const QString& refId, cons
     }
 }
 
-void SessionWorker::sendCallback(const QString& peer, const QString& data, const QString& ref)
+void SessionWorker::sendCallback(
+    const QString& opId, const QString& peer, const QString& data, const QString& ref)
 {
     try {
         session_->sendCallback(peer.toStdString(), data.toStdString(), ref.toStdString());
+        emit botActionDone(opId, true, {});
     } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+        emit botActionDone(opId, false, QString::fromUtf8(e.what()));
     }
 }
 
-void SessionWorker::sendCommand(const QString& peer, const QString& command, const QString& args)
+void SessionWorker::sendCommand(
+    const QString& opId, const QString& peer, const QString& command, const QString& args)
 {
     try {
         session_->sendCommand(peer.toStdString(), command.toStdString(), args.toStdString());
+        emit botActionDone(opId, true, {});
     } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+        emit botActionDone(opId, false, QString::fromUtf8(e.what()));
     }
 }
 
@@ -2023,6 +2027,12 @@ SessionController::SessionController(QObject* parent)
         &SessionController::accountClosedOnServer);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
+    // A button press closes its own row in the activity panel, and a refusal is
+    // said there rather than on the message.
+    connect(worker_, &SessionWorker::botActionDone, this,
+        [this](const QString& opId, const bool ok, const QString& error) {
+            finishOperation(opId, ok, ok ? QStringLiteral("Sent") : error);
+        });
     connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
         setAvatarBusy(false);
         if (connecting_) {
@@ -2684,22 +2694,34 @@ void SessionController::sendPicture(const QString& fileUrl)
     emit requestSendPicture(activePeer_, localPath, m.id, m.e2eId, replyTo);
 }
 
-void SessionController::sendCallback(const QString& data, const QString& refMsgId)
+void SessionController::sendCallback(
+    const QString& data, const QString& refMsgId, const QString& label)
 {
     if (activePeer_.isEmpty()) {
         return;
     }
-    // A button press is silent in the transcript (inline-keyboard semantics):
-    // the bot's reply is what appears. We just relay the callback.
-    emit requestSendCallback(activePeer_, data, refMsgId);
+    // A button press is silent in the transcript (inline-keyboard semantics): the
+    // bot's reply is what appears. What is in flight belongs in the activity
+    // panel like every other request, and nothing is written on the message.
+    const QString opId = QStringLiteral("bot:") + refMsgId + QStringLiteral(":") + data;
+    beginOperation(opId, QStringLiteral("bot"),
+        (label.isEmpty() ? data : label) + QStringLiteral(" → ") + peerName(activePeer_),
+        QStringLiteral("Sending…"), activePeer_);
+    emit requestSendCallback(opId, activePeer_, data, refMsgId);
 }
 
-void SessionController::sendCommand(const QString& command, const QString& args)
+void SessionController::sendCommand(
+    const QString& command, const QString& args, const QString& label)
 {
     if (activePeer_.isEmpty() || command.isEmpty()) {
         return;
     }
-    emit requestSendCommand(activePeer_, command, args);
+    const QString opId = QStringLiteral("bot-command:") + command;
+    beginOperation(opId, QStringLiteral("bot"),
+        (label.isEmpty() ? QStringLiteral("/") + command : label) + QStringLiteral(" → ")
+            + peerName(activePeer_),
+        QStringLiteral("Sending…"), activePeer_);
+    emit requestSendCommand(opId, activePeer_, command, args);
 }
 
 void SessionController::beginEdit(qint64 localId, const QString& e2eId, const QString& text)
