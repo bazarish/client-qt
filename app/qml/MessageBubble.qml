@@ -109,10 +109,13 @@ Item {
 
     // The inline keyboard attached to this message (rows of buttons), parsed
     // from its JSON wire form; empty when there is none.
-    readonly property var keyboardButtons: {
-        if (!model.keyboard || model.keyboard.length === 0) return []
-        try { return JSON.parse(model.keyboard) } catch (e) { return [] }
+    function parseKeyboard(wire) {
+        if (!wire || wire.length === 0) {
+            return []
+        }
+        try { return JSON.parse(wire) } catch (e) { return [] }
     }
+    readonly property var keyboardButtons: delegate.parseKeyboard(model.keyboard)
     // The keyboard message's protocol id, sent back as a callback's ref.
     readonly property string msgE2eId: model.e2eId
 
@@ -650,10 +653,23 @@ Item {
                 visible: active
                 Layout.fillWidth: true
                 Layout.topMargin: 2
+                // A Loader does not take its height from the layout it loads: the
+                // layout sizes itself to its parent, and its parent is this
+                // Loader, which is nothing high until it is told what to be. The
+                // buttons were built and given no room, which reads exactly like a
+                // bot whose keyboard does not arrive.
+                Layout.preferredHeight: active && item ? item.implicitHeight : 0
                 sourceComponent: ColumnLayout {
+                    id: keysColumn
                     spacing: 4
+                    // The rows are held here rather than read straight out of the
+                    // delegate: a Repeater inside a loaded component takes nothing
+                    // from an array reached through an outer id - measured, the
+                    // same expression reads fine everywhere else in this component
+                    // and builds no rows at all as a model.
+                    property var rows: delegate.keyboardButtons
                     Repeater {
-                        model: delegate.keyboardButtons
+                        model: keysColumn.rows
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 4
