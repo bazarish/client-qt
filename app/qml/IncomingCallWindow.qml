@@ -61,44 +61,10 @@ Window {
             width: parent.width - 40
             spacing: 10
 
-            Item {
+            Avatar {
                 Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 96
-                implicitHeight: 96
-                // One ring, going out and fading, for as long as it rings. The
-                // window is otherwise still: this is the only thing on screen
-                // saying the call is live rather than a picture of one.
-                Rectangle {
-                    id: pulse
-                    anchors.centerIn: parent
-                    width: 72
-                    height: 72
-                    radius: width / 2
-                    color: "transparent"
-                    border.color: Theme.neon
-                    border.width: 2
-                    opacity: 0
-                    SequentialAnimation {
-                        running: root.visible
-                        loops: Animation.Infinite
-                        ParallelAnimation {
-                            NumberAnimation {
-                                target: pulse; property: "width"; from: 72; to: 96; duration: 1200
-                            }
-                            NumberAnimation {
-                                target: pulse; property: "height"; from: 72; to: 96; duration: 1200
-                            }
-                            NumberAnimation {
-                                target: pulse; property: "opacity"; from: 0.55; to: 0; duration: 1200
-                            }
-                        }
-                    }
-                }
-                Avatar {
-                    anchors.centerIn: parent
-                    fingerprint: App.ringingPeerFingerprint
-                    size: 72
-                }
+                fingerprint: App.ringingPeerFingerprint
+                size: 72
             }
 
             Label {
