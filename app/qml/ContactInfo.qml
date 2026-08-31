@@ -176,7 +176,15 @@ Popup {
             }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
+        Rectangle {
+            // The line divides a contact's identity from what can be done about
+            // it. The saved chat has neither, so it has nothing to divide.
+            visible: !root.saved
+            Layout.fillWidth: true
+            height: 1
+            color: Theme.border
+            Layout.topMargin: 4
+        }
 
 
         // The label stays short in every state - a button is not the place for a

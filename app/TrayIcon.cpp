@@ -212,6 +212,12 @@ void TrayIcon::notify(const QString& title, const QString& body)
     if (QApplication::applicationState() == Qt::ApplicationActive) {
         return;
     }
+    // A call that is ringing owns the sound and the screen: nothing else beeps
+    // over it or pops up in front of it. Whatever arrived is still in the chat
+    // list when the call is over.
+    if (!app_.ringingPeer().isEmpty()) {
+        return;
+    }
     tray_.showMessage(title, body, idleIcon_, kPopupMs);
     // Every message shows, and the sound is what is rationed: while what was
     // announced is still unread, one sound stands for everything that arrives in

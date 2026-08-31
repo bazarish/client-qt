@@ -1,11 +1,12 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Controls
 import Bazarish
 
 // A full-size avatar preview: the same face the thumbnail shows (a real photo or
 // the deterministic identicon), rendered large and centered over the whole
-// window. Square, so the complete image is visible rather than the circular
-// thumbnail crop. Tap the image, tap outside, or press Esc to dismiss.
+// window - and the same shape it is everywhere else, a circle. Tap the image, tap
+// outside, or press Esc to dismiss.
 Popup {
     id: viewer
     property string fingerprint: ""
@@ -33,16 +34,37 @@ Popup {
         border.width: 1
     }
 
-    contentItem: Image {
-        // Request a large render: the provider scales the stored photo (or draws
-        // the identicon) to this size, so the full format looks crisp, not a
-        // stretched thumbnail. The "?r=" revision busts the cache like the thumbnail.
-        source: viewer.fingerprint.length > 0
-            ? "image://avatar/" + viewer.fingerprint + "?r=" + Avatars.revision : ""
-        sourceSize: Qt.size(512, 512)
-        fillMode: Image.PreserveAspectFit
-        smooth: true
-        cache: false
+    contentItem: Item {
+        Image {
+            id: large
+            anchors.fill: parent
+            // Request a large render: the provider scales the stored photo (or draws
+            // the identicon) to this size, so the full format looks crisp, not a
+            // stretched thumbnail. The "?r=" revision busts the cache like the thumbnail.
+            source: viewer.fingerprint.length > 0
+                ? "image://avatar/" + viewer.fingerprint + "?r=" + Avatars.revision : ""
+            sourceSize: Qt.size(512, 512)
+            fillMode: Image.PreserveAspectFit
+            smooth: true
+            cache: false
+            // Drawn through the mask below, so an avatar is the same shape here as
+            // it is everywhere else in the application.
+            visible: false
+            layer.enabled: true
+        }
+        Item {
+            id: circle
+            anchors.fill: parent
+            visible: false
+            layer.enabled: true
+            Rectangle { anchors.fill: parent; radius: width / 2; color: "black" }
+        }
+        MultiEffect {
+            anchors.fill: parent
+            source: large
+            maskEnabled: true
+            maskSource: circle
+        }
         TapHandler { onTapped: viewer.close() }
     }
 }

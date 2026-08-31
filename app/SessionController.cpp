@@ -5083,7 +5083,13 @@ void SessionController::declineCall()
 {
     callEndedLocally_ = true;
     callTones_.stop();
-    emit requestDeclineCall(callId_);
+    // Refused is over, here and now: the ringtone stops, the window goes and the
+    // buttons come back at once, while the refusal itself travels in the
+    // background. Waiting for it meant ringing at somebody who had already been
+    // refused, for as long as I2P took to carry the word.
+    const QString callId = callId_;
+    onCallStateChanged(0, QString(), QString(), false, QString(), false, 0, 0.0F, 0.0F);
+    emit requestDeclineCall(callId);
 }
 
 void SessionController::endCall()

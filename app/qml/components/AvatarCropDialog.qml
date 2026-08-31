@@ -102,6 +102,34 @@ Dialog {
                     yAxis.enabled: true
                 }
             }
+
+            // The round window this dialog has always talked about, now drawn: a
+            // scrim over the square with a circular hole in it, so what is chosen
+            // is what will be seen. The grab underneath stays square - the picture
+            // is stored as it was cropped, and the circle is how it is shown.
+            Canvas {
+                anchors.fill: parent
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.reset()
+                    ctx.fillStyle = Qt.rgba(Theme.bg.r, Theme.bg.g, Theme.bg.b, 0.72)
+                    ctx.fillRect(0, 0, width, height)
+                    ctx.globalCompositeOperation = "destination-out"
+                    ctx.beginPath()
+                    ctx.arc(width / 2, height / 2, Math.min(width, height) / 2, 0, 2 * Math.PI)
+                    ctx.fill()
+                    ctx.globalCompositeOperation = "source-over"
+                    ctx.strokeStyle = Theme.border2
+                    ctx.lineWidth = 1
+                    ctx.beginPath()
+                    ctx.arc(width / 2, height / 2, Math.min(width, height) / 2 - 0.5,
+                        0, 2 * Math.PI)
+                    ctx.stroke()
+                }
+                // Nothing here reacts to the pointer: the picture underneath is
+                // what is dragged.
+                enabled: false
+            }
         }
 
         RowLayout {
