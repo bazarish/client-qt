@@ -59,6 +59,10 @@ class AppController : public QObject {
     // The account being called, named only when more than one is open - with one
     // account there is nothing to tell apart.
     Q_PROPERTY(QString ringingAccountName READ ringingAccountName NOTIFY ringingChanged)
+    // How loud the ringtone is at this instant, 0 to 1: what the call window
+    // pulses with, so the light is the sound rather than a timer running beside
+    // it. Zero whenever nothing is ringing.
+    Q_PROPERTY(qreal ringLevel READ ringLevel NOTIFY ringLevelChanged)
 public:
     explicit AppController(QObject* parent = nullptr);
 
@@ -111,6 +115,7 @@ public:
     bool notificationsEnabled() const { return notifications_; }
     void setNotificationsEnabled(bool on);
 
+    qreal ringLevel() const { return ringLevel_; }
     QString ringingPeer() const { return ringingPeer_; }
     QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
     QString ringingAccountName() const { return ringingAccountName_; }
@@ -204,6 +209,7 @@ signals:
     void accountsChanged();
     void notificationsEnabledChanged();
     void ringingChanged();
+    void ringLevelChanged();
     // Asks the window to come forward (answering a call from outside it).
     void raiseRequested();
     // Worth telling the user about even when they are not looking: an arrived
@@ -292,6 +298,7 @@ private:
     QString ringingPeer_;
     QString ringingPeerFingerprint_;
     QString ringingAccountName_;
+    qreal ringLevel_ = 0.0;
     // The call state each account was last seen in, so a call is announced when it
     // starts ringing and not again on every tick that follows.
     QList<SessionController*> sessions_;  // open accounts, owned (parented here)

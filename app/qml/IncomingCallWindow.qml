@@ -50,6 +50,8 @@ Window {
         }
     }
 
+    onVisibleChanged: if (root.visible) { glow.requestPaint() }
+
     Rectangle {
         anchors.fill: parent
         color: Theme.bg
@@ -61,10 +63,57 @@ Window {
             width: parent.width - 40
             spacing: 10
 
-            Avatar {
+            Item {
+                id: halo
                 Layout.alignment: Qt.AlignHCenter
-                fingerprint: App.ringingPeerFingerprint
-                size: 72
+                implicitWidth: 168
+                implicitHeight: 168
+                // How the light stands at the quietest moment of the ringtone and
+                // at its loudest: the pulse is the track's own shape, so a beat
+                // lands as light and the gaps between beats go dim rather than
+                // dark.
+                readonly property real quietScale: 0.8
+                readonly property real loudScale: 1.15
+                readonly property real quietOpacity: 0.16
+
+                // Painted once; what pulses is how big and how bright it is drawn.
+                Canvas {
+                    id: glow
+                    anchors.fill: parent
+                    scale: halo.quietScale
+                        + (halo.loudScale - halo.quietScale) * App.ringLevel
+                    opacity: halo.quietOpacity + (1 - halo.quietOpacity) * App.ringLevel
+                    // The level arrives about thirty times a second; this carries
+                    // the light between two of them.
+                    Behavior on scale { NumberAnimation { duration: 60; easing.type: Easing.OutQuad } }
+                    Behavior on opacity { NumberAnimation { duration: 60 } }
+                    onPaint: {
+                        const ctx = getContext("2d")
+                        ctx.reset()
+                        const centre = width / 2
+                        const light = function(alpha) {
+                            return Qt.rgba(Theme.neon.r, Theme.neon.g, Theme.neon.b, alpha)
+                        }
+                        const gradient = ctx.createRadialGradient(centre, centre, 0,
+                            centre, centre, centre)
+                        // Flat under the avatar and falling away outside it: what
+                        // is seen is the halo around the picture, not a disc
+                        // behind it.
+                        gradient.addColorStop(0, light(0.55))
+                        gradient.addColorStop(0.42, light(0.5))
+                        gradient.addColorStop(0.72, light(0.13))
+                        gradient.addColorStop(1, light(0))
+                        ctx.fillStyle = gradient
+                        ctx.fillRect(0, 0, width, height)
+                    }
+                    Component.onCompleted: glow.requestPaint()
+                }
+
+                Avatar {
+                    anchors.centerIn: parent
+                    fingerprint: App.ringingPeerFingerprint
+                    size: 72
+                }
             }
 
             Label {

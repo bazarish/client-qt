@@ -40,6 +40,12 @@ AppController::AppController(QObject* parent)
     : QObject(parent)
     , manager_(std::make_unique<client::AccountManager>(accountsRoot()))
 {
+    // The call window pulses with the ringtone, so the loudness of what is being
+    // heard is carried out to it as the sound plays.
+    connect(&ringtone_, &Ringtone::levelChanged, this, [this](const qreal level) {
+        ringLevel_ = level;
+        emit ringLevelChanged();
+    });
     refreshAccountList();
     // Apply global settings (e.g. full privacy mode) before opening any account, so
     // the first background sync already honours them.
