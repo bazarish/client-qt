@@ -65,7 +65,7 @@ Everything that changes what a conversation looks like: a message sent, a pictur
 a voice message, an edit, a deletion, a reaction, a chat cleared (either the copy
 here or the request to the correspondent), a chat pinned or unpinned, a contact
 renamed, removed, blocked or unblocked, its two switches, the saved chat and the
-account's own name and call switch.
+account's own name, its call switch and its read-receipt switch.
 
 What does not: read state and unread counts, which are this device's own -
 a message read here is not read there - and this device's errands with a
