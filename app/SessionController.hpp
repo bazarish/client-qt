@@ -114,6 +114,7 @@ public slots:
     void loadPersonalKey(const QString& path);
     void deletePersonalKey();
     void setAcceptCalls(bool accept);
+    void setSendReceipts(bool on);
     void setDelegationDays(int days);
     void cancelTransfer(const QString& e2eId);
     void publishPersonalDest();
@@ -152,7 +153,7 @@ signals:
     // reason. Nothing may be deleted locally until this says it happened.
     void accountClosed(bool ok, const QString& error);
     // What the opened account has stored for the settings the window shows.
-    void accountSettings(bool acceptCalls, bool sharingAllowed);
+    void accountSettings(bool acceptCalls, bool sendReceipts, bool sharingAllowed);
     // One step of a serving-key rotation, as it happens.
     void servingKeyStage(const QString& stage);
     // The rotation finished: ok with the summary, or the reason it did not.
@@ -568,7 +569,9 @@ public:
     void setDelegationDays(int days);
     void setAcceptCalls(bool on);
     bool sendReceipts() const { return sendReceipts_; }
-    void setSendReceipts(bool on) { if (sendReceipts_ != on) { sendReceipts_ = on; emit sendReceiptsChanged(); } }
+    // Kept in the account, not in this window: it is the account's own answer, and
+    // it reaches the account's other devices.
+    void setSendReceipts(bool on);
     bool editing() const { return editing_; }
     QString editingText() const { return editingText_; }
     bool replying() const { return replying_; }
@@ -992,6 +995,7 @@ signals:  // to worker
     void requestLoadPersonalKey(const QString& path);
     void requestDeletePersonalKey();
     void requestSetAcceptCalls(bool accept);
+    void requestSetSendReceipts(bool on);
     void requestSetDelegationDays(int days);
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();

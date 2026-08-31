@@ -501,7 +501,7 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
         connected ? "connected" : "");
     // Settings the account carries, so the window shows what is actually in force
     // rather than its own defaults.
-    emit accountSettings(session_->acceptCalls(),
+    emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
         session_->sharingAllowed());
     emitContacts();
     // Whatever the last run left half-done is taken up before anything new is
@@ -1424,7 +1424,8 @@ void SessionWorker::emitSettings()
     if (!session_) {
         return;
     }
-    emit accountSettings(session_->acceptCalls(), session_->sharingAllowed());
+    emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
+        session_->sharingAllowed());
 }
 
 void SessionWorker::syncChatClear(const QString& peer)
@@ -1770,6 +1771,18 @@ void SessionWorker::setDelegationDays(const int days)
     }
 }
 
+void SessionWorker::setSendReceipts(const bool on)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setSendReceipts(on);
+    } catch (const std::exception& e) {
+        emit actionFailed(QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::setAcceptCalls(const bool accept)
 {
     if (!session_) {
@@ -1887,7 +1900,7 @@ void SessionWorker::setSharingAllowed(const bool allowed)
 {
     try {
         session_->setSharingAllowed(allowed);
-        emit accountSettings(session_->acceptCalls(),
+        emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
             session_->sharingAllowed());
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -2010,6 +2023,8 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::setDelegationDays);
     connect(this, &SessionController::requestSetAcceptCalls, worker_,
         &SessionWorker::setAcceptCalls);
+    connect(this, &SessionController::requestSetSendReceipts, worker_,
+        &SessionWorker::setSendReceipts);
     connect(this, &SessionController::requestDisablePersonalDest, worker_,
         &SessionWorker::disablePersonalDest);
     connect(this, &SessionController::requestRefreshI2pStatus, worker_,
@@ -2025,7 +2040,11 @@ SessionController::SessionController(QObject* parent)
     // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
     connect(worker_, &SessionWorker::accountSettings, this,
-        [this](const bool acceptCalls, const bool sharingAllowed) {
+        [this](const bool acceptCalls, const bool sendReceipts, const bool sharingAllowed) {
+            if (sendReceipts_ != sendReceipts) {
+                sendReceipts_ = sendReceipts;
+                emit sendReceiptsChanged();
+            }
             if (sharingAllowed_ != sharingAllowed) {
                 sharingAllowed_ = sharingAllowed;
                 emit sharingAllowedChanged();
@@ -3478,6 +3497,16 @@ void SessionController::setAcceptCalls(const bool on)
     acceptCalls_ = on;
     emit requestSetAcceptCalls(on);
     emit acceptCallsChanged();
+}
+
+void SessionController::setSendReceipts(const bool on)
+{
+    if (sendReceipts_ == on) {
+        return;
+    }
+    sendReceipts_ = on;
+    emit requestSetSendReceipts(on);
+    emit sendReceiptsChanged();
 }
 
 void SessionController::publishPersonalDest()
