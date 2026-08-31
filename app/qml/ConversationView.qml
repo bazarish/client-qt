@@ -11,6 +11,9 @@ Item {
     property bool narrow: false
     signal contactInfoRequested()
     signal callRequested()
+    // The chat with ourselves: no face, no call, and its own panel behind the i.
+    readonly property bool savedChat: root.session !== null
+        && root.session.isSavedChat(root.session.activePeer)
     // A username tapped in a message: the window offers the add-a-contact form.
     signal addByNameRequested(string alias)
 
@@ -210,7 +213,22 @@ Item {
                         count: (root.session ? root.session.unreadTotal : 0) + App.unreadElsewhere
                     }
                 }
-                Avatar { fingerprint: root.session ? root.session.activePeer : ""; size: 38; enlargeable: true }
+                // The saved chat is nobody's face: it carries the same mark here
+                // as it does in the list.
+                Rectangle {
+                    visible: root.savedChat
+                    implicitWidth: 38
+                    implicitHeight: 38
+                    radius: width / 2
+                    color: Theme.surfaceAlt
+                    Icon { anchors.centerIn: parent; name: "bookmark"; color: Theme.green; size: 20 }
+                }
+                Avatar {
+                    visible: !root.savedChat
+                    fingerprint: root.session ? root.session.activePeer : ""
+                    size: 38
+                    enlargeable: true
+                }
                 // The name alone: the identity behind it is one tap away, under
                 // the info button, where it can be read and copied properly.
                 Label {
@@ -221,7 +239,12 @@ Item {
                     Layout.fillWidth: true
                 }
                 IconButton { iconName: "search"; onClicked: searchPopup.openSearch() }
-                IconButton { iconName: "call"; onClicked: root.callRequested() }
+                // There is nobody to call in the saved chat.
+                IconButton {
+                    visible: !root.savedChat
+                    iconName: "call"
+                    onClicked: root.callRequested()
+                }
                 IconButton { iconName: "info"; onClicked: root.contactInfoRequested() }
             }
         }

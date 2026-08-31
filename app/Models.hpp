@@ -43,6 +43,8 @@ struct ContactRow {
     qint64 lastTime = 0;
     int unread = 0;
     bool pinned = false;   // kept at the top of the list, before the recent sort
+    // The saved-messages chat: always first, always there, never deleted.
+    bool saved = false;
 };
 
 class ContactListModel : public QAbstractListModel {
@@ -50,7 +52,7 @@ class ContactListModel : public QAbstractListModel {
 public:
     enum Roles {
         FingerprintRole = Qt::UserRole + 1, NameRole, LastTextRole, LastTimeRole, UnreadRole,
-        PinnedRole
+        PinnedRole, SavedRole
     };
     using QAbstractListModel::QAbstractListModel;
 
@@ -69,6 +71,9 @@ public:
     void setUnread(const QString& fingerprint, int count);
     // Sum of unread counts across all contacts (the account's unread total).
     int totalUnread() const;
+    // Drops one row, for a contact that has been removed here or on another
+    // device. A no-op for a row that is not there.
+    void remove(const QString& fingerprint);
 
 private:
     int indexOf(const QString& fingerprint) const;

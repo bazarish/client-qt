@@ -83,6 +83,10 @@ public slots:
     // Permanently removes a contact (local + irreversible); the avatar store is
     // cleared and the contact list is re-emitted.
     void removeContact(const QString& peer);
+    void clearSaved();
+    void setBlocked(const QString& peer, bool blocked);
+    void setContactNotifications(const QString& peer, bool on);
+    void setContactCalls(const QString& peer, bool allowed);
     void syncChatPin(const QString& peer, bool pinned);
     // Asks the peer to clear the whole conversation with us (chat.clear); their
     // client wipes its transcript on receipt.
@@ -168,6 +172,10 @@ signals:
     void contactsRefreshed(const QStringList& fingerprints, const QStringList& names,
         const QStringList& pending, const QStringList& links, const QStringList& capacities,
         const QStringList& shareStates);
+    // What each contact may do here, in the order of the list above ("n" for
+    // notifications, "c" for calls, "-" where the account has said no), and the
+    // fingerprints it has blocked outright.
+    void contactFlagsRefreshed(const QStringList& flags, const QStringList& blocked);
     // A real avatar became available for an identity (own or a contact): the GUI
     // feeds it to the shared avatar store. Empty data clears it.
     void avatarReady(const QString& fingerprint, const QByteArray& data);
@@ -684,6 +692,26 @@ public:
     Q_INVOKABLE void resendVoice(qint64 localId, const QString& e2eId);
     // A display name for any peer.
     Q_INVOKABLE QString peerName(const QString& id) const;
+    // The saved-messages chat: our own fingerprint, and the name it goes by. Not
+    // a contact, never deletable, and the same chat on every device.
+    Q_INVOKABLE QString savedPeer() const;
+    static QString savedChatName();
+    Q_INVOKABLE bool isSavedChat(const QString& peer) const
+    {
+        return !peer.isEmpty() && peer == savedPeer();
+    }
+    // Empties it here and on every other device of this account.
+    Q_INVOKABLE void clearSavedEverywhere();
+
+    // --- Blocking and per-contact switches ---
+    Q_INVOKABLE bool isBlocked(const QString& peer) const;
+    Q_INVOKABLE void setBlocked(const QString& peer, bool blocked);
+    // Blocked correspondents, newest first: [{fingerprint, name}].
+    Q_INVOKABLE QVariantList blockedList() const;
+    Q_INVOKABLE bool contactNotifications(const QString& peer) const;
+    Q_INVOKABLE bool contactCalls(const QString& peer) const;
+    Q_INVOKABLE void setContactNotifications(const QString& peer, bool on);
+    Q_INVOKABLE void setContactCalls(const QString& peer, bool allowed);
     // The contact's stored local display name, empty when unnamed (so a rename
     // field can prefill it and show a fingerprint placeholder otherwise).
     Q_INVOKABLE QString contactName(const QString& fp) const;
@@ -931,6 +959,10 @@ signals:  // to worker
     void requestSetDisplayName(const QString& name);
     void requestRenameContact(const QString& peer, const QString& name);
     void requestRemoveContact(const QString& peer);
+    void requestClearSaved();
+    void requestSetBlocked(const QString& peer, bool blocked);
+    void requestSetContactNotifications(const QString& peer, bool on);
+    void requestSetContactCalls(const QString& peer, bool allowed);
     void requestSyncChatPin(const QString& peer, bool pinned);
     void requestClearChatForEveryone(const QString& peer);
     void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId);
@@ -1134,6 +1166,11 @@ private:
     // Contacts that have said their invite may not be passed on: "no link yet"
     // and "not allowed" read the same in the UI otherwise.
     QSet<QString> shareRefused_;
+    // Contacts this account has turned notifications or calls off for, and the
+    // fingerprints it has blocked. Kept in sync from the worker.
+    QSet<QString> mutedPeers_;
+    QSet<QString> callBarredPeers_;
+    QStringList blocked_;
     // Sending capacity per contact: their tokens this device still holds.
     QHash<QString, int> sendCapacities_;
     QStringList recentReactions_;

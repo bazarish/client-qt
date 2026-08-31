@@ -79,6 +79,9 @@ Item {
                     case "attach":  return "M 17 8 L 9.5 15.5 A 3 3 0 0 0 13.5 19.5 L 20 13 "
                                          + "A 5.5 5.5 0 0 0 12.5 5.5 L 6 12 "
                                          + "A 8 8 0 0 0 17.5 23"
+                    // A bookmark: what marks a page worth coming back to, which is
+                    // what the saved chat is.
+                    case "bookmark": return "M 7 4 H 17 V 20 L 12 15.5 L 7 20 Z"
                     case "pin":     return "M 9 3 L 15 3 L 14 10 L 18 13 L 6 13 L 10 10 Z M 12 13 L 12 21"
                     case "copy":    return "M 9 9 L 20 9 L 20 20 L 9 20 Z M 5 15 L 4 15 L 4 4 L 15 4 L 15 5"
                     case "edit":    return "M 4 20 L 4 16 L 16 4 L 20 8 L 8 20 Z M 14 6 L 18 10"

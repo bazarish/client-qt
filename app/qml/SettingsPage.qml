@@ -673,6 +673,45 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
+                // Who is not heard here. A block is per account and reaches its
+                // other devices; unblocking does not bring back what was dropped.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label { text: "Blocked"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    readonly property var rows: (root.session && root.session.contactsRevision >= 0)
+                        ? root.session.blockedList() : []
+                    Label {
+                        visible: parent.rows.length === 0
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        text: "Nobody. Blocking is offered in a contact's panel; their messages "
+                            + "and calls are then dropped as they arrive."
+                    }
+                    Repeater {
+                        model: parent.rows
+                        RowLayout {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label {
+                                Layout.fillWidth: true
+                                text: modelData.name
+                                color: Theme.text
+                                elide: Text.ElideMiddle
+                            }
+                            MenuButton {
+                                text: "Unblock"
+                                onClicked: root.session.setBlocked(modelData.fingerprint, false)
+                            }
+                        }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16

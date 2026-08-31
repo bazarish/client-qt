@@ -132,7 +132,26 @@ Item {
                 }
                 contentItem: RowLayout {
                     spacing: 10
-                    Avatar { fingerprint: model.fingerprint; size: 44 }
+                    // The saved chat is not a correspondent and has no face: it
+                    // carries a bookmark, which is what it is for.
+                    Rectangle {
+                        visible: model.saved
+                        implicitWidth: 44
+                        implicitHeight: 44
+                        radius: width / 2
+                        color: Theme.surfaceAlt
+                        Icon {
+                            anchors.centerIn: parent
+                            name: "bookmark"
+                            color: Theme.green
+                            size: 22
+                        }
+                    }
+                    Avatar {
+                        visible: !model.saved
+                        fingerprint: model.fingerprint
+                        size: 44
+                    }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 2
@@ -148,7 +167,8 @@ Item {
                             }
                             Label {
                                 Layout.fillWidth: true
-                                text: model.name.length > 14 ? model.name.substring(0, 12) + "…" : model.name
+                                text: model.name.length > 14 && !model.saved
+                                    ? model.name.substring(0, 12) + "…" : model.name
                                 color: chatRow.highlighted ? Theme.neon : Theme.text
                                 font.weight: Font.Medium
                                 elide: Text.ElideRight
@@ -177,9 +197,15 @@ Item {
                     }
                 }
                 // Pin/unpin via right-click or long-press (a left tap still opens the
-                // chat). Pin state syncs to the account's other devices.
-                TapHandler { acceptedButtons: Qt.RightButton; onTapped: pinMenu.popup() }
+                // chat). Pin state syncs to the account's other devices. The saved
+                // chat is already first and stays there, so it has no menu.
                 TapHandler {
+                    enabled: !model.saved
+                    acceptedButtons: Qt.RightButton
+                    onTapped: pinMenu.popup()
+                }
+                TapHandler {
+                    enabled: !model.saved
                     acceptedButtons: Qt.LeftButton
                     longPressThreshold: 0.5
                     onLongPressed: pinMenu.popup()

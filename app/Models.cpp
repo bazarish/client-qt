@@ -65,30 +65,52 @@ QVariant ContactListModel::data(const QModelIndex& index, int role) const
     case LastTimeRole: return c.lastTime;
     case UnreadRole: return c.unread;
     case PinnedRole: return c.pinned;
+    case SavedRole: return c.saved;
     default: return {};
     }
 }
 
 QHash<int, QByteArray> ContactListModel::roleNames() const
 {
-    return {{FingerprintRole, "fingerprint"}, {NameRole, "name"}, {LastTextRole, "lastText"},
+    return {{SavedRole, "saved"}, {FingerprintRole, "fingerprint"}, {NameRole, "name"},
+        {LastTextRole, "lastText"},
         {LastTimeRole, "lastTime"}, {UnreadRole, "unread"},
         {PinnedRole, "pinned"}};
 }
+
+namespace {
+
+// The saved chat first, then pinned chats, then by most-recent activity.
+bool before(const ContactRow& a, const ContactRow& b)
+{
+    if (a.saved != b.saved) {
+        return a.saved;
+    }
+    if (a.pinned != b.pinned) {
+        return a.pinned;
+    }
+    return a.lastTime > b.lastTime;
+}
+
+}  // namespace
 
 void ContactListModel::setContacts(QVector<ContactRow> contacts)
 {
     beginResetModel();
     contacts_ = std::move(contacts);
-    std::stable_sort(contacts_.begin(), contacts_.end(),
-        [](const ContactRow& a, const ContactRow& b) {
-            // Pinned chats first, then by most-recent activity.
-            if (a.pinned != b.pinned) {
-                return a.pinned;
-            }
-            return a.lastTime > b.lastTime;
-        });
+    std::stable_sort(contacts_.begin(), contacts_.end(), before);
     endResetModel();
+}
+
+void ContactListModel::remove(const QString& fingerprint)
+{
+    const int at = indexOf(fingerprint);
+    if (at < 0) {
+        return;
+    }
+    beginRemoveRows({}, at, at);
+    contacts_.remove(at);
+    endRemoveRows();
 }
 
 int ContactListModel::indexOf(const QString& fingerprint) const
@@ -104,14 +126,7 @@ int ContactListModel::indexOf(const QString& fingerprint) const
 void ContactListModel::resort()
 {
     beginResetModel();
-    std::stable_sort(contacts_.begin(), contacts_.end(),
-        [](const ContactRow& a, const ContactRow& b) {
-            // Pinned chats first, then by most-recent activity.
-            if (a.pinned != b.pinned) {
-                return a.pinned;
-            }
-            return a.lastTime > b.lastTime;
-        });
+    std::stable_sort(contacts_.begin(), contacts_.end(), before);
     endResetModel();
 }
 

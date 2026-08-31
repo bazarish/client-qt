@@ -580,6 +580,7 @@ void SessionWorker::emitContacts()
     QStringList links;
     QStringList shareStates;
     QStringList capacities;
+    QStringList flags;
     for (const std::string& fp : session_->contactFingerprints()) {
         fps << QString::fromStdString(fp);
         names << QString::fromStdString(session_->contactDisplayName(fp));
@@ -602,8 +603,20 @@ void SessionWorker::emitContacts()
             links << QString();
         }
         capacities << QString::number(session_->sendCapacity(fp));
+        // What this contact may do here, as two flags in one string: nothing to
+        // read into the order, it is only cheaper than two more lists.
+        flags << QStringLiteral("%1%2")
+                     .arg(session_->contactNotifications(fp) ? QStringLiteral("n")
+                                                             : QStringLiteral("-"))
+                     .arg(session_->contactCalls(fp) ? QStringLiteral("c")
+                                                     : QStringLiteral("-"));
+    }
+    QStringList blocked;
+    for (const std::string& fp : session_->blockedPeers()) {
+        blocked << QString::fromStdString(fp);
     }
     emit contactsRefreshed(fps, names, pending, links, capacities, shareStates);
+    emit contactFlagsRefreshed(flags, blocked);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -1419,13 +1432,64 @@ void SessionWorker::syncChatPin(const QString& peer, bool pinned)
     }
 }
 
+void SessionWorker::clearSaved()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->clearSaved();
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
+void SessionWorker::setBlocked(const QString& peer, const bool blocked)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setBlocked(peer.toStdString(), blocked);
+        emitContacts();
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
+void SessionWorker::setContactNotifications(const QString& peer, const bool on)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setContactNotifications(peer.toStdString(), on);
+        emitContacts();
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
+void SessionWorker::setContactCalls(const QString& peer, const bool allowed)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->setContactCalls(peer.toStdString(), allowed);
+        emitContacts();
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
 void SessionWorker::removeContact(const QString& peer)
 {
     if (!session_) {
         return;
     }
     try {
-        session_->removeContact(peer.toStdString());
+        session_->removeContactEverywhere(peer.toStdString());
         // Clear the avatar store entry and re-emit the (now shorter) contact list.
         emit avatarReady(peer, QByteArray());
         emitContacts();
@@ -1856,6 +1920,12 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::setDisplayName);
     connect(this, &SessionController::requestRenameContact, worker_, &SessionWorker::renameContact);
     connect(this, &SessionController::requestRemoveContact, worker_, &SessionWorker::removeContact);
+    connect(this, &SessionController::requestClearSaved, worker_, &SessionWorker::clearSaved);
+    connect(this, &SessionController::requestSetBlocked, worker_, &SessionWorker::setBlocked);
+    connect(this, &SessionController::requestSetContactNotifications, worker_,
+        &SessionWorker::setContactNotifications);
+    connect(this, &SessionController::requestSetContactCalls, worker_,
+        &SessionWorker::setContactCalls);
     connect(this, &SessionController::requestSyncChatPin, worker_, &SessionWorker::syncChatPin);
     connect(this, &SessionController::requestClearChatForEveryone, worker_,
         &SessionWorker::clearChatForEveryone);
@@ -1992,6 +2062,22 @@ SessionController::SessionController(QObject* parent)
             rebuildChatList();
             emit activePeerNameChanged();  // the open chat's header may have renamed
             // Re-drive any contact-request bubble's "Agree" visibility.
+            ++contactsRevision_;
+            emit contactsRevisionChanged();
+        });
+    connect(worker_, &SessionWorker::contactFlagsRefreshed, this,
+        [this](const QStringList& flags, const QStringList& blocked) {
+            mutedPeers_.clear();
+            callBarredPeers_.clear();
+            for (int i = 0; i < contactFps_.size() && i < flags.size(); ++i) {
+                if (!flags[i].contains(QLatin1Char('n'))) {
+                    mutedPeers_.insert(contactFps_[i]);
+                }
+                if (!flags[i].contains(QLatin1Char('c'))) {
+                    callBarredPeers_.insert(contactFps_[i]);
+                }
+            }
+            blocked_ = blocked;
             ++contactsRevision_;
             emit contactsRevisionChanged();
         });
@@ -2427,6 +2513,15 @@ void SessionController::rebuildChatList()
 {
     QVector<ContactRow> rows;
     QSet<QString> known;
+    // The saved chat is always there, first, whether or not anything is in it: it
+    // is not a contact and cannot be deleted, so nothing else decides it exists.
+    if (!savedPeer().isEmpty()) {
+        ContactRow saved{savedPeer(), savedChatName(), store_.lastText(savedPeer()),
+            store_.lastTime(savedPeer()), 0, false};
+        saved.saved = true;
+        rows.push_back(saved);
+        known.insert(savedPeer());
+    }
     for (const QString& fp : contactFps_) {
         rows.push_back(ContactRow{fp, peerName(fp), store_.lastText(fp), store_.lastTime(fp),
             store_.unreadCount(fp), store_.isPinned(fp)});
@@ -2446,8 +2541,21 @@ void SessionController::rebuildChatList()
     contacts_.setContacts(std::move(rows));
 }
 
+QString SessionController::savedPeer() const
+{
+    return fingerprint_;
+}
+
+QString SessionController::savedChatName()
+{
+    return QString::fromLatin1(client::kSavedChatName);
+}
+
 QString SessionController::peerName(const QString& id) const
 {
+    if (!id.isEmpty() && id == fingerprint_) {
+        return savedChatName();
+    }
     const QString name = contactNames_.value(id);
     if (!name.isEmpty()) {
         return name;  // the local display name (alias / invite name / rename)
@@ -2572,6 +2680,87 @@ void SessionController::deleteContact()
     emit requestRemoveContact(peer);
 }
 
+void SessionController::clearSavedEverywhere()
+{
+    store_.clearPeer(savedPeer());
+    loadLatestWindow();
+    contacts_.touch(savedPeer(), savedChatName(), QString(), nowMillis(), false);
+    rebuildChatList();
+    emit requestClearSaved();
+}
+
+bool SessionController::isBlocked(const QString& peer) const
+{
+    return blocked_.contains(peer);
+}
+
+QVariantList SessionController::blockedList() const
+{
+    QVariantList rows;
+    for (const QString& peer : blocked_) {
+        rows.push_back(QVariantMap{{QStringLiteral("fingerprint"), peer},
+            {QStringLiteral("name"), peerName(peer)}});
+    }
+    return rows;
+}
+
+void SessionController::setBlocked(const QString& peer, const bool blocked)
+{
+    if (peer.isEmpty() || isSavedChat(peer)) {
+        return;
+    }
+    if (blocked) {
+        if (!blocked_.contains(peer)) {
+            blocked_.push_back(peer);
+        }
+    } else {
+        blocked_.removeAll(peer);
+    }
+    ++contactsRevision_;
+    emit contactsRevisionChanged();
+    emit requestSetBlocked(peer, blocked);
+}
+
+bool SessionController::contactNotifications(const QString& peer) const
+{
+    return !mutedPeers_.contains(peer);
+}
+
+bool SessionController::contactCalls(const QString& peer) const
+{
+    return !callBarredPeers_.contains(peer);
+}
+
+void SessionController::setContactNotifications(const QString& peer, const bool on)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    if (on) {
+        mutedPeers_.remove(peer);
+    } else {
+        mutedPeers_.insert(peer);
+    }
+    ++contactsRevision_;
+    emit contactsRevisionChanged();
+    emit requestSetContactNotifications(peer, on);
+}
+
+void SessionController::setContactCalls(const QString& peer, const bool allowed)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    if (allowed) {
+        callBarredPeers_.remove(peer);
+    } else {
+        callBarredPeers_.insert(peer);
+    }
+    ++contactsRevision_;
+    emit contactsRevisionChanged();
+    emit requestSetContactCalls(peer, allowed);
+}
+
 QString SessionController_genE2eId()
 {
     return QString::number(QRandomGenerator::global()->generate64(), 16);
@@ -2611,13 +2800,20 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     m.replyTo = replyTo;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = DeliveryStatus::Preparing;
+    // Nothing is delivered to the saved chat: it is kept here and handed to this
+    // account's other devices, so it has no delivery to watch and no row in the
+    // activity panel.
+    const bool saved = isSavedChat(activePeer_);
+    m.status = saved ? DeliveryStatus::Delivered : DeliveryStatus::Preparing;
     m.id = store_.append(m);
-    statusById_[m.id] = DeliveryStatus::Preparing;
+    statusById_[m.id] = m.status;
     showInActiveView(m, true);
-    contacts_.touch(activePeer_, {}, text, m.ts, false);
-    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-        QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending…"), activePeer_);
+    contacts_.touch(activePeer_, saved ? savedChatName() : QString(), text, m.ts, false);
+    if (!saved) {
+        beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
+            QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending…"),
+            activePeer_);
+    }
     emit requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
 }
 
@@ -3928,6 +4124,42 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
+    // Another device of ours emptied the saved chat. Nothing is announced: this is
+    // the user's own action arriving late.
+    if (type == "device.saved-clear") {
+        store_.clearPeer(savedPeer());
+        if (activePeer_ == savedPeer()) {
+            loadLatestWindow();
+        }
+        contacts_.touch(savedPeer(), savedChatName(), QString(), nowMillis(), false);
+        rebuildChatList();
+        return;
+    }
+
+    // Another device of ours removed a contact: the core has already dropped it
+    // here, so what is left is the conversation and the row it sat in.
+    if (type == "device.contact-remove") {
+        const QString gone = message.value("ref").toString();
+        if (!gone.isEmpty()) {
+            store_.clearPeer(gone);
+            contacts_.remove(gone);
+            if (activePeer_ == gone) {
+                openConversation({});
+            }
+            rebuildChatList();
+            refreshUnreadTotal();
+        }
+        return;
+    }
+
+    // A block or a per-contact switch changed on another device. The core applied
+    // it; the interface only re-reads what it shows.
+    if (type == "device.contact-block" || type == "device.contact-prefs") {
+        ++contactsRevision_;
+        emit contactsRevisionChanged();
+        return;
+    }
+
     // A pin/unpin synced from another of our devices (ref = the pinned chat, text =
     // "1"/"0"): apply it to the local pin list and re-sort. Silent - no bubble.
     if (type == "device.chat-pin") {
@@ -4115,8 +4347,10 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // high-water (set when messages actually scroll into view), not a running
     // increment - so it stays accurate across restarts and partial reads.
     contacts_.setUnread(peer, store_.unreadCount(peer));
-    if (!m.outgoing) {
-        // An echo of our own message from another device is not news to anybody.
+    if (!m.outgoing && contactNotifications(peer)) {
+        // An echo of our own message from another device is not news to anybody,
+        // and neither is a contact the user has asked to keep quiet - the chat
+        // list still counts it, so nothing is hidden, it only stays silent.
         emit messageNotification(peerName(peer));
     }
     // No receipt is sent on arrival: the green "read" state is reported only when
@@ -4813,7 +5047,8 @@ void SessionController::onCallLogged(
         return;
     }
     // Outcome ints mirror Session::CallOutcome: 0 answered, 1 no-answer, 2 declined,
-    // 3 missed, 4 cancelled, 5 busy, 6 refused (the peer takes no calls).
+    // 3 missed, 4 cancelled, 5 busy, 6 refused (the peer takes no calls), 7 refused
+    // here (this account takes none, or none from them).
     // A call of ours that did not happen says so out loud: the user is not
     // necessarily looking at the window when the far end refuses.
     if (!incoming && !callEndedLocally_
@@ -4838,6 +5073,7 @@ void SessionController::onCallLogged(
     case 4: text = QStringLiteral("Outgoing call, cancelled"); break;
     case 5: text = QStringLiteral("Outgoing call, busy"); break;
     case 6: text = QStringLiteral("Outgoing call, not accepting calls"); break;
+    case 7: text = QStringLiteral("Incoming call, refused"); break;
     default: text = dir; break;
     }
 
