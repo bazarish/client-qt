@@ -106,7 +106,10 @@ Popup {
         Label {
             visible: !root.saved
             Layout.alignment: Qt.AlignHCenter
-            text: root.session ? root.session.peerName(root.session.activePeer) : ""
+            // Re-read on every contact change: a rename here is stored through the
+            // worker, and the name that comes back may not be the one typed.
+            text: (root.session && root.session.contactsRevision >= 0)
+                ? root.session.peerName(root.session.activePeer) : ""
             color: Theme.text
             font.weight: Font.Medium
             font.pixelSize: Theme.fontTitle
