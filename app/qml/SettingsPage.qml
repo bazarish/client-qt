@@ -835,7 +835,14 @@ Popup {
         onAccepted: if (root.session) root.session.setDisplayName(renameSelfField.text)
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: Label { text: "Change name"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
-        footer: DialogButtons { acceptText: "Save"; onAccepted: renameSelfDialog.accept(); onRejected: renameSelfDialog.reject() }
+        // An account with no name is one the user cannot tell from another, here
+        // or on their other devices, so Save has nothing to save.
+        footer: DialogButtons {
+            acceptText: "Save"
+            acceptEnabled: renameSelfField.text.trim().length > 0
+            onAccepted: renameSelfDialog.accept()
+            onRejected: renameSelfDialog.reject()
+        }
         contentItem: ColumnLayout {
             spacing: 8
             TextField {
