@@ -269,6 +269,9 @@ int main(int argc, char** argv)
     // Starting the application again is a request to see it, whether it is behind
     // other windows or has been put away in the tray.
     QObject::connect(&instance, &bazarish::app::SingleInstance::showRequested, &app, raiseWindow);
+    // Answering a call from the window it rings in: everything else about a call
+    // is in the main window, so it comes forward with the answer.
+    QObject::connect(&controller, &bazarish::app::AppController::raiseRequested, &app, raiseWindow);
 
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {

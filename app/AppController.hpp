@@ -3,11 +3,11 @@
 
 #include "Models.hpp"
 #include "AccountManager.hpp"
+#include "Ringtone.hpp"
 #include "SessionController.hpp"
 
 #include <bazarish/Limits.hpp>
 
-#include <QHash>
 #include <QList>
 #include <QImage>
 #include <QObject>
@@ -46,6 +46,19 @@ class AppController : public QObject {
             NOTIFY notificationsEnabledChanged)
     // The embedded upstream i2pd engine version (e.g. "2.60.0"), for display.
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
+
+    // --- The call that is ringing now ---
+    //
+    // A call announces itself with its own sound and a window of its own, and
+    // never as a tray popup: a popup fades on its own, and a call that faded is a
+    // call missed. All three are empty unless a call is ringing on some open
+    // account and notifications are on - with them off, nothing about a call
+    // leaves the main window.
+    Q_PROPERTY(QString ringingPeer READ ringingPeer NOTIFY ringingChanged)
+    Q_PROPERTY(QString ringingPeerFingerprint READ ringingPeerFingerprint NOTIFY ringingChanged)
+    // The account being called, named only when more than one is open - with one
+    // account there is nothing to tell apart.
+    Q_PROPERTY(QString ringingAccountName READ ringingAccountName NOTIFY ringingChanged)
 public:
     explicit AppController(QObject* parent = nullptr);
 
@@ -97,6 +110,15 @@ public:
 
     bool notificationsEnabled() const { return notifications_; }
     void setNotificationsEnabled(bool on);
+
+    QString ringingPeer() const { return ringingPeer_; }
+    QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
+    QString ringingAccountName() const { return ringingAccountName_; }
+    // Answers the ringing call: the account it came to is made the active one and
+    // the window is brought forward, because everything else about a call - the
+    // microphone, the levels, hanging up - is in there.
+    Q_INVOKABLE void answerRinging();
+    Q_INVOKABLE void declineRinging();
     // The folder every account, the global settings and a notification sound of the
     // user's own live in. Static: the application decides whether it may run at all
     // by this path, before anything is opened.
@@ -181,6 +203,9 @@ signals:
     void accountListChanged();
     void accountsChanged();
     void notificationsEnabledChanged();
+    void ringingChanged();
+    // Asks the window to come forward (answering a call from outside it).
+    void raiseRequested();
     // Worth telling the user about even when they are not looking: an arrived
     // message, an incoming call.
     void notificationRequested(const QString& title, const QString& body);
@@ -258,9 +283,17 @@ private:
     OpenAccountsModel accounts_;
     QVector<AccountRow> accountStatuses_;
     bool notifications_ = true;
+
+    // Recomputed from every open account whenever a call state or the
+    // notification setting changes; it also starts and stops the ringtone.
+    void updateRinging();
+    Ringtone ringtone_;
+    QString ringingAccount_;
+    QString ringingPeer_;
+    QString ringingPeerFingerprint_;
+    QString ringingAccountName_;
     // The call state each account was last seen in, so a call is announced when it
     // starts ringing and not again on every tick that follows.
-    QHash<QString, QString> callStates_;
     QList<SessionController*> sessions_;  // open accounts, owned (parented here)
     QString activeId_;
     bool haveAccounts_ = false;

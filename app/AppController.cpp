@@ -130,6 +130,62 @@ void AppController::setNotificationsEnabled(const bool on)
     notifications_ = on;
     persistSettings();
     emit notificationsEnabledChanged();
+    // Turning them off silences a call that is ringing at that moment too: the
+    // setting is about what this application does outside its own window.
+    updateRinging();
+}
+
+void AppController::updateRinging()
+{
+    const SessionController* ringing = nullptr;
+    if (notifications_) {
+        for (const SessionController* const ctrl : sessions_) {
+            if (ctrl->callState() == QLatin1String("incoming")) {
+                // The first one found: two calls ringing at once is one call to
+                // answer and one to keep ringing behind it.
+                ringing = ctrl;
+                break;
+            }
+        }
+    }
+    const QString account = ringing ? ringing->accountId() : QString();
+    const QString peer = ringing ? ringing->callPeerName() : QString();
+    const QString fingerprint = ringing ? ringing->callPeer() : QString();
+    const QString accountName
+        = (ringing != nullptr && sessions_.size() > 1) ? ringing->displayName() : QString();
+    if (account != ringingAccount_ || peer != ringingPeer_
+        || fingerprint != ringingPeerFingerprint_ || accountName != ringingAccountName_) {
+        ringingAccount_ = account;
+        ringingPeer_ = peer;
+        ringingPeerFingerprint_ = fingerprint;
+        ringingAccountName_ = accountName;
+        emit ringingChanged();
+    }
+    if (ringing != nullptr) {
+        ringtone_.start();
+    } else {
+        ringtone_.stop();
+    }
+}
+
+void AppController::answerRinging()
+{
+    SessionController* const ctrl = sessionFor(ringingAccount_);
+    if (ctrl == nullptr) {
+        return;  // it stopped ringing while the press was on its way
+    }
+    if (ctrl->accountId() != activeId_) {
+        switchTo(ctrl->accountId());
+    }
+    emit raiseRequested();
+    ctrl->acceptCall();
+}
+
+void AppController::declineRinging()
+{
+    if (SessionController* const ctrl = sessionFor(ringingAccount_)) {
+        ctrl->declineCall();
+    }
 }
 
 QString AppController::i2pdVersion() const
@@ -381,17 +437,10 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
         [this, ctrl](const QString& fromName) {
             emit notificationRequested(fromName, notificationBody(ctrl, tr("New message")));
         });
-    // A call is announced when it starts ringing: the state is republished on
-    // every sync tick, and only the change into "incoming" is news.
-    connect(ctrl, &SessionController::callChanged, this, [this, ctrl]() {
-        const QString state = ctrl->callState();
-        const QString previous = callStates_.value(ctrl->accountId());
-        callStates_.insert(ctrl->accountId(), state);
-        if (state == QLatin1String("incoming") && previous != state) {
-            emit notificationRequested(
-                ctrl->callPeerName(), notificationBody(ctrl, tr("Incoming call")));
-        }
-    });
+    // A call is not announced in the tray. It rings, and it puts a window of its
+    // own where it will be seen; both are decided here, from the state of every
+    // open account.
+    connect(ctrl, &SessionController::callChanged, this, [this]() { updateRinging(); });
     connect(ctrl, &SessionController::unreadTotalChanged, this, &AppController::refreshAccounts);
     connect(ctrl, &SessionController::onlineChanged, this, &AppController::refreshAccounts);
     connect(ctrl, &SessionController::reachableChanged, this, &AppController::refreshAccounts);
@@ -444,6 +493,8 @@ void AppController::removeSession(SessionController* ctrl, bool deferred)
         writeLastActive(activeId_);
         emit sessionChanged();
     }
+    // An account that has just been closed cannot go on ringing.
+    updateRinging();
     refreshAccounts();
 }
 

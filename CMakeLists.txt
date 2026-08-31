@@ -84,6 +84,8 @@ if(Qt6_FOUND)
         app/SingleInstance.hpp
         app/NotifySound.cpp
         app/NotifySound.hpp
+        app/Ringtone.cpp
+        app/Ringtone.hpp
         app/TrayIcon.cpp
         app/TrayIcon.hpp
         app/Identicon.cpp
@@ -138,6 +140,7 @@ if(Qt6_FOUND)
         BASE app/sound
         FILES
             app/sound/notify.wav
+            app/sound/ringtone.wav
     )
 
     # The brand app icon (rendered from the brand kit's icon.svg) and the brand
@@ -182,6 +185,7 @@ if(Qt6_FOUND)
             app/qml/ContactInfo.qml
             app/qml/ContactShareSheet.qml
             app/qml/CallScreen.qml
+            app/qml/IncomingCallWindow.qml
             app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml

@@ -50,6 +50,10 @@ ApplicationWindow {
         function onServerHello(reason, message, links) { helloDialog.show(reason, message, links) }
     }
 
+    // The incoming call, announced outside this window: it stands over the desktop
+    // while a call rings, unless the user is already looking at the application.
+    IncomingCallWindow { mainWindowActive: window.active }
+
     StackView {
         id: stack
         anchors.fill: parent
