@@ -19,6 +19,7 @@
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
+#include <bazarish/Portal.hpp>
 
 // Qt makes `emit` a macro and the log header declares a function of that name,
 // so the keyword is stood down for the length of this include.
@@ -3323,6 +3324,25 @@ void SessionController::requestInvite()
 void SessionController::signLogin(const QString& challenge)
 {
     emit requestSignLoginSig(challenge);
+}
+
+QVariantMap SessionController::describeLoginChallenge(const QString& challenge) const
+{
+    QVariantMap described;
+    try {
+        const bazarish::service::LoginConsumer consumer
+            = bazarish::service::readLoginConsumer(challenge.trimmed().toStdString());
+        described["ok"] = true;
+        described["name"] = QString::fromStdString(consumer.name);
+        described["place"] = QString::fromStdString(consumer.place);
+        described["role"] = QString::fromStdString(consumer.role);
+    } catch (const std::exception& error) {
+        // The reason belongs on screen: this is the window where a user decides
+        // whether to sign, and "it did not work" decides nothing for them.
+        described["ok"] = false;
+        described["problem"] = QString::fromUtf8(error.what());
+    }
+    return described;
 }
 
 void SessionController::saveAttachment(

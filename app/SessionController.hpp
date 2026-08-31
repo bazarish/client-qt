@@ -830,6 +830,11 @@ public:
     // Signs a sign-in-with-key challenge with this account's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
+    // Who a pasted challenge says will consume the signature, for the window to
+    // put in front of the user before they sign: {ok, name, place, role} or
+    // {ok: false, problem}. A challenge that names nobody is not signable, so
+    // this is also what disables the button.
+    Q_INVOKABLE QVariantMap describeLoginChallenge(const QString& challenge) const;
     Q_INVOKABLE void saveAttachment(const QString& peer, const QString& e2eId, const QString& fileUrl);
     // Saves a received attachment to the file the user picked in the native Save
     // dialog (which already resolved any name conflict), reporting byte progress
