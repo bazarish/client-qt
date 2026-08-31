@@ -51,6 +51,13 @@ are, and deleting them is the separate action it already was. Unblocking restore
 nothing that was dropped in between, and the correspondent must write again -
 they hold no tokens until this account issues more.
 
+**Unblocking hands the tokens back.** Blocking revoked what they held, so a
+contact who is unblocked can be written to but cannot answer. The first message
+written to them after the block is lifted carries a fresh batch with it - one
+delivery, not an errand of its own - and the reverse direction works again from
+that moment. A batch that arrives while they still hold tokens is added to what
+they have, never in place of it.
+
 **Writing to them unblocks them.** The first thing the user composes into a
 blocked conversation - a message, a forward, a picture, a voice note, a file, or a
 tap on a command the chat offers - lifts the block first, as if the button had
