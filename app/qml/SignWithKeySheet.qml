@@ -132,6 +132,10 @@ Popup {
                     ScrollView {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 96
+                        // The challenge wraps, so the only scrolling that means
+                        // anything here is downwards.
+                        contentWidth: availableWidth
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                         TextArea {
                             id: challengeArea
                             wrapMode: TextArea.WrapAnywhere
