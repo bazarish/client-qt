@@ -119,7 +119,7 @@ Popup {
                     elide: Text.ElideRight
                     // One column, so the eye runs down the kinds rather than
                     // hunting for where each line's status begins.
-                    Layout.preferredWidth: 240
+                    Layout.preferredWidth: 300
                 }
                 Label {
                     text: modelData.status
