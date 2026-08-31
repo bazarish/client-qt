@@ -66,7 +66,14 @@ if [ ! -f /opt/sqlcipher/lib/libsqlcipher.so ]; then
 fi
 export LD_LIBRARY_PATH=/opt/sqlcipher/lib:${LD_LIBRARY_PATH}
 
-rsync -a --exclude 'build' --exclude 'build-asan' --exclude 'AppDir' /host/ /src/
+# --delete, and not only a copy: this directory outlives one build, and a source
+# file the repository no longer has must not stay behind in it. The client core
+# moved out of src/ into common/, and the copies left there went on shadowing the
+# headers that replaced them - a build that fails loudly if you are lucky.
+# The build directory and what is made from it are the receiver's own and are
+# excluded, which also protects them from the delete.
+rsync -a --delete --exclude 'build' --exclude 'build-asan' --exclude 'build-appimage' \
+    --exclude 'AppDir' /host/ /src/
 cd /src
 git config --global --add safe.directory '*'
 
