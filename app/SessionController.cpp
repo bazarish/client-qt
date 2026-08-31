@@ -2819,6 +2819,20 @@ QString SessionController_genE2eId()
     return QString::number(QRandomGenerator::global()->generate64(), 16);
 }
 
+void SessionController::unblockBeforeWriting(const QString& peer)
+{
+    if (peer.isEmpty() || !isBlocked(peer)) {
+        return;
+    }
+    // Writing to somebody you blocked is the plainest way of saying you no longer
+    // mean to keep them blocked. The block lifts here exactly as the button lifts
+    // it - the same one action, told to the account's other devices the same way -
+    // rather than the message failing and the user hunting for the switch.
+    // Only what a person composes does this; nothing automatic writes into a
+    // blocked conversation, and the core still refuses it.
+    setBlocked(peer, false);
+}
+
 void SessionController::sendText(const QString& text)
 {
     if (activePeer_.isEmpty() || text.isEmpty()) {
@@ -2844,6 +2858,7 @@ void SessionController::sendOffered(const QString& text)
 
 void SessionController::deliverText(const QString& text, const QString& replyTo)
 {
+    unblockBeforeWriting(activePeer_);
     StoredMessage m;
     m.peer = activePeer_;
     m.outgoing = true;
@@ -2875,6 +2890,7 @@ void SessionController::sendFile(const QString& fileUrl)
     if (activePeer_.isEmpty()) {
         return;
     }
+    unblockBeforeWriting(activePeer_);
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (localPath.isEmpty()) {
         return;
@@ -2915,6 +2931,7 @@ void SessionController::sendPicture(const QString& fileUrl)
     if (activePeer_.isEmpty()) {
         return;
     }
+    unblockBeforeWriting(activePeer_);
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (localPath.isEmpty()) {
         return;
@@ -3765,6 +3782,7 @@ void SessionController::sendVoiceTake()
     if (voiceTake_.isEmpty() || activePeer_.isEmpty()) {
         return;
     }
+    unblockBeforeWriting(activePeer_);
     stopVoiceTake();
     const QByteArray audio = voiceTake_;
     const qint64 durationMs = voiceTakeMs_;
@@ -3807,6 +3825,8 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     if (source.id == 0) {
         return;  // not a message this chat holds
     }
+    // Passing something on to somebody is writing to them.
+    unblockBeforeWriting(toPeer);
     // A forward is a message of this account's own: new id, new row, the content
     // carried over and marked. Nothing of the original travels - not its sender,
     // not its id, not its history of being passed on before.

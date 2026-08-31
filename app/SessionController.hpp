@@ -1091,6 +1091,10 @@ private:
     // Records an outgoing text message and hands it to the courier. What the two
     // ways of sending one share; the reply reference is what differs.
     void deliverText(const QString& text, const QString& replyTo);
+    // Lifts a block because the user is writing to them. Called from the four
+    // places a person composes something - a message, a file, a picture, a voice
+    // note - and from nowhere automatic.
+    void unblockBeforeWriting(const QString& peer);
 
     QString accountId_;
     QString fingerprint_;

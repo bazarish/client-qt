@@ -51,6 +51,14 @@ are, and deleting them is the separate action it already was. Unblocking restore
 nothing that was dropped in between, and the correspondent must write again -
 they hold no tokens until this account issues more.
 
+**Writing to them unblocks them.** The first thing the user composes into a
+blocked conversation - a message, a forward, a picture, a voice note, a file, or a
+tap on a command the chat offers - lifts the block first, as if the button had
+been pressed, and reaches the account's other devices the same way. Nothing
+automatic does this: a read receipt, a token refill, a call signal or a bot's
+message is still refused, and the block stands. Writing to somebody is the
+plainest way of saying the block was not meant to hold.
+
 The block list outlives the contact it was made on: deleting a blocked contact
 leaves the fingerprint blocked. It is shown, with an unblock action, under
 **Blocked** in the account settings.

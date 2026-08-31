@@ -239,7 +239,8 @@ Popup {
             color: Theme.warn
             font.pixelSize: Theme.fontSmall
             text: "Blocked: their messages and calls are dropped as they arrive, and what they "
-                + "held to write to you has been revoked. The conversation is untouched."
+                + "held to write to you has been revoked. The conversation is untouched, and "
+                + "writing to them here lifts the block."
         }
 
         Rectangle { visible: !root.saved; Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
@@ -361,8 +362,9 @@ Popup {
             color: Theme.text
             text: "Their messages and calls stop arriving, and the tickets they held to write "
                 + "to you are revoked at your server. The conversation and its history stay "
-                + "where they are; deleting them is a separate action. You can unblock at any "
-                + "time, but they will need to write again before you hear from them."
+                + "where they are; deleting them is a separate action. Writing to them again "
+                + "lifts the block by itself, and they will need to write once before you hear "
+                + "from them."
         }
     }
 
