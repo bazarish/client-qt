@@ -40,19 +40,39 @@ Item {
         // Drawn only through the mask below.
         visible: false
         layer.enabled: true
+        layer.smooth: true
     }
     Item {
         id: circle
         anchors.fill: parent
         visible: false
         layer.enabled: true
-        Rectangle { anchors.fill: parent; radius: width / 2; color: "black" }
+        // The mask's edge is the avatar's edge, so it is the one thing here that
+        // must not be drawn jagged: a layer is rendered into a buffer of its own,
+        // which gets no antialiasing unless it is asked for, and a hard-edged mask
+        // turns a circle into a staircase.
+        layer.samples: 8
+        layer.smooth: true
+        // Drawn four times larger than it is shown and sampled down: the edge of a
+        // circle 44 pixels across has nowhere to put a smooth gradient otherwise.
+        layer.textureSize: Qt.size(root.size * 4, root.size * 4)
+        Rectangle {
+            anchors.fill: parent
+            radius: width / 2
+            antialiasing: true
+            color: "black"
+        }
     }
     MultiEffect {
         anchors.fill: parent
         source: face
         maskEnabled: true
         maskSource: circle
+        // Without a spread the mask is read as a step: every pixel the circle
+        // touched at all becomes fully opaque, and the antialiased edge the mask
+        // drew turns back into a staircase. The ramp is what keeps it a circle.
+        maskThresholdMin: 0.5
+        maskSpreadAtMin: 1.0
     }
 
     // Tap to view the avatar full-size (created only on demand, one at a time).
