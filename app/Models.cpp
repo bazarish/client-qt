@@ -80,12 +80,11 @@ QHash<int, QByteArray> ContactListModel::roleNames() const
 
 namespace {
 
-// The saved chat first, then pinned chats, then by most-recent activity.
+// Pinned chats first, then by most-recent activity. The saved chat takes its
+// place among the rest: it is a chat, and a chat nobody has written in has no
+// claim on the top of the list.
 bool before(const ContactRow& a, const ContactRow& b)
 {
-    if (a.saved != b.saved) {
-        return a.saved;
-    }
     if (a.pinned != b.pinned) {
         return a.pinned;
     }

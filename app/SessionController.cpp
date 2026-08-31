@@ -1419,6 +1419,28 @@ void SessionWorker::renameContact(const QString& peer, const QString& name)
     }
 }
 
+void SessionWorker::emitSettings()
+{
+    if (!session_) {
+        return;
+    }
+    emit accountSettings(session_->acceptCalls(), session_->sharingAllowed());
+}
+
+void SessionWorker::syncChatClear(const QString& peer)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->syncChatClearToSelf(peer.toStdString());
+    } catch (const std::exception& error) {
+        // The other devices keep their copy until they hear it; said out loud
+        // rather than left looking like they disagreed.
+        bazarish::log::warn("chat-clear self-sync failed: {}", error.what());
+    }
+}
+
 void SessionWorker::syncChatPin(const QString& peer, bool pinned)
 {
     if (!session_) {
@@ -1927,6 +1949,10 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSetContactCalls, worker_,
         &SessionWorker::setContactCalls);
     connect(this, &SessionController::requestSyncChatPin, worker_, &SessionWorker::syncChatPin);
+    connect(this, &SessionController::requestSyncChatClear, worker_,
+        &SessionWorker::syncChatClear);
+    connect(this, &SessionController::requestEmitSettings, worker_,
+        &SessionWorker::emitSettings);
     connect(this, &SessionController::requestClearChatForEveryone, worker_,
         &SessionWorker::clearChatForEveryone);
     connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
@@ -2513,11 +2539,13 @@ void SessionController::rebuildChatList()
 {
     QVector<ContactRow> rows;
     QSet<QString> known;
-    // The saved chat is always there, first, whether or not anything is in it: it
+    // The saved chat is always in the list, whether or not anything is in it: it
     // is not a contact and cannot be deleted, so nothing else decides it exists.
+    // Where it sits is another matter - that is the sort's business, like any
+    // other chat's, and it can be pinned the same way.
     if (!savedPeer().isEmpty()) {
         ContactRow saved{savedPeer(), savedChatName(), store_.lastText(savedPeer()),
-            store_.lastTime(savedPeer()), 0, false};
+            store_.lastTime(savedPeer()), 0, store_.isPinned(savedPeer())};
         saved.saved = true;
         rows.push_back(saved);
         known.insert(savedPeer());
@@ -2644,6 +2672,12 @@ void SessionController::clearChat(bool forEveryone)
     }
     const QString peer = activePeer_;
     store_.clearPeer(peer);
+    // Either way the account's other devices drop their copy: "only for me" means
+    // this account, not this device. When it is for everyone the peer is asked as
+    // well, and that request is echoed to our own devices by the core.
+    if (!forEveryone) {
+        emit requestSyncChatClear(peer);
+    }
     if (forEveryone) {
         emit requestClearChatForEveryone(peer);
         // A single note so the now-empty chat explains itself.
@@ -4124,6 +4158,37 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
+    // Another device of ours emptied its copy of a conversation.
+    if (type == "device.chat-clear") {
+        const QString cleared = message.value("ref").toString();
+        if (!cleared.isEmpty()) {
+            store_.clearPeer(cleared);
+            if (activePeer_ == cleared) {
+                loadLatestWindow();
+            }
+            contacts_.touch(cleared, peerName(cleared), store_.lastText(cleared),
+                store_.lastTime(cleared), false);
+            contacts_.setUnread(cleared, store_.unreadCount(cleared));
+            refreshUnreadTotal();
+        }
+        return;
+    }
+
+    // The account was renamed, or an account-wide answer changed, on another
+    // device of ours. The core has applied it; the window catches up.
+    if (type == "device.account-name") {
+        const QString name = message.value("text").toString();
+        if (!name.isEmpty() && name != displayName_) {
+            displayName_ = name;
+            emit identityChanged();
+        }
+        return;
+    }
+    if (type == "device.account-prefs") {
+        emit requestEmitSettings();
+        return;
+    }
+
     // Another device of ours emptied the saved chat. Nothing is announced: this is
     // the user's own action arriving late.
     if (type == "device.saved-clear") {
@@ -4185,7 +4250,10 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // A reaction: record the reactor's emoji against the target message and
     // re-drive the chips. Never a chat bubble. The reactor is the peer who sent it.
     if (type == "reaction") {
-        store_.setReaction(peer, message.value("ref").toString(), peer,
+        // Whose reaction it is: the peer's, or ours when this is another device of
+        // ours saying what we did there.
+        const QString reactor = message.value("sentByUs").toBool() ? fingerprint_ : peer;
+        store_.setReaction(peer, message.value("ref").toString(), reactor,
             message.value("text").toString());
         ++reactionsRevision_;
         emit reactionsRevisionChanged();
@@ -4197,9 +4265,11 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // in the store, so a peer can only edit its own messages.
     if (type == "edit") {
         // Scoped to incoming-from-peer in the store, so a peer can only edit its
-        // own messages.
-        const qint64 localId
-            = store_.idForIncomingE2e(message.value("ref").toString(), peer);
+        // own messages. An edit echoed from another device of ours is about a
+        // message of ours, so it is looked up unscoped.
+        const qint64 localId = message.value("sentByUs").toBool()
+            ? store_.idForE2e(message.value("ref").toString())
+            : store_.idForIncomingE2e(message.value("ref").toString(), peer);
         if (localId != 0) {
             const QString newText = message.value("text").toString();
             const QString newKeyboard = message.value("keyboard").toString();
@@ -4227,8 +4297,10 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // with no trace. Scoped to incoming-from-peer in the store, so a peer can only
     // delete its own messages.
     if (type == "delete") {
-        const qint64 localId
-            = store_.idForIncomingE2e(message.value("ref").toString(), peer);
+        // As with an edit: ours refers to a message of ours.
+        const qint64 localId = message.value("sentByUs").toBool()
+            ? store_.idForE2e(message.value("ref").toString())
+            : store_.idForIncomingE2e(message.value("ref").toString(), peer);
         if (localId != 0) {
             store_.removeById(localId);
             if (peer == activePeer_) {
@@ -4248,7 +4320,9 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.peer = peer;
         sys.e2eId = incomingId;  // so a redelivery is recognised as one
         sys.type = QStringLiteral("system");
-        sys.text = peerName(peer) + QStringLiteral(" cleared the chat.");
+        sys.text = message.value("sentByUs").toBool()
+            ? QStringLiteral("You cleared the chat for everyone.")
+            : peerName(peer) + QStringLiteral(" cleared the chat.");
         sys.ts = nowMillis();
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;

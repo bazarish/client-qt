@@ -197,15 +197,10 @@ Item {
                     }
                 }
                 // Pin/unpin via right-click or long-press (a left tap still opens the
-                // chat). Pin state syncs to the account's other devices. The saved
-                // chat is already first and stays there, so it has no menu.
+                // chat). Pin state syncs to the account's other devices, and the
+                // saved chat is pinned like any other.
+                TapHandler { acceptedButtons: Qt.RightButton; onTapped: pinMenu.popup() }
                 TapHandler {
-                    enabled: !model.saved
-                    acceptedButtons: Qt.RightButton
-                    onTapped: pinMenu.popup()
-                }
-                TapHandler {
-                    enabled: !model.saved
                     acceptedButtons: Qt.LeftButton
                     longPressThreshold: 0.5
                     onLongPressed: pinMenu.popup()

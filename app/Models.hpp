@@ -43,7 +43,8 @@ struct ContactRow {
     qint64 lastTime = 0;
     int unread = 0;
     bool pinned = false;   // kept at the top of the list, before the recent sort
-    // The saved-messages chat: always first, always there, never deleted.
+    // The saved-messages chat: always in the list and never deleted, but ordered
+    // and pinned like any other. What this drives is the mark it carries.
     bool saved = false;
 };
 

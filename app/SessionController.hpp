@@ -88,6 +88,10 @@ public slots:
     void setContactNotifications(const QString& peer, bool on);
     void setContactCalls(const QString& peer, bool allowed);
     void syncChatPin(const QString& peer, bool pinned);
+    void syncChatClear(const QString& peer);
+    // Re-publishes the account-wide answers, for a change that arrived from
+    // another device of ours.
+    void emitSettings();
     // Asks the peer to clear the whole conversation with us (chat.clear); their
     // client wipes its transcript on receipt.
     void clearChatForEveryone(const QString& peer);
@@ -964,6 +968,8 @@ signals:  // to worker
     void requestSetContactNotifications(const QString& peer, bool on);
     void requestSetContactCalls(const QString& peer, bool allowed);
     void requestSyncChatPin(const QString& peer, bool pinned);
+    void requestSyncChatClear(const QString& peer);
+    void requestEmitSettings();
     void requestClearChatForEveryone(const QString& peer);
     void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId);
     void requestAddByUsername(const QString& alias, const QString& intro, const QString& opId);

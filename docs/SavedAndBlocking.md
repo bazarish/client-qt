@@ -59,6 +59,23 @@ A message from someone who is neither a contact nor asking to become one is
 dropped the same way, blocked or not: only a contact, a contact request, or this
 account's own devices may put something in front of the user.
 
+## What reaches the account's other devices
+
+Everything that changes what a conversation looks like: a message sent, a picture,
+a voice message, an edit, a deletion, a reaction, a chat cleared (either the copy
+here or the request to the correspondent), a chat pinned or unpinned, a contact
+renamed, removed, blocked or unblocked, its two switches, the saved chat and the
+account's own name and call switch.
+
+What does not: read state and unread counts, which are this device's own -
+a message read here is not read there - and this device's errands with a
+correspondent, meaning read receipts, call signalling, token refills and the
+file-transfer handshake.
+
+Removing a contact revokes their tokens **once**, at the device the removal was
+made on. The others apply the removal to their own database and ask the server
+for nothing: one revocation is enough, and it is the same server.
+
 ## Notifications and calls, per contact
 
 Two switches in a contact's panel, under **Share contact**:
