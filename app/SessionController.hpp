@@ -1299,6 +1299,9 @@ private:
     qreal callOutputLevel_ = 0.0;
     QString callPeer_;
     QString callId_;
+    // The call the user refused here: state updates still travelling for it are
+    // dropped, so a refusal is one transition rather than a flicker.
+    QString refusedCallId_;
     // The activity-panel operation id for the call currently in progress (so it is
     // finished when the call goes back to idle, even though the idle signal carries
     // no call id). Empty when there is no active call row.

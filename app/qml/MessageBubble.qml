@@ -502,7 +502,11 @@ Item {
                 spacing: 2
 
                 Rectangle {
+                    // Holds the place while the bytes are decoded - but not when
+                    // the decode failed: a placeholder that never resolves is a
+                    // black rectangle the user cannot tell from a picture.
                     visible: model.hasPicture && preview.status !== Image.Ready
+                        && preview.status !== Image.Error
                     Layout.preferredWidth: preview.maxEdge
                     Layout.preferredHeight: Math.round(preview.maxEdge * 0.6)
                     radius: Theme.radiusSmall
@@ -531,7 +535,7 @@ Item {
                 }
 
                 Label {
-                    visible: delegate.pictureBroken
+                    visible: delegate.pictureBroken || preview.status === Image.Error
                     text: "Broken picture"
                     color: Theme.danger
                     font.pixelSize: Theme.fontSmall
@@ -871,14 +875,28 @@ Item {
             // grey as the chip: a message being tried again says so on itself,
             // instead of looking like one nobody is carrying.
             Label {
+                id: tryingLine
+                property bool copied: false
                 visible: model.outgoing && model.status === DeliveryStatus.Delivering
                     && model.error && model.error.length > 0
                 Layout.fillWidth: true
                 Layout.topMargin: 2
-                text: model.error
-                color: Theme.textDim
+                text: tryingLine.copied ? "Copied to clipboard" : model.error
+                color: tryingLine.copied ? Theme.green : Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
+                Timer { id: tryingCopied; interval: 1500; onTriggered: tryingLine.copied = false }
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
+                        if (!delegate.session) {
+                            return
+                        }
+                        delegate.session.copyText(model.error)
+                        tryingLine.copied = true
+                        tryingCopied.restart()
+                    }
+                }
             }
 
             // Delivery-failure notice for an outgoing message: the reason and a
@@ -889,12 +907,30 @@ Item {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
                 spacing: 8
+                // A failure is the one line worth carrying out of the window, so
+                // a tap on it puts it on the clipboard and says that it did.
                 Label {
-                    text: (model.error && model.error.length > 0) ? model.error : "Failed to send"
-                    color: Theme.danger
+                    id: failLine
+                    property bool copied: false
+                    readonly property string reason: (model.error && model.error.length > 0)
+                        ? model.error : "Failed to send"
+                    text: failLine.copied ? "Copied to clipboard" : failLine.reason
+                    color: failLine.copied ? Theme.green : Theme.danger
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
+                    Timer { id: failCopied; interval: 1500; onTriggered: failLine.copied = false }
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        onTapped: {
+                            if (!delegate.session) {
+                                return
+                            }
+                            delegate.session.copyText(failLine.reason)
+                            failLine.copied = true
+                            failCopied.restart()
+                        }
+                    }
                 }
                 // Resend covers everything this device can send again by itself.
                 Label {

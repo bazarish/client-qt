@@ -4065,7 +4065,12 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
         }
         const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.e2eId);
         if (bytes.isEmpty()) {
-            continue;  // nothing stored for it: the bubble stays as it is
+            // The bytes travel with the message, so nothing is on its way: this
+            // one is broken and has to say so. Left alone it sat as a dark
+            // placeholder for a picture that was never going to arrive.
+            store_.setHasPicture(message.id, false);
+            conversation_.setPictureReadyForId(message.id, false);
+            continue;
         }
         if (!PictureStore::instance().put(message.e2eId, bytes)) {
             // What was stored is not a picture: the message is broken and stays
@@ -5146,6 +5151,10 @@ void SessionController::declineCall()
 {
     callEndedLocally_ = true;
     callTones_.stop();
+    // Remembered until another call arrives: the sync thread may already have a
+    // state update for this one on its way, and applying it after the refusal
+    // put the window back on the desktop and the ringtone with it.
+    refusedCallId_ = callId_;
     // Refused is over, here and now: the ringtone stops, the window goes and the
     // buttons come back at once, while the refusal itself travels in the
     // background. Waiting for it meant ringing at somebody who had already been
@@ -5184,6 +5193,14 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
     static const char* const kNames[] = {"idle", "outgoing", "incoming", "active"};
     const QString name = (state >= 0 && state <= 3) ? QString::fromLatin1(kNames[state])
                                                     : QStringLiteral("idle");
+    // A call the user refused is over here, whatever is still in flight about it.
+    if (!refusedCallId_.isEmpty() && callId == refusedCallId_
+        && name != QLatin1String("idle")) {
+        return;
+    }
+    if (!callId.isEmpty() && callId != refusedCallId_) {
+        refusedCallId_.clear();
+    }
     if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted
         && callStage_ == stage && callConnectedAtMs_ == connectedAtMs) {
         return;

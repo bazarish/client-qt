@@ -176,6 +176,36 @@ Popup {
             }
         }
 
+        // What this contact may do here. The global settings still apply on top:
+        // these only take something away, never add it back.
+        RowLayout {
+            visible: !root.saved
+            Layout.fillWidth: true
+            Layout.topMargin: 2
+            spacing: 12
+            Label {
+                text: "Notifications"
+                color: Theme.text
+                font.pixelSize: Theme.fontSmall
+            }
+            Toggle {
+                checked: root.session !== null && root.session.contactsRevision >= 0
+                    && root.session.contactNotifications(root.session.activePeer)
+                onToggled: root.session.setContactNotifications(root.session.activePeer, checked)
+            }
+            Item { Layout.fillWidth: true }
+            Label {
+                text: "Allow calls"
+                color: Theme.text
+                font.pixelSize: Theme.fontSmall
+            }
+            Toggle {
+                checked: root.session !== null && root.session.contactsRevision >= 0
+                    && root.session.contactCalls(root.session.activePeer)
+                onToggled: root.session.setContactCalls(root.session.activePeer, checked)
+            }
+        }
+
         Rectangle {
             // The line divides a contact's identity from what can be done about
             // it. The saved chat has neither, so it has nothing to divide.
@@ -211,35 +241,6 @@ Popup {
             Layout.fillWidth: true
         }
 
-        // What this contact may do here. The global settings still apply on top:
-        // these only take something away, never add it back.
-        RowLayout {
-            visible: !root.saved
-            Layout.fillWidth: true
-            Layout.topMargin: 2
-            spacing: 12
-            Label {
-                text: "Notifications"
-                color: Theme.text
-                font.pixelSize: Theme.fontSmall
-            }
-            Toggle {
-                checked: root.session !== null && root.session.contactsRevision >= 0
-                    && root.session.contactNotifications(root.session.activePeer)
-                onToggled: root.session.setContactNotifications(root.session.activePeer, checked)
-            }
-            Item { Layout.fillWidth: true }
-            Label {
-                text: "Allow calls"
-                color: Theme.text
-                font.pixelSize: Theme.fontSmall
-            }
-            Toggle {
-                checked: root.session !== null && root.session.contactsRevision >= 0
-                    && root.session.contactCalls(root.session.activePeer)
-                onToggled: root.session.setContactCalls(root.session.activePeer, checked)
-            }
-        }
         Label {
             visible: !root.saved && root.blocked
             Layout.fillWidth: true
