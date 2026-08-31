@@ -10,6 +10,7 @@ Popup {
     signal showInvite()
     signal showSignWithKey()
     signal showRouterStatus()
+    signal showConnectionLog()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -375,6 +376,14 @@ Popup {
                             Layout.fillWidth: true
                             text: "Server connection…"
                             onClicked: connectionDialog.open()
+                        }
+                        // What the account actually did on the wire: the one
+                        // place that shows a refusal, a delivery nobody signed
+                        // for, or a device sync that never left.
+                        MenuButton {
+                            Layout.fillWidth: true
+                            text: "Connection log"
+                            onClicked: { root.close(); root.showConnectionLog() }
                         }
                     }
                 }

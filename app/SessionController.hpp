@@ -103,6 +103,8 @@ public slots:
     // Signs a portal/third-party login challenge with this account's key. Local
     // only - no server is contacted - so it works before a server is connected.
     void signLogin(const QString& challenge);
+    void connectionLog();
+    void clearConnectionLog();
     void saveAttachment(const QString& peer, const QString& e2eId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
     void changePassphrase(const QString& passphrase);
@@ -232,6 +234,7 @@ signals:
     void inviteUnavailable(const QString& reason);
     // The signed login blob for a challenge (sign-in-with-key result).
     void loginSigned(const QString& blob);
+    void connectionLogReady(const QVariantList& lines);
     // Whether the last sync reached the facade (true) or failed (false).
     // reason carries why a failed sync failed, so an account stuck at
     // "Connecting" can say what is wrong instead of only that it is not right.
@@ -835,6 +838,11 @@ public:
     // {ok: false, problem}. A challenge that names nobody is not signable, so
     // this is also what disables the button.
     Q_INVOKABLE QVariantMap describeLoginChallenge(const QString& challenge) const;
+    // The account's connection log: what went to the server and what came back,
+    // including deliveries to correspondents and their outcome. Answered by
+    // connectionLogUpdated(); kept in memory only, and short.
+    Q_INVOKABLE void refreshConnectionLog();
+    Q_INVOKABLE void clearConnectionLog();
     Q_INVOKABLE void saveAttachment(const QString& peer, const QString& e2eId, const QString& fileUrl);
     // Saves a received attachment to the file the user picked in the native Save
     // dialog (which already resolved any name conflict), reporting byte progress
@@ -940,6 +948,9 @@ signals:
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
+    // The connection log, oldest first: one map per line with at/outgoing/what/
+    // status/detail. Answers refreshConnectionLog().
+    void connectionLogUpdated(const QVariantList& lines);
     // A failed file's saved source is gone: the UI should offer to pick a file.
     void resendFilePickRequested();
     // Forwarded onboarding info for the hello dialog (unregistered-key connect).
@@ -984,6 +995,8 @@ signals:  // to worker
     void requestAcceptContact(const QString& peer);
     void requestInviteSig();
     void requestSignLoginSig(const QString& challenge);
+    void requestConnectionLog();
+    void requestClearConnectionLog();
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
         qint64 token);
     void requestExport(const QString& path, const QString& password);

@@ -182,12 +182,18 @@ Item {
         id: appSettings
         onShowRouterStatus: routerStatus.open()
     }
+    ConnectionLogPage {
+        id: connectionLog
+        session: root.session
+        onBack: { connectionLog.close(); settings.open() }
+    }
     SettingsPage {
         id: settings
         session: root.session
         onShowInvite: inviteSheet.open()
         onShowSignWithKey: signWithKeySheet.open()
         onShowRouterStatus: routerStatus.open()
+        onShowConnectionLog: connectionLog.open()
     }
 
     // Unlock prompt for an encrypted account the user brings online/switches to.

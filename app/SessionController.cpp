@@ -1535,6 +1535,33 @@ void SessionWorker::clearChatForEveryone(const QString& peer)
     }
 }
 
+void SessionWorker::connectionLog()
+{
+    if (!session_) {
+        emit connectionLogReady({});
+        return;
+    }
+    QVariantList lines;
+    for (const bazarish::client::WireEvent& event : session_->connectionLog()) {
+        lines.append(QVariantMap{
+            {QStringLiteral("at"), QVariant::fromValue(event.atMillis)},
+            {QStringLiteral("outgoing"), event.outgoing},
+            {QStringLiteral("what"), QString::fromStdString(event.what)},
+            {QStringLiteral("status"), QString::fromStdString(event.status)},
+            {QStringLiteral("detail"), QString::fromStdString(event.detail)},
+        });
+    }
+    emit connectionLogReady(lines);
+}
+
+void SessionWorker::clearConnectionLog()
+{
+    if (session_) {
+        session_->clearConnectionLog();
+    }
+    emit connectionLogReady({});
+}
+
 void SessionWorker::signLogin(const QString& challenge)
 {
     if (!session_) {
@@ -1974,6 +2001,10 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
+    connect(this, &SessionController::requestConnectionLog, worker_,
+        &SessionWorker::connectionLog);
+    connect(this, &SessionController::requestClearConnectionLog, worker_,
+        &SessionWorker::clearConnectionLog);
     connect(this, &SessionController::requestSaveAttachment, worker_,
         &SessionWorker::saveAttachment);
     // Download progress / outcome land on the message via the conversation model.
@@ -2186,6 +2217,8 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::inviteUnavailable, this,
         &SessionController::inviteUnavailable);
     connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
+    connect(worker_, &SessionWorker::connectionLogReady, this,
+        &SessionController::connectionLogUpdated);
     connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
     connect(worker_, &SessionWorker::i2pKeyState, this, &SessionController::onI2pKeyState);
@@ -3324,6 +3357,16 @@ void SessionController::requestInvite()
 void SessionController::signLogin(const QString& challenge)
 {
     emit requestSignLoginSig(challenge);
+}
+
+void SessionController::refreshConnectionLog()
+{
+    emit requestConnectionLog();
+}
+
+void SessionController::clearConnectionLog()
+{
+    emit requestClearConnectionLog();
 }
 
 QVariantMap SessionController::describeLoginChallenge(const QString& challenge) const

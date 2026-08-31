@@ -1,0 +1,42 @@
+# Connection log
+
+Status: implemented.
+
+Account window -> "Server connection" -> **Connection log**. It shows what this
+account did on the wire and what came back: the account's own server calls, the
+mail it sent to correspondents, and the far side's answer to each.
+
+It exists because nothing else answers "did that actually leave, and did anyone
+agree to it?" - a bubble says "sent", and the log on stderr is not there in a
+packaged build.
+
+## What is in it
+
+| Line | Where it comes from | What its status means |
+|---|---|---|
+| `POST /v1/messaging/self`, `GET /v1/messaging/pending`, … | every call to this account's server | the HTTP status the server answered with, or the transport failure |
+| `text to Bob (a1b2c3)` | mail handed to the courier | `sending`, then `stored` when the recipient's server signed for the envelope, or `failed: <code>` |
+| `self device.account-name` | a change mirrored to this account's other devices | `sending`; the `POST /v1/messaging/self` line under it carries the server's answer |
+| `receipt from Bob (a1b2c3)` | an item this account fetched | (none) |
+| `unreadable item` | a pending entry that could not be opened | `dropped` - it is acked so the mailbox unblocks |
+
+Mail to a correspondent never goes through this account's server: it is dialled
+over I2P from a destination this client holds, so the confirmation on those lines
+is the **recipient's** server signing for the delivery, not ours.
+
+## What is not in it
+
+- **No message text**, in any line, including the detail column.
+- **No full fingerprints or destinations** - a correspondent is named by the
+  local name for them plus the first characters of their fingerprint. The window
+  is meant to be screenshotted into a bug report.
+- **No empty polls.** The client holds a long poll on the server; a round trip
+  that brought nothing back is not recorded, or it would be the only thing the
+  log ever showed.
+
+## Its limits
+
+The log holds the last **100 events per account**, in memory only: switching
+accounts does not mix them, closing the application loses them, and nothing is
+written to disk. "Copy all" puts the visible lines on the clipboard; "Clear"
+empties the ring.
