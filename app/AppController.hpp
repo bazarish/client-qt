@@ -56,8 +56,8 @@ class AppController : public QObject {
     // leaves the main window.
     Q_PROPERTY(QString ringingPeer READ ringingPeer NOTIFY ringingChanged)
     Q_PROPERTY(QString ringingPeerFingerprint READ ringingPeerFingerprint NOTIFY ringingChanged)
-    // The account being called, named only when more than one is open - with one
-    // account there is nothing to tell apart.
+    // The account being called: the heading of the call window, which has no
+    // title bar of the desktop's to carry it.
     Q_PROPERTY(QString ringingAccountName READ ringingAccountName NOTIFY ringingChanged)
     // How loud the ringtone is at this instant, 0 to 1: what the call window
     // pulses with, so the light is the sound rather than a timer running beside

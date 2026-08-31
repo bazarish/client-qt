@@ -31,6 +31,9 @@ constexpr int kUnreadTintAlpha = 140;
 // How long a popup stays up. Long enough to read a name, short enough not to sit
 // over other work.
 constexpr int kPopupMs = 6000;
+// How often a notification may be heard while what it announced is still
+// unread. The popup is not held back - only the sound.
+constexpr int kNotifySoundIntervalMs = 10000;
 // How recently the window must have been the active one for a tray click to read
 // as "put it away" rather than "bring it here".
 constexpr int kRecentlyActiveMs = 400;
@@ -186,6 +189,11 @@ void TrayIcon::refreshIcon()
         unread += account.unread;
     }
     const bool hasUnread = unread > 0;
+    if (!hasUnread) {
+        // Everything announced has been read: the next arrival is heard when it
+        // comes rather than at the end of the interval.
+        announcedWasRead_ = true;
+    }
     if (hasUnread != showingUnread_) {
         showingUnread_ = hasUnread;
         tray_.setIcon(hasUnread ? unreadIcon_ : idleIcon_);
@@ -205,6 +213,18 @@ void TrayIcon::notify(const QString& title, const QString& body)
         return;
     }
     tray_.showMessage(title, body, idleIcon_, kPopupMs);
+    // Every message shows, and the sound is what is rationed: while what was
+    // announced is still unread, one sound stands for everything that arrives in
+    // the interval. Reading it clears the hold, so the next arrival is heard as
+    // soon as it comes. A call is not rationed at all - it has its own sound, and
+    // it does not come through here.
+    const bool quiet = !announcedWasRead_ && sinceSound_.isValid()
+        && sinceSound_.elapsed() < kNotifySoundIntervalMs;
+    if (quiet) {
+        return;
+    }
+    announcedWasRead_ = false;
+    sinceSound_.start();
     sound_.play();
 }
 

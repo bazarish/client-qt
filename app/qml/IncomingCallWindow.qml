@@ -10,6 +10,10 @@ import Bazarish
 // Deliberately not a tray popup. A popup fades on its own after a few seconds,
 // and a call that faded is a call missed; this stands for exactly as long as the
 // call rings and goes when it stops.
+//
+// Inside, it is the call screen the main window shows: the same avatar, the same
+// lines, the same buttons at the same distances. Whichever of the two a call is
+// answered from, it is the same thing being answered.
 Window {
     id: root
     // True while the user is looking at the main window, which shows the same
@@ -17,144 +21,122 @@ Window {
     property bool mainWindowActive: false
 
     readonly property bool ringing: App.ringingPeer.length > 0
+    // Which account is being called, and that this is Bazarish asking. With
+    // several accounts open one contact can be in more than one of them, and then
+    // their name alone does not say who is being called.
+    readonly property string heading: App.ringingAccountName + " - Bazarish"
+
     visible: root.ringing && !root.mainWindowActive
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
     color: Theme.bg
-    width: 320
-    height: 300
+    // The size of the call screen inside the main window: this is that screen,
+    // taken out of doors.
+    width: 360
+    height: 440
     x: Screen.virtualX + Math.round((Screen.width - width) / 2)
     y: Screen.virtualY + Math.round((Screen.height - height) / 2)
-    title: "Incoming call"
+    title: root.heading
 
-    component CallAnswer: Button {
-        id: control
-        // The fill this button carries, and the ink that reads on it.
-        property color fill: Theme.surface
-        property color label: Theme.text
+    // The call screen's own action button, kept identical here.
+    component CallButton: Button {
+        id: callButton
+        property color fill: Theme.accent
+        property color label: "white"
+        // One width for every call action: a row of buttons that size themselves
+        // to their labels is a row that is never centred under the avatar.
+        Layout.preferredWidth: 120
+        padding: 0
         hoverEnabled: true
-        implicitHeight: 40
-        leftPadding: 18
-        rightPadding: 18
+        HoverHandler { enabled: callButton.enabled; cursorShape: Qt.PointingHandCursor }
         background: Rectangle {
-            radius: Theme.radiusSmall
-            color: control.down ? Qt.darker(control.fill, 1.25)
-                : (control.hovered ? Qt.darker(control.fill, 1.1) : control.fill)
-            Behavior on color { ColorAnimation { duration: 120 } }
+            radius: 24
+            color: !callButton.enabled ? Theme.surfaceAlt
+                : callButton.down ? Qt.darker(callButton.fill, 1.2)
+                : callButton.hovered ? Qt.lighter(callButton.fill, 1.15)
+                : callButton.fill
+            border.color: callButton.hovered && callButton.enabled ? Theme.text : Theme.border
+            implicitWidth: 120
+            implicitHeight: 48
+            Behavior on color { ColorAnimation { duration: 90 } }
         }
         contentItem: Label {
-            text: control.text
-            color: control.label
-            font.weight: Font.Medium
+            text: callButton.text
+            color: callButton.enabled ? callButton.label : Theme.textDim
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }
     }
 
-    onVisibleChanged: if (root.visible) { glow.requestPaint() }
-
     Rectangle {
         anchors.fill: parent
         color: Theme.bg
+        // There is no frame of the desktop's to stand in, so the window carries
+        // its own edge - and this is not a window to overlook.
         border.color: Theme.neon
         border.width: 2
 
         ColumnLayout {
-            anchors.centerIn: parent
-            width: parent.width - 40
-            spacing: 10
+            anchors.fill: parent
+            anchors.margins: 18
+            spacing: 16
 
-            Item {
-                id: halo
-                Layout.alignment: Qt.AlignHCenter
-                implicitWidth: 168
-                implicitHeight: 168
-                // How the light stands at the quietest moment of the ringtone and
-                // at its loudest: the pulse is the track's own shape, so a beat
-                // lands as light and the gaps between beats go dim rather than
-                // dark.
-                readonly property real quietScale: 0.8
-                readonly property real loudScale: 1.15
-                readonly property real quietOpacity: 0.16
-
-                // Painted once; what pulses is how big and how bright it is drawn.
-                Canvas {
-                    id: glow
-                    anchors.fill: parent
-                    scale: halo.quietScale
-                        + (halo.loudScale - halo.quietScale) * App.ringLevel
-                    opacity: halo.quietOpacity + (1 - halo.quietOpacity) * App.ringLevel
-                    // The level arrives about thirty times a second; this carries
-                    // the light between two of them.
-                    Behavior on scale { NumberAnimation { duration: 60; easing.type: Easing.OutQuad } }
-                    Behavior on opacity { NumberAnimation { duration: 60 } }
-                    onPaint: {
-                        const ctx = getContext("2d")
-                        ctx.reset()
-                        const centre = width / 2
-                        const light = function(alpha) {
-                            return Qt.rgba(Theme.neon.r, Theme.neon.g, Theme.neon.b, alpha)
-                        }
-                        const gradient = ctx.createRadialGradient(centre, centre, 0,
-                            centre, centre, centre)
-                        // Flat under the avatar and falling away outside it: what
-                        // is seen is the halo around the picture, not a disc
-                        // behind it.
-                        gradient.addColorStop(0, light(0.55))
-                        gradient.addColorStop(0.42, light(0.5))
-                        gradient.addColorStop(0.72, light(0.13))
-                        gradient.addColorStop(1, light(0))
-                        ctx.fillStyle = gradient
-                        ctx.fillRect(0, 0, width, height)
-                    }
-                    Component.onCompleted: glow.requestPaint()
-                }
-
-                Avatar {
-                    anchors.centerIn: parent
-                    fingerprint: App.ringingPeerFingerprint
-                    size: 72
-                }
-            }
-
+            // Where this came from, in place of the title bar a frameless window
+            // does not have.
             Label {
                 Layout.fillWidth: true
-                text: App.ringingPeer
-                color: Theme.text
-                font.pixelSize: Theme.fontTitle
+                text: root.heading
+                color: Theme.green
+                font.pixelSize: Theme.fontSmall
                 font.weight: Font.DemiBold
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
             }
-            Label {
-                Layout.fillWidth: true
-                text: "Incoming audio call"
-                color: Theme.textDim
-                horizontalAlignment: Text.AlignHCenter
-            }
-            Label {
-                // Which account is being called, when more than one is open.
-                visible: App.ringingAccountName.length > 0
-                Layout.fillWidth: true
-                text: "to " + App.ringingAccountName
-                color: Theme.textFaint
-                font.pixelSize: Theme.fontSmall
-                horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
+
+            Item { Layout.fillHeight: true }
+
+            // The avatar in its own light. The glow is drawn around it and takes
+            // no room of its own, so what this lays out is the avatar and nothing
+            // else - the same 120 across as in the main window.
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                implicitWidth: 120
+                implicitHeight: 120
+                CallGlow {
+                    anchors.centerIn: parent
+                    avatarSize: 120
+                    level: App.ringLevel
+                }
+                Avatar {
+                    anchors.centerIn: parent
+                    fingerprint: App.ringingPeerFingerprint
+                    size: 120
+                }
             }
 
-            RowLayout {
-                Layout.topMargin: 8
+            Label {
+                Layout.alignment: Qt.AlignHCenter
+                text: App.ringingPeer
+                color: Theme.text
+                font.pixelSize: Theme.fontTitle
+            }
+            Label {
                 Layout.fillWidth: true
-                spacing: 12
-                CallAnswer {
-                    Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                color: Theme.textDim
+                text: "Incoming audio call"
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 20
+                CallButton {
                     text: "Decline"
                     fill: Theme.danger
-                    label: Theme.bg
                     onClicked: App.declineRinging()
                 }
-                CallAnswer {
-                    Layout.fillWidth: true
+                CallButton {
                     text: "Accept"
                     fill: Theme.accent
                     label: Theme.accentInk

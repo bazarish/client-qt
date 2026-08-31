@@ -48,6 +48,13 @@ private:
     QMenu menu_;
     QAction* notificationsAction_ = nullptr;
     NotifySound sound_;
+    // The sound is held back while what it announced has not been looked at: a
+    // conversation that arrives in twenty messages should not be twenty sounds.
+    // It is the sound that waits, never the popup - see notify().
+    QElapsedTimer sinceSound_;
+    // True once everything that was announced has been read, which lets the next
+    // arrival sound at once instead of waiting out the interval.
+    bool announcedWasRead_ = true;
     QIcon idleIcon_;
     QIcon unreadIcon_;
     // What the icon is currently showing, so it is only replaced when the answer

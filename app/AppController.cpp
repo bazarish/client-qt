@@ -157,8 +157,10 @@ void AppController::updateRinging()
     const QString account = ringing ? ringing->accountId() : QString();
     const QString peer = ringing ? ringing->callPeerName() : QString();
     const QString fingerprint = ringing ? ringing->callPeer() : QString();
-    const QString accountName
-        = (ringing != nullptr && sessions_.size() > 1) ? ringing->displayName() : QString();
+    // Always named, not only when there are several accounts: the call window
+    // stands on the desktop with no title bar of its own, and its heading is
+    // where it says which account is being called.
+    const QString accountName = ringing ? ringing->displayName() : QString();
     if (account != ringingAccount_ || peer != ringingPeer_
         || fingerprint != ringingPeerFingerprint_ || accountName != ringingAccountName_) {
         ringingAccount_ = account;

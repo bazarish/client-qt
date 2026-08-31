@@ -217,11 +217,24 @@ Popup {
             anchors.margins: 18
             spacing: 16
             Item { Layout.fillHeight: true }
-            Avatar {
+            // The avatar, and while the call is ringing the light of the ringtone
+            // around it - the same light the window on the desktop shows, because
+            // it is the same call and the same sound.
+            Item {
                 Layout.alignment: Qt.AlignHCenter
-                fingerprint: root.session ? root.session.callPeer : ""
-                size: 120
-                enlargeable: true
+                implicitWidth: 120
+                implicitHeight: 120
+                CallGlow {
+                    anchors.centerIn: parent
+                    avatarSize: 120
+                    level: root.callState === "incoming" ? App.ringLevel : 0
+                }
+                Avatar {
+                    anchors.centerIn: parent
+                    fingerprint: root.session ? root.session.callPeer : ""
+                    size: 120
+                    enlargeable: true
+                }
             }
             Label {
                 Layout.alignment: Qt.AlignHCenter
