@@ -2979,11 +2979,12 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     m.replyTo = replyTo;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    // Nothing is delivered to the saved chat: it is kept here and handed to this
-    // account's other devices, so it has no delivery to watch and no row in the
-    // activity panel.
+    // A note to the saved chat is not delivered to anybody, but it is still
+    // written to this account's own server for its other devices - so it is
+    // watched like any other send rather than painted green before it has
+    // happened. What it skips is the activity row: there is no dialling to show.
     const bool saved = isSavedChat(activePeer_);
-    m.status = saved ? DeliveryStatus::Delivered : DeliveryStatus::Preparing;
+    m.status = DeliveryStatus::Preparing;
     m.id = store_.append(m);
     statusById_[m.id] = m.status;
     showInActiveView(m, true);
