@@ -2251,8 +2251,20 @@ void SessionController::refreshUnreadTotal()
 
 SessionController::~SessionController()
 {
-    thread_.quit();
-    thread_.wait();
+    shutdown();
+}
+
+void SessionController::shutdown()
+{
+    if (thread_.isRunning()) {
+        // The worker is deleted as the thread finishes (deleteLater posted on
+        // QThread::finished), and with it the session and the account database
+        // it holds - so when this returns, nothing here holds the file open.
+        thread_.quit();
+        thread_.wait();
+    }
+    accountDb_.reset();
+    store_.close();
 }
 
 // The account's own store, opened on demand: a second connection to the same

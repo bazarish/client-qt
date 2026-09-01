@@ -244,10 +244,15 @@ Popup {
                         id: storageSection
                         Layout.fillWidth: true
                         spacing: 3
+                        // An account that has just been closed leaves this with
+                        // nothing to read, so every field says so itself rather
+                        // than handing undefined to a typed property.
                         readonly property var info: root.session ? root.session.storageInfo : ({})
-                        readonly property bool ok: info ? info.mailboxOk : false
-                        readonly property double used: info ? info.mailboxUsed : 0
-                        readonly property double quota: info ? info.mailboxQuota : 0
+                        readonly property bool ok: info.mailboxOk === true
+                        readonly property double used: info.mailboxUsed !== undefined
+                            ? info.mailboxUsed : 0
+                        readonly property double quota: info.mailboxQuota !== undefined
+                            ? info.mailboxQuota : 0
                         Rectangle {
                             Layout.fillWidth: true
                             radius: Theme.radiusSmall

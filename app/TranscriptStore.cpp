@@ -186,7 +186,13 @@ TranscriptStore::TranscriptStore() = default;
 
 TranscriptStore::~TranscriptStore()
 {
-    sqlite3_close(db_);
+    close();
+}
+
+void TranscriptStore::close()
+{
+    sqlite3_close(db_);  // a no-op on a connection already closed
+    db_ = nullptr;
 }
 
 namespace {

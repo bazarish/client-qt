@@ -419,7 +419,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
         }
     });
     connect(ctrl, &SessionController::openFailed, this, [this, ctrl, id](const QString& error) {
-        removeSession(ctrl, /*deferred=*/true);
+        removeSession(ctrl);
         if (unlockingId_ == id) {
             // The prompt stays open with the reason on it; the account it was
             // opened for does not come online on a wrong passphrase.
@@ -460,7 +460,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
             = QString::fromStdString(manager_->fileFor(id.toStdString()).string());
         ctrl->open(file, id, passphrase);
     } catch (const std::exception& e) {
-        removeSession(ctrl, /*deferred=*/false);
+        removeSession(ctrl);
         if (unlockingId_ == id) {
             refreshAccounts();
             emit unlockFailed(QString::fromUtf8(e.what()));
@@ -487,15 +487,13 @@ void AppController::openAllAccounts()
     }
 }
 
-void AppController::removeSession(SessionController* ctrl, bool deferred)
+void AppController::removeSession(SessionController* const ctrl)
 {
     const QString id = ctrl->accountId();
     sessions_.removeAll(ctrl);
-    if (deferred) {
-        ctrl->deleteLater();
-    } else {
-        delete ctrl;  // destructor joins the worker thread and closes the transcript
-    }
+    // The interface lets go first. A binding still pointing at this session when
+    // it is destroyed reads freed memory, and the account list, the ringing state
+    // and the window all hold it - so they are told while it is still there.
     if (activeId_ == id) {
         activeId_ = sessions_.isEmpty() ? QString() : sessions_.first()->accountId();
         writeLastActive(activeId_);
@@ -504,6 +502,13 @@ void AppController::removeSession(SessionController* ctrl, bool deferred)
     // An account that has just been closed cannot go on ringing.
     updateRinging();
     refreshAccounts();
+    // Closed now - the worker stops and the account's files are released, which
+    // is what a caller about to delete them needs. Destroyed later: this is
+    // often reached from one of the session's own signals (the server answering
+    // that the account is ended), and deleting the sender under its own emit is
+    // a use-after-free that reads as a crash on whatever screen comes next.
+    ctrl->shutdown();
+    ctrl->deleteLater();
 }
 
 void AppController::createAccount(const QString& name, const QString& passphrase)
@@ -648,7 +653,7 @@ void AppController::forgetAccountLocally(const QString& id)
     // If the account is open, tear its session down first (synchronously, so the
     // transcript is flushed and closed) before removing the directory.
     if (SessionController* ctrl = sessionFor(id)) {
-        removeSession(ctrl, /*deferred=*/false);
+        removeSession(ctrl);
     }
     try {
         manager_->remove(id.toStdString());
@@ -1010,7 +1015,7 @@ void AppController::closeAllSessions()
 {
     const QVector<SessionController*> open = sessions_;
     for (SessionController* const ctrl : open) {
-        removeSession(ctrl, /*deferred=*/false);
+        removeSession(ctrl);
     }
     refreshAccounts();
 }
@@ -1018,7 +1023,7 @@ void AppController::closeAllSessions()
 void AppController::closeAccount()
 {
     if (SessionController* ctrl = activeController()) {
-        removeSession(ctrl, /*deferred=*/false);
+        removeSession(ctrl);
     }
     refreshAccountList();
 }

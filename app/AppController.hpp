@@ -251,7 +251,9 @@ private:
     // deleteLater (required when called from within the controller's own
     // signal); otherwise the controller is destroyed synchronously, so its
     // transcript is flushed and closed before any on-disk removal.
-    void removeSession(SessionController* ctrl, bool deferred);
+    // Takes a session out of the interface, closes the account it holds and
+    // hands the object itself to Qt to destroy once the current signal is done.
+    void removeSession(SessionController* ctrl);
     // Closes every open account, joining their workers - so nothing is holding a
     // transcript open while the data directory moves.
     void closeAllSessions();

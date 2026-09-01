@@ -505,6 +505,13 @@ public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
 
+    // Stops the worker and lets go of the account's files, without destroying
+    // this object. Deleting a session while one of its own signals is still on
+    // the stack is what a use-after-free is made of, so the two are separate:
+    // this closes the account, and the object itself goes with deleteLater.
+    // Idempotent.
+    void shutdown();
+
     QString fingerprint() const { return fingerprint_; }
     QString displayName() const { return displayName_; }
     bool connected() const { return connected_; }

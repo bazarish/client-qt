@@ -83,6 +83,11 @@ public:
     TranscriptStore();
     ~TranscriptStore();
 
+    // Lets go of the database file. Called by the destructor, and directly when
+    // the account is being removed: the file has to be closed before it is
+    // deleted, and the object itself outlives that moment.
+    void close();
+
     // Opens (and creates) the database for this account id. Returns false when it
     // cannot be opened - a wrong passphrase is a failed open, never an empty
     // transcript.
