@@ -1326,6 +1326,9 @@ private:
     // The call the user refused here: state updates still travelling for it are
     // dropped, so a refusal is one transition rather than a flicker.
     QString refusedCallId_;
+    // Sends that went to the saved chat. Their green comes from this account's
+    // own server holding the note: nobody is going to read it back.
+    QSet<qint64> savedSends_;
     // Set once the account is being closed, so a second ask does nothing.
     bool shuttingDown_ = false;
     // The activity-panel operation id for the call currently in progress (so it is

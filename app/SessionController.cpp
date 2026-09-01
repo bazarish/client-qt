@@ -2987,6 +2987,9 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     m.status = DeliveryStatus::Preparing;
     m.id = store_.append(m);
     statusById_[m.id] = m.status;
+    if (saved) {
+        savedSends_.insert(m.id);
+    }
     showInActiveView(m, true);
     contacts_.touch(activePeer_, saved ? savedChatName() : QString(), text, m.ts, false);
     if (!saved) {
@@ -4050,9 +4053,18 @@ void SessionController::forwardShown(
     if (toPeer == activePeer_) {
         showInActiveView(m, true);
     }
-    contacts_.touch(toPeer, peerName(toPeer), preview, m.ts, false);
-    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-        QStringLiteral("To ") + peerName(toPeer), QStringLiteral("Forwarding…"), toPeer);
+    // Passed on to the saved chat, this is a note kept here: the account's own
+    // server holding it is the end of the road, and there is no dialling to show
+    // in the activity panel either.
+    const bool saved = isSavedChat(toPeer);
+    if (saved) {
+        savedSends_.insert(m.id);
+    }
+    contacts_.touch(toPeer, saved ? savedChatName() : peerName(toPeer), preview, m.ts, false);
+    if (!saved) {
+        beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
+            QStringLiteral("To ") + peerName(toPeer), QStringLiteral("Forwarding…"), toPeer);
+    }
 }
 
 void SessionController::cancelVoiceRecording()
@@ -4907,8 +4919,15 @@ void SessionController::onSendResult(qint64 localId, bool ok, const QString& err
         // The amber state was already set through sendProgress, which is also what
         // closes the activity row. Just clear any prior failure note.
         conversation_.setErrorForId(localId, {});
+        // A note to the saved chat is finished the moment this account's own
+        // server holds it: there is no correspondent to read it and no receipt
+        // coming, so amber would be a wait for something that never arrives.
+        if (savedSends_.remove(localId)) {
+            bumpStatus(localId, DeliveryStatus::Delivered);
+        }
         return;
     }
+    savedSends_.remove(localId);
     // A delivery failure belongs to one message, not the whole app: mark that
     // bubble failed and attach the reason inline (with a resend affordance in the
     // UI) instead of raising an application-wide error banner.
