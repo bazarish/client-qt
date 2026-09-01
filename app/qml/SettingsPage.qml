@@ -391,6 +391,18 @@ Popup {
                             onClicked: { root.close(); root.showConnectionLog() }
                         }
                     }
+                    // A device asks for the address book once, on its first sync.
+                    // If no other device was online to answer, this asks again.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        MenuButton {
+                            Layout.fillWidth: true
+                            text: "Ask my other devices for contacts"
+                            enabled: root.session !== null
+                            onClicked: root.session.askForContacts()
+                        }
+                    }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 

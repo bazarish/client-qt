@@ -105,6 +105,7 @@ public slots:
     void signLogin(const QString& challenge);
     void connectionLog();
     void clearConnectionLog();
+    void askDevicesForContacts();
     void saveAttachment(const QString& peer, const QString& e2eId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
     void changePassphrase(const QString& passphrase);
@@ -848,6 +849,10 @@ public:
     // The account's connection log: what went to the server and what came back,
     // including deliveries to correspondents and their outcome. Answered by
     // connectionLogUpdated(); kept in memory only, and short.
+    // Asks this account's other devices for the address book. Automatic once on
+    // a device's first sync; this is the same question by hand, for when that
+    // did not reach anybody (no other device was online).
+    Q_INVOKABLE void askForContacts();
     Q_INVOKABLE void refreshConnectionLog();
     Q_INVOKABLE void clearConnectionLog();
     Q_INVOKABLE void saveAttachment(const QString& peer, const QString& e2eId, const QString& fileUrl);
@@ -1003,6 +1008,7 @@ signals:  // to worker
     void requestInviteSig();
     void requestSignLoginSig(const QString& challenge);
     void requestConnectionLog();
+    void requestContactsFromDevices();
     void requestClearConnectionLog();
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
         qint64 token);

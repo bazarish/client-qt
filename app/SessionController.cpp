@@ -1535,6 +1535,19 @@ void SessionWorker::clearChatForEveryone(const QString& peer)
     }
 }
 
+void SessionWorker::askDevicesForContacts()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->askDevicesForContacts();
+        emit actionOk(QStringLiteral("Asked your other devices for your contacts."));
+    } catch (const std::exception& error) {
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
 void SessionWorker::connectionLog()
 {
     if (!session_) {
@@ -2003,6 +2016,8 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
     connect(this, &SessionController::requestConnectionLog, worker_,
         &SessionWorker::connectionLog);
+    connect(this, &SessionController::requestContactsFromDevices, worker_,
+        &SessionWorker::askDevicesForContacts);
     connect(this, &SessionController::requestClearConnectionLog, worker_,
         &SessionWorker::clearConnectionLog);
     connect(this, &SessionController::requestSaveAttachment, worker_,
@@ -3369,6 +3384,11 @@ void SessionController::requestInvite()
 void SessionController::signLogin(const QString& challenge)
 {
     emit requestSignLoginSig(challenge);
+}
+
+void SessionController::askForContacts()
+{
+    emit requestContactsFromDevices();
 }
 
 void SessionController::refreshConnectionLog()
