@@ -391,8 +391,9 @@ SessionWorker::~SessionWorker()
     // then wait for the pool to drain.
     downloadsCancelled_.store(true);
     downloadPool_.waitForDone();
-    // The long-poll thread holds only copies and a shared flag, so it is left to
-    // finish its request on its own once the flag is down.
+    // The long-poll thread pokes this worker when its wait returns, so it is
+    // joined here and never left running: a thread that outlives its worker
+    // writes into freed memory, which is how a closed account used to end.
     stopEventWaiter();
 }
 
@@ -466,7 +467,13 @@ void SessionWorker::stopEventWaiter()
         eventWaiterRunning_->store(false);
     }
     if (eventWaiter_.joinable()) {
-        eventWaiter_.detach();  // it ends on its own once its request returns
+        // Joined, never detached. The loop pokes this worker when its wait
+        // returns, so a thread left running past the worker's life writes into
+        // freed memory - which is what a closed account used to end in. The wait
+        // is bounded (kEventWaitSeconds plus the read slack), and nothing the
+        // user is looking at waits for this: the whole teardown happens here, on
+        // the worker's own thread.
+        eventWaiter_.join();
     }
     eventWaiterRunning_.reset();
     if (syncTimer_ != nullptr) {
@@ -1535,6 +1542,24 @@ void SessionWorker::clearChatForEveryone(const QString& peer)
     }
 }
 
+void SessionWorker::shutdown()
+{
+    // Stop what this thread owns, in an order it can answer for: the long poll
+    // first (it is the only thing that can outlive the rest), then the timers,
+    // then the session itself - which closes the courier, the leases and the I2P
+    // links it raised. When this returns nothing of this account is running.
+    stopEventWaiter();
+    if (syncTimer_ != nullptr) {
+        syncTimer_->stop();
+    }
+    if (callTimer_ != nullptr) {
+        callTimer_->stop();
+    }
+    downloadsCancelled_.store(true);
+    session_.reset();
+    emit stopped();
+}
+
 void SessionWorker::askDevicesForContacts()
 {
     if (!session_) {
@@ -2018,6 +2043,15 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::connectionLog);
     connect(this, &SessionController::requestContactsFromDevices, worker_,
         &SessionWorker::askDevicesForContacts);
+    connect(this, &SessionController::requestShutdown, worker_, &SessionWorker::shutdown);
+    // The account is closed on its thread; only then does the loop end, and only
+    // then is this session finished with.
+    connect(worker_, &SessionWorker::stopped, this, [this]() {
+        accountDb_.reset();
+        store_.close();
+        thread_.quit();
+    });
+    connect(&thread_, &QThread::finished, this, [this]() { emit closed(); });
     connect(this, &SessionController::requestClearConnectionLog, worker_,
         &SessionWorker::clearConnectionLog);
     connect(this, &SessionController::requestSaveAttachment, worker_,
@@ -2269,8 +2303,24 @@ SessionController::~SessionController()
     shutdown();
 }
 
+void SessionController::beginShutdown()
+{
+    if (shuttingDown_) {
+        return;
+    }
+    shuttingDown_ = true;
+    if (!thread_.isRunning()) {
+        emit closed();
+        return;
+    }
+    // Asked, not waited for: the worker stops its own long poll and closes the
+    // account on its own thread, and says so.
+    emit requestShutdown();
+}
+
 void SessionController::shutdown()
 {
+    shuttingDown_ = true;
     if (thread_.isRunning()) {
         // The worker is deleted as the thread finishes (deleteLater posted on
         // QThread::finished), and with it the session and the account database

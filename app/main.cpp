@@ -39,6 +39,7 @@
 
 #include <array>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <memory>
@@ -282,8 +283,21 @@ int main(int argc, char** argv)
         // being the end of the application there.
         QApplication::setQuitOnLastWindowClosed(false);
         tray->attachWindow(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));
-        QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &app,
-            &QApplication::quit);
+        // Quit asks the accounts to close and ends when they have (or when the
+        // grace runs out). Ending first and closing afterwards is how the
+        // interface came to sit there on a request that is meant to hang.
+        QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &controller,
+            &bazarish::app::AppController::prepareForExit);
+        QObject::connect(&controller, &bazarish::app::AppController::readyToExit, &app, []() {
+            // The accounts are closed and everything they hold is on disk - the
+            // transcript and the account file commit as they are written. What is
+            // left standing is the I2P engine, whose lanes are still finishing the
+            // handlers that close its destinations; unwinding that from here means
+            // freeing what those lanes are using, which is a crash on the way out
+            // rather than an exit. So the process ends here instead.
+            std::fflush(nullptr);
+            std::_Exit(0);
+        });
     } else {
         bazarish::log::info("tray: this desktop offers none; the window is the only way in");
     }

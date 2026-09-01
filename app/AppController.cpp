@@ -502,13 +502,47 @@ void AppController::removeSession(SessionController* const ctrl)
     // An account that has just been closed cannot go on ringing.
     updateRinging();
     refreshAccounts();
-    // Closed now - the worker stops and the account's files are released, which
-    // is what a caller about to delete them needs. Destroyed later: this is
-    // often reached from one of the session's own signals (the server answering
-    // that the account is ended), and deleting the sender under its own emit is
-    // a use-after-free that reads as a crash on whatever screen comes next.
-    ctrl->shutdown();
-    ctrl->deleteLater();
+    // Closed in the background. Nothing the user is looking at may wait for this:
+    // a session that is closing has a long poll to bring home, and that request
+    // is meant to hang for half a minute. The object goes when its thread has
+    // ended - and later than this call, because we are often standing inside one
+    // of its own signals (the server answering that the account is ended), where
+    // deleting the sender is a use-after-free.
+    ++closingCount_;
+    connect(ctrl, &SessionController::closed, this, [this, ctrl, id]() {
+        --closingCount_;
+        ctrl->deleteLater();
+        onSessionClosed(id);
+        if (exiting_ && closingCount_ == 0) {
+            emit readyToExit();
+        }
+    });
+    ctrl->beginShutdown();
+}
+
+void AppController::onSessionClosed(const QString& id)
+{
+    // An account being deleted keeps its files until it is closed: they are what
+    // the session was reading and writing.
+    if (pendingRemovals_.remove(id)) {
+        removeAccountFiles(id);
+    }
+    if (deletingId_ == id) {
+        deletingId_.clear();
+        emit deletingChanged();
+    }
+}
+
+void AppController::removeAccountFiles(const QString& id)
+{
+    try {
+        manager_->remove(id.toStdString());
+    } catch (const std::exception& error) {
+        // What is left behind is on disk, and the user must be able to find out.
+        bazarish::log::warn("account directory not removed: {}", error.what());
+    }
+    refreshAccountList();
+    refreshAccounts();
 }
 
 void AppController::createAccount(const QString& name, const QString& passphrase)
@@ -592,6 +626,13 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
 
 void AppController::deleteAccount(const QString& id)
 {
+    if (!deletingId_.isEmpty()) {
+        // One at a time. Every press used to start another conversation with the
+        // server about the same account.
+        return;
+    }
+    deletingId_ = id;
+    emit deletingChanged();
     SessionController* ctrl = sessionFor(id);
     if (ctrl == nullptr) {
         // Only the account itself can end itself: the server is told by a request
@@ -602,6 +643,8 @@ void AppController::deleteAccount(const QString& id)
         // than decided here.
         for (const AccountListRow& info : accountRows_) {
             if (info.id == id && info.encrypted) {
+                deletingId_.clear();
+                emit deletingChanged();
                 emit accountDeleteNeedsUnlock(id, info.name);
                 return;
             }
@@ -610,6 +653,8 @@ void AppController::deleteAccount(const QString& id)
         openSession(id, {}, /*makeActive=*/false);
         ctrl = sessionFor(id);
         if (ctrl == nullptr) {
+            deletingId_.clear();
+            emit deletingChanged();
             return;
         }
     }
@@ -630,6 +675,8 @@ void AppController::deleteAccount(const QString& id)
                 // The profile stays: it holds the only key that can ask again, and
                 // deleting it here would leave an account on the server that
                 // nobody can ever end.
+                deletingId_.clear();
+                emit deletingChanged();
                 emit accountDeleteFailed(id, error, /*profileNotOpened=*/false);
                 return;
             }
@@ -650,19 +697,16 @@ void AppController::deleteAccountAfterUnlock(const QString& id)
 
 void AppController::forgetAccountLocally(const QString& id)
 {
-    // If the account is open, tear its session down first (synchronously, so the
-    // transcript is flushed and closed) before removing the directory.
-    if (SessionController* ctrl = sessionFor(id)) {
+    // If the account is open, it has to let go of its files before they can be
+    // removed - and letting go takes as long as the request it has in flight.
+    if (SessionController* const ctrl = sessionFor(id)) {
+        // The files go when the session lets go of them, which is not now: it is
+        // still bringing its long poll home. onSessionClosed finishes the job.
+        pendingRemovals_.insert(id);
         removeSession(ctrl);
+        return;
     }
-    try {
-        manager_->remove(id.toStdString());
-    } catch (const std::exception& error) {
-        // What is left behind is on disk, and the user must be able to find out.
-        bazarish::log::warn("account directory not removed: {}", error.what());
-    }
-    refreshAccountList();
-    refreshAccounts();
+    removeAccountFiles(id);
 }
 
 void AppController::switchTo(const QString& id)
@@ -1009,6 +1053,22 @@ void AppController::rebuildI2pLinks()
 void AppController::requestAddAccount()
 {
     emit showPicker();
+}
+
+void AppController::prepareForExit()
+{
+    if (exiting_) {
+        return;
+    }
+    exiting_ = true;
+    // Nothing is torn down on the way out, and nothing is waited for. Everything
+    // durable is already on disk - the transcript and the account file commit as
+    // they are written - so what is left standing is the I2P engine, whose lanes
+    // are still carrying packets. Closing its destinations here means freeing,
+    // from this thread, what those lanes are using, and that is a crash on the
+    // way out rather than an exit. The process ends instead; the sockets and the
+    // tunnels go with it.
+    emit readyToExit();
 }
 
 void AppController::closeAllSessions()

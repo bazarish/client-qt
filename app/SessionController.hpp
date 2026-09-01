@@ -106,6 +106,9 @@ public slots:
     void connectionLog();
     void clearConnectionLog();
     void askDevicesForContacts();
+    // Stops everything this worker owns and closes the account. Answered by
+    // stopped(); the thread's loop is ended by the controller after that.
+    void shutdown();
     void saveAttachment(const QString& peer, const QString& e2eId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
     void changePassphrase(const QString& passphrase);
@@ -236,6 +239,8 @@ signals:
     // The signed login blob for a challenge (sign-in-with-key result).
     void loginSigned(const QString& blob);
     void connectionLogReady(const QVariantList& lines);
+    // Everything this worker was running has stopped and the account is closed.
+    void stopped();
     // Whether the last sync reached the facade (true) or failed (false).
     // reason carries why a failed sync failed, so an account stuck at
     // "Connecting" can say what is wrong instead of only that it is not right.
@@ -506,11 +511,14 @@ public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
 
-    // Stops the worker and lets go of the account's files, without destroying
-    // this object. Deleting a session while one of its own signals is still on
-    // the stack is what a use-after-free is made of, so the two are separate:
-    // this closes the account, and the object itself goes with deleteLater.
-    // Idempotent.
+    // Closes the account without blocking whoever asked. Everything this session
+    // runs is stopped on its own thread - the long poll first, then the timers,
+    // then the session - and closed() says when that is done. Nothing the user is
+    // looking at waits for a network call to time out. Idempotent.
+    void beginShutdown();
+    // Stops the worker and lets go of the account's files. Blocking, and only for
+    // the destructor: everywhere else the asynchronous path above is the one to
+    // use. Idempotent.
     void shutdown();
 
     QString fingerprint() const { return fingerprint_; }
@@ -963,6 +971,8 @@ signals:
     // The connection log, oldest first: one map per line with at/outgoing/what/
     // status/detail. Answers refreshConnectionLog().
     void connectionLogUpdated(const QVariantList& lines);
+    // This session is closed: its thread has ended and nothing of it is running.
+    void closed();
     // A failed file's saved source is gone: the UI should offer to pick a file.
     void resendFilePickRequested();
     // Forwarded onboarding info for the hello dialog (unregistered-key connect).
@@ -1009,6 +1019,7 @@ signals:  // to worker
     void requestSignLoginSig(const QString& challenge);
     void requestConnectionLog();
     void requestContactsFromDevices();
+    void requestShutdown();
     void requestClearConnectionLog();
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
         qint64 token);
@@ -1315,6 +1326,8 @@ private:
     // The call the user refused here: state updates still travelling for it are
     // dropped, so a refusal is one transition rather than a flicker.
     QString refusedCallId_;
+    // Set once the account is being closed, so a second ask does nothing.
+    bool shuttingDown_ = false;
     // The activity-panel operation id for the call currently in progress (so it is
     // finished when the call goes back to idle, even though the idle signal carries
     // no call id). Empty when there is no active call row.

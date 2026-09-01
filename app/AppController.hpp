@@ -96,7 +96,17 @@ public:
     // that refused or could not be reached leaves everything as it was and
     // reports accountDeleteFailed - the profile is the only thing that can ask
     // again, so it is never thrown away on a failure.
+    // Closes every account and says when the application may end. Asked for by
+    // the tray's Quit: the interface must never sit waiting for a request that is
+    // meant to hang for half a minute.
+    Q_INVOKABLE void prepareForExit();
+
     Q_INVOKABLE void deleteAccount(const QString& id);
+    // The account being deleted right now, empty when none is. Deleting takes as
+    // long as the server takes to answer and the session takes to close, and
+    // until then the button says so and a second press does nothing.
+    Q_PROPERTY(QString deletingId READ deletingId NOTIFY deletingChanged)
+    QString deletingId() const { return deletingId_; }
     // Asks for a locked profile's passphrase and deletes it once it opens.
     Q_INVOKABLE void deleteAccountAfterUnlock(const QString& id);
     // Removes the profile from this device and nothing else: the account goes on
@@ -229,6 +239,9 @@ signals:
     void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened);
     // The profile is locked, and ending the account on its server needs the key
     // inside it. The UI offers unlocking it or deleting this device's copy alone.
+    void deletingChanged();
+    // Every account is closed (or the grace ran out): the process may end.
+    void readyToExit();
     void accountDeleteNeedsUnlock(const QString& id, const QString& name);
     // An unlock attempt failed. It belongs on the unlock screen, where the
     // passphrase was typed, and not in a notice at the bottom of the window.
@@ -254,6 +267,11 @@ private:
     // Takes a session out of the interface, closes the account it holds and
     // hands the object itself to Qt to destroy once the current signal is done.
     void removeSession(SessionController* ctrl);
+    // A session finished closing: what was waiting on it happens here.
+    void onSessionClosed(const QString& id);
+    // Takes the account's files off the disk. Only ever called once its session
+    // has let go of them.
+    void removeAccountFiles(const QString& id);
     // Closes every open account, joining their workers - so nothing is holding a
     // transcript open while the data directory moves.
     void closeAllSessions();
@@ -314,6 +332,13 @@ private:
     QString unlockingId_;
     // An account unlocked for the sole purpose of deleting it.
     QString pendingDeleteId_;
+    // The account whose deletion is under way, and the accounts whose files are
+    // waiting for their session to close.
+    QString deletingId_;
+    QSet<QString> pendingRemovals_;
+    bool exiting_ = false;
+    // How many sessions are still closing.
+    int closingCount_ = 0;
     bool unlockToBringOnline_ = false;
     // Global full-privacy mode (persisted; applied process-wide on load/change).
 };

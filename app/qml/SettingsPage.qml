@@ -770,7 +770,11 @@ Popup {
                         }
                         MenuButton {
                             Layout.fillWidth: true
-                            text: "Delete account…"
+                            // While it runs, it says so: the server has to answer
+                            // and the session has to let go of its files. A second
+                            // press used to start the whole conversation again.
+                            enabled: App.deletingId.length === 0
+                            text: App.deletingId.length > 0 ? "Deleting…" : "Delete account…"
                             danger: true
                             onClicked: deleteDialog.show(
                                 root.session ? root.session.accountId : "", "")
