@@ -57,7 +57,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        FormField { id: nameField; label: "Account name"; placeholder: "e.g. Mr. Who" }
+        FormField { id: nameField; label: "Account name"; placeholder: "e.g. Mr. Who"; maximumLength: 64 }
         FormField { id: passField; label: "Passphrase (optional, encrypts keys at rest)"; echoMode: TextInput.Password; placeholder: "leave empty for none" }
         FormField { id: confirmField; label: "Confirm passphrase"; echoMode: TextInput.Password }
 

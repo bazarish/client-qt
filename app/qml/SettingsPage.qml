@@ -875,6 +875,10 @@ Popup {
                 id: renameSelfField
                 Layout.fillWidth: true
                 placeholderText: "Your name"
+                // The name travels in a contact request, whose size is capped by
+                // the protocol; the core counts bytes, this counts characters,
+                // which is the coarse half of the same limit.
+                maximumLength: 64
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 onAccepted: renameSelfDialog.accept()
