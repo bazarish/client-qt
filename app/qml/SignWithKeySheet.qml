@@ -30,12 +30,14 @@ Popup {
     padding: 0
     // The one thing to do here is paste a challenge, so the cursor is already in
     // the field that takes it.
-    onOpened: {
+    onOpened: challengeArea.forceActiveFocus()
+    // A challenge names the place it lets its holder into, and it has no business
+    // sitting in a closed window: what was pasted goes when the window does.
+    onClosed: {
         challengeArea.text = ""
         root.consumer = ({ "ok": false, "problem": "" })
         root.copyPending = false
         copyBtn.copied = false
-        challengeArea.forceActiveFocus()
     }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }

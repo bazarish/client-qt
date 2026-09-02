@@ -3507,8 +3507,14 @@ void SessionController::openContactProgress(
     note.id = store_.append(note);
     contactProgressRows_[opId] = note.id;
     contacts_.touch(peer, name, note.text, note.ts, false);
-    activateConversation(peer);
-    showInActiveView(note, true);
+    if (activePeer_ == peer) {
+        showInActiveView(note, true);
+        return;
+    }
+    // The chat this belongs to becomes the open one, transcript and all. Making
+    // it active without loading its window left the note appended to whichever
+    // conversation was on screen, under the new chat's highlight in the list.
+    openConversation(peer);
 }
 
 void SessionController::writeContactProgress(const QString& opId, const QString& text)
@@ -5365,11 +5371,6 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
 
 void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro)
 {
-    // An add by alias only learns who the peer is here, so this is where its chat
-    // opens; an add by invite opened one already and just carries on in it.
-    if (!fingerprint.isEmpty() && activePeer_ != fingerprint) {
-        activateConversation(fingerprint);
-    }
     // Mirror the request on our own side: store the intro we just sent as an
     // outgoing message and open a chat for the new peer, so adding a contact
     // produces a visible conversation immediately instead of an empty chat-list
@@ -5392,8 +5393,15 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
     m.status = DeliveryStatus::AtRecipientServer;
     m.id = store_.append(m);
     statusById_[m.id] = m.status;
-    showInActiveView(m, true);
     contacts_.touch(fingerprint, {}, body, m.ts, false);
+    if (activePeer_ == fingerprint) {
+        showInActiveView(m, true);
+        return;
+    }
+    // An add by alias only learns who the peer is here, so this is where its chat
+    // opens - with its own transcript loaded, and not with this line appended to
+    // the one that happened to be open.
+    openConversation(fingerprint);
 }
 
 void SessionController::startCall(const QString& peer)

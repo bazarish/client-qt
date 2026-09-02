@@ -16,11 +16,25 @@ Popup {
     // A name to start from, set by openUsername; opening without one starts at
     // the menu as before.
     property string prefillUsername: ""
+    // What an introduction says before anybody edits it. Named here because the
+    // reset below has to put them back.
+    readonly property string kInviteGreeting: "Hi, found your invite!"
+    readonly property string kUsernameGreeting: "Hi, add me?"
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onOpened: {
         mode = root.prefillUsername.length > 0 ? "username" : "menu"
         usernameField.text = root.prefillUsername
         errorText = ""
+    }
+    // Nothing typed here outlives the window: a link, a name and an introduction
+    // are for one request, and the next one starts from a blank page.
+    onClosed: {
+        mode = "menu"
+        errorText = ""
+        inviteText.text = ""
+        inviteIntro.text = root.kInviteGreeting
+        usernameField.text = ""
+        usernameIntro.text = root.kUsernameGreeting
     }
 
     // Opens on the add-by-username page with the name filled in: the request is
@@ -147,7 +161,7 @@ Popup {
             FormField {
                 id: inviteIntro
                 label: "Introduction"
-                text: "Hi, found your invite!"
+                text: root.kInviteGreeting
                 maximumLength: App.maxGreetingLength
             }
             RowLayout {
@@ -170,7 +184,7 @@ Popup {
             spacing: 8
             Label { text: "The resolver maps the name to a fingerprint (it is trusted for that mapping only)."; color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true }
             FormField { id: usernameField; label: "Username (alias)" }
-            FormField { id: usernameIntro; label: "Introduction"; text: "Hi, add me?" }
+            FormField { id: usernameIntro; label: "Introduction"; text: root.kUsernameGreeting }
             RowLayout {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }

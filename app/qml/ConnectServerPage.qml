@@ -17,7 +17,8 @@ Item {
         onClicked: App.requestAddAccount()
     }
 
-    SignWithKeySheet { id: signSheet; session: root.session }
+    // There is no page behind this one to go back to here, so back is close.
+    SignWithKeySheet { id: signSheet; session: root.session; onBack: signSheet.close() }
     // Connecting is minutes of real work over I2P: show it, with steps.
     ConnectProgressDialog { id: connectDialog; session: root.session }
 
