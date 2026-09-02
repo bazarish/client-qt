@@ -99,6 +99,30 @@ a subsequent message, which would then be rejected. A resend of the same message
 consumes no further token, because the recipient's server matches it by delivery
 identifier before the token is examined.
 
+## What a refusal costs the stash
+
+A refusal by the recipient's server is an answer about the capability, not about
+the network, so only one of them touches the stash:
+
+| Refusal | What it says | What the client does |
+|---|---|---|
+| `DELIVERY_REJECTED` | the server would not take the token | drops **every** token held for that contact and asks for a fresh batch |
+| `STORAGE_FULL` | the mailbox is full; the token is untouched, and the server re-registers it | keeps the stash |
+| `RECIPIENT_SERVER_UNREACHABLE` | nothing was presented at all | keeps the stash |
+| `MESSAGE_TOO_LARGE` | the message is the problem | keeps the stash |
+
+The whole stash goes, not the one token spent, because tokens arrive as a batch
+and a batch is refused as a batch: it was minted against a delegation the
+recipient's server has since replaced, and the rest of it is as dead as the one
+that was refused. Holding the remainder is what turned a single refusal into a
+storm of them - one token was presented 254 times in testing before this rule
+existed.
+
+Replacing the batch takes a token of its own, which is why a refusal is followed
+by asking the account's other devices first (`device.token-request`), and only
+then by the tokenless request to the contact. The next send is marked as needing
+a batch of its own, so it does not spend a borrowed token on ordinary mail.
+
 ## Outbound addresses
 
 One destination is held per recipient destination for the term stated above, then
