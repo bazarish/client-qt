@@ -269,6 +269,9 @@ QString humanDeliveryPhase(const QString& phase)
     if (phase == QStringLiteral("sending")) {
         return QStringLiteral("Sending over I2P…");
     }
+    if (phase == QStringLiteral("waiting-for-token")) {
+        return QStringLiteral("Waiting for a delivery token…");
+    }
     if (phase.startsWith(QStringLiteral("token-refused:"))) {
         // "token-refused:31" -> what the user needs to know: the message is not
         // failing, one capability was refused and the next one is being tried.

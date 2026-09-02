@@ -100,6 +100,16 @@ for it. Which tokens are drawn is random rather than in order: two devices of on
 account can hold overlapping stashes, and taking from the same end on both makes
 them collide on the same token every time.
 
+A message this device cannot pay for is **not** refused: it waits. The device
+asks its own other devices for a token (`device.token-request`) and holds the
+message until one arrives, reporting "Waiting for a delivery token…" on its
+activity row. The token that arrives carries that message rather than an errand -
+the message asks the correspondent for a fresh batch on its way past, which is
+what the errand would have done, so spending it on the errand instead would send
+nothing and leave what the user wrote exactly where it was. The held message
+lives in memory only: no outbound queue is written to disk, so a restart reports
+it failed like any other send that was in flight.
+
 The tokens are deducted from the local stash when the envelope is
 handed to the courier, not when delivery is confirmed. After the attempts are
 exhausted the client cannot establish whether the recipient's server stored the
