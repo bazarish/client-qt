@@ -35,9 +35,12 @@ What the restored device then does, in order:
    by destination and read by capability and there is no lookup that turns a
    fingerprint into either.
 
-6. **Buys its own delivery tokens.** The backup hands it one token per
-   conversation - moved, not copied - and it spends each on the errand that
-   returns a batch addressed to this device.
+6. **Keeps the delivery token the backup handed it.** One per conversation,
+   moved rather than copied, and it is not spent on an errand: the first message
+   the user writes carries the same request (a low-stash flag and a prepaid reply
+   token, addressed to this device), so it goes out and brings a batch back.
+   With none at all - a second restore of the same bundle, or a conversation that
+   had none - it asks the account's other devices for one, once per run.
 
 ## When the address changes
 

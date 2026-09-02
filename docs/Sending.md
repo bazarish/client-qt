@@ -66,10 +66,11 @@ actually are:
   be a wait for something that never arrives - on the device that wrote it and on
   every other device of the account, which sees it arrive through the server that
   already holds it.
-- **An echo of what another device sent** is grey while that device's own send is
-  in flight: the sending device owns the delivery state, and the echo leaves
-  before the send does. A read receipt from the correspondent reaches every device
-  and turns it green there too.
+- **An echo of what another device sent** appears there only once that device's
+  send was stored by the recipient's server. Echoing at the moment of writing put
+  a copy on every other device for a message that never arrived - and one per
+  retry - so the echo now waits for the same amber the sender sees. A read receipt
+  from the correspondent reaches every device and turns it green there too.
 
 ## Failure and resending
 
