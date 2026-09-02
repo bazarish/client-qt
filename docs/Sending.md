@@ -58,6 +58,19 @@ stream and returns no reply.
 
 A delivery run is also listed in the background-activity panel for its duration.
 
+Two messages carry no protocol state of their own and are shown at what they
+actually are:
+
+- **A note to the saved chat** is green as soon as this account's own server holds
+  it. There is no correspondent to read it and no receipt coming, so amber would
+  be a wait for something that never arrives - on the device that wrote it and on
+  every other device of the account, which sees it arrive through the server that
+  already holds it.
+- **An echo of what another device sent** is grey while that device's own send is
+  in flight: the sending device owns the delivery state, and the echo leaves
+  before the send does. A read receipt from the correspondent reaches every device
+  and turns it green there too.
+
 ## Failure and resending
 
 When the attempts are exhausted the message is marked failed, with the reason,

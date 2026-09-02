@@ -53,6 +53,39 @@ The compatibility level is not pinned explicitly. It is the library default for
 every 4.x release, and pinning it would only matter the day a version 5 changes
 that default - at which point the pin, not the discovery, is the smaller change.
 
+## The backup bundle
+
+`export` writes one password-sealed file (CMS PWRI) holding what an account *is*,
+so a restore is a working device and not a shell of one:
+
+| In the bundle | Why |
+|---|---|
+| identity and sealing private keys (PEM) | the account itself |
+| the I2P **routing master** | the account's address is the account's, not a device's: a restored device that minted its own would take the address away from every contact holding it (`docs-main/Identity.md`) |
+| meta and the contact records | who this account is and who it knows |
+| the account's avatar and each contact's | the pictures are rows of their own; a bundle carrying only their mime types restored an account with no face at all |
+| the block list | a restored account that forgot it would let them all back in |
+| **one delivery token per conversation** | see below |
+
+Delivery tokens are one-time write capabilities, so the bundle **moves** one per
+conversation rather than copying it: the token leaves the exporting device's
+stash as the file is written. Copying them is what made a restored device unable
+to write to anybody - it was spending tokens the other device had already spent,
+and every send came back `delivery rejected`. One token per contact is exactly
+what a restored device needs: it spends it on the errand that buys a batch of its
+own (`needsOwnBatch`, `docs-main/DeviceSync.md`), and a second restore of the
+same bundle finds the token spent and falls back to borrowing one from the
+account's other devices.
+
+A device that ends up without the account's address anyway - an older bundle, or
+an account moved another way - does not publish one of its own. On connect it
+asks the server which address it serves, and when that is not the one it holds it
+asks the account's other devices for the keys (`device.i2p-master-request`). Only
+if nobody answers is the user asked, with the two answers that exist: serve this
+device's address, or start from a fresh one. Both take the account away from
+contacts holding the served address until the user writes to them again, which is
+why neither happens silently.
+
 ## What a failed open reports
 
 An account that does not open is listed as locked: nothing else about it can be

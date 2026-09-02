@@ -20,6 +20,7 @@ this client performs before reporting failure is not.
 | [Sending.md](Sending.md) | Outbound delivery: attempt schedule, reported states, failure handling, delivery-token accounting |
 | [ConnectionLog.md](ConnectionLog.md) | The connection log window: what it records, what it deliberately leaves out, and how much it keeps |
 | [AccountStorage.md](AccountStorage.md) | The account database: SQLCipher version and profile, the key sidecar, what a failed open reports |
+| [Devices.md](Devices.md) | The devices of one account: how a second one starts, what it takes from the backup and from its siblings, and what forgetting one does |
 | [SavedAndBlocking.md](SavedAndBlocking.md) | The saved-messages chat, blocking a correspondent, and the per-contact notification and call switches |
 | [Formatting.md](Formatting.md) | Message formatting: the markers a body may carry, what a press on one does, and where a body is shown without them |
 
