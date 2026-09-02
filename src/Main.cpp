@@ -478,7 +478,9 @@ int runExport(const std::vector<std::string>& args)
         bazarish::log::error("set BAZARISH_EXPORT_PASSWORD");
         return 1;
     }
-    const Session session = Session::open(args[1], keyPassphrase());
+    // Not const: the bundle takes one delivery token per conversation with it,
+    // and this account gives them up as it writes them.
+    Session session = Session::open(args[1], keyPassphrase());
     session.exportAccount(args[2], password);
     std::printf("exported encrypted session to %s\n", args[2].c_str());
     return 0;
