@@ -39,6 +39,18 @@ What the restored device then does, in order:
    conversation - moved, not copied - and it spends each on the errand that
    returns a batch addressed to this device.
 
+## When the two disagree anyway
+
+The account window shows the address this device holds the keys for. Beside it,
+when the server answers with a different one, it shows **that** address and says
+so: another device published it, contacts write to whichever they know, and until
+the two agree some mail reaches nobody. The status poll asks the server every ten
+seconds while the window is open, so the warning appears without reopening
+anything, and one button under it publishes this device's address instead.
+
+This is the only place the difference is visible: the address a device shows is
+what it believes it published, and belief is not what mail is delivered to.
+
 ## Leaving
 
 The device list in the account window carries one line per device, and a quiet

@@ -278,6 +278,8 @@ signals:
     // and at what address. Emitted as soon as it is known, so the view never waits
     // on a server poll to say whether a key exists at all.
     void i2pKeyState(bool hasKey, const QString& address);
+    // The address the server says it serves for this account.
+    void i2pServedAddress(const QString& address);
     // This account's registered devices: {clientId, current}. A message is kept
     // until every one of them has acked it, so a device nobody uses any more
     // holds mail until the retention window ends.
@@ -487,6 +489,11 @@ class SessionController : public QObject {
     Q_PROPERTY(bool i2pEnabled READ i2pEnabled NOTIFY i2pStatusChanged)
     Q_PROPERTY(bool i2pActive READ i2pActive NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
+    // What the server serves, and whether it is something other than the address
+    // this device holds the keys for. A mismatch means mail sent to the address
+    // this device shows never arrives, which the window has to say out loud.
+    Q_PROPERTY(QString i2pServedAddress READ i2pServedAddress NOTIFY i2pStatusChanged)
+    Q_PROPERTY(bool i2pAddressMismatch READ i2pAddressMismatch NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pStatusText READ i2pStatusText NOTIFY i2pStatusChanged)
     // What the messaging server says about the destination itself: "active",
     // "building", "none", or empty when it has not been asked yet.
@@ -615,6 +622,12 @@ public:
     bool i2pEnabled() const { return i2pEnabled_; }
     bool i2pActive() const { return i2pActive_; }
     QString i2pAddress() const { return i2pAddress_; }
+    QString i2pServedAddress() const { return i2pServedAddress_; }
+    bool i2pAddressMismatch() const
+    {
+        return !i2pServedAddress_.isEmpty() && !i2pAddress_.isEmpty()
+            && i2pServedAddress_ != i2pAddress_;
+    }
     QString i2pStatusText() const { return i2pStatusText_; }
     QString i2pServerState() const { return i2pServerState_; }
     QString acceptingContact() const { return acceptingContact_; }
@@ -1313,6 +1326,7 @@ private:
     bool i2pEnabled_ = false;
     bool i2pActive_ = false;
     QString i2pAddress_;
+    QString i2pServedAddress_;
     QString i2pStatusText_;
     QVariantList devices_;
     QString i2pServerState_;

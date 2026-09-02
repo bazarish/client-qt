@@ -1694,7 +1694,13 @@ void SessionWorker::refreshI2pStatus()
         // The node holds the delegation; the messaging server is where the
         // destination is actually up or not. Both, or the status says nothing.
         try {
-            serverState = QString::fromStdString(session_->serverDestination().state);
+            const bazarish::client::DestinationInfo served = session_->serverDestination();
+            serverState = QString::fromStdString(served.state);
+            // What the server actually serves, not what this device believes it
+            // published. The two can differ - another device delegated an address
+            // of its own - and the difference is exactly what a user has no other
+            // way of seeing.
+            emit i2pServedAddress(QString::fromStdString(served.dest));
         } catch (const std::exception& error) {
             bazarish::log::warn("destination state unavailable: {}", error.what());
         }
@@ -2359,6 +2365,13 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
     connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
     connect(worker_, &SessionWorker::i2pKeyState, this, &SessionController::onI2pKeyState);
+    connect(worker_, &SessionWorker::i2pServedAddress, this, [this](const QString& address) {
+        if (i2pServedAddress_ == address) {
+            return;
+        }
+        i2pServedAddress_ = address;
+        emit i2pStatusChanged();
+    });
     connect(worker_, &SessionWorker::storageUsageReady, this,
         &SessionController::onStorageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, this,

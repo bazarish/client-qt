@@ -513,6 +513,44 @@ Popup {
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
+                            // The server's answer, when it is not the address above.
+                            // Mail sent to the address this device shows is not
+                            // arriving anywhere, and nothing else on this page
+                            // would say so.
+                            ColumnLayout {
+                                visible: root.session && root.session.i2pAddressMismatch
+                                Layout.fillWidth: true
+                                spacing: 4
+                                Label {
+                                    text: "Your server serves another address"
+                                    color: Theme.warn
+                                    font.pixelSize: Theme.fontSmall
+                                    font.weight: Font.DemiBold
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: root.session ? root.session.i2pServedAddress : ""
+                                    color: Theme.warn
+                                    font.pixelSize: Theme.fontSmall
+                                    elide: Text.ElideMiddle
+                                    Layout.fillWidth: true
+                                }
+                                Label {
+                                    text: "Another device of yours published it. Contacts "
+                                        + "write to whichever they know, so until the two "
+                                        + "agree some mail reaches nobody."
+                                    color: Theme.textDim
+                                    font.pixelSize: Theme.fontSmall
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                }
+                                MenuButton {
+                                    text: "Publish this device's address"
+                                    enabled: root.session && root.session.connected
+                                    onClicked: root.session.keepThisDeviceAddress()
+                                    Layout.fillWidth: true
+                                }
+                            }
                         }
                     }
                     // Set up a master key first (generate or load a .dat), then turn it on.
