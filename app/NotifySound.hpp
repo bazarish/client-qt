@@ -12,10 +12,9 @@ class QMediaPlayer;
 
 namespace bazarish::app {
 
-// The sound a notification makes. The application carries one; a recording left
-// in the accounts folder as "notify" (wav, ogg, opus, flac or mp3) takes its
-// place. The folder is consulted on every play, so a file put there is used
-// without restarting.
+// The sound a notification makes. The application carries one; a "notify.wav" at
+// the root of the installation takes its place. The folder is consulted on every
+// play, so a file put there is used without restarting.
 // Lives on the thread that owns it, which must run an event loop.
 class NotifySound : public QObject {
 public:

@@ -22,6 +22,7 @@ this client performs before reporting failure is not.
 | [AccountStorage.md](AccountStorage.md) | The account database: SQLCipher version and profile, the key sidecar, what a failed open reports |
 | [Devices.md](Devices.md) | The devices of one account: how a second one starts, what it takes from the backup and from its siblings, and what forgetting one does |
 | [SavedAndBlocking.md](SavedAndBlocking.md) | The saved-messages chat, blocking a correspondent, and the per-contact notification and call switches |
+| [Sounds.md](Sounds.md) | The notification sound and the ringtone: where a recording of the user's own goes, what the ringtone has to be, and what the call window's pulse follows |
 | [Formatting.md](Formatting.md) | Message formatting: the markers a body may carry, what a press on one does, and where a body is shown without them |
 
 Application structure, build instructions and packaging are described in the

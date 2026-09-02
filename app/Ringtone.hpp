@@ -2,7 +2,9 @@
 #pragma once
 
 #include <QObject>
+#include <QString>
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -20,11 +22,15 @@ namespace bazarish::app {
 // It plays the samples itself rather than handing the file to a player, because
 // the interface pulses with the sound: that needs the loudness of what is being
 // heard at this instant, which a player will not tell.
+//
+// The application carries one track; a "ringtone.wav" at the root of the
+// installation takes its place. The folder is consulted every time the ringing
+// starts, so a file put there is used without restarting.
 // Lives on the thread that owns it, which must run an event loop.
 class Ringtone : public QObject {
     Q_OBJECT
 public:
-    explicit Ringtone(QObject* parent = nullptr);
+    explicit Ringtone(QString folder, QObject* parent = nullptr);
     ~Ringtone() override;
 
     // Starts it, or leaves it running if it already is: a call that is ringing
@@ -40,15 +46,22 @@ signals:
 private:
     class Loop;
 
-    // Reads the carried track once. False (with a line in the log) when what was
-    // packed is not the audio this expects, which leaves the call silent.
+    // Reads the track of the user's own, and the carried one when there is none
+    // or it cannot be played. False (with a line in the log) when neither can be,
+    // which leaves the call silent.
     bool loadTrack();
+    // Reads one track, resource or file alike. False (with a line in the log) for
+    // anything that is not the audio this expects.
+    bool loadFrom(const QString& path);
     void publishLevel();
 
+    const QString folder_;
     std::vector<std::int16_t> samples_;
     // The loudness of the track in fixed-length frames, 0 to 1, one entry per
     // frame from its start.
     std::vector<float> envelope_;
+    // How many samples one envelope frame covers, at this track's rate.
+    std::size_t frameSamples_ = 0;
     int sampleRate_ = 0;
 
     std::unique_ptr<QAudioSink> sink_;

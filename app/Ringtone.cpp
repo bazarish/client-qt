@@ -4,7 +4,9 @@
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QIODevice>
 #include <QMediaDevices>
 #include <QTimer>
@@ -18,12 +20,21 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <utility>
 
 namespace bazarish::app {
 
 namespace {
 
-const char* const kRingtonePath = ":/sound/ringtone.wav";
+// The track carried inside the application, used unless the user leaves one of
+// their own at the root of the installation, under this name.
+const char* const kBuiltInTrack = ":/sound/ringtone.wav";
+const char* const kTrackName = "ringtone.wav";
+
+// The whole track is read into memory and walked through at the moment a call
+// arrives, on the thread that draws the window. What is past this size is not a
+// ringtone.
+constexpr qint64 kMaxTrackBytes = 8 * 1024 * 1024;
 
 // The track is measured in frames this long: short enough to follow a beat, long
 // enough that the light does not flicker between two neighbouring samples.
@@ -33,10 +44,11 @@ constexpr int kEnvelopeFrameMs = 20;
 constexpr int kLevelIntervalMs = 33;
 constexpr int kMsPerSecond = 1000;
 constexpr int kUsPerMs = 1000;
+constexpr qint64 kUsPerSecond = static_cast<qint64>(kUsPerMs) * kMsPerSecond;
 
-// The one audio layout this carries: signed 16-bit samples, one channel. The
-// packed track is made that way, so anything else is a build that packed the
-// wrong file.
+// The one audio layout this plays: signed 16-bit samples, one channel. The
+// samples are read here rather than by a player, and it is that layout they are
+// read as; a track in any other is refused rather than guessed at.
 constexpr std::uint16_t kPcmFormatTag = 1;
 constexpr int kBitsPerSample = 16;
 constexpr int kChannels = 1;
@@ -155,31 +167,45 @@ private:
     std::size_t position_ = 0;
 };
 
-Ringtone::Ringtone(QObject* const parent)
+Ringtone::Ringtone(QString folder, QObject* const parent)
     : QObject(parent)
+    , folder_(std::move(folder))
 {
 }
 
 Ringtone::~Ringtone() = default;
 
-bool Ringtone::loadTrack()
+bool Ringtone::loadFrom(const QString& path)
 {
-    QFile file(QString::fromLatin1(kRingtonePath));
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        bazarish::log::warn("ringtone: the carried track could not be read");
+        bazarish::log::warn("ringtone: {} could not be read", path.toStdString());
+        return false;
+    }
+    if (file.size() > kMaxTrackBytes) {
+        bazarish::log::warn("ringtone: {} is larger than {} bytes", path.toStdString(),
+            kMaxTrackBytes);
         return false;
     }
     if (!parseWav(file.readAll(), sampleRate_, samples_)) {
-        bazarish::log::warn("ringtone: the carried track is not 16-bit mono PCM");
+        bazarish::log::warn("ringtone: {} is not 16-bit mono PCM", path.toStdString());
         samples_.clear();
         return false;
     }
-    const std::size_t frame
-        = static_cast<std::size_t>(sampleRate_) * kEnvelopeFrameMs / kMsPerSecond;
+    frameSamples_ = static_cast<std::size_t>(sampleRate_) * kEnvelopeFrameMs / kMsPerSecond;
+    if (frameSamples_ == 0) {
+        // A rate this low has no frame to measure, and the walk below would stand
+        // still on it.
+        bazarish::log::warn(
+            "ringtone: {} is sampled at {} Hz, too low to measure", path.toStdString(),
+            sampleRate_);
+        samples_.clear();
+        return false;
+    }
     envelope_.clear();
     float loudest = 0.0F;
-    for (std::size_t at = 0; at < samples_.size(); at += frame) {
-        const std::size_t end = std::min(at + frame, samples_.size());
+    for (std::size_t at = 0; at < samples_.size(); at += frameSamples_) {
+        const std::size_t end = std::min(at + frameSamples_, samples_.size());
         int peak = 0;
         for (std::size_t i = at; i < end; ++i) {
             peak = std::max(peak, std::abs(static_cast<int>(samples_[i])));
@@ -188,7 +214,7 @@ bool Ringtone::loadTrack()
         loudest = std::max(loudest, envelope_.back());
     }
     if (envelope_.empty() || loudest <= 0.0F) {
-        bazarish::log::warn("ringtone: the carried track is silent");
+        bazarish::log::warn("ringtone: {} is silent", path.toStdString());
         samples_.clear();
         return false;
     }
@@ -200,12 +226,27 @@ bool Ringtone::loadTrack()
     return true;
 }
 
+bool Ringtone::loadTrack()
+{
+    if (!folder_.isEmpty()) {
+        const QString own = QDir(folder_).filePath(QString::fromLatin1(kTrackName));
+        // A track the user chose that cannot be played must not leave the call
+        // silent: the reason is in the log above, and the carried one rings.
+        if (QFileInfo(own).isFile() && loadFrom(own)) {
+            return true;
+        }
+    }
+    return loadFrom(QString::fromLatin1(kBuiltInTrack));
+}
+
 void Ringtone::start()
 {
     if (sink_) {
         return;
     }
-    if (samples_.empty() && !loadTrack()) {
+    // Read again on every ring rather than kept: a file put at the root is used
+    // without restarting, and taken away again the same way.
+    if (!loadTrack()) {
         return;
     }
     const QAudioDevice device = QMediaDevices::defaultAudioOutput();
@@ -258,11 +299,12 @@ void Ringtone::publishLevel()
         return;
     }
     // Where the sound is, not where the samples are: the sink has been handed
-    // more than has been heard, and the light follows what is heard.
-    const qint64 playedMs = sink_->processedUSecs() / kUsPerMs;
-    const std::size_t frame
-        = static_cast<std::size_t>(playedMs / kEnvelopeFrameMs) % envelope_.size();
-    emit levelChanged(static_cast<qreal>(envelope_[frame]));
+    // more than has been heard, and the light follows what is heard. Counted in
+    // samples rather than in milliseconds, so the repeat takes the light back to
+    // the start of the track whatever length the track is.
+    const qint64 played = sink_->processedUSecs() * sampleRate_ / kUsPerSecond;
+    const std::size_t at = static_cast<std::size_t>(played) % samples_.size();
+    emit levelChanged(static_cast<qreal>(envelope_[at / frameSamples_]));
 }
 
 }  // namespace bazarish::app

@@ -40,6 +40,7 @@ namespace bazarish::app {
 AppController::AppController(QObject* parent)
     : QObject(parent)
     , manager_(std::make_unique<client::AccountManager>(accountsRoot()))
+    , ringtone_(soundFolder())
 {
     // The call window pulses with the ringtone, so the loudness of what is being
     // heard is carried out to it as the sound plays.
@@ -124,9 +125,9 @@ std::filesystem::path AppController::accountsFolder()
     return accountsRoot();
 }
 
-QString AppController::soundFolder() const
+QString AppController::soundFolder()
 {
-    return QString::fromStdString(accountsFolder().string());
+    return QString::fromStdString(appRoot().string());
 }
 
 void AppController::setNotificationsEnabled(const bool on)

@@ -142,11 +142,12 @@ public:
     // microphone, the levels, hanging up - is in there.
     Q_INVOKABLE void answerRinging();
     Q_INVOKABLE void declineRinging();
-    // The folder every account, the global settings and a notification sound of the
-    // user's own live in. Static: the application decides whether it may run at all
-    // by this path, before anything is opened.
+    // The folder every account lives in. Static: the application decides whether it
+    // may run at all by this path, before anything is opened.
     static std::filesystem::path accountsFolder();
-    QString soundFolder() const;
+    // The root of the installation, one above the accounts: the global settings
+    // and the sounds of the user's own are there rather than among the accounts.
+    static QString soundFolder();
     // The account rows behind the model, for the tray menu: name, status, unread.
     QVector<AccountRow> accountStatuses() const { return accountStatuses_; }
     // Rebuilds every open account's I2P destinations, so a change of tunnel
