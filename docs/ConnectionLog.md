@@ -19,6 +19,8 @@ packaged build.
 | `POST /v1/messaging/self (device.account-name)` | a change mirrored to this account's other devices | the server's status, like any other call - the kind rides on the call itself, because from the outside every device sync is the same POST |
 | `receipt from Bob (a1b2c3)` | an item this account fetched | (none) |
 | `unreadable item` | a pending entry that could not be opened | `dropped` - it is acked so the mailbox unblocks |
+| `unsigned item`, `item signed by another key` | an item whose author could not be established | `dropped` - admission is not authorship, so it never reaches a chat |
+| `device message from a contact` | a device-sync type sent by somebody who is not one of this account's devices | `dropped`, with the type it claimed - these change settings and write into the address book, so only this account's own devices may send them |
 
 Mail to a correspondent never goes through this account's server: it is dialled
 over I2P from a destination this client holds, so the confirmation on those lines
