@@ -29,6 +29,20 @@ Popup {
     property int agoTick: 0
     Timer { running: root.visible; interval: 5000; repeat: true; onTriggered: root.agoTick++ }
 
+    // And asks the server again while the page is open: the quota, the devices
+    // collecting mail and whether this account's address is published are all
+    // things that change while somebody is watching them.
+    Timer {
+        running: root.visible && root.session
+        interval: 10000
+        repeat: true
+        onTriggered: {
+            root.session.refreshI2pStatus()
+            root.session.refreshStorageUsage()
+            root.session.refreshDevices()
+        }
+    }
+
     // Human-readable byte count (B / KB / MB / GB).
     function humanBytes(n) {
         if (!n || n <= 0) {
@@ -352,11 +366,26 @@ Popup {
                                     elide: Text.ElideMiddle
                                     Layout.fillWidth: true
                                 }
-                                MenuButton {
+                                // A link, not a button: one device is one line,
+                                // and a plate here would make the row taller than
+                                // the thing it acts on.
+                                Label {
                                     text: "Forget"
-                                    danger: true
                                     visible: !modelData.current
-                                    onClicked: root.session.forgetDevice(modelData.clientId)
+                                    color: forgetArea.containsMouse ? Theme.danger : Theme.textDim
+                                    font.pixelSize: Theme.fontSmall
+                                    font.underline: forgetArea.containsMouse
+                                    MouseArea {
+                                        id: forgetArea
+                                        anchors.fill: parent
+                                        anchors.margins: -4
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            forgetConfirm.clientId = modelData.clientId
+                                            forgetConfirm.open()
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -824,6 +853,59 @@ Popup {
     }
 
     // Remove the account's avatar.
+    // Forgetting a device is not a small thing while it is unread: the server
+    // stops holding mail for it and drops what it is already holding. It is also
+    // not a permanent thing, and saying both is what makes the choice an informed
+    // one rather than a scare.
+    Dialog {
+        id: forgetConfirm
+        property string clientId: ""
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(380, root.width - 24)
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        header: Label {
+            text: "Forget this device?"
+            color: Theme.text
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: "Forget"
+            danger: true
+            onAccepted: forgetConfirm.accept()
+            onRejected: forgetConfirm.reject()
+        }
+        onAccepted: if (root.session && forgetConfirm.clientId.length > 0) {
+            root.session.forgetDevice(forgetConfirm.clientId)
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            Label {
+                Layout.fillWidth: true
+                Layout.margins: 14
+                Layout.bottomMargin: 0
+                wrapMode: Text.Wrap
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                text: "Your server stops keeping mail for " + forgetConfirm.clientId
+                    + " and deletes the queue it is holding for it now. Anything in that queue"
+                    + " that no other device of yours has collected is gone."
+            }
+            Label {
+                Layout.fillWidth: true
+                Layout.margins: 14
+                Layout.topMargin: 0
+                wrapMode: Text.Wrap
+                color: Theme.textFaint
+                font.pixelSize: Theme.fontSmall
+                text: "It is not a ban: the next time that device connects it registers again,"
+                    + " appears in this list and works as before."
+            }
+        }
+    }
+
     Dialog {
         id: dropAvatarDialog
         anchors.centerIn: Overlay.overlay

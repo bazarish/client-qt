@@ -503,6 +503,10 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
     session_->setAudioBackend(
         []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<QtAudioSource>(); },
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<QtAudioSink>(); });
+    // Signing a login needs a key and nothing else, so the front-end gets a
+    // signer of its own here: it must not wait behind a sync that may be minutes
+    // long to answer a click.
+    emit loginSignerReady(session_->loginSigner());
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected,
@@ -1941,10 +1945,18 @@ void SessionWorker::saveAttachment(
 
 void SessionWorker::exportAccount(const QString& path, const QString& password)
 {
+    // Under the progress panel like every other slow thing: the account is
+    // read, sealed and written here, and this thread may still be finishing a
+    // sync when the click arrives. Silence made it look like nothing happened,
+    // which is how one backup became four.
+    WorkerOp op(this, QStringLiteral("export"), QStringLiteral("account"),
+        QStringLiteral("Exporting your backup"), QStringLiteral("Sealing the account…"));
     try {
         session_->exportAccount(path.toStdString(), password.toStdString());
+        op.succeed(QStringLiteral("Backup exported."));
         emit actionOk("Backup exported.");
     } catch (const std::exception& e) {
+        op.fail(QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
     }
 }
@@ -1985,6 +1997,14 @@ void SessionWorker::changePassphrase(const QString& passphrase)
 }
 
 // ============================ SessionController ============================
+
+// The signer travels through a queued signal when the account opens, so Qt has
+// to know the type by name.
+namespace {
+const int kLoginSignerMetaType
+    = qRegisterMetaType<std::shared_ptr<bazarish::client::LoginSigner>>(
+        "std::shared_ptr<bazarish::client::LoginSigner>");
+}  // namespace
 
 SessionController::SessionController(QObject* parent)
     : QObject(parent)
@@ -2039,6 +2059,10 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
+    connect(worker_, &SessionWorker::loginSignerReady, this,
+        [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {
+            loginSigner_ = std::move(signer);
+        });
     connect(this, &SessionController::requestConnectionLog, worker_,
         &SessionWorker::connectionLog);
     connect(this, &SessionController::requestContactsFromDevices, worker_,
@@ -3437,6 +3461,17 @@ void SessionController::requestInvite()
 
 void SessionController::signLogin(const QString& challenge)
 {
+    // Right here on the GUI thread: the signature is a few milliseconds of local
+    // work, and the worker may be halfway through a sync.
+    if (loginSigner_) {
+        try {
+            emit loginSigned(
+                QString::fromStdString(loginSigner_->sign(challenge.toStdString())));
+        } catch (const std::exception& error) {
+            emit actionFailed(QString::fromUtf8(error.what()));
+        }
+        return;
+    }
     emit requestSignLoginSig(challenge);
 }
 
@@ -4608,8 +4643,13 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.ts = placement.displayTs;
     m.orderKey = placement.orderKey;
     // An echo carries no delivery state of its own: the device that sent it owns
-    // that, and a receipt from the contact will still arrive here.
-    m.status = m.outgoing ? DeliveryStatus::Delivering : DeliveryStatus::Received;
+    // that, and a receipt from the contact will still arrive here. A note to the
+    // saved chat is the exception - it reached this device through the server
+    // that already holds it, and there is no correspondent to read it, so amber
+    // here would be a wait for something that never arrives.
+    m.status = m.outgoing
+        ? (isSavedChat(peer) ? DeliveryStatus::Delivered : DeliveryStatus::Delivering)
+        : DeliveryStatus::Received;
     m.id = store_.append(m);
 
     showInActiveView(m, false);

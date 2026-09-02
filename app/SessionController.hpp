@@ -145,6 +145,9 @@ public slots:
     // first openAccount so the injected backend can reach them.
 
 signals:
+    // Handed to the controller when the account opens, so a login is signed on
+    // the thread the user clicked on rather than behind this worker's queue.
+    void loginSignerReady(std::shared_ptr<bazarish::client::LoginSigner> signer);
     // General background-activity stream: every observable worker operation - a
     // contact request, a reaction, a read receipt, an incoming-mail pull - opens
     // with opBegin and closes with opDone, so the activity panel shows one uniform,
@@ -848,6 +851,9 @@ public:
     Q_INVOKABLE void requestInvite();
     // Signs a sign-in-with-key challenge with this account's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
+    // Signs a portal challenge and answers with loginSigned(). Runs here, not on
+    // the account's thread: it is local work, and the click must not wait for a
+    // sync to end.
     Q_INVOKABLE void signLogin(const QString& challenge);
     // Who a pasted challenge says will consume the signature, for the window to
     // put in front of the user before they sign: {ok, name, place, role} or
@@ -1329,6 +1335,8 @@ private:
     // Sends that went to the saved chat. Their green comes from this account's
     // own server holding the note: nobody is going to read it back.
     QSet<qint64> savedSends_;
+    // This account's own signer, handed over when it opened.
+    std::shared_ptr<bazarish::client::LoginSigner> loginSigner_;
     // Set once the account is being closed, so a second ask does nothing.
     bool shuttingDown_ = false;
     // The activity-panel operation id for the call currently in progress (so it is
