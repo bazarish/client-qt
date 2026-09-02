@@ -39,6 +39,21 @@ What the restored device then does, in order:
    conversation - moved, not copied - and it spends each on the errand that
    returns a batch addressed to this device.
 
+## When the address changes
+
+Publishing an address - at connect, or from either answer to the question above -
+also writes it to the account's own mailbox (`device.i2p-master`), so the other
+devices keep the account on one address. A device that holds no master takes it.
+A device that holds a **different** one takes it too, but only after its own
+server confirms that address is the one being served: the account has moved, and
+a device still announcing the old address in its outgoing routing would keep its
+contacts writing where nobody listens. The stale delegation goes with the stale
+master, because it was signed by it.
+
+That check is what makes the adoption safe. A copy of an older master sitting in
+the mailbox, or replayed into it, does not match what the server serves and is
+ignored with a line in the log.
+
 ## When the two disagree anyway
 
 The account window shows the address this device holds the keys for. Beside it,
