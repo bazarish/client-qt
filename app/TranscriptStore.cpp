@@ -794,7 +794,12 @@ QStringList TranscriptStore::conversationPeers() const
 QString TranscriptStore::lastText(const QString& peer) const
 {
     Query query(db_);
+    // The newest row that has something to show, not simply the newest row. A row
+    // with no words and nothing carried - a control message stored for its own
+    // reasons - would otherwise leave the chat list saying nothing at all about a
+    // conversation that is full of messages.
     query.prepare("SELECT text, type, attName FROM messages WHERE peer = ?"
+                  " AND (text != '' OR type IN ('file','image','voice','audio','photo'))"
                   " ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
