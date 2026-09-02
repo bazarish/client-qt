@@ -126,6 +126,9 @@ public slots:
     void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
+    // Re-emits the contact list. Called by name from a delivery outcome, which
+    // runs on the courier's thread: what a send spent has to reach the window.
+    void refreshContacts();
     // The two answers to "your server serves an address this device has no keys
     // for": keep this device's own address, or start from a fresh one.
     void publishThisDeviceAddress();

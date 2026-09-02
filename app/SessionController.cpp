@@ -292,6 +292,11 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
     };
     watch.onOutcome
         = [worker, localId](const bazarish::client::OutboundCourier::Outcome& outcome) {
+              // The send spent a token whether or not it landed, so what the
+              // account window says about this contact's sending capacity is out
+              // of date the moment this runs. Asked for on the worker's thread,
+              // which is where the session may be read.
+              QMetaObject::invokeMethod(worker, "refreshContacts", Qt::QueuedConnection);
               if (outcome.stored) {
                   emit worker->sendProgress(localId, DeliveryStatus::AtRecipientServer);
                   emit worker->sendResult(localId, true, {});
@@ -1669,6 +1674,13 @@ void SessionWorker::publishFreshAddress()
         emit actionFailed(QString::fromUtf8(error.what()));
     }
     refreshI2pStatus();
+}
+
+void SessionWorker::refreshContacts()
+{
+    if (session_) {
+        emitContacts();
+    }
 }
 
 void SessionWorker::refreshI2pStatus()
