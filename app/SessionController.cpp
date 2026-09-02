@@ -3583,9 +3583,16 @@ void SessionController::changePassphrase(const QString& passphrase)
 void SessionController::exportAccount(const QString& fileUrl, const QString& password)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (!localPath.isEmpty()) {
-        emit requestExport(localPath, password);
+    if (localPath.isEmpty()) {
+        return;
     }
+    // The row goes up here, at the click, and not when the account's thread gets
+    // round to the work: that thread may be minutes into a sync, and a button
+    // that answers nothing until then reads as a button that did nothing. The
+    // worker upserts the same row when it starts and closes it when it is done.
+    beginOperation(QStringLiteral("export"), QStringLiteral("account"),
+        QStringLiteral("Exporting your backup"), QStringLiteral("Waiting for this account…"));
+    emit requestExport(localPath, password);
 }
 
 QString SessionController::shortFingerprint(const QString& fp) const
