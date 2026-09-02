@@ -4497,6 +4497,15 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (!incomingId.isEmpty() && store_.idForIncomingE2e(incomingId, peer) != 0) {
         return;
     }
+    // The same, for what another device of ours sent: an echo names the message
+    // it echoes, so a second copy of it - a redelivery, or a message this device
+    // wrote and then heard about - is that message, not another one. Without
+    // this the conversation grew a second bubble for one thing that was sent
+    // once.
+    if (!incomingId.isEmpty() && message.value("sentByUs").toBool()
+        && store_.idForE2e(incomingId) != 0) {
+        return;
+    }
 
     // Call signalling drives the call screen via callStateChanged, never the
     // chat list.
