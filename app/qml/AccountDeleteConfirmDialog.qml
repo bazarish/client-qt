@@ -28,7 +28,8 @@ Dialog {
         // The third answer: neither ending the account nor leaving things as
         // they are.
         showCancel: true
-        cancelText: "This device only"
+        cancelOnOwnLine: true
+        cancelText: "Remove from this device only"
         onCancelled: { root.close(); root.localOnlyRequested(root.accountId) }
         onAccepted: root.accept()
         onRejected: root.reject()

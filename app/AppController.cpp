@@ -730,6 +730,11 @@ void AppController::forgetAccountLocally(const QString& id)
     // If the account is open, it has to let go of its files before they can be
     // removed - and letting go takes as long as the request it has in flight.
     if (SessionController* const ctrl = sessionFor(id)) {
+        // Which is why the row says so meanwhile: without it a press on
+        // "this device only" answers with nothing at all until the session
+        // finishes whatever it was doing.
+        deletingId_ = id;
+        emit deletingChanged();
         // The account stays on its server; this device stops being one of its
         // devices, so the server neither keeps mail for it nor lists it. An
         // account that is only being removed from here still says so once.

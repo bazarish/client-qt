@@ -19,6 +19,9 @@ Item {
     // things as they were". Off unless asked for.
     property string cancelText: "Cancel"
     property bool showCancel: false
+    // A third answer whose label does not fit beside the other two gets a line
+    // of its own rather than pushing them off the dialog.
+    property bool cancelOnOwnLine: false
     property bool danger: false
     // A dialog whose input is not yet valid keeps its accept action out of reach
     // rather than answering the press with an error.
@@ -27,33 +30,48 @@ Item {
     signal rejected()
     signal cancelled()
 
-    implicitHeight: row.implicitHeight + 28
-    implicitWidth: row.implicitWidth + 28
+    implicitHeight: column.implicitHeight + 28
+    implicitWidth: column.implicitWidth + 28
 
-    RowLayout {
-        id: row
+    ColumnLayout {
+        id: column
         anchors.right: parent.right
+        anchors.left: root.cancelOnOwnLine ? parent.left : undefined
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: 14
+        anchors.leftMargin: 14
         spacing: 8
+
         MenuButton {
-            visible: root.showCancel
-            Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
+            visible: root.showCancel && root.cancelOnOwnLine
+            Layout.fillWidth: true
             text: root.cancelText
             onClicked: root.cancelled()
         }
-        MenuButton {
-            visible: root.showReject
-            Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
-            text: root.rejectText
-            onClicked: root.rejected()
-        }
-        MenuButton {
-            Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
-            text: root.acceptText
-            danger: root.danger
-            enabled: root.acceptEnabled
-            onClicked: root.accepted()
+
+        RowLayout {
+            id: row
+            Layout.alignment: Qt.AlignRight
+            spacing: 8
+            MenuButton {
+                visible: root.showCancel && !root.cancelOnOwnLine
+                Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
+                text: root.cancelText
+                onClicked: root.cancelled()
+            }
+            MenuButton {
+                visible: root.showReject
+                Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
+                text: root.rejectText
+                onClicked: root.rejected()
+            }
+            MenuButton {
+                Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
+                text: root.acceptText
+                danger: root.danger
+                enabled: root.acceptEnabled
+                onClicked: root.accepted()
+            }
         }
     }
 }
