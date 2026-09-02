@@ -15,7 +15,10 @@ Item {
     anchors.fill: parent
 
     property bool open: false
+    // Account-level work - restoring a backup - has no session behind it and
+    // still belongs here, so the panel lists both and the handle counts both.
     readonly property int active: (App.session ? App.session.activeOperations : 0)
+        + App.activeOperations
 
     // Closing the session (sign-out) tears the panel down.
     Connections {
@@ -118,6 +121,19 @@ Item {
                 text: "Nothing running right now."
                 color: Theme.textDim
                 wrapMode: Text.Wrap
+            }
+
+            // Account-level rows first: a restore is what everything else is
+            // waiting for while it runs.
+            ListView {
+                id: accountOps
+                Layout.fillWidth: true
+                Layout.preferredHeight: contentHeight
+                clip: true
+                spacing: 2
+                interactive: false
+                model: App.operations
+                delegate: OperationRow { width: accountOps.width }
             }
 
             ListView {

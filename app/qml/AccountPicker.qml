@@ -233,6 +233,7 @@ Item {
 
     AccountDeleteConfirmDialog {
         id: deleteDialog
+        onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
         onConfirmed: (id) => App.deleteAccount(id)
     }
 

@@ -178,6 +178,17 @@ ApplicationWindow {
         onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
     }
 
+    // The account's address, when the server and this device disagree about it.
+    AddressChoiceDialog { id: addressChoiceDialog }
+
+    Connections {
+        target: App.session
+        ignoreUnknownSignals: true
+        function onAddressNeedsChoice(servedHost, ourHost) {
+            addressChoiceDialog.show(servedHost, ourHost)
+        }
+    }
+
     AccountDeleteFailedDialog {
         id: deleteFailedDialog
         onRetryRequested: (id) => App.deleteAccount(id)

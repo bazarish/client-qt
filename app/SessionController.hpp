@@ -126,6 +126,13 @@ public slots:
     void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
+    // The two answers to "your server serves an address this device has no keys
+    // for": keep this device's own address, or start from a fresh one.
+    void publishThisDeviceAddress();
+    void publishFreshAddress();
+    // Tells the server to stop holding mail for this device, without touching the
+    // account: what "remove from this device only" asks of the server.
+    void retireThisDevice();
     // Polls the user's own storage usage (mailbox + blob backends) and reports it.
     void refreshStorageUsage();
     // The devices registered on this account, and dropping one.
@@ -145,6 +152,9 @@ public slots:
     // first openAccount so the injected backend can reach them.
 
 signals:
+    // The server serves an address no device of this account answered for. The
+    // window puts the choice to the user; nothing is published until it does.
+    void addressMismatch(const QString& servedHost, const QString& ourHost);
     // Handed to the controller when the account opens, so a login is signed on
     // the thread the user clicked on rather than behind this worker's queue.
     void loginSignerReady(std::shared_ptr<bazarish::client::LoginSigner> signer);
@@ -903,6 +913,10 @@ public:
     Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
     Q_INVOKABLE void refreshI2pStatus();
+    // Answers to the address question above.
+    Q_INVOKABLE void keepThisDeviceAddress();
+    Q_INVOKABLE void useFreshAddress();
+    Q_INVOKABLE void retireThisDeviceOnServer();
     // Triggers a fresh poll of this account's storage usage (mailbox + blob). The
     // result lands in the storageInfo property; until it does, the last figures (if
     // any) stay, with the UI showing how long ago they were taken.
@@ -974,6 +988,9 @@ signals:
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
+    // The server serves an address this device has no keys for, and no other
+    // device of this account answered with them. Two ways out, both the user's.
+    void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     // The connection log, oldest first: one map per line with at/outgoing/what/
     // status/detail. Answers refreshConnectionLog().
     void connectionLogUpdated(const QVariantList& lines);
@@ -985,6 +1002,9 @@ signals:
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
 signals:  // to worker
+    void requestRetireThisDevice();
+    void requestPublishThisDeviceAddress();
+    void requestPublishFreshAddress();
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp,
         const QStringList& reseedUrls);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,

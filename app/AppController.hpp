@@ -27,6 +27,8 @@ namespace bazarish::app {
 // (pick or create an account, then unlock it) and account switching/removal.
 class AppController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QObject* operations READ operations CONSTANT)
+    Q_PROPERTY(int activeOperations READ activeOperations NOTIFY operationsChanged)
     Q_PROPERTY(QObject* accountList READ accountList CONSTANT)
     Q_PROPERTY(QObject* accounts READ accounts CONSTANT)
     Q_PROPERTY(QObject* session READ session NOTIFY sessionChanged)
@@ -87,6 +89,12 @@ public:
     // happen: an account asked to come online stays off, and its switch goes
     // back to what is on disk.
     Q_INVOKABLE void cancelUnlock();
+    // Work that has no session yet - restoring an account from a backup - still
+    // belongs in the activity panel: it is slow, it matters, and a button that
+    // answers nothing for a minute reads as a broken button.
+    QObject* operations() { return &operations_; }
+    int activeOperations() const { return operations_.runningCount(); }
+
     Q_INVOKABLE void importAccount(const QString& name, const QString& fileUrl,
         const QString& password, const QString& atRestPassphrase);
     // Ends the account for good: the server drops the registration, the
@@ -210,6 +218,7 @@ private:
 public:
 
 signals:
+    void operationsChanged();
     // A picture the user chose could not be prepared: not an image, or unreadable.
     void imageRejected(const QString& reason);
     void portableChanged();
@@ -341,6 +350,9 @@ private:
     int closingCount_ = 0;
     bool unlockToBringOnline_ = false;
     // Global full-privacy mode (persisted; applied process-wide on load/change).
+
+    // Account-level activity (a restore in progress).
+    OperationListModel operations_;
 };
 
 }  // namespace bazarish::app

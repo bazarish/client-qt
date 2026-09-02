@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
+#include <thread>
 
 #include "AppSettings.hpp"
 #include "I2pRouter.hpp"
@@ -611,17 +612,46 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
     const QString& password, const QString& atRestPassphrase)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
-    std::string id;
-    try {
-        const client::AccountInfo info = manager_->import(name.toStdString(),
-            localPath.toStdString(), password.toStdString(), atRestPassphrase.toStdString());
-        id = info.id;
-    } catch (const std::exception& e) {
-        emit createFailed(QString::fromUtf8(e.what()));
-        return;
-    }
-    refreshAccountList();
-    openSession(QString::fromStdString(id), atRestPassphrase, /*makeActive=*/true);
+    // Unsealing a bundle, writing a keyed database and laying out the account is
+    // seconds to a minute of work with the avatars in it. It runs off this thread
+    // and reports where every other slow thing reports, so the window stays alive
+    // and the user can see that something is happening.
+    OperationRow row;
+    row.id = QStringLiteral("restore");
+    row.kind = QStringLiteral("account");
+    row.title = QStringLiteral("Restoring your account");
+    row.status = QStringLiteral("Opening the backup…");
+    row.state = eOpRunning;
+    row.startedAt = QDateTime::currentMSecsSinceEpoch();
+    operations_.upsert(row);
+    emit operationsChanged();
+
+    std::thread([this, name, localPath, password, atRestPassphrase]() {
+        std::string id;
+        QString failure;
+        try {
+            const client::AccountInfo info = manager_->import(name.toStdString(),
+                localPath.toStdString(), password.toStdString(), atRestPassphrase.toStdString());
+            id = info.id;
+        } catch (const std::exception& e) {
+            failure = QString::fromUtf8(e.what());
+        }
+        // Back on the GUI thread: the models and the session belong to it.
+        QMetaObject::invokeMethod(this,
+            [this, id, failure, atRestPassphrase]() {
+                operations_.update(QStringLiteral("restore"),
+                    failure.isEmpty() ? QStringLiteral("Restored.") : failure, {}, -1,
+                    failure.isEmpty() ? eOpDone : eOpFailed);
+                emit operationsChanged();
+                if (!failure.isEmpty()) {
+                    emit createFailed(failure);
+                    return;
+                }
+                refreshAccountList();
+                openSession(QString::fromStdString(id), atRestPassphrase, /*makeActive=*/true);
+            },
+            Qt::QueuedConnection);
+    }).detach();
 }
 
 void AppController::deleteAccount(const QString& id)
@@ -700,6 +730,10 @@ void AppController::forgetAccountLocally(const QString& id)
     // If the account is open, it has to let go of its files before they can be
     // removed - and letting go takes as long as the request it has in flight.
     if (SessionController* const ctrl = sessionFor(id)) {
+        // The account stays on its server; this device stops being one of its
+        // devices, so the server neither keeps mail for it nor lists it. An
+        // account that is only being removed from here still says so once.
+        ctrl->retireThisDeviceOnServer();
         // The files go when the session lets go of them, which is not now: it is
         // still bringing its long poll home. onSessionClosed finishes the job.
         pendingRemovals_.insert(id);

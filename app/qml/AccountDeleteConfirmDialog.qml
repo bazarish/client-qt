@@ -12,6 +12,9 @@ Dialog {
     // only repeat what the window is showing.
     property string accountName: ""
     signal confirmed(string id)
+    // "Remove from this device": the account stays on its server and on the
+    // user's other devices; this device stops being one of them.
+    signal localOnlyRequested(string id)
 
     function show(id, name) { accountId = id; accountName = name ? name : ""; open() }
 
@@ -20,8 +23,13 @@ Dialog {
     width: Math.min(360, parent ? parent.width - 24 : 360)
     title: "Delete account"
     footer: DialogButtons {
-        acceptText: "Delete"
+        acceptText: "Delete everywhere"
         danger: true
+        // The third answer: neither ending the account nor leaving things as
+        // they are.
+        showCancel: true
+        cancelText: "This device only"
+        onCancelled: { root.close(); root.localOnlyRequested(root.accountId) }
         onAccepted: root.accept()
         onRejected: root.reject()
     }
@@ -41,7 +49,10 @@ Dialog {
                 : "Permanently delete this account? ")
             + "Your server ends the account - its address, its mailbox and everything it "
             + "holds - and then the profile and its messages go from this device. Make sure "
-            + "you have a backup if you might need it again. This cannot be undone."
+            + "you have a backup if you might need it again. This cannot be undone.\n\n"
+            + "Remove from this device instead, and nothing is asked of your server beyond "
+            + "forgetting this device: the account, its address and its mail stay, and your "
+            + "other devices carry on. This device's queue on the server is dropped."
         color: Theme.text
         wrapMode: Text.Wrap
     }

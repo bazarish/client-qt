@@ -194,6 +194,7 @@ if(Qt6_FOUND)
             app/qml/SamRestartDialog.qml
             app/qml/ServerHelloDialog.qml
             app/qml/AccountDeleteConfirmDialog.qml
+            app/qml/AddressChoiceDialog.qml
             app/qml/AccountDeleteLockedDialog.qml
             app/qml/AccountDeleteFailedDialog.qml
             app/qml/OperationsOverlay.qml

@@ -507,6 +507,11 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
     // signer of its own here: it must not wait behind a sync that may be minutes
     // long to answer a click.
     emit loginSignerReady(session_->loginSigner());
+    // The core asks this when the server serves an address no device answered
+    // for. Nothing is published until the user says which way.
+    session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
+        emit addressMismatch(QString::fromStdString(served), QString::fromStdString(ours));
+    });
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected,
@@ -1617,6 +1622,55 @@ void SessionWorker::signLogin(const QString& challenge)
     }
 }
 
+void SessionWorker::retireThisDevice()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->retireThisDevice();
+    } catch (const std::exception& error) {
+        // Best effort: the account is being removed from this device either way,
+        // and a server that did not hear it will drop the device when its
+        // registration goes idle.
+        bazarish::log::info("server not told this device is leaving: {}", error.what());
+    }
+}
+
+void SessionWorker::publishThisDeviceAddress()
+{
+    if (!session_) {
+        return;
+    }
+    WorkerOp op(this, QStringLiteral("i2p-address"), QStringLiteral("status"),
+        QStringLiteral("Publishing your address"), QStringLiteral("Telling your server…"));
+    try {
+        session_->publishThisDeviceAddress();
+        op.succeed(QStringLiteral("Your server serves this address now."));
+    } catch (const std::exception& error) {
+        op.fail(QString::fromUtf8(error.what()));
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+    refreshI2pStatus();
+}
+
+void SessionWorker::publishFreshAddress()
+{
+    if (!session_) {
+        return;
+    }
+    WorkerOp op(this, QStringLiteral("i2p-address"), QStringLiteral("status"),
+        QStringLiteral("Making a new address"), QStringLiteral("Building it…"));
+    try {
+        session_->publishFreshAddress();
+        op.succeed(QStringLiteral("A new address is published."));
+    } catch (const std::exception& error) {
+        op.fail(QString::fromUtf8(error.what()));
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+    refreshI2pStatus();
+}
+
 void SessionWorker::refreshI2pStatus()
 {
     if (!session_) {
@@ -2059,6 +2113,16 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
+    connect(this, &SessionController::requestRetireThisDevice, worker_,
+        &SessionWorker::retireThisDevice);
+    connect(this, &SessionController::requestPublishThisDeviceAddress, worker_,
+        &SessionWorker::publishThisDeviceAddress);
+    connect(this, &SessionController::requestPublishFreshAddress, worker_,
+        &SessionWorker::publishFreshAddress);
+    connect(worker_, &SessionWorker::addressMismatch, this,
+        [this](const QString& served, const QString& ours) {
+            emit addressNeedsChoice(served, ours);
+        });
     connect(worker_, &SessionWorker::loginSignerReady, this,
         [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {
             loginSigner_ = std::move(signer);
@@ -3457,6 +3521,21 @@ bool SessionController::contactCanAccept(const QString& fp) const
 void SessionController::requestInvite()
 {
     emit requestInviteSig();
+}
+
+void SessionController::retireThisDeviceOnServer()
+{
+    emit requestRetireThisDevice();
+}
+
+void SessionController::keepThisDeviceAddress()
+{
+    emit requestPublishThisDeviceAddress();
+}
+
+void SessionController::useFreshAddress()
+{
+    emit requestPublishFreshAddress();
 }
 
 void SessionController::signLogin(const QString& challenge)
