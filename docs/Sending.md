@@ -91,7 +91,16 @@ recognises the repetition, stores no second copy and consumes no second token.
 
 ## Delivery-token accounting
 
-The one-time delivery token is deducted from the local stash when the envelope is
+A message is paid for by weight: one token per 30 KiB of sealed payload, never
+fewer than one. A line of text costs one token, as it always did; a picture or a
+voice note costs what it weighs, and the largest payload the protocol allows
+costs eighteen. The client counts them out and the recipient's server checks the
+count against the bytes it is holding, so neither side takes the other's word
+for it. Which tokens are drawn is random rather than in order: two devices of one
+account can hold overlapping stashes, and taking from the same end on both makes
+them collide on the same token every time.
+
+The tokens are deducted from the local stash when the envelope is
 handed to the courier, not when delivery is confirmed. After the attempts are
 exhausted the client cannot establish whether the recipient's server stored the
 message; a token that may already have been consumed there must not be offered to
@@ -119,12 +128,12 @@ device of the account spent that token first.
 
 | Parameter | Value |
 |---|---|
-| Refused tokens one message walks through | 5 |
+| Refused tokens one message walks through | 10 |
 
-It stops there rather than walking the batch. Five refusals in a row is not a
-stale token but a batch the far side no longer knows, and dialling through the
-remaining two hundred would be many minutes of work for a message that is not
-going to be taken. The message is then reported failed, with a resend control,
+It stops there rather than walking the batch. Ten refusals of ten tokens drawn at
+random is not a stale token but a batch the far side no longer knows, and
+dialling through the remaining two hundred would be many minutes of work for a
+message that is not going to be taken. The message is then reported failed, with a resend control,
 and this device asks its **own other devices** for a token
 (`device.token-request`). The correspondent is not asked: a contact request is
 the only tokenless path into a mailbox, and a top-up over it would turn one
