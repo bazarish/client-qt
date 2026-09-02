@@ -269,6 +269,12 @@ QString humanDeliveryPhase(const QString& phase)
     if (phase == QStringLiteral("sending")) {
         return QStringLiteral("Sending over I2P…");
     }
+    if (phase.startsWith(QStringLiteral("token-refused:"))) {
+        // "token-refused:31" -> what the user needs to know: the message is not
+        // failing, one capability was refused and the next one is being tried.
+        return QStringLiteral("Token rejected, ") + phase.section(QChar(':'), 1)
+            + QStringLiteral(" left…");
+    }
     if (phase.startsWith(QStringLiteral("retry"))) {
         // "retry 3/4" -> "Trying again (3 of 4)…"
         const QStringList parts = phase.mid(6).trimmed().split(QChar('/'));
@@ -5128,7 +5134,8 @@ void SessionController::onSendPhase(qint64 localId, const QString& phase)
     // settled) and, while it is retrying, under the bubble itself: a message that
     // is being tried again should say so where the user is looking.
     updateOperation(QStringLiteral("send:") + QString::number(localId), human);
-    if (phase.startsWith(QStringLiteral("retry"))) {
+    if (phase.startsWith(QStringLiteral("retry"))
+        || phase.startsWith(QStringLiteral("token-refused:"))) {
         conversation_.setErrorForId(localId, human);
     }
 }

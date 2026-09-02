@@ -106,22 +106,29 @@ the network, so only one of them touches the stash:
 
 | Refusal | What it says | What the client does |
 |---|---|---|
-| `DELIVERY_REJECTED` | the server would not take the token | drops **every** token held for that contact and asks for a fresh batch |
+| `DELIVERY_REJECTED` | the server would not take **that token** | sends the message again with the next token in the stash |
 | `STORAGE_FULL` | the mailbox is full; the token is untouched, and the server re-registers it | keeps the stash |
 | `RECIPIENT_SERVER_UNREACHABLE` | nothing was presented at all | keeps the stash |
 | `MESSAGE_TOO_LARGE` | the message is the problem | keeps the stash |
 
-The whole stash goes, not the one token spent, because tokens arrive as a batch
-and a batch is refused as a batch: it was minted against a delegation the
-recipient's server has since replaced, and the rest of it is as dead as the one
-that was refused. Holding the remainder is what turned a single refusal into a
-storm of them - one token was presented 254 times in testing before this rule
-existed.
+A refusal says that one capability was not one. It says nothing about the rest of
+the stash, which has not been shown to anybody - so the message is offered again
+with the next token rather than failed, and the activity row says which try it is
+on: "Token rejected, 31 left…". The commonest cause is exactly that: another
+device of the account spent that token first.
 
-Replacing the batch takes a token of its own, which is why a refusal is followed
-by asking the account's other devices first (`device.token-request`), and only
-then by the tokenless request to the contact. The next send is marked as needing
-a batch of its own, so it does not spend a borrowed token on ordinary mail.
+| Parameter | Value |
+|---|---|
+| Refused tokens one message walks through | 5 |
+
+It stops there rather than walking the batch. Five refusals in a row is not a
+stale token but a batch the far side no longer knows, and dialling through the
+remaining two hundred would be many minutes of work for a message that is not
+going to be taken. The message is then reported failed, with a resend control,
+and this device asks its **own other devices** for a token
+(`device.token-request`). The correspondent is not asked: a contact request is
+the only tokenless path into a mailbox, and a top-up over it would turn one
+narrow door into a channel anybody may knock on.
 
 ## Outbound addresses
 
