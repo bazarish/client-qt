@@ -218,6 +218,10 @@ constexpr int kHeartbeatIntervalMs = 30000;
 // How long the server is asked to hold a request. Its own cap is lower; asking
 // for more than it allows is answered sooner, which costs nothing.
 constexpr int kEventWaitSeconds = 30;
+// How long the worker waits before taking the next batch out of the mailbox: long
+// enough for what it just handed over to be stored and acked, short enough that a
+// full mailbox still drains in a few seconds.
+constexpr int kNextPassDelayMs = 250;
 // The floor between two waits. Without it a mailbox that still has something in
 // it answers instantly every time, and the loop becomes a spin.
 constexpr int kEventSettleMs = 1000;
@@ -908,11 +912,13 @@ void SessionWorker::sync()
         map["pendingId"] = QString::fromStdString(m.pendingId);
         emit messageReceived(map);
     }
-    // One pass takes a bounded number of items so this thread keeps answering
-    // the user; the rest are fetched on the next turn of the event loop, behind
-    // whatever the user asked for in the meantime.
+    // One pass takes a bounded number of items so this thread keeps answering the
+    // user; the rest follow shortly, behind whatever the user asked for in the
+    // meantime. Shortly rather than at once: what was surfaced is stored and
+    // acked by the other thread, and a pass that starts before any of that has
+    // landed asks the server for items somebody is already holding.
     if (session_->morePending()) {
-        QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
+        QTimer::singleShot(kNextPassDelayMs, this, [this]() { sync(); });
     }
     emitContacts();
     emitFacadeInfo();
