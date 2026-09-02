@@ -4741,13 +4741,14 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     const Placement placement = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
     m.ts = placement.displayTs;
     m.orderKey = placement.orderKey;
-    // An echo carries no delivery state of its own: the device that sent it owns
-    // that, and a receipt from the contact will still arrive here. A note to the
-    // saved chat is the exception - it reached this device through the server
-    // that already holds it, and there is no correspondent to read it, so amber
-    // here would be a wait for something that never arrives.
+    // An echo exists because the send it echoes was stored by the recipient's
+    // server - the device that sent it writes the echo only then - so it lands
+    // here in the same amber state the sender is showing, and the contact's read
+    // receipt (which reaches every device of this account) turns it green here
+    // too. A note to the saved chat is the exception: there is no correspondent
+    // to read it, so it is finished the moment our own server holds it.
     m.status = m.outgoing
-        ? (isSavedChat(peer) ? DeliveryStatus::Delivered : DeliveryStatus::Delivering)
+        ? (isSavedChat(peer) ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer)
         : DeliveryStatus::Received;
     m.id = store_.append(m);
 
