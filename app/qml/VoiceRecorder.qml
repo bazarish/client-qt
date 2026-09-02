@@ -88,7 +88,10 @@ Popup {
         target: root.session
         ignoreUnknownSignals: true
         function onVoiceChanged() {
-            if (!root.visible || !root.session.voiceRecording) {
+            // Also while the window is only watching: the point of opening the
+            // microphone before a take is that a microphone which is not working
+            // shows itself as a flat line before the user speaks into it.
+            if (!root.visible || (!root.session.voiceRecording && !root.session.voiceMonitoring)) {
                 return
             }
             const next = root.levels.slice(1)

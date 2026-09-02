@@ -321,11 +321,50 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
         return false;
     }
+    // The three below tidy what is already there; none of them is what makes the
+    // account readable, so one that fails is said out loud and the account still
+    // opens. Refusing to open it over a housekeeping statement would cost the
+    // user their messages to save them from a duplicate.
+    //
+    // Calls used to leave a line in the conversation and a preview in the chat
+    // list. They no longer do, and the lines already written go with them: these
+    // are the only system notes this client ever wrote with those openings.
+    if (!query.exec("DELETE FROM messages WHERE type = 'system' AND ("
+                    "text LIKE 'Incoming call%' OR text LIKE 'Outgoing call%'"
+                    " OR text = 'Missed call')")) {
+        bazarish::log::warn("transcript: the call lines could not be cleared");
+    }
+    // One message, one row. The rule is the index below; this clears what was
+    // written before there was one, keeping the copy that arrived first.
+    if (!query.exec("DELETE FROM messages WHERE e2eId != '' AND id NOT IN ("
+                    "SELECT MIN(id) FROM messages WHERE e2eId != ''"
+                    " GROUP BY peer, e2eId, outgoing)")) {
+        bazarish::log::warn("transcript: the duplicate rows could not be cleared");
+    }
+    // A message is named by its protocol id, and the same id in the same
+    // conversation on the same side is the same message however many times it is
+    // offered. System notes carry no id and are not constrained. This is the
+    // backstop; what every row goes through first is append().
+    if (!query.exec("CREATE UNIQUE INDEX IF NOT EXISTS messages_by_e2e"
+                    " ON messages (peer, e2eId, outgoing) WHERE e2eId != ''")) {
+        bazarish::log::warn("transcript: one message per row is not enforced here");
+    }
     return true;
 }
 
 qint64 TranscriptStore::append(const StoredMessage& message)
 {
+    // At-least-once delivery means the same message legitimately arrives more
+    // than once; it is one message either way, and this is the one place every
+    // row goes through.
+    if (!message.e2eId.isEmpty()) {
+        if (const qint64 existing = idForKey(message.peer, message.e2eId, message.outgoing);
+            existing != 0) {
+            bazarish::log::info("transcript: {} was offered again; the row it already has stands",
+                message.e2eId.toStdString());
+            return existing;
+        }
+    }
     Query query(db_);
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, e2eId, text, attName, attMime,"
@@ -353,10 +392,36 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.attWave);
     query.addBindValue(message.forwarded ? 1 : 0);
     if (!query.exec()) {
-        return 0;
+        // The index above is the backstop for a path that did not ask first. Say
+        // which row it is rather than answering with an id nobody has.
+        const qint64 existing = message.e2eId.isEmpty()
+            ? 0
+            : idForKey(message.peer, message.e2eId, message.outgoing);
+        if (existing != 0) {
+            bazarish::log::warn("transcript: {} was stored without asking first",
+                message.e2eId.toStdString());
+        }
+        return existing;
     }
     const qint64 id = query.lastInsertId();
     return id;
+}
+
+qint64 TranscriptStore::idForKey(
+    const QString& peer, const QString& e2eId, const bool outgoing) const
+{
+    if (e2eId.isEmpty()) {
+        return 0;
+    }
+    Query query(db_);
+    query.prepare("SELECT id FROM messages WHERE peer = ? AND e2eId = ? AND outgoing = ? LIMIT 1");
+    query.addBindValue(peer);
+    query.addBindValue(e2eId);
+    query.addBindValue(outgoing ? 1 : 0);
+    if (!query.exec() || !query.next()) {
+        return 0;
+    }
+    return query.value(0).toLongLong();
 }
 
 void TranscriptStore::updateStatus(qint64 id, int status)

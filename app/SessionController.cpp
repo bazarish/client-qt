@@ -779,7 +779,7 @@ void SessionWorker::sync()
             // autoAckSurfaced=false: defer acking each surfaced item until the GUI has
             // durably stored it (ackPending via ackAfterReceive), so a crash/restart
             // between fetch and store never loses a message.
-            messages = session_->sync(false);
+            messages = session_->sync(false, Session::kPendingItemsPerPass);
         } catch (const bazarish::client::ApiError& error) {
             // A connect that died halfway - no I2P yet, the server unreachable -
             // leaves the account holding a server this device was never
@@ -794,7 +794,7 @@ void SessionWorker::sync()
             lastRegisterAttemptMs_ = nowMillis();
             bazarish::log::info("this device is not registered with the server: registering it");
             session_->registerAccount();
-            messages = session_->sync(false);
+            messages = session_->sync(false, Session::kPendingItemsPerPass);
         }
         emit syncReachable(true, {});
     } catch (const std::exception& error) {
@@ -907,6 +907,12 @@ void SessionWorker::sync()
         // it has durably stored it (deferred ack - see ackAfterReceive).
         map["pendingId"] = QString::fromStdString(m.pendingId);
         emit messageReceived(map);
+    }
+    // One pass takes a bounded number of items so this thread keeps answering
+    // the user; the rest are fetched on the next turn of the event loop, behind
+    // whatever the user asked for in the meantime.
+    if (session_->morePending()) {
+        QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
     }
     emitContacts();
     emitFacadeInfo();
@@ -4614,6 +4620,11 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (type == "receipt") {
         const QString ref = message.value("ref").toString();
         const qint64 localId = store_.idForE2e(ref);
+        // Said out loud on both sides: a receipt reaches an account, and every
+        // device of it takes its own copy from the mailbox. When one device shows
+        // green while another stays amber, the two lines are what separate a
+        // receipt that arrived late from one that arrived and was not applied.
+        bazarish::log::info("receipt for {} applied to row {}", ref.toStdString(), localId);
         if (localId != 0) {
             markOutgoingRead(peer, localId);
         }
@@ -5521,8 +5532,9 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
 }
 
 void SessionController::onCallLogged(
-    const QString& peer, bool incoming, int outcome, qint64 durationSec)
+    const QString& peer, const bool incoming, const int outcome, qint64 durationSec)
 {
+    (void)durationSec;  // nothing is written down, so its length is nobody's business
     if (peer.isEmpty()) {
         return;
     }
@@ -5538,37 +5550,10 @@ void SessionController::onCallLogged(
             || outcome == static_cast<int>(Session::CallOutcome::eRefused))) {
         callTones_.failure();
     }
-    const QString dir
-        = incoming ? QStringLiteral("Incoming call") : QStringLiteral("Outgoing call");
-    QString text;
-    switch (outcome) {
-    case 0:
-        text = dir + QStringLiteral(", ") + QString::number(durationSec / 60)
-            + QStringLiteral(":")
-            + QString::number(durationSec % 60).rightJustified(2, QLatin1Char('0'));
-        break;
-    case 1: text = QStringLiteral("Outgoing call, no answer"); break;
-    case 2: text = dir + QStringLiteral(", declined"); break;
-    case 3: text = QStringLiteral("Missed call"); break;
-    case 4: text = QStringLiteral("Outgoing call, cancelled"); break;
-    case 5: text = QStringLiteral("Outgoing call, busy"); break;
-    case 6: text = QStringLiteral("Outgoing call, not accepting calls"); break;
-    case 7: text = QStringLiteral("Incoming call, refused"); break;
-    default: text = dir; break;
-    }
-
-    StoredMessage sys;
-    sys.peer = peer;
-    sys.type = QStringLiteral("system");
-    sys.text = text;
-    sys.ts = nowMillis();
-    sys.orderKey = sys.ts;
-    sys.status = DeliveryStatus::Received;
-    sys.id = store_.append(sys);
-    showInActiveView(sys, false);
-    contacts_.touch(peer, peerName(peer), text, sys.ts, false);
-    contacts_.setUnread(peer, store_.unreadCount(peer));
-    refreshUnreadTotal();
+    // A call leaves nothing behind in the conversation: no line in it and no
+    // preview in the chat list. A call is a thing that happened at the time it
+    // happened - it is not correspondence, and a column of "Missed call" over a
+    // chat says nothing the user did not already see the window say.
 }
 
 }  // namespace bazarish::app

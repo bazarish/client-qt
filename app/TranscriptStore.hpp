@@ -130,6 +130,9 @@ public:
     void setHasPicture(qint64 id, bool has);
     void setBlobGone(qint64 id, bool gone);
     qint64 idForE2e(const QString& e2eId) const;
+    // The row a message occupies, if it has one: the conversation, the protocol
+    // id and the side it is on name exactly one.
+    qint64 idForKey(const QString& peer, const QString& e2eId, bool outgoing) const;
     // The row id of an incoming message from peer with this protocol id, the
     // target of an edit (0 if none). Scoping to incoming-from-peer is the
     // security check: a peer can only edit a message it actually sent.
