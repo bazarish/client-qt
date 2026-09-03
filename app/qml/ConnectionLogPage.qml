@@ -19,6 +19,20 @@ Popup {
     // The tail the core keeps; the window shows it newest first.
     property var lines: []
 
+    // The line that has just been copied, and how long it says so. Held here and
+    // not in the delegate: the poll below hands the list a brand-new array every
+    // half second, which rebuilds every delegate, and an index is no identity
+    // either - newest-first means one new event shifts every row down.
+    property string copiedKey: ""
+    property bool allCopied: false
+    readonly property int copiedFlashMs: 1500
+
+    Timer {
+        id: copiedReset
+        interval: root.copiedFlashMs
+        onTriggered: { root.copiedKey = ""; root.allCopied = false }
+    }
+
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(720, parent ? parent.width - 24 : 720)
@@ -49,15 +63,34 @@ Popup {
         return Qt.formatDateTime(new Date(millis), "hh:mm:ss")
     }
 
+    function lineKey(line) {
+        return line.at + "|" + line.what
+    }
+
+    // One line as text, for the clipboard. A row and "Copy all" write the same
+    // shape because they call the same function.
+    function lineText(line) {
+        return stamp(line.at) + (line.outgoing ? "  ->  " : "  <-  ") + line.what
+            + (line.status ? "  " + line.status : "")
+            + (line.detail ? "  " + line.detail : "")
+    }
+
     function asText() {
         let out = []
         for (let i = 0; i < root.lines.length; ++i) {
-            const line = root.lines[i]
-            out.push(stamp(line.at) + (line.outgoing ? "  ->  " : "  <-  ") + line.what
-                + (line.status ? "  " + line.status : "")
-                + (line.detail ? "  " + line.detail : ""))
+            out.push(lineText(root.lines[i]))
         }
         return out.join("\n")
+    }
+
+    function copyLine(line) {
+        if (!root.session) {
+            return
+        }
+        root.session.copyText(root.lineText(line))
+        root.copiedKey = root.lineKey(line)
+        root.allCopied = false
+        copiedReset.restart()
     }
 
     contentItem: ColumnLayout {
@@ -99,41 +132,63 @@ Popup {
             model: root.lines
             ScrollBar.vertical: ScrollBar {}
 
-            delegate: RowLayout {
+            // A whole row is the click target: this window exists to be quoted in a
+            // bug report, and one line of it is usually what is wanted.
+            delegate: Rectangle {
+                id: logRow
                 width: list.width
-                spacing: 8
-                Label {
-                    text: root.stamp(modelData.at)
-                    color: Theme.textFaint
-                    font.pixelSize: Theme.fontSmall
-                }
-                Label {
-                    text: modelData.outgoing ? "→" : "←"
-                    color: modelData.outgoing ? Theme.accent : Theme.green
-                    font.pixelSize: Theme.fontSmall
-                }
-                Label {
-                    text: modelData.what
-                    color: Theme.text
-                    font.pixelSize: Theme.fontSmall
-                    elide: Text.ElideRight
-                    // One column, so the eye runs down the kinds rather than
-                    // hunting for where each line's status begins.
-                    Layout.preferredWidth: 300
-                }
-                Label {
-                    text: modelData.status
-                    elide: Text.ElideRight
-                    Layout.fillWidth: true
-                    // A refusal is the line the user came here for.
-                    color: modelData.status.indexOf("failed") === 0 || modelData.status === "dropped"
-                        ? Theme.danger : Theme.textDim
-                    font.pixelSize: Theme.fontSmall
-                }
-                Label {
-                    text: modelData.detail
-                    color: Theme.textFaint
-                    font.pixelSize: Theme.fontSmall
+                height: rowLine.implicitHeight + 4
+                radius: Theme.radiusSmall
+                readonly property bool copied: root.copiedKey === root.lineKey(modelData)
+                color: logRow.copied ? Theme.bubbleOut
+                    : (rowTap.pressed ? Theme.border2
+                        : (rowHover.hovered ? Theme.surfaceAlt : "transparent"))
+                Behavior on color { ColorAnimation { duration: 120 } }
+
+                HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler { id: rowTap; onTapped: root.copyLine(modelData) }
+
+                RowLayout {
+                    id: rowLine
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: 4
+                    anchors.rightMargin: 4
+                    spacing: 8
+                    Label {
+                        text: root.stamp(modelData.at)
+                        color: Theme.textFaint
+                        font.pixelSize: Theme.fontSmall
+                    }
+                    Label {
+                        text: modelData.outgoing ? "→" : "←"
+                        color: modelData.outgoing ? Theme.accent : Theme.green
+                        font.pixelSize: Theme.fontSmall
+                    }
+                    Label {
+                        text: modelData.what
+                        color: Theme.text
+                        font.pixelSize: Theme.fontSmall
+                        elide: Text.ElideRight
+                        // One column, so the eye runs down the kinds rather than
+                        // hunting for where each line's status begins.
+                        Layout.preferredWidth: 300
+                    }
+                    Label {
+                        text: modelData.status
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        // A refusal is the line the user came here for.
+                        color: modelData.status.indexOf("failed") === 0 || modelData.status === "dropped"
+                            ? Theme.danger : Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                    }
+                    Label {
+                        text: logRow.copied ? "copied" : modelData.detail
+                        color: logRow.copied ? Theme.green : Theme.textFaint
+                        font.pixelSize: Theme.fontSmall
+                    }
                 }
             }
 
@@ -153,8 +208,17 @@ Popup {
             spacing: 8
             MenuButton {
                 Layout.fillWidth: true
-                text: "Copy all"
-                onClicked: if (root.session) { root.session.copyText(root.asText()) }
+                text: root.allCopied ? "Copied" : "Copy all"
+                positive: root.allCopied
+                onClicked: {
+                    if (!root.session) {
+                        return
+                    }
+                    root.session.copyText(root.asText())
+                    root.copiedKey = ""
+                    root.allCopied = true
+                    copiedReset.restart()
+                }
             }
             MenuButton {
                 Layout.fillWidth: true

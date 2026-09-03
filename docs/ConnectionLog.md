@@ -45,5 +45,6 @@ is the **recipient's** server signing for the delivery, not ours.
 
 The log holds the last **100 events per account**, in memory only: switching
 accounts does not mix them, closing the application loses them, and nothing is
-written to disk. "Copy all" puts the visible lines on the clipboard; "Clear"
-empties the ring.
+written to disk. Clicking a line puts that one line on the clipboard, in the same
+shape "Copy all" writes it - a line carries no message text and no full
+fingerprint, so it is safe to paste into a bug report. "Clear" empties the ring.
