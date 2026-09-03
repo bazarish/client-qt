@@ -68,7 +68,10 @@ Three consequences worth stating:
   named su3 URL.
 
 The client keeps no netDb-seeding code of its own: there is no reseed request in
-its API, and the whole clearnet leg of that API is gone with it.
+its API, and the whole clearnet leg of that API is gone with it. An address that
+is not `https://` is taken as an archive already on disk and handed to the engine
+as one - what an offline install or a test points at; a descriptor never carries
+such an address, because the check above refuses it.
 
 ## Settings
 
