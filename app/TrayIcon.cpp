@@ -31,9 +31,17 @@ constexpr int kUnreadTintAlpha = 140;
 // How long a popup stays up. Long enough to read a name, short enough not to sit
 // over other work.
 constexpr int kPopupMs = 6000;
-// How often a notification may be heard while what it announced is still
-// unread. The popup is not held back - only the sound.
-constexpr int kNotifySoundIntervalMs = 10000;
+// How closely two notification sounds may follow one another while what they
+// announced is still unread: half again the length of the sound in use. Enough
+// that a flood of messages is heard as a flood rather than smeared into one long
+// noise by sounds starting over each other, and no more than that - a fixed ten
+// seconds silenced everything after the first arrival. The popup is not held back
+// either way; only the sound is.
+constexpr int kSoundSpacingNumerator = 3;
+constexpr int kSoundSpacingDenominator = 2;
+// Stands in until the player has read the length of the file, which it has not
+// before the first sound of a session has played.
+constexpr int kAssumedSoundMs = 1000;
 // How recently the window must have been the active one for a tray click to read
 // as "put it away" rather than "bring it here".
 constexpr int kRecentlyActiveMs = 400;
@@ -224,8 +232,10 @@ void TrayIcon::notify(const QString& title, const QString& body)
     // the interval. Reading it clears the hold, so the next arrival is heard as
     // soon as it comes. A call is not rationed at all - it has its own sound, and
     // it does not come through here.
-    const bool quiet = !announcedWasRead_ && sinceSound_.isValid()
-        && sinceSound_.elapsed() < kNotifySoundIntervalMs;
+    const qint64 length = sound_.durationMs() > 0 ? sound_.durationMs() : kAssumedSoundMs;
+    const qint64 spacing = length * kSoundSpacingNumerator / kSoundSpacingDenominator;
+    const bool quiet
+        = !announcedWasRead_ && sinceSound_.isValid() && sinceSound_.elapsed() < spacing;
     if (quiet) {
         return;
     }

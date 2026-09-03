@@ -326,7 +326,12 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
 // A received message whose sentAt is within this window of arrival is placed in
 // sentAt order (repairing an out-of-order burst); an older arrival is appended at
 // the end as new instead (docs-main Messages.md "Ordering and timestamps").
-constexpr qint64 kReorderWindowMs = 5000;
+// Wide enough to cover a mailbox being drained: each waiting item is its own
+// request over I2P and they are taken a few at a time, so a burst takes tens of
+// seconds to land. At five it did not: the echo of one's own send, which is
+// written only after the recipient's server has signed for it, arrived after the
+// reply it had preceded and was left sitting under it.
+constexpr qint64 kReorderWindowMs = 20000;
 
 // The order key (sort position) and display time for a received message.
 // orderKey is sentAt when the message arrived within the reorder window, else the

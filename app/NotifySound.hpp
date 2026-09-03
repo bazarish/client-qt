@@ -22,6 +22,10 @@ public:
     ~NotifySound() override;
 
     void play();
+    // How long the sound in use runs, in milliseconds; 0 until the player has
+    // read the file. The caller spaces sounds by it, so it belongs here as a fact
+    // about the sound rather than as a number written somewhere else.
+    qint64 durationMs() const;
 
 private:
     // The recording of the user's own if there is one, the built-in otherwise.

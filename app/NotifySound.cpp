@@ -45,6 +45,11 @@ QUrl NotifySound::source() const
     return QUrl(QString::fromLatin1(kBuiltInSound));
 }
 
+qint64 NotifySound::durationMs() const
+{
+    return player_ ? player_->duration() : 0;
+}
+
 void NotifySound::play()
 {
     if (QMediaDevices::defaultAudioOutput().isNull()) {

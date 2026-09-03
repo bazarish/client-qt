@@ -15,6 +15,15 @@ what the ringing call window's pulse is taken from.
 
 A call owns the sound while it rings: nothing announces a message over it.
 
+Arrivals are announced without being smeared together: while what was announced is
+still unread, two sounds are kept at least **half again the length of the sound in
+use** apart, so a flood of messages is heard as a flood rather than as one long
+noise made of sounds starting over each other. Reading what was announced clears
+the hold, and the next arrival is heard as it comes. The spacing follows the file:
+a longer recording of the user's own spaces itself further apart without anything
+being configured. Only the sound is rationed - every message still shows its
+popup.
+
 ## Where a replacement goes
 
 At the root of the installation - the directory that holds `accounts/`,
