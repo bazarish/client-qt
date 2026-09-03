@@ -2748,6 +2748,10 @@ int SessionController::loadOlderMessages()
     oldestLoadedId_ = older.front().id;
     hasMoreOlder_ = store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
     conversation_.prependMessages(older);
+    // A page read from disk carries pictures the same way the first one does.
+    // Without this the bubbles scrolled up into are drawn empty: the picture is
+    // in the account, and nothing had asked for it.
+    requestPicturesFor(older);
     emit pagingChanged();
     return static_cast<int>(older.size());
 }
@@ -2767,6 +2771,7 @@ int SessionController::loadNewerMessages()
     newestLoadedId_ = newer.back().id;
     hasMoreNewer_ = store_.hasMessagesAfter(activePeer_, newestLoadedId_);
     conversation_.appendMessages(newer);
+    requestPicturesFor(newer);
     emit pagingChanged();
     return static_cast<int>(newer.size());
 }

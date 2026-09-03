@@ -419,22 +419,46 @@ Item {
                 onModelChanged: if (model) { autoScrolling = true; Qt.callLater(restoreScroll) }
 
                 function loadOlder() {
-                    paging = true
-                    const k = root.session.loadOlderMessages()
-                    if (k > 0) {
-                        // Keep the user on the same message: the previously-top item
-                        // is now at index k.
-                        autoScrolling = true
-                        positionViewAtIndex(k, ListView.Beginning)
-                        autoScrolling = false
+                    if (paging) {
+                        return
                     }
-                    paging = false
+                    paging = true
+                    // Reading older history is proof the view is not following the
+                    // bottom any more. Left set, the follow rule below fires while
+                    // the page lands and throws the user back to the newest
+                    // message with everything they scrolled through gone.
+                    stickToBottom = false
+                    // The row the user is actually looking at, before the page is
+                    // added. It is a delegate that exists, so putting it back is
+                    // exact; the count of inserted rows names the row that used to
+                    // be first in the model, which is up to a screenful away from
+                    // where the user was - and moving them there is the jerk.
+                    const topRow = indexAt(width / 2, contentY + topMargin + 2)
+                    const added = root.session.loadOlderMessages()
+                    if (added <= 0) {
+                        Qt.callLater(function() { messages.paging = false })
+                        return
+                    }
+                    const anchor = topRow >= 0 ? topRow + added : added
+                    restoreToRow(anchor)
+                    // Again next frame, and only then is paging cleared: the rows
+                    // that just arrived are measured after this returns, so until
+                    // the frame is over both contentY and contentHeight are still
+                    // moving - and a page loaded in the middle of that movement is
+                    // what leaves the view standing in a stretch it has not built.
+                    Qt.callLater(function() {
+                        messages.restoreToRow(anchor)
+                        messages.paging = false
+                    })
                 }
 
                 function loadNewer() {
+                    if (paging) {
+                        return
+                    }
                     paging = true
                     root.session.loadNewerMessages()  // appended below; view stays put
-                    paging = false
+                    Qt.callLater(function() { messages.paging = false })
                 }
 
                 onContentYChanged: {
