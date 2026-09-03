@@ -13,6 +13,9 @@ import Bazarish
 Item {
     id: overlay
     anchors.fill: parent
+    // Off unless the user asks for it (Global settings). The handle is the only
+    // way into the panel, so hiding the overlay hides the whole thing.
+    visible: App.backgroundTasksVisible
 
     property bool open: false
     // Account-level work - restoring a backup - has no session behind it and
@@ -20,10 +23,16 @@ Item {
     readonly property int active: (App.session ? App.session.activeOperations : 0)
         + App.activeOperations
 
-    // Closing the session (sign-out) tears the panel down.
+    // Closing the session (sign-out) tears the panel down, and so does switching
+    // the panel off while it is open - otherwise it would vanish mid-slide.
     Connections {
         target: App
         function onSessionChanged() { overlay.open = false }
+        function onBackgroundTasksVisibleChanged() {
+            if (!App.backgroundTasksVisible) {
+                overlay.open = false
+            }
+        }
     }
 
     // The right-edge handle: translucent until hovered, hidden when nothing is

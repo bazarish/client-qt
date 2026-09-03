@@ -34,9 +34,12 @@ int main(int argc, char** argv)
         const AppSettings& loaded = AppSettings::instance();
         if (mode == "expect-active") {
             CHECK(loaded.activeAccount() == "alice");
+            // Switched on in the parent: a setting is permanent or it is not one.
+            CHECK(loaded.backgroundTasks());
         } else {
             CHECK(mode == "expect-default");
             CHECK(loaded.activeAccount().empty());
+            CHECK(!loaded.backgroundTasks());
         }
         return 0;
     }
@@ -60,6 +63,8 @@ int main(int argc, char** argv)
     CHECK(settings.activeAccount().empty());
     CHECK(settings.offlineAccounts().empty());
     CHECK(settings.notifications());
+    // The background-activity panel is not on screen until it is asked for.
+    CHECK(!settings.backgroundTasks());
     CHECK(!settings.i2pLogging());
     CHECK(settings.i2pTunnelLength() == 0);
     CHECK(settings.i2pProxyHost().empty());
@@ -76,6 +81,7 @@ int main(int argc, char** argv)
     settings.setActiveAccount("alice");
     settings.setOfflineAccounts({"bob", "carol"});
     settings.setNotifications(false);
+    settings.setBackgroundTasks(true);
     settings.setI2pLogging(true);
     settings.setI2pTunnelLength(2);
     settings.setI2pProxy("127.0.0.1", 9050);
@@ -89,6 +95,7 @@ int main(int argc, char** argv)
         CHECK(document.at("activeAccount") == "alice");
         CHECK(document.at("offlineAccounts").size() == 2);
         CHECK(document.at("notifications") == false);
+        CHECK(document.at("backgroundTasks") == true);
         CHECK(document.at("i2p").at("logging") == true);
         CHECK(document.at("i2p").at("tunnelLength") == 2);
         CHECK(document.at("i2p").at("proxy").at("host") == "127.0.0.1");
@@ -110,7 +117,7 @@ int main(int argc, char** argv)
     };
 
     // A document of the size settings actually reach is read as written.
-    const nlohmann::json document = {{"activeAccount", "alice"}};
+    const nlohmann::json document = {{"activeAccount", "alice"}, {"backgroundTasks", true}};
     {
         std::ofstream out(file, std::ios::trunc);
         out << document.dump();

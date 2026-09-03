@@ -104,6 +104,7 @@ void AppController::writeLastActive(const QString& id) const
 void AppController::loadSettings()
 {
     notifications_ = AppSettings::instance().notifications();
+    backgroundTasks_ = AppSettings::instance().backgroundTasks();
 }
 
 void AppController::persistSettings() const
@@ -141,6 +142,19 @@ void AppController::setNotificationsEnabled(const bool on)
     // Turning them off silences a call that is ringing at that moment too: the
     // setting is about what this application does outside its own window.
     updateRinging();
+}
+
+void AppController::setBackgroundTasksVisible(const bool on)
+{
+    if (backgroundTasks_ == on) {
+        return;
+    }
+    backgroundTasks_ = on;
+    // Written straight through rather than through persistSettings(), which
+    // carries the notification flag alone and is called from the paths that own
+    // it.
+    AppSettings::instance().setBackgroundTasks(backgroundTasks_);
+    emit backgroundTasksVisibleChanged();
 }
 
 void AppController::updateRinging()

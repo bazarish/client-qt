@@ -88,6 +88,7 @@ void AppSettings::load()
         activeAccount_ = document.value("activeAccount", std::string());
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
+        backgroundTasks_ = document.value("backgroundTasks", false);
         const nlohmann::json i2p = document.value("i2p", nlohmann::json::object());
         i2pLogging_ = i2p.value("logging", false);
         i2pTunnelLength_
@@ -125,6 +126,7 @@ void AppSettings::save() const
         {"activeAccount", activeAccount_},
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
+        {"backgroundTasks", backgroundTasks_},
         {"i2p", i2p},
     };
     // Written beside the file and renamed over it: a crash mid-write leaves the
@@ -171,6 +173,17 @@ void AppSettings::setNotifications(const bool on)
         return;
     }
     notifications_ = on;
+    save();
+}
+
+bool AppSettings::backgroundTasks() const { return backgroundTasks_; }
+
+void AppSettings::setBackgroundTasks(const bool on)
+{
+    if (backgroundTasks_ == on) {
+        return;
+    }
+    backgroundTasks_ = on;
     save();
 }
 

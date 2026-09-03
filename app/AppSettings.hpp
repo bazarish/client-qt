@@ -44,6 +44,12 @@ public:
     bool notifications() const;
     void setNotifications(bool on);
 
+    // Whether the background-activity panel is on screen at all. Off by default:
+    // it is a window into what the client is doing, not something every user
+    // needs beside their conversations.
+    bool backgroundTasks() const;
+    void setBackgroundTasks(bool on);
+
     // Embedded I2P router. The tunnel-length level is the index of a profile
     // (0 minimal, 1 middle, 2 maximum); the proxy is empty when none is set.
     bool i2pLogging() const;
@@ -72,6 +78,7 @@ private:
     std::string activeAccount_;
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;
+    bool backgroundTasks_ = false;
     bool i2pLogging_ = false;
     int i2pTunnelLength_ = 0;
     std::string i2pProxyHost_;

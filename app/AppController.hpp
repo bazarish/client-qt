@@ -46,6 +46,11 @@ class AppController : public QObject {
     // Popup notifications (with their sound), on unless the user turns them off.
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled
             NOTIFY notificationsEnabledChanged)
+    // Whether the background-activity panel is shown at all. Off by default: it
+    // reports what the client is doing behind a conversation, which is worth
+    // watching while something is wrong and is clutter the rest of the time.
+    Q_PROPERTY(bool backgroundTasksVisible READ backgroundTasksVisible
+            WRITE setBackgroundTasksVisible NOTIFY backgroundTasksVisibleChanged)
     // The embedded upstream i2pd engine version (e.g. "2.60.0"), for display.
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
 
@@ -127,6 +132,9 @@ public:
 
     bool notificationsEnabled() const { return notifications_; }
     void setNotificationsEnabled(bool on);
+
+    bool backgroundTasksVisible() const { return backgroundTasks_; }
+    void setBackgroundTasksVisible(bool on);
 
     qreal ringLevel() const { return ringLevel_; }
     QString ringingPeer() const { return ringingPeer_; }
@@ -223,6 +231,7 @@ signals:
     void accountListChanged();
     void accountsChanged();
     void notificationsEnabledChanged();
+    void backgroundTasksVisibleChanged();
     void ringingChanged();
     void ringLevelChanged();
     // Asks the window to come forward (answering a call from outside it).
@@ -314,6 +323,7 @@ private:
     OpenAccountsModel accounts_;
     QVector<AccountRow> accountStatuses_;
     bool notifications_ = true;
+    bool backgroundTasks_ = false;
 
     // Recomputed from every open account whenever a call state or the
     // notification setting changes; it also starts and stops the ringtone.
