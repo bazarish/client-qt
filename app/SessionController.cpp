@@ -697,10 +697,18 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
         }
         for (const QString& url : reseedUrls) {
             const QString trimmed = url.trimmed();
-            if (!trimmed.isEmpty()) {
-                endpoint.reseeds.push_back(
-                    bazarish::client::parseFacadeUrl(trimmed.toStdString()));
+            if (trimmed.isEmpty()) {
+                continue;
             }
+            // Kept verbatim - this is an address for the I2P engine, not a
+            // Bazarish API - and only over TLS: the su3 it fetches is not signed
+            // by anybody this client trusts, so what stands between the archive
+            // and the network is the transport.
+            if (!trimmed.startsWith(QStringLiteral("https://"))) {
+                throw std::runtime_error("a reseed address must be an https URL: "
+                    + trimmed.toStdString());
+            }
+            endpoint.reseeds.push_back(trimmed.toStdString());
         }
         if (endpoint.facades.empty()) {
             throw std::runtime_error("enter at least one facade URL");

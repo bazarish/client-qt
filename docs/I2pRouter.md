@@ -38,6 +38,38 @@ The settings are presented in Settings -> I2P router, which also reports the
 engine's live diagnostics (network database size, floodfills, tunnel counts,
 local destinations, active transport sessions).
 
+## Bootstrap
+
+A router with no netDb builds no tunnel, so the first thing it needs is a slice
+of the network. This client does none of that work itself: the reseed addresses
+from the server descriptor - full `https://` URLs to su3 archives - are handed to
+the engine (`reseed.urls`) before it starts, and it fetches, unpacks and loads
+them the way it would any reseed. The addresses are kept verbatim and refused
+unless they are `https`; an address that names an archive is used as it stands,
+which is what the local i2pd patch `0003` is for.
+
+Three consequences worth stating:
+
+- **The engine does the fetch**, so the request carries the user agent every I2P
+  router sends and follows redirects like every other router. A request of our
+  own shape would mark the client as Bazarish to the host and to anyone in the
+  path.
+- **The su3 signature is not checked** (`reseed.verify` is off, which is i2pd's
+  default). A reseed an operator runs privately is signed by nobody a stock
+  client trusts. Nothing is lost by it: every RouterInfo inside carries its own
+  signature and is verified on load, so what a hostile archive can do is choose
+  which real routers you meet first - the same power the addresses in the
+  descriptor already have. What stands between the archive and the network is
+  TLS, which is why the address must be https.
+- **With no reseed address the engine uses its own built-in hosts.** That is the
+  fallback, and the only case in which the bootstrap reaches outside the network
+  the user chose. Measured on a fresh data directory: ready in about 30 seconds
+  with 80 routers from the built-in hosts, and about a minute with 98 from a
+  named su3 URL.
+
+The client keeps no netDb-seeding code of its own: there is no reseed request in
+its API, and the whole clearnet leg of that API is gone with it.
+
 ## Settings
 
 | Setting | Key in `settings.json` | Default |
