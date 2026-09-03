@@ -376,7 +376,7 @@ int main(int argc, char** argv)
             account.put("picture:a1", doomedPicture);
             account.put("picture:a5", keptPicture);
             account.put("voice:b1", betaVoice);
-            // Left by a chat cleared before anything removed media with it.
+            // A blob under a name no message carries.
             account.put("picture:gone", ghost);
         }
 
@@ -419,7 +419,10 @@ int main(int argc, char** argv)
             CHECK(!account.has("picture:a1"));
             CHECK(account.has("picture:a5"));
             CHECK(account.has("voice:b1"));
-            CHECK(!account.has("picture:gone"));
+            // Media goes with the message that names it, and nothing else looks
+            // for media on its own: a blob no message ever named is not part of
+            // any deletion.
+            CHECK(account.has("picture:gone"));
         }
         // A reaction on a removed message goes; one on a message that stayed does
         // not.
@@ -430,32 +433,59 @@ int main(int argc, char** argv)
         CHECK(store.pruneToLatest("alpha", 100) == 0);
         CHECK(store.messagesFor("alpha").size() == 2);
 
-        // Every conversation at once, each to its own newest.
+        // Every conversation at once, each to its own newest. Beta's older
+        // message carried the voice note, so that goes with it.
+        const qint64 beforeTrim = store.footprint().fileBytes;
         CHECK(store.pruneEveryChatToLatest(1) == 2);
+        // A trim leaves the freed pages inside the file; the rewrite after it is
+        // what returns them, and the window shows both figures.
+        CHECK(store.footprint().freeBytes > 0);
+        {
+            QString reason;
+            CHECK(store.rebuild(reason));
+        }
+        CHECK(store.footprint().fileBytes < beforeTrim);
+        CHECK(store.footprint().freeBytes == 0);
         CHECK(store.messagesFor("alpha").size() == 1);
         CHECK(store.messagesFor("beta").size() == 1);
+        {
+            client::AccountDb account(file, "pw");
+            CHECK(!account.has("voice:b1"));
+            account.put("voice:b2", betaVoice);
+        }
+
+        // A single message takes its own picture with it, and a message that had
+        // none leaves everything else where it is.
+        {
+            client::AccountDb account(file, "pw");
+            account.put("picture:a5", keptPicture);
+        }
+        const QVector<StoredMessage> alpha = store.messagesFor("alpha");
+        CHECK(alpha.size() == 1);
+        CHECK(alpha.front().e2eId == "a5");
+        store.removeById(alpha.front().id);
+        {
+            client::AccountDb account(file, "pw");
+            CHECK(!account.has("picture:a5"));
+            // Another conversation's message keeps its own.
+            CHECK(account.has("voice:b2"));
+        }
 
         // Clearing a conversation takes its media too - it never used to.
         store.clearPeer("beta");
         CHECK(store.messagesFor("beta").isEmpty());
         {
             client::AccountDb account(file, "pw");
-            CHECK(!account.has("voice:b1"));
+            CHECK(!account.has("voice:b2"));
         }
 
-        // The rewrite returns the space, and the account still opens afterwards -
-        // an account whose schema mark did not survive would be refused.
-        const DatabaseFootprint before = store.footprint();
-        QString reason;
-        CHECK(store.rebuild(reason));
-        const DatabaseFootprint after = store.footprint();
-        CHECK(after.fileBytes < before.fileBytes);
-        CHECK(after.freeBytes == 0);
         store.close();
 
         TranscriptStore reopened;
         CHECK(reopened.open("w", wdb, "pw"));
-        CHECK(reopened.messagesFor("alpha").size() == 1);
+        // Everything above was removed, and the file reads as empty rather than
+        // as unopenable.
+        CHECK(reopened.conversationPeers().isEmpty());
     }
 
     fs::remove_all(dir);

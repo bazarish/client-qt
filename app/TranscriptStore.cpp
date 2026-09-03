@@ -779,24 +779,40 @@ void TranscriptStore::editContent(qint64 id, const QString& text, const QString&
 
 void TranscriptStore::removeById(qint64 id)
 {
+    // Read before the row goes: the message is what names its picture or voice
+    // note, and once it is gone nothing does.
+    QString named;
+    Query naming(db_);
+    if (naming.prepare("SELECT e2eId FROM messages WHERE id = ?")) {
+        naming.addBindValue(id);
+        if (naming.exec() && naming.next()) {
+            named = naming.value(0).toString();
+        }
+    }
+    if (!removeMediaOfMessage(named)) {
+        bazarish::log::warn("transcript: the picture or voice note of a deleted message stayed");
+    }
     Query query(db_);
     query.prepare("DELETE FROM messages WHERE id = ?");
     query.addBindValue(id);
-    if (query.exec() && !sweepUnusedMedia()) {
-        bazarish::log::warn("transcript: the picture or voice note of a deleted message stayed");
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: a message could not be deleted");
     }
 }
 
 void TranscriptStore::clearPeer(const QString& peer)
 {
+    // The media first, while the rows that name it are still there: a cleared
+    // conversation used to leave every picture and voice note it held in the
+    // database for good.
+    if (!removeMediaOfPeer(peer)) {
+        bazarish::log::warn("transcript: the media of a cleared conversation stayed behind");
+    }
     Query query(db_);
     query.prepare("DELETE FROM messages WHERE peer = ?");
     query.addBindValue(peer);
-    // A cleared conversation used to leave every picture and voice note it held
-    // in the database, for good: the rows went and the blobs the core keeps
-    // beside them did not.
-    if (query.exec() && !sweepUnusedMedia()) {
-        bazarish::log::warn("transcript: the media of a cleared conversation stayed behind");
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: a conversation could not be cleared");
     }
 }
 
@@ -1019,14 +1035,17 @@ QString messageBytesExpression()
     return parts.join(" + ") + QStringLiteral(" + %1").arg(kFixedColumnBytes);
 }
 
-// Media rows no message names. The "e2eId != ''" is load-bearing rather than
-// tidy: NOT IN over a set holding one NULL is NULL for every row, and the
-// condition would then match nothing at all.
-QString unusedMediaCondition(const char* const prefix)
+// The media of the messages a SELECT picks, by the reference each row carries.
+// Rows with no protocol id name nothing, and are left out here rather than
+// producing a key of their own.
+QString mediaOfRows(const QString& rowCondition)
 {
-    return QStringLiteral("name GLOB '%1*' AND SUBSTR(name, LENGTH('%1') + 1)"
-                          " NOT IN (SELECT e2eId FROM messages WHERE e2eId != '')")
-        .arg(QString::fromUtf8(prefix));
+    return QStringLiteral("DELETE FROM state WHERE name IN ("
+                          "SELECT '%1' || e2eId FROM messages WHERE e2eId != '' AND (%3)"
+                          " UNION ALL"
+                          " SELECT '%2' || e2eId FROM messages WHERE e2eId != '' AND (%3))")
+        .arg(QString::fromUtf8(kPictureKeyPrefix), QString::fromUtf8(kVoiceKeyPrefix),
+            rowCondition);
 }
 
 // One change, taken as one. IMMEDIATE asks for the write lock up front instead
@@ -1078,18 +1097,52 @@ bool TranscriptStore::hasMediaTable() const
         && query.next();
 }
 
-bool TranscriptStore::sweepUnusedMedia()
+bool TranscriptStore::removeMediaOfMessage(const QString& e2eId)
+{
+    if (e2eId.isEmpty() || !hasMediaTable()) {
+        return true;
+    }
+    Query query(db_);
+    if (!query.prepare("DELETE FROM state WHERE name = ? OR name = ?")) {
+        return false;
+    }
+    query.addBindValue(QString::fromUtf8(kPictureKeyPrefix) + e2eId);
+    query.addBindValue(QString::fromUtf8(kVoiceKeyPrefix) + e2eId);
+    return query.exec();
+}
+
+bool TranscriptStore::removeMediaOfPeer(const QString& peer)
 {
     if (!hasMediaTable()) {
         return true;
     }
-    for (const char* const prefix : {kPictureKeyPrefix, kVoiceKeyPrefix}) {
-        Query query(db_);
-        if (!query.exec("DELETE FROM state WHERE " + unusedMediaCondition(prefix))) {
-            return false;
-        }
+    Query query(db_);
+    if (!query.prepare(mediaOfRows("peer = ?"))) {
+        return false;
     }
-    return true;
+    query.addBindValue(peer);
+    query.addBindValue(peer);
+    return query.exec();
+}
+
+bool TranscriptStore::removeMediaOfTrimmed(const QString& peer, const int keep)
+{
+    if (!hasMediaTable()) {
+        return true;
+    }
+    // The same rows the trim is about to remove, named the same way.
+    const QString doomed = QStringLiteral(
+        "peer = ? AND id NOT IN (SELECT id FROM messages WHERE peer = ? ORDER BY id DESC LIMIT ?)");
+    Query query(db_);
+    if (!query.prepare(mediaOfRows(doomed))) {
+        return false;
+    }
+    for (int half = 0; half < 2; ++half) {
+        query.addBindValue(peer);
+        query.addBindValue(peer);
+        query.addBindValue(keep);
+    }
+    return query.exec();
 }
 
 QVector<ChatWeight> TranscriptStore::chatWeights() const
@@ -1143,6 +1196,10 @@ DatabaseFootprint TranscriptStore::footprint() const
 
 qint64 TranscriptStore::pruneRowsOf(const QString& peer, const int keep)
 {
+    // The media of the rows about to go, while they are still there to name it.
+    if (!removeMediaOfTrimmed(peer, keep)) {
+        throw std::runtime_error("the media of trimmed messages could not be removed");
+    }
     // Newest by id, which is the key the windowed reads page by: trimming on any
     // other order would keep a different set than the conversation shows.
     Query messages(db_);
@@ -1177,9 +1234,6 @@ qint64 TranscriptStore::pruneToLatest(const QString& peer, const int keep)
     }
     Transaction change(db_);
     const qint64 removed = pruneRowsOf(peer, keep);
-    if (!sweepUnusedMedia()) {
-        throw std::runtime_error("the media of trimmed messages could not be removed");
-    }
     change.commit();
     return removed;
 }
@@ -1194,11 +1248,6 @@ qint64 TranscriptStore::pruneEveryChatToLatest(const int keep)
     qint64 removed = 0;
     for (const QString& peer : peers) {
         removed += pruneRowsOf(peer, keep);
-    }
-    // Once at the end: what it looks for is media nothing names, and nothing
-    // names it only after the last conversation has been trimmed.
-    if (!sweepUnusedMedia()) {
-        throw std::runtime_error("the media of trimmed messages could not be removed");
     }
     change.commit();
     return removed;

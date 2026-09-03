@@ -236,17 +236,25 @@ public:
     // fails - a half-trimmed transcript is not a result worth returning.
     qint64 pruneToLatest(const QString& peer, int keep);
     qint64 pruneEveryChatToLatest(int keep);
-    // Rewrites the file so the pages a trim freed leave it. Not an exception when
-    // it cannot run: the trim before it has already committed, so the reason comes
-    // back to be reported beside what was removed.
+    // Rewrites the file so the pages a trim freed leave it. Deliberately not part
+    // of an ordinary deletion: its cost is the size of what is KEPT, so removing
+    // one message from a large account would rewrite the whole of it - measured at
+    // 4.7 s on 148 MB - and the same path carries a correspondent's delete. Only
+    // the storage window asks for this. Not an exception when it cannot run: the
+    // trim before it has already committed, so the reason comes back to be
+    // reported beside what was removed.
     bool rebuild(QString& reason);
 
 private:
-    // Removes every media blob no message names any more. Kept private because it
-    // is not a decision a caller makes: it runs wherever messages are deleted, so
-    // a picture cannot outlive the message that carried it. False when a statement
-    // failed - what that costs is the caller's to decide.
-    bool sweepUnusedMedia();
+    // A message's picture or voice note, by the reference the message itself
+    // carries. Removing a message removes them, so they are read from the row
+    // while the row is still there. False when a statement failed - what that
+    // costs is the caller's to decide.
+    bool removeMediaOfMessage(const QString& e2eId);
+    // The same for every message of a conversation, and for the messages one
+    // conversation is about to be trimmed of. Both run before those rows go.
+    bool removeMediaOfPeer(const QString& peer);
+    bool removeMediaOfTrimmed(const QString& peer, int keep);
     // Whether the core's media table is there at all. A store opened before the
     // account's own tables exist has no media, which is not a failure.
     bool hasMediaTable() const;

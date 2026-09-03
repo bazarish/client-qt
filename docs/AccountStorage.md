@@ -72,8 +72,11 @@ size, so it is a little under what a rewrite actually returns.
 
 **Deletion takes the media with it.** It did not before: clearing a chat removed
 its rows and left every picture and voice note it held in the database
-permanently. Any deletion now sweeps the media nothing names any more, so an
-account carrying that residue sheds it the first time anything is deleted.
+permanently. A message is what names its media, so the media goes when the
+message does - read from the row before it is removed, in the same statement
+sequence. There is no separate collection pass looking for what nothing points
+at, and a blob a database already carries under a name no message holds is
+therefore not anybody's to remove.
 
 **What a trim does.** It keeps the newest 100 or 1000 messages of a conversation
 and removes the rest, with their reactions and their media, in one transaction:
@@ -88,17 +91,33 @@ device-sync kinds are live echoes of what is happening now, not a request for
 what happened before, so a trimmed message does not come back from a sibling
 device, and nothing is asked of the person on the other side either.
 
-**The rewrite.** Freed pages stay in the file until it is rewritten, so a trim is
-followed by `VACUUM`. It needs free disk space equal to the file, which is
-checked first, and it takes the database exclusively - so it can fail while the
-account is busy, and then the messages are gone but the space has not come back
-yet. Those are two different facts and the client reports both; trimming again
-returns the space. The schema mark is written again afterwards, because an
-account carrying any other number is refused at open.
+**The rewrite.** Freed pages stay inside the file until it is rewritten, so a
+trim is followed by `VACUUM` and the size on disk falls with it.
 
-Measured on a 256 MB account holding 100 000 messages and 2 000 pictures:
-reading every conversation's weight took 310 ms, trimming all of them to the last
-100 took 7.2 s, and the rewrite took 214 ms and left a 5.4 MB file.
+That rewrite belongs to the storage window and to nothing else. Its cost is the
+size of what is **kept**, not of what went - it reads and writes the whole
+database either way - so an ordinary deletion does not perform one: deleting a
+single message from a 148 MB account was measured at **4.7 s**, essentially all
+of it the rewrite, and the same code path carries a correspondent's "delete for
+everyone", which arrives without the user asking for anything. Ordinary deletions
+therefore leave their pages in the file to be reused, and the storage window is
+where the space is handed back.
+
+`VACUUM` needs free disk space equal to the file, which is checked first, and it
+takes the database exclusively, so it can be refused while the account is busy. A
+refusal is not a failed trim: the messages are gone, only the space has not come
+back, and trimming again returns it. The client says both rather than reporting a
+failure. The schema mark is written again afterwards, because an account carrying
+any other number is refused at open.
+
+Measured on an account holding 100 000 messages and 2 000 pictures (256 MB):
+reading every conversation's weight took 297 ms, trimming every conversation to
+the last 100 took 6.9 s, and the rewrite after it took 201 ms and left a 5.4 MB
+file.
+
+The rewrite is cheap there because almost nothing was kept: it copies what
+survives. On the same account with everything kept (148 MB) it takes 4.7 s, which
+is why it is the storage window's operation and not every deletion's.
 
 ## The backup bundle
 
