@@ -23,7 +23,12 @@ Item {
 
     Shape {
         id: shape
-        anchors.fill: parent
+        // The drawing is a 24-unit grid scaled to `size` about its own middle and
+        // centred in whatever bounds this icon is given. Those bounds are not
+        // always the icon's implicit size: as a button's contentItem they are the
+        // button's content rectangle, and a drawing pinned to its top-left corner
+        // then sits off-centre inside the button.
+        anchors.centerIn: parent
         // Set rather than declared: the curve renderer arrived in Qt 6.6, and a
         // declared property that does not exist is an error the whole file dies
         // on. Where it is missing the shape draws with the older renderer.
@@ -31,7 +36,7 @@ Item {
             shape.preferredRendererType = Shape.CurveRenderer
         }
         scale: root.size / 24
-        transformOrigin: Item.TopLeft
+        transformOrigin: Item.Center
         width: 24
         height: 24
 

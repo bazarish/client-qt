@@ -375,6 +375,28 @@ Item {
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                             }
+                            // Stop, beside the bar it belongs to: a transfer the
+                            // user has changed their mind about ends here as well
+                            // as in the activity panel, and this is where they are
+                            // looking while it runs.
+                            Button {
+                                id: stopUpload
+                                implicitWidth: 18
+                                implicitHeight: 18
+                                padding: 0
+                                hoverEnabled: true
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Stop"
+                                onClicked: if (delegate.session) {
+                                    delegate.session.cancelTransfer(model.e2eId)
+                                }
+                                background: Rectangle {
+                                    radius: 4
+                                    color: stopUpload.hovered ? Theme.surfaceAlt : "transparent"
+                                    border.color: Theme.border
+                                }
+                                contentItem: Icon { name: "close"; color: Theme.textDim; size: 10 }
+                            }
                         }
                         Label {
                             Layout.fillWidth: true
@@ -419,6 +441,28 @@ Item {
                                     : ""
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
+                            }
+                            // Stop, beside the bar it belongs to: a transfer the
+                            // user has changed their mind about ends here as well
+                            // as in the activity panel, and this is where they are
+                            // looking while it runs.
+                            Button {
+                                id: stopDownload
+                                implicitWidth: 18
+                                implicitHeight: 18
+                                padding: 0
+                                hoverEnabled: true
+                                ToolTip.visible: hovered
+                                ToolTip.text: "Stop"
+                                onClicked: if (delegate.session) {
+                                    delegate.session.cancelTransfer(model.e2eId)
+                                }
+                                background: Rectangle {
+                                    radius: 4
+                                    color: stopDownload.hovered ? Theme.surfaceAlt : "transparent"
+                                    border.color: Theme.border
+                                }
+                                contentItem: Icon { name: "close"; color: Theme.textDim; size: 10 }
                             }
                         }
                         Label {

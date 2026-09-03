@@ -893,7 +893,7 @@ void SessionWorker::sync()
         // three the moment it parses them; surfacing them here put empty bubbles
         // in the conversation, one per step.
         if (m.contentType == "file.request" || m.contentType == "file.offer"
-            || m.contentType == "file.unavailable") {
+            || m.contentType == "file.unavailable" || m.contentType == "file.cancel") {
             ackPending(QString::fromStdString(m.pendingId));
             continue;
         }
@@ -4932,6 +4932,10 @@ void SessionController::onTransferStage(
     if (operations_.indexOf(opId) < 0) {
         beginOperation(opId, m.outgoing ? QStringLiteral("file-up") : QStringLiteral("file-down"),
             m.attName.isEmpty() ? QStringLiteral("file") : m.attName, stage, peer, e2eId);
+    } else {
+        // The send's own row, opened when the file was announced: now there is a
+        // transfer behind it, and it is stoppable.
+        operations_.setCancelId(opId, e2eId);
     }
     // The row exists whether or not this conversation is on screen; the model
     // only has it while it is, and replayTransfersForActivePeer puts it back.

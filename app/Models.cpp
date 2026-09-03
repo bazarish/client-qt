@@ -654,6 +654,17 @@ void OperationListModel::update(const QString& id, const QString& status, const 
     emit dataChanged(idx, idx, {StatusRole, DetailRole, ProgressRole, StateRole});
 }
 
+void OperationListModel::setCancelId(const QString& id, const QString& cancelId)
+{
+    const int i = indexOf(id);
+    if (i < 0 || ops_[i].cancelId == cancelId) {
+        return;
+    }
+    ops_[i].cancelId = cancelId;
+    const QModelIndex idx = index(i);
+    emit dataChanged(idx, idx, {CancelIdRole});
+}
+
 void OperationListModel::remove(const QString& id)
 {
     const int i = indexOf(id);

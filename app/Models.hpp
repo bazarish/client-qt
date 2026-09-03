@@ -245,6 +245,10 @@ public:
     // A negative progress leaves the current progress unchanged.
     void update(const QString& id, const QString& status, const QString& detail, double progress,
         int state);
+    // Names the transfer an existing row can stop. A file send opens its row when
+    // the announcement goes out, long before the recipient asks for the bytes;
+    // the stop button belongs to it only once there is a transfer to stop.
+    void setCancelId(const QString& id, const QString& cancelId);
     void remove(const QString& id);
     // Operations still running (drives the floating button's visibility/count).
     int runningCount() const;
