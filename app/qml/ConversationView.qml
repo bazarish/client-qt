@@ -419,37 +419,43 @@ Item {
                 onModelChanged: if (model) { autoScrolling = true; Qt.callLater(restoreScroll) }
 
                 function loadOlder() {
-                    if (paging) {
+                    if (paging || !root.session) {
                         return
                     }
                     paging = true
-                    // Reading older history is proof the view is not following the
-                    // bottom any more. Left set, the follow rule below fires while
-                    // the page lands and throws the user back to the newest
-                    // message with everything they scrolled through gone.
+                    // A pin-to-bottom still ticking is a scrollToEnd on a timer,
+                    // and reading older history says it is no longer wanted.
+                    pinTimer.stop()
+                    // Reading older history is also proof the view is not following
+                    // the bottom. Left set, the follow rule fires while the page
+                    // lands and throws the user back to the newest message.
                     stickToBottom = false
-                    // The row the user is actually looking at, before the page is
-                    // added. It is a delegate that exists, so putting it back is
-                    // exact; the count of inserted rows names the row that used to
-                    // be first in the model, which is up to a screenful away from
-                    // where the user was - and moving them there is the jerk.
+                    // Where the reader is, exactly: the row at the top of the view
+                    // and how far into it the view has scrolled. Both are known
+                    // rather than guessed - that delegate is on screen, so it
+                    // exists and its position is real. Putting the same row back at
+                    // the same offset afterwards moves nothing on screen at all,
+                    // which is the whole difference from positioning by index: that
+                    // asks the view to place a row by the heights of rows above it,
+                    // and the rows above have never been built.
                     const topRow = indexAt(width / 2, contentY + topMargin + 2)
+                    const topItem = topRow >= 0 ? itemAtIndex(topRow) : null
+                    const intoItem = topItem ? contentY - topItem.y : 0
                     const added = root.session.loadOlderMessages()
-                    if (added <= 0) {
-                        Qt.callLater(function() { messages.paging = false })
-                        return
+                    if (added > 0 && topRow >= 0) {
+                        forceLayout()  // place the inserted rows before reading back
+                        const sameRow = itemAtIndex(topRow + added)
+                        autoScrolling = true
+                        if (sameRow) {
+                            contentY = sameRow.y + intoItem
+                        } else {
+                            positionViewAtIndex(topRow + added, ListView.Beginning)
+                        }
+                        autoScrolling = false
                     }
-                    const anchor = topRow >= 0 ? topRow + added : added
-                    restoreToRow(anchor)
-                    // Again next frame, and only then is paging cleared: the rows
-                    // that just arrived are measured after this returns, so until
-                    // the frame is over both contentY and contentHeight are still
-                    // moving - and a page loaded in the middle of that movement is
-                    // what leaves the view standing in a stretch it has not built.
-                    Qt.callLater(function() {
-                        messages.restoreToRow(anchor)
-                        messages.paging = false
-                    })
+                    // Cleared after this pass, so the reposition above cannot start
+                    // another page inside itself.
+                    Qt.callLater(function() { messages.paging = false })
                 }
 
                 function loadNewer() {

@@ -346,7 +346,11 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 // older/newer step). Small on purpose: opening a chat should cost what is on
 // screen, not what the chat has ever held, and the rest arrives as the user
 // scrolls into it.
-constexpr int kPageSize = 20;
+// One window of a conversation, and one page of older history. It has to be worth
+// a screen: paging asks for a screenful of loaded content above the viewport, so a
+// page shorter than the screen leaves the condition true and the next scroll loads
+// another one - which is how a scroll upwards turned into a page per tick.
+constexpr int kPageSize = 50;
 // How long the storage window is given to paint "this is running" before the work
 // that holds the thread begins. One frame is enough; this is two at 60 Hz.
 constexpr int kBusyPaintDelayMs = 32;
