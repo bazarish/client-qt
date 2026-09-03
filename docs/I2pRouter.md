@@ -42,11 +42,12 @@ local destinations, active transport sessions).
 
 A router with no netDb builds no tunnel, so the first thing it needs is a slice
 of the network. This client does none of that work itself: the reseed addresses
-from the server descriptor - full `https://` URLs to su3 archives - are handed to
-the engine (`reseed.urls`) before it starts, and it fetches, unpacks and loads
-them the way it would any reseed. The addresses are kept verbatim and refused
-unless they are `https`; an address that names an archive is used as it stands,
-which is what the local i2pd patch `0003` is for.
+from the server descriptor - https **base** URLs, the shape every I2P reseed has -
+are handed to the engine (`reseed.urls`) before it starts, and it appends
+`i2pseeds.su3`, fetches, unpacks and loads them the way it would any reseed. The
+addresses are refused unless they are `https`, and a missing trailing slash is
+put back, because the engine concatenates rather than joins. No patch to the
+engine is involved: the address has the one shape i2pd already understands.
 
 Three consequences worth stating:
 
