@@ -297,6 +297,10 @@ Popup {
             font.pixelSize: Theme.fontSmall
             visible: !root.saved && root.session && root.session.activePeer.length > 0
             text: {
+                // Named so the binding depends on it: the count is read through a
+                // call, and without something that changes when the contacts do,
+                // the number is whatever it was when this panel was built.
+                const revision = root.session ? root.session.contactsRevision : 0
                 const n = root.session ? root.session.sendCapacity(root.session.activePeer) : 0
                 return n === 1 ? "1 send ticket left on this device"
                                : n + " send tickets on this device"

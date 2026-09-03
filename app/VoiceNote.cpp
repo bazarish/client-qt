@@ -67,14 +67,7 @@ VoiceNote::~VoiceNote()
     stop();
 }
 
-void VoiceNote::startMonitoring()
-{
-    if (recording_.load()) {
-        return;
-    }
-    monitorOnly_.store(true);
-    startRecording();
-}
+
 
 void VoiceNote::stopMonitoring()
 {
@@ -87,9 +80,27 @@ void VoiceNote::stopMonitoring()
 
 void VoiceNote::startRecording()
 {
+    begin(/*monitorOnly=*/false);
+}
+
+void VoiceNote::startMonitoring()
+{
+    begin(/*monitorOnly=*/true);
+}
+
+void VoiceNote::begin(const bool monitorOnly)
+{
     if (recording_.load()) {
-        return;
+        if (monitorOnly_.load() == monitorOnly) {
+            return;  // already doing exactly this
+        }
+        // The same microphone cannot be watched and kept at once, and which of
+        // the two this is must be decided here rather than by whatever ran last:
+        // a take that inherited "watching" recorded a moving line and nothing
+        // else, and said so only at the end, as a take too short to send.
+        stopCaptureThread();
     }
+    monitorOnly_.store(monitorOnly);
     {
         const std::lock_guard<std::mutex> lock(pcmMutex_);
         pcm_.clear();

@@ -1255,6 +1255,9 @@ private:
     // Per-peer high-water of the newest incoming message we have already sent a
     // read receipt for, so reading does not re-send receipts on every scroll tick.
     QHash<QString, qint64> lastReadAckedId_;
+    // Read receipts for messages this device does not hold yet, by peer. The two
+    // travel as separate mailbox items and can arrive in either order.
+    QHash<QString, QSet<QString>> receiptsAhead_;
     // This account's contact fingerprints, kept in sync from the worker.
     QStringList contactFps_;
     // Per-contact local display names (fingerprint -> name), kept in sync from the

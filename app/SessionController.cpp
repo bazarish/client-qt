@@ -4635,6 +4635,17 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (type == "receipt") {
         const QString ref = message.value("ref").toString();
         const qint64 localId = store_.idForE2e(ref);
+        if (localId == 0) {
+            // The receipt outran the message it is about. On a second device the
+            // message arrives as an echo of what the first device sent, and
+            // nothing promises the mailbox hands the two over in that order:
+            // dropping the receipt here left the bubble amber for good. Kept, and
+            // applied when the message lands.
+            bazarish::log::info("receipt for {} arrived before the message it is about",
+                ref.toStdString());
+            receiptsAhead_[peer].insert(ref);
+            return;
+        }
         // Said out loud on both sides: a receipt reaches an account, and every
         // device of it takes its own copy from the mailbox. When one device shows
         // green while another stays amber, the two lines are what separate a
@@ -4804,6 +4815,12 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         ? (isSavedChat(peer) ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer)
         : DeliveryStatus::Received;
     m.id = store_.append(m);
+    // A receipt that arrived before this message was here has been waiting for
+    // it. Applied now, so an echo of our own send does not sit amber forever.
+    if (m.outgoing && !m.e2eId.isEmpty() && receiptsAhead_.value(peer).contains(m.e2eId)) {
+        receiptsAhead_[peer].remove(m.e2eId);
+        markOutgoingRead(peer, m.id);
+    }
 
     showInActiveView(m, false);
     // A picture arrives inside the message, so there is nothing to fetch: the

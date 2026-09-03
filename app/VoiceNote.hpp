@@ -72,6 +72,10 @@ private:
     std::thread playbackThread_;
     std::atomic<bool> recording_{false};
     std::atomic<bool> playing_{false};
+    // Starts one capture in one of its two modes. Which mode is decided here and
+    // nowhere else, so a take can never inherit the last run's.
+    void begin(bool monitorOnly);
+
     std::atomic<float> inputLevel_{0.0F};
     // The capture loop keeps what it reads unless this is set.
     std::atomic<bool> monitorOnly_{false};
