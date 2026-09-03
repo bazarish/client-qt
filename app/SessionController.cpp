@@ -4431,6 +4431,95 @@ QVariantMap SessionController::storageInfo() const
     return m;
 }
 
+void SessionController::measureDeviceStorage()
+{
+    const QVector<ChatWeight> weights = store_.chatWeights();
+    QVariantList chats;
+    QVector<ChatWeight> ordered = weights;
+    std::sort(ordered.begin(), ordered.end(), [](const ChatWeight& a, const ChatWeight& b) {
+        return a.rowBytes + a.mediaBytes > b.rowBytes + b.mediaBytes;
+    });
+    for (const ChatWeight& weight : ordered) {
+        QVariantMap chat;
+        chat[QStringLiteral("peer")] = weight.peer;
+        chat[QStringLiteral("name")] = peerName(weight.peer);
+        chat[QStringLiteral("messages")] = weight.messages;
+        chat[QStringLiteral("bytes")] = weight.rowBytes + weight.mediaBytes;
+        chat[QStringLiteral("mediaCount")] = weight.mediaCount;
+        chats << chat;
+    }
+    const DatabaseFootprint footprint = store_.footprint();
+    deviceStorage_.clear();
+    deviceStorage_[QStringLiteral("busy")] = deviceStorageBusy_;
+    deviceStorage_[QStringLiteral("measuredAt")] = nowMillis();
+    deviceStorage_[QStringLiteral("fileBytes")] = footprint.fileBytes;
+    deviceStorage_[QStringLiteral("freeBytes")] = footprint.freeBytes;
+    deviceStorage_[QStringLiteral("chats")] = chats;
+    emit deviceStorageChanged();
+}
+
+void SessionController::trimChat(const QString& peer, const int keep)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    runTrim(peer, keep);
+}
+
+void SessionController::trimEveryChat(const int keep)
+{
+    runTrim({}, keep);
+}
+
+void SessionController::runTrim(const QString& peer, const int keep)
+{
+    if (deviceStorageBusy_) {
+        return;
+    }
+    // The trim and the rewrite behind it run on the thread that draws, and the
+    // rewrite takes the database exclusively: moving it off this thread would put
+    // an arriving message against that lock, and a message that cannot be stored
+    // is worse than a window that waits. So the window is told it is busy first,
+    // and the work is queued behind that paint rather than done inside the press.
+    deviceStorageBusy_ = true;
+    deviceStorage_[QStringLiteral("busy")] = true;
+    emit deviceStorageChanged();
+    QMetaObject::invokeMethod(
+        this,
+        [this, peer, keep]() {
+            qint64 removed = 0;
+            try {
+                removed = peer.isEmpty() ? store_.pruneEveryChatToLatest(keep)
+                                         : store_.pruneToLatest(peer, keep);
+            } catch (const std::exception& error) {
+                // Nothing was removed: the whole trim is one transaction and it
+                // rolled back.
+                deviceStorageBusy_ = false;
+                measureDeviceStorage();
+                emit actionFailed(QString::fromUtf8(error.what()));
+                return;
+            }
+            QString reason;
+            const bool rebuilt = store_.rebuild(reason);
+            loadLatestWindow();
+            rebuildChatList();
+            refreshUnreadTotal();
+            deviceStorageBusy_ = false;
+            measureDeviceStorage();
+            if (rebuilt) {
+                emit actionOk(QStringLiteral("Removed ") + QString::number(removed)
+                    + QStringLiteral(" messages and rewrote the database."));
+                return;
+            }
+            // The trim itself committed. Reporting this as a failure would say
+            // the messages are still there, and they are not.
+            emit actionFailed(QStringLiteral("Removed ") + QString::number(removed)
+                + QStringLiteral(" messages, but the space has not been returned to the disk: ")
+                + reason + QStringLiteral(". Trimming again returns it."));
+        },
+        Qt::QueuedConnection);
+}
+
 void SessionController::onOpened(const QString& fingerprint, const QString& displayName,
     bool connected, const QString& connectionNote)
 {
@@ -5357,16 +5446,21 @@ void SessionController::markReadThroughRow(int row)
     if (!conversation_.newestIncomingThrough(row, id, e2eId)) {
         return;
     }
+    // Nothing new has been read - scrolling within what is already read, or the
+    // same row reported again. This is the first thing checked because the view
+    // calls in on every pixel of movement, and it is what keeps the database out
+    // of a scroll: the high-water is seeded from the stored mark when the
+    // conversation opens, so a mark that does not advance has nothing to write.
+    const qint64 prevAcked = lastReadAckedId_.value(activePeer_, 0);
+    if (id <= prevAcked) {
+        return;
+    }
+    lastReadAckedId_[activePeer_] = id;
     // Persist the read high-water and refresh the unread badge: the count drops as
     // messages genuinely scroll into the focused viewport. Monotonic, so re-reading
     // older history never lowers it.
     store_.setLastReadId(activePeer_, id);
     contacts_.setUnread(activePeer_, store_.unreadCount(activePeer_));
-    const qint64 prevAcked = lastReadAckedId_.value(activePeer_, 0);
-    if (id <= prevAcked) {
-        return;  // already acknowledged up to here
-    }
-    lastReadAckedId_[activePeer_] = id;
     // Sending a read receipt is opt-in (the "send read receipts" setting). The
     // unread high-water above is advanced regardless, so unread tracking always
     // works even with receipts disabled.
