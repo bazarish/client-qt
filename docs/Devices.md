@@ -8,13 +8,32 @@ this - the self-channel, the message types, the rule that an account has one
 address and that delivery tokens are never shared - is in `docs-main`
 (`DeviceSync.md`, `Identity.md`).
 
+## What has been read
+
+Reading is the account's act, not the device's, so a message read on one device is
+not offered as new on the next one: the reader tells its siblings how far it has
+read, over the self-channel, and they fold the mark into their own (`device.read`
+in `docs-main/DeviceSync.md`).
+
+What this client settles, where the protocol leaves it open:
+
+- **When it tells them.** Not per message - reading a conversation advances the
+  mark once per bubble that scrolls past, and each notice is an item in the
+  account's own mailbox. It waits **4 seconds** after the reading settles, and
+  sends at once when the conversation is left, so what a reader saw is owed to
+  the other devices before they are asked about anything else.
+- **What is lost if it does not.** Closing the application inside that wait drops
+  the mark; the messages stay unread on the other device, which is the harmless
+  direction.
+
 ## Starting a second device
 
 A device starts from a backup of the account (`AccountStorage.md`). Restoring is
 slow enough to be worth watching - the bundle is unsealed, a keyed database is
 written, and the account is laid out - so it runs off the interface thread and is
 listed in the background-activity panel while it does, like every other slow
-thing. The panel shows account-level work even when no account is open yet.
+thing. The panel shows account-level work even when no account is open yet - when
+it is switched on, which it is not by default (`../README.md`).
 
 What the restored device then does, in order:
 

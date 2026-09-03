@@ -19,10 +19,6 @@ carries them, and the choices the protocol leaves to it.
 | Signalling and the state machine | `Session` (`startAudioCall`, `acceptCall`, `declineCall`, `endCall`, `setCallMuted`, `currentCall`) |
 | The window | `CallScreen.qml`, `IncomingCallWindow.qml` |
 
-The CLI drives the same signalling (`bazarish-client call <account> <peer>` and
-`call-answer`), which with the synthetic audio backends gives a headless
-end-to-end media path for integration testing.
-
 ## Datagrams to a blinded address
 
 The protocol requires media datagrams addressed to a b33. A stock i2pd routes

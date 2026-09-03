@@ -30,17 +30,8 @@ if(BAZARISH_SANITIZE)
     add_link_options(-fsanitize=${BAZARISH_SANITIZE})
 endif()
 
-add_executable(bazarish-client src/Main.cpp)
-target_link_libraries(bazarish-client PRIVATE bazarish_client)
-target_compile_options(bazarish-client PRIVATE -Wall -Wextra -Werror)
-
-# A demo chat bot over the same Session logic: commands and inline keyboards.
-add_executable(bazarish-bot src/BotMain.cpp)
-target_link_libraries(bazarish-bot PRIVATE bazarish_client)
-target_compile_options(bazarish-bot PRIVATE -Wall -Wextra -Werror)
-
-# The Qt6 Quick (QML) desktop app - the primary front-end over the same
-# Session logic the CLI uses. Built only when Qt6 Quick is available.
+# The Qt6 Quick (QML) desktop app - what this repository builds. Built only when
+# Qt6 Quick is available.
 # SVG (the brand logo) is rendered by Qt's runtime image-format plugin
 # (imageformats/libqsvg), so we do NOT require the Qt6::Svg CMake component here -
 # requiring it would fail the whole Qt6 find on systems that ship the plugin but
