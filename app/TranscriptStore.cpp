@@ -888,6 +888,29 @@ void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
     }
 }
 
+void TranscriptStore::applyReadThrough(const QString& peer, const qint64 sentAtMs)
+{
+    if (peer.isEmpty() || sentAtMs <= 0) {
+        return;
+    }
+    Query query(db_);
+    // The newest incoming row at or before that moment, and never below the mark
+    // already held: like every other write of this high-water, it only advances.
+    if (!query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
+                       " max(coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0),"
+                       " coalesce((SELECT MAX(id) FROM messages WHERE peer = ? AND outgoing = 0"
+                       " AND type != 'system' AND ts <= ?), 0)))")) {
+        return;
+    }
+    query.addBindValue(peer);
+    query.addBindValue(peer);
+    query.addBindValue(peer);
+    query.addBindValue(sentAtMs);
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: a read mark from another device was not applied");
+    }
+}
+
 qint64 TranscriptStore::lastReadId(const QString& peer) const
 {
     Query query(db_);

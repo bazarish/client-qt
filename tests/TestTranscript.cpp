@@ -488,6 +488,54 @@ int main(int argc, char** argv)
         CHECK(reopened.conversationPeers().isEmpty());
     }
 
+
+    // --- A read mark from another device of the same account ---
+    {
+        const QString rdb = QString::fromStdString((dir / "readmark.db").string());
+        TranscriptStore store;
+        CHECK(store.open("r", rdb, "pw"));
+        const auto incoming = [&store](const char* const id, const qint64 sentAt) {
+            StoredMessage m;
+            m.peer = "ivan";
+            m.outgoing = false;
+            m.type = "text";
+            m.e2eId = QString::fromUtf8(id);
+            m.text = "hello";
+            m.ts = sentAt;
+            m.orderKey = sentAt;
+            const qint64 row = store.append(m);
+            CHECK(row > 0);
+            return row;
+        };
+        incoming("r1", 1000);
+        incoming("r2", 2000);
+        const qint64 third = incoming("r3", 3000);
+        incoming("r4", 4000);
+        CHECK(store.unreadCount("ivan") == 4);
+
+        // The other device read through the third message. Everything at or
+        // before that moment counts as read here too; what came after does not.
+        store.applyReadThrough("ivan", 3000);
+        CHECK(store.lastReadId("ivan") == third);
+        CHECK(store.unreadCount("ivan") == 1);
+
+        // The mark is folded in once, not kept as a rule: a message that arrives
+        // afterwards carrying an older stamp - which its sender writes - has not
+        // been read by anybody, and must not be hidden.
+        incoming("r5", 1500);
+        CHECK(store.unreadCount("ivan") == 2);
+
+        // It only ever advances, like every other write of this high-water.
+        store.applyReadThrough("ivan", 1000);
+        CHECK(store.lastReadId("ivan") == third);
+        CHECK(store.unreadCount("ivan") == 2);
+
+        // A moment nothing was sent at leaves the mark where it is; a moment
+        // after everything reads the whole conversation.
+        store.applyReadThrough("ivan", 9000);
+        CHECK(store.unreadCount("ivan") == 0);
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;

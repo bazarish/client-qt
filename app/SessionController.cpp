@@ -350,6 +350,10 @@ constexpr int kPageSize = 20;
 // How long the storage window is given to paint "this is running" before the work
 // that holds the thread begins. One frame is enough; this is two at 60 Hz.
 constexpr int kBusyPaintDelayMs = 32;
+// How long reading settles before the account's other devices are told about it.
+// Long enough that scrolling through a conversation is one message rather than
+// dozens, short enough that closing the lid right after does not lose the mark.
+constexpr int kReadSyncIdleMs = 4000;
 
 // How many reactions outside the standard set the picker remembers.
 constexpr int kRecentReactions = 5;
@@ -1496,6 +1500,20 @@ void SessionWorker::syncChatClear(const QString& peer)
     }
 }
 
+void SessionWorker::syncRead(const QString& peer, const qint64 sentAtMs)
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        session_->syncReadToSelf(peer.toStdString(), sentAtMs);
+    } catch (const std::exception& error) {
+        // Best-effort: this device's own unread state is already correct.
+        bazarish::log::warn(
+            "read mark not synced to this account's other devices: {}", error.what());
+    }
+}
+
 void SessionWorker::syncChatPin(const QString& peer, bool pinned)
 {
     if (!session_) {
@@ -2120,6 +2138,10 @@ SessionController::SessionController(QObject* parent)
     contactsProxy_.setFilterRole(ContactListModel::NameRole);
     contactsProxy_.setFilterCaseSensitivity(Qt::CaseInsensitive);
 
+    // Read marks are batched: the timer is the wait, and it runs once per batch.
+    readSyncTimer_.setSingleShot(true);
+    connect(&readSyncTimer_, &QTimer::timeout, this, &SessionController::flushReadSync);
+
     worker_ = new SessionWorker();
     worker_->moveToThread(&thread_);
     connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);
@@ -2152,6 +2174,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSetContactCalls, worker_,
         &SessionWorker::setContactCalls);
     connect(this, &SessionController::requestSyncChatPin, worker_, &SessionWorker::syncChatPin);
+    connect(this, &SessionController::requestSyncRead, worker_, &SessionWorker::syncRead);
     connect(this, &SessionController::requestSyncChatClear, worker_,
         &SessionWorker::syncChatClear);
     connect(this, &SessionController::requestEmitSettings, worker_,
@@ -2597,6 +2620,9 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
 
 void SessionController::activateConversation(const QString& peer)
 {
+    // Leaving a conversation ends the wait: what was read in it is owed to the
+    // other devices now, not four seconds into the next one.
+    flushReadSync();
     activePeer_ = peer;
     emit activePeerChanged();
     emit activePeerNameChanged();
@@ -4758,6 +4784,21 @@ void SessionController::onMessageReceived(const QVariantMap& message)
 
     // A pin/unpin synced from another of our devices (ref = the pinned chat, text =
     // "1"/"0"): apply it to the local pin list and re-sort. Silent - no bubble.
+    if (type == "device.read") {
+        // Another device of ours has read this conversation. What it read is
+        // already here or it is not; either way nothing else changes.
+        const QString readPeer = message.value("ref").toString();
+        const qint64 through = message.value("text").toString().toLongLong();
+        if (!readPeer.isEmpty() && through > 0) {
+            store_.applyReadThrough(readPeer, through);
+            lastReadAckedId_[readPeer]
+                = qMax(lastReadAckedId_.value(readPeer, 0), store_.lastReadId(readPeer));
+            contacts_.setUnread(readPeer, store_.unreadCount(readPeer));
+            refreshUnreadTotal();
+        }
+        return;
+    }
+
     if (type == "device.chat-pin") {
         const QString pinPeer = message.value("ref").toString();
         if (!pinPeer.isEmpty()) {
@@ -5482,8 +5523,9 @@ void SessionController::markReadThroughRow(int row)
         return;
     }
     qint64 id = 0;
+    qint64 sentAt = 0;
     QString e2eId;
-    if (!conversation_.newestIncomingThrough(row, id, e2eId)) {
+    if (!conversation_.newestIncomingThrough(row, id, e2eId, sentAt)) {
         return;
     }
     // Nothing new has been read - scrolling within what is already read, or the
@@ -5501,6 +5543,12 @@ void SessionController::markReadThroughRow(int row)
     // older history never lowers it.
     store_.setLastReadId(activePeer_, id);
     contacts_.setUnread(activePeer_, store_.unreadCount(activePeer_));
+    // And the account's other devices, which hold the same conversation and have
+    // no other way to learn it has been read. Held back rather than sent per
+    // message: reading a long conversation advances this mark once per bubble,
+    // and each send is an item in this account's own mailbox.
+    pendingReadSync_[activePeer_] = sentAt;
+    readSyncTimer_.start(kReadSyncIdleMs);
     // Sending a read receipt is opt-in (the "send read receipts" setting). The
     // unread high-water above is advanced regardless, so unread tracking always
     // works even with receipts disabled.
@@ -5509,6 +5557,15 @@ void SessionController::markReadThroughRow(int row)
     }
     // A read sends a delivery receipt so the sender's bubble greens.
     emit requestSendReceipt(activePeer_, e2eId);
+}
+
+void SessionController::flushReadSync()
+{
+    readSyncTimer_.stop();
+    for (auto it = pendingReadSync_.constBegin(); it != pendingReadSync_.constEnd(); ++it) {
+        emit requestSyncRead(it.key(), it.value());
+    }
+    pendingReadSync_.clear();
 }
 
 void SessionController::onContactAddStage(const QString& opId, const QString& status)

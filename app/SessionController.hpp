@@ -89,6 +89,7 @@ public slots:
     void setContactNotifications(const QString& peer, bool on);
     void setContactCalls(const QString& peer, bool allowed);
     void syncChatPin(const QString& peer, bool pinned);
+    void syncRead(const QString& peer, qint64 sentAtMs);
     void syncChatClear(const QString& peer);
     // Re-publishes the account-wide answers, for a change that arrived from
     // another device of ours.
@@ -1078,6 +1079,7 @@ signals:  // to worker
     void requestSetContactNotifications(const QString& peer, bool on);
     void requestSetContactCalls(const QString& peer, bool allowed);
     void requestSyncChatPin(const QString& peer, bool pinned);
+    void requestSyncRead(const QString& peer, qint64 sentAtMs);
     void requestSyncChatClear(const QString& peer);
     void requestEmitSettings();
     void requestClearChatForEveryone(const QString& peer);
@@ -1282,6 +1284,12 @@ private:
     // Per-peer high-water of the newest incoming message we have already sent a
     // read receipt for, so reading does not re-send receipts on every scroll tick.
     QHash<QString, qint64> lastReadAckedId_;
+    // Read marks owed to this account's other devices, and the wait that batches
+    // them: one send per conversation the user has been reading, not one per
+    // message they scrolled past.
+    QHash<QString, qint64> pendingReadSync_;
+    QTimer readSyncTimer_;
+    void flushReadSync();
     // Read receipts for messages this device does not hold yet, by peer. The two
     // travel as separate mailbox items and can arrive in either order.
     QHash<QString, QSet<QString>> receiptsAhead_;

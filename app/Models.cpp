@@ -333,7 +333,8 @@ QVector<qint64> ConversationModel::markDeliveredThrough(qint64 uptoId)
     return changed;
 }
 
-bool ConversationModel::newestIncomingThrough(int row, qint64& outId, QString& outProtocol) const
+bool ConversationModel::newestIncomingThrough(
+    int row, qint64& outId, QString& outProtocol, qint64& outSentAt) const
 {
     const int start = std::min(row, static_cast<int>(messages_.size()) - 1);
     for (int i = start; i >= 0; --i) {
@@ -341,6 +342,7 @@ bool ConversationModel::newestIncomingThrough(int row, qint64& outId, QString& o
         if (!m.outgoing && !m.e2eId.isEmpty() && m.type != "system") {
             outId = m.id;
             outProtocol = m.e2eId;
+            outSentAt = m.ts;
             return true;
         }
     }

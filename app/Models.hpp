@@ -114,7 +114,7 @@ public:
     QVector<qint64> markDeliveredThrough(qint64 uptoId);
     // The id + protocol id of the newest incoming message at or before `row`
     // (for the read high-water). Returns false when there is none.
-    bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol) const;
+    bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol, qint64& outSentAt) const;
     void setStatusForId(qint64 id, int status);
     // Replaces a row's text in place (a system note tracking a running operation).
     void setTextForId(qint64 id, const QString& text);

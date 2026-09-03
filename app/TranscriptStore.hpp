@@ -202,6 +202,12 @@ public:
     // Survives restart, so the unread badge and the open-at-first-unread position
     // are accurate across sessions.
     void setLastReadId(const QString& peer, qint64 id);
+    // Another device of this account read the conversation through a message sent
+    // at this moment. Resolved against what is stored HERE and folded into the
+    // high-water at once, rather than kept as a standing rule: a message that
+    // turns up later carrying an older stamp has not been seen by anybody, and
+    // the stamp is the sender's to write.
+    void applyReadThrough(const QString& peer, qint64 sentAtMs);
     qint64 lastReadId(const QString& peer) const;
 
     // --- Pinned chats (kept at the top of the chat list; synced across devices) ---
