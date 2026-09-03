@@ -92,7 +92,10 @@ what happened before, so a trimmed message does not come back from a sibling
 device, and nothing is asked of the person on the other side either.
 
 **The rewrite.** Freed pages stay inside the file until it is rewritten, so a
-trim is followed by `VACUUM` and the size on disk falls with it.
+trim is followed by `VACUUM` and the size on disk falls with it. The same rewrite
+is also a button of its own in the storage window: it removes nothing, it only
+hands back what earlier deletions already freed, which is what makes it the one
+non-destructive action there.
 
 That rewrite belongs to the storage window and to nothing else. Its cost is the
 size of what is **kept**, not of what went - it reads and writes the whole
@@ -102,6 +105,13 @@ of it the rewrite, and the same code path carries a correspondent's "delete for
 everyone", which arrives without the user asking for anything. Ordinary deletions
 therefore leave their pages in the file to be reused, and the storage window is
 where the space is handed back.
+
+While either runs, the application is deliberately held: they take the database
+exclusively, and doing the work on another thread would put an arriving message
+against that lock - `append` would fail and the message would be shown but never
+stored. The window says what is running before it stops answering, and it shows
+no percentage, because SQLite reports none for a rewrite and an invented figure
+would say something untrue about how far along it is.
 
 `VACUUM` needs free disk space equal to the file, which is checked first, and it
 takes the database exclusively, so it can be refused while the account is busy. A

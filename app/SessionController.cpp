@@ -347,6 +347,9 @@ Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
 // screen, not what the chat has ever held, and the rest arrives as the user
 // scrolls into it.
 constexpr int kPageSize = 20;
+// How long the storage window is given to paint "this is running" before the work
+// that holds the thread begins. One frame is enough; this is two at 60 Hz.
+constexpr int kBusyPaintDelayMs = 32;
 
 // How many reactions outside the standard set the picker remembers.
 constexpr int kRecentReactions = 5;
@@ -4471,21 +4474,56 @@ void SessionController::trimEveryChat(const int keep)
     runTrim({}, keep);
 }
 
+void SessionController::beginStorageWork(const QString& what, const std::function<void()>& work)
+{
+    // A trim and a rewrite both take the database exclusively and both run on the
+    // thread that draws. Moving them off it would put an arriving message against
+    // that lock, and a message that cannot be stored is worse than a window that
+    // waits - so the window is deliberately held, and the only thing that must not
+    // happen is holding it before it has said why. The delay is what buys the
+    // frame that paints the notice; a queued call alone can beat it to the screen.
+    deviceStorageBusy_ = true;
+    deviceStorage_[QStringLiteral("busy")] = true;
+    deviceStorage_[QStringLiteral("busyWhat")] = what;
+    emit deviceStorageChanged();
+    QTimer::singleShot(kBusyPaintDelayMs, this, work);
+}
+
+void SessionController::endStorageWork()
+{
+    deviceStorageBusy_ = false;
+    measureDeviceStorage();
+}
+
+void SessionController::compactDatabase()
+{
+    if (deviceStorageBusy_) {
+        return;
+    }
+    beginStorageWork(QStringLiteral("Rewriting the database"), [this]() {
+        QString reason;
+        const bool rebuilt = store_.rebuild(reason);
+        const qint64 before = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
+        endStorageWork();
+        if (!rebuilt) {
+            emit actionFailed(QStringLiteral("The database was not rewritten: ") + reason);
+            return;
+        }
+        const qint64 after = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
+        // What it actually returned, rather than what it might have: the figure
+        // the user is watching is the one on disk.
+        emit actionOk(QStringLiteral("The database was rewritten; ")
+            + humanBytes(std::max<qint64>(0, before - after))
+            + QStringLiteral(" came back to the disk."));
+    });
+}
+
 void SessionController::runTrim(const QString& peer, const int keep)
 {
     if (deviceStorageBusy_) {
         return;
     }
-    // The trim and the rewrite behind it run on the thread that draws, and the
-    // rewrite takes the database exclusively: moving it off this thread would put
-    // an arriving message against that lock, and a message that cannot be stored
-    // is worse than a window that waits. So the window is told it is busy first,
-    // and the work is queued behind that paint rather than done inside the press.
-    deviceStorageBusy_ = true;
-    deviceStorage_[QStringLiteral("busy")] = true;
-    emit deviceStorageChanged();
-    QMetaObject::invokeMethod(
-        this,
+    beginStorageWork(QStringLiteral("Trimming and rewriting the database"),
         [this, peer, keep]() {
             qint64 removed = 0;
             try {
@@ -4494,8 +4532,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
             } catch (const std::exception& error) {
                 // Nothing was removed: the whole trim is one transaction and it
                 // rolled back.
-                deviceStorageBusy_ = false;
-                measureDeviceStorage();
+                endStorageWork();
                 emit actionFailed(QString::fromUtf8(error.what()));
                 return;
             }
@@ -4504,8 +4541,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
             loadLatestWindow();
             rebuildChatList();
             refreshUnreadTotal();
-            deviceStorageBusy_ = false;
-            measureDeviceStorage();
+            endStorageWork();
             if (rebuilt) {
                 emit actionOk(QStringLiteral("Removed ") + QString::number(removed)
                     + QStringLiteral(" messages and rewrote the database."));
@@ -4516,8 +4552,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
             emit actionFailed(QStringLiteral("Removed ") + QString::number(removed)
                 + QStringLiteral(" messages, but the space has not been returned to the disk: ")
                 + reason + QStringLiteral(". Trimming again returns it."));
-        },
-        Qt::QueuedConnection);
+        });
 }
 
 void SessionController::onOpened(const QString& fingerprint, const QString& displayName,

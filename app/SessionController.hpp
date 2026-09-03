@@ -19,6 +19,7 @@
 #include <QVariantMap>
 
 #include <atomic>
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -958,6 +959,10 @@ public:
     // other device is told and nothing leaves this machine.
     Q_INVOKABLE void trimChat(const QString& peer, int keep);
     Q_INVOKABLE void trimEveryChat(int keep);
+    // Rewrites the file without removing anything, so free space inside it goes
+    // back to the disk. Nothing is deleted here - it is the same rewrite a trim
+    // ends with, offered on its own.
+    Q_INVOKABLE void compactDatabase();
     Q_INVOKABLE void refreshDevices();
     // Drops a device's registration: its unacked mail stops being held, and the
     // device registers again the next time it connects.
@@ -1390,6 +1395,11 @@ private:
     // Trims one conversation (or every one, when peer is empty) and rebuilds the
     // file. Shared by both invokables: they differ only in what they name.
     void runTrim(const QString& peer, int keep);
+    // Marks the storage window busy, says what with, and starts the work once the
+    // window has had a frame to show it: everything here holds the drawing thread
+    // for as long as it runs.
+    void beginStorageWork(const QString& what, const std::function<void()>& work);
+    void endStorageWork();
     QString callState_ = QStringLiteral("idle");
     QString callStage_;
     qint64 callConnectedAtMs_ = 0;

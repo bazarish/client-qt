@@ -98,16 +98,28 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
-                    MenuButton {
+                    RowLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 6
-                        text: "Trim every chat…"
-                        danger: true
-                        enabled: !root.busy && root.chats.length > 0
-                        onClicked: {
-                            trimDialog.peer = ""
-                            trimDialog.who = "every chat"
-                            trimDialog.open()
+                        spacing: 8
+                        // Removes nothing: it only hands back what deleting
+                        // already freed, so it is not a destructive action.
+                        MenuButton {
+                            Layout.fillWidth: true
+                            text: "Rewrite the database (VACUUM)"
+                            enabled: !root.busy && root.session !== null
+                            onClicked: root.session.compactDatabase()
+                        }
+                        MenuButton {
+                            Layout.fillWidth: true
+                            text: "Trim every chat…"
+                            danger: true
+                            enabled: !root.busy && root.chats.length > 0
+                            onClicked: {
+                                trimDialog.peer = ""
+                                trimDialog.who = "every chat"
+                                trimDialog.open()
+                            }
                         }
                     }
                 }
@@ -249,8 +261,10 @@ Popup {
         }
     }
 
-    // The trim and the rewrite hold the drawing thread, so this is painted before
-    // they start and stands until they are done.
+    // Everything here holds the drawing thread for as long as it runs, so this is
+    // painted first and stands until it is over. It carries no percentage: a
+    // database rewrite reports none, and an invented one would be a lie about how
+    // far along it is.
     Popup {
         id: working
         anchors.centerIn: Overlay.overlay
@@ -259,9 +273,17 @@ Popup {
         closePolicy: Popup.NoAutoClose
         padding: 20
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
-        contentItem: Label {
-            text: "Trimming and rewriting the database…"
-            color: Theme.text
+        contentItem: ColumnLayout {
+            spacing: 6
+            Label {
+                text: (root.info.busyWhat !== undefined ? root.info.busyWhat : "Working") + "…"
+                color: Theme.text
+            }
+            Label {
+                text: "The window does not answer while this runs."
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+            }
         }
     }
 }
