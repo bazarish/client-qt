@@ -514,6 +514,15 @@ class SessionController : public QObject {
     // persist for the session, so an offline account still shows its last-known
     // usage with a "updated N ago" age.
     Q_PROPERTY(QVariantMap storageInfo READ storageInfo NOTIFY storageChanged)
+    // What this account holds on THIS device, for the storage window: a map with
+    // busy, measuredAt (unix ms, 0 when never), fileBytes, freeBytes and chats -
+    // each of them peer, name, messages, bytes and mediaCount, heaviest first.
+    // Content bytes rather than pages: the file is larger than their sum.
+    Q_PROPERTY(QVariantMap deviceStorage READ deviceStorage NOTIFY deviceStorageChanged)
+    // The two depths a conversation can be trimmed to, so the window's labels and
+    // the statements behind them name the same numbers.
+    Q_PROPERTY(int keepRecentMessages READ keepRecentMessages CONSTANT)
+    Q_PROPERTY(int keepManyMessages READ keepManyMessages CONSTANT)
     // Audio call state for the call screen: "idle"/"outgoing"/"incoming"/"active",
     // the peer fingerprint, a display name, and the local mute flag.
     Q_PROPERTY(QString callState READ callState NOTIFY callChanged)
@@ -635,6 +644,9 @@ public:
     QString i2pServerState() const { return i2pServerState_; }
     QString acceptingContact() const { return acceptingContact_; }
     QVariantMap storageInfo() const;
+    QVariantMap deviceStorage() const { return deviceStorage_; }
+    int keepRecentMessages() const { return kKeepRecentMessages; }
+    int keepManyMessages() const { return kKeepManyMessages; }
     qint64 i2pTransientExpires() const { return i2pTransientExpires_; }
     QString callState() const { return callState_; }
     QString callStage() const { return callStage_; }
@@ -937,6 +949,15 @@ public:
     // result lands in the storageInfo property; until it does, the last figures (if
     // any) stay, with the UI showing how long ago they were taken.
     Q_INVOKABLE void refreshStorageUsage();
+    // Reads what this account weighs on this device. A full pass over the
+    // transcript, so it is done when the window opens and when the user asks -
+    // never on a timer.
+    Q_INVOKABLE void measureDeviceStorage();
+    // Keeps the newest `keep` messages of one conversation, or of every one of
+    // them, and rewrites the file so the space returns to the disk. Local: no
+    // other device is told and nothing leaves this machine.
+    Q_INVOKABLE void trimChat(const QString& peer, int keep);
+    Q_INVOKABLE void trimEveryChat(int keep);
     Q_INVOKABLE void refreshDevices();
     // Drops a device's registration: its unacked mail stops being held, and the
     // device registers again the next time it connects.
@@ -996,6 +1017,7 @@ signals:
     void devicesChanged();
     void voiceChanged();
     void storageChanged();
+    void deviceStorageChanged();
     void callChanged();
     void callLevelsChanged();
     void openFailed(const QString& error);
@@ -1362,6 +1384,12 @@ private:
     quint64 storageMailboxUsed_ = 0;
     quint64 storageMailboxQuota_ = 0;
     qint64 storageUpdatedAtMs_ = 0;
+    // The storage window's figures, and whether a trim is running behind them.
+    QVariantMap deviceStorage_;
+    bool deviceStorageBusy_ = false;
+    // Trims one conversation (or every one, when peer is empty) and rebuilds the
+    // file. Shared by both invokables: they differ only in what they name.
+    void runTrim(const QString& peer, int keep);
     QString callState_ = QStringLiteral("idle");
     QString callStage_;
     qint64 callConnectedAtMs_ = 0;

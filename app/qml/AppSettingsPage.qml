@@ -12,6 +12,8 @@ Popup {
     // A window of its own: it is opened from several places and belongs to none
     // of them, so it closes rather than going back to one.
     signal showRouterStatus()
+    // What this account keeps on this machine, and trimming it.
+    signal showStorage()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -51,6 +53,38 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 10
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
+                        Label { text: "Storage"; color: Theme.text }
+                        Label {
+                            text: "What this account keeps on this machine, chat by chat, with "
+                                + "the pictures and voice notes counted in. Old history can be "
+                                + "dropped a chat at a time, keeping the newest messages - here "
+                                + "only, on this device."
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                        Label {
+                            visible: App.session === null
+                            text: "Open an account to see what it keeps."
+                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                    }
+                    MenuButton {
+                        Layout.fillWidth: true
+                        text: "Storage…"
+                        enabled: App.session !== null
+                        onClicked: { root.close(); root.showStorage() }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 10
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -80,6 +114,34 @@ Popup {
                                 checked = App.portable
                                 portableConfirm.open()
                             }
+                        }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 10
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label { text: "Background tasks"; color: Theme.text }
+                            Label {
+                                text: "A handle on the right edge that opens a list of what the "
+                                    + "client is doing right now - a contact being added, a message "
+                                    + "or file on its way, a call being set up - with the stage each "
+                                    + "one has reached. Off by default: it is what to look at when "
+                                    + "something seems stuck."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Toggle {
+                            checked: App.backgroundTasksVisible
+                            onToggled: App.backgroundTasksVisible = checked
                         }
                     }
                 }

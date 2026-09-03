@@ -11,6 +11,8 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QFileInfo>
+#include <QStorageInfo>
 #include <QStringList>
 
 #include <sqlcipher/sqlite3.h>
@@ -193,6 +195,7 @@ void TranscriptStore::close()
 {
     sqlite3_close(db_);  // a no-op on a connection already closed
     db_ = nullptr;
+    path_.clear();
 }
 
 namespace {
@@ -209,6 +212,11 @@ sqlite3* openKeyed(const QString& path, const Bytes& key)
     // SQLCipher reports a failed decryption on stderr; the caller reports it
     // through the return value instead, so the library's own chatter is off.
     sqlite3_exec(db, "PRAGMA cipher_log_level = NONE", nullptr, nullptr, nullptr);
+    // The account's other connection - the one the worker thread holds - waits
+    // this long for a lock. This one never did, and it is this one that takes the
+    // database exclusively when history is trimmed.
+    constexpr int kBusyTimeoutMs = 5000;
+    sqlite3_busy_timeout(db, kBusyTimeoutMs);
     // The raw key goes in as a blob literal, so SQLCipher derives nothing: the
     // passphrase guards the key file beside the database (see AccountKey).
     const std::string pragma = "PRAGMA key = \"x'" + toHex(key) + "'\"";
@@ -246,6 +254,7 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     if (db_ == nullptr) {
         return false;
     }
+    path_ = dbPath;
     if (!readable(db_)) {
         // Wrong key: the pages do not decrypt. Say so by failing the open.
         sqlite3_close(db_);
@@ -348,6 +357,13 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     if (!query.exec("CREATE UNIQUE INDEX IF NOT EXISTS messages_by_e2e"
                     " ON messages (peer, e2eId, outgoing) WHERE e2eId != ''")) {
         bazarish::log::warn("transcript: one message per row is not enforced here");
+    }
+    // Every per-conversation statement stands on this: the index above is partial
+    // and a plain "where peer = ?" cannot use it, so a windowed read, a preview
+    // and a trim each scanned the whole table. One conversation is one scan is
+    // survivable; trimming every conversation would be one scan per conversation.
+    if (!query.exec("CREATE INDEX IF NOT EXISTS messages_by_peer_id ON messages (peer, id)")) {
+        bazarish::log::warn("transcript: conversations are read without an index");
     }
     return true;
 }
@@ -766,7 +782,8 @@ void TranscriptStore::removeById(qint64 id)
     Query query(db_);
     query.prepare("DELETE FROM messages WHERE id = ?");
     query.addBindValue(id);
-    if (query.exec()) {
+    if (query.exec() && !sweepUnusedMedia()) {
+        bazarish::log::warn("transcript: the picture or voice note of a deleted message stayed");
     }
 }
 
@@ -775,7 +792,11 @@ void TranscriptStore::clearPeer(const QString& peer)
     Query query(db_);
     query.prepare("DELETE FROM messages WHERE peer = ?");
     query.addBindValue(peer);
-    if (query.exec()) {
+    // A cleared conversation used to leave every picture and voice note it held
+    // in the database, for good: the rows went and the blobs the core keeps
+    // beside them did not.
+    if (query.exec() && !sweepUnusedMedia()) {
+        bazarish::log::warn("transcript: the media of a cleared conversation stayed behind");
     }
 }
 
@@ -972,6 +993,248 @@ QVector<Reaction> TranscriptStore::reactionsFor(const QString& peer, const QStri
         result.push_back(Reaction{query.value(0).toString(), query.value(1).toString()});
     }
     return result;
+}
+
+
+namespace {
+
+// Where the core keeps a message's media, under the same names it writes them.
+const char* const kPictureKeyPrefix = "picture:";
+const char* const kVoiceKeyPrefix = "voice:";
+
+// The bytes one message row's own values hold. LENGTH counts characters over
+// TEXT, so every column is measured as a blob instead. The fixed-width columns
+// share one flat allowance: their width is per row, and this whole figure is an
+// account of content rather than a measurement of pages.
+constexpr int kFixedColumnBytes = 32;
+
+QString messageBytesExpression()
+{
+    const QStringList columns = {"text", "keyboard", "attWave", "attName", "attMime", "attRef",
+        "attKey", "attSrcPath", "savedPath", "replyTo", "e2eId", "type", "peer"};
+    QStringList parts;
+    for (const QString& column : columns) {
+        parts << QStringLiteral("LENGTH(CAST(COALESCE(m.%1,'') AS BLOB))").arg(column);
+    }
+    return parts.join(" + ") + QStringLiteral(" + %1").arg(kFixedColumnBytes);
+}
+
+// Media rows no message names. The "e2eId != ''" is load-bearing rather than
+// tidy: NOT IN over a set holding one NULL is NULL for every row, and the
+// condition would then match nothing at all.
+QString unusedMediaCondition(const char* const prefix)
+{
+    return QStringLiteral("name GLOB '%1*' AND SUBSTR(name, LENGTH('%1') + 1)"
+                          " NOT IN (SELECT e2eId FROM messages WHERE e2eId != '')")
+        .arg(QString::fromUtf8(prefix));
+}
+
+// One change, taken as one. IMMEDIATE asks for the write lock up front instead
+// of discovering halfway through that the other connection holds it.
+class Transaction {
+public:
+    explicit Transaction(sqlite3* const db)
+        : db_(db)
+    {
+        Query begin(db_);
+        if (!begin.exec("BEGIN IMMEDIATE")) {
+            throw std::runtime_error("the database is busy");
+        }
+    }
+    ~Transaction()
+    {
+        if (committed_) {
+            return;
+        }
+        Query rollback(db_);
+        if (!rollback.exec("ROLLBACK")) {
+            bazarish::log::warn("transcript: a change could not be rolled back");
+        }
+    }
+
+    Transaction(const Transaction&) = delete;
+    Transaction& operator=(const Transaction&) = delete;
+
+    void commit()
+    {
+        Query end(db_);
+        if (!end.exec("COMMIT")) {
+            throw std::runtime_error("the change could not be committed");
+        }
+        committed_ = true;
+    }
+
+private:
+    sqlite3* db_ = nullptr;
+    bool committed_ = false;
+};
+
+}  // namespace
+
+bool TranscriptStore::hasMediaTable() const
+{
+    Query query(db_);
+    return query.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'state'")
+        && query.next();
+}
+
+bool TranscriptStore::sweepUnusedMedia()
+{
+    if (!hasMediaTable()) {
+        return true;
+    }
+    for (const char* const prefix : {kPictureKeyPrefix, kVoiceKeyPrefix}) {
+        Query query(db_);
+        if (!query.exec("DELETE FROM state WHERE " + unusedMediaCondition(prefix))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+QVector<ChatWeight> TranscriptStore::chatWeights() const
+{
+    QVector<ChatWeight> weights;
+    // messages is the outer loop and the media table is probed by its primary
+    // key, which is what the outer joins pin down: the other order has no index
+    // to stand on and would read every blob for every message.
+    const QString media = hasMediaTable()
+        ? QStringLiteral(" LEFT JOIN state AS p ON m.e2eId != '' AND p.name = '%1' || m.e2eId"
+                         " LEFT JOIN state AS v ON m.e2eId != '' AND v.name = '%2' || m.e2eId")
+              .arg(QString::fromUtf8(kPictureKeyPrefix), QString::fromUtf8(kVoiceKeyPrefix))
+        : QString();
+    const QString sums = hasMediaTable()
+        ? QStringLiteral("TOTAL(COALESCE(LENGTH(p.value), 0) + COALESCE(LENGTH(v.value), 0)),"
+                         " TOTAL((p.name IS NOT NULL) + (v.name IS NOT NULL))")
+        : QStringLiteral("0, 0");
+    Query query(db_);
+    if (!query.exec(QStringLiteral("SELECT m.peer, COUNT(*), TOTAL(%1), %2 FROM messages AS m%3"
+                                   " GROUP BY m.peer")
+                        .arg(messageBytesExpression(), sums, media))) {
+        return weights;
+    }
+    while (query.next()) {
+        ChatWeight weight;
+        weight.peer = query.value(0).toString();
+        weight.messages = query.value(1).toLongLong();
+        weight.rowBytes = query.value(2).toLongLong();
+        weight.mediaBytes = query.value(3).toLongLong();
+        weight.mediaCount = query.value(4).toLongLong();
+        weights.append(weight);
+    }
+    return weights;
+}
+
+DatabaseFootprint TranscriptStore::footprint() const
+{
+    DatabaseFootprint out;
+    out.fileBytes = QFileInfo(path_).size();
+    qint64 bytesPerPage = 0;
+    Query pageSize(db_);
+    if (pageSize.exec("PRAGMA page_size") && pageSize.next()) {
+        bytesPerPage = pageSize.value(0).toLongLong();
+    }
+    Query freePages(db_);
+    if (bytesPerPage > 0 && freePages.exec("PRAGMA freelist_count") && freePages.next()) {
+        out.freeBytes = bytesPerPage * freePages.value(0).toLongLong();
+    }
+    return out;
+}
+
+qint64 TranscriptStore::pruneRowsOf(const QString& peer, const int keep)
+{
+    // Newest by id, which is the key the windowed reads page by: trimming on any
+    // other order would keep a different set than the conversation shows.
+    Query messages(db_);
+    if (!messages.prepare("DELETE FROM messages WHERE peer = ? AND id NOT IN ("
+                          "SELECT id FROM messages WHERE peer = ? ORDER BY id DESC LIMIT ?)")) {
+        throw std::runtime_error("the conversation could not be trimmed");
+    }
+    messages.addBindValue(peer);
+    messages.addBindValue(peer);
+    messages.addBindValue(keep);
+    if (!messages.exec()) {
+        throw std::runtime_error("the conversation could not be trimmed");
+    }
+    const qint64 removed = messages.numRowsAffected();
+    Query reactions(db_);
+    if (!reactions.prepare("DELETE FROM reactions WHERE peer = ? AND target NOT IN ("
+                           "SELECT e2eId FROM messages WHERE peer = ? AND e2eId != '')")) {
+        throw std::runtime_error("the reactions of trimmed messages could not be removed");
+    }
+    reactions.addBindValue(peer);
+    reactions.addBindValue(peer);
+    if (!reactions.exec()) {
+        throw std::runtime_error("the reactions of trimmed messages could not be removed");
+    }
+    return removed;
+}
+
+qint64 TranscriptStore::pruneToLatest(const QString& peer, const int keep)
+{
+    if (peer.isEmpty() || keep < 0) {
+        return 0;
+    }
+    Transaction change(db_);
+    const qint64 removed = pruneRowsOf(peer, keep);
+    if (!sweepUnusedMedia()) {
+        throw std::runtime_error("the media of trimmed messages could not be removed");
+    }
+    change.commit();
+    return removed;
+}
+
+qint64 TranscriptStore::pruneEveryChatToLatest(const int keep)
+{
+    if (keep < 0) {
+        return 0;
+    }
+    const QStringList peers = conversationPeers();
+    Transaction change(db_);
+    qint64 removed = 0;
+    for (const QString& peer : peers) {
+        removed += pruneRowsOf(peer, keep);
+    }
+    // Once at the end: what it looks for is media nothing names, and nothing
+    // names it only after the last conversation has been trimmed.
+    if (!sweepUnusedMedia()) {
+        throw std::runtime_error("the media of trimmed messages could not be removed");
+    }
+    change.commit();
+    return removed;
+}
+
+bool TranscriptStore::rebuild(QString& reason)
+{
+    const QFileInfo file(path_);
+    // A rewrite is a whole second copy of the database before it replaces the
+    // first, so the room for one is checked rather than discovered.
+    if (QStorageInfo(file.absolutePath()).bytesAvailable() < file.size()) {
+        reason = QStringLiteral("there is not enough free disk space to rewrite the database");
+        return false;
+    }
+    Query vacuum(db_);
+    if (!vacuum.exec("VACUUM")) {
+        reason = QString::fromUtf8(sqlite3_errmsg(db_));
+        return false;
+    }
+    // An account whose schema mark is not the one it was written against is
+    // refused at open, so the mark is put back rather than trusted to a rewrite.
+    qint64 stamped = 0;
+    Query version(db_);
+    if (version.exec("PRAGMA user_version") && version.next()) {
+        stamped = version.value(0).toLongLong();
+    }
+    if (stamped == kAccountSchemaVersion) {
+        return true;
+    }
+    Query restore(db_);
+    if (!restore.exec("PRAGMA user_version = " + QString::number(kAccountSchemaVersion))) {
+        reason = QStringLiteral("the database was rewritten but its schema mark was lost");
+        return false;
+    }
+    bazarish::log::warn("transcript: the schema mark was written again after a rebuild");
+    return true;
 }
 
 }  // namespace bazarish::app

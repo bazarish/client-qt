@@ -30,11 +30,13 @@ Item {
         onClicked: appSettings.open()
     }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    StoragePage { id: storagePage; onBack: { storagePage.close(); appSettings.open() } }
     AppSettingsPage {
         id: appSettings
         parent: Overlay.overlay
         anchors.centerIn: parent
         onShowRouterStatus: routerStatus.open()
+        onShowStorage: storagePage.open()
     }
 
     ColumnLayout {

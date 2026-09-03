@@ -53,6 +53,53 @@ The compatibility level is not pinned explicitly. It is the library default for
 every 4.x release, and pinning it would only matter the day a version 5 changes
 that default - at which point the pin, not the discovery, is the smaller change.
 
+## What the file holds, and trimming it
+
+Global settings -> Storage shows what one account keeps on this machine,
+conversation by conversation, and drops old history a conversation at a time.
+
+**Where the bytes are.** The transcript's `messages` table holds text and
+metadata. Pictures and voice notes are **not** in it: the core keeps them beside
+it in the same file under `picture:<id>` and `voice:<id>`. Files that were sent
+or received are not in the database at all - they travel directly between the two
+clients and land wherever the user saved them.
+
+**What the figures mean.** A conversation's weight is what its rows and its
+pictures hold - content, not pages. The file is always larger: it also carries
+indexes, per-page overhead and free space, and no query can attribute a page back
+to a conversation. The free figure is the freelist counted at the plaintext page
+size, so it is a little under what a rewrite actually returns.
+
+**Deletion takes the media with it.** It did not before: clearing a chat removed
+its rows and left every picture and voice note it held in the database
+permanently. Any deletion now sweeps the media nothing names any more, so an
+account carrying that residue sheds it the first time anything is deleted.
+
+**What a trim does.** It keeps the newest 100 or 1000 messages of a conversation
+and removes the rest, with their reactions and their media, in one transaction:
+the conversation is trimmed or it is untouched. Newest is by row id, the same key
+a conversation pages by, so what is kept is what the view would have shown.
+`read_state` and `pinned_chats` are left alone - trimming is not clearing, and
+the conversation stays in the list.
+
+A trim is **local to this device**, and that is not a policy but a fact about the
+protocol: there is no history backfill between an account's devices. The
+device-sync kinds are live echoes of what is happening now, not a request for
+what happened before, so a trimmed message does not come back from a sibling
+device, and nothing is asked of the person on the other side either.
+
+**The rewrite.** Freed pages stay in the file until it is rewritten, so a trim is
+followed by `VACUUM`. It needs free disk space equal to the file, which is
+checked first, and it takes the database exclusively - so it can fail while the
+account is busy, and then the messages are gone but the space has not come back
+yet. Those are two different facts and the client reports both; trimming again
+returns the space. The schema mark is written again afterwards, because an
+account carrying any other number is refused at open.
+
+Measured on a 256 MB account holding 100 000 messages and 2 000 pictures:
+reading every conversation's weight took 310 ms, trimming all of them to the last
+100 took 7.2 s, and the rewrite took 214 ms and left a 5.4 MB file.
+
 ## The backup bundle
 
 `export` writes one password-sealed file (CMS PWRI) holding what an account *is*,

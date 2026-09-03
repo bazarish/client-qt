@@ -178,9 +178,11 @@ Item {
     }
     AccountSwitcher { id: accountSwitcher }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    StoragePage { id: storagePage; onBack: { storagePage.close(); appSettings.open() } }
     AppSettingsPage {
         id: appSettings
         onShowRouterStatus: routerStatus.open()
+        onShowStorage: storagePage.open()
     }
     ConnectionLogPage {
         id: connectionLog

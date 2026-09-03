@@ -190,6 +190,7 @@ if(Qt6_FOUND)
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml
             app/qml/ConnectionLogPage.qml
+        app/qml/StoragePage.qml
             app/qml/ProxyRestartDialog.qml
             app/qml/SamRestartDialog.qml
             app/qml/ServerHelloDialog.qml

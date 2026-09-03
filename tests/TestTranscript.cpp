@@ -1,10 +1,13 @@
 // Bazarish project (c) 2026
 #include "TranscriptStore.hpp"
 
+#include "AccountDb.hpp"
+
 #include <bazarish/Bytes.hpp>
 
 #include <QCoreApplication>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -316,6 +319,143 @@ int main(int argc, char** argv)
         TranscriptStore again;
         CHECK(again.open("ver", sdb, QString()));
         CHECK(again.latestMessages("heidi", 10).size() == 1);
+    }
+
+
+    // --- What a conversation weighs, and trimming it ---
+    //
+    // Pictures and voice notes are not in the transcript's tables: the core keeps
+    // them beside it in the same file, under "picture:<id>" / "voice:<id>". So the
+    // account's own connection puts them there, exactly as the client does.
+    {
+        const fs::path file = dir / "weights.db";
+        const QString wdb = QString::fromStdString(file.string());
+        TranscriptStore store;
+        CHECK(store.open("w", wdb, "pw"));
+
+        const auto write = [&store](const char* const peer, const char* const id,
+                               const char* const text) {
+            StoredMessage m;
+            m.peer = QString::fromUtf8(peer);
+            m.type = "text";
+            m.e2eId = QString::fromUtf8(id);
+            m.text = QString::fromUtf8(text);
+            m.ts = 1000;
+            m.orderKey = m.ts;
+            const qint64 id64 = store.append(m);
+            CHECK(id64 > 0);
+            return id64;
+        };
+        write("alpha", "a1", "one");
+        write("alpha", "a2", "two");
+        write("alpha", "a3", "three");
+        // A system note carries no protocol id, and the sweep's condition has to
+        // survive that: NOT IN over a set holding a NULL matches nothing at all.
+        {
+            StoredMessage note;
+            note.peer = "alpha";
+            note.type = "system";
+            note.text = "a note with no id";
+            note.ts = 1000;
+            note.orderKey = note.ts;
+            CHECK(store.append(note) > 0);
+        }
+        const qint64 a4 = write("alpha", "a4", "four");
+        const qint64 a5 = write("alpha", "a5", "five");
+        write("beta", "b1", "beta one");
+        write("beta", "b2", "beta two");
+        store.setReaction("alpha", "a1", "carol", "+1");
+        store.setReaction("alpha", "a5", "carol", "+1");
+
+        const Bytes doomedPicture(4096, 7);
+        const Bytes keptPicture(2048, 9);
+        const Bytes betaVoice(1024, 3);
+        const Bytes ghost(512, 1);
+        {
+            client::AccountDb account(file, "pw");
+            account.put("picture:a1", doomedPicture);
+            account.put("picture:a5", keptPicture);
+            account.put("voice:b1", betaVoice);
+            // Left by a chat cleared before anything removed media with it.
+            account.put("picture:gone", ghost);
+        }
+
+        const QVector<ChatWeight> weights = store.chatWeights();
+        CHECK(weights.size() == 2);
+        for (const ChatWeight& weight : weights) {
+            CHECK(weight.rowBytes > 0);
+            if (weight.peer == "alpha") {
+                CHECK(weight.messages == 6);  // five messages and the system note
+                CHECK(weight.mediaCount == 2);
+                CHECK(weight.mediaBytes
+                    == static_cast<qint64>(doomedPicture.size() + keptPicture.size()));
+            } else {
+                CHECK(weight.peer == "beta");
+                CHECK(weight.messages == 2);
+                CHECK(weight.mediaCount == 1);
+                CHECK(weight.mediaBytes == static_cast<qint64>(betaVoice.size()));
+            }
+        }
+
+        // The newest two of alpha stay; everything older goes, whichever side it
+        // is on and whether or not it carries an id.
+        CHECK(store.pruneToLatest("alpha", 2) == 4);
+        const QVector<StoredMessage> kept = store.messagesFor("alpha");
+        CHECK(kept.size() == 2);
+        QVector<qint64> keptIds;
+        for (const StoredMessage& message : kept) {
+            keptIds.append(message.id);
+        }
+        std::sort(keptIds.begin(), keptIds.end());
+        CHECK(keptIds.front() == a4);
+        CHECK(keptIds.back() == a5);
+        // Another conversation is not touched by one conversation's trim.
+        CHECK(store.messagesFor("beta").size() == 2);
+        // The media follows the messages: the removed one's picture is gone, the
+        // kept one's is not, the other conversation's is not, and what a previous
+        // clear abandoned is swept with them.
+        {
+            client::AccountDb account(file, "pw");
+            CHECK(!account.has("picture:a1"));
+            CHECK(account.has("picture:a5"));
+            CHECK(account.has("voice:b1"));
+            CHECK(!account.has("picture:gone"));
+        }
+        // A reaction on a removed message goes; one on a message that stayed does
+        // not.
+        CHECK(store.reactionsFor("alpha", "a1").isEmpty());
+        CHECK(store.reactionsFor("alpha", "a5").size() == 1);
+
+        // Trimming to more than there is removes nothing.
+        CHECK(store.pruneToLatest("alpha", 100) == 0);
+        CHECK(store.messagesFor("alpha").size() == 2);
+
+        // Every conversation at once, each to its own newest.
+        CHECK(store.pruneEveryChatToLatest(1) == 2);
+        CHECK(store.messagesFor("alpha").size() == 1);
+        CHECK(store.messagesFor("beta").size() == 1);
+
+        // Clearing a conversation takes its media too - it never used to.
+        store.clearPeer("beta");
+        CHECK(store.messagesFor("beta").isEmpty());
+        {
+            client::AccountDb account(file, "pw");
+            CHECK(!account.has("voice:b1"));
+        }
+
+        // The rewrite returns the space, and the account still opens afterwards -
+        // an account whose schema mark did not survive would be refused.
+        const DatabaseFootprint before = store.footprint();
+        QString reason;
+        CHECK(store.rebuild(reason));
+        const DatabaseFootprint after = store.footprint();
+        CHECK(after.fileBytes < before.fileBytes);
+        CHECK(after.freeBytes == 0);
+        store.close();
+
+        TranscriptStore reopened;
+        CHECK(reopened.open("w", wdb, "pw"));
+        CHECK(reopened.messagesFor("alpha").size() == 1);
     }
 
     fs::remove_all(dir);

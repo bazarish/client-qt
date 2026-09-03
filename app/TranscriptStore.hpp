@@ -78,6 +78,30 @@ struct Reaction {
 // migration steps from.
 inline constexpr int kAccountSchemaVersion = 1;
 
+// The two depths a conversation can be trimmed to. Named here because they are
+// the offer the interface makes, and it makes it with these numbers.
+inline constexpr int kKeepRecentMessages = 100;
+inline constexpr int kKeepManyMessages = 1000;
+
+// What one conversation weighs in the account database: the values its rows hold
+// plus the media blobs those rows name. Content, not pages on disk - the file is
+// always larger, and no query can attribute a page back to a conversation.
+struct ChatWeight {
+    QString peer;
+    qint64 messages = 0;
+    qint64 rowBytes = 0;
+    qint64 mediaBytes = 0;
+    qint64 mediaCount = 0;
+};
+
+// The database file: what it takes on disk, and the part of that a rebuild would
+// return. The free figure counts pages at the plaintext page size, so it is a
+// little under what a rebuild actually recovers.
+struct DatabaseFootprint {
+    qint64 fileBytes = 0;
+    qint64 freeBytes = 0;
+};
+
 class TranscriptStore {
 public:
     TranscriptStore();
@@ -199,9 +223,42 @@ public:
     // Every reaction on a message, for the bubble summary and the who-reacted list.
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
 
+    // --- What the account holds, and dropping old history ---
+
+    // Every conversation with what it weighs, unordered.
+    QVector<ChatWeight> chatWeights() const;
+    // The file's size and the free space inside it.
+    DatabaseFootprint footprint() const;
+    // Keeps the newest `keep` messages of `peer` and removes the rest, with their
+    // reactions and the media nothing names afterwards. Newest by id, the key the
+    // windowed reads page by. One transaction: the conversation is trimmed or it
+    // is untouched. Returns the messages removed, and throws when a statement
+    // fails - a half-trimmed transcript is not a result worth returning.
+    qint64 pruneToLatest(const QString& peer, int keep);
+    qint64 pruneEveryChatToLatest(int keep);
+    // Rewrites the file so the pages a trim freed leave it. Not an exception when
+    // it cannot run: the trim before it has already committed, so the reason comes
+    // back to be reported beside what was removed.
+    bool rebuild(QString& reason);
+
 private:
+    // Removes every media blob no message names any more. Kept private because it
+    // is not a decision a caller makes: it runs wherever messages are deleted, so
+    // a picture cannot outlive the message that carried it. False when a statement
+    // failed - what that costs is the caller's to decide.
+    bool sweepUnusedMedia();
+    // Whether the core's media table is there at all. A store opened before the
+    // account's own tables exist has no media, which is not a failure.
+    bool hasMediaTable() const;
+    // The rows of one conversation past the newest `keep`, and their reactions.
+    // Runs inside the caller's transaction; throws on a failed statement.
+    qint64 pruneRowsOf(const QString& peer, int keep);
+
     // The open connection. Owned; closed in the destructor.
     sqlite3* db_ = nullptr;
+    // The file behind that connection, so its size can be measured and a rebuild
+    // can check there is room for one.
+    QString path_;
 };
 
 }  // namespace bazarish::app
