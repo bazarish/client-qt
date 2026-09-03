@@ -92,7 +92,7 @@ Popup {
                     Label {
                         visible: root.info.freeBytes > 0
                         text: "About " + root.humanBytes(root.info.freeBytes)
-                            + " of it is free space a rewrite returns to the disk."
+                            + " of it is free space compacting returns to the disk."
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
@@ -106,7 +106,7 @@ Popup {
                         // already freed, so it is not a destructive action.
                         MenuButton {
                             Layout.fillWidth: true
-                            text: "Rewrite the database (VACUUM)"
+                            text: "Compact the database (VACUUM)"
                             enabled: !root.busy && root.session !== null
                             onClicked: root.session.compactDatabase()
                         }
@@ -242,7 +242,7 @@ Popup {
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: "Bazarish rewrites the database afterwards so the space returns to the "
+                text: "Bazarish compacts the database afterwards so the space returns to the "
                     + "disk, and is busy while it does: a moment on an ordinary account, "
                     + "several seconds on one holding a hundred thousand messages."
             }

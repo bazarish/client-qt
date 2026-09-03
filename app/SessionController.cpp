@@ -4500,19 +4500,19 @@ void SessionController::compactDatabase()
     if (deviceStorageBusy_) {
         return;
     }
-    beginStorageWork(QStringLiteral("Rewriting the database"), [this]() {
+    beginStorageWork(QStringLiteral("Compacting the database"), [this]() {
         QString reason;
         const bool rebuilt = store_.rebuild(reason);
         const qint64 before = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
         endStorageWork();
         if (!rebuilt) {
-            emit actionFailed(QStringLiteral("The database was not rewritten: ") + reason);
+            emit actionFailed(QStringLiteral("The database was not compacted: ") + reason);
             return;
         }
         const qint64 after = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
         // What it actually returned, rather than what it might have: the figure
         // the user is watching is the one on disk.
-        emit actionOk(QStringLiteral("The database was rewritten; ")
+        emit actionOk(QStringLiteral("The database was compacted; ")
             + humanBytes(std::max<qint64>(0, before - after))
             + QStringLiteral(" came back to the disk."));
     });
@@ -4523,7 +4523,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
     if (deviceStorageBusy_) {
         return;
     }
-    beginStorageWork(QStringLiteral("Trimming and rewriting the database"),
+    beginStorageWork(QStringLiteral("Trimming and compacting the database"),
         [this, peer, keep]() {
             qint64 removed = 0;
             try {
@@ -4544,7 +4544,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
             endStorageWork();
             if (rebuilt) {
                 emit actionOk(QStringLiteral("Removed ") + QString::number(removed)
-                    + QStringLiteral(" messages and rewrote the database."));
+                    + QStringLiteral(" messages and compacted the database."));
                 return;
             }
             // The trim itself committed. Reporting this as a failure would say

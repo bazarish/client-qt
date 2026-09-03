@@ -91,11 +91,11 @@ device-sync kinds are live echoes of what is happening now, not a request for
 what happened before, so a trimmed message does not come back from a sibling
 device, and nothing is asked of the person on the other side either.
 
-**The rewrite.** Freed pages stay inside the file until it is rewritten, so a
-trim is followed by `VACUUM` and the size on disk falls with it. The same rewrite
-is also a button of its own in the storage window: it removes nothing, it only
-hands back what earlier deletions already freed, which is what makes it the one
-non-destructive action there.
+**Compacting.** Freed pages stay inside the file until it is rewritten, so a trim
+is followed by `VACUUM` and the size on disk falls with it. The same operation is
+a button of its own in the storage window - "Compact the database" - because it
+removes nothing: it only hands back what earlier deletions already freed, which
+makes it the one non-destructive action there.
 
 That rewrite belongs to the storage window and to nothing else. Its cost is the
 size of what is **kept**, not of what went - it reads and writes the whole
