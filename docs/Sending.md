@@ -149,6 +149,22 @@ and this device asks its **own other devices** for a token
 the only tokenless path into a mailbox, and a top-up over it would turn one
 narrow door into a channel anybody may knock on.
 
+## Contact requests in a conversation
+
+A conversation holds **one** invitation plate per direction, however many requests
+were actually sent. A repeat carries the name the first attempt gave the request,
+so the recipient's server recognises it as that request rather than a new one; a
+request that arrives anyway with a name of its own - the correspondent removed
+this account and asked again - keeps the plate already there. What it carries
+(their routing, their reply tokens) is applied either way: only the plate is
+dropped, because a chat that grows a second one reads as two people asking.
+
+The Agree button on that plate is the contact's state, not the message's: it is
+there while the request is unanswered, says what it is doing while the acceptance
+is in the air, and goes only when the correspondent's server has confirmed it
+holds the batch the acceptance carries. An acceptance that never lands brings the
+button back rather than leaving a contact that looks answered on this side alone.
+
 ## Outbound addresses
 
 One destination is held per recipient destination for the term stated above, then

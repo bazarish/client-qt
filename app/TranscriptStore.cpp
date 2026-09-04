@@ -732,6 +732,21 @@ qint64 TranscriptStore::idForIncomingE2e(const QString& e2eId, const QString& pe
     return 0;
 }
 
+qint64 TranscriptStore::oldestOfType(
+    const QString& peer, const QString& type, const bool outgoing) const
+{
+    Query query(db_);
+    query.prepare("SELECT id FROM messages WHERE peer = ? AND type = ? AND outgoing = ?"
+                  " ORDER BY id LIMIT 1");
+    query.addBindValue(peer);
+    query.addBindValue(type);
+    query.addBindValue(outgoing ? 1 : 0);
+    if (query.exec() && query.next()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
 qint64 TranscriptStore::idForAnyProtocol(const QString& e2eId, const QString& peer) const
 {
     if (e2eId.isEmpty()) {

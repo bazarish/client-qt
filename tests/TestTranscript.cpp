@@ -536,6 +536,36 @@ int main(int argc, char** argv)
         CHECK(store.unreadCount("ivan") == 0);
     }
 
+    // What a second invitation is checked against: one plate per direction, and
+    // the two directions do not answer for each other.
+    {
+        TranscriptStore store;
+        CHECK(store.open("p1", db, "pw"));
+        const auto plate = [&](const bool outgoing, const QString& id) {
+            StoredMessage m;
+            m.peer = "asker";
+            m.outgoing = outgoing;
+            m.type = "contact.request";
+            m.e2eId = id;
+            m.text = "let me in";
+            m.ts = 1;
+            m.orderKey = 1;
+            CHECK(store.append(m) > 0);
+        };
+        CHECK(store.oldestOfType("asker", "contact.request", false) == 0);
+        plate(false, "req-1");
+        const qint64 first = store.oldestOfType("asker", "contact.request", false);
+        CHECK(first != 0);
+        // The other direction is still empty, and a text is not an invitation.
+        CHECK(store.oldestOfType("asker", "contact.request", true) == 0);
+        plate(true, "req-2");
+        CHECK(store.oldestOfType("asker", "contact.request", true) != 0);
+        // A second one on the same side is the first one's row, not a new plate.
+        plate(false, "req-3");
+        CHECK(store.oldestOfType("asker", "contact.request", false) == first);
+        CHECK(store.oldestOfType("someone-else", "contact.request", false) == 0);
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;

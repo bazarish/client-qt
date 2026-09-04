@@ -300,8 +300,13 @@ Item {
                     visible: delegate.isContactRequestIncoming && delegate.session
                         && delegate.session.contactsRevision >= 0
                         && delegate.session.contactCanAccept(delegate.session.activePeer)
+                    // The press, and the account's own answer to it: the button
+                    // says "Agreeing" until the acceptance is confirmed stored by
+                    // their server, and reads as pressable again if it never was.
                     readonly property bool inFlight: delegate.session
-                        && delegate.session.acceptingContact === delegate.session.activePeer
+                        && delegate.session.contactsRevision >= 0
+                        && (delegate.session.acceptingContact === delegate.session.activePeer
+                            || delegate.session.contactAgreeing(delegate.session.activePeer))
                     text: inFlight ? "Agreeing…" : "Agree"
                     enabled: !inFlight
                     hoverEnabled: true

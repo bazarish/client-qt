@@ -161,6 +161,11 @@ public:
     // target of an edit (0 if none). Scoping to incoming-from-peer is the
     // security check: a peer can only edit a message it actually sent.
     qint64 idForIncomingE2e(const QString& e2eId, const QString& peer) const;
+    // The oldest row of one type on one side of a conversation (0 if none). A
+    // conversation holds one contact-request plate per direction however many
+    // requests were actually sent, so this is what a second one is checked
+    // against.
+    qint64 oldestOfType(const QString& peer, const QString& type, bool outgoing) const;
     // The row id of a message under `peer` with this protocol id, either direction
     // (0 if none). Used to resolve a reply reference to a local message to jump to.
     qint64 idForAnyProtocol(const QString& e2eId, const QString& peer) const;

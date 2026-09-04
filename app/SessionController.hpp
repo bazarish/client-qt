@@ -97,7 +97,8 @@ public slots:
     // Asks the peer to clear the whole conversation with us (chat.clear); their
     // client wipes its transcript on receipt.
     void clearChatForEveryone(const QString& peer);
-    void addByInvite(const QString& uri, const QString& intro, const QString& opId);
+    void addByInvite(const QString& uri, const QString& intro, const QString& opId,
+        const QString& requestId);
     void addByUsername(const QString& alias, const QString& intro, const QString& opId);
     // Agrees to a received contact request (sends our descriptor back).
     void acceptContact(const QString& peer);
@@ -241,14 +242,17 @@ signals:
     // A contact request was sent (add-by-invite/username/fingerprint succeeded):
     // the resolved peer fingerprint and the intro text it carried, so the GUI can
     // open the chat and show the sent request straight away.
-    void contactRequestSent(const QString& fingerprint, const QString& intro);
+    // A contact request that went out, and the name it goes by on the wire: a
+    // resend carries the same one, so the note in the chat is the same note.
+    void contactRequestSent(
+        const QString& fingerprint, const QString& intro, const QString& requestId);
     // Activity-panel progress for an in-flight contact add (opId assigned by the
     // controller at start): a stage update, then a terminal done (ok + final text).
     void contactAddStage(const QString& opId, const QString& status);
     // The recipient's address is over its contact-request cap: the request was
     // refused, not lost, and the controller repeats it on a timer.
     void contactAddRateLimited(
-        const QString& opId, const QString& fingerprint, const QString& displayName);
+        const QString& opId, const QString& fingerprint, const QString& requestId);
     void contactAddDone(const QString& opId, bool ok, const QString& status);
     // A contact request we agreed to: the peer, and whether it went through.
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
@@ -878,6 +882,8 @@ public:
     // background operation that dials I2P first.
     Q_INVOKABLE QString inviteProblem(const QString& uri) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
+    // The same add, repeating a request that already has a name.
+    void addByInvite(const QString& uri, const QString& intro, const QString& requestId);
     // Sends a contact request again after the recipient's address refused it for
     // being over its cap. Called by the timer that repeats it, and by the user
     // from the chat once the automatic tries are spent.
@@ -888,6 +894,9 @@ public:
     // Whether `fp` is a contact that sent us a request we have not yet accepted
     // (drives the "Agree" button on an incoming contact-request bubble).
     Q_INVOKABLE bool contactCanAccept(const QString& fp) const;
+    // Whether this contact's acceptance is in the air: agreed to, not yet
+    // confirmed stored by their server.
+    Q_INVOKABLE bool contactAgreeing(const QString& fp) const;
     Q_INVOKABLE void requestInvite();
     // Signs a sign-in-with-key challenge with this account's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
@@ -1083,7 +1092,8 @@ signals:  // to worker
     void requestSyncChatClear(const QString& peer);
     void requestEmitSettings();
     void requestClearChatForEveryone(const QString& peer);
-    void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId);
+    void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId,
+        const QString& requestId);
     void requestAddByUsername(const QString& alias, const QString& intro, const QString& opId);
     void requestAcceptContact(const QString& peer);
     void requestInviteSig();
@@ -1142,7 +1152,7 @@ private slots:
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
     void writeConversationNote(const QString& peer, const QString& text);
     void onContactAddRateLimited(
-        const QString& opId, const QString& fingerprint, const QString& displayName);
+        const QString& opId, const QString& fingerprint, const QString& requestId);
     void onContactAccepted(const QString& peer, bool ok, const QString& reason);
     void onOpBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
@@ -1159,7 +1169,8 @@ private slots:
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSendPhase(qint64 localId, const QString& phase);
-    void onContactRequestSent(const QString& fingerprint, const QString& intro);
+    void onContactRequestSent(
+        const QString& fingerprint, const QString& intro, const QString& requestId);
     void onSyncReachable(bool ok, const QString& reason);
     void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
@@ -1245,6 +1256,7 @@ private:
     // fingerprints), so a request bubble can offer "Agree". Refreshed from the
     // worker; contactsRevision_ bumps on every refresh to re-drive the binding.
     QSet<QString> pendingContacts_;
+    QSet<QString> agreeingContacts_;
     int contactsRevision_ = 0;
     // Bumped on any reaction change so QML re-queries the store.
     int reactionsRevision_ = 0;
@@ -1321,6 +1333,10 @@ private:
         QString uri;
         QString intro;
         int triesLeft = 0;
+        // The name the first attempt gave the request. Every repeat carries it,
+        // so the recipient's server recognises the second copy as the first one
+        // and the recipient sees one invitation rather than one per attempt.
+        QString requestId;
     };
     QHash<QString, PendingContactRequest> refusedRequests_;
     QString accountPassphrase_;

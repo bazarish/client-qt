@@ -635,7 +635,16 @@ void SessionWorker::emitContacts()
     for (const std::string& fp : session_->contactFingerprints()) {
         fps << QString::fromStdString(fp);
         names << QString::fromStdString(session_->contactDisplayName(fp));
-        pending << (session_->contactIsPending(fp) ? QStringLiteral("1") : QStringLiteral("0"));
+        // Three states, not two: answered, waiting to be answered, and answered
+        // with the acceptance still in the air. The middle one draws a button to
+        // press, the last one the same button saying what it is doing.
+        if (!session_->contactIsPending(fp)) {
+            pending << QStringLiteral("0");
+        } else if (session_->contactAcceptInFlight(fp)) {
+            pending << QStringLiteral("2");
+        } else {
+            pending << QStringLiteral("1");
+        }
         // Built here because this is where the routing is; it is the contact's
         // own card, so nothing is computed that they did not already hand over.
         // Why there is no link, when there is none: a contact who has turned
@@ -1225,12 +1234,13 @@ QString SessionWorker::beginOp(const QString& kind, const QString& title, const 
     return opId;
 }
 
-void SessionWorker::addByInvite(const QString& uri, const QString& intro, const QString& opId)
+void SessionWorker::addByInvite(const QString& uri, const QString& intro, const QString& opId,
+    const QString& requestId)
 {
     // Asynchronous: the slow federated card fetch runs off this thread, so sync and
     // the connection are never blocked. The fingerprint (for out-of-band
     // verification) is surfaced when the resolve finalizes (drainResolvedAdds).
-    startContactAdd(/*byUsername=*/false, uri, intro, opId);
+    startContactAdd(/*byUsername=*/false, uri, intro, opId, requestId);
 }
 
 void SessionWorker::addByUsername(const QString& alias, const QString& intro, const QString& opId)
@@ -1354,7 +1364,8 @@ void SessionWorker::drainResolvedAdds()
             // it can be compared at leisure.
             emit actionOk(QStringLiteral("Contact request sent."));
             emit contactRequestSent(QString::fromStdString(fingerprint),
-                QString::fromStdString(resolved.introText));
+                QString::fromStdString(resolved.introText),
+                QString::fromStdString(resolved.requestId));
             emit contactAddDone(
                 entry.opId, true, QStringLiteral("Request sent, awaiting delivery…"));
         } catch (const bazarish::client::ApiError& e) {
@@ -1364,7 +1375,7 @@ void SessionWorker::drainResolvedAdds()
             if (e.code == bazarish::ErrorCode::eContactRateLimited) {
                 emit contactAddRateLimited(entry.opId,
                     QString::fromStdString(resolved.fingerprint),
-                    QString::fromStdString(resolved.displayName));
+                    QString::fromStdString(resolved.requestId));
                 continue;
             }
             emit contactAddDone(entry.opId, false, QString::fromUtf8(e.what()));
@@ -1384,7 +1395,7 @@ void SessionWorker::acceptContact(const QString& peer)
         session_->acceptContactRequest(peer.toStdString());
         op.succeed(QStringLiteral("Agreed"));
         emit contactAccepted(peer, true, {});
-        emitContacts();  // issuedToThem flipped: the contact is no longer pending
+        emitContacts();  // the acceptance is in the air; the button says so
         sync();
     } catch (const std::exception& e) {
         op.fail(QString::fromUtf8(e.what()));
@@ -2350,9 +2361,16 @@ SessionController::SessionController(QObject* parent)
                     shareRefused_.insert(fps[i]);
                 }
             }
+            agreeingContacts_.clear();
             for (int i = 0; i < fps.size() && i < pending.size(); ++i) {
-                if (pending[i] == QStringLiteral("1")) {
+                if (pending[i] == QStringLiteral("1") || pending[i] == QStringLiteral("2")) {
+                    // Still unanswered as far as the peer is concerned, so the
+                    // button stays: an acceptance that never landed has to be
+                    // pressable again.
                     pendingContacts_.insert(fps[i]);
+                }
+                if (pending[i] == QStringLiteral("2")) {
+                    agreeingContacts_.insert(fps[i]);
                 }
             }
             rebuildChatList();
@@ -3465,6 +3483,12 @@ QString SessionController::inviteProblem(const QString& uri) const
 
 void SessionController::addByInvite(const QString& uri, const QString& intro)
 {
+    addByInvite(uri, intro, QString());
+}
+
+void SessionController::addByInvite(
+    const QString& uri, const QString& intro, const QString& requestId)
+{
     const QString problem = inviteProblem(uri);
     if (!problem.isEmpty()) {
         emit actionFailed(problem);
@@ -3484,22 +3508,24 @@ void SessionController::addByInvite(const QString& uri, const QString& intro)
         // Remembered in case the recipient's address is over its cap: the
         // request then has to be sent again, and this is what it takes.
         refusedRequests_.insert(QString::fromStdString(descriptor.fingerprint),
-            PendingContactRequest{uri, intro, kContactRetryAttempts});
+            PendingContactRequest{uri, intro, kContactRetryAttempts, requestId});
     } catch (const std::exception& error) {
         // inviteProblem() already vetted the link, so this cannot normally fire;
         // if it ever does, the add still runs and the panel carries the progress.
         bazarish::log::warn("invite parsed for the chat but not for its peer: {}", error.what());
     }
-    emit requestAddByInvite(uri, intro, opId);
+    emit requestAddByInvite(uri, intro, opId, requestId);
 }
 
 void SessionController::onContactAddRateLimited(
-    const QString& opId, const QString& fingerprint, const QString& displayName)
+    const QString& opId, const QString& fingerprint, const QString& requestId)
 {
-    (void)displayName;
     finishOperation(opId, false, QStringLiteral("Their address is busy"));
     contactProgressRows_.remove(opId);
     const auto found = refusedRequests_.find(fingerprint);
+    if (found != refusedRequests_.end() && found->requestId.isEmpty()) {
+        found->requestId = requestId;  // what the first attempt named it
+    }
     if (found == refusedRequests_.end() || found->triesLeft <= 0) {
         writeConversationNote(fingerprint,
             QStringLiteral("The request was refused - their server is busy. Try again later."));
@@ -3523,11 +3549,12 @@ void SessionController::retryContactRequest(const QString& fingerprint)
         return;
     }
     const PendingContactRequest pending = *found;
-    addByInvite(pending.uri, pending.intro);
+    addByInvite(pending.uri, pending.intro, pending.requestId);
     // addByInvite re-registers the entry with a full set of automatic tries; keep
     // the count this attempt is on instead.
     if (const auto again = refusedRequests_.find(fingerprint); again != refusedRequests_.end()) {
         again->triesLeft = pending.triesLeft;
+        again->requestId = pending.requestId;
     }
 }
 
@@ -3619,6 +3646,14 @@ void SessionController::acceptContact()
 bool SessionController::contactCanAccept(const QString& fp) const
 {
     return pendingContacts_.contains(fp);
+}
+
+bool SessionController::contactAgreeing(const QString& fp) const
+{
+    // The optimistic half is this device's own click, so the button answers the
+    // press at once; the other half is the account's real state, which outlives
+    // the click and comes back if the acceptance never lands.
+    return acceptingContact_ == fp || agreeingContacts_.contains(fp);
 }
 
 void SessionController::requestInvite()
@@ -4724,6 +4759,18 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
+    // One invitation per conversation. A request that is sent again - the same
+    // one repeated, or a fresh one after the peer removed us - is the same
+    // invitation, and a chat that grows a second plate for it reads as two people
+    // asking. What it carries (their routing, their reply tokens) has already been
+    // applied by the core; only the plate is dropped.
+    if (type == QStringLiteral("contact.request") && !message.value("sentByUs").toBool()
+        && store_.oldestOfType(peer, type, /*outgoing=*/false) != 0) {
+        bazarish::log::info("a second contact request from {} keeps the plate it already has",
+            peer.toStdString());
+        return;
+    }
+
     // Another device of ours emptied its copy of a conversation.
     if (type == "device.chat-clear") {
         const QString cleared = message.value("ref").toString();
@@ -4783,9 +4830,11 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
-    // A block or a per-contact switch changed on another device. The core applied
-    // it; the interface only re-reads what it shows.
-    if (type == "device.contact-block" || type == "device.contact-prefs") {
+    // A block, a per-contact switch, or a contact request agreed to on another
+    // device. The core applied it; the interface only re-reads what it shows -
+    // which is what takes the Agree button off a request already answered.
+    if (type == "device.contact-block" || type == "device.contact-prefs"
+        || type == "device.contact-accepted") {
         ++contactsRevision_;
         emit contactsRevisionChanged();
         return;
@@ -5625,7 +5674,8 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
     contactProgressRows_.remove(opId);
 }
 
-void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro)
+void SessionController::onContactRequestSent(
+    const QString& fingerprint, const QString& intro, const QString& requestId)
 {
     // Mirror the request on our own side: store the intro we just sent as an
     // outgoing message and open a chat for the new peer, so adding a contact
@@ -5635,12 +5685,22 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
     if (fingerprint.isEmpty()) {
         return;
     }
+    // The same request sent again is the same request: it keeps its name on the
+    // wire, so the note keeps it here too and the conversation holds one plate
+    // rather than one per attempt.
+    if (store_.oldestOfType(fingerprint, QStringLiteral("contact.request"), /*outgoing=*/true)
+        != 0) {
+        if (activePeer_ != fingerprint) {
+            openConversation(fingerprint);
+        }
+        return;
+    }
     const QString body = intro.isEmpty() ? QStringLiteral("Contact request sent.") : intro;
     StoredMessage m;
     m.peer = fingerprint;
     m.outgoing = true;
     m.type = "contact.request";
-    m.e2eId = SessionController_genE2eId();
+    m.e2eId = requestId.isEmpty() ? SessionController_genE2eId() : requestId;
     m.text = body;
     m.ts = nowMillis();
     m.orderKey = m.ts;
