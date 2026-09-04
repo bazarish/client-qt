@@ -515,7 +515,8 @@ void SessionWorker::stopEventWaiter()
     }
 }
 
-void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
+void SessionWorker::openAccount(
+    const QString& dir, const QString& passphrase, const bool startOnline)
 {
     // Bound concurrent downloads so a burst never spawns an unreasonable number of
     // throwaway I2P destinations at once.
@@ -556,8 +557,11 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
         session_->sharingAllowed());
     emitContacts();
     // Whatever the last run left half-done is taken up before anything new is
-    // asked of this account.
-    resumePendingAdds();
+    // asked of this account - unless nothing at all is to be asked of it: an
+    // account opened offline dials nobody, and a contact add is a dial.
+    if (startOnline) {
+        resumePendingAdds();
+    }
     // Seed the avatar store from disk: our own avatar plus every contact that has
     // one, so faces appear before any sync runs.
     {
@@ -614,7 +618,9 @@ void SessionWorker::openAccount(const QString& dir, const QString& passphrase)
         session_->hasI2pDestination()
             ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p")
             : QString());
-    if (connected) {
+    // A configured account starts syncing on open; one the user turned off does
+    // not, and the switch is the only thing that starts it.
+    if (connected && startOnline) {
         ensureSyncTimer();
         sync();
     }
@@ -2538,9 +2544,10 @@ client::AccountDb& SessionController::accountDb()
     return *accountDb_;
 }
 
-void SessionController::open(
-    const QString& file, const QString& accountId, const QString& passphrase)
+void SessionController::open(const QString& file, const QString& accountId,
+    const QString& passphrase, const bool startOnline)
 {
+    startOnline_ = startOnline;
     accountId_ = accountId;
     accountPath_ = file;
     accountPassphrase_ = passphrase;
@@ -2567,7 +2574,7 @@ void SessionController::open(
     // longer a progress line for an operation that does not exist.
     store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
         DeliveryStatus::Received, QStringLiteral("The contact request did not finish."));
-    emit requestOpen(file, passphrase);
+    emit requestOpen(file, passphrase, startOnline);
 }
 
 void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp,
@@ -4639,9 +4646,10 @@ void SessionController::onOpened(const QString& fingerprint, const QString& disp
     connectionNote_ = connectionNote;
     emit identityChanged();
     emit connectedChanged();
-    // A connected account starts syncing on open, so it comes up online.
-    if (online_ != connected) {
-        online_ = connected;
+    // A connected account starts syncing on open, so it comes up online - unless
+    // it was opened offline, which is an account read without being switched on.
+    if (const bool nowOnline = connected && startOnline_; online_ != nowOnline) {
+        online_ = nowOnline;
         emit onlineChanged();
     }
 }
@@ -4669,6 +4677,8 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
 
 void SessionController::goOnline()
 {
+    // Whatever this account was opened as, it is switched on now.
+    startOnline_ = true;
     if (!online_) {
         online_ = true;
         emit onlineChanged();

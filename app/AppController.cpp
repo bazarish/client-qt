@@ -373,7 +373,8 @@ int AppController::unreadElsewhere() const
     return total;
 }
 
-void AppController::openSession(const QString& id, const QString& passphrase, bool makeActive)
+void AppController::openSession(const QString& id, const QString& passphrase,
+    const bool makeActive, const bool startOnline)
 {
     // Already open: just focus it (or do nothing for a background request).
     if (sessionFor(id) != nullptr) {
@@ -452,7 +453,7 @@ void AppController::openSession(const QString& id, const QString& passphrase, bo
     try {
         const QString file
             = QString::fromStdString(manager_->fileFor(id.toStdString()).string());
-        ctrl->open(file, id, passphrase);
+        ctrl->open(file, id, passphrase, startOnline);
     } catch (const std::exception& e) {
         removeSession(ctrl);
         if (unlockingId_ == id) {
@@ -566,7 +567,7 @@ void AppController::openAccount(const QString& id, const QString& passphrase)
     // this before the open meant a wrong passphrase was reported as if nobody had
     // been asked for one, which is to say not reported at all.
     unlockingId_ = id;
-    openSession(id, passphrase, /*makeActive=*/true);
+    openSession(id, passphrase, /*makeActive=*/true, /*startOnline=*/bringOnline);
     if (sessionFor(id) == nullptr) {
         return;  // it did not open; the prompt has been told why
     }
@@ -745,11 +746,14 @@ void AppController::switchTo(const QString& id)
 {
     if (sessionFor(id) != nullptr) {
         setActive(id);
-    } else {
-        // Switching to a closed account opens it = brings it online.
-        setAccountOffline(id, false);
-        openSession(id, {}, /*makeActive=*/true);
+        return;
     }
+    // Opening an account is not switching it on. One the user turned off opens
+    // to be read - its chats are there, and nothing of it goes on the network -
+    // and stays off until its own switch says otherwise. Only that switch, and
+    // nothing else, takes an account online.
+    const bool wasOff = offline_.constFind(id) != offline_.cend();
+    openSession(id, {}, /*makeActive=*/true, /*startOnline=*/!wasOff);
 }
 
 void AppController::setOnline(const QString& id, bool on)

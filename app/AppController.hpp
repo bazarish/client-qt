@@ -271,7 +271,11 @@ private:
     // Opens an account into a SessionController. makeActive focuses it (and
     // routes the UI to it); pass it false to open in the background. Encrypted
     // accounts opened with an empty passphrase are reported via needPassphrase.
-    void openSession(const QString& id, const QString& passphrase, bool makeActive);
+    // startOnline false opens the account without taking it online: it is read,
+    // not switched on. Only the switch in the account list switches an account
+    // on, so opening one the user turned off leaves it exactly as off as it was.
+    void openSession(const QString& id, const QString& passphrase, bool makeActive,
+        bool startOnline = true);
     // Opens every unencrypted account in the background at startup.
     void openAllAccounts();
     // Removes and tears down an open account's controller. deferred uses

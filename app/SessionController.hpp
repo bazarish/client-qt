@@ -44,7 +44,10 @@ public:
     ~SessionWorker() override;
 
 public slots:
-    void openAccount(const QString& dir, const QString& passphrase);
+    // startOnline false opens the account and touches the network for nothing:
+    // no sync, no long poll, no add resumed. An account the user turned off is
+    // opened to be read.
+    void openAccount(const QString& dir, const QString& passphrase, bool startOnline);
     // Drops the record of an add that has ended.
     void forgetPendingAdd(const QString& opId);
     void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
@@ -664,7 +667,8 @@ public:
     bool callMuted() const { return callMuted_; }
 
     // Opens an account on the worker thread (dir + id + passphrase).
-    void open(const QString& file, const QString& accountId, const QString& passphrase);
+    void open(const QString& file, const QString& accountId, const QString& passphrase,
+        bool startOnline = true);
 
     // Connects (and subscribes) through an ordered list of facade URLs
     // (http[s]://host[:port][/secret]). The client fails over across them.
@@ -1110,7 +1114,7 @@ signals:  // to worker
     void requestSharingAllowed(bool allowed);
     void sharingAllowedChanged();
     void servingKeyChanged();
-    void requestOpen(const QString& dir, const QString& passphrase);
+    void requestOpen(const QString& dir, const QString& passphrase, bool startOnline);
     void requestSetSync(bool on);
     void requestRebuildI2p();
     void requestCancelTransfer(const QString& e2eId);
@@ -1225,6 +1229,10 @@ private:
     QString displayName_;
     bool connected_ = false;
     bool online_ = false;
+    // What this account was opened as. An account opened offline stays offline
+    // until the switch says otherwise, so opening it never reads as switching
+    // it on.
+    bool startOnline_ = true;
     bool reachable_ = false;
     QString syncError_;
     bool i2pBusy_ = false;
