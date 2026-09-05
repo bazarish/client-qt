@@ -37,7 +37,17 @@ signals:
 private:
     void rebuildMenu();
     void refreshIcon();
-    void notify(const QString& title, const QString& body);
+    void notify(const QString& accountId, const QString& peer, const QString& title,
+        const QString& body);
+    // A reaction on one of our messages: the same popup, its own shorter sound.
+    void notifyReaction(const QString& accountId, const QString& peer,
+        const QString& fromName, const QString& emoji);
+    // Shows the popup and, if it is not being rationed, makes `sound` - the half
+    // both notifications share.
+    void announce(const QString& accountId, const QString& peer, const QString& title,
+        const QString& body, NotifySound& sound, QElapsedTimer& since);
+    // Opens what the last notification was about: its account, then its chat.
+    void openNotified();
     // Brings the window back the way it was left.
     void showWindow();
     // The tray icon itself: away if the window is in front, back if it is not.
@@ -48,6 +58,15 @@ private:
     QMenu menu_;
     QAction* notificationsAction_ = nullptr;
     NotifySound sound_;
+    // A reaction is announced with a shorter, quieter sound of its own, and is
+    // rationed apart from messages: a flurry of hearts must not swallow the one
+    // sound that says somebody wrote something.
+    NotifySound reactionSound_;
+    QElapsedTimer sinceReactionSound_;
+    // What the last popup was about, so clicking it opens that conversation
+    // rather than only bringing the window back.
+    QString notifiedAccount_;
+    QString notifiedPeer_;
     // The sound is held back while what it announced has not been looked at: a
     // conversation that arrives in twenty messages should not be twenty sounds.
     // It is the sound that waits, never the popup - see notify().

@@ -901,6 +901,12 @@ public:
     // Whether this contact's acceptance is in the air: agreed to, not yet
     // confirmed stored by their server.
     Q_INVOKABLE bool contactAgreeing(const QString& fp) const;
+    // The reactions on this message that arrived while nobody was looking at
+    // them, as a list of emoji. The conversation flashes them once and then asks
+    // for them to be forgotten. Re-read whenever reactionsRevision changes.
+    Q_INVOKABLE QStringList reactionsToFlash(const QString& e2eId) const;
+    // Stop flashing: everything pending in the open conversation has been seen.
+    Q_INVOKABLE void forgetReactionFlash();
     Q_INVOKABLE void requestInvite();
     // Signs a sign-in-with-key challenge with this account's key (no server
     // needed); the result arrives via loginSigned(). The key never leaves the app.
@@ -1025,7 +1031,14 @@ signals:
     // Something arrived that a person would want to be told about, by the name it
     // came from. Everything that is not a message - receipts, refills, control
     // traffic - is filtered out before this.
-    void messageNotification(const QString& fromName);
+    // A message arrived from `peer` (named by `fromName`). The fingerprint rides
+    // with the name because a notification is something to click: what it is
+    // about has to be enough to open the conversation it came from.
+    void messageNotification(const QString& peer, const QString& fromName);
+    // A reaction arrived on one of our messages: who reacted, and with what. Its
+    // own signal because it is announced with its own, shorter sound.
+    void reactionNotification(const QString& peer, const QString& fromName,
+        const QString& emoji);
     void operationsChanged();
     void onlineChanged();
     void reachableChanged();
@@ -1265,6 +1278,15 @@ private:
     // worker; contactsRevision_ bumps on every refresh to re-drive the binding.
     QSet<QString> pendingContacts_;
     QSet<QString> agreeingContacts_;
+    // Reactions that arrived while their conversation was not being looked at,
+    // as "peer\ntarget". Kept in the account's database rather than in the
+    // reactions table: that table is keyed by who reacted and has no room for
+    // this, and its schema is refused when the number does not match - a column
+    // here would make every account made by an earlier build unreadable.
+    QStringList reactionsToFlash_;
+    // Remembers one, and writes the list down.
+    void noteReactionToFlash(const QString& peer, const QString& target);
+    void persistReactionsToFlash();
     int contactsRevision_ = 0;
     // Bumped on any reaction change so QML re-queries the store.
     int reactionsRevision_ = 0;

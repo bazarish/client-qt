@@ -12,13 +12,20 @@ class QMediaPlayer;
 
 namespace bazarish::app {
 
-// The sound a notification makes. The application carries one; a "notify.wav" at
-// the root of the installation takes its place. The folder is consulted on every
-// play, so a file put there is used without restarting.
+// A sound a notification makes. The application carries one of each; a file of
+// the same name at the root of the installation takes its place. The folder is
+// consulted on every play, so a file put there is used without restarting.
 // Lives on the thread that owns it, which must run an event loop.
+//
+// One class, two sounds: a message is announced with `notify.wav` and a reaction
+// to one with the shorter, quieter `reaction.wav`. What differs between them is
+// the file, so that is what the caller names - two of these rather than two
+// classes that would only differ in a string.
 class NotifySound : public QObject {
 public:
-    explicit NotifySound(QString folder, QObject* parent = nullptr);
+    // fileName is both the name inside the application and the name a user's own
+    // recording goes by at the root of the installation.
+    NotifySound(QString folder, QString fileName, QObject* parent = nullptr);
     ~NotifySound() override;
 
     void play();
@@ -32,6 +39,7 @@ private:
     QUrl source() const;
 
     const QString folder_;
+    const QString fileName_;
     std::unique_ptr<QMediaPlayer> player_;
     std::unique_ptr<QAudioOutput> output_;
 };

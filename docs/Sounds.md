@@ -2,18 +2,30 @@
 
 ## Scope
 
-The client makes two sounds of its own, and carries both. This document states
-where a recording of the user's own goes instead, what each one has to be, and
-what the ringing call window's pulse is taken from.
+The client makes three sounds of its own, and carries all of them. This document
+states where a recording of the user's own goes instead, what each one has to be,
+and what the ringing call window's pulse is taken from.
 
-## The two
+## The three
 
 | Sound | When it is made | Replaced by |
 |---|---|---|
 | Notification | A message arrives that the user is not already looking at | `notify.wav` |
+| Reaction | Somebody reacts to one of the user's messages | `reaction.wav` |
 | Ringtone | A call is ringing, repeated until it is answered, declined or given up on | `ringtone.wav` |
 
 A call owns the sound while it rings: nothing announces a message over it.
+
+The reaction sound is the shorter and quieter of the first two on purpose. A
+reaction is a smaller event than a message - it says somebody read what you wrote
+and had a feeling about it, not that there is something to answer - and a sound
+as long and as loud as an arrival's would make the two impossible to tell apart
+from the next room. Its popup carries the emoji itself, and clicking it opens the
+conversation the reaction landed in, where the reaction is flashed once so it can
+be found without hunting.
+
+Each of the two announcements is rationed on its own clock, so a flurry of
+reactions cannot swallow the one sound that says somebody wrote something.
 
 Arrivals are announced without being smeared together: while what was announced is
 still unread, two sounds are kept at least **half again the length of the sound in

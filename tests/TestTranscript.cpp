@@ -536,6 +536,34 @@ int main(int argc, char** argv)
         CHECK(store.unreadCount("ivan") == 0);
     }
 
+    // Who reacted is part of the record, and it has to be: a reaction flashes
+    // when the chat is opened only if somebody else put it there - our own,
+    // echoed from another device of ours, was never news to us.
+    {
+        TranscriptStore store;
+        CHECK(store.open("p1", db, "pw"));
+        store.setReaction("bob", "m1", "them", "\xF0\x9F\x91\x8D");
+        store.setReaction("bob", "m1", "us", "\xE2\x9D\xA4");
+        const QVector<Reaction> both = store.reactionsFor("bob", "m1");
+        CHECK(both.size() == 2);
+        int mine = 0;
+        for (const Reaction& reaction : both) {
+            if (reaction.reactor == QStringLiteral("us")) {
+                ++mine;
+            }
+        }
+        CHECK(mine == 1);
+        // One per reactor: a new emoji from the same one replaces the old rather
+        // than adding a second chip.
+        store.setReaction("bob", "m1", "them", "\xF0\x9F\x94\xA5");
+        CHECK(store.reactionsFor("bob", "m1").size() == 2);
+        // And an empty emoji is how a reactor takes theirs back.
+        store.setReaction("bob", "m1", "them", QString());
+        const QVector<Reaction> left = store.reactionsFor("bob", "m1");
+        CHECK(left.size() == 1);
+        CHECK(left.first().reactor == QStringLiteral("us"));
+    }
+
     // What a second invitation is checked against: one plate per direction, and
     // the two directions do not answer for each other.
     {

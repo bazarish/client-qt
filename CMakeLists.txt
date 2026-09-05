@@ -131,6 +131,7 @@ if(Qt6_FOUND)
         BASE app/sound
         FILES
             app/sound/notify.wav
+            app/sound/reaction.wav
             app/sound/ringtone.wav
     )
 

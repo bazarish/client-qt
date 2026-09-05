@@ -125,6 +125,11 @@ public:
     // Makes an account the active (focused) one, opening it first if needed.
     // An encrypted, not-yet-open account emits needPassphrase instead.
     Q_INVOKABLE void switchTo(const QString& id);
+    // Opens one conversation, switching the window to its account if that is not
+    // the one on screen: somebody who clicked a notification wants to see the
+    // chat it was about, and which account the window is showing is display and
+    // nothing else - no key is touched and nothing is unlocked by it.
+    void openConversationOf(const QString& accountId, const QString& peer);
     // Brings a specific account online (open + sync) or offline (stop syncing),
     // independently of which account is active. Bringing an encrypted, unopened
     // account online emits needPassphrase.
@@ -238,7 +243,12 @@ signals:
     void raiseRequested();
     // Worth telling the user about even when they are not looking: an arrived
     // message, an incoming call.
-    void notificationRequested(const QString& title, const QString& body);
+    // What a tray notification needs to be shown AND to be clickable: which
+    // account and which conversation it came from, then what to put on it.
+    void notificationRequested(const QString& accountId, const QString& peer,
+        const QString& title, const QString& body);
+    void reactionNotificationRequested(const QString& accountId, const QString& peer,
+        const QString& fromName, const QString& emoji);
     void sessionChanged();
     void accountOpened();
     void accountOpenFailed(const QString& error);

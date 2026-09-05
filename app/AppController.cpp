@@ -437,8 +437,16 @@ void AppController::openSession(const QString& id, const QString& passphrase,
         emit accountOpenFailed(error);
     });
     connect(ctrl, &SessionController::messageNotification, this,
-        [this, ctrl](const QString& fromName) {
-            emit notificationRequested(fromName, notificationBody(ctrl, tr("New message")));
+        [this, ctrl](const QString& peer, const QString& fromName) {
+            emit notificationRequested(ctrl->accountId(), peer, fromName,
+                notificationBody(ctrl, tr("New message")));
+        });
+    // A reaction is announced like a message, and says what it was: the emoji
+    // itself, not the text it was put on - the message is already the user's own
+    // and they will see it when the notification takes them there.
+    connect(ctrl, &SessionController::reactionNotification, this,
+        [this, ctrl](const QString& peer, const QString& fromName, const QString& emoji) {
+            emit reactionNotificationRequested(ctrl->accountId(), peer, fromName, emoji);
         });
     // A call is not announced in the tray. It rings, and it puts a window of its
     // own where it will be seen; both are decided here, from the state of every
@@ -740,6 +748,20 @@ void AppController::forgetAccountLocally(const QString& id)
         return;
     }
     removeAccountFiles(id);
+}
+
+void AppController::openConversationOf(const QString& accountId, const QString& peer)
+{
+    SessionController* const ctrl = sessionFor(accountId);
+    if (ctrl == nullptr) {
+        // Nothing to open: an account only announces anything while it is open,
+        // so this is the account having been closed between the popup and the
+        // click. The window still comes back.
+        return;
+    }
+    // Already a no-op when this is the account on screen.
+    setActive(accountId);
+    ctrl->openConversation(peer);
 }
 
 void AppController::switchTo(const QString& id)

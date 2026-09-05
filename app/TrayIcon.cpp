@@ -84,7 +84,8 @@ bool TrayIcon::available()
 TrayIcon::TrayIcon(AppController& app, QObject* const parent)
     : QObject(parent)
     , app_(app)
-    , sound_(app.soundFolder())
+    , sound_(app.soundFolder(), QStringLiteral("notify.wav"))
+    , reactionSound_(app.soundFolder(), QStringLiteral("reaction.wav"))
 {
     const QImage master(QStringLiteral(":/icon/bazarish.png"));
     idleIcon_ = iconFromMaster(master, QColor(Qt::transparent));
@@ -108,10 +109,13 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
             }
         });
     // A popup that is clicked is a request to see what it was about, never to put
-    // the window away.
-    connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::showWindow);
+    // the window away - and what it was about is a conversation, so that is what
+    // opens, not merely the window it is in.
+    connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::openNotified);
     connect(&app_, &AppController::accountsChanged, this, &TrayIcon::refreshIcon);
     connect(&app_, &AppController::notificationRequested, this, &TrayIcon::notify);
+    connect(&app_, &AppController::reactionNotificationRequested, this,
+        &TrayIcon::notifyReaction);
 }
 
 void TrayIcon::attachWindow(QWindow* const window)
@@ -210,7 +214,31 @@ void TrayIcon::refreshIcon()
                                : tr("Bazarish"));
 }
 
-void TrayIcon::notify(const QString& title, const QString& body)
+void TrayIcon::notify(const QString& accountId, const QString& peer, const QString& title,
+    const QString& body)
+{
+    announce(accountId, peer, title, body, sound_, sinceSound_);
+}
+
+void TrayIcon::notifyReaction(const QString& accountId, const QString& peer,
+    const QString& fromName, const QString& emoji)
+{
+    // The emoji is the whole of it. What it was put on is one of the user's own
+    // messages, and the popup takes them to it.
+    announce(accountId, peer, fromName, tr("Reacted %1").arg(emoji), reactionSound_,
+        sinceReactionSound_);
+}
+
+void TrayIcon::openNotified()
+{
+    if (!notifiedAccount_.isEmpty() && !notifiedPeer_.isEmpty()) {
+        app_.openConversationOf(notifiedAccount_, notifiedPeer_);
+    }
+    showWindow();
+}
+
+void TrayIcon::announce(const QString& accountId, const QString& peer, const QString& title,
+    const QString& body, NotifySound& sound, QElapsedTimer& since)
 {
     if (!app_.notificationsEnabled()) {
         return;
@@ -226,22 +254,24 @@ void TrayIcon::notify(const QString& title, const QString& body)
     if (!app_.ringingPeer().isEmpty()) {
         return;
     }
+    // Remembered before it is shown: a click on it has to know where to go.
+    notifiedAccount_ = accountId;
+    notifiedPeer_ = peer;
     tray_.showMessage(title, body, idleIcon_, kPopupMs);
     // Every message shows, and the sound is what is rationed: while what was
     // announced is still unread, one sound stands for everything that arrives in
     // the interval. Reading it clears the hold, so the next arrival is heard as
     // soon as it comes. A call is not rationed at all - it has its own sound, and
     // it does not come through here.
-    const qint64 length = sound_.durationMs() > 0 ? sound_.durationMs() : kAssumedSoundMs;
+    const qint64 length = sound.durationMs() > 0 ? sound.durationMs() : kAssumedSoundMs;
     const qint64 spacing = length * kSoundSpacingNumerator / kSoundSpacingDenominator;
-    const bool quiet
-        = !announcedWasRead_ && sinceSound_.isValid() && sinceSound_.elapsed() < spacing;
+    const bool quiet = !announcedWasRead_ && since.isValid() && since.elapsed() < spacing;
     if (quiet) {
         return;
     }
     announcedWasRead_ = false;
-    sinceSound_.start();
-    sound_.play();
+    since.start();
+    sound.play();
 }
 
 }  // namespace bazarish::app

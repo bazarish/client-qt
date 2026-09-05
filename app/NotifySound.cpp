@@ -18,17 +18,17 @@ namespace bazarish::app {
 
 namespace {
 
-// The sound carried inside the application, used unless the user leaves one of
-// their own at the root of the installation, under this name. One name and one
-// format, the same rule the ringtone follows: a known file, not a search.
-const char* const kBuiltInSound = "qrc:/sound/notify.wav";
-const char* const kSoundName = "notify.wav";
+// Where the sounds carried inside the application live. One is used unless the
+// user leaves one of their own at the root of the installation, under the same
+// name - the rule the ringtone follows too: a known file, not a search.
+const char* const kBuiltInPrefix = "qrc:/sound/";
 
 }  // namespace
 
-NotifySound::NotifySound(QString folder, QObject* const parent)
+NotifySound::NotifySound(QString folder, QString fileName, QObject* const parent)
     : QObject(parent)
     , folder_(std::move(folder))
+    , fileName_(std::move(fileName))
 {
 }
 
@@ -37,12 +37,12 @@ NotifySound::~NotifySound() = default;
 QUrl NotifySound::source() const
 {
     if (!folder_.isEmpty()) {
-        const QFileInfo file(QDir(folder_).filePath(QString::fromLatin1(kSoundName)));
+        const QFileInfo file(QDir(folder_).filePath(fileName_));
         if (file.isFile()) {
             return QUrl::fromLocalFile(file.absoluteFilePath());
         }
     }
-    return QUrl(QString::fromLatin1(kBuiltInSound));
+    return QUrl(QString::fromLatin1(kBuiltInPrefix) + fileName_);
 }
 
 qint64 NotifySound::durationMs() const

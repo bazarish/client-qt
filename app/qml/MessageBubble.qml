@@ -118,6 +118,12 @@ Item {
     readonly property var reactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionSummary(model.e2eId) : []
+    // The emoji on this message that arrived while nobody was looking at them.
+    // They flash once, so that somebody who came here from a notification is
+    // shown what it was about instead of having to find it.
+    readonly property var freshReactions: (delegate.session && delegate.reactable
+        && delegate.session.reactionsRevision >= 0)
+        ? delegate.session.reactionsToFlash(model.e2eId) : []
 
     // Centered system notice (e.g. a cleared-chat note).
     Label {
@@ -851,12 +857,44 @@ Item {
                 Repeater {
                     model: delegate.reactions
                     Rectangle {
+                        id: chip
                         required property var modelData
+                        // New since this chat was last looked at: it is given the
+                        // brand's one accent for a moment and then let go.
+                        readonly property bool fresh:
+                            delegate.freshReactions.indexOf(modelData.emoji) >= 0
                         height: 18
                         width: chipRow.implicitWidth + 8
                         radius: 4
                         color: modelData.mine ? Theme.deep : Theme.surfaceAlt
                         border.color: modelData.mine ? Theme.border2 : Theme.border
+                        // A short neon pulse rather than a steady colour: it says
+                        // "this is what you came for" and then leaves the chip
+                        // looking like every other one.
+                        Rectangle {
+                            id: pulse
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: "transparent"
+                            border.color: Theme.neon
+                            border.width: 1
+                            visible: opacity > 0
+                            opacity: 0
+                            // The animation names what it drives rather than
+                            // taking the property over: written as a value source
+                            // it would be fighting the nought above for it, and
+                            // which of the two won would be anybody's guess.
+                            SequentialAnimation {
+                                running: chip.fresh
+                                loops: 2
+                                NumberAnimation {
+                                    target: pulse; property: "opacity"; to: 1; duration: 180
+                                }
+                                NumberAnimation {
+                                    target: pulse; property: "opacity"; to: 0; duration: 420
+                                }
+                            }
+                        }
                         Row {
                             id: chipRow
                             anchors.centerIn: parent

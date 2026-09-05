@@ -122,6 +122,26 @@ Item {
     // Clears the brief unread highlight a couple of seconds after opening at the
     // first unread message.
     Timer { id: unreadFlashTimer; interval: 2500; onTriggered: messages.unreadFlashFromId = -1 }
+    // Reactions that arrived while nobody was looking flash once when the chat is
+    // opened, then stop being new. The wait is what the flash lasts plus a moment
+    // to be seen at all: forgetting them re-reads the chips, and doing it too
+    // early would take the colour away mid-animation.
+    Timer {
+        id: reactionFlashTimer
+        interval: 1600
+        onTriggered: if (root.session) { root.session.forgetReactionFlash() }
+    }
+    // Whenever this chat becomes the open one, and whenever a reaction lands in
+    // it, anything pending gets its flash and the clock above starts.
+    Connections {
+        target: root.session
+        function onActivePeerChanged() { reactionFlashTimer.restart() }
+        function onReactionsRevisionChanged() {
+            if (!reactionFlashTimer.running) {
+                reactionFlashTimer.restart()
+            }
+        }
+    }
 
     SearchPopup {
         id: searchPopup

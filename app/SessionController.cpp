@@ -366,6 +366,17 @@ constexpr int kReadSyncIdleMs = 4000;
 
 // How many reactions outside the standard set the picker remembers.
 constexpr int kRecentReactions = 5;
+// How many unseen reactions are remembered for their flash. A person who has
+// been away comes back to a handful of them, not to a list that grew all week;
+// past this the oldest is dropped, and the reaction is still there to be read -
+// only its flash is not.
+constexpr int kReactionsToFlash = 64;
+// What one pending flash is written as: the conversation and the message, which
+// together name the reaction wherever the chat is scrolled to.
+QString flashKey(const QString& peer, const QString& target)
+{
+    return peer + "\n" + target;
+}
 
 // The reactions offered without being asked for. Anything else a user reaches
 // for - typed, or tapped on someone else's chip - is theirs, and is remembered.
@@ -2561,6 +2572,11 @@ void SessionController::open(const QString& file, const QString& accountId,
     }
     if (!recentReactions_.isEmpty()) {
         emit recentReactionsChanged();
+    }
+    const QJsonDocument flashes = QJsonDocument::fromJson(
+        QByteArray::fromStdString(accountDb().text("reactions-to-flash")));
+    for (const QJsonValue& entry : flashes.array()) {
+        reactionsToFlash_ << entry.toString();
     }
     // There is no outbound queue on disk - by design - so an outgoing message
     // still preparing or still being delivered is one this client was carrying
@@ -4908,9 +4924,20 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (type == "reaction") {
         // Whose reaction it is: the peer's, or ours when this is another device of
         // ours saying what we did there.
-        const QString reactor = message.value("sentByUs").toBool() ? fingerprint_ : peer;
-        store_.setReaction(peer, message.value("ref").toString(), reactor,
-            message.value("text").toString());
+        const bool ours = message.value("sentByUs").toBool();
+        const QString reactor = ours ? fingerprint_ : peer;
+        const QString target = message.value("ref").toString();
+        const QString emoji = message.value("text").toString();
+        store_.setReaction(peer, target, reactor, emoji);
+        // Somebody put this on one of our messages. It gets a flash when the
+        // conversation is next looked at, and - unless it was us, on another
+        // device of ours - it is announced like an arrival, with its own sound.
+        if (!ours && !emoji.isEmpty()) {
+            noteReactionToFlash(peer, target);
+            if (contactNotifications(peer)) {
+                emit reactionNotification(peer, peerName(peer), emoji);
+            }
+        }
         ++reactionsRevision_;
         emit reactionsRevisionChanged();
         return;
@@ -5093,7 +5120,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         // An echo of our own message from another device is not news to anybody,
         // and neither is a contact the user has asked to keep quiet - the chat
         // list still counts it, so nothing is hidden, it only stays silent.
-        emit messageNotification(peerName(peer));
+        emit messageNotification(peer, peerName(peer));
     }
     // No receipt is sent on arrival: the green "read" state is reported only when
     // the user actually reads the message (chat open + window focused + the message
@@ -5523,6 +5550,62 @@ void SessionController::rememberReaction(const QString& emoji)
     const QByteArray text = QJsonDocument(array).toJson(QJsonDocument::Compact);
     accountDb().putText("recent-reactions", text.toStdString());
     emit recentReactionsChanged();
+}
+
+void SessionController::noteReactionToFlash(const QString& peer, const QString& target)
+{
+    const QString key = flashKey(peer, target);
+    reactionsToFlash_.removeAll(key);
+    reactionsToFlash_.append(key);
+    while (reactionsToFlash_.size() > kReactionsToFlash) {
+        reactionsToFlash_.removeFirst();
+    }
+    persistReactionsToFlash();
+}
+
+void SessionController::persistReactionsToFlash()
+{
+    QJsonArray array;
+    for (const QString& entry : reactionsToFlash_) {
+        array.append(entry);
+    }
+    accountDb().putText("reactions-to-flash",
+        QJsonDocument(array).toJson(QJsonDocument::Compact).toStdString());
+}
+
+QStringList SessionController::reactionsToFlash(const QString& e2eId) const
+{
+    if (activePeer_.isEmpty() || e2eId.isEmpty()
+        || !reactionsToFlash_.contains(flashKey(activePeer_, e2eId))) {
+        return {};
+    }
+    // Which of the emoji on this message to flash: the ones somebody else put
+    // there. Our own, echoed from another device of ours, was never news.
+    QStringList emoji;
+    for (const Reaction& reaction : store_.reactionsFor(activePeer_, e2eId)) {
+        if (reaction.reactor != fingerprint_ && !reaction.emoji.isEmpty()) {
+            emoji << reaction.emoji;
+        }
+    }
+    return emoji;
+}
+
+void SessionController::forgetReactionFlash()
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    const QString prefix = activePeer_ + "\n";
+    const qsizetype before = reactionsToFlash_.size();
+    reactionsToFlash_.removeIf(
+        [&prefix](const QString& entry) { return entry.startsWith(prefix); });
+    if (reactionsToFlash_.size() == before) {
+        return;
+    }
+    persistReactionsToFlash();
+    // The chips are what read this, and they re-read on this revision.
+    ++reactionsRevision_;
+    emit reactionsRevisionChanged();
 }
 
 void SessionController::react(const QString& e2eId, const QString& emoji)
