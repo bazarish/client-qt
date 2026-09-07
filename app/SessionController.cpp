@@ -950,7 +950,6 @@ void SessionWorker::sync()
             }
         }
         map["attRef"] = QString::fromStdString(m.attachmentRef);
-        map["attKey"] = QString::fromStdString(m.attachmentKeyB64);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
         map["e2eId"] = QString::fromStdString(m.e2eId);
         map["forwarded"] = m.forwarded;
