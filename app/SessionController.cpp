@@ -269,15 +269,6 @@ QString humanDeliveryPhase(const QString& phase)
     if (phase == QStringLiteral("sending")) {
         return QStringLiteral("Sending over I2P…");
     }
-    if (phase == QStringLiteral("waiting-for-token")) {
-        return QStringLiteral("Waiting for a delivery token…");
-    }
-    if (phase.startsWith(QStringLiteral("token-refused:"))) {
-        // "token-refused:31" -> what the user needs to know: the message is not
-        // failing, one capability was refused and the next one is being tried.
-        return QStringLiteral("Token rejected, ") + phase.section(QChar(':'), 1)
-            + QStringLiteral(" left…");
-    }
     if (phase.startsWith(QStringLiteral("retry"))) {
         // "retry 3/4" -> "Trying again (3 of 4)…"
         const QStringList parts = phase.mid(6).trimmed().split(QChar('/'));
@@ -305,9 +296,9 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
     };
     watch.onOutcome
         = [worker, localId](const bazarish::client::OutboundCourier::Outcome& outcome) {
-              // The send spent a token whether or not it landed, so what the
-              // account window says about this contact's sending capacity is out
-              // of date the moment this runs. Asked for on the worker's thread,
+              // A send can settle a contact - a first reply is what establishes
+              // one - so what the account window shows about it may be out of
+              // date the moment this runs. Asked for on the worker's thread,
               // which is where the session may be read.
               QMetaObject::invokeMethod(worker, "refreshContacts", Qt::QueuedConnection);
               if (outcome.stored) {
@@ -647,7 +638,7 @@ void SessionWorker::emitContacts()
     QStringList pending;
     QStringList links;
     QStringList shareStates;
-    QStringList capacities;
+    QStringList writable;
     QStringList flags;
     for (const std::string& fp : session_->contactFingerprints()) {
         fps << QString::fromStdString(fp);
@@ -679,7 +670,7 @@ void SessionWorker::emitContacts()
                 bazarish::log::redact(fp), error.what());
             links << QString();
         }
-        capacities << QString::number(session_->sendCapacity(fp));
+        writable << (session_->canWriteTo(fp) ? QStringLiteral("1") : QStringLiteral("0"));
         // What this contact may do here, as two flags in one string: nothing to
         // read into the order, it is only cheaper than two more lists.
         flags << QStringLiteral("%1%2")
@@ -692,7 +683,7 @@ void SessionWorker::emitContacts()
     for (const std::string& fp : session_->blockedPeers()) {
         blocked << QString::fromStdString(fp);
     }
-    emit contactsRefreshed(fps, names, pending, links, capacities, shareStates);
+    emit contactsRefreshed(fps, names, pending, links, writable, shareStates);
     emit contactFlagsRefreshed(flags, blocked);
 }
 
@@ -2352,15 +2343,15 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
         [this](const QStringList& fps, const QStringList& names, const QStringList& pending,
-            const QStringList& links, const QStringList& capacities,
+            const QStringList& links, const QStringList& writable,
             const QStringList& shareStates) {
             contactFps_ = fps;
             contactNames_.clear();
             contactLinks_.clear();
-            sendCapacities_.clear();
+            canWriteTo_.clear();
             pendingContacts_.clear();
-            for (int i = 0; i < fps.size() && i < capacities.size(); ++i) {
-                sendCapacities_.insert(fps[i], capacities[i].toInt());
+            for (int i = 0; i < fps.size() && i < writable.size(); ++i) {
+                canWriteTo_.insert(fps[i], writable[i].toInt());
             }
             for (int i = 0; i < fps.size() && i < names.size(); ++i) {
                 if (!names[i].isEmpty()) {
@@ -2993,9 +2984,9 @@ void SessionController::setDisplayName(const QString& name)
     emit requestSetDisplayName(trimmed);
 }
 
-int SessionController::sendCapacity(const QString& fp) const
+bool SessionController::canWriteTo(const QString& fp) const
 {
-    return sendCapacities_.value(fp, 0);
+    return canWriteTo_.value(fp, 0) != 0;
 }
 
 QString SessionController::contactInvite(const QString& fp) const
@@ -4788,7 +4779,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     // One invitation per conversation. A request that is sent again - the same
     // one repeated, or a fresh one after the peer removed us - is the same
     // invitation, and a chat that grows a second plate for it reads as two people
-    // asking. What it carries (their routing, their reply tokens) has already been
+    // asking. What it carries (their routing, the pass they hand over) has already been
     // applied by the core; only the plate is dropped.
     if (type == QStringLiteral("contact.request") && !message.value("sentByUs").toBool()
         && store_.oldestOfType(peer, type, /*outgoing=*/false) != 0) {
@@ -5037,9 +5028,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
 
-    // Control content with nothing to show. A token refill (the peer topping up
-    // our capacity to write to their mailbox) carries no text, and neither does a
-    // button press or a type a newer client sends that this one cannot render.
+    // Control content with nothing to show: a button press, or a type a newer
+    // client sends that this one cannot render, carries no text.
     // Stored, each became an empty bubble that also counted as unread. The item is
     // still acked - ackAfterReceive runs off the same signal - so it does not come
     // back.
@@ -5431,8 +5421,7 @@ void SessionController::onSendPhase(qint64 localId, const QString& phase)
     // settled) and, while it is retrying, under the bubble itself: a message that
     // is being tried again should say so where the user is looking.
     updateOperation(QStringLiteral("send:") + QString::number(localId), human);
-    if (phase.startsWith(QStringLiteral("retry"))
-        || phase.startsWith(QStringLiteral("token-refused:"))) {
+    if (phase.startsWith(QStringLiteral("retry"))) {
         conversation_.setErrorForId(localId, human);
     }
 }

@@ -156,8 +156,8 @@ Popup {
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            // A contact request is tokenless, and the protocol caps what one may
-            // carry; the introduction is what is left over for a person to write.
+            // A contact request is admitted by nothing, and the protocol caps what
+            // one may carry; the introduction is what is left over to write.
             FormField {
                 id: inviteIntro
                 label: "Introduction"

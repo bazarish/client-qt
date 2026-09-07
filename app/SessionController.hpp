@@ -203,7 +203,7 @@ signals:
     // links carries each contact's shareable descriptor, empty where none is
     // known yet - it is built from routing the session already holds.
     void contactsRefreshed(const QStringList& fingerprints, const QStringList& names,
-        const QStringList& pending, const QStringList& links, const QStringList& capacities,
+        const QStringList& pending, const QStringList& links, const QStringList& writable,
         const QStringList& shareStates);
     // What each contact may do here, in the order of the list above ("n" for
     // notifications, "c" for calls, "-" where the account has said no), and the
@@ -841,8 +841,8 @@ public:
         return shareRefused_.contains(fp);
     }
     // Messages this device can still send that contact before it asks them for
-    // more capacity (their one-time delivery tokens we hold).
-    Q_INVOKABLE int sendCapacity(const QString& fp) const;
+    // Whether this device holds the pass that admits it to a contact's mailbox.
+    Q_INVOKABLE bool canWriteTo(const QString& fp) const;
     // Our own invite, from what this account already holds: the fingerprint and
     // the address are ours, and the server's serving key has been in the stored
     // certificate since the destination was first published. Empty only while
@@ -1349,8 +1349,8 @@ private:
     QSet<QString> mutedPeers_;
     QSet<QString> callBarredPeers_;
     QStringList blocked_;
-    // Sending capacity per contact: their tokens this device still holds.
-    QHash<QString, int> sendCapacities_;
+    // Whether this device can write to each contact: whether it holds their pass.
+    QHash<QString, int> canWriteTo_;
     QStringList recentReactions_;
     // Where this account lives and what unlocks it, for the store below.
     QString accountPath_;

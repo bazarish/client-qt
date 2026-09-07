@@ -12,7 +12,7 @@ to its other devices over the self-addressed device channel specified in
 
 The chat's correspondent is the account's own fingerprint. Nothing else can
 occupy that place - a contact is another fingerprint - so the chat cannot be
-impersonated, and it is not a contact: it has no card, no tokens, no delivery.
+impersonated, and it is not a contact: it has no card, no pass, no delivery.
 
 Writing in it costs nothing and dials nothing. The message is stored here and
 mirrored to the account's other devices as `device.saved`; a device that was not
@@ -40,7 +40,7 @@ it.
 
 ## Blocking
 
-Blocking a correspondent does three things: the tokens they hold are revoked at
+Blocking a correspondent does three things: the pass they hold is revoked at
 this account's server, so their mail stops being accepted rather than being read
 and dropped; their messages and contact requests are consumed as they arrive,
 before anything is shown or any contact record is touched; and the block is
@@ -49,20 +49,18 @@ mirrored to the account's other devices.
 It does **not** touch the conversation. The chat and its history stay where they
 are, and deleting them is the separate action it already was. Unblocking restores
 nothing that was dropped in between, and the correspondent must write again -
-they hold no tokens until this account issues more.
+their pass is gone until this account gives it back.
 
-**Unblocking hands the tokens back.** Blocking revoked what they held, so a
-contact who is unblocked can be written to but cannot answer. The first message
-written to them after the block is lifted carries a fresh batch with it - one
-delivery, not an errand of its own - and the reverse direction works again from
-that moment. A batch that arrives while they still hold tokens is added to what
-they have, never in place of it.
+**Unblocking hands the pass back.** They still hold it - what was taken away was
+the record at this account's server - so lifting the block simply registers the
+same one again. Nothing is sent to them, nothing waits for a message to ride on,
+and the reverse direction works again at once.
 
 **Writing to them unblocks them.** The first thing the user composes into a
 blocked conversation - a message, a forward, a picture, a voice note, a file, or a
 tap on a command the chat offers - lifts the block first, as if the button had
 been pressed, and reaches the account's other devices the same way. Nothing
-automatic does this: a read receipt, a token refill, a call signal or a bot's
+automatic does this: a read receipt, a call signal or a bot's
 message is still refused, and the block stands. Writing to somebody is the
 plainest way of saying the block was not meant to hold.
 
@@ -84,10 +82,10 @@ account's own name, its call switch and its read-receipt switch.
 
 What does not: read state and unread counts, which are this device's own -
 a message read here is not read there - and this device's errands with a
-correspondent, meaning read receipts, call signalling, token refills and the
+correspondent, meaning read receipts, call signalling and the
 file-transfer handshake.
 
-Removing a contact revokes their tokens **once**, at the device the removal was
+Removing a contact revokes their pass **once**, at the device the removal was
 made on. The others apply the removal to their own database and ask the server
 for nothing: one revocation is enough, and it is the same server.
 

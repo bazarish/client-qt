@@ -44,7 +44,7 @@ stream and returns no reply.
 |---|---|
 | No reply (dial failed, stream failed, reply unreadable) | Retried until the attempts or the run bound are exhausted |
 | Confirmation absent or not verifiable against the delivery identifier sent | Treated as no reply |
-| Typed refusal (invalid token, message too large, contact request too large, storage full, contact rate limit) | Final on the first attempt; reported with its reason |
+| Typed refusal (unknown pass, message too large, contact request too large, storage full, contact rate limit) | Final on the first attempt; reported with its reason |
 | Signed confirmation | Delivery complete; the message is recorded as stored by the recipient's server |
 
 ## Reported states
@@ -87,67 +87,37 @@ is reported as failed at the next start, and resending it is a user decision.
 Resending is safe in all cases, including one in which the message was stored by
 the recipient's server and only the confirmation was lost: the delivery identifier
 is derived from the message and the recipient mailbox, so the recipient's server
-recognises the repetition, stores no second copy and consumes no second token.
+recognises the repetition and stores no second copy.
 
-## Delivery-token accounting
+## What admits a message
 
-A message is paid for by weight: one token per 30 KiB of sealed payload, never
-fewer than one. A line of text costs one token, as it always did; a picture or a
-voice note costs what it weighs, and the largest payload the protocol allows
-costs eighteen. The client counts them out and the recipient's server checks the
-count against the bytes it is holding, so neither side takes the other's word
-for it. Which tokens are drawn is random rather than in order: two devices of one
-account can hold overlapping stashes, and taking from the same end on both makes
-them collide on the same token every time.
+Every message to a contact presents the **delivery pass** that contact issued to
+this account (`docs-main/Contacts.md`). One value, whatever the message weighs: a
+line of text and the largest payload the protocol allows are admitted alike, and
+what bounds the large one is the 512 KiB message ceiling and the recipient's
+storage quota. The pass is not spent, so nothing has to be counted, drawn or
+saved up, and every device of the account presents the same one.
 
-A message this device cannot pay for is **not** refused: it waits. The device
-asks its own other devices for a token (`device.token-request`) and holds the
-message until one arrives, reporting "Waiting for a delivery token…" on its
-activity row. The token that arrives carries that message rather than an errand -
-the message asks the correspondent for a fresh batch on its way past, which is
-what the errand would have done, so spending it on the errand instead would send
-nothing and leave what the user wrote exactly where it was. The held message
-lives in memory only: no outbound queue is written to disk, so a restart reports
-it failed like any other send that was in flight.
+A contact this account holds no pass for cannot be written to at all, and that is
+an error rather than a wait: nothing runs a pass down, so an empty one means the
+dialog was never established in that direction.
 
-The tokens are deducted from the local stash when the envelope is
-handed to the courier, not when delivery is confirmed. After the attempts are
-exhausted the client cannot establish whether the recipient's server stored the
-message; a token that may already have been consumed there must not be offered to
-a subsequent message, which would then be rejected. A resend of the same message
-consumes no further token, because the recipient's server matches it by delivery
-identifier before the token is examined.
+## What a refusal costs
 
-## What a refusal costs the stash
+Nothing. A pass is not a payment, so a refused delivery leaves this account
+exactly as able to write as it was before:
 
-A refusal by the recipient's server is an answer about the capability, not about
-the network, so only one of them touches the stash:
-
-| Refusal | What it says | What the client does |
-|---|---|---|
-| `DELIVERY_REJECTED` | the server would not take **that token** | sends the message again with the next token in the stash |
-| `STORAGE_FULL` | the mailbox is full; the token is untouched, and the server re-registers it | keeps the stash |
-| `RECIPIENT_SERVER_UNREACHABLE` | nothing was presented at all | keeps the stash |
-| `MESSAGE_TOO_LARGE` | the message is the problem | keeps the stash |
-
-A refusal says that one capability was not one. It says nothing about the rest of
-the stash, which has not been shown to anybody - so the message is offered again
-with the next token rather than failed, and the activity row says which try it is
-on: "Token rejected, 31 left…". The commonest cause is exactly that: another
-device of the account spent that token first.
-
-| Parameter | Value |
+| Refusal | What it says |
 |---|---|
-| Refused tokens one message walks through | 10 |
+| `DELIVERY_REJECTED` | the recipient's mailbox does not hold this pass - it was revoked, so this account has been cut off and the way back is a new contact request |
+| `STORAGE_FULL` | the mailbox is full |
+| `RECIPIENT_SERVER_UNREACHABLE` | nothing was presented at all |
+| `MESSAGE_TOO_LARGE` | the message is the problem |
 
-It stops there rather than walking the batch. Ten refusals of ten tokens drawn at
-random is not a stale token but a batch the far side no longer knows, and
-dialling through the remaining two hundred would be many minutes of work for a
-message that is not going to be taken. The message is then reported failed, with a resend control,
-and this device asks its **own other devices** for a token
-(`device.token-request`). The correspondent is not asked: a contact request is
-the only tokenless path into a mailbox, and a top-up over it would turn one
-narrow door into a channel anybody may knock on.
+`DELIVERY_REJECTED` used to be worth retrying, because a stash held many
+capabilities and one of them being stale said nothing about the others. With one
+pass per correspondent there is nothing else to offer, so the message is reported
+failed with a resend control and no ladder is walked.
 
 ## Contact requests in a conversation
 
@@ -156,7 +126,7 @@ were actually sent. A repeat carries the name the first attempt gave the request
 so the recipient's server recognises it as that request rather than a new one; a
 request that arrives anyway with a name of its own - the correspondent removed
 this account and asked again - keeps the plate already there. What it carries
-(their routing, their reply tokens) is applied either way: only the plate is
+(their routing, the pass they hand over) is applied either way: only the plate is
 dropped, because a chat that grows a second one reads as two people asking.
 
 The Agree button on that plate is the contact's state, not the message's: it is

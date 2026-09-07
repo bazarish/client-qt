@@ -5,7 +5,7 @@ import Bazarish
 
 // What this account said on the wire and what came back: server calls with their
 // status, mail to correspondents with the far side's answer, and the service
-// traffic in between (self-messages, receipts, token batches).
+// traffic in between (self-messages, receipts, delivery passes).
 //
 // A debugging window, so it says what happened rather than what it means. It
 // carries no message text and no full fingerprints - it is meant to be

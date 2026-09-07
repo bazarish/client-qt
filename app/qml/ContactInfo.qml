@@ -285,10 +285,9 @@ Popup {
             }
         }
 
-        // Sending capacity: one-time tickets this device holds for them. They
-        // hand over a batch, each message spends one, and the client asks for
-        // more before running out - so this is a number to glance at, not to act
-        // on. It is per device: another device of yours holds its own.
+        // Whether this account may write to them: whether it holds the pass they
+        // issued. Nothing runs it down, so this is a yes or a no rather than a
+        // number, and it is the same answer on every device of yours.
         Label {
             Layout.fillWidth: true
             Layout.topMargin: 2
@@ -297,13 +296,13 @@ Popup {
             font.pixelSize: Theme.fontSmall
             visible: !root.saved && root.session && root.session.activePeer.length > 0
             text: {
-                // Named so the binding depends on it: the count is read through a
+                // Named so the binding depends on it: the answer is read through a
                 // call, and without something that changes when the contacts do,
-                // the number is whatever it was when this panel was built.
+                // it is whatever it was when this panel was built.
                 const revision = root.session ? root.session.contactsRevision : 0
-                const n = root.session ? root.session.sendCapacity(root.session.activePeer) : 0
-                return n === 1 ? "1 send ticket left on this device"
-                               : n + " send tickets on this device"
+                const may = root.session ? root.session.canWriteTo(root.session.activePeer) : false
+                return may ? "You can write to them"
+                           : "They have not let this account write to them"
             }
         }
     }
@@ -373,11 +372,10 @@ Popup {
             padding: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "Their messages and calls stop arriving, and the tickets they held to write "
-                + "to you are revoked at your server. The conversation and its history stay "
+            text: "Their messages and calls stop arriving, and the pass they held to write "
+                + "to you is revoked at your server. The conversation and its history stay "
                 + "where they are; deleting them is a separate action. Writing to them again "
-                + "lifts the block by itself, and they will need to write once before you hear "
-                + "from them."
+                + "lifts the block by itself, and they can answer straight away."
         }
     }
 

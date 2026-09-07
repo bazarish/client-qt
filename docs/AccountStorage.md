@@ -9,7 +9,7 @@ required to read it, and what follows from both.
 ## Files
 
 ```
-<accounts>/<id>.db     the account: identity, contacts, tokens, transcript
+<accounts>/<id>.db     the account: identity, contacts, passes, transcript
 <accounts>/<id>.key    88 bytes: the database key, sealed under the passphrase
 ```
 
@@ -141,17 +141,13 @@ so a restore is a working device and not a shell of one:
 | meta and the contact records | who this account is and who it knows |
 | the account's avatar and each contact's | the pictures are rows of their own; a bundle carrying only their mime types restored an account with no face at all |
 | the block list | a restored account that forgot it would let them all back in |
-| **one delivery token per conversation** | see below |
+| **each conversation's delivery pass** | see below |
 
-Delivery tokens are one-time write capabilities, so the bundle **moves** one per
-conversation rather than copying it: the token leaves the exporting device's
-stash as the file is written. Copying them is what made a restored device unable
-to write to anybody - it was spending tokens the other device had already spent,
-and every send came back `delivery rejected`. One token per contact is exactly
-what a restored device needs: it spends it on the errand that buys a batch of its
-own (`needsOwnBatch`, `docs-main/DeviceSync.md`), and a second restore of the
-same bundle finds the token spent and falls back to borrowing one from the
-account's other devices.
+A delivery pass is not spent, so the bundle **copies** it: the exporting device
+goes on writing and the restored one can write from its first sync. This is the
+one place the pass inverted an older rule - a one-time token could not be in two
+places, so the bundle had to hand one over and the restored device had to buy
+itself more before it could say anything.
 
 A device that ends up without the account's address anyway - an older bundle, or
 an account moved another way - does not publish one of its own. On connect it

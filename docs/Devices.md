@@ -5,7 +5,7 @@
 What this client does with the devices of one account: how a second one starts,
 what it asks the first for, and what leaving looks like. The protocol's side of
 this - the self-channel, the message types, the rule that an account has one
-address and that delivery tokens are never shared - is in `docs-main`
+address and how a delivery pass travels - is in `docs-main`
 (`DeviceSync.md`, `Identity.md`).
 
 ## What has been read
@@ -54,12 +54,9 @@ What the restored device then does, in order:
    by destination and read by capability and there is no lookup that turns a
    fingerprint into either.
 
-6. **Keeps the delivery token the backup handed it.** One per conversation,
-   moved rather than copied, and it is not spent on an errand: the first message
-   the user writes carries the same request (a low-stash flag and a prepaid reply
-   token, addressed to this device), so it goes out and brings a batch back.
-   With none at all - a second restore of the same bundle, or a conversation that
-   had none - it asks the account's other devices for one, once per run.
+6. **Writes from its first sync.** Each conversation's delivery pass is copied
+   into the backup and into the address book, so a restored or newly enrolled
+   device holds the same one every other device does and needs to buy nothing.
 
 ## When the address changes
 
