@@ -76,6 +76,9 @@ public slots:
         const QString& opId, const QString& peer, const QString& command, const QString& args);
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
     void sendDelete(const QString& peer, const QString& refId);
+    // Forget a file this device announced, telling the peer nothing: a message
+    // deleted only here must not leave the record that would still serve it.
+    void dropSentFile(const QString& refId);
     // Compresses the picked image to a square avatar within the protocol cap and
     // sets it (persist + distribute to contacts and the account's other devices).
     void setAvatar(const QString& localPath);
@@ -1095,6 +1098,10 @@ signals:  // to worker
     void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
+    // Forget a file this device announced, without telling the peer anything: a
+    // message deleted only here must not leave behind the record that would
+    // still serve its bytes.
+    void requestUnsend(const QString& refId);
     void requestSetAvatar(const QString& localPath);
     void requestClearAvatar();
     void requestSetDisplayName(const QString& name);

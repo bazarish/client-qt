@@ -1216,6 +1216,17 @@ void SessionWorker::sendEdit(
     }
 }
 
+void SessionWorker::dropSentFile(const QString& refId)
+{
+    try {
+        session_->unsend(refId.toStdString());
+    } catch (const std::exception& error) {
+        // Nothing recorded for this id (a plain text message): there was nothing
+        // to forget, which is the common case.
+        bazarish::log::debug("nothing to forget for a deleted message: {}", error.what());
+    }
+}
+
 void SessionWorker::sendDelete(const QString& peer, const QString& refId)
 {
     try {
@@ -2188,6 +2199,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
     connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
     connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
+    connect(this, &SessionController::requestUnsend, worker_, &SessionWorker::dropSentFile);
     connect(this, &SessionController::requestSetAvatar, worker_, &SessionWorker::setAvatar);
     connect(this, &SessionController::requestClearAvatar, worker_, &SessionWorker::clearAvatar);
     connect(this, &SessionController::requestSetDisplayName, worker_,
@@ -3051,7 +3063,7 @@ void SessionController::deleteContact()
     const QString peer = activePeer_;
     // Wipe the chat and drop the contact from the list at once; the worker removes
     // it from the contact list and clears its avatar. Irreversible.
-    store_.clearPeer(peer);
+    store_.forgetPeer(peer);
     contactFps_.removeAll(peer);
     contactNames_.remove(peer);
     openConversation({});  // close the conversation we just deleted
@@ -3449,7 +3461,11 @@ void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool
     if (activePeer_.isEmpty() || localId == 0) {
         return;
     }
-    // Remove our own copy with no trace.
+    // Remove our own copy with no trace - which includes the record that would
+    // still serve this message's file to the peer if they asked.
+    if (!e2eId.isEmpty()) {
+        emit requestUnsend(e2eId);
+    }
     store_.removeById(localId);
     conversation_.removeById(localId);
     statusById_.remove(localId);
@@ -4835,7 +4851,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (type == "device.contact-remove") {
         const QString gone = message.value("ref").toString();
         if (!gone.isEmpty()) {
-            store_.clearPeer(gone);
+            store_.forgetPeer(gone);
             contacts_.remove(gone);
             if (activePeer_ == gone) {
                 openConversation({});

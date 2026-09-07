@@ -179,6 +179,9 @@ public:
     // Permanently removes every message of a conversation (clear chat / a deleted
     // contact). The peer key is a contact fingerprint.
     void clearPeer(const QString& peer);
+    // The same, for a contact that is being removed rather than a conversation
+    // being emptied: the pin goes too, there being no chat left to pin.
+    void forgetPeer(const QString& peer);
     QVector<StoredMessage> messagesFor(const QString& peer) const;
     // Windowed reads for paging a large conversation: the newest `limit` rows,
     // the `limit` rows just older than beforeId, and the `limit` rows just newer

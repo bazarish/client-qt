@@ -807,6 +807,17 @@ void TranscriptStore::removeById(qint64 id)
     if (!removeMediaOfMessage(named)) {
         bazarish::log::warn("transcript: the picture or voice note of a deleted message stayed");
     }
+    // A reaction names its target by the message's own id, so one left behind is
+    // a record that this account was reacted to, kept after the thing it points
+    // at is gone.
+    if (!named.isEmpty()) {
+        Query emoji(db_);
+        emoji.prepare("DELETE FROM reactions WHERE target = ?");
+        emoji.addBindValue(named);
+        if (!emoji.exec()) {
+            bazarish::log::warn("transcript: the reactions of a deleted message stayed");
+        }
+    }
     Query query(db_);
     query.prepare("DELETE FROM messages WHERE id = ?");
     query.addBindValue(id);
@@ -829,6 +840,26 @@ void TranscriptStore::clearPeer(const QString& peer)
     if (!query.exec()) {
         bazarish::log::warn("transcript: a conversation could not be cleared");
     }
+    // What was about those messages goes with them: every reaction, and the read
+    // mark, which now points at a row that is not there. The pin is not among
+    // them - it is about the chat, which an emptied one still is.
+    for (const char* statement :
+        {"DELETE FROM reactions WHERE peer = ?", "DELETE FROM read_state WHERE peer = ?"}) {
+        Query side(db_);
+        side.prepare(QString::fromUtf8(statement));
+        side.addBindValue(peer);
+        if (!side.exec()) {
+            bazarish::log::warn("transcript: something of a cleared conversation stayed behind");
+        }
+    }
+}
+
+void TranscriptStore::forgetPeer(const QString& peer)
+{
+    // A contact that is gone, as against a conversation that is merely empty:
+    // nothing of theirs is kept, the pin included.
+    clearPeer(peer);
+    setPinned(peer, false);
 }
 
 QStringList TranscriptStore::conversationPeers() const

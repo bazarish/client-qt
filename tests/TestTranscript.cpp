@@ -594,6 +594,57 @@ int main(int argc, char** argv)
         CHECK(store.oldestOfType("someone-else", "contact.request", false) == 0);
     }
 
+    // --- What a deletion leaves behind ---
+    //
+    // Deleting a message and clearing a chat have to take everything that
+    // belonged to them. A row in one table and its reaction in another is still
+    // the message: the emoji names the target by its own id, so an orphan is a
+    // record that this account was reacted to, kept after the thing it points at
+    // was deleted.
+    {
+        TranscriptStore store;
+        CHECK(store.open("p-del", QString::fromStdString((dir / "delete.db").string()), "pw"));
+        const auto write = [&](const QString& peer, const QString& e2eId) {
+            StoredMessage m;
+            m.peer = peer;
+            m.e2eId = e2eId;
+            m.outgoing = false;
+            m.type = "text";
+            m.text = "hello";
+            m.ts = 100;
+            const qint64 id = store.append(m);
+            CHECK(id > 0);
+            return id;
+        };
+
+        const qint64 one = write("carol", "e-one");
+        write("carol", "e-two");
+        store.setReaction("carol", "e-one", "carol", "\xf0\x9f\x91\x8d");
+        store.setReaction("carol", "e-two", "carol", "\xf0\x9f\x91\x8e");
+        store.setLastReadId("carol", one);
+        store.setPinned("carol", true);
+        CHECK(store.reactionsFor("carol", "e-one").size() == 1);
+
+        // One message deleted: its reaction goes with it, and the other stays.
+        store.removeById(one);
+        CHECK(store.reactionsFor("carol", "e-one").isEmpty());
+        CHECK(store.reactionsFor("carol", "e-two").size() == 1);
+
+        // The whole chat cleared: nothing about those messages is left in any
+        // table. The read mark pointed at a row that is now gone; the pin is
+        // about the chat, which an emptied one still is, so it stays.
+        store.clearPeer("carol");
+        CHECK(store.reactionsFor("carol", "e-two").isEmpty());
+        CHECK(store.lastReadId("carol") == 0);
+        CHECK(store.isPinned("carol"));
+
+        // A contact removed is not a conversation emptied: nothing of theirs is
+        // kept, the pin included.
+        store.forgetPeer("carol");
+        CHECK(!store.isPinned("carol"));
+        CHECK(store.pinnedPeers().isEmpty());
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;
