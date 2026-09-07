@@ -114,7 +114,10 @@ Item {
                             Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                             spacing: 2
                             Label {
-                                text: model.name
+                                // A locked account has no name to show: it is
+                                // inside the database nobody has opened. What is
+                                // on disk is a file named after nothing.
+                                text: model.name.length > 0 ? model.name : "Locked account"
                                 color: Theme.text
                                 font.pixelSize: Theme.fontBody
                                 font.weight: Font.Medium
