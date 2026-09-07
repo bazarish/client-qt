@@ -16,13 +16,12 @@ struct AccountListRow {
     QString name;
     QString fingerprint;
     bool encrypted = false;
-    bool connected = false;
 };
 
 class AccountListModel : public QAbstractListModel {
     Q_OBJECT
 public:
-    enum Roles { IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole, ConnectedRole };
+    enum Roles { IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole };
     using QAbstractListModel::QAbstractListModel;
 
     int rowCount(const QModelIndex& parent = {}) const override;

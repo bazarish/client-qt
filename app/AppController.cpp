@@ -257,7 +257,7 @@ void AppController::refreshAccountList()
         for (const client::AccountInfo& info : manager_->list()) {
             rows.push_back(AccountListRow{QString::fromStdString(info.id),
                 QString::fromStdString(info.name), QString::fromStdString(info.fingerprint),
-                info.encrypted, info.connected});
+                info.encrypted});
         }
     } catch (const std::exception& error) {
         // A malformed account dir should not break the picker.
@@ -272,21 +272,19 @@ void AppController::refreshAccountList()
 void AppController::refreshAccountRows()
 {
     // The picker lists what is on disk, but an open account knows better: it has
-    // just connected to a server, or learnt its own name, while the listing was
-    // taken before any of that. Patch the rows from the live sessions instead of
-    // re-reading the files - unlocking an account database is expensive by design.
+    // learnt its own name or fingerprint while the listing was taken before any
+    // of that. Patch the rows from the live sessions instead of re-reading the
+    // files - unlocking an account database is expensive by design.
     bool changed = false;
     for (AccountListRow& row : accountRows_) {
         const SessionController* const ctrl = sessionFor(row.id);
         if (ctrl == nullptr) {
             continue;
         }
-        const bool connected = ctrl->connected();
         const QString fingerprint = ctrl->fingerprint();
         const QString name = ctrl->displayName();
-        if (row.connected != connected || (!fingerprint.isEmpty() && row.fingerprint != fingerprint)
+        if ((!fingerprint.isEmpty() && row.fingerprint != fingerprint)
             || (!name.isEmpty() && row.name != name)) {
-            row.connected = connected;
             if (!fingerprint.isEmpty()) {
                 row.fingerprint = fingerprint;
             }

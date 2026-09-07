@@ -121,9 +121,9 @@ Item {
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
-                            // The second line is the fingerprint alone; whether a
-                            // server is configured is the chip on the right, so
-                            // every row is built the same way whatever its state.
+                            // The second line is the fingerprint, or "locked"
+                            // when the database has not been opened and there is
+                            // none to show yet.
                             Label {
                                 text: model.fingerprint.length > 0
                                     ? model.fingerprint.substring(0, 12) + "…"
@@ -132,12 +132,6 @@ Item {
                                 font.pixelSize: Theme.fontSmall
                                 Layout.fillWidth: true
                             }
-                        }
-                        // One chip per row, always: an account with no server says
-                        // so instead of leaving a hole where the others have text.
-                        StatusChip {
-                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                            state: model.connected ? "configured" : "not configured"
                         }
                         Label {
                             text: model.encrypted ? "🔒" : " "

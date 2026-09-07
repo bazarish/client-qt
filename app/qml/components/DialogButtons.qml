@@ -49,9 +49,13 @@ Item {
             onClicked: root.cancelled()
         }
 
+        // Once the third answer has taken a line of its own, the row below it
+        // fills the same width and its buttons share it: two short buttons
+        // huddled at one end under a full-width one reads as an afterthought.
         RowLayout {
             id: row
-            Layout.alignment: Qt.AlignRight
+            Layout.alignment: root.cancelOnOwnLine ? Qt.AlignLeft : Qt.AlignRight
+            Layout.fillWidth: root.cancelOnOwnLine
             spacing: 8
             MenuButton {
                 visible: root.showCancel && !root.cancelOnOwnLine
@@ -61,11 +65,13 @@ Item {
             }
             MenuButton {
                 visible: root.showReject
+                Layout.fillWidth: root.cancelOnOwnLine
                 Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
                 text: root.rejectText
                 onClicked: root.rejected()
             }
             MenuButton {
+                Layout.fillWidth: root.cancelOnOwnLine
                 Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
                 text: root.acceptText
                 danger: root.danger
