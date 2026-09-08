@@ -220,14 +220,12 @@ void TrayIcon::notify(const QString& accountId, const QString& peer, const QStri
     announce(accountId, peer, title, body, sound_, sinceSound_);
 }
 
-void TrayIcon::notifyReaction(const QString& accountId, const QString& peer,
-    const QString& fromName, const QString& emoji)
+void TrayIcon::notifyReaction(
+    const QString& accountId, const QString& peer, const QString& title, const QString& body)
 {
-    // The emoji is the whole of it. What it was put on is one of the user's own
-    // messages, and the popup takes them to it - said with the contact's name,
-    // for the same reason a message notification carries it.
-    announce(accountId, peer, fromName, tr("%1 reacted %2").arg(fromName, emoji), reactionSound_,
-        sinceReactionSound_);
+    // The same popup as a message, with its own shorter sound. What it was put
+    // on is one of the user's own messages, and a click takes them to it.
+    announce(accountId, peer, title, body, reactionSound_, sinceReactionSound_);
 }
 
 void TrayIcon::openNotified()

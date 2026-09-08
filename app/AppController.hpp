@@ -248,7 +248,7 @@ signals:
     void notificationRequested(const QString& accountId, const QString& peer,
         const QString& title, const QString& body);
     void reactionNotificationRequested(const QString& accountId, const QString& peer,
-        const QString& fromName, const QString& emoji);
+        const QString& title, const QString& body);
     void sessionChanged();
     void accountOpened();
     void accountOpenFailed(const QString& error);
@@ -332,7 +332,8 @@ private:
     QVector<AccountListRow> accountRows_;
     // What a popup says under its title: what happened, and - when more than one
     // account is open - which of them it happened to.
-    QString notificationBody(const SessionController* ctrl, const QString& what) const;
+    // The bold line of a tray popup: the account the event reached.
+    QString notificationTitle(const SessionController* ctrl) const;
 
     OpenAccountsModel accounts_;
     QVector<AccountRow> accountStatuses_;

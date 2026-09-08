@@ -40,8 +40,8 @@ private:
     void notify(const QString& accountId, const QString& peer, const QString& title,
         const QString& body);
     // A reaction on one of our messages: the same popup, its own shorter sound.
-    void notifyReaction(const QString& accountId, const QString& peer,
-        const QString& fromName, const QString& emoji);
+    void notifyReaction(const QString& accountId, const QString& peer, const QString& title,
+        const QString& body);
     // Shows the popup and, if it is not being rationed, makes `sound` - the half
     // both notifications share.
     void announce(const QString& accountId, const QString& peer, const QString& title,
