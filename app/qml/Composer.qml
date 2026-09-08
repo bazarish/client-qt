@@ -8,6 +8,10 @@ import Bazarish
 Rectangle {
     id: root
     property var session: null
+    // An account the user switched off is opened to be read: it fetches no mail
+    // and tells its own other devices nothing, so it does not write either. Said
+    // here rather than found out by pressing send.
+    readonly property bool switchedOff: root.session ? !root.session.online : false
     readonly property bool editing: root.session ? root.session.editing : false
     readonly property bool replying: root.session ? root.session.replying : false
 
@@ -46,6 +50,23 @@ Rectangle {
     Layout.fillWidth: true
     implicitHeight: col.implicitHeight
     color: Theme.surface
+
+    // Puts the markers of one form around what is selected in the input. The
+    // selection is kept, so two forms can be applied one after the other without
+    // reaching for the mouse again, and nothing is sent by pressing these - what
+    // travels is the text with the markers in it, exactly as if they were typed.
+    function wrapSelection(open, close) {
+        const from = input.selectionStart
+        const to = input.selectionEnd
+        if (to <= from) {
+            return
+        }
+        const chosen = input.text.substring(from, to)
+        input.remove(from, to)
+        input.insert(from, open + chosen + close)
+        input.select(from + open.length, from + open.length + chosen.length)
+        input.forceActiveFocus()
+    }
 
     function send() {
         if (!root.session) {
@@ -150,6 +171,59 @@ Rectangle {
             IconButton { iconName: "close"; onClicked: root.session.cancelReply() }
         }
 
+        // What can be done to the selected fragment. Only the forms this client
+        // draws are here, and only while something is selected - they act on a
+        // selection and on nothing else. An address needs no button: it is
+        // recognised on the other side by what it is.
+        Flow {
+            id: formatBar
+            visible: input.selectedText.length > 0
+            Layout.fillWidth: true
+            Layout.leftMargin: 8
+            Layout.rightMargin: 8
+            Layout.topMargin: 4
+            spacing: 6
+
+            Repeater {
+                model: [
+                    { glyph: "**", name: "bold", open: "**", close: "**" },
+                    { glyph: "*", name: "italic", open: "*", close: "*" },
+                    { glyph: "~~", name: "strike", open: "~~", close: "~~" },
+                    { glyph: "```", name: "block", open: "```", close: "```" },
+                    { glyph: "!!", name: "command", open: "!!", close: "!!" }
+                ]
+                delegate: Button {
+                    id: formatButton
+                    required property var modelData
+                    implicitHeight: 24
+                    padding: 6
+                    background: Rectangle {
+                        radius: Theme.radiusSmall
+                        color: formatButton.hovered ? Theme.surfaceAlt : "transparent"
+                        border.color: Theme.border
+                    }
+                    contentItem: Row {
+                        spacing: 4
+                        Label {
+                            text: formatButton.modelData.glyph
+                            color: Theme.accent
+                            font.pixelSize: Theme.fontSmall
+                            font.family: "monospace"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Label {
+                            text: formatButton.modelData.name
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSmall
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    onClicked: root.wrapSelection(
+                        formatButton.modelData.open, formatButton.modelData.close)
+                }
+            }
+        }
+
         // Resize grip: drag up to enlarge the composer, down to shrink it.
         // Dragging back below the minimum returns it to auto-size.
         Item {
@@ -190,6 +264,7 @@ Rectangle {
                 id: attachButton
                 iconName: "attach"
                 visible: !root.editing
+                enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
                 // Above the bar, over the conversation: opened at the cursor it
                 // covered the field the user is about to type in.
@@ -216,8 +291,11 @@ Rectangle {
 
                     TextArea {
                         id: input
-                        placeholderText: root.editing ? "Edit message…"
-                            : (root.replying ? "Reply…" : "Message…")
+                        enabled: !root.switchedOff
+                        placeholderText: root.switchedOff
+                            ? "This account is switched off — switch it on to write"
+                            : (root.editing ? "Edit message…"
+                                : (root.replying ? "Reply…" : "Message…"))
                         color: Theme.text
                         placeholderTextColor: Theme.textDim
                         wrapMode: TextArea.Wrap
@@ -259,6 +337,7 @@ Rectangle {
             IconButton {
                 iconName: root.editing ? "check" : "send"
                 tint: Theme.accent
+                enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
                 onClicked: root.send()
             }

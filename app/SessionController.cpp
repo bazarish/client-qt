@@ -639,7 +639,9 @@ void SessionWorker::openAccount(
             ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p")
             : QString());
     // A configured account starts syncing on open; one the user turned off does
-    // not, and the switch is the only thing that starts it.
+    // not, and the switch is the only thing that starts it. Off from the first
+    // moment, too: an account opened to be read must not write on its way in.
+    session_->setSwitchedOff(!startOnline);
     if (connected && startOnline) {
         startReceiving();
         sync();
@@ -811,6 +813,13 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
 
 void SessionWorker::setSyncEnabled(bool on)
 {
+    // Off is off in both directions. An account that fetches no mail and syncs
+    // nothing to its own other devices must not write either: a message sent
+    // from it reached the correspondent and left every other device of this
+    // account without a trace of it.
+    if (session_) {
+        session_->setSwitchedOff(!on);
+    }
     if (on) {
         startReceiving();
         sync();
@@ -5767,8 +5776,9 @@ void SessionController::markReadThroughRow(int row)
     readSyncTimer_.start(kReadSyncIdleMs);
     // Sending a read receipt is opt-in (the "send read receipts" setting). The
     // unread high-water above is advanced regardless, so unread tracking always
-    // works even with receipts disabled.
-    if (!sendReceipts_) {
+    // works even with receipts disabled - and so does reading an account that is
+    // switched off, which writes nothing at all.
+    if (!sendReceipts_ || !online_) {
         return;
     }
     // A read sends a delivery receipt so the sender's bubble greens.
@@ -5778,6 +5788,13 @@ void SessionController::markReadThroughRow(int row)
 void SessionController::flushReadSync()
 {
     readSyncTimer_.stop();
+    if (!online_) {
+        // Off is off: an account that is only being read tells its own other
+        // devices nothing, and there is nothing here worth queueing until it is
+        // switched on - the mark is already stored on this device.
+        pendingReadSync_.clear();
+        return;
+    }
     for (auto it = pendingReadSync_.constBegin(); it != pendingReadSync_.constEnd(); ++it) {
         emit requestSyncRead(it.key(), it.value());
     }
