@@ -38,6 +38,11 @@ Item {
     // correspondent's own text is escaped and never becomes a reference.
     readonly property string kSendScheme: "bz-send:"
     readonly property string kAliasScheme: "bz-alias:"
+    readonly property string kCopyScheme: "bz-copy:"
+    // Briefly true after a verbatim block was copied, so the press has an answer
+    // on the message itself rather than none at all.
+    property bool copiedBlock: false
+    Timer { id: copiedBlockFor; interval: 1500; onTriggered: delegate.copiedBlock = false }
 
     // What a tap inside the body means: send back what the message offered, offer
     // a name to the add-a-contact form, or ask the view about a web address.
@@ -49,6 +54,13 @@ Item {
             }
         } else if (link.startsWith(delegate.kAliasScheme)) {
             delegate.aliasRequested(decodeURIComponent(link.substring(delegate.kAliasScheme.length)))
+        } else if (link.startsWith(delegate.kCopyScheme)) {
+            if (delegate.session) {
+                delegate.session.copyText(
+                    decodeURIComponent(link.substring(delegate.kCopyScheme.length)))
+                delegate.copiedBlock = true
+                copiedBlockFor.restart()
+            }
         } else {
             delegate.linkRequested(link)
         }
@@ -494,26 +506,23 @@ Item {
                             elide: Text.ElideRight
                         }
                     }
-                    // A failed save: the reason, inline. The Save button reappears so
-                    // the user can retry.
-                    Label {
+                    // A failed save: the reason, inline and copyable. The Save
+                    // button reappears so the user can retry.
+                    CopyableError {
                         visible: model.downloadError.length > 0
                         Layout.fillWidth: true
-                        text: "Save failed: " + model.downloadError
-                        color: Theme.danger
-                        font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap
+                        reason: "Save failed: " + model.downloadError
+                        session: delegate.session
                     }
                     // The blob aged out of the store (404/410): a permanent,
                     // non-retryable state (persisted across restarts), so the Save
                     // button is dropped and this stands in its place.
-                    Label {
+                    CopyableError {
                         visible: model.blobGone
                         Layout.fillWidth: true
-                        text: "Not found"
-                        color: Theme.danger
-                        font.pixelSize: Theme.fontSmall
+                        reason: "Not found"
                         font.weight: Font.Medium
+                        session: delegate.session
                     }
                     Button {
                         id: saveButton
@@ -589,11 +598,10 @@ Item {
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                 }
 
-                Label {
+                CopyableError {
                     visible: delegate.pictureBroken || preview.status === Image.Error
-                    text: "Broken picture"
-                    color: Theme.danger
-                    font.pixelSize: Theme.fontSmall
+                    reason: "Broken picture"
+                    session: delegate.session
                 }
 
             }
@@ -727,7 +735,8 @@ Item {
                 id: bodyText
                 visible: !delegate.isAttachment && !delegate.isUnsupported
                     && !delegate.isContactRequest && model.text.length > 0
-                text: App.markupHtml(model.text, Theme.accent, Theme.surfaceAlt)
+                text: App.markupHtml(model.text, Theme.accent, Theme.surfaceAlt,
+                    Theme.bg, Theme.text)
                 color: Theme.text
                 readOnly: true
                 selectByMouse: true
@@ -745,6 +754,17 @@ Item {
                     cursorShape: bodyText.hoveredLink.length > 0
                         ? Qt.PointingHandCursor : Qt.IBeamCursor
                 }
+            }
+
+            // A press on a verbatim block has an answer where the block is: the
+            // clipboard is somewhere else, and a press that changes nothing on
+            // screen reads as a press that did nothing.
+            Label {
+                visible: delegate.copiedBlock
+                text: "Copied to clipboard"
+                color: Theme.green
+                font.pixelSize: Theme.fontSmall
+                Layout.topMargin: 2
             }
 
             // Inline keyboard (interactive message): rows of tappable buttons.
@@ -961,29 +981,14 @@ Item {
             // What is happening to a send that has not gone through yet, in the same
             // grey as the chip: a message being tried again says so on itself,
             // instead of looking like one nobody is carrying.
-            Label {
-                id: tryingLine
-                property bool copied: false
+            CopyableError {
                 visible: model.outgoing && model.status === DeliveryStatus.Delivering
                     && model.error && model.error.length > 0
                 Layout.fillWidth: true
                 Layout.topMargin: 2
-                text: tryingLine.copied ? "Copied to clipboard" : model.error
-                color: tryingLine.copied ? Theme.green : Theme.textDim
-                font.pixelSize: Theme.fontSmall
-                wrapMode: Text.Wrap
-                Timer { id: tryingCopied; interval: 1500; onTriggered: tryingLine.copied = false }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                TapHandler {
-                    onTapped: {
-                        if (!delegate.session) {
-                            return
-                        }
-                        delegate.session.copyText(model.error)
-                        tryingLine.copied = true
-                        tryingCopied.restart()
-                    }
-                }
+                reason: model.error
+                textColor: Theme.textDim
+                session: delegate.session
             }
 
             // Delivery-failure notice for an outgoing message: the reason and a
@@ -994,30 +999,11 @@ Item {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
                 spacing: 8
-                // A failure is the one line worth carrying out of the window, so
-                // a tap on it puts it on the clipboard and says that it did.
-                Label {
-                    id: failLine
-                    property bool copied: false
-                    readonly property string reason: (model.error && model.error.length > 0)
-                        ? model.error : "Failed to send"
-                    text: failLine.copied ? "Copied to clipboard" : failLine.reason
-                    color: failLine.copied ? Theme.green : Theme.danger
-                    font.pixelSize: Theme.fontSmall
-                    wrapMode: Text.Wrap
+                CopyableError {
                     Layout.fillWidth: true
-                    Timer { id: failCopied; interval: 1500; onTriggered: failLine.copied = false }
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler {
-                        onTapped: {
-                            if (!delegate.session) {
-                                return
-                            }
-                            delegate.session.copyText(failLine.reason)
-                            failLine.copied = true
-                            failCopied.restart()
-                        }
-                    }
+                    reason: (model.error && model.error.length > 0)
+                        ? model.error : "Failed to send"
+                    session: delegate.session
                 }
                 // Resend covers everything this device can send again by itself.
                 Label {

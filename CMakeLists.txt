@@ -210,6 +210,7 @@ if(Qt6_FOUND)
             app/qml/components/ConnectProgressDialog.qml
             app/qml/components/LinkWarningDialog.qml
             app/qml/components/CallGlow.qml
+            app/qml/components/CopyableError.qml
     )
     message(STATUS "Qt6 Quick found: building bazarish-app")
 else()
