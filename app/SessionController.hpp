@@ -19,9 +19,11 @@
 #include <QVariantMap>
 
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 
 class QTimer;
@@ -52,6 +54,9 @@ public slots:
     void forgetPendingAdd(const QString& opId);
     void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
         const QStringList& reseedUrls);
+    // Reads the mailbox once. Called when the mail loop says something is
+    // waiting, and at the few moments the account itself asks for a look (it has
+    // just come online, or just agreed to a contact).
     void sync();
     // Starts or stops background syncing (the account going online/offline).
     void setSyncEnabled(bool on);
@@ -322,7 +327,7 @@ private:
     // observable operation is surfaced the same way.
     QString beginOp(const QString& kind, const QString& title, const QString& status);
     int opSeq_ = 0;
-    void ensureSyncTimer();
+    void startReceiving();
     void emitFacadeInfo();
     // Emits the current contacts with their display names (parallel lists).
     void emitContacts();
@@ -339,24 +344,44 @@ private:
         const QString& opId, const QString& requestId = {});
     // Takes up every add the last run did not finish. Called once, at open.
     void resumePendingAdds();
+    // Reads the mailbox: one bounded pass over what is waiting, surfacing each
+    // item to the GUI. Called when the mail loop says something is there, never
+    // on a timer.
+    void drainMailbox();
+    // The periodic local upkeep: adds resolved off-thread, call timeouts, and -
+    // each on its own longer guard - the approval and delegation checks. Reads
+    // no mail.
+    void maintain();
+    // Advances call timeouts and publishes the resulting state.
+    void refreshCalls();
     // Finalizes any off-thread contact-card resolutions that have completed:
     // commits the add and emits the result. Run each sync.
     void drainResolvedAdds();
     std::unique_ptr<bazarish::client::Session> session_;
     // Completed off-thread contact resolutions awaiting finalize (see above).
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
-    QTimer* syncTimer_ = nullptr;
-    // While a call is up, its state is watched far faster than the sync tick:
+    // Local upkeep only. Mail is not on it: the mailbox is read when the wait
+    // below says something is there, and at no other time.
+    QTimer* maintenanceTimer_ = nullptr;
+    // While a call is up, its state is watched far faster than the upkeep tick:
     // both sides say "in call" the moment media flows, and neither can learn
-    // that seconds late from a poll meant for the mailbox.
+    // that seconds late.
     QTimer* callTimer_ = nullptr;
-    // The long-poll loop: its own thread, because the request is meant to hang.
-    // While it works the sync timer only heartbeats; if the server has no event
-    // face it stops and the timer goes back to its short interval.
+    // The mail loop: its own thread, because the request is meant to hang. It is
+    // the only way this client hears about incoming mail - a wait that fails is
+    // asked again at once, because there is nothing else to fall back to.
     std::thread eventWaiter_;
     std::shared_ptr<std::atomic<bool>> eventWaiterRunning_;
     void startEventWaiter();
     void stopEventWaiter();
+    // The handshake between that loop and this worker. A mailbox holds an item
+    // until it is acked, so it answers the next wait the instant one is asked
+    // for - and the loop would spin through the drain. It therefore waits here
+    // until the pass it woke has taken all it can and given back what it holds.
+    void settleDrain();
+    std::mutex drainMutex_;
+    std::condition_variable drainDone_;
+    bool drainSettled_ = true;
     // When the delegation renewal was last considered (never = 0).
     qint64 lastTransientCheckMs_ = 0;
     qint64 lastApprovalCheckMs_ = 0;

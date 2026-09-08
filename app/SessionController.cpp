@@ -211,20 +211,14 @@ QString waveformHex(const Bytes& opus)
     return hex;
 }
 
-// How often the client asks its server for news when it has to poll, and how
-// often it checks in when the server holds the request open for it instead.
-constexpr int kPollIntervalMs = 3000;
-constexpr int kHeartbeatIntervalMs = 30000;
-// How long the server is asked to hold a request. Its own cap is lower; asking
-// for more than it allows is answered sooner, which costs nothing.
+// How long the server is asked to hold the mail request open. Its own cap is
+// lower; asking for more than it allows is answered sooner, which costs nothing.
+// The request is answered the moment something lands, so this is only how often
+// the loop asks again while nothing does.
 constexpr int kEventWaitSeconds = 30;
-// How long the worker waits before taking the next batch out of the mailbox: long
-// enough for what it just handed over to be stored and acked, short enough that a
-// full mailbox still drains in a few seconds.
-constexpr int kNextPassDelayMs = 250;
-// The floor between two waits. Without it a mailbox that still has something in
-// it answers instantly every time, and the loop becomes a spin.
-constexpr int kEventSettleMs = 1000;
+// How often the local upkeep runs. It reads no mail: mail arrives by the wait
+// above and by nothing else.
+constexpr int kMaintenanceIntervalMs = 2000;
 
 // The background-activity row for a connect: the user can hide the progress
 // dialog and still watch the connect finish in the activity panel.
@@ -314,28 +308,20 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
     return watch;
 }
 
-// A received message whose sentAt is within this window of arrival is placed in
-// sentAt order (repairing an out-of-order burst); an older arrival is appended at
-// the end as new instead (docs-main Messages.md "Ordering and timestamps").
-// Wide enough to cover a mailbox being drained: each waiting item is its own
-// request over I2P and they are taken a few at a time, so a burst takes tens of
-// seconds to land. At five it did not: the echo of one's own send, which is
-// written only after the recipient's server has signed for it, arrived after the
-// reply it had preceded and was left sitting under it.
-constexpr qint64 kReorderWindowMs = 20000;
-
-// The order key (sort position) and display time for a received message.
-// orderKey is sentAt when the message arrived within the reorder window, else the
-// arrival time (so a long-delayed message lands at the end, not up in history);
-// the display time is always the message's own sentAt when present.
+// When a received message was written, and where it therefore sits. Both are the
+// sender's own sentAt, taken from inside the sealed envelope: nothing a server
+// says about a message decides where it goes, because the server is not told
+// anything about the message to say (docs-main Messages.md "Ordering and
+// timestamps"). The local clock stands in only for an envelope that carries no
+// time at all, which nothing this client sends does.
 struct Placement {
     qint64 displayTs = 0;
     qint64 orderKey = 0;
 };
-Placement placeReceived(qint64 sentAtMs, qint64 arrivalMs)
+Placement placeReceived(const qint64 sentAtMs, const qint64 arrivalMs)
 {
-    const bool recent = sentAtMs > 0 && (arrivalMs - sentAtMs) <= kReorderWindowMs;
-    return {sentAtMs > 0 ? sentAtMs : arrivalMs, recent ? sentAtMs : arrivalMs};
+    const qint64 written = sentAtMs > 0 ? sentAtMs : arrivalMs;
+    return {written, written};
 }
 
 // How many messages a conversation loads per page (initial window and each
@@ -433,15 +419,15 @@ SessionWorker::~SessionWorker()
     stopEventWaiter();
 }
 
-void SessionWorker::ensureSyncTimer()
+void SessionWorker::startReceiving()
 {
-    if (syncTimer_ == nullptr) {
-        syncTimer_ = new QTimer(this);
-        syncTimer_->setInterval(kPollIntervalMs);
-        connect(syncTimer_, &QTimer::timeout, this, &SessionWorker::sync);
+    if (maintenanceTimer_ == nullptr) {
+        maintenanceTimer_ = new QTimer(this);
+        maintenanceTimer_->setInterval(kMaintenanceIntervalMs);
+        connect(maintenanceTimer_, &QTimer::timeout, this, &SessionWorker::maintain);
     }
-    if (!syncTimer_->isActive()) {
-        syncTimer_->start();
+    if (!maintenanceTimer_->isActive()) {
+        maintenanceTimer_->start();
     }
     startEventWaiter();
 }
@@ -463,38 +449,50 @@ void SessionWorker::startEventWaiter()
     // the account can leave it to finish on its own.
     eventWaiter_ = std::thread([this, context, running = eventWaiterRunning_]() {
         // One client for the whole loop: each one raises an outbound destination,
-        // and building a fresh one per wait meant a new dialer every time.
+        // and building a fresh one per wait meant a new dialer every time. It is
+        // kept across a failed wait for the same reason - the failure is the
+        // server's or the network's, not this client's.
         std::unique_ptr<bazarish::client::Client> waiter;
-        try {
-            waiter = bazarish::client::Session::makeEventClient(context);
-        } catch (const std::exception& error) {
-            bazarish::log::warn("no event waiter: {}", error.what());
-            return;
-        }
         while (running->load()) {
             try {
+                if (!waiter) {
+                    waiter = bazarish::client::Session::makeEventClient(context);
+                }
                 bazarish::client::Session::waitForEvents(*waiter, kEventWaitSeconds);
             } catch (const std::exception& error) {
-                // No event face, or it went away: fall back to the timer, which
-                // has been polling all along.
-                bazarish::log::info("event face unavailable, polling instead: {}", error.what());
-                return;
+                // The wait is how this client learns about mail, and there is
+                // nothing slower standing behind it to hand the job to: a wait
+                // that ended in an error is simply asked again. The same request
+                // is also what says whether the server is there at all, so a
+                // failure here is what the account's state is drawn from.
+                const QString reason = QString::fromUtf8(error.what());
+                QMetaObject::invokeMethod(
+                    this, [this, reason]() { emit syncReachable(false, reason); },
+                    Qt::QueuedConnection);
+                bazarish::log::info("mail wait failed, asking again: {}", error.what());
+                continue;
             }
             if (!running->load()) {
                 return;
             }
-            // Something is waiting (or the server's window closed): sync now, on
-            // the worker thread where every other session call runs.
+            QMetaObject::invokeMethod(
+                this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
+            // Something is waiting (or the server's window closed): read the
+            // mailbox now, on the worker thread where every other session call
+            // runs, and hold the next wait until that pass has finished. A
+            // mailbox answers the next wait at once while it still holds what
+            // this device is carrying, so without the handshake the loop would
+            // spin through its own drain.
+            {
+                const std::lock_guard<std::mutex> lock(drainMutex_);
+                drainSettled_ = false;
+            }
             QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
-            // A wait that returns at once - the mailbox still holds something the
-            // sync has not drained yet - would otherwise spin here and bury the
-            // worker thread in syncs, which is what a send then queues behind.
-            std::this_thread::sleep_for(std::chrono::milliseconds(kEventSettleMs));
+            std::unique_lock<std::mutex> lock(drainMutex_);
+            drainDone_.wait(
+                lock, [this, &running]() { return drainSettled_ || !running->load(); });
         }
     });
-    // With a waiter in place the timer is only a heartbeat: it catches what the
-    // event face cannot report (our own outgoing state, the delegation check).
-    syncTimer_->setInterval(kHeartbeatIntervalMs);
 }
 
 void SessionWorker::stopEventWaiter()
@@ -502,6 +500,9 @@ void SessionWorker::stopEventWaiter()
     if (eventWaiterRunning_) {
         eventWaiterRunning_->store(false);
     }
+    // A loop parked on the drain handshake is woken by the same flag, or the
+    // join below would wait for a pass this thread is the one meant to run.
+    drainDone_.notify_all();
     if (eventWaiter_.joinable()) {
         // Joined, never detached. The loop pokes this worker when its wait
         // returns, so a thread left running past the worker's life writes into
@@ -511,10 +512,27 @@ void SessionWorker::stopEventWaiter()
         // the worker's own thread.
         eventWaiter_.join();
     }
+    // Joined, so the thread object is free to hold the next loop: a loop that
+    // ended on its own would otherwise leave this worker unable to start another
+    // one, and the account would go on with no way to hear about mail at all.
+    eventWaiter_ = std::thread();
     eventWaiterRunning_.reset();
-    if (syncTimer_ != nullptr) {
-        syncTimer_->setInterval(kPollIntervalMs);
+}
+
+void SessionWorker::settleDrain()
+{
+    // Not settled while the server still lists what this device is carrying: the
+    // next wait would be answered by those same items the moment it was asked.
+    // A pass that left work behind is a different matter - there the next wait
+    // answering at once is exactly what continues the drain.
+    if (session_ != nullptr && !session_->morePending() && session_->awaitingAcks() > 0) {
+        return;
     }
+    {
+        const std::lock_guard<std::mutex> lock(drainMutex_);
+        drainSettled_ = true;
+    }
+    drainDone_.notify_all();
 }
 
 void SessionWorker::openAccount(
@@ -623,7 +641,7 @@ void SessionWorker::openAccount(
     // A configured account starts syncing on open; one the user turned off does
     // not, and the switch is the only thing that starts it.
     if (connected && startOnline) {
-        ensureSyncTimer();
+        startReceiving();
         sync();
     }
 }
@@ -787,19 +805,19 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
     emit connectionChanged(true, "active");
     emit actionOk("Connected.");
     emitFacadeInfo();
-    ensureSyncTimer();
+    startReceiving();
     sync();
 }
 
 void SessionWorker::setSyncEnabled(bool on)
 {
     if (on) {
-        ensureSyncTimer();
+        startReceiving();
         sync();
     } else {
         stopEventWaiter();
-        if (syncTimer_ != nullptr) {
-            syncTimer_->stop();
+        if (maintenanceTimer_ != nullptr) {
+            maintenanceTimer_->stop();
         }
         if (session_) {
             session_->releaseI2pLinks();
@@ -817,12 +835,20 @@ void SessionWorker::rebuildI2pLinks()
     if (session_) {
         session_->releaseI2pLinks();
     }
-    if (syncTimer_ != nullptr && syncTimer_->isActive()) {
+    if (maintenanceTimer_ != nullptr && maintenanceTimer_->isActive()) {
         startEventWaiter();
     }
 }
 
 void SessionWorker::sync()
+{
+    drainMailbox();
+    // On every path out, including the ones that gave up early: the loop that
+    // asked for this pass is waiting on it.
+    settleDrain();
+}
+
+void SessionWorker::drainMailbox()
 {
     if (!session_ || !session_->isConnected()) {
         return;
@@ -858,41 +884,7 @@ void SessionWorker::sync()
         emit syncReachable(false, QString::fromUtf8(error.what()));
         // A send does not go through this server and does not care that a mailbox
         // fetch failed: it is already on its way over I2P and reports for itself.
-        return;  // transient (server momentarily unreachable); next tick retries
-    }
-    // A server that has taken the account but not been told to serve it answers
-    // everything and delivers nothing. Ask it again while it holds us, and the
-    // moment it lets go, publish the routing subscribe could not.
-    if (session_->approvalState().pending
-        && nowMillis() - lastApprovalCheckMs_ >= kApprovalCheckIntervalMs) {
-        lastApprovalCheckMs_ = nowMillis();
-        try {
-            (void)session_->i2pDestStatus();
-            if (!session_->approvalState().pending) {
-                session_->publishRouting();
-                refreshI2pStatus();
-            }
-        } catch (const std::exception& error) {
-            bazarish::log::warn("approval check failed: {}", error.what());
-        }
-        const Session::ApprovalState approval = session_->approvalState();
-        emit approvalState(approval.pending, QString::fromStdString(approval.message));
-    }
-    // A destination whose delegation lapses goes dark, and nothing else in the app
-    // renews it: the CLI had this loop, the GUI did not.
-    if (nowMillis() - lastTransientCheckMs_ >= kTransientCheckIntervalMs) {
-        lastTransientCheckMs_ = nowMillis();
-        try {
-            const qint64 jitter
-                = static_cast<qint64>(bazarish::randomBytes(1)[0]) * kTransientJitterSeconds / 255;
-            if (session_->refreshI2pTransientIfDue(
-                    QDateTime::currentSecsSinceEpoch(), kTransientRenewLeadSeconds - jitter)) {
-                bazarish::log::info("delegation re-issued for this account");
-                refreshI2pStatus();
-            }
-        } catch (const std::exception& error) {
-            bazarish::log::warn("delegation renewal check failed: {}", error.what());
-        }
+        return;  // transient: the mail wait asks again, and this pass runs again with it
     }
     // Finalize any contact-card resolutions that completed off-thread. Done here
     // (the server is reachable, having just answered the sync above) so the
@@ -962,23 +954,79 @@ void SessionWorker::sync()
         emit messageReceived(map);
     }
     // One pass takes a bounded number of items so this thread keeps answering the
-    // user; the rest follow shortly, behind whatever the user asked for in the
-    // meantime. Shortly rather than at once: what was surfaced is stored and
-    // acked by the other thread, and a pass that starts before any of that has
-    // landed asks the server for items somebody is already holding.
-    if (session_->morePending()) {
-        QTimer::singleShot(kNextPassDelayMs, this, [this]() { sync(); });
-    }
+    // user. What is left is not scheduled here: the mailbox still holds it, so
+    // the wait that woke this pass is answered again the moment it is asked, and
+    // the drain continues from there.
     emitContacts();
     emitFacadeInfo();
-    // Advance call ring/answer timeouts so a call never rings forever, then flush any
-    // finished-call chat-history entries (peer hang-ups handled during the pull above,
-    // timeouts here).
+    refreshCalls();
+}
+
+void SessionWorker::refreshCalls()
+{
+    if (!session_) {
+        return;
+    }
+    // Advance call ring/answer timeouts so a call never rings forever, then flush
+    // any finished-call chat-history entries (peer hang-ups are picked up when
+    // their message is read, timeouts here), and publish the resulting state.
     session_->tickCalls();
     flushCallLog();
-    // Surface any call state change picked up this sync (a new invite, the peer
-    // accepting, or a hang-up) and refresh live media stats.
     emitCallState();
+}
+
+void SessionWorker::maintain()
+{
+    if (!session_ || !session_->isConnected()) {
+        return;
+    }
+    // Finalize contact-card resolutions that completed off-thread. The thread
+    // that runs them holds nothing of this worker, so it cannot say when it is
+    // done; this is where that is noticed.
+    drainResolvedAdds();
+    refreshCalls();
+    // A send the courier finished on its own thread leaves an echo for this
+    // account's other devices. Nothing else carries it now that the mailbox is
+    // read only when there is mail in it.
+    try {
+        session_->flushPendingEchoes();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("self-sync of our own sends failed: {}", error.what());
+    }
+    // A server that has taken the account but not been told to serve it answers
+    // everything and delivers nothing. Ask it again while it holds us, and the
+    // moment it lets go, publish the routing subscribe could not.
+    if (session_->approvalState().pending
+        && nowMillis() - lastApprovalCheckMs_ >= kApprovalCheckIntervalMs) {
+        lastApprovalCheckMs_ = nowMillis();
+        try {
+            (void)session_->i2pDestStatus();
+            if (!session_->approvalState().pending) {
+                session_->publishRouting();
+                refreshI2pStatus();
+            }
+        } catch (const std::exception& error) {
+            bazarish::log::warn("approval check failed: {}", error.what());
+        }
+        const Session::ApprovalState approval = session_->approvalState();
+        emit approvalState(approval.pending, QString::fromStdString(approval.message));
+    }
+    // A destination whose delegation lapses goes dark, and nothing else in the app
+    // renews it: the CLI had this loop, the GUI did not.
+    if (nowMillis() - lastTransientCheckMs_ >= kTransientCheckIntervalMs) {
+        lastTransientCheckMs_ = nowMillis();
+        try {
+            const qint64 jitter
+                = static_cast<qint64>(bazarish::randomBytes(1)[0]) * kTransientJitterSeconds / 255;
+            if (session_->refreshI2pTransientIfDue(
+                    QDateTime::currentSecsSinceEpoch(), kTransientRenewLeadSeconds - jitter)) {
+                bazarish::log::info("delegation re-issued for this account");
+                refreshI2pStatus();
+            }
+        } catch (const std::exception& error) {
+            bazarish::log::warn("delegation renewal check failed: {}", error.what());
+        }
+    }
 }
 
 void SessionWorker::emitCallState()
@@ -1161,6 +1209,8 @@ void SessionWorker::ackPending(const QString& pendingId)
         // next sync re-offers it (the GUI dedups by protocol id, so no duplicate).
         bazarish::log::warn("pending item not acked: {}", error.what());
     }
+    // Given back what this device was carrying, the mail loop may ask again.
+    settleDrain();
 }
 
 void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
@@ -1651,8 +1701,8 @@ void SessionWorker::shutdown()
     // then the session itself - which closes the courier, the leases and the I2P
     // links it raised. When this returns nothing of this account is running.
     stopEventWaiter();
-    if (syncTimer_ != nullptr) {
-        syncTimer_->stop();
+    if (maintenanceTimer_ != nullptr) {
+        maintenanceTimer_->stop();
     }
     if (callTimer_ != nullptr) {
         callTimer_->stop();
