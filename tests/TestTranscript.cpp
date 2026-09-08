@@ -594,6 +594,63 @@ int main(int argc, char** argv)
         CHECK(store.oldestOfType("someone-else", "contact.request", false) == 0);
     }
 
+    // --- Every column comes back as it went in ---
+    //
+    // The row is read by position, so the column list and the reader have to
+    // agree digit for digit. A wrong index is silent: it returns a neighbour's
+    // value, and a test that looks only at the text would never see it.
+    {
+        TranscriptStore store;
+        CHECK(store.open("p-cols", QString::fromStdString((dir / "columns.db").string()), "pw"));
+        StoredMessage full;
+        full.peer = "dana";
+        full.outgoing = true;
+        full.type = "voice";
+        full.e2eId = "e-full";
+        full.text = "body";
+        full.attName = "note.opus";
+        full.attMime = "audio/opus";
+        full.attSize = 4321;
+        full.attRef = "ref-9";
+        full.attSrcPath = "/tmp/source.opus";
+        full.keyboard = "[button]";
+        full.edited = true;
+        full.ts = 1700;
+        full.status = 3;
+        full.orderKey = 1701;
+        full.replyTo = "e-parent";
+        full.attDurationMs = 2500;
+        full.attWave = "abcdef";
+        full.forwarded = true;
+        CHECK(store.append(full) > 0);
+
+        const QVector<StoredMessage> back = store.latestMessages("dana", 10);
+        CHECK(back.size() == 1);
+        const StoredMessage& r = back.first();
+        CHECK(r.peer == full.peer);
+        CHECK(r.outgoing == full.outgoing);
+        CHECK(r.type == full.type);
+        CHECK(r.e2eId == full.e2eId);
+        CHECK(r.text == full.text);
+        CHECK(r.attName == full.attName);
+        CHECK(r.attMime == full.attMime);
+        CHECK(r.attSize == full.attSize);
+        CHECK(r.attRef == full.attRef);
+        CHECK(r.attSrcPath == full.attSrcPath);
+        CHECK(r.keyboard == full.keyboard);
+        CHECK(r.edited == full.edited);
+        CHECK(r.ts == full.ts);
+        CHECK(r.status == full.status);
+        CHECK(r.orderKey == full.orderKey);
+        CHECK(r.replyTo == full.replyTo);
+        CHECK(r.attDurationMs == full.attDurationMs);
+        CHECK(r.attWave == full.attWave);
+        CHECK(r.forwarded == full.forwarded);
+        CHECK(!r.hasPicture);
+        CHECK(!r.blobGone);
+        CHECK(r.savedPath.isEmpty());
+    }
+
     // --- What a deletion leaves behind ---
     //
     // Deleting a message and clearing a chat have to take everything that

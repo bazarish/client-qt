@@ -29,7 +29,6 @@ struct StoredMessage {
     qint64 attDurationMs = 0;  // a voice message's length
     QString attWave;       // a voice message's loudness account, one hex digit a bar
     QString attRef;        // content-store id
-    QString attKey;        // base64 content key
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
     QString savedPath;     // where an incoming attachment was last saved (local path)
     bool blobGone = false; // incoming attachment whose blob is gone from the store

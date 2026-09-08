@@ -5075,7 +5075,6 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.attDurationMs = message.value("attDurationMs").toLongLong();
     m.attWave = message.value("attWave").toString();
     m.attRef = message.value("attRef").toString();
-    m.attKey = message.value("attKey").toString();
     m.keyboard = message.value("keyboard").toString();
     // Order by and display the sender's own sentAt (ms): a recent burst that
     // arrived out of order is reordered into place; a long-delayed arrival is

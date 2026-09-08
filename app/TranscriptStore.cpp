@@ -130,10 +130,10 @@ private:
     bool stepped_ = false;
 };
 
-// Column list shared by every full-row query, so the indices below stay aligned.
-// orderKey is appended last so the existing 0..16 indices are unchanged.
+// Column list shared by every full-row query, so the indices in readMessageRow
+// stay aligned with it. Change one and change the other.
 const char* const kMessageColumns = "id, peer, outgoing, type, e2eId, text, attName,"
-                                    " attMime, attSize, attRef, attKey, attSrcPath, keyboard,"
+                                    " attMime, attSize, attRef, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, blobGone, replyTo,"
                                     " hasPicture, attDurationMs, attWave, forwarded";
 
@@ -165,20 +165,19 @@ StoredMessage readMessageRow(const Query& query)
     m.attMime = query.value(7).toString();
     m.attSize = query.value(8).toLongLong();
     m.attRef = query.value(9).toString();
-    m.attKey = query.value(10).toString();
-    m.attSrcPath = query.value(11).toString();
-    m.keyboard = query.value(12).toString();
-    m.edited = query.value(13).toInt() != 0;
-    m.ts = query.value(14).toLongLong();
-    m.status = query.value(15).toInt();
-    m.orderKey = query.value(16).toLongLong();
-    m.savedPath = query.value(17).toString();
-    m.blobGone = query.value(18).toInt() != 0;
-    m.hasPicture = query.value(20).toInt() != 0;
-    m.attDurationMs = query.value(21).toLongLong();
-    m.attWave = query.value(22).toString();
-    m.replyTo = query.value(19).toString();
-    m.forwarded = query.value(23).toInt() != 0;
+    m.attSrcPath = query.value(10).toString();
+    m.keyboard = query.value(11).toString();
+    m.edited = query.value(12).toInt() != 0;
+    m.ts = query.value(13).toLongLong();
+    m.status = query.value(14).toInt();
+    m.orderKey = query.value(15).toLongLong();
+    m.savedPath = query.value(16).toString();
+    m.blobGone = query.value(17).toInt() != 0;
+    m.replyTo = query.value(18).toString();
+    m.hasPicture = query.value(19).toInt() != 0;
+    m.attDurationMs = query.value(20).toLongLong();
+    m.attWave = query.value(21).toString();
+    m.forwarded = query.value(22).toInt() != 0;
     return m;
 }
 
@@ -302,7 +301,7 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
             "peer TEXT NOT NULL, outgoing INTEGER, type TEXT, e2eId TEXT,"
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
-            "attRef TEXT, attKey TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
+            "attRef TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
             " blobGone INTEGER, replyTo TEXT, hasPicture INTEGER,"
             " attDurationMs INTEGER, attWave TEXT, forwarded INTEGER)")) {
@@ -384,9 +383,9 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     Query query(db_);
     query.prepare(
         "INSERT INTO messages (peer, outgoing, type, e2eId, text, attName, attMime,"
-        " attSize, attRef, attKey, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo,"
+        " attSize, attRef, attSrcPath, keyboard, edited, ts, status, orderKey, replyTo,"
         " attDurationMs, attWave, forwarded)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     query.addBindValue(message.peer);
     query.addBindValue(message.outgoing ? 1 : 0);
     query.addBindValue(message.type);
@@ -396,7 +395,6 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.attMime);
     query.addBindValue(message.attSize);
     query.addBindValue(message.attRef);
-    query.addBindValue(message.attKey);
     query.addBindValue(message.attSrcPath);
     query.addBindValue(message.keyboard);
     query.addBindValue(message.edited ? 1 : 0);
@@ -1096,7 +1094,7 @@ constexpr int kFixedColumnBytes = 32;
 QString messageBytesExpression()
 {
     const QStringList columns = {"text", "keyboard", "attWave", "attName", "attMime", "attRef",
-        "attKey", "attSrcPath", "savedPath", "replyTo", "e2eId", "type", "peer"};
+        "attSrcPath", "savedPath", "replyTo", "e2eId", "type", "peer"};
     QStringList parts;
     for (const QString& column : columns) {
         parts << QStringLiteral("LENGTH(CAST(COALESCE(m.%1,'') AS BLOB))").arg(column);
