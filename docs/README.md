@@ -18,6 +18,7 @@ this client performs before reporting failure is not.
 |---|---|
 | [I2pRouter.md](I2pRouter.md) | The embedded I2P router: tunnel length, engine logging, and the SOCKS5 proxy applied to its clearnet traffic |
 | [Sending.md](Sending.md) | Outbound delivery: attempt schedule, reported states, failure handling, what admits a message |
+| [Receiving.md](Receiving.md) | Incoming mail: the one request that hears about it, what a pass takes, what the upkeep tick carries, and what orders a conversation |
 | [ConnectionLog.md](ConnectionLog.md) | The connection log window: what it records, what it deliberately leaves out, and how much it keeps |
 | [AccountStorage.md](AccountStorage.md) | The account database: SQLCipher version and profile, the key sidecar, what a failed open reports, what a conversation weighs on this device and what trimming it removes |
 | [Devices.md](Devices.md) | The devices of one account: how a second one starts, what it takes from the backup and from its siblings, and what forgetting one does |
