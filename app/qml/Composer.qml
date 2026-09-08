@@ -177,7 +177,7 @@ Rectangle {
         // recognised on the other side by what it is.
         Flow {
             id: formatBar
-            visible: input.selectedText.length > 0
+            visible: input.activeFocus && input.selectedText.length > 0
             Layout.fillWidth: true
             Layout.leftMargin: 8
             Layout.rightMargin: 8
@@ -195,6 +195,10 @@ Rectangle {
                 delegate: Button {
                     id: formatButton
                     required property var modelData
+                    // The input keeps the focus and therefore the selection:
+                    // these buttons act on it, and a press that took the focus
+                    // would take away the thing being acted on.
+                    focusPolicy: Qt.NoFocus
                     implicitHeight: 24
                     padding: 6
                     background: Rectangle {
