@@ -3709,13 +3709,25 @@ void SessionController::signLogin(const QString& challenge)
 {
     // Right here on the GUI thread: the signature is a few milliseconds of local
     // work, and the worker may be halfway through a sync.
+    //
+    // The answer goes back on the next turn of the event loop rather than from
+    // inside this call. Emitted straight from here it reached the caller's own
+    // handler before that handler had finished - so the button's "a signature is
+    // being made" guard was already cleared by the time the click returned, and
+    // the copy that follows can spin the event loop, which is an invitation to
+    // re-enter a half-finished handler.
     if (loginSigner_) {
+        QString blob;
         try {
-            emit loginSigned(
-                QString::fromStdString(loginSigner_->sign(challenge.toStdString())));
+            blob = QString::fromStdString(loginSigner_->sign(challenge.toStdString()));
         } catch (const std::exception& error) {
-            emit actionFailed(QString::fromUtf8(error.what()));
+            const QString problem = QString::fromUtf8(error.what());
+            QMetaObject::invokeMethod(
+                this, [this, problem]() { emit actionFailed(problem); }, Qt::QueuedConnection);
+            return;
         }
+        QMetaObject::invokeMethod(
+            this, [this, blob]() { emit loginSigned(blob); }, Qt::QueuedConnection);
         return;
     }
     emit requestSignLoginSig(challenge);

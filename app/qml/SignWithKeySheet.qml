@@ -225,6 +225,13 @@ Popup {
                         text: copied ? "Copied" : "Copy signature"
                         enabled: root.session && root.consumer.ok && !root.copyPending
                         onClicked: {
+                            // Belt as well as braces: `enabled` above already
+                            // turns the button off while a signature is being
+                            // made, but a press that arrives while this handler
+                            // is still running would not have seen it.
+                            if (root.copyPending) {
+                                return
+                            }
                             root.copyPending = true
                             root.session.signLogin(challengeArea.text.trim())
                         }

@@ -184,6 +184,36 @@ ColumnLayout {
             onClicked: facadeModel.append({ url: "" })
         }
 
+        // What the descriptor brought besides the facades. A reseed is a clearnet
+        // address this client will fetch from before it has any I2P at all, so it
+        // is the one thing in a pasted link worth reading before agreeing to it -
+        // and it used to be applied without ever being shown.
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 4
+            visible: form.reseedUrls.length > 0
+
+            Label {
+                text: form.reseedUrls.length === 1
+                    ? "Reseed from the link — fetched over clearnet, before I2P is up:"
+                    : "Reseeds from the link — fetched over clearnet, before I2P is up:"
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Repeater {
+                model: form.reseedUrls
+                Label {
+                    text: modelData
+                    color: Theme.text
+                    font.pixelSize: Theme.fontSmall
+                    elide: Text.ElideMiddle
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
         FormField { id: fpField; label: "Server fingerprint" }
 
         Button {
