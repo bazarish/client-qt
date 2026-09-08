@@ -224,8 +224,9 @@ void TrayIcon::notifyReaction(const QString& accountId, const QString& peer,
     const QString& fromName, const QString& emoji)
 {
     // The emoji is the whole of it. What it was put on is one of the user's own
-    // messages, and the popup takes them to it.
-    announce(accountId, peer, fromName, tr("Reacted %1").arg(emoji), reactionSound_,
+    // messages, and the popup takes them to it - said with the contact's name,
+    // for the same reason a message notification carries it.
+    announce(accountId, peer, fromName, tr("%1 reacted %2").arg(fromName, emoji), reactionSound_,
         sinceReactionSound_);
 }
 

@@ -436,8 +436,12 @@ void AppController::openSession(const QString& id, const QString& passphrase,
     });
     connect(ctrl, &SessionController::messageNotification, this,
         [this, ctrl](const QString& peer, const QString& fromName) {
+            // The contact is named in the body, not only in the title: a popup
+            // that says what happened and to which account, but not who it was
+            // with, tells the user nothing they can act on - and a title is the
+            // part a desktop is free not to show.
             emit notificationRequested(ctrl->accountId(), peer, fromName,
-                notificationBody(ctrl, tr("New message")));
+                notificationBody(ctrl, tr("New message from %1").arg(fromName)));
         });
     // A reaction is announced like a message, and says what it was: the emoji
     // itself, not the text it was put on - the message is already the user's own
