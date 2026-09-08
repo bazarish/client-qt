@@ -27,6 +27,7 @@ QVariant AccountListModel::data(const QModelIndex& index, int role) const
     case NameRole: return p.name;
     case FingerprintRole: return p.fingerprint;
     case EncryptedRole: return p.encrypted;
+    case OpenRole: return p.open;
     default: return {};
     }
 }
@@ -34,7 +35,7 @@ QVariant AccountListModel::data(const QModelIndex& index, int role) const
 QHash<int, QByteArray> AccountListModel::roleNames() const
 {
     return {{IdRole, "accountId"}, {NameRole, "name"}, {FingerprintRole, "fingerprint"},
-        {EncryptedRole, "encrypted"}};
+        {EncryptedRole, "encrypted"}, {OpenRole, "open"}};
 }
 
 void AccountListModel::setAccounts(QVector<AccountListRow> accounts)

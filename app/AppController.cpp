@@ -112,13 +112,15 @@ void AppController::persistSettings() const
     AppSettings::instance().setNotifications(notifications_);
 }
 
-QString AppController::notificationBody(
-    const SessionController* const ctrl, const QString& what) const
+QString AppController::notificationTitle(const SessionController* const ctrl) const
 {
-    if (sessions_.size() < 2 || ctrl == nullptr || ctrl->displayName().isEmpty()) {
-        return what;
+    // The bold line of a popup is which account of this user the event reached -
+    // that is what decides whether they need to look at all, and it is the one
+    // thing the body has no room to repeat. Who it was with is the body's job.
+    if (ctrl == nullptr || ctrl->displayName().isEmpty()) {
+        return QStringLiteral("Bazarish");
     }
-    return what + QStringLiteral(" - ") + ctrl->displayName();
+    return ctrl->displayName();
 }
 
 std::filesystem::path AppController::accountsFolder()
@@ -255,9 +257,10 @@ void AppController::refreshAccountList()
     QVector<AccountListRow> rows;
     try {
         for (const client::AccountInfo& info : manager_->list()) {
-            rows.push_back(AccountListRow{QString::fromStdString(info.id),
-                QString::fromStdString(info.name), QString::fromStdString(info.fingerprint),
-                info.encrypted});
+            const QString id = QString::fromStdString(info.id);
+            rows.push_back(AccountListRow{id, QString::fromStdString(info.name),
+                QString::fromStdString(info.fingerprint), info.encrypted,
+                sessionFor(id) != nullptr});
         }
     } catch (const std::exception& error) {
         // A malformed account dir should not break the picker.
@@ -278,6 +281,13 @@ void AppController::refreshAccountRows()
     bool changed = false;
     for (AccountListRow& row : accountRows_) {
         const SessionController* const ctrl = sessionFor(row.id);
+        // Whether it is open is the picker's business even when nothing else
+        // about the row has changed: an encrypted account that has been unlocked
+        // must stop being drawn, and treated, as a locked one.
+        if (row.open != (ctrl != nullptr)) {
+            row.open = ctrl != nullptr;
+            changed = true;
+        }
         if (ctrl == nullptr) {
             continue;
         }
@@ -436,19 +446,16 @@ void AppController::openSession(const QString& id, const QString& passphrase,
     });
     connect(ctrl, &SessionController::messageNotification, this,
         [this, ctrl](const QString& peer, const QString& fromName) {
-            // The contact is named in the body, not only in the title: a popup
-            // that says what happened and to which account, but not who it was
-            // with, tells the user nothing they can act on - and a title is the
-            // part a desktop is free not to show.
-            emit notificationRequested(ctrl->accountId(), peer, fromName,
-                notificationBody(ctrl, tr("New message from %1").arg(fromName)));
+            emit notificationRequested(ctrl->accountId(), peer, notificationTitle(ctrl),
+                tr("New message from %1").arg(fromName));
         });
     // A reaction is announced like a message, and says what it was: the emoji
     // itself, not the text it was put on - the message is already the user's own
     // and they will see it when the notification takes them there.
     connect(ctrl, &SessionController::reactionNotification, this,
         [this, ctrl](const QString& peer, const QString& fromName, const QString& emoji) {
-            emit reactionNotificationRequested(ctrl->accountId(), peer, fromName, emoji);
+            emit reactionNotificationRequested(ctrl->accountId(), peer, notificationTitle(ctrl),
+                tr("%1 reacted %2").arg(fromName, emoji));
         });
     // A call is not announced in the tray. It rings, and it puts a window of its
     // own where it will be seen; both are decided here, from the state of every

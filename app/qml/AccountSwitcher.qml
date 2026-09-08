@@ -76,7 +76,7 @@ Popup {
             delegate: ItemDelegate {
                 width: ListView.view.width
                 height: 68
-                onClicked: ListView.view.activate(model.accountId, model.encrypted && !model.online)
+                onClicked: ListView.view.activate(model.accountId, model.encrypted && !model.open)
                 // The active account is marked with a neon outline, not a bright
                 // accent fill (the brand's one-accent rule; gray stays the base).
                 background: Rectangle {

@@ -16,12 +16,16 @@ struct AccountListRow {
     QString name;
     QString fingerprint;
     bool encrypted = false;
+    // A session is loaded for it. An encrypted account that is open has already
+    // been unlocked, and asking for its passphrase again - or drawing it with a
+    // closed lock - says the opposite of what is true.
+    bool open = false;
 };
 
 class AccountListModel : public QAbstractListModel {
     Q_OBJECT
 public:
-    enum Roles { IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole };
+    enum Roles { IdRole = Qt::UserRole + 1, NameRole, FingerprintRole, EncryptedRole, OpenRole };
     using QAbstractListModel::QAbstractListModel;
 
     int rowCount(const QModelIndex& parent = {}) const override;

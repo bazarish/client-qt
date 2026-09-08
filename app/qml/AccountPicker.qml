@@ -90,7 +90,10 @@ Item {
                     width: ListView.view.width
                     height: 64
                     onClicked: {
-                        if (model.encrypted) {
+                        // An encrypted account that is already open was unlocked
+                        // once, and the session is still there: asking again
+                        // would be asking for what is already held.
+                        if (model.encrypted && !model.open) {
                             root.pendingId = model.accountId
                             passField.text = ""
                             passDialog.open()
@@ -137,7 +140,10 @@ Item {
                             }
                         }
                         Label {
-                            text: model.encrypted ? "🔒" : " "
+                            // Closed while the passphrase is still needed, open
+                            // once the account is: the mark says what a click
+                            // will do, not merely that the file has a key.
+                            text: !model.encrypted ? " " : (model.open ? "🔓" : "🔒")
                             color: Theme.textDim
                             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                         }
