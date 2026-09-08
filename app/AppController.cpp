@@ -1067,12 +1067,14 @@ bool AppController::looksLikeImage(const QString& mime) const
     return mime.startsWith(QStringLiteral("image/"));
 }
 
-QString AppController::markupHtml(
-    const QString& text, const QColor& actionColor, const QColor& chipColor) const
+QString AppController::markupHtml(const QString& text, const QColor& actionColor,
+    const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const
 {
     // name() and not the colour as QML would spell it: a document reads #rrggbb,
     // and the alpha QML puts in front of it is not a colour it understands.
-    return markup::toHtml(text, actionColor.name(), chipColor.name());
+    return markup::toHtml(text,
+        markup::Colors{actionColor.name(), chipColor.name(), codeColor.name(),
+            codeTextColor.name()});
 }
 
 QString AppController::markupPlain(const QString& text) const

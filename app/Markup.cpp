@@ -34,6 +34,11 @@ constexpr std::array<StyleMarker, 3> kStyleMarkers{{
 
 // What wraps text the message offers to send back with one click.
 constexpr QLatin1String kSendMarker("!!");
+// What wraps a block kept exactly as it was written.
+constexpr QLatin1String kCodeMarker("```");
+// What a tab is worth when such a block is drawn. A rich text document has no
+// tab stops of its own, so the width has to be chosen here.
+constexpr int kTabWidth = 4;
 // What introduces a username.
 constexpr QChar kAliasMarker(u'!');
 
@@ -59,6 +64,7 @@ constexpr std::array<Bracket, 3> kBrackets{{
 // and never come from a message, which is escaped before it reaches the document.
 constexpr QLatin1String kSendScheme("bz-send:");
 constexpr QLatin1String kAliasScheme("bz-alias:");
+constexpr QLatin1String kCopyScheme("bz-copy:");
 
 struct Style {
     bool bold = false;
@@ -173,6 +179,13 @@ private:
                 i = after;
                 continue;
             }
+            if (matchCode(i, to, contentFrom, contentTo, after)) {
+                flush(buffer, style);
+                const QString inner = text_.sliced(contentFrom, contentTo - contentFrom);
+                emitRun(inner, inner, Action::eCopy, style);
+                i = after;
+                continue;
+            }
             if (matchSend(i, to, contentFrom, contentTo, after)) {
                 flush(buffer, style);
                 const QString inner = text_.sliced(contentFrom, contentTo - contentFrom);
@@ -230,6 +243,33 @@ private:
                 after = j + length;
                 return true;
             }
+        }
+        return false;
+    }
+
+    // The one span that crosses lines: keeping the line breaks is what it is
+    // for. Nothing inside is markup - what is written there is what is copied,
+    // character for character - and an unclosed marker is text, like every other
+    // marker that does not pair off.
+    bool matchCode(const int at, const int to, int& contentFrom, int& contentTo, int& after) const
+    {
+        if (!matchesAt(text_, at, to, kCodeMarker)) {
+            return false;
+        }
+        const int length = kCodeMarker.size();
+        for (int j = at + length; j + length <= to; ++j) {
+            if (!matchesAt(text_, j, to, kCodeMarker)) {
+                continue;
+            }
+            // Nothing between the markers is not a block; the six characters are
+            // what was typed and stay as they are.
+            if (text_.sliced(at + length, j - at - length).trimmed().isEmpty()) {
+                return false;
+            }
+            contentFrom = at + length;
+            contentTo = j;
+            after = j + length;
+            return true;
         }
         return false;
     }
@@ -387,6 +427,46 @@ QString escaped(const QString& text)
     return out;
 }
 
+// A block as it was written: every space is its own, a tab is worth kTabWidth of
+// them, and a line break is a line break. The ordinary escape folds runs of
+// spaces the way a document does, which is right for a sentence and wrong here.
+QString escapedVerbatim(const QString& text)
+{
+    QString out;
+    out.reserve(text.size());
+    for (const QChar c : text) {
+        switch (c.unicode()) {
+        case u'&':
+            out += QLatin1String("&amp;");
+            break;
+        case u'<':
+            out += QLatin1String("&lt;");
+            break;
+        case u'>':
+            out += QLatin1String("&gt;");
+            break;
+        case u'"':
+            out += QLatin1String("&quot;");
+            break;
+        case u'\n':
+            out += QLatin1String("<br>");
+            break;
+        case u' ':
+            out += QLatin1String("&nbsp;");
+            break;
+        case u'\t':
+            for (int i = 0; i < kTabWidth; ++i) {
+                out += QLatin1String("&nbsp;");
+            }
+            break;
+        default:
+            out += c;
+            break;
+        }
+    }
+    return out;
+}
+
 QString href(const Run& run)
 {
     switch (run.action) {
@@ -396,6 +476,8 @@ QString href(const Run& run)
         return kSendScheme + QString::fromLatin1(QUrl::toPercentEncoding(run.target));
     case Action::eAlias:
         return kAliasScheme + QString::fromLatin1(QUrl::toPercentEncoding(run.target));
+    case Action::eCopy:
+        return kCopyScheme + QString::fromLatin1(QUrl::toPercentEncoding(run.target));
     case Action::eNone:
         break;
     }
@@ -409,10 +491,21 @@ std::vector<Run> parse(const QString& text)
     return Parser(text).parse();
 }
 
-QString toHtml(const QString& text, const QString& actionColor, const QString& chipColor)
+QString toHtml(const QString& text, const Colors& colors)
 {
     QString out;
     for (const Run& run : parse(text)) {
+        // A block keeps its own shape and is drawn in a face where a column of
+        // characters lines up; a click on it is what puts it on the clipboard.
+        if (run.action == Action::eCopy) {
+            const QString style = QLatin1String("font-family:monospace;background-color:")
+                + colors.code + QLatin1String(";color:") + colors.codeText
+                + QLatin1String(";text-decoration:none;");
+            out += QLatin1String("<a href=\"") + href(run) + QLatin1String("\" style=\"") + style
+                + QLatin1String("\"><span style=\"") + style + QLatin1String("\">")
+                + escapedVerbatim(run.text) + QLatin1String("</span></a>");
+            continue;
+        }
         QString body = escaped(run.text);
         if (run.bold) {
             body = QLatin1String("<b>") + body + QLatin1String("</b>");
@@ -430,13 +523,13 @@ QString toHtml(const QString& text, const QString& actionColor, const QString& c
         // The colour is written into the run as well as onto the anchor: a
         // document draws an anchor in its own link colour unless the text under
         // it carries one, and this one has no palette to set.
-        QString style = QLatin1String("color:") + actionColor + QLatin1String(";");
+        QString style = QLatin1String("color:") + colors.action + QLatin1String(";");
         style += run.action == Action::eLink ? QLatin1String("text-decoration:underline;")
                                              : QLatin1String("text-decoration:none;");
         // What acts inside the client stands on a ground of its own; what leaves
         // it is underlined. Left plain, a name in a sentence reads as a sentence.
         if (run.action != Action::eLink) {
-            style += QLatin1String("background-color:") + chipColor + QLatin1String(";");
+            style += QLatin1String("background-color:") + colors.chip + QLatin1String(";");
         }
         out += QLatin1String("<a href=\"") + href(run) + QLatin1String("\" style=\"") + style
             + QLatin1String("\"><span style=\"") + style + QLatin1String("\">") + body

@@ -212,10 +212,12 @@ public:
     // correspondent's text, and building the tags ourselves is what keeps theirs
     // out of it.
 
-    // A body as rich text, in the colour the theme gives interactive text and the
-    // ground a clickable offer sits on.
-    Q_INVOKABLE QString markupHtml(
-        const QString& text, const QColor& actionColor, const QColor& chipColor) const;
+    // A body as rich text: the colour the theme gives interactive text, the
+    // ground a clickable offer sits on, and the ground and text of a verbatim
+    // block. The document carries no palette of its own, so the caller's theme
+    // is what it is drawn with.
+    Q_INVOKABLE QString markupHtml(const QString& text, const QColor& actionColor,
+        const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const;
     // The same body with the markers taken out: what a preview, a reply quote or
     // a search hit shows.
     Q_INVOKABLE QString markupPlain(const QString& text) const;
