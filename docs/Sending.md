@@ -30,19 +30,31 @@ local condition, not a property of the recipient.
 | Delivery attempts | 4 |
 | Interval between attempts | 2 s, 4 s, 8 s |
 | Dial timeout per attempt | 15 s |
-| Upper bound on one delivery run | 75 s |
+| Upper bound on one delivery run | 104 s (the four dials, the three waits, and one reply grace) |
+| Grace a reply may add past that bound | 30 s |
 | Upper bound on preparing the outbound destination | 180 s |
 | Outbound destination term, per correspondent | 600 s |
 | Warm destination pool | 2 destinations, 3 tunnels each |
 
-The upper bound on a run also terminates an attempt in which the peer accepts the
-stream and returns no reply.
+The bound on a run is the sum of what the run may spend, not a number chosen
+beside it: an attempt is made only when the budget can pay for its wait and for
+the whole of its dial, so a bound shorter than the schedule would quietly cost
+the last attempts. It is what terminates an attempt in which the peer accepts the
+stream and returns no reply - and because that one wait can consume most of the
+budget, a run against such a peer legitimately makes fewer than four attempts.
+
+What the user is told then says which of the two happened and how far the run
+got: an attempt that the budget cannot pay for is not announced, and the failure
+carries the number of attempts actually made ("2 of 4 tries"). A destination that
+took the envelope and said nothing is reported as that, not as one that could not
+be reached - the message may well be stored, with only the confirmation missing.
 
 ## Classification of outcomes
 
 | Outcome | Treatment |
 |---|---|
-| No reply (dial failed, stream failed, reply unreadable) | Retried until the attempts or the run bound are exhausted |
+| No reply (dial failed, stream failed, reply unreadable) | Retried until the attempts or the run bound are exhausted; the failure names how many attempts were made |
+| The envelope was written and no reply came | Retried the same way, and reported as a far side that did not answer rather than one that could not be reached |
 | Confirmation absent or not verifiable against the delivery identifier sent | Treated as no reply |
 | Typed refusal (unknown pass, message too large, contact request too large, storage full, contact rate limit) | Final on the first attempt; reported with its reason |
 | Signed confirmation | Delivery complete; the message is recorded as stored by the recipient's server |
