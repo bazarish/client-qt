@@ -223,20 +223,6 @@ void AppController::loadOfflineSet()
     for (const std::string& id : AppSettings::instance().offlineAccounts()) {
         offline_.insert(QString::fromStdString(id));
     }
-    // An account file left named after its account by an earlier build is
-    // renamed, and what remembered it by the old name follows: the set of
-    // accounts switched off is keyed by id, and an account that quietly lost its
-    // entry would come back online by itself.
-    for (const auto& [was, now] : manager_->adoptOpaqueNames()) {
-        const QString from = QString::fromStdString(was);
-        if (offline_.remove(from)) {
-            offline_.insert(QString::fromStdString(now));
-        }
-        if (readLastActive() == from) {
-            writeLastActive(QString::fromStdString(now));
-        }
-    }
-    persistOfflineSet();
 }
 
 void AppController::persistOfflineSet() const
