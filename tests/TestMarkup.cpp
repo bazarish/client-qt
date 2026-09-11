@@ -22,6 +22,11 @@ namespace {
 // A name one character past what the add-a-contact form takes.
 const QString kOverlongAlias = QString(33, QChar(u'a'));
 
+// The four colours a bubble is drawn with. Distinct on purpose: a rendering
+// names the one it used, so a test can tell a chip from a block.
+const Colors kColors{QStringLiteral("#f2f4f2"), QStringLiteral("#232a31"),
+    QStringLiteral("#11151a"), QStringLiteral("#d7dbd8")};
+
 std::vector<Run> runsOf(const char* const text)
 {
     return parse(QString::fromUtf8(text));
@@ -29,7 +34,7 @@ std::vector<Run> runsOf(const char* const text)
 
 QString html(const char* const text)
 {
-    return toHtml(QString::fromUtf8(text), QStringLiteral("#f2f4f2"), QStringLiteral("#232a31"));
+    return toHtml(QString::fromUtf8(text), kColors);
 }
 
 QString plain(const char* const text)
@@ -194,12 +199,53 @@ void testHtmlIsOurs()
               .contains(QStringLiteral("href=\"https://example.i2p/a?b=1&amp;c=2\"")));
 }
 
+void testCodeBlocks()
+{
+    const std::vector<Run> block = runsOf("run ```make -j4``` now");
+    CHECK(block.size() == 3);
+    CHECK(block[0].text == QStringLiteral("run "));
+    CHECK(block[1].action == Action::eCopy);
+    CHECK(block[1].text == QStringLiteral("make -j4"));
+    // What a click copies is the block as it stands, not a rendering of it.
+    CHECK(block[1].target == block[1].text);
+    CHECK(block[2].text == QStringLiteral(" now"));
+
+    // A block is verbatim: markers inside it are characters, not emphasis.
+    CHECK(runsOf("```**x**```")[0].text == QStringLiteral("**x**"));
+    CHECK(runsOf("```**x**```")[0].action == Action::eCopy);
+
+    // Markers with nothing between them are the six characters that were typed.
+    CHECK(runsOf("```   ```").size() == 1);
+    CHECK(runsOf("```   ```")[0].action == Action::eNone);
+    CHECK(plain("```   ```") == QStringLiteral("```   ```"));
+
+    // It is drawn in the two colours named for a block, in a face where a column
+    // of characters lines up - and not as a chip.
+    const QString drawn = html("```make -j4```");
+    CHECK(drawn.contains(QStringLiteral("bz-copy:make%20-j4")));
+    CHECK(drawn.contains(QStringLiteral("font-family:monospace")));
+    CHECK(drawn.contains(QStringLiteral("background-color:#11151a")));
+    CHECK(drawn.contains(QStringLiteral("color:#d7dbd8")));
+    CHECK(!drawn.contains(QStringLiteral("background-color:#232a31")));
+
+    // Its shape survives: the columns and the line breaks are what was typed.
+    const QString shaped = html("```a  b\nc```");
+    CHECK(shaped.contains(QStringLiteral("a&nbsp;&nbsp;b")));
+    CHECK(shaped.contains(QStringLiteral("<br>")));
+
+    // And what it says is still a correspondent's text, not the document's tags.
+    const QString tagged = html("```<b>x</b>```");
+    CHECK(!tagged.contains(QStringLiteral("<b>x</b>")));
+    CHECK(tagged.contains(QStringLiteral("&lt;b&gt;x&lt;/b&gt;")));
+}
+
 void testPlainProjection()
 {
     CHECK(plain("**loud** and *soft* and ~~gone~~") == QStringLiteral("loud and soft and gone"));
     CHECK(plain("press !!/help!!") == QStringLiteral("press /help"));
     CHECK(plain("ask !bob at https://example.i2p")
         == QStringLiteral("ask !bob at https://example.i2p"));
+    CHECK(plain("run ```make``` now") == QStringLiteral("run make now"));
     CHECK(plain("") == QString());
 }
 
@@ -212,6 +258,7 @@ int main()
     testLinks();
     testAliases();
     testHtmlIsOurs();
+    testCodeBlocks();
     testPlainProjection();
     std::fprintf(stderr, "TestMarkup passed\n");
     return 0;
