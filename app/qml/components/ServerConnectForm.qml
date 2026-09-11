@@ -19,11 +19,14 @@ ColumnLayout {
     // Prefill, used when editing an existing connection from Settings.
     property var initialFacades: []
     property string initialFingerprint: ""
+    property var initialReseeds: []
     // Reveal the per-field inputs straight away (true when editing) or keep the
     // link field as the only surface until a link parses or manual entry is asked.
     property bool showManual: false
     // Where a router with no peers can ask for a slice of netdb: taken from the
-    // pasted descriptor, never typed by hand - a user has no way to know them.
+    // pasted descriptor or from the connection being edited, never typed by hand -
+    // a user has no way to know them. The action submits this list, so a form that
+    // did not load the stored ones would erase them.
     property var reseedUrls: []
     // Emitted right after the action runs, so a host dialog can close.
     signal submitted()
@@ -47,6 +50,7 @@ ColumnLayout {
             facadeModel.append({ url: "" })
         }
         fpField.text = initialFingerprint
+        form.reseedUrls = initialReseeds
         linkField.text = ""
         form.showManual = initialFingerprint.length > 0
         flashRevert.stop()
@@ -184,7 +188,7 @@ ColumnLayout {
             onClicked: facadeModel.append({ url: "" })
         }
 
-        // What the descriptor brought besides the facades. A reseed is a clearnet
+        // What the connection carries besides the facades. A reseed is a clearnet
         // address this client will fetch from before it has any I2P at all, so it
         // is the one thing in a pasted link worth reading before agreeing to it -
         // and it used to be applied without ever being shown.
@@ -195,8 +199,8 @@ ColumnLayout {
 
             Label {
                 text: form.reseedUrls.length === 1
-                    ? "Reseed from the link — fetched over clearnet, before I2P is up:"
-                    : "Reseeds from the link — fetched over clearnet, before I2P is up:"
+                    ? "Reseed — fetched over clearnet, before I2P is up:"
+                    : "Reseeds — fetched over clearnet, before I2P is up:"
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap

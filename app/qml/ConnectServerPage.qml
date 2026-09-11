@@ -103,6 +103,7 @@ Item {
             actionText: "Connect"
             initialFacades: root.session ? root.session.configuredFacades : []
             initialFingerprint: root.session ? root.session.serverFingerprint : ""
+            initialReseeds: root.session ? root.session.configuredReseeds : []
             showManual: root.session && root.session.configuredFacades.length > 0
         }
 

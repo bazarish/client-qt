@@ -1113,9 +1113,12 @@ Popup {
                 id: connectionForm
                 Layout.fillWidth: true
                 session: root.session
-                actionText: "Connect"
+                // A switched-off account is not going to register with anything:
+                // the action saves the endpoint and says so.
+                actionText: (root.session && !root.session.online) ? "Save" : "Connect"
                 initialFacades: root.session ? root.session.configuredFacades : []
                 initialFingerprint: root.session ? root.session.serverFingerprint : ""
+                initialReseeds: root.session ? root.session.configuredReseeds : []
                 onSubmitted: connectionDialog.close()
             }
         }

@@ -716,14 +716,21 @@ void SessionWorker::emitFacadeInfo()
     for (const std::string& url : session_->facadeUrls()) {
         configured << QString::fromStdString(url);
     }
+    QStringList reseeds;
+    for (const std::string& url : session_->endpoint().reseeds) {
+        reseeds << QString::fromStdString(url);
+    }
     emit facadeInfo(QString::fromStdString(session_->activeFacadeUrl()), configured,
-        QString::fromStdString(session_->endpoint().serverFingerprint));
+        QString::fromStdString(session_->endpoint().serverFingerprint), reseeds);
 }
 
 void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
     const QStringList& reseedUrls)
 {
     if (!session_) {
+        // Returning quietly would leave the button reading "Connecting..." for
+        // the rest of the session: nothing else ends that state.
+        emit actionFailed("no account is open");
         return;
     }
     try {
@@ -766,6 +773,21 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
         if (endpoint.facades.empty()) {
             throw std::runtime_error("enter at least one facade URL");
         }
+        // Binding the endpoint stores it, so what the user entered - fingerprint,
+        // facades and reseeds together - is kept whatever the round trip below
+        // does with it. Saying so here is what stops the editor from offering the
+        // previous server back after a connect that failed or never ran.
+        session_->connectServer(endpoint);
+        emitFacadeInfo();
+        // Registering publishes this account's card, which a switched-off account
+        // must not do. The settings are saved either way, and that is what the
+        // user came to do.
+        if (session_->switchedOff()) {
+            bazarish::client::setConnectProgressSink({});
+            emit actionFailed("this account is switched off: the server connection is saved, "
+                              "switch the account on to connect");
+            return;
+        }
         // Over an I2P facade the first call builds tunnels first, so this is
         // minutes, not seconds. Say what is happening at each step.
         const bool overI2p = std::any_of(endpoint.facades.begin(), endpoint.facades.end(),
@@ -775,7 +797,6 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
         emit connectProgress(overI2p ? 8 : 20,
             overI2p ? "Connecting over I2P — the first call builds tunnels, this takes minutes"
                     : "Connecting to the server");
-        session_->connectServer(endpoint);
         session_->registerAccount();
     } catch (const std::exception& e) {
         bazarish::client::setConnectProgressSink({});
@@ -2696,12 +2717,13 @@ QString SessionController::activeFacadeHost() const
     return facadeHost(activeFacade_);
 }
 
-void SessionController::onFacadeInfo(
-    const QString& activeUrl, const QStringList& configured, const QString& serverFp)
+void SessionController::onFacadeInfo(const QString& activeUrl, const QStringList& configured,
+    const QString& serverFp, const QStringList& reseeds)
 {
     activeFacade_ = activeUrl;
     configuredFacades_ = configured;
     serverFp_ = serverFp;
+    configuredReseeds_ = reseeds;
     emit facadeInfoChanged();
 }
 

@@ -283,10 +283,10 @@ signals:
     // takes the account, answers every request and serves none of it, so this is
     // the only thing that tells the two apart.
     void approvalState(bool pending, const QString& note);
-    // The facade currently in use, the configured facade list, and the server
-    // fingerprint, for the GUI.
-    void facadeInfo(
-        const QString& activeUrl, const QStringList& configured, const QString& serverFp);
+    // The facade currently in use, the configured facade list, the server
+    // fingerprint and the reseeds the endpoint carries, for the GUI.
+    void facadeInfo(const QString& activeUrl, const QStringList& configured,
+        const QString& serverFp, const QStringList& reseeds);
     // hasKey: a master is set up in the account. delegated: the server holds a
     // delegation for it. live: delegated and the account is approved, so the
     // destination is being served. address: the b32 (empty if none). summary: a
@@ -469,6 +469,9 @@ class SessionController : public QObject {
     Q_PROPERTY(QString connectError READ connectError NOTIFY connectStateChanged)
     // The configured server's fingerprint, so the connection editor can prefill it.
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
+    // The reseeds the configured endpoint carries. The editor prefills them too:
+    // it submits what it holds, and what it does not hold it would erase.
+    Q_PROPERTY(QStringList configuredReseeds READ configuredReseeds NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     // The active peer's display name (the local label, or a short fingerprint when
     // unnamed). Notified on both opening a conversation and a rename, so the chat
@@ -626,6 +629,7 @@ public:
     int connectPercent() const { return connectPercent_; }
     QString connectError() const { return connectError_; }
     QString serverFingerprint() const { return serverFp_; }
+    QStringList configuredReseeds() const { return configuredReseeds_; }
     QString activePeer() const { return activePeer_; }
     QString activePeerName() const { return peerName(activePeer_); }
     bool atNewest() const;
@@ -1223,8 +1227,8 @@ private slots:
     void onSyncReachable(bool ok, const QString& reason);
     void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
-    void onFacadeInfo(
-        const QString& activeUrl, const QStringList& configured, const QString& serverFp);
+    void onFacadeInfo(const QString& activeUrl, const QStringList& configured,
+        const QString& serverFp, const QStringList& reseeds);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         const QString& summary, qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
@@ -1288,6 +1292,7 @@ private:
     QString activeFacade_;
     bool avatarBusy_ = false;
     QStringList configuredFacades_;
+    QStringList configuredReseeds_;
     QString serverFp_;
     bool sendReceipts_ = true;
     bool acceptCalls_ = true;
