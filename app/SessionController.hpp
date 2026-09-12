@@ -127,6 +127,7 @@ public slots:
     void exportAccount(const QString& path, const QString& password);
     void changePassphrase(const QString& passphrase);
     void rotateServingKey();
+    void activateAliasServicing();
     void setSharingAllowed(bool allowed);
     // Per-user I2P destination: set up the master (generate or load a .dat),
     // turn the paid option on/off, and report the current status.
@@ -194,6 +195,9 @@ signals:
     void servingKeyStage(const QString& stage);
     // The rotation finished: ok with the summary, or the reason it did not.
     void servingKeyDone(bool ok, const QString& text);
+    // What the name service says this account holds, and how it went.
+    void aliasHoldings(const QString& summary);
+    void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& connectionNote);
     // The account's own display name was changed (so the GUI updates it without a
@@ -505,6 +509,11 @@ class SessionController : public QObject {
     // The rotation in progress: what it is doing, and whether one is running.
     Q_PROPERTY(QString servingKeyStage READ servingKeyStage NOTIFY servingKeyChanged)
     Q_PROPERTY(bool servingKeyBusy READ servingKeyBusy NOTIFY servingKeyChanged)
+    // The names this account holds in the central registry, as one line for the
+    // settings page. Empty until the user activates servicing: until then this
+    // client has asked the name service nothing.
+    Q_PROPERTY(QString aliasSummary READ aliasSummary NOTIFY aliasChanged)
+    Q_PROPERTY(bool aliasBusy READ aliasBusy NOTIFY aliasChanged)
     // How long this account hands its destination to the server for, in days.
     // Shorter means leaving a server takes effect sooner; longer means a client
     // that is away stays reachable. Bounded by the protocol, not by the server.
@@ -655,6 +664,11 @@ public:
     // Rotates the serving key our server holds and the capability that reads our
     // card, and hands both to every contact. Reported step by step.
     Q_INVOKABLE void rotateServingKey();
+    QString aliasSummary() const { return aliasSummary_; }
+    bool aliasBusy() const { return aliasBusy_; }
+    // Asks the name service which names this account holds and starts servicing
+    // them. The one way in: with no name known this client never asks on its own.
+    Q_INVOKABLE void activateAliasServicing();
     int delegationDays() const { return delegationDays_; }
     static int minDelegationDays() { return static_cast<int>(bazarish::kMinDelegationDays); }
     static int maxDelegationDays() { return static_cast<int>(bazarish::kMaxDelegationDays); }
@@ -1160,9 +1174,11 @@ signals:  // to worker
     void requestExport(const QString& path, const QString& password);
     void requestChangePassphrase(const QString& passphrase);
     void requestRotateServingKey();
+    void requestActivateAliasServicing();
     void requestSharingAllowed(bool allowed);
     void sharingAllowedChanged();
     void servingKeyChanged();
+    void aliasChanged();
     void requestOpen(const QString& dir, const QString& passphrase, bool startOnline);
     void requestSetSync(bool on);
     void requestRebuildI2p();
@@ -1298,6 +1314,8 @@ private:
     bool acceptCalls_ = true;
     bool sharingAllowed_ = true;
     QString servingKeyStage_;
+    QString aliasSummary_;
+    bool aliasBusy_ = false;
     bool servingKeyBusy_ = false;
     int delegationDays_ = static_cast<int>(bazarish::kDefaultDelegationDays);
     // Edit-in-progress state for the composer (0 / empty when not editing).

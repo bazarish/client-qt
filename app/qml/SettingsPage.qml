@@ -251,6 +251,29 @@ Popup {
                         text: root.session ? (root.session.configuredFacades.length + " facades configured (failover)") : ""
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
+                    // The account's name in the central registry. Nothing is asked
+                    // of the name service until this button is pressed; after that
+                    // the client keeps the name pointing here by itself.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 8
+                        spacing: 3
+                        Label { text: "Your name"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                        Label {
+                            Layout.fillWidth: true
+                            text: root.session && root.session.aliasSummary.length > 0
+                                ? root.session.aliasSummary
+                                : "Not activated on this device."
+                            color: Theme.text; wrapMode: Text.Wrap
+                        }
+                        Button {
+                            text: root.session && root.session.aliasBusy
+                                ? "Asking the name service..."
+                                : "Check my name"
+                            enabled: root.session && root.session.connected && !root.session.aliasBusy
+                            onClicked: root.session.activateAliasServicing()
+                        }
+                    }
                     // What this account is holding on its server, as one line and a
                     // bar. Tapping it re-polls the server and tints the row, so the
                     // figures are refreshed where they are read.

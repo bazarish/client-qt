@@ -2201,6 +2201,16 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
     }
 }
 
+void SessionController::activateAliasServicing()
+{
+    if (aliasBusy_) {
+        return;
+    }
+    aliasBusy_ = true;
+    emit aliasChanged();
+    emit requestActivateAliasServicing();
+}
+
 void SessionWorker::rotateServingKey()
 {
     try {
@@ -2211,6 +2221,43 @@ void SessionWorker::rotateServingKey()
         emitContacts();
     } catch (const std::exception& e) {
         emit servingKeyDone(false, QString::fromUtf8(e.what()));
+    }
+}
+
+// One line for the settings page: what this account holds and how long is left.
+QString aliasHoldingsSummary(const std::vector<bazarish::client::Session::AliasHolding>& held,
+    const std::int64_t now)
+{
+    if (held.empty()) {
+        return QStringLiteral("No name on this account.");
+    }
+    constexpr std::int64_t kSecondsPerDay = 24 * 3600;
+    QStringList parts;
+    for (const bazarish::client::Session::AliasHolding& holding : held) {
+        const std::int64_t left = (holding.notAfter - now) / kSecondsPerDay;
+        parts << QStringLiteral("%1 - %2 days left")
+                     .arg(QString::fromStdString(holding.alias))
+                     .arg(left < 0 ? 0 : static_cast<int>(left));
+    }
+    return parts.join(QStringLiteral(", "));
+}
+
+void SessionWorker::activateAliasServicing()
+{
+    try {
+        if (!session_->refreshAliasStatus()) {
+            emit aliasActivationDone(
+                false, QStringLiteral("This build has no name service configured."));
+            return;
+        }
+        const auto held = session_->aliasNames();
+        emit aliasHoldings(
+            aliasHoldingsSummary(held, static_cast<std::int64_t>(std::time(nullptr))));
+        emit aliasActivationDone(true,
+            held.empty() ? QStringLiteral("No name is registered to this account.")
+                         : QStringLiteral("This account's names are being kept up to date."));
+    } catch (const std::exception& e) {
+        emit aliasActivationDone(false, QString::fromUtf8(e.what()));
     }
 }
 
@@ -2351,6 +2398,22 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::changePassphrase);
     connect(this, &SessionController::requestRotateServingKey, worker_,
         &SessionWorker::rotateServingKey);
+    connect(this, &SessionController::requestActivateAliasServicing, worker_,
+        &SessionWorker::activateAliasServicing);
+    connect(worker_, &SessionWorker::aliasHoldings, this, [this](const QString& summary) {
+        aliasSummary_ = summary;
+        emit aliasChanged();
+    });
+    connect(worker_, &SessionWorker::aliasActivationDone, this, [this](const bool ok,
+                                                                   const QString& text) {
+        aliasBusy_ = false;
+        emit aliasChanged();
+        if (ok) {
+            emit actionOk(text);
+        } else {
+            emit actionFailed(text);
+        }
+    });
     connect(this, &SessionController::requestSharingAllowed, worker_,
         &SessionWorker::setSharingAllowed);
     connect(worker_, &SessionWorker::servingKeyStage, this, [this](const QString& stage) {
