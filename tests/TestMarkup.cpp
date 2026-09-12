@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Markup.hpp"
 
+#include <bazarish/Address.hpp>
+
 #include <QString>
 
 #include <cstdio>
@@ -20,7 +22,7 @@ using namespace bazarish::app::markup;
 namespace {
 
 // A name one character past what the add-a-contact form takes.
-const QString kOverlongAlias = QString(33, QChar(u'a'));
+const QString kOverlongAlias = QString(bazarish::kAliasMaxLength + 1, QChar(u'a'));
 
 // The four colours a bubble is drawn with. Distinct on purpose: a rendering
 // names the one it used, so a test can tell a chip from a block.
