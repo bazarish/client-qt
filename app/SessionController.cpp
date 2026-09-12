@@ -2226,7 +2226,7 @@ void SessionWorker::rotateServingKey()
 
 // One line for the settings page: what this account holds and how long is left.
 QString aliasHoldingsSummary(const std::vector<bazarish::client::Session::AliasHolding>& held,
-    const std::int64_t now)
+    const bool depositCovers, const std::int64_t now)
 {
     if (held.empty()) {
         return QStringLiteral("No name on this account.");
@@ -2235,11 +2235,18 @@ QString aliasHoldingsSummary(const std::vector<bazarish::client::Session::AliasH
     QStringList parts;
     for (const bazarish::client::Session::AliasHolding& holding : held) {
         const std::int64_t left = (holding.notAfter - now) / kSecondsPerDay;
-        parts << QStringLiteral("%1 - %2 days left")
+        parts << QStringLiteral("%1 - %2 days left%3")
                      .arg(QString::fromStdString(holding.alias))
-                     .arg(left < 0 ? 0 : static_cast<int>(left));
+                     .arg(left < 0 ? 0 : static_cast<int>(left))
+                     .arg(holding.autoRenew ? QString() : QStringLiteral(" (renews only if you do)"));
     }
-    return parts.join(QStringLiteral(", "));
+    QString summary = parts.join(QStringLiteral(", "));
+    if (!depositCovers) {
+        // The figure behind this stays on the service; what a person needs here
+        // is the fact that the name will lapse unless they do something.
+        summary += QStringLiteral(" - your deposit will not cover the next renewal");
+    }
+    return summary;
 }
 
 void SessionWorker::activateAliasServicing()
@@ -2251,8 +2258,8 @@ void SessionWorker::activateAliasServicing()
             return;
         }
         const auto held = session_->aliasNames();
-        emit aliasHoldings(
-            aliasHoldingsSummary(held, static_cast<std::int64_t>(std::time(nullptr))));
+        emit aliasHoldings(aliasHoldingsSummary(held, session_->aliasDepositCovers(),
+            static_cast<std::int64_t>(std::time(nullptr))));
         emit aliasActivationDone(true,
             held.empty() ? QStringLiteral("No name is registered to this account.")
                          : QStringLiteral("This account's names are being kept up to date."));
