@@ -251,14 +251,18 @@ Popup {
                         text: root.session ? (root.session.configuredFacades.length + " facades configured (failover)") : ""
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
-                    // The account's name in the central registry. Nothing is asked
-                    // of the name service until this button is pressed; after that
-                    // the client keeps the name pointing here by itself.
+                    // The account's aliases in the central registry. Nothing is
+                    // asked of the registry until this button is pressed; after
+                    // that the client keeps the aliases their owner asked to
+                    // point here pointing here, and leaves the rest alone.
+                    //
+                    // "Your alias" and not "Your name": the display name below is
+                    // a different thing, and both used to be called the same.
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 8
                         spacing: 3
-                        Label { text: "Your name"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                        Label { text: "Your alias"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                         Label {
                             Layout.fillWidth: true
                             text: root.session && root.session.aliasSummary.length > 0
@@ -268,8 +272,8 @@ Popup {
                         }
                         Button {
                             text: root.session && root.session.aliasBusy
-                                ? "Asking the name service..."
-                                : "Check my name"
+                                ? "Asking the alias registry..."
+                                : "Check my aliases"
                             enabled: root.session && root.session.connected && !root.session.aliasBusy
                             onClicked: root.session.activateAliasServicing()
                         }
@@ -876,7 +880,8 @@ Popup {
     }
 
     // The whole account (keys, routing meta and contacts) exports to one
-    // password-protected <username>.bazarish file; the same file restores it.
+    // password-protected file, named from the display name on this device; the
+    // same file restores it.
     property string backupName: (root.session && root.session.displayName.length > 0
         ? root.session.displayName.replace(/[^A-Za-z0-9._-]+/g, "_") : "bazarish")
     FileDialog {

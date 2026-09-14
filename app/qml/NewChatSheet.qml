@@ -13,17 +13,17 @@ Popup {
     padding: 18
     property string mode: "menu"
     property string errorText: ""
-    // A name to start from, set by openUsername; opening without one starts at
+    // An alias to start from, set by openAlias; opening without one starts at
     // the menu as before.
-    property string prefillUsername: ""
+    property string prefillAlias: ""
     // What an introduction says before anybody edits it. Named here because the
     // reset below has to put them back.
     readonly property string kInviteGreeting: "Hi, found your invite!"
-    readonly property string kUsernameGreeting: "Hi, add me?"
+    readonly property string kAliasGreeting: "Hi, add me?"
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onOpened: {
-        mode = root.prefillUsername.length > 0 ? "username" : "menu"
-        usernameField.text = root.prefillUsername
+        mode = root.prefillAlias.length > 0 ? "alias" : "menu"
+        aliasField.text = root.prefillAlias
         errorText = ""
     }
     // Nothing typed here outlives the window: a link, a name and an introduction
@@ -33,16 +33,16 @@ Popup {
         errorText = ""
         inviteText.text = ""
         inviteIntro.text = root.kInviteGreeting
-        usernameField.text = ""
-        usernameIntro.text = root.kUsernameGreeting
+        aliasField.text = ""
+        aliasIntro.text = root.kAliasGreeting
     }
 
-    // Opens on the add-by-username page with the name filled in: the request is
+    // Opens on the add-by-alias page with the alias filled in: the request is
     // still the user's to send.
-    function openUsername(alias) {
-        root.prefillUsername = alias
+    function openAlias(alias) {
+        root.prefillAlias = alias
         root.open()
-        root.prefillUsername = ""
+        root.prefillAlias = ""
     }
 
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
@@ -99,7 +99,7 @@ Popup {
             Repeater {
                 model: [
                     { icon: "link", t: "Add by invite link", m: "invite" },
-                    { icon: "bang", t: "Add by username", m: "username" }
+                    { icon: "bang", t: "Add by alias", m: "alias" }
                 ]
                 ItemDelegate {
                     id: menuItem
@@ -177,22 +177,22 @@ Popup {
             }
         }
 
-        // --- Add by username ---
+        // --- Add by alias ---
         ColumnLayout {
-            visible: root.mode === "username"
+            visible: root.mode === "alias"
             Layout.fillWidth: true
             spacing: 8
-            Label { text: "The resolver maps the name to a fingerprint (it is trusted for that mapping only)."; color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true }
-            FormField { id: usernameField; label: "Username (alias)" }
-            FormField { id: usernameIntro; label: "Introduction"; text: root.kUsernameGreeting }
+            Label { text: "The resolver hands back the descriptor this alias stands for (it is trusted for that one mapping)."; color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            FormField { id: aliasField; label: "Alias" }
+            FormField { id: aliasIntro; label: "Introduction"; text: root.kAliasGreeting }
             RowLayout {
                 Layout.fillWidth: true
                 Item { Layout.fillWidth: true }
                 ActionButton {
                     text: "Send request"
-                    enabled: usernameField.text.trim().length > 0
+                    enabled: aliasField.text.trim().length > 0
                     onClicked: root.startRequest(function() {
-                        root.session.addByUsername(usernameField.text.trim(), usernameIntro.text)
+                        root.session.addByAlias(aliasField.text.trim(), aliasIntro.text)
                     })
                 }
             }

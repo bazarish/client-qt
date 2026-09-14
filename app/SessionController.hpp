@@ -110,7 +110,7 @@ public slots:
     void clearChatForEveryone(const QString& peer);
     void addByInvite(const QString& uri, const QString& intro, const QString& opId,
         const QString& requestId);
-    void addByUsername(const QString& alias, const QString& intro, const QString& opId);
+    void addByAlias(const QString& alias, const QString& intro, const QString& opId);
     // Agrees to a received contact request (sends our descriptor back).
     void acceptContact(const QString& peer);
     void requestInvite();
@@ -254,7 +254,7 @@ signals:
     // A button press has left (or has not): the activity panel's row is closed
     // by this, whichever way it went.
     void botActionDone(const QString& opId, bool ok, const QString& error);
-    // A contact request was sent (add-by-invite/username/fingerprint succeeded):
+    // A contact request was sent (add-by-invite or add-by-alias succeeded):
     // the resolved peer fingerprint and the intro text it carried, so the GUI can
     // open the chat and show the sent request straight away.
     // A contact request that went out, and the name it goes by on the wire: a
@@ -344,7 +344,7 @@ private:
     // thread, then runs the slow federated card fetch on a detached background
     // thread (its own transport) so sync and the connection are never blocked. The
     // result is drained and finalized by drainResolvedAdds on a later sync tick.
-    void startContactAdd(bool byUsername, const QString& uriOrAlias, const QString& intro,
+    void startContactAdd(bool byAlias, const QString& uriOrAlias, const QString& intro,
         const QString& opId, const QString& requestId = {});
     // Takes up every add the last run did not finish. Called once, at open.
     void resumePendingAdds();
@@ -938,7 +938,7 @@ public:
     // being over its cap. Called by the timer that repeats it, and by the user
     // from the chat once the automatic tries are spent.
     Q_INVOKABLE void retryContactRequest(const QString& fingerprint);
-    Q_INVOKABLE void addByUsername(const QString& alias, const QString& intro);
+    Q_INVOKABLE void addByAlias(const QString& alias, const QString& intro);
     // Agrees to the active chat's received contact request (the green "Agree").
     Q_INVOKABLE void acceptContact();
     // Whether `fp` is a contact that sent us a request we have not yet accepted
@@ -1161,7 +1161,7 @@ signals:  // to worker
     void requestClearChatForEveryone(const QString& peer);
     void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId,
         const QString& requestId);
-    void requestAddByUsername(const QString& alias, const QString& intro, const QString& opId);
+    void requestAddByAlias(const QString& alias, const QString& intro, const QString& opId);
     void requestAcceptContact(const QString& peer);
     void requestInviteSig();
     void requestSignLoginSig(const QString& challenge);

@@ -14,7 +14,7 @@ enum class Action {
     eLink,
     // Text the message offers to send back as it stands.
     eSend,
-    // A username, offered to the add-a-contact form. Nothing is sent.
+    // An alias, offered to the add-a-contact form. Nothing is sent.
     eAlias,
     // A block written as it stands - spacing, indentation and line breaks kept -
     // that a click puts on the clipboard. Nothing is sent.
@@ -24,7 +24,7 @@ enum class Action {
 // One stretch of a message body under one set of styles.
 struct Run {
     QString text;
-    // What a click acts on: the address, the text to send, or the username.
+    // What a click acts on: the address, the text to send, or the alias.
     QString target;
     Action action = Action::eNone;
     bool bold = false;

@@ -47,7 +47,7 @@ is written there is what is drawn and what is copied, spacing and line breaks
 included. A tab is drawn four spaces wide, a rich text document having no tab
 stops of its own; the character copied back out is still a tab.
 
-A name is `!` followed by letters and digits, at most 32 of them - the grammar
+An alias is `!` followed by letters and digits, at most 16 of them - the grammar
 the add-a-contact form resolves. `!bob.` marks `bob` and leaves the stop;
 `!bob_smith` is left alone entirely, because marking `bob` out of it would open
 the form on a name nobody typed. `Wow!Great` is an exclamation, not a name.
@@ -74,7 +74,7 @@ nothing leaves the machine; the bubble says "Copied to clipboard" underneath for
 a moment, because a clipboard is somewhere the user cannot see and a press that
 changes nothing on screen reads as a press that did nothing.
 
-**`!name`** opens the add-a-contact form on its username page with the name
+**`!name`** opens the add-a-contact form on its alias page with the alias
 filled in. Nothing is sent: the introduction and the request are still the user's
 to write and press.
 

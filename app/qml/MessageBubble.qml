@@ -19,7 +19,7 @@ Item {
     signal reactRequested(string e2eId, real sceneX, real sceneY)
     // Pass this message on to another chat: the view asks which one.
     signal forwardRequested(string e2eId)
-    // A username written in the body was tapped: the view offers the add-a-contact
+    // An alias written in the body was tapped: the view offers the add-a-contact
     // form with the name filled in. Nothing is sent.
     signal aliasRequested(string alias)
     // A web address in the body was tapped: the view warns before anything leaves.

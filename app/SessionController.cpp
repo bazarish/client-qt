@@ -1338,18 +1338,18 @@ void SessionWorker::addByInvite(const QString& uri, const QString& intro, const 
     // Asynchronous: the slow federated card fetch runs off this thread, so sync and
     // the connection are never blocked. The fingerprint (for out-of-band
     // verification) is surfaced when the resolve finalizes (drainResolvedAdds).
-    startContactAdd(/*byUsername=*/false, uri, intro, opId, requestId);
+    startContactAdd(/*byAlias=*/false, uri, intro, opId, requestId);
 }
 
-void SessionWorker::addByUsername(const QString& alias, const QString& intro, const QString& opId)
+void SessionWorker::addByAlias(const QString& alias, const QString& intro, const QString& opId)
 {
     // Asynchronous, like addByInvite. The alias->fingerprint binding is the one
     // residual trust of the name path; the resolved fingerprint is surfaced for
     // out-of-band verification when the resolve finalizes.
-    startContactAdd(/*byUsername=*/true, alias, intro, opId);
+    startContactAdd(/*byAlias=*/true, alias, intro, opId);
 }
 
-void SessionWorker::startContactAdd(const bool byUsername, const QString& uriOrAlias,
+void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlias,
     const QString& intro, const QString& opId, const QString& requestId)
 {
     if (!session_) {
@@ -1368,7 +1368,7 @@ void SessionWorker::startContactAdd(const bool byUsername, const QString& uriOrA
         return;
     }
     bazarish::client::Session::ContactCardRequest request;
-    request.byUsername = byUsername;
+    request.byAlias = byAlias;
     request.uriOrAlias = uriOrAlias.toStdString();
     request.introText = intro.toStdString();
     request.requestId = requestId.isEmpty()
@@ -1430,7 +1430,7 @@ void SessionWorker::resumePendingAdds()
         const QString opId = QString::fromStdString(pending.opId);
         emit opBegin(opId, QStringLiteral("contact"), QStringLiteral("Adding a contact"),
             QStringLiteral("Resuming after a restart…"));
-        startContactAdd(pending.request.byUsername,
+        startContactAdd(pending.request.byAlias,
             QString::fromStdString(pending.request.uriOrAlias),
             QString::fromStdString(pending.request.introText), opId,
             QString::fromStdString(pending.request.requestId));
@@ -2229,21 +2229,26 @@ QString aliasHoldingsSummary(const std::vector<bazarish::client::Session::AliasH
     const bool depositCovers, const std::int64_t now)
 {
     if (held.empty()) {
-        return QStringLiteral("No name on this account.");
+        return QStringLiteral("No alias on this account.");
     }
     constexpr std::int64_t kSecondsPerDay = 24 * 3600;
     QStringList parts;
     for (const bazarish::client::Session::AliasHolding& holding : held) {
         const std::int64_t left = (holding.notAfter - now) / kSecondsPerDay;
-        parts << QStringLiteral("%1 - %2 days left%3")
+        // Whether it points here is the first thing to say about an alias: one
+        // that is held but not pointed anywhere reaches nobody, and its owner
+        // turns that on from the website, not from here.
+        parts << QStringLiteral("%1 - %2 days left%3%4")
                      .arg(QString::fromStdString(holding.alias))
                      .arg(left < 0 ? 0 : static_cast<int>(left))
-                     .arg(holding.autoRenew ? QString() : QStringLiteral(" (renews only if you do)"));
+                     .arg(holding.bindingWanted ? QStringLiteral(" (points here)")
+                                                : QStringLiteral(" (points nowhere)"))
+                     .arg(holding.autoRenew ? QString() : QStringLiteral(", renews only if you do"));
     }
     QString summary = parts.join(QStringLiteral(", "));
     if (!depositCovers) {
         // The figure behind this stays on the service; what a person needs here
-        // is the fact that the name will lapse unless they do something.
+        // is the fact that the alias will lapse unless they do something.
         summary += QStringLiteral(" - your deposit will not cover the next renewal");
     }
     return summary;
@@ -2254,15 +2259,16 @@ void SessionWorker::activateAliasServicing()
     try {
         if (!session_->refreshAliasStatus()) {
             emit aliasActivationDone(
-                false, QStringLiteral("This build has no name service configured."));
+                false, QStringLiteral("This build has no alias registry configured."));
             return;
         }
         const auto held = session_->aliasNames();
         emit aliasHoldings(aliasHoldingsSummary(held, session_->aliasDepositCovers(),
             static_cast<std::int64_t>(std::time(nullptr))));
         emit aliasActivationDone(true,
-            held.empty() ? QStringLiteral("No name is registered to this account.")
-                         : QStringLiteral("This account's names are being kept up to date."));
+            held.empty()
+                ? QStringLiteral("No alias is registered to this account.")
+                : QStringLiteral("This account's aliases are being kept up to date."));
     } catch (const std::exception& e) {
         emit aliasActivationDone(false, QString::fromUtf8(e.what()));
     }
@@ -2355,7 +2361,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestClearChatForEveryone, worker_,
         &SessionWorker::clearChatForEveryone);
     connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
-    connect(this, &SessionController::requestAddByUsername, worker_, &SessionWorker::addByUsername);
+    connect(this, &SessionController::requestAddByAlias, worker_, &SessionWorker::addByAlias);
     connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
@@ -3738,7 +3744,7 @@ void SessionController::retryContactRequest(const QString& fingerprint)
     }
 }
 
-void SessionController::addByUsername(const QString& alias, const QString& intro)
+void SessionController::addByAlias(const QString& alias, const QString& intro)
 {
     const QString opId = QStringLiteral("contact:") + SessionController_genE2eId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding ") + alias,
@@ -3746,7 +3752,7 @@ void SessionController::addByUsername(const QString& alias, const QString& intro
     // Who the alias belongs to is only known once the resolver answers, so the
     // chat opens then (onContactRequestSent); until it does, the activity panel
     // is where the progress shows.
-    emit requestAddByUsername(alias, intro, opId);
+    emit requestAddByAlias(alias, intro, opId);
 }
 
 // A system line in a conversation: what is happening with a contact request the

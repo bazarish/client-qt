@@ -14,7 +14,7 @@ Item {
     // The chat with ourselves: no face, no call, and its own panel behind the i.
     readonly property bool savedChat: root.session !== null
         && root.session.isSavedChat(root.session.activePeer)
-    // A username tapped in a message: the window offers the add-a-contact form.
+    // An alias tapped in a message: the window offers the add-a-contact form.
     signal addByNameRequested(string alias)
 
     // The message awaiting delete confirmation (set when a bubble asks to delete).

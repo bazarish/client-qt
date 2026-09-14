@@ -39,7 +39,7 @@ constexpr QLatin1String kCodeMarker("```");
 // What a tab is worth when such a block is drawn. A rich text document has no
 // tab stops of its own, so the width has to be chosen here.
 constexpr int kTabWidth = 4;
-// What introduces a username.
+// What introduces an alias.
 constexpr QChar kAliasMarker(u'!');
 
 constexpr std::array<QLatin1String, 2> kLinkSchemes{
