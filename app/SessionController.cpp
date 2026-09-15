@@ -79,6 +79,11 @@ struct ResolvedContactAddQueue {
     std::vector<Entry> results;
 };
 
+struct AliasErrandQueue {
+    std::mutex mutex;
+    std::vector<bazarish::client::Session::AliasErrandResult> results;
+};
+
 using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
@@ -1066,6 +1071,7 @@ void SessionWorker::maintain()
     // that runs them holds nothing of this worker, so it cannot say when it is
     // done; this is where that is noticed.
     drainResolvedAdds();
+    drainAliasErrands();
     refreshCalls();
     // A send the courier finished on its own thread leaves an echo for this
     // account's other devices. Nothing else carries it now that the mailbox is
@@ -1113,9 +1119,10 @@ void SessionWorker::maintain()
     // that has just been re-issued is exactly when it no longer knows. Nothing
     // leaves here for an account that holds no alias, and nothing is asked again
     // until this device's own window has elapsed.
-    if (nowMillis() - lastAliasServiceMs_ >= kAliasServiceIntervalMs) {
+    if (nowMillis() - lastAliasServiceMs_ >= kAliasServiceIntervalMs
+        && session_->aliasServicingDue()) {
         lastAliasServiceMs_ = nowMillis();
-        session_->serviceAliases();
+        startAliasErrand(/*byHand=*/false);
     }
 }
 
@@ -2289,23 +2296,90 @@ void SessionWorker::rotateServingKey()
 
 void SessionWorker::activateAliasServicing()
 {
-    try {
-        if (!session_->refreshAliasStatus()) {
-            emit aliasActivationDone(
-                false, QStringLiteral("This build has no alias registry configured."));
-            return;
+    startAliasErrand(/*byHand=*/true);
+}
+
+void SessionWorker::startAliasErrand(const bool byHand)
+{
+    if (session_ == nullptr) {
+        if (byHand) {
+            emit aliasActivationDone(false, QStringLiteral("No account is open."));
         }
-        // Reading the status is half the errand. Until the descriptor is pushed
-        // the alias is held and answers nobody - which is what the website means
-        // when it says it is still waiting for this app.
-        const bool pointed = session_->pushAliasDescriptor();
+        return;
+    }
+    if (aliasErrandRunning_) {
+        // A second run while one is in the air would ask the registry the same
+        // question twice over two destinations. The one in the air answers for
+        // both - and if this is a press, it now has somebody to report to.
+        aliasErrandByHand_ = aliasErrandByHand_ || byHand;
+        return;
+    }
+    // Snapshotted here, on the thread that owns the session; the thread below
+    // touches nothing of it.
+    bazarish::client::Session::AliasErrandContext context;
+    try {
+        context = session_->aliasErrandContext();
+    } catch (const std::exception& e) {
+        if (byHand) {
+            emit aliasActivationDone(false, QString::fromUtf8(e.what()));
+        }
+        return;
+    }
+    if (!aliasErrands_) {
+        aliasErrands_ = std::make_shared<AliasErrandQueue>();
+    }
+    std::shared_ptr<AliasErrandQueue> queue = aliasErrands_;
+    aliasErrandRunning_ = true;
+    aliasErrandByHand_ = byHand;
+    try {
+        std::thread([context = std::move(context), queue = std::move(queue)]() {
+            bazarish::client::Session::AliasErrandResult result
+                = bazarish::client::Session::runAliasErrand(context);
+            const std::lock_guard<std::mutex> lock(queue->mutex);
+            queue->results.push_back(std::move(result));
+        }).detach();
+    } catch (const std::exception& e) {
+        aliasErrandRunning_ = false;
+        aliasErrandByHand_ = false;
+        if (byHand) {
+            emit aliasActivationDone(false, QString::fromUtf8(e.what()));
+        }
+    }
+}
+
+void SessionWorker::drainAliasErrands()
+{
+    if (session_ == nullptr || !aliasErrands_) {
+        return;
+    }
+    std::vector<bazarish::client::Session::AliasErrandResult> ready;
+    {
+        const std::lock_guard<std::mutex> lock(aliasErrands_->mutex);
+        ready.swap(aliasErrands_->results);
+    }
+    for (const bazarish::client::Session::AliasErrandResult& result : ready) {
+        const bool byHand = aliasErrandByHand_;
+        aliasErrandRunning_ = false;
+        aliasErrandByHand_ = false;
+        if (!result.ok) {
+            if (byHand) {
+                emit aliasActivationDone(false, QString::fromUtf8(result.error.c_str()));
+            } else {
+                bazarish::log::info("name servicing will try again: {}", result.error);
+            }
+            continue;
+        }
+        session_->applyAliasErrand(result);
         const auto held = session_->aliasNames();
         const QVariantList rows = aliasHoldingRows(held);
         emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+        if (!byHand) {
+            continue;
+        }
         if (held.empty()) {
             emit aliasActivationDone(true, QStringLiteral("No alias is registered to this "
                                                           "account."));
-        } else if (pointed) {
+        } else if (result.pointed) {
             emit aliasActivationDone(true, QStringLiteral("Your aliases now point here."));
         } else if (session_->aliasUpdatePending()) {
             emit aliasActivationDone(false, QStringLiteral("The registry did not take the "
@@ -2313,8 +2387,6 @@ void SessionWorker::activateAliasServicing()
         } else {
             emit aliasActivationDone(true, QStringLiteral("Your aliases are up to date."));
         }
-    } catch (const std::exception& e) {
-        emit aliasActivationDone(false, QString::fromUtf8(e.what()));
     }
 }
 

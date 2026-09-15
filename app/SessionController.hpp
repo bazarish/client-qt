@@ -36,6 +36,7 @@ namespace bazarish::app {
 // Shared by shared_ptr with each background resolve so it outlives the worker if a
 // resolve is still in flight at teardown. Defined in the .cpp.
 struct ResolvedContactAddQueue;
+struct AliasErrandQueue;
 
 // Runs all blocking Session work (open, register, send with retries, sync) on
 // a dedicated thread so the UI never freezes. Lives on that worker thread;
@@ -362,9 +363,25 @@ private:
     // Finalizes any off-thread contact-card resolutions that have completed:
     // commits the add and emits the result. Run each sync.
     void drainResolvedAdds();
+    // Starts the alias errand on a thread of its own - it is two or more I2P
+    // round trips and each has minutes of budget, which is not something to hold
+    // the worker thread for. byHand says whether a person pressed the button, so
+    // a run started by the upkeep tick reports to nobody.
+    void startAliasErrand(bool byHand);
+    // Applies whatever the errand brought back and says how it went. Run each
+    // upkeep tick.
+    void drainAliasErrands();
     std::unique_ptr<bazarish::client::Session> session_;
     // Completed off-thread contact resolutions awaiting finalize (see above).
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
+    // Completed off-thread alias errands awaiting apply (see above).
+    std::shared_ptr<AliasErrandQueue> aliasErrands_;
+    // One errand at a time: the button and the upkeep tick both start one.
+    bool aliasErrandRunning_ = false;
+    // Whether anybody is waiting to be told how the running errand went. A press
+    // that lands while the tick's own errand is in the air adopts it rather than
+    // starting a second - and then somebody is waiting, so this turns on.
+    bool aliasErrandByHand_ = false;
     // Local upkeep only. Mail is not on it: the mailbox is read when the wait
     // below says something is there, and at no other time.
     QTimer* maintenanceTimer_ = nullptr;
