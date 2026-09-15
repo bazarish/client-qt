@@ -1521,6 +1521,15 @@ void SessionWorker::drainResolvedAdds()
             emit actionFailed(QString::fromStdString(resolved.error));
             continue;
         }
+        // Who an alias stands for is only known now. If it is somebody already in
+        // the book, the errand ends here: the lookup was worth making, a second
+        // contact request is not - it would put a fresh plate in their mailbox
+        // for a conversation that is already open on this side.
+        if (session_->hasContact(resolved.fingerprint)) {
+            emit contactAlreadyKnown(
+                entry.opId, QString::fromStdString(resolved.fingerprint));
+            continue;
+        }
         try {
             emit contactAddStage(entry.opId, QStringLiteral("Sending request…"));
             const std::string fingerprint = session_->commitContactAdd(resolved);
@@ -2701,6 +2710,8 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestForgetPendingAdd, worker_,
         &SessionWorker::forgetPendingAdd);
     connect(worker_, &SessionWorker::contactAddDone, this, &SessionController::onContactAddDone);
+    connect(worker_, &SessionWorker::contactAlreadyKnown, this,
+        &SessionController::onContactAlreadyKnown);
     connect(worker_, &SessionWorker::contactAddRateLimited, this,
         &SessionController::onContactAddRateLimited);
     connect(worker_, &SessionWorker::contactAccepted, this,
@@ -3798,6 +3809,23 @@ void SessionController::addByInvite(
     if (!problem.isEmpty()) {
         emit actionFailed(problem);
         return;  // no background row for something that cannot be attempted
+    }
+    // An invite names who it is for, so somebody already in the book is
+    // recognised before anything is sent. A second request would put a fresh
+    // plate in their mailbox for a conversation that is already open here, and
+    // the thing the user wanted is that conversation.
+    try {
+        const bazarish::Descriptor known
+            = bazarish::parseDescriptor(uri.trimmed().toStdString());
+        const QString peer = QString::fromStdString(known.fingerprint);
+        if (contacts_.has(peer)) {
+            openConversation(peer);
+            emit actionOk(QStringLiteral("Already in your contacts."));
+            return;
+        }
+    } catch (const std::exception&) {
+        // inviteProblem() already vetted the link; the add below reports anything
+        // it still cannot read.
     }
     const QString opId = QStringLiteral("contact:") + SessionController_genE2eId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding contact"),
@@ -6064,6 +6092,16 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
     }
     writeContactProgress(opId, ok ? status : QStringLiteral("Could not add: ") + status);
     contactProgressRows_.remove(opId);
+}
+
+void SessionController::onContactAlreadyKnown(const QString& opId, const QString& fingerprint)
+{
+    // Nothing was sent, so there is nothing to take up again on the next run.
+    emit requestForgetPendingAdd(opId);
+    finishOperation(opId, true, QStringLiteral("Already in your contacts"));
+    contactProgressRows_.remove(opId);
+    openConversation(fingerprint);
+    emit actionOk(QStringLiteral("Already in your contacts."));
 }
 
 void SessionController::onContactRequestSent(

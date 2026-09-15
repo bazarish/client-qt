@@ -271,6 +271,9 @@ signals:
     void contactAddRateLimited(
         const QString& opId, const QString& fingerprint, const QString& requestId);
     void contactAddDone(const QString& opId, bool ok, const QString& status);
+    // The add resolved to somebody already in the book: nothing was sent, and the
+    // chat with them is what the user was after.
+    void contactAlreadyKnown(const QString& opId, const QString& fingerprint);
     // A contact request we agreed to: the peer, and whether it went through.
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
     void inviteReady(const QString& uri);
@@ -1241,6 +1244,7 @@ private slots:
     void openContactProgress(const QString& peer, const QString& opId, const QString& name);
     void writeContactProgress(const QString& opId, const QString& text);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
+    void onContactAlreadyKnown(const QString& opId, const QString& fingerprint);
     void writeConversationNote(const QString& peer, const QString& text);
     void onContactAddRateLimited(
         const QString& opId, const QString& fingerprint, const QString& requestId);

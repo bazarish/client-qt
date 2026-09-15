@@ -78,6 +78,9 @@ public:
     // Drops one row, for a contact that has been removed here or on another
     // device. A no-op for a row that is not there.
     void remove(const QString& fingerprint);
+    // Whether this account already holds them. The chat list is the same book the
+    // add path has to consult, so asking it here beats keeping a second copy.
+    bool has(const QString& fingerprint) const { return indexOf(fingerprint) >= 0; }
 
 private:
     int indexOf(const QString& fingerprint) const;
