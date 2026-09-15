@@ -33,6 +33,7 @@ Item {
         if (k === "file-down") return "down"
         if (k === "call") return "call"
         if (k === "service") return "gear"
+        if (k === "alias") return "bang"
         return "dot"
     }
 

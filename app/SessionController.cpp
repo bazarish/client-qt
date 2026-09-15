@@ -155,6 +155,11 @@ constexpr qint64 kApprovalCheckIntervalMs = 60 * 1000;
 // is retried from the sync tick - but no faster than this: the registration is
 // several calls, and the reason it failed is usually not a passing one.
 constexpr qint64 kRegisterRetryIntervalMs = 60 * 1000;
+// Keeping the alias registry pointed at this account is two I2P round trips at
+// worst and usually none at all, but a registry that is down would otherwise be
+// dialled on every sync tick. A minute is soon enough after a destination moves,
+// and the status ask behind it has a window of its own that is far longer.
+constexpr qint64 kAliasServiceIntervalMs = 60 * 1000;
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 // A voice message rides inside one message, so what really bounds it is the
@@ -223,6 +228,44 @@ constexpr int kMaintenanceIntervalMs = 2000;
 // The background-activity row for a connect: the user can hide the progress
 // dialog and still watch the connect finish in the activity panel.
 const QString kConnectOperationId = QStringLiteral("connect");
+
+// One row per alias for the invite sheet: the name, and the day it runs out.
+// Only names their owner pointed at this identity are listed - an alias that
+// points nowhere reaches nobody, so offering it as a way to be reached would be
+// handing out something that does not work.
+QVariantList aliasHoldingRows(const std::vector<bazarish::client::Session::AliasHolding>& held)
+{
+    QVariantList rows;
+    for (const bazarish::client::Session::AliasHolding& holding : held) {
+        if (!holding.bindingWanted) {
+            continue;
+        }
+        QVariantMap row;
+        row[QStringLiteral("alias")] = QString::fromStdString(holding.alias);
+        row[QStringLiteral("term")]
+            = (holding.autoRenew ? QStringLiteral("renews ") : QStringLiteral("expires "))
+            + QDateTime::fromSecsSinceEpoch(holding.notAfter).date().toString(
+                QStringLiteral("yyyy-MM-dd"));
+        rows << row;
+    }
+    return rows;
+}
+
+// What is said under that table, when anything needs saying at all. The figure
+// behind the deposit stays on the service; what a person needs here is that the
+// alias will lapse unless they do something.
+QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
+{
+    if (rows.isEmpty() || depositCovers) {
+        return QString();
+    }
+    return QStringLiteral("Your deposit will not cover the next renewal.");
+}
+
+// The alias errand is two round trips over I2P and can take a while; it belongs
+// in the activity panel with everything else that reaches the network, not
+// behind a button that quietly greys out.
+const QString kAliasOperationId = QStringLiteral("alias");
 constexpr double kPercentFull = 100.0;
 
 // Unix milliseconds: the message display/order clock (sentAt is in ms).
@@ -575,6 +618,15 @@ void SessionWorker::openAccount(
     // rather than its own defaults.
     emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
         session_->sharingAllowed());
+    // The names this account already knows it holds, straight from what it
+    // stored: the registry is asked nothing here, and the invite has something
+    // to show before anybody presses anything.
+    {
+        const QVariantList rows = aliasHoldingRows(session_->aliasNames());
+        if (!rows.isEmpty()) {
+            emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+        }
+    }
     emitContacts();
     // Whatever the last run left half-done is taken up before anything new is
     // asked of this account - unless nothing at all is to be asked of it: an
@@ -1056,6 +1108,14 @@ void SessionWorker::maintain()
         } catch (const std::exception& error) {
             bazarish::log::warn("delegation renewal check failed: {}", error.what());
         }
+    }
+    // The registry has to be told where this account answers, and a destination
+    // that has just been re-issued is exactly when it no longer knows. Nothing
+    // leaves here for an account that holds no alias, and nothing is asked again
+    // until this device's own window has elapsed.
+    if (nowMillis() - lastAliasServiceMs_ >= kAliasServiceIntervalMs) {
+        lastAliasServiceMs_ = nowMillis();
+        session_->serviceAliases();
     }
 }
 
@@ -2208,6 +2268,8 @@ void SessionController::activateAliasServicing()
     }
     aliasBusy_ = true;
     emit aliasChanged();
+    beginOperation(kAliasOperationId, QStringLiteral("alias"),
+        QStringLiteral("Checking your aliases"), QStringLiteral("Asking the registry over I2P…"));
     emit requestActivateAliasServicing();
 }
 
@@ -2224,35 +2286,6 @@ void SessionWorker::rotateServingKey()
     }
 }
 
-// One line for the settings page: what this account holds and how long is left.
-QString aliasHoldingsSummary(const std::vector<bazarish::client::Session::AliasHolding>& held,
-    const bool depositCovers, const std::int64_t now)
-{
-    if (held.empty()) {
-        return QStringLiteral("No alias on this account.");
-    }
-    constexpr std::int64_t kSecondsPerDay = 24 * 3600;
-    QStringList parts;
-    for (const bazarish::client::Session::AliasHolding& holding : held) {
-        const std::int64_t left = (holding.notAfter - now) / kSecondsPerDay;
-        // Whether it points here is the first thing to say about an alias: one
-        // that is held but not pointed anywhere reaches nobody, and its owner
-        // turns that on from the website, not from here.
-        parts << QStringLiteral("%1 - %2 days left%3%4")
-                     .arg(QString::fromStdString(holding.alias))
-                     .arg(left < 0 ? 0 : static_cast<int>(left))
-                     .arg(holding.bindingWanted ? QStringLiteral(" (points here)")
-                                                : QStringLiteral(" (points nowhere)"))
-                     .arg(holding.autoRenew ? QString() : QStringLiteral(", renews only if you do"));
-    }
-    QString summary = parts.join(QStringLiteral(", "));
-    if (!depositCovers) {
-        // The figure behind this stays on the service; what a person needs here
-        // is the fact that the alias will lapse unless they do something.
-        summary += QStringLiteral(" - your deposit will not cover the next renewal");
-    }
-    return summary;
-}
 
 void SessionWorker::activateAliasServicing()
 {
@@ -2262,13 +2295,24 @@ void SessionWorker::activateAliasServicing()
                 false, QStringLiteral("This build has no alias registry configured."));
             return;
         }
+        // Reading the status is half the errand. Until the descriptor is pushed
+        // the alias is held and answers nobody - which is what the website means
+        // when it says it is still waiting for this app.
+        const bool pointed = session_->pushAliasDescriptor();
         const auto held = session_->aliasNames();
-        emit aliasHoldings(aliasHoldingsSummary(held, session_->aliasDepositCovers(),
-            static_cast<std::int64_t>(std::time(nullptr))));
-        emit aliasActivationDone(true,
-            held.empty()
-                ? QStringLiteral("No alias is registered to this account.")
-                : QStringLiteral("This account's aliases are being kept up to date."));
+        const QVariantList rows = aliasHoldingRows(held);
+        emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+        if (held.empty()) {
+            emit aliasActivationDone(true, QStringLiteral("No alias is registered to this "
+                                                          "account."));
+        } else if (pointed) {
+            emit aliasActivationDone(true, QStringLiteral("Your aliases now point here."));
+        } else if (session_->aliasUpdatePending()) {
+            emit aliasActivationDone(false, QStringLiteral("The registry did not take the "
+                                                           "update. It will be tried again."));
+        } else {
+            emit aliasActivationDone(true, QStringLiteral("Your aliases are up to date."));
+        }
     } catch (const std::exception& e) {
         emit aliasActivationDone(false, QString::fromUtf8(e.what()));
     }
@@ -2413,14 +2457,17 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::rotateServingKey);
     connect(this, &SessionController::requestActivateAliasServicing, worker_,
         &SessionWorker::activateAliasServicing);
-    connect(worker_, &SessionWorker::aliasHoldings, this, [this](const QString& summary) {
-        aliasSummary_ = summary;
-        emit aliasChanged();
-    });
+    connect(worker_, &SessionWorker::aliasHoldings, this,
+        [this](const QVariantList& rows, const QString& note) {
+            aliasHoldings_ = rows;
+            aliasNote_ = note;
+            emit aliasChanged();
+        });
     connect(worker_, &SessionWorker::aliasActivationDone, this, [this](const bool ok,
                                                                    const QString& text) {
         aliasBusy_ = false;
         emit aliasChanged();
+        finishOperation(kAliasOperationId, ok, text);
         if (ok) {
             emit actionOk(text);
         } else {

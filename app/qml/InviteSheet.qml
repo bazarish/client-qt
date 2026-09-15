@@ -10,6 +10,12 @@ Popup {
     // Why there is no invite yet, when the routing is not published.
     property string unavailable: ""
     readonly property bool hasInvite: uri.length > 0
+    // The names this account holds, as the registry last answered. Known ones
+    // take the place of the code and the descriptor box: an alias is the short
+    // thing to hand over, and the long form is still one button away.
+    readonly property var aliasRows: session ? session.aliasHoldings : []
+    readonly property string aliasNote: session ? session.aliasNote : ""
+    readonly property bool hasAliases: aliasRows.length > 0
     // Return to the page this opened from (Settings); the close button exits.
     signal back()
 
@@ -54,7 +60,10 @@ Popup {
             IconButton { iconName: "close"; onClicked: root.close() }
         }
         Label {
-            text: "Anyone with this can verify and reach you with no trust in any server."
+            text: root.hasAliases
+                ? "Give somebody one of these and they can reach you. Copy link still hands "
+                    + "over the full descriptor."
+                : "Anyone with this can verify and reach you with no trust in any server."
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
@@ -92,16 +101,68 @@ Popup {
             }
         }
 
+        // One alias per row: the name, and the day it runs out at the far edge.
+        // A tap puts the name on the clipboard, the way every other thing here
+        // that is meant to be handed over is copied. Only names that point at
+        // this identity are here; the rest reach nobody.
+        ColumnLayout {
+            visible: root.hasAliases
+            Layout.fillWidth: true
+            spacing: 4
+            Repeater {
+                model: root.aliasRows
+                delegate: RowLayout {
+                    id: aliasRow
+                    required property var modelData
+                    property bool copied: false
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Timer { id: aliasCopied; interval: 1500; onTriggered: aliasRow.copied = false }
+                    Label {
+                        text: "!" + aliasRow.modelData.alias
+                        color: aliasRow.copied ? Theme.green : Theme.text
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler {
+                            onTapped: {
+                                if (!root.session) {
+                                    return
+                                }
+                                root.session.copyText("!" + aliasRow.modelData.alias)
+                                aliasRow.copied = true
+                                aliasCopied.restart()
+                            }
+                        }
+                    }
+                    Label {
+                        text: aliasRow.copied ? "Copied to clipboard" : aliasRow.modelData.term
+                        color: aliasRow.copied ? Theme.green : Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                    }
+                }
+            }
+        }
+        Label {
+            visible: root.hasAliases && root.aliasNote.length > 0
+            Layout.fillWidth: true
+            text: root.aliasNote
+            color: Theme.warn
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+        }
+
         // The invite is a compact descriptor, so it fits one QR: show the code
         // and the link side by side (scan or copy).
         QrView {
             Layout.alignment: Qt.AlignHCenter
-            visible: root.hasInvite
+            visible: root.hasInvite && !root.hasAliases
             text: root.uri
         }
         // The box stays even with nothing in it: an invite that is not ready yet
         // is a state to explain, not a control to make disappear.
         ScrollView {
+            visible: !root.hasAliases
             Layout.fillWidth: true
             Layout.preferredHeight: root.hasInvite ? 110 : 56
             TextArea {
@@ -115,24 +176,40 @@ Popup {
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
             }
         }
-        Button {
-            id: copyBtn
-            hoverEnabled: true
-            property bool copied: false
+        RowLayout {
             Layout.fillWidth: true
-            text: copied ? "Copied" : "Copy link"
-            enabled: root.hasInvite
-            onClicked: {
-                linkArea.selectAll(); linkArea.copy(); linkArea.deselect()
-                copied = true; copiedTimer.restart()
+            spacing: 8
+            Button {
+                id: copyBtn
+                hoverEnabled: true
+                property bool copied: false
+                Layout.fillWidth: true
+                text: copied ? "Copied" : "Copy link"
+                enabled: root.hasInvite
+                // Copied from what the sheet holds, not from the box: the box is
+                // not on screen once there are aliases to show instead.
+                onClicked: {
+                    root.session.copyText(root.uri)
+                    copied = true; copiedTimer.restart()
+                }
+                background: Rectangle {
+                    radius: 10
+                    color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                }
+                contentItem: Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+                Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
             }
-            background: Rectangle {
-                radius: 10
-                color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
-                Behavior on color { ColorAnimation { duration: 200 } }
+            // Nothing is asked of the registry until this is pressed; after that
+            // the client keeps the aliases their owner pointed here pointing
+            // here, and leaves the rest alone.
+            MenuButton {
+                text: root.session && root.session.aliasBusy
+                    ? "Asking…"
+                    : "Check my aliases"
+                enabled: root.session && root.session.connected && !root.session.aliasBusy
+                onClicked: root.session.activateAliasServicing()
             }
-            contentItem: Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
-            Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
         }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 6 }

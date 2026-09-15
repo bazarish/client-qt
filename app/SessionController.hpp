@@ -195,8 +195,9 @@ signals:
     void servingKeyStage(const QString& stage);
     // The rotation finished: ok with the summary, or the reason it did not.
     void servingKeyDone(bool ok, const QString& text);
-    // What the name service says this account holds, and how it went.
-    void aliasHoldings(const QString& summary);
+    // What the name service says this account holds, and how it went: a row per
+    // alias for the table, and the one line said under it (or nothing).
+    void aliasHoldings(const QVariantList& rows, const QString& note);
     void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& connectionNote);
@@ -388,6 +389,7 @@ private:
     bool drainSettled_ = true;
     // When the delegation renewal was last considered (never = 0).
     qint64 lastTransientCheckMs_ = 0;
+    qint64 lastAliasServiceMs_ = 0;
     qint64 lastApprovalCheckMs_ = 0;
     // When this device last tried to register itself with the server (never = 0).
     qint64 lastRegisterAttemptMs_ = 0;
@@ -509,10 +511,12 @@ class SessionController : public QObject {
     // The rotation in progress: what it is doing, and whether one is running.
     Q_PROPERTY(QString servingKeyStage READ servingKeyStage NOTIFY servingKeyChanged)
     Q_PROPERTY(bool servingKeyBusy READ servingKeyBusy NOTIFY servingKeyChanged)
-    // The names this account holds in the central registry, as one line for the
-    // settings page. Empty until the user activates servicing: until then this
-    // client has asked the name service nothing.
-    Q_PROPERTY(QString aliasSummary READ aliasSummary NOTIFY aliasChanged)
+    // The names this account holds in the central registry, a row per alias for
+    // the settings table, and the line said under it. Empty until the user
+    // activates servicing: until then this client has asked the name service
+    // nothing.
+    Q_PROPERTY(QVariantList aliasHoldings READ aliasHoldings NOTIFY aliasChanged)
+    Q_PROPERTY(QString aliasNote READ aliasNote NOTIFY aliasChanged)
     Q_PROPERTY(bool aliasBusy READ aliasBusy NOTIFY aliasChanged)
     // How long this account hands its destination to the server for, in days.
     // Shorter means leaving a server takes effect sooner; longer means a client
@@ -664,7 +668,8 @@ public:
     // Rotates the serving key our server holds and the capability that reads our
     // card, and hands both to every contact. Reported step by step.
     Q_INVOKABLE void rotateServingKey();
-    QString aliasSummary() const { return aliasSummary_; }
+    QVariantList aliasHoldings() const { return aliasHoldings_; }
+    QString aliasNote() const { return aliasNote_; }
     bool aliasBusy() const { return aliasBusy_; }
     // Asks the name service which names this account holds and starts servicing
     // them. The one way in: with no name known this client never asks on its own.
@@ -1314,7 +1319,8 @@ private:
     bool acceptCalls_ = true;
     bool sharingAllowed_ = true;
     QString servingKeyStage_;
-    QString aliasSummary_;
+    QVariantList aliasHoldings_;
+    QString aliasNote_;
     bool aliasBusy_ = false;
     bool servingKeyBusy_ = false;
     int delegationDays_ = static_cast<int>(bazarish::kDefaultDelegationDays);

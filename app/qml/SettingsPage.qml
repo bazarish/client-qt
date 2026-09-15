@@ -251,33 +251,6 @@ Popup {
                         text: root.session ? (root.session.configuredFacades.length + " facades configured (failover)") : ""
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
-                    // The account's aliases in the central registry. Nothing is
-                    // asked of the registry until this button is pressed; after
-                    // that the client keeps the aliases their owner asked to
-                    // point here pointing here, and leaves the rest alone.
-                    //
-                    // "Your alias" and not "Your name": the display name below is
-                    // a different thing, and both used to be called the same.
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 8
-                        spacing: 3
-                        Label { text: "Your alias"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                        Label {
-                            Layout.fillWidth: true
-                            text: root.session && root.session.aliasSummary.length > 0
-                                ? root.session.aliasSummary
-                                : "Not activated on this device."
-                            color: Theme.text; wrapMode: Text.Wrap
-                        }
-                        Button {
-                            text: root.session && root.session.aliasBusy
-                                ? "Asking the alias registry..."
-                                : "Check my aliases"
-                            enabled: root.session && root.session.connected && !root.session.aliasBusy
-                            onClicked: root.session.activateAliasServicing()
-                        }
-                    }
                     // What this account is holding on its server, as one line and a
                     // bar. Tapping it re-polls the server and tints the row, so the
                     // figures are refreshed where they are read.
