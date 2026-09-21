@@ -693,7 +693,7 @@ void SessionWorker::openAccount(
     }
     emit i2pKeyState(session_->hasI2pDestination(),
         session_->hasI2pDestination()
-            ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p")
+            ? QString::fromStdString(session_->i2pAddress())
             : QString());
     // A configured account starts syncing on open; one the user turned off does
     // not, and the switch is the only thing that starts it. Off from the first
@@ -1934,7 +1934,7 @@ void SessionWorker::refreshI2pStatus()
     }
     const bool hasKey = session_->hasI2pDestination();
     const QString address
-        = hasKey ? QString::fromStdString(session_->i2pAddress() + ".b32.i2p") : QString();
+        = hasKey ? QString::fromStdString(session_->i2pAddress()) : QString();
     // Local facts first: the poll below can wait on a server (or on this thread
     // finishing something slow), and "is there a key" must not wait with it.
     emit i2pKeyState(hasKey, address);
@@ -2098,8 +2098,7 @@ void SessionWorker::generatePersonalKey()
         WorkerOp op(this, QStringLiteral("dest-key"), QStringLiteral("dest"),
             QStringLiteral("Creating your destination key"), QStringLiteral("Generating…"));
         try {
-            const QString address
-                = QString::fromStdString(session_->ensureI2pDestination() + ".b32.i2p");
+            const QString address = QString::fromStdString(session_->ensureI2pDestination());
             emit i2pKeyState(true, address);
             op.succeed(address);
             emit actionOk("Personal I2P key created.");
