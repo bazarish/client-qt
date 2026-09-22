@@ -1871,21 +1871,6 @@ void SessionWorker::signLogin(const QString& challenge)
     }
 }
 
-void SessionWorker::retireThisDevice()
-{
-    if (!session_) {
-        return;
-    }
-    try {
-        session_->retireThisDevice();
-    } catch (const std::exception& error) {
-        // Best effort: the account is being removed from this device either way,
-        // and a server that did not hear it will drop the device when its
-        // registration goes idle.
-        bazarish::log::info("server not told this device is leaving: {}", error.what());
-    }
-}
-
 void SessionWorker::publishThisDeviceAddress()
 {
     if (!session_) {
@@ -2489,8 +2474,6 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
     connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
-    connect(this, &SessionController::requestRetireThisDevice, worker_,
-        &SessionWorker::retireThisDevice);
     connect(this, &SessionController::requestPublishThisDeviceAddress, worker_,
         &SessionWorker::publishThisDeviceAddress);
     connect(this, &SessionController::requestPublishFreshAddress, worker_,
@@ -2812,6 +2795,12 @@ void SessionController::beginShutdown()
         emit closed();
         return;
     }
+    // First, from this thread: the worker cannot be asked anything while it is
+    // inside a dial, and a dial has a minute of deadline to spend. Taking its
+    // facade link out of service is what ends that wait, so the request below is
+    // reached in seconds rather than after whatever the account was in the middle
+    // of. The account is closing, so the link has no next user.
+    client::stopFacadeLinkFor(accountId_.toStdString());
     // Asked, not waited for: the worker stops its own long poll and closes the
     // account on its own thread, and says so.
     emit requestShutdown();
@@ -3991,11 +3980,6 @@ bool SessionController::contactAgreeing(const QString& fp) const
 void SessionController::requestInvite()
 {
     emit requestInviteSig();
-}
-
-void SessionController::retireThisDeviceOnServer()
-{
-    emit requestRetireThisDevice();
 }
 
 void SessionController::keepThisDeviceAddress()

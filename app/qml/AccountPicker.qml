@@ -89,6 +89,13 @@ Item {
                 delegate: ItemDelegate {
                     width: ListView.view.width
                     height: 64
+                    // An account on its way out is not one to open. Without this
+                    // the row answered a press with nothing at all, because the
+                    // session has to let go of its files before they can go and
+                    // that takes as long as whatever it was doing.
+                    readonly property bool goingAway: App.deletingId === model.accountId
+                    enabled: !goingAway
+                    opacity: goingAway ? 0.5 : 1
                     onClicked: {
                         // An encrypted account that is already open was unlocked
                         // once, and the session is still there: asking again
@@ -131,9 +138,11 @@ Item {
                             // when the database has not been opened and there is
                             // none to show yet.
                             Label {
-                                text: model.fingerprint.length > 0
-                                    ? model.fingerprint.substring(0, 12) + "…"
-                                    : "locked"
+                                text: goingAway
+                                    ? "Deleting…"
+                                    : (model.fingerprint.length > 0
+                                        ? model.fingerprint.substring(0, 12) + "…"
+                                        : "locked")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 Layout.fillWidth: true

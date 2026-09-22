@@ -149,9 +149,6 @@ public slots:
     // for": keep this device's own address, or start from a fresh one.
     void publishThisDeviceAddress();
     void publishFreshAddress();
-    // Tells the server to stop holding mail for this device, without touching the
-    // account: what "remove from this device only" asks of the server.
-    void retireThisDevice();
     // Polls the user's own storage usage (mailbox + blob backends) and reports it.
     void refreshStorageUsage();
     // The devices registered on this account, and dropping one.
@@ -1036,7 +1033,6 @@ public:
     // Answers to the address question above.
     Q_INVOKABLE void keepThisDeviceAddress();
     Q_INVOKABLE void useFreshAddress();
-    Q_INVOKABLE void retireThisDeviceOnServer();
     // Triggers a fresh poll of this account's storage usage (mailbox + blob). The
     // result lands in the storageInfo property; until it does, the last figures (if
     // any) stay, with the UI showing how long ago they were taken.
@@ -1143,7 +1139,6 @@ signals:
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
 signals:  // to worker
-    void requestRetireThisDevice();
     void requestPublishThisDeviceAddress();
     void requestPublishFreshAddress();
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp,

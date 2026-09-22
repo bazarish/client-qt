@@ -746,12 +746,14 @@ void AppController::forgetAccountLocally(const QString& id)
         // finishes whatever it was doing.
         deletingId_ = id;
         emit deletingChanged();
-        // The account stays on its server; this device stops being one of its
-        // devices, so the server neither keeps mail for it nor lists it. An
-        // account that is only being removed from here still says so once.
-        ctrl->retireThisDeviceOnServer();
-        // The files go when the session lets go of them, which is not now: it is
-        // still bringing its long poll home. onSessionClosed finishes the job.
+        // Nothing is asked of the server. The user chose to remove this device's
+        // copy, and a request queued onto the very thread that is about to be
+        // stopped would be one more round trip to wait out before the files can
+        // go - for a courtesy the server works out for itself when this device
+        // stops collecting mail.
+        //
+        // The files go when the session lets go of them, which is not now.
+        // onSessionClosed finishes the job.
         pendingRemovals_.insert(id);
         removeSession(ctrl);
         return;
