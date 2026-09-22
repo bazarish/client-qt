@@ -30,36 +30,10 @@ Button {
         Behavior on color { ColorAnimation { duration: 120 } }
         Behavior on border.color { ColorAnimation { duration: 120 } }
     }
-    contentItem: Item {
-        // From the parts, not from the row: the label's width is bound to what
-        // the button offers, so asking the row how wide it wants to be would ask
-        // the button a question that depends on the answer.
-        implicitWidth: label.implicitWidth + (icon.visible ? icon.width + line.spacing : 0)
-        implicitHeight: Math.max(label.implicitHeight, icon.visible ? icon.height : 0)
-        Row {
-            id: line
-            anchors.centerIn: parent
-            spacing: 8
-            Icon {
-                id: icon
-                anchors.verticalCenter: parent.verticalCenter
-                visible: control.iconName.length > 0
-                name: control.iconName
-                color: label.color
-                size: Theme.fontBody
-            }
-            Label {
-                id: label
-                // The label gives way to the icon instead of pushing it out of
-                // the button: what is elided is the text, as it was before.
-                width: Math.min(implicitWidth, control.availableWidth
-                    - (icon.visible ? icon.width + line.spacing : 0))
-                text: control.text
-                color: !control.enabled ? Theme.textDim
-                    : (control.positive ? Theme.green : (control.danger ? Theme.danger : Theme.text))
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-            }
-        }
+    contentItem: IconLabel {
+        name: control.iconName
+        color: !control.enabled ? Theme.textDim
+            : (control.positive ? Theme.green : (control.danger ? Theme.danger : Theme.text))
+        available: control.availableWidth
     }
 }

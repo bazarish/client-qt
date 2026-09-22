@@ -165,13 +165,7 @@ ApplicationWindow {
                 hoverEnabled: true
                 onClicked: errorDialog.close()
                 background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
-                contentItem: RowLayout {
-                    spacing: 8
-                    Item { Layout.fillWidth: true }
-                    Icon { name: "close"; color: Theme.accentText; size: 15 }
-                    Label { text: "Close"; color: Theme.accentText }
-                    Item { Layout.fillWidth: true }
-                }
+                contentItem: IconLabel { name: "close"; color: Theme.accentText }
             }
         }
     }

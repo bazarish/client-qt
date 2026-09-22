@@ -204,6 +204,7 @@ if(Qt6_FOUND)
             app/qml/components/DialogButtons.qml
             app/qml/components/Icon.qml
             app/qml/components/IconButton.qml
+            app/qml/components/IconLabel.qml
             app/qml/components/MenuButton.qml
             app/qml/components/FormField.qml
             app/qml/components/ServerConnectForm.qml

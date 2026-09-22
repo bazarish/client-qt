@@ -94,13 +94,7 @@ Popup {
                 Layout.fillWidth: true
                 onClicked: if (root.session) { root.session.publishPersonalDest(); root.unavailable = "Publishing — this can take a few minutes" }
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.green }
-                contentItem: RowLayout {
-                    spacing: 8
-                    Item { Layout.fillWidth: true }
-                    Icon { name: "broadcast"; color: Theme.green; size: 15 }
-                    Label { text: "Publish my destination"; color: Theme.green }
-                    Item { Layout.fillWidth: true }
-                }
+                contentItem: IconLabel { name: "broadcast"; color: Theme.green }
             }
         }
 
@@ -200,12 +194,9 @@ Popup {
                     color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
                     Behavior on color { ColorAnimation { duration: 200 } }
                 }
-                contentItem: RowLayout {
-                    spacing: 8
-                    Item { Layout.fillWidth: true }
-                    Icon { name: "copy"; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; size: 15 }
-                    Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim }
-                    Item { Layout.fillWidth: true }
+                contentItem: IconLabel {
+                    name: "copy"
+                    color: copyBtn.enabled ? Theme.accentText : Theme.textDim
                 }
                 Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
             }

@@ -60,6 +60,10 @@ QtObject {
     // into one menu and the window shows a single pane.
     readonly property int narrowWidth: 560
 
+    // A drawing that stands beside a label - in a button, in a row - is sized to
+    // the text it names, not to an icon button's square.
+    readonly property int iconInline: 15
+
     readonly property int fontSmall: 12
     readonly property int fontBody: 14
     readonly property int fontTitle: 17

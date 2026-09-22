@@ -105,15 +105,11 @@ Dialog {
             }
             Button {
                 text: "Hide"
+                leftPadding: 12
+                rightPadding: 12
                 onClicked: root.close()
                 background: Rectangle { radius: 8; color: Theme.surfaceAlt; border.color: Theme.border }
-                contentItem: RowLayout {
-                    spacing: 8
-                    Item { Layout.fillWidth: true }
-                    Icon { name: "close"; color: Theme.text; size: 15 }
-                    Label { text: "Hide"; color: Theme.text; rightPadding: 12 }
-                    Item { Layout.fillWidth: true }
-                }
+                contentItem: IconLabel { name: "close"; color: Theme.text }
             }
         }
 

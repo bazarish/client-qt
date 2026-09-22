@@ -328,6 +328,8 @@ Item {
                     text: inFlight ? "Agreeing…" : "Agree"
                     enabled: !inFlight
                     hoverEnabled: true
+                    leftPadding: 16
+                    rightPadding: 16
                     onClicked: if (delegate.session) { delegate.session.acceptContact() }
                     background: Rectangle {
                         radius: 8
@@ -335,21 +337,10 @@ Item {
                             : (agreeButton.down ? Qt.darker(Theme.green, 1.2)
                             : (agreeButton.hovered ? Qt.darker(Theme.green, 1.1) : Theme.green))
                     }
-                    contentItem: RowLayout {
-                        spacing: 8
-                        Item { Layout.fillWidth: true }
-                        Icon {
-                            name: "check"
-                            color: agreeButton.enabled ? Theme.bg : Theme.textDim
-                            size: 15
-                        }
-                        Label {
-                            text: agreeButton.text
-                            color: agreeButton.enabled ? Theme.bg : Theme.textDim
-                            font.weight: Font.Medium
-                            rightPadding: 16
-                        }
-                        Item { Layout.fillWidth: true }
+                    contentItem: IconLabel {
+                        name: "check"
+                        color: agreeButton.enabled ? Theme.bg : Theme.textDim
+                        weight: Font.Medium
                     }
                 }
             }
@@ -560,12 +551,9 @@ Item {
                             saveDialog.open()
                         }
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                        contentItem: RowLayout {
-                            spacing: 8
-                            Item { Layout.fillWidth: true }
-                            Icon { name: saveButton.savedExists ? "folder" : "save"; color: Theme.accent; size: 15 }
-                            Label { text: saveButton.text; color: Theme.accent }
-                            Item { Layout.fillWidth: true }
+                        contentItem: IconLabel {
+                            name: saveButton.savedExists ? "folder" : "save"
+                            color: Theme.accent
                         }
                     }
                 }

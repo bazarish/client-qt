@@ -84,12 +84,9 @@ Item {
                 App.createAccount(nameField.text.trim(), passField.text)
             }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
-            contentItem: RowLayout {
-                spacing: 8
-                Item { Layout.fillWidth: true }
-                Icon { name: "plus"; color: createButton.enabled ? Theme.accentText : Theme.textDim; size: 15 }
-                Label { text: "Create"; color: createButton.enabled ? Theme.accentText : Theme.textDim }
-                Item { Layout.fillWidth: true }
+            contentItem: IconLabel {
+                name: "plus"
+                color: createButton.enabled ? Theme.accentText : Theme.textDim
             }
         }
 
@@ -110,13 +107,7 @@ Item {
                 restoreDialog.open()
             }
             background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
-            contentItem: RowLayout {
-                spacing: 8
-                Item { Layout.fillWidth: true }
-                Icon { name: "folder"; color: Theme.accent; size: 15 }
-                Label { text: "Restore from backup"; color: Theme.accent }
-                Item { Layout.fillWidth: true }
-            }
+            contentItem: IconLabel { name: "folder"; color: Theme.accent }
         }
     }
 

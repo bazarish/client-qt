@@ -109,15 +109,11 @@ Popup {
                     IconButton { iconName: "copy"; onClicked: root.copyText(modelData) }
                     Button {
                         text: "Open"
+                        leftPadding: 10
+                        rightPadding: 10
                         onClicked: Qt.openUrlExternally(modelData)
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                        contentItem: RowLayout {
-                            spacing: 8
-                            Item { Layout.fillWidth: true }
-                            Icon { name: "link"; color: Theme.accent; size: 15 }
-                            Label { text: "Open"; color: Theme.accent; leftPadding: 4; rightPadding: 10 }
-                            Item { Layout.fillWidth: true }
-                        }
+                        contentItem: IconLabel { name: "link"; color: Theme.accent }
                     }
                 }
             }
@@ -128,13 +124,7 @@ Popup {
                 hoverEnabled: true
                 onClicked: root.close()
                 background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
-                contentItem: RowLayout {
-                    spacing: 8
-                    Item { Layout.fillWidth: true }
-                    Icon { name: "close"; color: Theme.accentText; size: 15 }
-                    Label { text: "Close"; color: Theme.accentText }
-                    Item { Layout.fillWidth: true }
-                }
+                contentItem: IconLabel { name: "close"; color: Theme.accentText }
             }
         }
     }

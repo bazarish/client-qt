@@ -663,7 +663,7 @@ Popup {
                             // for far more room than it needs, and two stacked
                             // controls of different widths read as two unrelated
                             // things. Sized to hold the button's label.
-                            readonly property int controlWidth: 160
+                            readonly property int controlWidth: 168
                             RowLayout {
                                 Layout.preferredWidth: parent.controlWidth
                                 spacing: 6

@@ -172,13 +172,7 @@ Popup {
             hoverEnabled: true
             onClicked: { root.close(); App.requestAddAccount() }
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
-            contentItem: RowLayout {
-                spacing: 8
-                Item { Layout.fillWidth: true }
-                Icon { name: "gear"; color: Theme.accentText; size: 15 }
-                Label { text: "Manage"; color: Theme.accentText }
-                Item { Layout.fillWidth: true }
-            }
+            contentItem: IconLabel { name: "gear"; color: Theme.accentText }
         }
     }
 }

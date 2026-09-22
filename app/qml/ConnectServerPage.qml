@@ -137,14 +137,10 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 18
         padding: 8
+        leftPadding: 14
+        rightPadding: 14
         onClicked: signSheet.open()
         background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
-        contentItem: RowLayout {
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            Icon { name: "key"; color: Theme.accent; size: 15 }
-            Label { text: "Signature"; color: Theme.accent; rightPadding: 14 }
-            Item { Layout.fillWidth: true }
-        }
+        contentItem: IconLabel { name: "key"; color: Theme.accent }
     }
 }
