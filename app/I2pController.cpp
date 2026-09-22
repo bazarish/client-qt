@@ -77,6 +77,17 @@ I2pController::I2pController(QObject* parent)
     gatewayAsked_ = AppSettings::instance().gatewayAsked();
     gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
     gatewayAddress_ = QString::fromStdString(AppSettings::instance().gatewayAddress());
+    if (gatewayEnabled_) {
+        // Named before anything asks for the router, because which one comes up
+        // is settled at its first use and not afterwards.
+        const std::optional<client::GatewayAddress> parsed
+            = client::GatewayAddress::parse(gatewayAddress_.toStdString());
+        if (parsed.has_value()) {
+            client::setGatewayTransport(parsed.value(), AppSettings::instance().gatewayPin());
+        } else {
+            gatewayEnabled_ = false;
+        }
+    }
     if (samEnabled_) {
         client::setSamTransport(samHost_.toStdString(), samPort_);
     }
