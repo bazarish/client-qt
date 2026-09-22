@@ -64,6 +64,18 @@ public:
     std::string samHost() const;
     int samPort() const;
     void setSam(bool enabled, const std::string& host, int port);
+    // Whether the question has been put at all, and what came of it. The three
+    // states are not two: a user who has not been asked is not a user who said
+    // no, and only the first gets a dialog.
+    bool gatewayAsked() const;
+    bool gatewayEnabled() const;
+    std::string gatewayAddress() const;
+    std::string gatewayPin() const;
+    void setGateway(const std::string& address, const std::string& pin);
+    // The user said no. The answer is recorded so it is not asked again, and
+    // the embedded router or SAM takes over as it always did.
+    void skipGateway();
+
     std::string i2pProxyHost() const;
     int i2pProxyPort() const;
     void setI2pProxy(const std::string& host, int port);
@@ -83,6 +95,10 @@ private:
     int i2pTunnelLength_ = 0;
     std::string i2pProxyHost_;
     int i2pProxyPort_ = 0;
+    bool gatewayAsked_ = false;
+    bool gatewayEnabled_ = false;
+    std::string gatewayAddress_;
+    std::string gatewayPin_;
     bool samEnabled_ = false;
     std::string samHost_;
     int samPort_ = 0;

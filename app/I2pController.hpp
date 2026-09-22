@@ -62,6 +62,13 @@ class I2pController : public QObject {
     // What the engine itself says about it, for the status page. Meaningful only
     // while the router runs, and shown only when a proxy is configured at all.
     Q_PROPERTY(QString proxyNtcp2 READ proxyNtcp2 NOTIFY statusChanged)
+    // The private gateway: a host that runs an I2P router so this device does
+    // not have to. Asked once, before anything starts a router; changeable at
+    // any time afterwards from the settings page.
+    Q_PROPERTY(bool gatewayAsked READ gatewayAsked NOTIFY gatewayChanged)
+    Q_PROPERTY(bool gatewayEnabled READ gatewayEnabled NOTIFY gatewayChanged)
+    Q_PROPERTY(QString gatewayAddress READ gatewayAddress NOTIFY gatewayChanged)
+    Q_PROPERTY(bool gatewayChecking READ gatewayChecking NOTIFY gatewayChanged)
 public:
     explicit I2pController(QObject* parent = nullptr);
 
@@ -95,6 +102,22 @@ public:
     QStringList transports() const { return transports_; }
     QVariantList destinations() const { return destinations_; }
 
+    bool gatewayAsked() const { return gatewayAsked_; }
+    bool gatewayEnabled() const { return gatewayEnabled_; }
+    QString gatewayAddress() const { return gatewayAddress_; }
+    bool gatewayChecking() const { return gatewayChecking_; }
+    // Checks the address off the GUI thread and, if it answers, stores it with
+    // the key it presented. An address that does not answer is not stored:
+    // there is nothing useful to do with one, and saving it would only move the
+    // failure to somewhere the user cannot see it. Answers with one of the two
+    // signals below.
+    Q_INVOKABLE void checkAndSaveGateway(const QString& address);
+    // The user chose not to use one. Recorded, so the question is not asked
+    // again, and the embedded router or SAM takes over as it always did.
+    Q_INVOKABLE void skipGateway();
+    // Stops using a gateway that was set, without un-asking the question.
+    Q_INVOKABLE void clearGateway();
+
     // Re-reads the router diagnostics (a no-op when it is not running). Cheap;
     // the status window calls it on a timer while open.
     Q_INVOKABLE void refresh();
@@ -105,6 +128,10 @@ signals:
     void statusChanged();
     void proxyChanged();
     void samChanged();
+    void gatewayChanged();
+    void gatewaySaved();
+    // Why it was refused, in a sentence for a person.
+    void gatewayRefused(const QString& reason);
 
 private:
     // Brings the shared router into line with the enable flag off the GUI thread:
@@ -120,6 +147,10 @@ private:
     QString proxyHost_;
     int proxyPort_ = 0;
     QString proxyNtcp2_;
+    bool gatewayAsked_ = false;
+    bool gatewayEnabled_ = false;
+    QString gatewayAddress_;
+    bool gatewayChecking_ = false;
     bool samEnabled_ = false;
     QString samHost_;
     int samPort_ = 0;

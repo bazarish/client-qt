@@ -121,6 +121,15 @@ ApplicationWindow {
     // status. Below the error dialog (z 1000), above the app content.
     OperationsOverlay { anchors.fill: parent; z: 900 }
 
+    // Asked once, before anything can start a router, because the answer decides
+    // which one starts. Skipping is an answer and is recorded as one, so this
+    // appears once and not on every launch.
+    GatewayFirstRunDialog {
+        id: gatewayFirstRun
+        z: 1100
+    }
+    Component.onCompleted: if (!I2p.gatewayAsked) gatewayFirstRun.open()
+
     // Server onboarding / hello (unregistered-key connect): its own top-layer
     // window with copyable links, dismissed only by its button.
     ServerHelloDialog { id: helloDialog }

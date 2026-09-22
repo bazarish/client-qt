@@ -100,6 +100,13 @@ void AppSettings::load()
             samHost_ = sam.value("host", std::string(kDefaultSamHost));
             samPort_ = sam.value("port", kDefaultSamPort);
         }
+        if (i2p.contains("gateway")) {
+            const nlohmann::json gateway = i2p.at("gateway");
+            gatewayAsked_ = gateway.value("asked", false);
+            gatewayEnabled_ = gateway.value("enabled", false);
+            gatewayAddress_ = gateway.value("address", std::string());
+            gatewayPin_ = gateway.value("pin", std::string());
+        }
         const nlohmann::json proxy = i2p.value("proxy", nlohmann::json::object());
         i2pProxyHost_ = proxy.value("host", std::string());
         i2pProxyPort_ = proxy.value("port", 0);
@@ -122,6 +129,8 @@ void AppSettings::save() const
         {"proxy", {{"host", i2pProxyHost_}, {"port", i2pProxyPort_}}},
     };
     i2p["sam"] = {{"enabled", samEnabled_}, {"host", samHost_}, {"port", samPort_}};
+    i2p["gateway"] = {{"asked", gatewayAsked_}, {"enabled", gatewayEnabled_},
+        {"address", gatewayAddress_}, {"pin", gatewayPin_}};
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
         {"offlineAccounts", offlineAccounts_},
@@ -222,6 +231,32 @@ std::string AppSettings::samHost() const
 }
 
 int AppSettings::samPort() const { return samPort_ > 0 ? samPort_ : kDefaultSamPort; }
+
+bool AppSettings::gatewayAsked() const { return gatewayAsked_; }
+
+bool AppSettings::gatewayEnabled() const { return gatewayEnabled_; }
+
+std::string AppSettings::gatewayAddress() const { return gatewayAddress_; }
+
+std::string AppSettings::gatewayPin() const { return gatewayPin_; }
+
+void AppSettings::setGateway(const std::string& address, const std::string& pin)
+{
+    gatewayAsked_ = true;
+    gatewayEnabled_ = !address.empty();
+    gatewayAddress_ = address;
+    gatewayPin_ = pin;
+    save();
+}
+
+void AppSettings::skipGateway()
+{
+    gatewayAsked_ = true;
+    gatewayEnabled_ = false;
+    gatewayAddress_.clear();
+    gatewayPin_.clear();
+    save();
+}
 
 void AppSettings::setSam(const bool enabled, const std::string& host, const int port)
 {

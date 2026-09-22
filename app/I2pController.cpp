@@ -3,6 +3,7 @@
 
 #include <QVariantMap>
 
+#include "GatewayAddress.hpp"
 #include "I2pRouter.hpp"
 #include "AccountManager.hpp"
 #include "AppSettings.hpp"
@@ -17,6 +18,8 @@
 #pragma pop_macro("emit")
 
 #include <algorithm>
+#include <optional>
+#include <thread>
 #include <cstdlib>
 #include <fstream>
 #include <string>
@@ -71,6 +74,9 @@ I2pController::I2pController(QObject* parent)
     samHost_ = QString::fromStdString(AppSettings::instance().samHost());
     samPort_ = AppSettings::instance().samPort();
     samEnabled_ = AppSettings::instance().samEnabled();
+    gatewayAsked_ = AppSettings::instance().gatewayAsked();
+    gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
+    gatewayAddress_ = QString::fromStdString(AppSettings::instance().gatewayAddress());
     if (samEnabled_) {
         client::setSamTransport(samHost_.toStdString(), samPort_);
     }
@@ -163,6 +169,63 @@ void I2pController::setPrivacyLevel(const int level)
 int I2pController::minKnownRouters() const
 {
     return static_cast<int>(client::kMinKnownRouters);
+}
+
+void I2pController::checkAndSaveGateway(const QString& address)
+{
+    if (gatewayChecking_) {
+        return;
+    }
+    const std::optional<client::GatewayAddress> parsed
+        = client::GatewayAddress::parse(address.trimmed().toStdString());
+    if (!parsed.has_value()) {
+        emit gatewayRefused(tr("That is not a gateway address. It looks like "
+                               "https://host/path#token."));
+        return;
+    }
+    gatewayChecking_ = true;
+    emit gatewayChanged();
+    // The check talks to a host over the network and may wait out a timeout; the
+    // interface is not the thread to do that on.
+    std::thread([this, parsed]() {
+        const client::GatewayCheck check = client::checkGateway(parsed.value(), std::string());
+        QMetaObject::invokeMethod(
+            this,
+            [this, parsed, check]() {
+                gatewayChecking_ = false;
+                if (!check.ok) {
+                    emit gatewayChanged();
+                    emit gatewayRefused(QString::fromStdString(check.error));
+                    return;
+                }
+                // Stored with the key the host presented, which every later
+                // connection is checked against.
+                AppSettings::instance().setGateway(parsed->toString(), check.pin);
+                gatewayAsked_ = true;
+                gatewayEnabled_ = true;
+                gatewayAddress_ = QString::fromStdString(parsed->toString());
+                emit gatewayChanged();
+                emit gatewaySaved();
+            },
+            Qt::QueuedConnection);
+    }).detach();
+}
+
+void I2pController::skipGateway()
+{
+    AppSettings::instance().skipGateway();
+    gatewayAsked_ = true;
+    gatewayEnabled_ = false;
+    gatewayAddress_.clear();
+    emit gatewayChanged();
+}
+
+void I2pController::clearGateway()
+{
+    AppSettings::instance().skipGateway();
+    gatewayEnabled_ = false;
+    gatewayAddress_.clear();
+    emit gatewayChanged();
 }
 
 void I2pController::refresh()

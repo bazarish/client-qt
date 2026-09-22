@@ -138,6 +138,60 @@ Popup {
                         }
                     }
 
+                    // A host that runs a router so this device does not have
+                    // to. With one set, neither the engine above nor SAM below
+                    // carries anything.
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 8
+                        spacing: 8
+                        Label { text: "Private gateway"; color: Theme.text }
+                        Label {
+                            text: "Reach I2P over https through a host that runs a router "
+                                + "for you, and start none here. Whoever runs it sees every "
+                                + "address you connect to. Takes effect after the "
+                                + "application is restarted."
+                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                        FormField {
+                            id: gatewayField
+                            Layout.fillWidth: true
+                            placeholder: "https://host/path#token"
+                            text: I2p.gatewayAddress
+                        }
+                        Label {
+                            visible: gatewayProblem.length > 0
+                            text: gatewayProblem
+                            color: Theme.danger
+                            font.pixelSize: Theme.fontSmall
+                            wrapMode: Text.Wrap; Layout.fillWidth: true
+                        }
+                        Label {
+                            visible: I2p.gatewayEnabled && gatewayProblem.length === 0
+                            text: "In use."
+                            color: Theme.success
+                            font.pixelSize: Theme.fontSmall
+                        }
+                        RowLayout {
+                            Layout.alignment: Qt.AlignRight
+                            spacing: 8
+                            MenuButton {
+                                visible: I2p.gatewayEnabled
+                                iconName: "close"
+                                text: "Stop using it"
+                                onClicked: { gatewayProblem = ""; I2p.clearGateway(); gatewayField.text = "" }
+                            }
+                            MenuButton {
+                                iconName: "check"
+                                text: I2p.gatewayChecking ? "Checking..." : "Save"
+                                enabled: !I2p.gatewayChecking && gatewayField.text.trim().length > 0
+                                onClicked: { gatewayProblem = ""; I2p.checkAndSaveGateway(gatewayField.text) }
+                            }
+                        }
+                    }
+                    Rectangle { Layout.fillWidth: true; Layout.topMargin: 8; height: 1; color: Theme.border }
+
                     // Which router carries the traffic. The engine above unless
                     // this is turned on, and either way the choice takes hold at
                     // the next start.
@@ -195,6 +249,14 @@ Popup {
                 }
             }
         }
+    }
+
+    // Why the last gateway address was refused, cleared when a new one is tried.
+    property string gatewayProblem: ""
+    Connections {
+        target: I2p
+        function onGatewayRefused(reason) { root.gatewayProblem = reason }
+        function onGatewaySaved() { root.gatewayProblem = "" }
     }
 
     // Swapping the transport is not something this process can do while it runs:
