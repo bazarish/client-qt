@@ -258,7 +258,9 @@ Popup {
 
         // Destructive chat actions. Clearing empties the history (the chat stays);
         // deleting removes the contact and the whole conversation for good.
-        RowLayout {
+        // Three labels with a drawing each do not fit one line of this panel, so
+        // the one that only touches the history keeps a line to itself.
+        ColumnLayout {
             visible: !root.saved
             Layout.fillWidth: true
             spacing: 8
@@ -268,25 +270,29 @@ Popup {
                 text: "Clear chat"
                 onClicked: clearChoiceDialog.open()
             }
-            MenuButton {
+            RowLayout {
                 Layout.fillWidth: true
-                iconName: root.blocked ? "check" : "block"
-                text: root.blocked ? "Unblock" : "Block"
-                danger: !root.blocked
-                onClicked: {
-                    if (root.blocked) {
-                        root.session.setBlocked(root.session.activePeer, false)
-                    } else {
-                        blockDialog.open()
+                spacing: 8
+                MenuButton {
+                    Layout.fillWidth: true
+                    iconName: root.blocked ? "check" : "block"
+                    text: root.blocked ? "Unblock" : "Block"
+                    danger: !root.blocked
+                    onClicked: {
+                        if (root.blocked) {
+                            root.session.setBlocked(root.session.activePeer, false)
+                        } else {
+                            blockDialog.open()
+                        }
                     }
                 }
-            }
-            MenuButton {
-                Layout.fillWidth: true
-                iconName: "trash"
-                text: "Delete contact"
-                danger: true
-                onClicked: deleteContactDialog.open()
+                MenuButton {
+                    Layout.fillWidth: true
+                    iconName: "trash"
+                    text: "Delete contact"
+                    danger: true
+                    onClicked: deleteContactDialog.open()
+                }
             }
         }
 
