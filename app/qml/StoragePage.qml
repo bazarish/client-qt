@@ -98,7 +98,7 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
-                    RowLayout {
+                    ColumnLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: 6
                         spacing: 8
