@@ -7,6 +7,8 @@
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 export APPIMAGE_EXTRACT_AND_RUN=1
+# A build that scales to the host starves the desktop it runs beside.
+readonly kJobs=4
 
 apt-get update -qq
 # qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
@@ -41,7 +43,7 @@ if [ ! -f /opt/openssl/lib64/libcrypto.so.3 ]; then
     tar xf "openssl-${OPENSSL_VERSION}.tar.gz"
     cd "openssl-${OPENSSL_VERSION}"
     ./Configure --prefix=/opt/openssl --openssldir=/opt/openssl/ssl shared no-docs
-    make -j"$(nproc)"
+    make -j"$kJobs"
     make install_sw
 fi
 export LD_LIBRARY_PATH=/opt/openssl/lib64:${LD_LIBRARY_PATH:-}
@@ -61,7 +63,7 @@ if [ ! -f /opt/sqlcipher/lib/libsqlcipher.so ]; then
     ./configure --prefix=/opt/sqlcipher --enable-tempstore=yes --disable-tcl \
         CFLAGS="-DSQLITE_HAS_CODEC -I/opt/openssl/include" \
         LDFLAGS="-L/opt/openssl/lib64 -lcrypto"
-    make -j"$(nproc)"
+    make -j"$kJobs"
     make install
 fi
 export LD_LIBRARY_PATH=/opt/sqlcipher/lib:${LD_LIBRARY_PATH}
@@ -83,7 +85,7 @@ cmake -S . -B build-appimage -DCMAKE_BUILD_TYPE=Release -UOPENSSL_* -USQLCIPHER_
     -DCMAKE_PREFIX_PATH="$QTDIR" -DOPENSSL_ROOT_DIR=/opt/openssl \
     -DSQLCIPHER_LIBRARY=/opt/sqlcipher/lib/libsqlcipher.so \
     -DSQLCIPHER_INCLUDE_DIR=/opt/sqlcipher/include
-cmake --build build-appimage -j"$(nproc)" --target bazarish-app
+cmake --build build-appimage -j"$kJobs" --target bazarish-app
 
 APPDIR=/src/AppDir
 rm -rf "$APPDIR"
