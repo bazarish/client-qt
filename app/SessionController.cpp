@@ -883,7 +883,7 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
     emit connectProgress(100, "Connected");
     bazarish::client::setConnectProgressSink({});
     emit connectionChanged(true, "active");
-    emit actionOk("Connected.");
+    emit actionOk("Connected");
     emitFacadeInfo();
     startReceiving();
     sync();
@@ -1536,7 +1536,7 @@ void SessionWorker::drainResolvedAdds()
             // Short on purpose: a toast is gone before a 52-character fingerprint
             // can be read, and the fingerprint is in the contact's own card where
             // it can be compared at leisure.
-            emit actionOk(QStringLiteral("Contact request sent."));
+            emit actionOk(QStringLiteral("Contact request sent"));
             emit contactRequestSent(QString::fromStdString(fingerprint),
                 QString::fromStdString(resolved.introText),
                 QString::fromStdString(resolved.requestId));
@@ -1652,7 +1652,7 @@ void SessionWorker::setDisplayName(const QString& name)
     try {
         session_->setDisplayName(name.toStdString());
         emit renamed(QString::fromStdString(session_->displayName()));
-        emit actionOk(QStringLiteral("Name updated."));
+        emit actionOk(QStringLiteral("Name updated"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1782,7 +1782,7 @@ void SessionWorker::removeContact(const QString& peer)
         // Clear the avatar store entry and re-emit the (now shorter) contact list.
         emit avatarReady(peer, QByteArray());
         emitContacts();
-        emit actionOk(QStringLiteral("Contact deleted."));
+        emit actionOk(QStringLiteral("Contact deleted"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1825,7 +1825,7 @@ void SessionWorker::askDevicesForContacts()
     }
     try {
         session_->askDevicesForContacts();
-        emit actionOk(QStringLiteral("Asked your other devices for your contacts."));
+        emit actionOk(QStringLiteral("Asked your other devices for your contacts"));
     } catch (const std::exception& error) {
         emit actionFailed(QString::fromUtf8(error.what()));
     }
@@ -1880,7 +1880,7 @@ void SessionWorker::publishThisDeviceAddress()
         QStringLiteral("Publishing your address"), QStringLiteral("Telling your server…"));
     try {
         session_->publishThisDeviceAddress();
-        op.succeed(QStringLiteral("Your server serves this address now."));
+        op.succeed(QStringLiteral("Your server serves this address now"));
     } catch (const std::exception& error) {
         op.fail(QString::fromUtf8(error.what()));
         emit actionFailed(QString::fromUtf8(error.what()));
@@ -1897,7 +1897,7 @@ void SessionWorker::publishFreshAddress()
         QStringLiteral("Making a new address"), QStringLiteral("Building it…"));
     try {
         session_->publishFreshAddress();
-        op.succeed(QStringLiteral("A new address is published."));
+        op.succeed(QStringLiteral("A new address is published"));
     } catch (const std::exception& error) {
         op.fail(QString::fromUtf8(error.what()));
         emit actionFailed(QString::fromUtf8(error.what()));
@@ -2029,7 +2029,7 @@ void SessionWorker::forgetDevice(const QString& clientId)
         try {
             session_->retireDevice(clientId.toStdString());
             op.succeed(QStringLiteral("Forgotten"));
-            emit actionOk(QStringLiteral("Device forgotten. Its unread mail is no longer held."));
+            emit actionOk(QStringLiteral("Device forgotten. Its unread mail is no longer held"));
         } catch (const std::exception& error) {
             op.fail(QString::fromUtf8(error.what()));
             emit actionFailed(QString::fromUtf8(error.what()));
@@ -2086,7 +2086,7 @@ void SessionWorker::generatePersonalKey()
             const QString address = QString::fromStdString(session_->ensureI2pDestination());
             emit i2pKeyState(true, address);
             op.succeed(address);
-            emit actionOk("Personal I2P key created.");
+            emit actionOk("Personal I2P key created");
         } catch (const std::exception& e) {
             op.fail(QString::fromUtf8(e.what()));
             emit actionFailed(QString::fromUtf8(e.what()));
@@ -2108,7 +2108,7 @@ void SessionWorker::loadPersonalKey(const QString& path)
         const bazarish::Bytes dat(
             (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         session_->loadI2pDestination(dat);
-        emit actionOk("Personal I2P key loaded.");
+        emit actionOk("Personal I2P key loaded");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -2122,7 +2122,7 @@ void SessionWorker::deletePersonalKey()
     }
     try {
         session_->deleteI2pDestination();
-        emit actionOk("Personal I2P key deleted.");
+        emit actionOk("Personal I2P key deleted");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -2185,7 +2185,7 @@ void SessionWorker::publishPersonalDest()
         try {
             session_->publishRouting();
             op.succeed(QStringLiteral("Published"));
-            emit actionOk("Routing published: your card now carries this destination.");
+            emit actionOk("Routing published: your card now carries this destination");
         } catch (const std::exception& e) {
             op.fail(QString::fromUtf8(e.what()));
             emit actionFailed(QString::fromUtf8(e.what()));
@@ -2201,7 +2201,7 @@ void SessionWorker::disablePersonalDest()
     }
     try {
         session_->disableI2pDest();
-        emit actionOk("I2P destination revoked.");
+        emit actionOk("I2P destination revoked");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -2253,8 +2253,8 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
         QStringLiteral("Exporting your backup"), QStringLiteral("Sealing the account…"));
     try {
         session_->exportAccount(path.toStdString(), password.toStdString());
-        op.succeed(QStringLiteral("Backup exported."));
-        emit actionOk("Backup exported.");
+        op.succeed(QStringLiteral("Backup exported"));
+        emit actionOk("Backup exported");
     } catch (const std::exception& e) {
         op.fail(QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -2279,7 +2279,7 @@ void SessionWorker::rotateServingKey()
         session_->rotateServingKey([this](const std::string& stage) {
             emit servingKeyStage(QString::fromStdString(stage));
         });
-        emit servingKeyDone(true, QStringLiteral("The key was changed."));
+        emit servingKeyDone(true, QStringLiteral("The key was changed"));
         emitContacts();
     } catch (const std::exception& e) {
         emit servingKeyDone(false, QString::fromUtf8(e.what()));
@@ -2371,14 +2371,14 @@ void SessionWorker::drainAliasErrands()
         }
         if (held.empty()) {
             emit aliasActivationDone(true, QStringLiteral("No alias is registered to this "
-                                                          "account."));
+                                                          "account"));
         } else if (result.pointed) {
-            emit aliasActivationDone(true, QStringLiteral("Your aliases now point here."));
+            emit aliasActivationDone(true, QStringLiteral("Your aliases now point here"));
         } else if (session_->aliasUpdatePending()) {
             emit aliasActivationDone(false, QStringLiteral("The registry did not take the "
                                                            "update. It will be tried again."));
         } else {
-            emit aliasActivationDone(true, QStringLiteral("Your aliases are up to date."));
+            emit aliasActivationDone(true, QStringLiteral("Your aliases are up to date"));
         }
     }
 }
@@ -2398,8 +2398,8 @@ void SessionWorker::changePassphrase(const QString& passphrase)
 {
     try {
         session_->changePassphrase(passphrase.toStdString());
-        emit actionOk(passphrase.isEmpty() ? "This account is no longer password-protected."
-                                           : "Password changed.");
+        emit actionOk(passphrase.isEmpty() ? "This account is no longer password-protected"
+                                           : "Password changed");
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -3808,7 +3808,7 @@ void SessionController::addByInvite(
         const QString peer = QString::fromStdString(known.fingerprint);
         if (contacts_.has(peer)) {
             openConversation(peer);
-            emit actionOk(QStringLiteral("Already in your contacts."));
+            emit actionOk(QStringLiteral("Already in your contacts"));
             return;
         }
     } catch (const std::exception&) {
@@ -4776,7 +4776,7 @@ void SessionController::savePictureAs(const QString& e2eId, const QString& fileU
         emit actionFailed(QStringLiteral("Could not write ") + path);
         return;
     }
-    emit actionOk(QStringLiteral("Picture saved."));
+    emit actionOk(QStringLiteral("Picture saved"));
 }
 
 void SessionController::copyPicture(const QString& e2eId)
@@ -4792,7 +4792,7 @@ void SessionController::copyPicture(const QString& e2eId)
         return;
     }
     clipboard->setImage(picture);
-    emit actionOk(QStringLiteral("Picture copied."));
+    emit actionOk(QStringLiteral("Picture copied"));
 }
 
 QUrl SessionController::defaultPictureSaveUrl(const QString& e2eId, const QString& name) const
@@ -4917,7 +4917,7 @@ void SessionController::compactDatabase()
         // the user is watching is the one on disk.
         emit actionOk(QStringLiteral("The database was compacted; ")
             + humanBytes(std::max<qint64>(0, before - after))
-            + QStringLiteral(" came back to the disk."));
+            + QStringLiteral(" came back to the disk"));
     });
 }
 
@@ -4947,7 +4947,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
             endStorageWork();
             if (rebuilt) {
                 emit actionOk(QStringLiteral("Removed ") + QString::number(removed)
-                    + QStringLiteral(" messages and compacted the database."));
+                    + QStringLiteral(" messages and compacted the database"));
                 return;
             }
             // The trim itself committed. Reporting this as a failure would say
@@ -6084,7 +6084,7 @@ void SessionController::onContactAlreadyKnown(const QString& opId, const QString
     finishOperation(opId, true, QStringLiteral("Already in your contacts"));
     contactProgressRows_.remove(opId);
     openConversation(fingerprint);
-    emit actionOk(QStringLiteral("Already in your contacts."));
+    emit actionOk(QStringLiteral("Already in your contacts"));
 }
 
 void SessionController::onContactRequestSent(
