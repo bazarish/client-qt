@@ -9,6 +9,8 @@ Popup {
     property var session: null
     signal showInvite()
     signal showSignWithKey()
+    // What this account keeps on this machine, and trimming it.
+    signal showStorage()
     signal showRouterStatus()
     signal showConnectionLog()
 
@@ -207,7 +209,22 @@ Popup {
                             onClicked: { root.close(); root.showInvite() }
                         }
                     }
-                    MenuButton { Layout.fillWidth: true; text: "Sign in with your key…"; onClicked: { root.close(); root.showSignWithKey() } }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        MenuButton {
+                            Layout.fillWidth: true
+                            iconName: "key"
+                            text: "Sign in with your key"
+                            onClicked: { root.close(); root.showSignWithKey() }
+                        }
+                        MenuButton {
+                            Layout.fillWidth: true
+                            iconName: "disk"
+                            text: "Storage"
+                            onClicked: { root.close(); root.showStorage() }
+                        }
+                    }
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
@@ -408,7 +425,8 @@ Popup {
                         // or, after registering on the portal, Connect again to finish.
                         MenuButton {
                             Layout.fillWidth: true
-                            text: "Server connection…"
+                            iconName: "server"
+                            text: "Server connection"
                             onClicked: connectionDialog.open()
                         }
                         // What the account actually did on the wire: the one
@@ -416,6 +434,7 @@ Popup {
                         // for, or a device sync that never left.
                         MenuButton {
                             Layout.fillWidth: true
+                            iconName: "list"
                             text: "Connection log"
                             onClicked: { root.close(); root.showConnectionLog() }
                         }
@@ -427,6 +446,7 @@ Popup {
                         spacing: 8
                         MenuButton {
                             Layout.fillWidth: true
+                            iconName: "devices"
                             text: "Ask my other devices for contacts"
                             enabled: root.session !== null
                             onClicked: root.session.askForContacts()
@@ -545,6 +565,7 @@ Popup {
                                     Layout.fillWidth: true
                                 }
                                 MenuButton {
+                                    iconName: "broadcast"
                                     text: "Publish this device's address"
                                     enabled: root.session && root.session.connected
                                     onClicked: root.session.keepThisDeviceAddress()
@@ -557,9 +578,9 @@ Popup {
                     RowLayout {
                         visible: root.session && !root.session.i2pHasKey
                         Layout.fillWidth: true; spacing: 8
-                        MenuButton { Layout.fillWidth: true; text: "Create address"
+                        MenuButton { Layout.fillWidth: true; iconName: "plus"; text: "Create address"
                             onClicked: { root.session.generatePersonalKey(); i2pFlash.restart() } }
-                        MenuButton { Layout.fillWidth: true; text: "Load an existing key…"; onClicked: i2pKeyDialog.open() }
+                        MenuButton { Layout.fillWidth: true; iconName: "folder"; text: "Load an existing key"; onClicked: i2pKeyDialog.open() }
                     }
                     RowLayout {
                         visible: root.session && root.session.i2pHasKey
@@ -567,6 +588,7 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && !root.session.i2pEnabled
+                            iconName: "broadcast"
                             // Not the normal path: connecting publishes on its own and
                             // the delegation is re-issued in the background. This is for
                             // a key loaded from elsewhere, a revoked destination, or a
@@ -580,6 +602,7 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && root.session.i2pEnabled
+                            iconName: "power"
                             text: root.session && root.session.i2pBusy ? "Taking offline…"
                                 : "Take offline"
                             enabled: root.session && !root.session.i2pBusy
@@ -588,6 +611,7 @@ Popup {
                         // Re-poll the server status and flash the box for ~1s.
                         MenuButton {
                             Layout.fillWidth: true
+                            iconName: "refresh"
                             text: "Refresh"
                             onClicked: { if (root.session) root.session.refreshI2pStatus(); i2pFlash.restart() }
                         }
@@ -597,6 +621,7 @@ Popup {
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey
                         Layout.fillWidth: true
+                        iconName: "trash"
                         text: "Delete address"
                         danger: true
                         onClicked: deleteKeyDialog.open()
@@ -638,7 +663,7 @@ Popup {
                             // for far more room than it needs, and two stacked
                             // controls of different widths read as two unrelated
                             // things. Sized to hold the button's label.
-                            readonly property int controlWidth: 140
+                            readonly property int controlWidth: 160
                             RowLayout {
                                 Layout.preferredWidth: parent.controlWidth
                                 spacing: 6
@@ -717,6 +742,7 @@ Popup {
                             MenuButton {
                                 id: saveTermButton
                                 Layout.preferredWidth: parent.controlWidth
+                                iconName: "check"
                                 text: "Save the term"
                                 enabled: root.session
                                     && delegationDaysBox.value !== root.session.delegationDays
@@ -766,6 +792,54 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label { text: "Database"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    MenuButton {
+                        Layout.fillWidth: true
+                        iconName: "lock"
+                        text: "Change password"
+                        onClicked: {
+                            newPass.text = ""
+                            newPassAgain.text = ""
+                            passwordDialog.open()
+                        }
+                    }
+                    MenuButton { Layout.fillWidth: true; iconName: "save"; text: "Export encrypted backup"; onClicked: exportDialog.open() }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        MenuButton {
+                            Layout.fillWidth: true
+                            iconName: "signout"
+                            text: "Sign out"
+                            onClicked: { root.close(); App.closeAccount() }
+                        }
+                        MenuButton {
+                            Layout.fillWidth: true
+                            // While it runs, it says so: the server has to answer
+                            // and the session has to let go of its files. A second
+                            // press used to start the whole conversation again.
+                            enabled: App.deletingId.length === 0
+                            iconName: "trash"
+                            text: App.deletingId.length > 0 ? "Deleting…" : "Delete account"
+                            danger: true
+                            onClicked: deleteDialog.show(
+                                root.session ? root.session.accountId : "", "")
+                        }
+                    }
+                }
+                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+
                 // Who is not heard here. A block is per account and reaches its
                 // other devices; unblocking does not bring back what was dropped.
                 ColumnLayout {
@@ -797,54 +871,10 @@ Popup {
                                 elide: Text.ElideMiddle
                             }
                             MenuButton {
+                                iconName: "check"
                                 text: "Unblock"
                                 onClicked: root.session.setBlocked(modelData.fingerprint, false)
                             }
-                        }
-                    }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    Label { text: "Database"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    MenuButton {
-                        Layout.fillWidth: true
-                        text: "Change password…"
-                        onClicked: {
-                            newPass.text = ""
-                            newPassAgain.text = ""
-                            passwordDialog.open()
-                        }
-                    }
-                    MenuButton { Layout.fillWidth: true; text: "Export encrypted backup…"; onClicked: exportDialog.open() }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        MenuButton {
-                            Layout.fillWidth: true
-                            text: "Sign out"
-                            onClicked: { root.close(); App.closeAccount() }
-                        }
-                        MenuButton {
-                            Layout.fillWidth: true
-                            // While it runs, it says so: the server has to answer
-                            // and the session has to let go of its files. A second
-                            // press used to start the whole conversation again.
-                            enabled: App.deletingId.length === 0
-                            text: App.deletingId.length > 0 ? "Deleting…" : "Delete account…"
-                            danger: true
-                            onClicked: deleteDialog.show(
-                                root.session ? root.session.accountId : "", "")
                         }
                     }
                 }

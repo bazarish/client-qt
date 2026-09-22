@@ -11,7 +11,8 @@ Item {
     id: root
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
     // refresh, edit, more, plus, check, up, down, forward, forwarded, link, bang, dot,
-    // stop, send, person, burger.
+    // stop, send, person, people, burger, key, lock, disk, server, list, devices,
+    // broadcast, folder, block, power, signout.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -112,6 +113,41 @@ Item {
                     // A face: reacting to a message with one.
                     case "smile":   return "M 12 3 A 9 9 0 1 1 11.99 3 "
                                          + "M 8 14 A 5 5 0 0 0 16 14 M 9 9 V 10 M 15 9 V 10"
+                    // A ring with a toothed shaft: the key an account is signed in with.
+                    case "key":     return "M 13.5 10.5 A 3.2 3.2 0 1 1 13.49 10.5 "
+                                         + "M 13.5 10.5 L 4.5 19.5 M 6.5 17.5 L 8 19 M 9 15 L 10.5 16.5"
+                    case "lock":    return "M 7 11 H 17 V 20 H 7 Z M 9.5 11 V 8 A 2.5 2.5 0 0 1 14.5 8 V 11"
+                    // A drum in three bands: what is kept on this machine.
+                    case "disk":    return "M 12 4 C 7 4 4 5.3 4 7 C 4 8.7 7 10 12 10 "
+                                         + "C 17 10 20 8.7 20 7 C 20 5.3 17 4 12 4 Z "
+                                         + "M 4 7 V 17 C 4 18.7 7 20 12 20 C 17 20 20 18.7 20 17 V 7 "
+                                         + "M 4 12 C 4 13.7 7 15 12 15 C 17 15 20 13.7 20 12"
+                    // Two boxes in a rack, each with its lamp: the server.
+                    case "server":  return "M 4 5 H 20 V 10 H 4 Z M 4 14 H 20 V 19 H 4 Z "
+                                         + "M 7 7.5 V 7.6 M 7 16.5 V 16.6"
+                    // Lines with a bullet each: entries in a log.
+                    case "list":    return "M 5 7 H 5.1 M 5 12 H 5.1 M 5 17 H 5.1 "
+                                         + "M 9 7 H 19 M 9 12 H 19 M 9 17 H 19"
+                    // A screen beside a handset: this account's other devices.
+                    case "devices": return "M 3 5 H 14 V 13 H 3 Z M 6 16 H 11 M 8.5 13 V 16 "
+                                         + "M 16 9 H 21 V 20 H 16 Z"
+                    // A point with waves around it: an address put out to the network.
+                    case "broadcast": return "M 12 12 V 12.1 "
+                                         + "M 8.8 8.8 A 4.5 4.5 0 0 0 8.8 15.2 "
+                                         + "M 15.2 8.8 A 4.5 4.5 0 0 1 15.2 15.2 "
+                                         + "M 5.6 5.6 A 9 9 0 0 0 5.6 18.4 "
+                                         + "M 18.4 5.6 A 9 9 0 0 1 18.4 18.4"
+                    case "folder":  return "M 3 19 V 5 H 10 L 12 8 H 21 V 19 Z"
+                    // A ring struck through: nothing from this contact gets in.
+                    case "block":   return "M 12 3 A 9 9 0 1 1 11.99 3 M 5.6 18.4 L 18.4 5.6"
+                    // Two figures, one behind the other: everybody, not just me.
+                    case "people":  return "M 9 5 A 3.2 3.2 0 1 1 8.99 5 M 2.5 19 A 6.5 6.5 0 0 1 15.5 19 "
+                                         + "M 16 6.4 A 3.2 3.2 0 0 1 16 11.6 M 17.5 14.5 A 6.5 6.5 0 0 1 21.5 19"
+                    // A ring broken by a bar: taking something off the air.
+                    case "power":   return "M 12 3.5 V 11 M 7.05 7.05 A 7 7 0 1 0 16.95 7.05"
+                    // An arrow leaving a room: leaving the account.
+                    case "signout": return "M 13 4 H 4 V 20 H 13 M 13.5 12 H 20 "
+                                         + "M 16.5 8.5 L 20 12 L 16.5 15.5"
                     default:        return ""
                     }
                 }

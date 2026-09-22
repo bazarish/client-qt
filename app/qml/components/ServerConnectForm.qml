@@ -184,6 +184,7 @@ ColumnLayout {
         }
         MenuButton {
             Layout.fillWidth: true
+            iconName: "plus"
             text: "Add another facade"
             onClicked: facadeModel.append({ url: "" })
         }
@@ -221,6 +222,7 @@ ColumnLayout {
         FormField { id: fpField; label: "Server fingerprint" }
 
         Button {
+            id: actionButton
             Layout.fillWidth: true
             text: (form.session && form.session.connecting) ? "Connecting…" : form.actionText
             hoverEnabled: true
@@ -232,7 +234,20 @@ ColumnLayout {
                 form.submitted()
             }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
-            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+            contentItem: RowLayout {
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                Icon {
+                    name: "server"
+                    color: actionButton.enabled ? Theme.accentText : Theme.textDim
+                    size: 15
+                }
+                Label {
+                    text: actionButton.text
+                    color: actionButton.enabled ? Theme.accentText : Theme.textDim
+                }
+                Item { Layout.fillWidth: true }
+            }
         }
     }
 }

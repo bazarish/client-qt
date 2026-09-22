@@ -336,6 +336,7 @@ Popup {
                         }
                     }
                     MenuButton {
+                        iconName: "check"
                         text: "Save"
                         Layout.alignment: Qt.AlignRight
                         onClicked: proxyRestartDialog.open()

@@ -32,13 +32,11 @@ Item {
         onClicked: appSettings.open()
     }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
-    StoragePage { id: storagePage; onBack: { storagePage.close(); appSettings.open() } }
     AppSettingsPage {
         id: appSettings
         parent: Overlay.overlay
         anchors.centerIn: parent
         onShowRouterStatus: routerStatus.open()
-        onShowStorage: storagePage.open()
     }
 
     ColumnLayout {
@@ -141,10 +139,12 @@ Item {
         padding: 8
         onClicked: signSheet.open()
         background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
-        contentItem: Label {
-            text: parent.text; color: Theme.accent
-            leftPadding: 14; rightPadding: 14
-            horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+        contentItem: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            Icon { name: "key"; color: Theme.accent; size: 15 }
+            Label { text: "Signature"; color: Theme.accent; rightPadding: 14 }
+            Item { Layout.fillWidth: true }
         }
     }
 }

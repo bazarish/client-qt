@@ -12,8 +12,6 @@ Popup {
     // A window of its own: it is opened from several places and belongs to none
     // of them, so it closes rather than going back to one.
     signal showRouterStatus()
-    // What this account keeps on this machine, and trimming it.
-    signal showStorage()
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -48,38 +46,6 @@ Popup {
                 id: body
                 width: root.width
                 spacing: 14
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 10
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-                        Label { text: "Storage"; color: Theme.text }
-                        Label {
-                            text: "What this account keeps on this machine, chat by chat, with "
-                                + "the pictures and voice notes counted in. Old history can be "
-                                + "dropped a chat at a time, keeping the newest messages - here "
-                                + "only, on this device."
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                        Label {
-                            visible: App.session === null
-                            text: "Open an account to see what it keeps."
-                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                    }
-                    MenuButton {
-                        Layout.fillWidth: true
-                        text: "Storage…"
-                        enabled: App.session !== null
-                        onClicked: { root.close(); root.showStorage() }
-                    }
-                }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -213,6 +179,7 @@ Popup {
                         }
                     }
                     MenuButton {
+                        iconName: "check"
                         text: "Save"
                         Layout.alignment: Qt.AlignRight
                         onClicked: samRestartDialog.open()
@@ -221,7 +188,8 @@ Popup {
                     MenuButton {
                         Layout.fillWidth: true
                         Layout.topMargin: 8
-                        text: "I2P status…"
+                        iconName: "info"
+                        text: "I2P status"
                         onClicked: { root.close(); root.showRouterStatus() }
                     }
                 }

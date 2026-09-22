@@ -204,6 +204,7 @@ Popup {
             spacing: 8
 
             MenuButton {
+                iconName: root.recording ? "stop" : "mic"
                 text: root.recording ? "Stop" : (root.takeReady ? "Record again" : "Record")
                 onClicked: {
                     if (root.recording) {
@@ -215,12 +216,14 @@ Popup {
                 }
             }
             MenuButton {
+                iconName: root.takePlaying ? "stop" : "play"
                 text: root.takePlaying ? "Stop" : "Listen"
                 enabled: root.takeReady
                 onClicked: root.session.playVoiceTake()
             }
             Item { Layout.fillWidth: true }
             MenuButton {
+                iconName: "send"
                 text: "Send"
                 enabled: root.takeReady
                 onClicked: {

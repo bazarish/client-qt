@@ -10,7 +10,7 @@ import Bazarish
 // file is larger, because it also holds indexes, page overhead and free space.
 Popup {
     id: root
-    // Return to the page this opened from (Global settings); close exits.
+    // Return to the page this opened from (Account); close exits.
     signal back()
 
     readonly property var session: App.session
@@ -106,13 +106,15 @@ Popup {
                         // already freed, so it is not a destructive action.
                         MenuButton {
                             Layout.fillWidth: true
+                            iconName: "disk"
                             text: "Compact the database (VACUUM)"
                             enabled: !root.busy && root.session !== null
                             onClicked: root.session.compactDatabase()
                         }
                         MenuButton {
                             Layout.fillWidth: true
-                            text: "Trim every chat…"
+                            iconName: "trash"
+                            text: "Trim every chat"
                             danger: true
                             enabled: !root.busy && root.chats.length > 0
                             onClicked: {
@@ -169,7 +171,8 @@ Popup {
                             }
                         }
                         MenuButton {
-                            text: "Trim…"
+                            iconName: "trash"
+                            text: "Trim"
                             enabled: !root.busy
                             onClicked: {
                                 trimDialog.peer = chatRow.modelData.peer
@@ -227,12 +230,14 @@ Popup {
             }
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "trash"
                 text: "Keep the last " + (root.session ? root.session.keepRecentMessages : 0)
                 danger: true
                 onClicked: trimDialog.run(root.session ? root.session.keepRecentMessages : 0)
             }
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "trash"
                 text: "Keep the last " + (root.session ? root.session.keepManyMessages : 0)
                 danger: true
                 onClicked: trimDialog.run(root.session ? root.session.keepManyMessages : 0)

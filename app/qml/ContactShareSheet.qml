@@ -107,6 +107,7 @@ Popup {
                     Layout.rightMargin: 16
                     Layout.bottomMargin: 14
                     enabled: root.link.length > 0
+                    iconName: "copy"
                     text: root.copied ? "Copied" : "Copy contact link"
                     onClicked: {
                         linkArea.selectAll(); linkArea.copy(); linkArea.deselect()

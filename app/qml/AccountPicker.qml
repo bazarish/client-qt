@@ -46,13 +46,11 @@ Item {
         onClicked: appSettings.open()
     }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
-    StoragePage { id: storagePage; onBack: { storagePage.close(); appSettings.open() } }
     AppSettingsPage {
         id: appSettings
         parent: Overlay.overlay
         anchors.centerIn: parent
         onShowRouterStatus: routerStatus.open()
-        onShowStorage: storagePage.open()
     }
 
     ColumnLayout {
@@ -179,7 +177,13 @@ Item {
             hoverEnabled: true
             onClicked: root.StackView.view.push(wizardComponent)
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
-            contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+            contentItem: RowLayout {
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                Icon { name: "plus"; color: Theme.accentText; size: 15 }
+                Label { text: "Create account"; color: Theme.accentText }
+                Item { Layout.fillWidth: true }
+            }
         }
 
     }

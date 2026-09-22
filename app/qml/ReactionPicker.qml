@@ -166,6 +166,7 @@ Popup {
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: customField.activeFocus ? Theme.accent : Theme.border }
             }
             MenuButton {
+                iconName: "smile"
                 text: "React"
                 enabled: customField.text.trim().length > 0
                 onClicked: root.pick(customField.text)

@@ -30,13 +30,11 @@ Item {
         onClicked: appSettings.open()
     }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
-    StoragePage { id: storagePage; onBack: { storagePage.close(); appSettings.open() } }
     AppSettingsPage {
         id: appSettings
         parent: Overlay.overlay
         anchors.centerIn: parent
         onShowRouterStatus: routerStatus.open()
-        onShowStorage: storagePage.open()
     }
 
     ColumnLayout {
@@ -72,6 +70,7 @@ Item {
         }
 
         Button {
+            id: createButton
             Layout.fillWidth: true
             text: "Create"
             hoverEnabled: true
@@ -85,7 +84,13 @@ Item {
                 App.createAccount(nameField.text.trim(), passField.text)
             }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
-            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+            contentItem: RowLayout {
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                Icon { name: "plus"; color: createButton.enabled ? Theme.accentText : Theme.textDim; size: 15 }
+                Label { text: "Create"; color: createButton.enabled ? Theme.accentText : Theme.textDim }
+                Item { Layout.fillWidth: true }
+            }
         }
 
         // Restore everything (keys, routing and contacts) from a .bazarish backup
@@ -94,7 +99,7 @@ Item {
         // required here; if one is typed it only picks the on-disk account id.
         Button {
             Layout.fillWidth: true
-            text: "Restore from backup…"
+            text: "Restore from backup"
             hoverEnabled: true
             onClicked: {
                 if (passField.text !== confirmField.text) {
@@ -105,7 +110,13 @@ Item {
                 restoreDialog.open()
             }
             background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
-            contentItem: Label { text: parent.text; color: parent.enabled ? Theme.accent : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+            contentItem: RowLayout {
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                Icon { name: "folder"; color: Theme.accent; size: 15 }
+                Label { text: "Restore from backup"; color: Theme.accent }
+                Item { Layout.fillWidth: true }
+            }
         }
     }
 

@@ -616,6 +616,7 @@ Item {
             Layout.fillWidth: true
         }
         MenuButton {
+            iconName: "send"
             text: "Send the request again"
             onClicked: {
                 root.session.retryContactRequest(root.retryPeer)

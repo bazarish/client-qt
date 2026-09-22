@@ -94,9 +94,12 @@ Popup {
                 Layout.fillWidth: true
                 onClicked: if (root.session) { root.session.publishPersonalDest(); root.unavailable = "Publishing — this can take a few minutes" }
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.green }
-                contentItem: Label {
-                    text: parent.text; color: Theme.green
-                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                contentItem: RowLayout {
+                    spacing: 8
+                    Item { Layout.fillWidth: true }
+                    Icon { name: "broadcast"; color: Theme.green; size: 15 }
+                    Label { text: "Publish my destination"; color: Theme.green }
+                    Item { Layout.fillWidth: true }
                 }
             }
         }
@@ -197,13 +200,20 @@ Popup {
                     color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
                     Behavior on color { ColorAnimation { duration: 200 } }
                 }
-                contentItem: Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+                contentItem: RowLayout {
+                    spacing: 8
+                    Item { Layout.fillWidth: true }
+                    Icon { name: "copy"; color: copyBtn.enabled ? Theme.accentText : Theme.textDim; size: 15 }
+                    Label { text: copyBtn.text; color: copyBtn.enabled ? Theme.accentText : Theme.textDim }
+                    Item { Layout.fillWidth: true }
+                }
                 Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
             }
             // Nothing is asked of the registry until this is pressed; after that
             // the client keeps the aliases their owner pointed here pointing
             // here, and leaves the rest alone.
             MenuButton {
+                iconName: "bang"
                 text: root.session && root.session.aliasBusy
                     ? "Asking…"
                     : "Check my aliases"
@@ -219,7 +229,8 @@ Popup {
         // already handed out.
         MenuButton {
             Layout.fillWidth: true
-            text: "Change the server key…"
+            iconName: "key"
+            text: "Change the server key"
             danger: true
             enabled: root.session && root.session.connected && !root.session.servingKeyBusy
             onClicked: rotateDialog.open()

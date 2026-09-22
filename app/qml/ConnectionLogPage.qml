@@ -208,6 +208,7 @@ Popup {
             spacing: 8
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "copy"
                 text: root.allCopied ? "Copied" : "Copy all"
                 positive: root.allCopied
                 onClicked: {
@@ -222,6 +223,7 @@ Popup {
             }
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "trash"
                 text: "Clear"
                 onClicked: if (root.session) { root.session.clearConnectionLog() }
             }

@@ -90,6 +90,7 @@ Popup {
             visible: root.saved
             Layout.fillWidth: true
             Layout.topMargin: 4
+            iconName: "trash"
             text: "Clear on all devices"
             danger: true
             onClicked: clearSavedDialog.open()
@@ -135,7 +136,7 @@ Popup {
                 onAccepted: root.saveName()
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: nameField.activeFocus ? Theme.accent : Theme.border }
             }
-            MenuButton { text: "Save"; onClicked: root.saveName() }
+            MenuButton { iconName: "check"; text: "Save"; onClicked: root.saveName() }
         }
         // The identity itself, on one line: the middle gives way when it does not
         // fit, and a tap anywhere on it copies the whole thing.
@@ -223,8 +224,9 @@ Popup {
             visible: !root.saved
             Layout.fillWidth: true
             enabled: root.shareLink.length > 0
+            iconName: "link"
             text: root.shareLink.length > 0
-                ? "Share contact…"
+                ? "Share contact"
                 : (root.sharingRefused ? "Sharing is off" : "Not shareable yet")
             onClicked: { root.close(); root.shareRequested() }
         }
@@ -262,11 +264,13 @@ Popup {
             spacing: 8
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "trash"
                 text: "Clear chat"
                 onClicked: clearChoiceDialog.open()
             }
             MenuButton {
                 Layout.fillWidth: true
+                iconName: root.blocked ? "check" : "block"
                 text: root.blocked ? "Unblock" : "Block"
                 danger: !root.blocked
                 onClicked: {
@@ -279,6 +283,7 @@ Popup {
             }
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "trash"
                 text: "Delete contact"
                 danger: true
                 onClicked: deleteContactDialog.open()
@@ -407,6 +412,7 @@ Popup {
             }
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "person"
                 text: "Clear only for me"
                 onClicked: {
                     if (root.session) { root.session.clearChat(false) }
@@ -416,6 +422,7 @@ Popup {
             }
             MenuButton {
                 Layout.fillWidth: true
+                iconName: "people"
                 text: "Clear for everyone"
                 danger: true
                 onClicked: {

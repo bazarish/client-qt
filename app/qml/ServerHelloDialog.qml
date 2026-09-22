@@ -111,7 +111,13 @@ Popup {
                         text: "Open"
                         onClicked: Qt.openUrlExternally(modelData)
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
-                        contentItem: Label { text: parent.text; color: Theme.accent; leftPadding: 10; rightPadding: 10; horizontalAlignment: Text.AlignHCenter }
+                        contentItem: RowLayout {
+                            spacing: 8
+                            Item { Layout.fillWidth: true }
+                            Icon { name: "link"; color: Theme.accent; size: 15 }
+                            Label { text: "Open"; color: Theme.accent; leftPadding: 4; rightPadding: 10 }
+                            Item { Layout.fillWidth: true }
+                        }
                     }
                 }
             }
@@ -122,7 +128,13 @@ Popup {
                 hoverEnabled: true
                 onClicked: root.close()
                 background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
-                contentItem: Label { text: parent.text; color: Theme.accentText; horizontalAlignment: Text.AlignHCenter }
+                contentItem: RowLayout {
+                    spacing: 8
+                    Item { Layout.fillWidth: true }
+                    Icon { name: "close"; color: Theme.accentText; size: 15 }
+                    Label { text: "Close"; color: Theme.accentText }
+                    Item { Layout.fillWidth: true }
+                }
             }
         }
     }

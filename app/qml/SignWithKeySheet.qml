@@ -242,7 +242,13 @@ Popup {
                                     : Theme.surfaceAlt)
                             Behavior on color { ColorAnimation { duration: 200 } }
                         }
-                        contentItem: Label { text: copyBtn.text; color: copyBtn.enabled || copyBtn.copied ? Theme.accentText : Theme.textDim; horizontalAlignment: Text.AlignHCenter }
+                        contentItem: RowLayout {
+                            spacing: 8
+                            Item { Layout.fillWidth: true }
+                            Icon { name: "copy"; color: copyBtn.enabled || copyBtn.copied ? Theme.accentText : Theme.textDim; size: 15 }
+                            Label { text: copyBtn.text; color: copyBtn.enabled || copyBtn.copied ? Theme.accentText : Theme.textDim }
+                            Item { Layout.fillWidth: true }
+                        }
                         Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
                     }
                 }
