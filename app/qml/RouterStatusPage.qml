@@ -133,6 +133,18 @@ Popup {
                         visible: I2p.running && !I2p.samEnabled
                         Layout.fillWidth: true
                         spacing: 6
+                        // Whose numbers these are. A device that runs no router
+                        // of its own, showing thousands of known routers as if
+                        // it did, says something untrue about itself.
+                        Label {
+                            visible: I2p.gatewayEnabled
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: "The router at " + I2p.gatewayAddress.split("#")[0]
+                                + ", which carries this device's traffic."
+                            color: Theme.textDim
+                            font.pixelSize: Theme.fontSmall
+                        }
                         StatRow { label: "Routers known"; value: I2p.knownRouters }
                         StatRow { label: "Floodfills"; value: I2p.floodfills }
                         StatRow { label: "Inbound tunnels"; value: I2p.inboundTunnels }

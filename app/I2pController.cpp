@@ -247,8 +247,12 @@ void I2pController::refresh()
     const bool running = router != nullptr;
     bool ready = false;
     // A stopped router still has a netDb on disk, and how big it is says whether
-    // it is waiting for a bootstrap or just about to come up.
-    int knownRouters = samEnabled_ ? 0 : static_cast<int>(client::knownRouterCount(i2pRoot()));
+    // it is waiting for a bootstrap or just about to come up. Only this
+    // process's own engine has one: with the engine elsewhere the directory is
+    // either absent or left over from a time when it was here, and a count off
+    // it would be a number about nothing.
+    const bool ownEngine = !samEnabled_ && !gatewayEnabled_;
+    int knownRouters = ownEngine ? static_cast<int>(client::knownRouterCount(i2pRoot())) : 0;
     int floodfills = 0;
     int inboundTunnels = 0;
     int outboundTunnels = 0;
