@@ -64,22 +64,25 @@ Dialog {
             bottomPadding: 0
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "A private gateway is a host that runs an I2P router for you. With one, "
-                + "this application reaches the network over https and starts no router of "
-                + "its own, which is what a phone or a laptop on battery wants. Whoever runs "
-                + "it sees every address you connect to, so use one you trust.\n\n"
-                + "Paste the address its operator gave you. Without one, this application "
-                + "runs its own router, and you can set a gateway later in settings."
+            text: "A host runs the I2P router for you; this device starts none. It sees "
+                + "every address you connect to, so use one you trust. Identity keys stay on "
+                + "this device. Messages, files and calls stay encrypted end to end.\n\n"
+                + "Paste the address its operator gave you, or skip and this device runs its "
+                + "own router. Either can be changed later in settings."
         }
 
-        TextField {
+        FormField {
             id: addressField
             Layout.fillWidth: true
             Layout.leftMargin: 14
             Layout.rightMargin: 14
             enabled: !root.busy
-            placeholderText: "https://host/path#token"
-            onAccepted: if (!root.busy && text.trim().length > 0) I2p.checkAndSaveGateway(text)
+            label: "Address"
+            placeholder: "https://host/path#token"
+            inputField.onAccepted:
+                if (!root.busy && addressField.text.trim().length > 0) {
+                    I2p.checkAndSaveGateway(addressField.text)
+                }
         }
 
         // Why it was refused. An address that does not answer is not saved:

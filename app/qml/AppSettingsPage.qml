@@ -129,10 +129,14 @@ Popup {
                         Layout.fillWidth: true
                         currentIndex: I2p.transport === "gateway" ? 2
                             : I2p.transport === "sam" ? 1 : 0
-                        background: Rectangle { color: "transparent" }
-                        TabButton { text: "Embedded" }
-                        TabButton { text: "SAM API" }
-                        TabButton { text: "Private gateway" }
+                        background: Rectangle {
+                            radius: Theme.radius
+                            color: Theme.surface
+                            border.color: Theme.border
+                        }
+                        ModeTab { text: "Embedded" }
+                        ModeTab { text: "SAM API" }
+                        ModeTab { text: "Private gateway" }
                     }
 
                     StackLayout {
@@ -245,13 +249,10 @@ Popup {
                                 }
                             }
                             Label {
-                                text: "Reach I2P over https through a host that runs a router for "
-                                    + "you, and start none here — which is what a phone or a "
-                                    + "laptop on battery wants. Whoever runs it sees every address "
-                                    + "you connect to, and holds the keys of the destinations it "
-                                    + "makes for you. It never sees anything sensitive: your "
-                                    + "identity keys stay on this device, and messages, files and "
-                                    + "calls stay encrypted end to end, as they are everywhere else."
+                                text: "A host runs the router; this device starts none. It sees "
+                                    + "every address you connect to and holds the keys of the "
+                                    + "destinations it makes for you. Identity keys stay on this "
+                                    + "device. Messages, files and calls stay encrypted end to end."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }

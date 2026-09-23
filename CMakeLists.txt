@@ -208,6 +208,7 @@ if(Qt6_FOUND)
             app/qml/components/IconLabel.qml
             app/qml/components/MenuButton.qml
             app/qml/components/FormField.qml
+            app/qml/components/ModeTab.qml
             app/qml/components/ServerConnectForm.qml
             app/qml/components/ConnectProgressDialog.qml
             app/qml/components/LinkWarningDialog.qml
