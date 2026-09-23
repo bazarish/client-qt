@@ -26,21 +26,14 @@ Popup {
 
     function privacyText(level) {
         if (level === 0) {
-            return "1 hop each way. Fastest, and the weakest anonymity offered "
-                + "here: one router carries your tunnel and learns your address. "
-                + "It still cannot read what you send or see who you are talking "
-                + "to \u2014 to get that far it would have to already know which "
-                + "address to watch, fetch that address's leaseset and match its "
-                + "gateways against what it forwards, and every tunnel is rebuilt "
-                + "through a new random router every few minutes. So: weak, but "
-                + "not remotely comparable to a VPN, where one company sees every "
-                + "connection you make, all the time, by design."
+            return "1 hop each way. Fastest, and the weakest: one router carries "
+                + "your tunnel and learns your address. Every tunnel is rebuilt "
+                + "through a new random router every few minutes."
         }
         if (level === 1) {
             return "1 or 2 hops each way, picked per tunnel."
         }
-        return "3 hops each way - the depth I2P itself defaults to. Slowest to "
-            + "build and to answer."
+        return "3 hops each way. Slowest to build and to answer."
     }
 
     // Saving is one thing and applying it is another: the transports read the
@@ -98,31 +91,31 @@ Popup {
                     Label { text: "Status"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
 
                     Label {
-                        visible: I2p.running && I2p.gatewayEnabled
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        text: "The router is at " + I2p.gatewayHost + "."
-                        color: Theme.textDim
-                        font.pixelSize: Theme.fontSmall
-                    }
-
-                    Label {
-                        visible: !I2p.running
+                        visible: !I2p.running && !I2p.gatewayEnabled
                         // A router with nobody to ask cannot start the network: it
                         // is the bootstrap it waits for, not its own start-up.
                         text: I2p.samEnabled
-                            ? "No router answering at the address below — nothing can be "
-                              + "reached until one does, or until this is switched off."
+                            ? "No router answering at the address below."
                             : I2p.knownRouters < I2p.minKnownRouters
-                            ? "No network database yet — the router starts once your server hands "
-                              + "it one, which happens the first time an account connects."
-                            : "Router is starting up — it stays on while enabled, warming the "
-                              + "network database in the background."
+                            ? "No network database yet. The router starts once your server "
+                              + "hands it one, the first time an account connects."
+                            : "Router is starting up."
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
 
+                    // With a gateway the router is somewhere else, and where is
+                    // the only thing worth saying: a light for a state this
+                    // device does not hold would be guessing.
+                    Label {
+                        visible: I2p.gatewayEnabled
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: "The router is at " + I2p.gatewayHost + "."
+                        color: Theme.text
+                    }
+
                     RowLayout {
-                        visible: I2p.running
+                        visible: I2p.running && !I2p.gatewayEnabled
                         Layout.fillWidth: true
                         spacing: 8
                         Rectangle {
@@ -131,9 +124,7 @@ Popup {
                             color: I2p.ready ? Theme.success : Theme.warn
                         }
                         Label {
-                            text: I2p.gatewayEnabled
-                            ? (I2p.ready ? "Up" : "Down")
-                            : (I2p.ready ? "Running — tunnels are up" : "Starting — building tunnels…")
+                            text: I2p.ready ? "Running — tunnels are up" : "Starting — building tunnels…"
                             color: Theme.text; Layout.fillWidth: true
                         }
                     }
@@ -169,10 +160,8 @@ Popup {
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: "Each address has its own tunnels, in and out, and holds the "
-                            + "leasesets it has looked up — that last number is what shows real "
-                            + "use. An encrypted address counts twice there: the blinded "
-                            + "leaseset and the one inside it."
+                        text: "Each address has its own tunnels and the leasesets it has "
+                            + "looked up."
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -309,8 +298,7 @@ Popup {
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                         Label {
-                            text: "Voice calls always use Min: longer tunnels would put "
-                                + "audible delay into a live call."
+                            text: "Voice calls always use Min: longer tunnels delay speech."
                             color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
@@ -398,10 +386,8 @@ Popup {
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: "Routers this one is talking to directly. It relays no transit "
-                            + "traffic and is no floodfill, so nothing has a reason to dial it: "
-                            + "every session here is one it opened itself. Any that is not is "
-                            + "marked \"incoming\"."
+                        text: "Routers this one is talking to directly. A session it did not "
+                            + "open is marked \"incoming\"."
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
