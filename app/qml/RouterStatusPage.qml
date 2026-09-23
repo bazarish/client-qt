@@ -98,6 +98,15 @@ Popup {
                     Label { text: "Status"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
 
                     Label {
+                        visible: I2p.running && I2p.gatewayEnabled
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: "The router is at " + I2p.gatewayHost + "."
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                    }
+
+                    Label {
                         visible: !I2p.running
                         // A router with nobody to ask cannot start the network: it
                         // is the bootstrap it waits for, not its own start-up.
@@ -122,7 +131,9 @@ Popup {
                             color: I2p.ready ? Theme.success : Theme.warn
                         }
                         Label {
-                            text: I2p.ready ? "Running — tunnels are up" : "Starting — building tunnels…"
+                            text: I2p.gatewayEnabled
+                            ? (I2p.ready ? "Up" : "Down")
+                            : (I2p.ready ? "Running — tunnels are up" : "Starting — building tunnels…")
                             color: Theme.text; Layout.fillWidth: true
                         }
                     }
@@ -131,16 +142,6 @@ Popup {
                     // network database and its connections describe that machine
                     // and its other clients, not this account. What belongs here
                     // is further down - the destinations this account runs.
-                    Label {
-                        visible: I2p.running && I2p.gatewayEnabled
-                        Layout.fillWidth: true
-                        wrapMode: Text.Wrap
-                        text: "The router is the one at " + I2p.gatewayAddress.split("#")[0]
-                            + ". What it knows of the network is its own and is not shown here."
-                        color: Theme.textDim
-                        font.pixelSize: Theme.fontSmall
-                    }
-
                     ColumnLayout {
                         // An external router keeps its own counsel about the
                         // network it is on, so there is nothing truthful to show.
@@ -319,7 +320,7 @@ Popup {
 
                 // Everything this router does outside I2P, through a SOCKS5 proxy.
                 ColumnLayout {
-                    visible: !I2p.samEnabled
+                    visible: !I2p.samEnabled && !I2p.gatewayEnabled
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
@@ -439,8 +440,7 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    enabled: !I2p.samEnabled
-                    opacity: enabled ? 1 : 0.4
+                    visible: !I2p.samEnabled && !I2p.gatewayEnabled
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {

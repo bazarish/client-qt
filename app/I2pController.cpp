@@ -123,9 +123,13 @@ void I2pController::saveSam(const bool enabled, const QString& host, const int p
     samHost_ = host.trimmed();
     samPort_ = port;
     AppSettings::instance().setSam(samEnabled_, samHost_.toStdString(), samPort_);
+    // Turning this on turned a gateway off, which the page has to hear.
+    gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
     // Deliberately nothing else: this process is already running one engine or
     // the other, and libi2pd cannot be initialised a second time in it.
     emit samChanged();
+    emit gatewayChanged();
+    emit transportChanged();
 }
 
 void I2pController::saveProxy(const QString& host, const int port, const bool restartNow)
@@ -215,11 +219,40 @@ void I2pController::checkAndSaveGateway(const QString& address)
                 gatewayAsked_ = true;
                 gatewayEnabled_ = true;
                 gatewayAddress_ = QString::fromStdString(parsed->toString());
+                samEnabled_ = AppSettings::instance().samEnabled();
+                emit samChanged();
                 emit gatewayChanged();
+                emit transportChanged();
                 emit gatewaySaved();
             },
             Qt::QueuedConnection);
     }).detach();
+}
+
+QString I2pController::gatewayHost() const
+{
+    const std::optional<client::GatewayAddress> parsed
+        = client::GatewayAddress::parse(gatewayAddress_.toStdString());
+    return parsed.has_value() ? QString::fromStdString(parsed->host) : QString();
+}
+
+QString I2pController::transport() const
+{
+    if (gatewayEnabled_) {
+        return QStringLiteral("gateway");
+    }
+    return samEnabled_ ? QStringLiteral("sam") : QStringLiteral("embedded");
+}
+
+void I2pController::useEmbedded()
+{
+    AppSettings::instance().setSam(false, samHost_.toStdString(), samPort_);
+    AppSettings::instance().skipGateway();
+    samEnabled_ = false;
+    gatewayEnabled_ = false;
+    emit samChanged();
+    emit gatewayChanged();
+    emit transportChanged();
 }
 
 void I2pController::skipGateway()
@@ -227,16 +260,17 @@ void I2pController::skipGateway()
     AppSettings::instance().skipGateway();
     gatewayAsked_ = true;
     gatewayEnabled_ = false;
-    gatewayAddress_.clear();
+    // The address stays: turning a gateway off is not forgetting it.
     emit gatewayChanged();
+    emit transportChanged();
 }
 
 void I2pController::clearGateway()
 {
     AppSettings::instance().skipGateway();
     gatewayEnabled_ = false;
-    gatewayAddress_.clear();
     emit gatewayChanged();
+    emit transportChanged();
 }
 
 void I2pController::refresh()

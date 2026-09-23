@@ -113,130 +113,181 @@ Popup {
                 }
                 Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
 
+                // One choice, three ways of making it. Each tab carries the
+                // description of a transport and its settings, and the switch
+                // that turns it on: turning one on turns the others off, which
+                // is why there is no way to turn the current one off on its own.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    ColumnLayout {
+
+                    Label { text: "How this application reaches I2P"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+
+                    TabBar {
+                        id: transportTabs
                         Layout.fillWidth: true
-                        spacing: 8
-                        // Still linked into this application, but carrying nothing
-                        // while a router outside it does the work.
-                        enabled: !I2p.samEnabled
-                        opacity: enabled ? 1 : 0.4
-                        Label { text: "Embedded I2P router"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                        Label {
-                            text: "One router serves every account: its tunnels, its network database and "
-                                + "the addresses each account is reached at."
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label { text: "Version"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
-                            Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
-                        }
+                        currentIndex: I2p.transport === "gateway" ? 2
+                            : I2p.transport === "sam" ? 1 : 0
+                        background: Rectangle { color: "transparent" }
+                        TabButton { text: "Embedded" }
+                        TabButton { text: "SAM API" }
+                        TabButton { text: "Private gateway" }
                     }
 
-                    // A host that runs a router so this device does not have
-                    // to. With one set, neither the engine above nor SAM below
-                    // carries anything.
-                    ColumnLayout {
+                    StackLayout {
                         Layout.fillWidth: true
-                        Layout.topMargin: 8
-                        spacing: 8
-                        Label { text: "Private gateway"; color: Theme.text }
-                        Label {
-                            text: "Reach I2P over https through a host that runs a router "
-                                + "for you, and start none here. Whoever runs it sees every "
-                                + "address you connect to. Takes effect after the "
-                                + "application is restarted."
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                        FormField {
-                            id: gatewayField
-                            Layout.fillWidth: true
-                            placeholder: "https://host/path#token"
-                            text: I2p.gatewayAddress
-                        }
-                        Label {
-                            visible: gatewayProblem.length > 0
-                            text: gatewayProblem
-                            color: Theme.danger
-                            font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                        Label {
-                            visible: I2p.gatewayEnabled && gatewayProblem.length === 0
-                            text: "In use."
-                            color: Theme.success
-                            font.pixelSize: Theme.fontSmall
-                        }
-                        RowLayout {
-                            Layout.alignment: Qt.AlignRight
-                            spacing: 8
-                            MenuButton {
-                                visible: I2p.gatewayEnabled
-                                iconName: "close"
-                                text: "Stop using it"
-                                onClicked: { gatewayProblem = ""; I2p.clearGateway(); gatewayField.text = "" }
-                            }
-                            MenuButton {
-                                iconName: "check"
-                                text: I2p.gatewayChecking ? "Checking..." : "Save"
-                                enabled: !I2p.gatewayChecking && gatewayField.text.trim().length > 0
-                                onClicked: { gatewayProblem = ""; I2p.checkAndSaveGateway(gatewayField.text) }
-                            }
-                        }
-                    }
-                    Rectangle { Layout.fillWidth: true; Layout.topMargin: 8; height: 1; color: Theme.border }
+                        currentIndex: transportTabs.currentIndex
 
-                    // Which router carries the traffic. The engine above unless
-                    // this is turned on, and either way the choice takes hold at
-                    // the next start.
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 8
+                        // The engine inside this application.
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "SAM API"; color: Theme.text }
+                            spacing: 8
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Enabled"; color: Theme.text; Layout.fillWidth: true }
+                                Toggle {
+                                    checked: I2p.transport === "embedded"
+                                    onToggled: {
+                                        if (checked) {
+                                            I2p.useEmbedded()
+                                        } else {
+                                            checked = true  // something has to carry the traffic
+                                        }
+                                    }
+                                }
+                            }
                             Label {
-                                text: "Use an I2P router already running on this machine "
-                                    + "instead of the one above. Takes effect after the "
-                                    + "application is restarted."
+                                text: "A router inside this application, serving every account on "
+                                    + "it: its own tunnels, its own network database, and the "
+                                    + "addresses each account is reached at. Nothing outside this "
+                                    + "device is trusted with anything."
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Version"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                                Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
+                            }
                         }
-                        Toggle {
-                            id: samToggle
-                            checked: I2p.samEnabled
-                            onToggled: samRestartDialog.open()
-                        }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        FormField {
-                            id: samHostField
+
+                        // A router already running on this machine.
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            placeholder: "Host or address"
-                            text: I2p.samHost
+                            spacing: 8
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Enabled"; color: Theme.text; Layout.fillWidth: true }
+                                Toggle {
+                                    id: samToggle
+                                    checked: I2p.transport === "sam"
+                                    onToggled: {
+                                        if (checked) {
+                                            samRestartDialog.open()
+                                        } else {
+                                            checked = true
+                                        }
+                                    }
+                                }
+                            }
+                            Label {
+                                text: "Use an I2P router already running on this machine instead "
+                                    + "of the one inside this application. It holds the keys of "
+                                    + "every destination it operates, so it has to be yours."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                FormField {
+                                    id: samHostField
+                                    Layout.fillWidth: true
+                                    placeholder: "Host or address"
+                                    text: I2p.samHost
+                                }
+                                FormField {
+                                    id: samPortField
+                                    Layout.preferredWidth: 90
+                                    placeholder: "Port"
+                                    text: String(I2p.samPort)
+                                    inputField.validator: IntValidator { bottom: 1; top: 65535 }
+                                }
+                            }
+                            MenuButton {
+                                iconName: "check"
+                                text: "Save"
+                                Layout.alignment: Qt.AlignRight
+                                onClicked: samRestartDialog.open()
+                            }
                         }
-                        FormField {
-                            id: samPortField
-                            Layout.preferredWidth: 90
-                            placeholder: "Port"
-                            text: String(I2p.samPort)
-                            inputField.validator: IntValidator { bottom: 1; top: 65535 }
+
+                        // A host that runs the router so this device does not.
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: "Enabled"; color: Theme.text; Layout.fillWidth: true }
+                                Toggle {
+                                    checked: I2p.transport === "gateway"
+                                    enabled: !I2p.gatewayChecking
+                                    onToggled: {
+                                        if (checked) {
+                                            root.gatewayProblem = ""
+                                            I2p.checkAndSaveGateway(gatewayField.text)
+                                            checked = I2p.transport === "gateway"
+                                        } else {
+                                            checked = true
+                                        }
+                                    }
+                                }
+                            }
+                            Label {
+                                text: "Reach I2P over https through a host that runs a router for "
+                                    + "you, and start none here — which is what a phone or a "
+                                    + "laptop on battery wants. Whoever runs it sees every address "
+                                    + "you connect to, and holds the keys of the destinations it "
+                                    + "makes for you. It never sees anything sensitive: your "
+                                    + "identity keys stay on this device, and messages, files and "
+                                    + "calls stay encrypted end to end, as they are everywhere else."
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            FormField {
+                                id: gatewayField
+                                Layout.fillWidth: true
+                                placeholder: "https://host/path#token"
+                                text: I2p.gatewayAddress
+                            }
+                            Label {
+                                visible: root.gatewayProblem.length > 0
+                                text: root.gatewayProblem
+                                color: Theme.danger
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            MenuButton {
+                                iconName: "check"
+                                text: I2p.gatewayChecking ? "Checking…" : "Save"
+                                Layout.alignment: Qt.AlignRight
+                                enabled: !I2p.gatewayChecking && gatewayField.text.trim().length > 0
+                                onClicked: {
+                                    root.gatewayProblem = ""
+                                    I2p.checkAndSaveGateway(gatewayField.text)
+                                }
+                            }
                         }
                     }
-                    MenuButton {
-                        iconName: "check"
-                        text: "Save"
-                        Layout.alignment: Qt.AlignRight
-                        onClicked: samRestartDialog.open()
+
+                    Label {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        wrapMode: Text.Wrap
+                        text: "Which one carries the traffic is settled when this application "
+                            + "starts, so a change takes effect the next time it runs."
+                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
 
                     MenuButton {

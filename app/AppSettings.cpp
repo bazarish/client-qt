@@ -246,6 +246,12 @@ void AppSettings::setGateway(const std::string& address, const std::string& pin)
     gatewayEnabled_ = !address.empty();
     gatewayAddress_ = address;
     gatewayPin_ = pin;
+    if (gatewayEnabled_) {
+        // One transport carries the traffic. Two flags that must never both be
+        // set are two flags that will both be set one day, so the one being
+        // turned on turns the other off here rather than in a caller.
+        samEnabled_ = false;
+    }
     save();
 }
 
@@ -253,8 +259,9 @@ void AppSettings::skipGateway()
 {
     gatewayAsked_ = true;
     gatewayEnabled_ = false;
-    gatewayAddress_.clear();
-    gatewayPin_.clear();
+    // The address and the key it presented are kept: turning a gateway off is
+    // not forgetting it, and a user who comes back should not have to paste it
+    // again.
     save();
 }
 
@@ -268,6 +275,9 @@ void AppSettings::setSam(const bool enabled, const std::string& host, const int 
     samEnabled_ = enabled;
     samHost_ = wantedHost;
     samPort_ = wantedPort;
+    if (samEnabled_) {
+        gatewayEnabled_ = false;
+    }
     save();
 }
 

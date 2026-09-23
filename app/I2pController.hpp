@@ -69,6 +69,13 @@ class I2pController : public QObject {
     Q_PROPERTY(bool gatewayEnabled READ gatewayEnabled NOTIFY gatewayChanged)
     Q_PROPERTY(QString gatewayAddress READ gatewayAddress NOTIFY gatewayChanged)
     Q_PROPERTY(bool gatewayChecking READ gatewayChecking NOTIFY gatewayChanged)
+    // The host a gateway is reached at, without the scheme or the secret path:
+    // what a status line can show without giving the way in away.
+    Q_PROPERTY(QString gatewayHost READ gatewayHost NOTIFY gatewayChanged)
+    // Which of the three carries the traffic: "embedded", "sam" or "gateway".
+    // One choice, so the settings page can bind to it instead of reconciling
+    // two flags of its own.
+    Q_PROPERTY(QString transport READ transport NOTIFY transportChanged)
 public:
     explicit I2pController(QObject* parent = nullptr);
 
@@ -106,6 +113,8 @@ public:
     bool gatewayEnabled() const { return gatewayEnabled_; }
     QString gatewayAddress() const { return gatewayAddress_; }
     bool gatewayChecking() const { return gatewayChecking_; }
+    QString gatewayHost() const;
+    QString transport() const;
     // Checks the address off the GUI thread and, if it answers, stores it with
     // the key it presented. An address that does not answer is not stored:
     // there is nothing useful to do with one, and saving it would only move the
@@ -117,6 +126,9 @@ public:
     Q_INVOKABLE void skipGateway();
     // Stops using a gateway that was set, without un-asking the question.
     Q_INVOKABLE void clearGateway();
+    // Puts the traffic on the engine in this process. Takes hold at the next
+    // start, as every transport choice does.
+    Q_INVOKABLE void useEmbedded();
 
     // Re-reads the router diagnostics (a no-op when it is not running). Cheap;
     // the status window calls it on a timer while open.
@@ -129,6 +141,7 @@ signals:
     void proxyChanged();
     void samChanged();
     void gatewayChanged();
+    void transportChanged();
     void gatewaySaved();
     // Why it was refused, in a sentence for a person.
     void gatewayRefused(const QString& reason);
