@@ -1384,6 +1384,11 @@ private:
     // worker; contactsRevision_ bumps on every refresh to re-drive the binding.
     QSet<QString> pendingContacts_;
     QSet<QString> agreeingContacts_;
+    // Whose acceptance has a row in the activity panel. An acceptance that has
+    // left this device and has not reached the other side is still in flight,
+    // and it outlives the command that sent it.
+    QSet<QString> agreeingShown_;
+    void syncAgreeingRows();
     // Reactions that arrived while their conversation was not being looked at,
     // as "peer\ntarget". Kept in the account's database rather than in the
     // reactions table: that table is keyed by who reacted and has no room for

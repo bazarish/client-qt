@@ -2704,6 +2704,7 @@ SessionController::SessionController(QObject* parent)
                     agreeingContacts_.insert(fps[i]);
                 }
             }
+            syncAgreeingRows();
             rebuildChatList();
             emit activePeerNameChanged();  // the open chat's header may have renamed
             // Re-drive any contact-request bubble's "Agree" visibility.
@@ -4049,6 +4050,28 @@ void SessionController::retryContactRequest(const QString& fingerprint)
     if (const auto again = refusedRequests_.find(fingerprint); again != refusedRequests_.end()) {
         again->triesLeft = pending.triesLeft;
         again->requestId = pending.requestId;
+    }
+}
+
+void SessionController::syncAgreeingRows()
+{
+    for (const QString& fingerprint : agreeingContacts_) {
+        if (agreeingShown_.contains(fingerprint)
+            || operations_.indexOf(QStringLiteral("accept:") + fingerprint) >= 0) {
+            continue;  // the command that sends it is saying so already
+        }
+        agreeingShown_.insert(fingerprint);
+        beginOperation(QStringLiteral("agreeing:") + fingerprint, QStringLiteral("contact"),
+            QStringLiteral("Agreeing to a contact request"),
+            QStringLiteral("Waiting for their server…"), fingerprint);
+    }
+    for (auto at = agreeingShown_.begin(); at != agreeingShown_.end();) {
+        if (agreeingContacts_.contains(*at)) {
+            ++at;
+            continue;
+        }
+        finishOperation(QStringLiteral("agreeing:") + *at, true, QStringLiteral("Agreed"));
+        at = agreeingShown_.erase(at);
     }
 }
 
