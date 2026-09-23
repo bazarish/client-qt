@@ -127,24 +127,26 @@ Popup {
                         }
                     }
 
+                    // A gateway's router is shared by everyone using it: its
+                    // network database and its connections describe that machine
+                    // and its other clients, not this account. What belongs here
+                    // is further down - the destinations this account runs.
+                    Label {
+                        visible: I2p.running && I2p.gatewayEnabled
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: "The router is the one at " + I2p.gatewayAddress.split("#")[0]
+                            + ". What it knows of the network is its own and is not shown here."
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                    }
+
                     ColumnLayout {
                         // An external router keeps its own counsel about the
                         // network it is on, so there is nothing truthful to show.
-                        visible: I2p.running && !I2p.samEnabled
+                        visible: I2p.running && !I2p.samEnabled && !I2p.gatewayEnabled
                         Layout.fillWidth: true
                         spacing: 6
-                        // Whose numbers these are. A device that runs no router
-                        // of its own, showing thousands of known routers as if
-                        // it did, says something untrue about itself.
-                        Label {
-                            visible: I2p.gatewayEnabled
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            text: "The router at " + I2p.gatewayAddress.split("#")[0]
-                                + ", which carries this device's traffic."
-                            color: Theme.textDim
-                            font.pixelSize: Theme.fontSmall
-                        }
                         StatRow { label: "Routers known"; value: I2p.knownRouters }
                         StatRow { label: "Floodfills"; value: I2p.floodfills }
                         StatRow { label: "Inbound tunnels"; value: I2p.inboundTunnels }
@@ -377,11 +379,16 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Rectangle {
+                    visible: I2p.running && !I2p.gatewayEnabled
+                    Layout.fillWidth: true; height: 1; color: Theme.border
+                }
 
                 // Active direct transport connections (NTCP2 / SSU2 sessions).
+                // A gateway's are the gateway's, made on behalf of everyone
+                // using it.
                 ColumnLayout {
-                    visible: I2p.running
+                    visible: I2p.running && !I2p.gatewayEnabled
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8

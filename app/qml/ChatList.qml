@@ -271,6 +271,10 @@ Item {
                                     : "No server connection yet"))
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
+                        // A transport's complaint is a sentence, not a word:
+                        // elided on one line it said nothing useful.
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 3
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                     }
