@@ -124,6 +124,7 @@ public:
     void setStatusForId(qint64 id, int status);
     // Replaces a row's text in place (a system note tracking a running operation).
     void setTextForId(qint64 id, const QString& text);
+    void setTypeForId(qint64 id, const QString& type);
     // Attaches (or, when empty, clears) a delivery-error string for a message,
     // shown inline on a failed outgoing bubble. Session-only; not persisted.
     void setErrorForId(qint64 id, const QString& error);

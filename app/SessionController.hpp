@@ -121,6 +121,10 @@ public slots:
     void connectionLog();
     void clearConnectionLog();
     void askDevicesForContacts();
+    // The end of a command. Connected behind every one of them, so it runs on
+    // this thread once the command it follows has returned - which is how the
+    // controller knows a command is over without each one saying so.
+    void noteCommandDone();
     // Stops everything this worker owns and closes the account. Answered by
     // stopped(); the thread's loop is ended by the controller after that.
     void shutdown();
@@ -168,6 +172,7 @@ public slots:
     // first openAccount so the injected backend can reach them.
 
 signals:
+    void commandFinished();
     // The server serves an address no device of this account answered for. The
     // window puts the choice to the user; nothing is published until it does.
     void addressMismatch(const QString& servedHost, const QString& ourHost);
@@ -922,6 +927,9 @@ public:
     Q_INVOKABLE void clearChat(bool forEveryone);
     // Permanently deletes the active contact and its whole chat (irreversible).
     Q_INVOKABLE void deleteContact();
+    // Sends the contact request of the active chat again, as the same request.
+    // What the note over it offers when an add ended with nothing.
+    Q_INVOKABLE void retryContactAdd();
     // Inline-keyboard button presses in the active conversation: a callback
     // (button data + the keyboard message's protocol id) or a command button.
     // A button press. The label is passed only so the activity panel can name
@@ -1225,6 +1233,12 @@ signals:  // to worker
     void requestSetCallMuted(bool muted);
 
 private slots:
+    // Every command sent to the worker passes through these two: one when it is
+    // asked for, one when the worker has finished it. Connected to each command
+    // signal by name rather than one by one, so work that touches the network
+    // shows up in the activity panel whether or not anybody remembered it.
+    void noteCommandQueued();
+    void onCommandFinished();
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected,
         const QString& connectionNote);
     void onConnectionChanged(bool connected, const QString& connectionNote);
@@ -1289,6 +1303,21 @@ private:
     // the pinned-first/recent sort from the source model is preserved).
     QSortFilterProxyModel contactsProxy_;
     ConversationModel conversation_;
+    // Commands asked of the worker and not yet finished, oldest first. The
+    // worker takes them one at a time in this order, so the first is the one it
+    // is on and the rest are waiting their turn.
+    struct QueuedCommand {
+        QString id;
+        QString title;
+        qint64 queuedAtMs = 0;
+        // A command that is over before anybody could read it is not worth a
+        // row; one that is still here after the grace gets one.
+        bool shown = false;
+    };
+    QList<QueuedCommand> commandQueue_;
+    qint64 commandSeq_ = 0;
+    QTimer commandTimer_;
+    void showSlowCommands();
     // Live background operations shown in the activity panel. A finished row
     // lingers briefly (so the result is visible) and is then auto-removed.
     OperationListModel operations_;

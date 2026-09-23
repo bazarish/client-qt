@@ -173,6 +173,9 @@ public:
     StoredMessage messageByE2e(const QString& e2eId, const QString& peer) const;
     // Replaces a message's text and keyboard and marks it edited.
     void editContent(qint64 id, const QString& text, const QString& keyboard);
+    // Changes what a note is: a contact add that failed is no longer a progress
+    // line but something with a way out, and the type is what the view reads.
+    void setType(qint64 id, const QString& type);
     // Permanently removes a message (delete with no trace).
     void removeById(qint64 id);
     // Permanently removes every message of a conversation (clear chat / a deleted

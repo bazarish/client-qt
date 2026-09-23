@@ -12,6 +12,7 @@
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
 #include "DeliveryStatus.hpp"
+#include "FederationFetch.hpp"
 #include "Invite.hpp"
 #include "QtAudioIo.hpp"
 #include "Session.hpp"
@@ -36,6 +37,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QMetaMethod>
+#include <QSet>
 #include <QImage>
 #include <QMimeDatabase>
 #include <QRandomGenerator>
@@ -43,6 +46,7 @@
 #include <QRegularExpression>
 #include <chrono>
 #include <QTimer>
+#include <cstring>
 #include <QUrl>
 
 #if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
@@ -77,6 +81,11 @@ struct ResolvedContactAddQueue {
         bazarish::client::Session::ContactCardResolved resolved;
     };
     std::vector<Entry> results;
+    // What the resolve is doing while it runs, in the order it said it. Held
+    // here rather than emitted from the resolve thread for the reason the
+    // results are: that thread must touch nothing that can be destroyed under
+    // it.
+    std::vector<std::pair<QString, QString>> stages;
 };
 
 struct AliasErrandQueue {
@@ -144,6 +153,28 @@ private:
     const QString id_;
     bool ok_ = false;
     QString status_ = QStringLiteral("Failed");
+};
+
+// How often the queue of commands is looked over, and how long a command has to
+// be unfinished before it is worth a row: a local one is done in a moment, and
+// a panel that flickers with those is a panel nobody reads.
+constexpr int kCommandTickMs = 200;
+constexpr qint64 kCommandVisibleAfterMs = 400;
+
+// Commands that raise a row of their own, with more in it than a generic one
+// has: what is being sent, to whom, how far it has got. A second row for them
+// would say less and be in the way. Everything not named here is covered by
+// the generic rows, which is what keeps new commands from having to be
+// remembered one by one.
+const QSet<QByteArray> kSelfDescribingCommands = {
+    "requestOpen", "requestConnect", "requestShutdown", "requestSendText", "requestSendFile",
+    "requestSendPicture", "requestSendVoice", "requestSendCallback", "requestSendCommand",
+    "requestAddByInvite", "requestAddByAlias", "requestAcceptContact", "requestInviteSig",
+    "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
+    "requestPublishThisDeviceAddress", "requestPublishFreshAddress", "requestRefreshI2pStatus",
+    "requestRefreshStorageUsage", "requestRefreshDevices", "requestForgetDevice",
+    "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
+    "requestDeletePersonalKey", "requestPublishPersonalDest",
 };
 
 // Keeping this account's delegation alive. The transient the server operates the
@@ -1465,8 +1496,13 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     try {
         std::thread([context = std::move(context), request = std::move(request),
                         queue = std::move(queue), opId]() {
+            bazarish::client::tellFetchStages([queue, opId](const std::string& stage) {
+                const std::lock_guard<std::mutex> lock(queue->mutex);
+                queue->stages.push_back({opId, QString::fromStdString(stage) + QStringLiteral("…")});
+            });
             bazarish::client::Session::ContactCardResolved resolved
                 = bazarish::client::Session::resolveContactCard(context, request);
+            bazarish::client::tellFetchStages(nullptr);
             const std::lock_guard<std::mutex> lock(queue->mutex);
             queue->results.push_back({opId, std::move(resolved)});
         }).detach();
@@ -1510,9 +1546,14 @@ void SessionWorker::drainResolvedAdds()
         return;
     }
     std::vector<ResolvedContactAddQueue::Entry> ready;
+    std::vector<std::pair<QString, QString>> stages;
     {
         const std::lock_guard<std::mutex> lock(resolvedAdds_->mutex);
         ready.swap(resolvedAdds_->results);
+        stages.swap(resolvedAdds_->stages);
+    }
+    for (const auto& [opId, stage] : stages) {
+        emit contactAddStage(opId, stage);
     }
     for (const ResolvedContactAddQueue::Entry& entry : ready) {
         const bazarish::client::Session::ContactCardResolved& resolved = entry.resolved;
@@ -1559,6 +1600,11 @@ void SessionWorker::drainResolvedAdds()
             emit actionFailed(QString::fromUtf8(e.what()));
         }
     }
+}
+
+void SessionWorker::noteCommandDone()
+{
+    emit commandFinished();
 }
 
 void SessionWorker::acceptContact(const QString& peer)
@@ -2768,7 +2814,134 @@ SessionController::SessionController(QObject* parent)
     connect(&contacts_, &QAbstractItemModel::modelReset, this,
         &SessionController::refreshUnreadTotal);
 
+    // Every command this controller asks of the worker becomes background work
+    // without the command itself having to say so. A command is a signal whose
+    // name starts with "request", so they are enumerated here: one connection
+    // notes that it was asked for, and one behind the real slot runs when the
+    // worker has finished it. Anything added later is covered by being written
+    // the same way as the rest.
+    const QMetaObject* const meta = metaObject();
+    const QMetaMethod noted = meta->method(meta->indexOfSlot("noteCommandQueued()"));
+    const QMetaMethod done = SessionWorker::staticMetaObject.method(
+        SessionWorker::staticMetaObject.indexOfSlot("noteCommandDone()"));
+    // A signal with a default argument is two methods here, and both fire on one
+    // emission: bracketing each would count every such command twice.
+    QSet<QByteArray> bracketed;
+    for (int i = meta->methodOffset(); i < meta->methodCount(); ++i) {
+        const QMetaMethod method = meta->method(i);
+        if (method.methodType() != QMetaMethod::Signal
+            || !method.name().startsWith("request")
+            || kSelfDescribingCommands.contains(method.name())
+            || bracketed.contains(method.name())) {
+            continue;
+        }
+        bracketed.insert(method.name());
+        connect(this, method, this, noted);
+        // Behind the command's own slot, which is what makes it the end of it:
+        // queued calls reach the worker in the order they were connected.
+        connect(this, method, worker_, done);
+    }
+    connect(worker_, &SessionWorker::commandFinished, this,
+        &SessionController::onCommandFinished);
+    commandTimer_.setInterval(kCommandTickMs);
+    connect(&commandTimer_, &QTimer::timeout, this, &SessionController::showSlowCommands);
+
     thread_.start();
+}
+
+namespace {
+
+// What a command is called in the activity panel. Most read well enough from
+// the name of the signal that carries them; these do not.
+QString commandTitle(const QByteArray& signalName)
+{
+    static const QHash<QByteArray, QString> kNamed = {
+        {"requestSendReceipt", QStringLiteral("Confirming a message was read")},
+        {"requestAckPending", QStringLiteral("Clearing a message from the mailbox")},
+        {"requestSendReaction", QStringLiteral("Sending a reaction")},
+        {"requestSendEdit", QStringLiteral("Sending an edit")},
+        {"requestSendDelete", QStringLiteral("Deleting a message for both sides")},
+        {"requestUnsend", QStringLiteral("Withdrawing a file")},
+        {"requestAcceptContact", QStringLiteral("Agreeing to a contact request")},
+        {"requestEmitSettings", QStringLiteral("Telling your other devices")},
+        {"requestSyncRead", QStringLiteral("Marking a chat read")},
+        {"requestSyncChatPin", QStringLiteral("Pinning a chat")},
+        {"requestSyncChatClear", QStringLiteral("Clearing a chat")},
+        {"requestClearChatForEveryone", QStringLiteral("Clearing a chat for both sides")},
+        {"requestContactsFromDevices", QStringLiteral("Asking your other devices")},
+        {"requestSetSync", QStringLiteral("Going online")},
+        {"requestRebuildI2p", QStringLiteral("Rebuilding the I2P destinations")},
+        {"requestInviteSig", QStringLiteral("Preparing your invite")},
+        {"requestSignLoginSig", QStringLiteral("Signing in")},
+    };
+    if (const auto found = kNamed.constFind(signalName); found != kNamed.cend()) {
+        return found.value();
+    }
+    // "requestSetDisplayName" -> "Set display name".
+    QString words;
+    for (int at = static_cast<int>(strlen("request")); at < signalName.size(); ++at) {
+        const char letter = signalName.at(at);
+        if (letter >= 'A' && letter <= 'Z' && !words.isEmpty()) {
+            words += QLatin1Char(' ');
+            words += QLatin1Char(letter - 'A' + 'a');
+            continue;
+        }
+        words += QLatin1Char(letter);
+    }
+    return words;
+}
+
+}  // namespace
+
+void SessionController::noteCommandQueued()
+{
+    const QMetaMethod signal = metaObject()->method(senderSignalIndex());
+    QueuedCommand command;
+    command.id = QStringLiteral("cmd:") + QString::number(++commandSeq_);
+    command.title = commandTitle(signal.name());
+    command.queuedAtMs = nowMillis();
+    commandQueue_.append(command);
+    if (!commandTimer_.isActive()) {
+        commandTimer_.start();
+    }
+}
+
+void SessionController::showSlowCommands()
+{
+    if (commandQueue_.isEmpty()) {
+        commandTimer_.stop();
+        return;
+    }
+    const qint64 now = nowMillis();
+    for (int at = 0; at < commandQueue_.size(); ++at) {
+        QueuedCommand& command = commandQueue_[at];
+        if (now - command.queuedAtMs < kCommandVisibleAfterMs) {
+            continue;
+        }
+        const QString status = at == 0 ? QStringLiteral("Working on it…")
+                                       : QStringLiteral("Waiting its turn…");
+        if (!command.shown) {
+            command.shown = true;
+            beginOperation(command.id, QStringLiteral("command"), command.title, status);
+            continue;
+        }
+        updateOperation(command.id, status);
+    }
+    emit operationsChanged();
+}
+
+void SessionController::onCommandFinished()
+{
+    if (commandQueue_.isEmpty()) {
+        return;
+    }
+    const QueuedCommand command = commandQueue_.takeFirst();
+    if (command.shown) {
+        finishOperation(command.id, true, QStringLiteral("Done"));
+    }
+    if (commandQueue_.isEmpty()) {
+        commandTimer_.stop();
+    }
 }
 
 void SessionController::refreshUnreadTotal()
@@ -3877,6 +4050,21 @@ void SessionController::retryContactRequest(const QString& fingerprint)
         again->triesLeft = pending.triesLeft;
         again->requestId = pending.requestId;
     }
+}
+
+void SessionController::retryContactAdd()
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    const auto found = refusedRequests_.constFind(activePeer_);
+    if (found == refusedRequests_.cend()) {
+        emit actionFailed(QStringLiteral("This add cannot be tried again from here"));
+        return;
+    }
+    // The same request, under the name it already had: the recipient's server
+    // recognises the second copy as the first one.
+    addByInvite(found->uri, found->intro, found->requestId);
 }
 
 void SessionController::addByAlias(const QString& alias, const QString& intro)
@@ -6072,6 +6260,12 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
     const auto row = contactProgressRows_.constFind(opId);
     if (row != contactProgressRows_.cend()) {
         store_.updateStatus(row.value(), DeliveryStatus::Received);
+        if (!ok) {
+            // No longer a progress line: it is an outcome with two ways out of
+            // it, and the view draws those from the type.
+            store_.setType(row.value(), QStringLiteral("contact.failed"));
+            conversation_.setTypeForId(row.value(), QStringLiteral("contact.failed"));
+        }
     }
     writeContactProgress(opId, ok ? status : QStringLiteral("Could not add: ") + status);
     contactProgressRows_.remove(opId);

@@ -372,6 +372,18 @@ void ConversationModel::setTextForId(qint64 id, const QString& text)
     }
 }
 
+void ConversationModel::setTypeForId(qint64 id, const QString& type)
+{
+    for (int i = 0; i < messages_.size(); ++i) {
+        if (messages_[i].id == id) {
+            messages_[i].type = type;
+            const QModelIndex idx = index(i);
+            emit dataChanged(idx, idx, {TypeRole});
+            return;
+        }
+    }
+}
+
 void ConversationModel::setErrorForId(qint64 id, const QString& error)
 {
     if (error.isEmpty()) {

@@ -790,6 +790,16 @@ void TranscriptStore::editContent(qint64 id, const QString& text, const QString&
     }
 }
 
+void TranscriptStore::setType(qint64 id, const QString& type)
+{
+    Query query(db_);
+    query.prepare("UPDATE messages SET type = ? WHERE id = ?");
+    query.addBindValue(type);
+    query.addBindValue(id);
+    if (query.exec()) {
+    }
+}
+
 void TranscriptStore::removeById(qint64 id)
 {
     // Read before the row goes: the message is what names its picture or voice

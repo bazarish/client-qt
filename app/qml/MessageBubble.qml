@@ -31,7 +31,7 @@ Item {
     // that offset.
     property point menuAt: Qt.point(0, 0)
     width: ListView.view ? ListView.view.width : 0
-    height: isSystem ? (sysLabel.implicitHeight + 12) : (bubble.height + 4)
+    height: isSystem ? (sysBlock.implicitHeight + 12) : (bubble.height + 4)
 
     // How the body's clickable parts name themselves. The document is built from
     // the message here, so these are the only schemes a tap can carry; a
@@ -99,7 +99,10 @@ Item {
         && ((model.attName && model.attName.length > 0)
             || (model.outgoing && (model.type === "file" || model.type === "audio")))
     readonly property bool isUnsupported: model.type === "unsupported"
-    readonly property bool isSystem: model.type === "system"
+    // A contact add that ended badly. It reads like a system note and carries
+    // the two ways out of it, because the chat is where the person was watching.
+    readonly property bool isAddFailed: model.type === "contact.failed"
+    readonly property bool isSystem: model.type === "system" || delegate.isAddFailed
     // A contact request. Incoming ones render green with an "Agree" button; our own
     // outgoing one is a "request sent" note.
     readonly property bool isContactRequest: model.type === "contact.request"
@@ -138,17 +141,39 @@ Item {
         ? delegate.session.reactionsToFlash(model.e2eId) : []
 
     // Centered system notice (e.g. a cleared-chat note).
-    Label {
-        id: sysLabel
+    ColumnLayout {
+        id: sysBlock
         visible: delegate.isSystem
         anchors.centerIn: parent
         width: parent.width - 80
-        text: model.text
-        color: Theme.textDim
-        font.pixelSize: Theme.fontSmall
-        font.italic: true
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.Wrap
+        spacing: 8
+
+        Label {
+            id: sysLabel
+            text: model.text
+            color: delegate.isAddFailed ? Theme.danger : Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            font.italic: !delegate.isAddFailed
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+        RowLayout {
+            visible: delegate.isAddFailed
+            spacing: 8
+            Layout.alignment: Qt.AlignHCenter
+            MenuButton {
+                iconName: "refresh"
+                text: "Try again"
+                onClicked: if (delegate.session) { delegate.session.retryContactAdd() }
+            }
+            MenuButton {
+                iconName: "trash"
+                danger: true
+                text: "Delete chat"
+                onClicked: if (delegate.session) { delegate.session.deleteContact() }
+            }
+        }
     }
 
     // The inline keyboard attached to this message (rows of buttons), parsed
