@@ -59,6 +59,7 @@ if(Qt6_FOUND)
         app/I2pController.hpp
         app/SessionController.cpp
         app/SessionController.hpp
+        app/DeliveryStatus.hpp
         app/Markup.cpp
         app/Markup.hpp
         app/Models.cpp
@@ -86,12 +87,12 @@ if(Qt6_FOUND)
         app/VoiceNote.cpp
         app/AvatarStore.hpp
     )
-    target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(bazarish-app PRIVATE
         bazarish_client ${QRENCODE_LIBRARY} ${SQLCIPHER_LIBRARY}
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Multimedia Qt6::Widgets
         Qt6::Network)
-    target_include_directories(bazarish-app PRIVATE ${QRENCODE_INCLUDE_DIR} ${SQLITE3_INCLUDE_DIR})
+    target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
+        ${QRENCODE_INCLUDE_DIR} ${SQLCIPHER_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 
     if(WIN32)
@@ -155,7 +156,6 @@ if(Qt6_FOUND)
         QML_FILES
             app/qml/Main.qml
             app/qml/Theme.qml
-            app/qml/DeliveryStatus.qml
             app/qml/AccountPicker.qml
             app/qml/CreateAccountWizard.qml
             app/qml/ConnectServerPage.qml
@@ -240,7 +240,7 @@ if(Qt6_FOUND)
 
     add_executable(TestTranscript tests/TestTranscript.cpp app/TranscriptStore.cpp)
     target_include_directories(TestTranscript PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLITE3_INCLUDE_DIR})
+        ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLCIPHER_INCLUDE_DIR})
     target_link_libraries(TestTranscript PRIVATE
         bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core)
     target_compile_options(TestTranscript PRIVATE -Wall -Wextra)
