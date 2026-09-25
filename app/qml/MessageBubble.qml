@@ -466,8 +466,6 @@ Item {
                         Layout.fillWidth: true
                         Layout.minimumWidth: stageMetrics.width
                         spacing: 2
-                        // downloadStage: 0 connecting, 1 downloading, 2 reconnecting.
-                        readonly property bool reconnecting: model.downloadStage === 2
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 6
@@ -478,7 +476,7 @@ Item {
                                 to: 1
                                 // Hold the bar at the bytes we have while reconnecting,
                                 // rather than dropping back to an indeterminate sweep.
-                                indeterminate: model.downloadTotal <= 0 && !dlProgress.reconnecting
+                                indeterminate: model.downloadTotal <= 0
                                 value: model.downloadTotal > 0
                                     ? model.downloadReceived / model.downloadTotal : 0
                             }
@@ -514,18 +512,13 @@ Item {
                         }
                         Label {
                             Layout.fillWidth: true
-                            text: dlProgress.reconnecting
-                                ? (model.downloadTotal > 0
-                                    ? "Reconnecting… " + delegate.humanSize(model.downloadReceived)
-                                        + " / " + delegate.humanSize(model.downloadTotal)
-                                    : "Reconnecting over I2P…")
-                                : (model.downloadTotal > 0
-                                    ? (delegate.humanSize(model.downloadReceived) + " / "
-                                        + delegate.humanSize(model.downloadTotal))
-                                    : (model.transferStage.length > 0
-                                        ? model.transferStage
-                                        : "Connecting over I2P…"))
-                            color: dlProgress.reconnecting ? Theme.warn : Theme.textDim
+                            text: model.downloadTotal > 0
+                                ? (delegate.humanSize(model.downloadReceived) + " / "
+                                    + delegate.humanSize(model.downloadTotal))
+                                : (model.transferStage.length > 0
+                                    ? model.transferStage
+                                    : "Connecting over I2P…")
+                            color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
                             elide: Text.ElideRight
                         }
@@ -538,19 +531,9 @@ Item {
                         reason: "Save failed: " + model.downloadError
                         session: delegate.session
                     }
-                    // The blob aged out of the store (404/410): a permanent,
-                    // non-retryable state (persisted across restarts), so the Save
-                    // button is dropped and this stands in its place.
-                    CopyableError {
-                        visible: model.blobGone
-                        Layout.fillWidth: true
-                        reason: "Not found"
-                        font.weight: Font.Medium
-                        session: delegate.session
-                    }
                     Button {
                         id: saveButton
-                        visible: !model.outgoing && !model.downloading && !model.blobGone
+                        visible: !model.outgoing && !model.downloading
                         // Once saved and the file is still on disk, offer to open it;
                         // otherwise (never saved, or the file is gone) offer Save.
                         readonly property bool savedExists: model.savedPath.length > 0

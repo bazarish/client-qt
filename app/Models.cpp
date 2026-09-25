@@ -210,10 +210,8 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case DownloadReceivedRole: return downloadReceivedById_.value(m.id, 0);
     case DownloadTotalRole: return downloadTotalById_.value(m.id, 0);
     case DownloadErrorRole: return downloadErrorById_.value(m.id);
-    case DownloadStageRole: return downloadStageById_.value(m.id, 0);
     case TransferStageRole: return transferStageById_.value(m.id);
     case SavedPathRole: return m.savedPath;
-    case BlobGoneRole: return m.blobGone;
     case PictureRole: return m.hasPicture;
     case DurationRole: return m.attDurationMs;
     case WaveRole: return m.attWave;
@@ -239,9 +237,9 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {UploadProgressRole, "uploadProgress"}, {DayRole, "day"},
         {DownloadingRole, "downloading"}, {DownloadReceivedRole, "downloadReceived"},
         {DownloadTotalRole, "downloadTotal"}, {DownloadErrorRole, "downloadError"},
-        {SavedPathRole, "savedPath"}, {BlobGoneRole, "blobGone"}, {PictureRole, "hasPicture"},
+        {SavedPathRole, "savedPath"}, {PictureRole, "hasPicture"},
         {DurationRole, "attDurationMs"}, {WaveRole, "attWave"},
-        {DownloadStageRole, "downloadStage"}, {TransferStageRole, "transferStage"},
+        {TransferStageRole, "transferStage"},
         {ReplyToRole, "replyTo"}};
 }
 
@@ -254,7 +252,6 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
     downloadReceivedById_.clear();
     downloadTotalById_.clear();
     downloadErrorById_.clear();
-    downloadStageById_.clear();
     transferStageById_.clear();
     endResetModel();
 }
@@ -427,18 +424,6 @@ void ConversationModel::setDownloadProgressForId(qint64 id, qint64 received, qin
     }
 }
 
-void ConversationModel::setDownloadStageForId(qint64 id, int stage)
-{
-    downloadStageById_.insert(id, stage);
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {DownloadStageRole});
-            return;
-        }
-    }
-}
-
 void ConversationModel::setTransferStageForId(const qint64 id, const QString& stage)
 {
     if (stage.isEmpty()) {
@@ -459,7 +444,6 @@ void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& e
 {
     downloadReceivedById_.remove(id);
     downloadTotalById_.remove(id);
-    downloadStageById_.remove(id);
     transferStageById_.remove(id);
     if (ok || error.isEmpty()) {
         downloadErrorById_.remove(id);
@@ -469,8 +453,8 @@ void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& e
     for (int i = 0; i < messages_.size(); ++i) {
         if (messages_[i].id == id) {
             const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {DownloadingRole, DownloadReceivedRole, DownloadTotalRole,
-                                           DownloadErrorRole, DownloadStageRole});
+            emit dataChanged(idx, idx, {DownloadingRole, DownloadReceivedRole,
+                                           DownloadTotalRole, DownloadErrorRole});
             return;
         }
     }
@@ -495,18 +479,6 @@ void ConversationModel::setPictureReadyForId(qint64 id, const bool ready)
             messages_[i].hasPicture = ready;
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx, {PictureRole});
-            return;
-        }
-    }
-}
-
-void ConversationModel::setBlobGoneForId(qint64 id, bool gone)
-{
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            messages_[i].blobGone = gone;
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {BlobGoneRole});
             return;
         }
     }

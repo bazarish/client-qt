@@ -134,7 +134,7 @@ private:
 // stay aligned with it. Change one and change the other.
 const char* const kMessageColumns = "id, peer, outgoing, type, e2eId, text, attName,"
                                     " attMime, attSize, attRef, attSrcPath, keyboard,"
-                                    " edited, ts, status, orderKey, savedPath, blobGone, replyTo,"
+                                    " edited, ts, status, orderKey, savedPath, replyTo,"
                                     " hasPicture, attDurationMs, attWave, forwarded";
 
 // Orders a loaded window oldest-first by the sort position (orderKey), then id as
@@ -172,12 +172,11 @@ StoredMessage readMessageRow(const Query& query)
     m.status = query.value(14).toInt();
     m.orderKey = query.value(15).toLongLong();
     m.savedPath = query.value(16).toString();
-    m.blobGone = query.value(17).toInt() != 0;
-    m.replyTo = query.value(18).toString();
-    m.hasPicture = query.value(19).toInt() != 0;
-    m.attDurationMs = query.value(20).toLongLong();
-    m.attWave = query.value(21).toString();
-    m.forwarded = query.value(22).toInt() != 0;
+    m.replyTo = query.value(17).toString();
+    m.hasPicture = query.value(18).toInt() != 0;
+    m.attDurationMs = query.value(19).toLongLong();
+    m.attWave = query.value(20).toString();
+    m.forwarded = query.value(21).toInt() != 0;
     return m;
 }
 
@@ -303,7 +302,7 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
             "text TEXT, attName TEXT, attMime TEXT, attSize INTEGER,"
             "attRef TEXT, attSrcPath TEXT, keyboard TEXT, edited INTEGER,"
             " ts INTEGER, status INTEGER, orderKey INTEGER, savedPath TEXT,"
-            " blobGone INTEGER, replyTo TEXT, hasPicture INTEGER,"
+            " replyTo TEXT, hasPicture INTEGER,"
             " attDurationMs INTEGER, attWave TEXT, forwarded INTEGER)")) {
         return false;
     }
@@ -660,16 +659,6 @@ void TranscriptStore::setSavedPath(qint64 id, const QString& path)
     Query query(db_);
     query.prepare("UPDATE messages SET savedPath = ? WHERE id = ?");
     query.addBindValue(path);
-    query.addBindValue(id);
-    if (query.exec()) {
-    }
-}
-
-void TranscriptStore::setBlobGone(qint64 id, bool gone)
-{
-    Query query(db_);
-    query.prepare("UPDATE messages SET blobGone = ? WHERE id = ?");
-    query.addBindValue(gone ? 1 : 0);
     query.addBindValue(id);
     if (query.exec()) {
     }

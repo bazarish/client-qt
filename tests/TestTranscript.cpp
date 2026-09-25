@@ -647,7 +647,6 @@ int main(int argc, char** argv)
         CHECK(r.attWave == full.attWave);
         CHECK(r.forwarded == full.forwarded);
         CHECK(!r.hasPicture);
-        CHECK(!r.blobGone);
         CHECK(r.savedPath.isEmpty());
     }
 

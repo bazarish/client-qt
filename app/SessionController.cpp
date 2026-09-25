@@ -2709,8 +2709,6 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::servedProgress, this, &SessionController::onServedProgress);
     connect(worker_, &SessionWorker::transferStage, this, &SessionController::onTransferStage);
     connect(worker_, &SessionWorker::servedFinished, this, &SessionController::onServedFinished);
-    connect(worker_, &SessionWorker::downloadStage, this,
-        &SessionController::onDownloadStage);
     connect(worker_, &SessionWorker::downloadFinished, this,
         &SessionController::onDownloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportAccount);
@@ -5995,34 +5993,10 @@ void SessionController::replayTransfersForActivePeer()
     }
 }
 
-void SessionController::onDownloadStage(qint64 token, int stage)
-{
-    conversation_.setDownloadStageForId(token, stage);
-    // BlobFetchStage: 0 connecting, 1 downloading, 2 reconnecting.
-    static const char* const kStages[] = {"Connecting…", "Downloading…", "Reconnecting…"};
-    if (stage >= 0 && stage <= 2) {
-        updateOperation(QStringLiteral("download:") + QString::number(token),
-            QString::fromLatin1(kStages[stage]));
-    }
-}
-
 void SessionController::onDownloadFinished(qint64 token, bool ok, const QString& error)
 {
     const QString path = pendingSavePath_.take(token);
-    // A 404/410 means the blob has aged out of the store (its TTL or download
-    // count is spent) and will never come back. Record that permanently so the
-    // bubble shows "Not found" with no Save button, even after a restart, instead
-    // of a transient retryable error.
-    const bool notFound = !ok
-        && (error.contains(QStringLiteral("status 404")) || error.contains(QStringLiteral("status 410")));
     const QString opId = QStringLiteral("download:") + QString::number(token);
-    if (notFound) {
-        store_.setBlobGone(token, true);
-        conversation_.setBlobGoneForId(token, true);
-        conversation_.finishDownloadForId(token, false, QString());
-        finishOperation(opId, false, QStringLiteral("File no longer available"));
-        return;
-    }
     finishOperation(opId, ok, ok ? QStringLiteral("Saved") : (QStringLiteral("Failed: ") + error));
     conversation_.finishDownloadForId(token, ok, error);
     if (ok && !path.isEmpty()) {

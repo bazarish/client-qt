@@ -248,10 +248,6 @@ signals:
     void transferStage(const QString& peer, const QString& e2eId, const QString& stage);
     void servedFinished(const QString& peer, const QString& e2eId, bool ok,
         const QString& error);
-    // Download stage for an incoming attachment (token = message id): the int is a
-    // bazarish::client::BlobFetchStage (0 connecting, 1 downloading, 2 reconnecting),
-    // so a stalled transfer reads as "reconnecting" rather than a frozen bar.
-    void downloadStage(qint64 token, int stage);
     // An attachment download/save finished (token identifies the message): ok is
     // false with an error string on failure.
     void downloadFinished(qint64 token, bool ok, const QString& error);
@@ -1299,7 +1295,6 @@ private slots:
     void onTransferStage(const QString& peer, const QString& e2eId, const QString& stage);
     void onServedFinished(const QString& peer, const QString& e2eId, bool ok,
         const QString& error);
-    void onDownloadStage(qint64 token, int stage);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSendPhase(qint64 localId, const QString& phase);

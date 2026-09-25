@@ -31,10 +31,8 @@ struct StoredMessage {
     QString attRef;        // content-store id
     QString attSrcPath;    // local source path of an outgoing attachment (for resend)
     QString savedPath;     // where an incoming attachment was last saved (local path)
-    bool blobGone = false; // incoming attachment whose blob is gone from the store
     // A picture this account holds in its database (drawn in the bubble).
     bool hasPicture = false;
-                           // (download returned 404/410); shows "Not found", no Save
     QString keyboard;      // inline-keyboard JSON (empty when none)
     QString replyTo;       // protocol id of the message this one replies to (empty
                            // when not a reply); the UI resolves it to a local row
@@ -140,9 +138,6 @@ public:
     // Records where an incoming attachment was saved, so the UI can later offer to
     // open it (and fall back to re-saving if the file is gone).
     void setSavedPath(qint64 id, const QString& path);
-    // Marks an incoming attachment whose blob is no longer on the store (the
-    // download returned 404/410): the bubble then shows "Not found" with no Save,
-    // a state that survives a restart.
     // A media blob kept in the account (a picture, a voice message), by the same
     // key the core stores it under. Read here rather than through the session
     // worker: this side already holds the account open, and a picture must not
@@ -151,7 +146,6 @@ public:
 
     // Marks a message whose picture this account holds.
     void setHasPicture(qint64 id, bool has);
-    void setBlobGone(qint64 id, bool gone);
     qint64 idForE2e(const QString& e2eId) const;
     // The row a message occupies, if it has one: the conversation, the protocol
     // id and the side it is on name exactly one.

@@ -98,7 +98,7 @@ public:
         ForwardedRole,
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
-        BlobGoneRole, DownloadStageRole, TransferStageRole, ReplyToRole, PictureRole,
+        TransferStageRole, ReplyToRole, PictureRole,
         DurationRole, WaveRole
     };
     using QAbstractListModel::QAbstractListModel;
@@ -134,10 +134,6 @@ public:
     // Download progress for an incoming attachment being saved: received/total
     // ciphertext bytes (total > 0 means a download is in flight). Session-only.
     void setDownloadProgressForId(qint64 id, qint64 received, qint64 total);
-    // The fetch stage of an in-flight download (a BlobFetchStage: 0 connecting,
-    // 1 downloading, 2 reconnecting), so a stalled transfer reads as "reconnecting"
-    // rather than a frozen bar. Session-only.
-    void setDownloadStageForId(qint64 id, int stage);
     // What a direct transfer is doing right now, in the user's words (empty
     // clears it). Most of a transfer happens before the first byte, so the bubble
     // says which step it is on instead of one long "connecting". Session-only.
@@ -151,9 +147,6 @@ public:
     // Marks a message whose picture this account now holds, so the bubble draws
     // it. What it draws is served out of the account database, not off disk.
     void setPictureReadyForId(qint64 id, bool ready);
-    // Marks an incoming attachment as gone from the store (404/410): the bubble
-    // shows "Not found" and drops the Save button.
-    void setBlobGoneForId(qint64 id, bool gone);
     // Replaces a message's text and keyboard in place and marks it edited.
     void editById(qint64 id, const QString& text, const QString& keyboard);
     // Removes a message from the open window (delete with no trace). No-op if the
@@ -171,7 +164,6 @@ private:
     QHash<qint64, qint64> downloadReceivedById_;
     QHash<qint64, qint64> downloadTotalById_;
     QHash<qint64, QString> downloadErrorById_;
-    QHash<qint64, int> downloadStageById_;
     QHash<qint64, QString> transferStageById_;
 };
 
