@@ -879,34 +879,23 @@ void SessionWorker::emitContacts()
     if (!session_) {
         return;
     }
-    QStringList fps;
-    QStringList names;
-    QStringList pending;
-    QStringList links;
-    QStringList shareStates;
-    QStringList writable;
-    QStringList flags;
+    QVector<ContactState> contacts;
     for (const std::string& fp : session_->contactFingerprints()) {
-        fps << QString::fromStdString(fp);
-        names << QString::fromStdString(session_->contactDisplayName(fp));
-        // Three states, not two: answered, waiting to be answered, and answered
-        // with the acceptance still in the air. The middle one draws a button to
-        // press, the last one the same button saying what it is doing.
+        ContactState contact;
+        contact.fingerprint = QString::fromStdString(fp);
+        contact.name = QString::fromStdString(session_->contactDisplayName(fp));
         if (!session_->contactIsPending(fp)) {
-            pending << QStringLiteral("0");
+            contact.request = ContactState::eAnswered;
         } else if (session_->contactAcceptInFlight(fp)) {
-            pending << QStringLiteral("2");
+            contact.request = ContactState::eAccepting;
         } else {
-            pending << QStringLiteral("1");
+            contact.request = ContactState::eWaiting;
         }
         // Built here because this is where the routing is; it is the contact's
         // own card, so nothing is computed that they did not already hand over.
-        // Why there is no link, when there is none: a contact who has turned
-        // sharing off is not one we are simply waiting on.
-        shareStates << (session_->contactSharingRefused(fp) ? QStringLiteral("refused")
-                                                            : QStringLiteral("waiting"));
+        contact.sharingRefused = session_->contactSharingRefused(fp);
         try {
-            links << QString::fromStdString(session_->contactInviteUri(fp));
+            contact.invite = QString::fromStdString(session_->contactInviteUri(fp));
         } catch (const std::exception& error) {
             // A contact we have not been handed everything for yet is the normal
             // early state, and the empty entry is what the card reads to say
@@ -914,23 +903,17 @@ void SessionWorker::emitContacts()
             // "nothing to share" is exactly what a bug here looks like.
             bazarish::log::debug("contact {} is not shareable yet: {}",
                 bazarish::log::redact(fp), error.what());
-            links << QString();
         }
-        writable << (session_->canWriteTo(fp) ? QStringLiteral("1") : QStringLiteral("0"));
-        // What this contact may do here, as two flags in one string: nothing to
-        // read into the order, it is only cheaper than two more lists.
-        flags << QStringLiteral("%1%2")
-                     .arg(session_->contactNotifications(fp) ? QStringLiteral("n")
-                                                             : QStringLiteral("-"))
-                     .arg(session_->contactCalls(fp) ? QStringLiteral("c")
-                                                     : QStringLiteral("-"));
+        contact.writable = session_->canWriteTo(fp);
+        contact.notifications = session_->contactNotifications(fp);
+        contact.calls = session_->contactCalls(fp);
+        contacts.push_back(contact);
     }
     QStringList blocked;
     for (const std::string& fp : session_->blockedPeers()) {
         blocked << QString::fromStdString(fp);
     }
-    emit contactsRefreshed(fps, names, pending, links, writable, shareStates);
-    emit contactFlagsRefreshed(flags, blocked);
+    emit contactsRefreshed(contacts, blocked);
 }
 
 void SessionWorker::emitFacadeInfo()
@@ -2613,12 +2596,14 @@ void SessionWorker::changePassphrase(const QString& passphrase)
 
 // ============================ SessionController ============================
 
-// The signer travels through a queued signal when the account opens, so Qt has
-// to know the type by name.
+// Both travel through a queued signal from the worker, so Qt has to know them
+// by name.
 namespace {
 const int kLoginSignerMetaType
     = qRegisterMetaType<std::shared_ptr<bazarish::client::LoginSigner>>(
         "std::shared_ptr<bazarish::client::LoginSigner>");
+const int kContactStateMetaType
+    = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
 }  // namespace
 
 SessionController::SessionController(QObject* parent)
@@ -2823,65 +2808,18 @@ SessionController::SessionController(QObject* parent)
         &SessionController::ackAfterReceive);
     connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
-        [this](const QStringList& fps, const QStringList& names, const QStringList& pending,
-            const QStringList& links, const QStringList& writable,
-            const QStringList& shareStates) {
-            contactFps_ = fps;
-            contactNames_.clear();
-            contactLinks_.clear();
-            canWriteTo_.clear();
-            pendingContacts_.clear();
-            for (int i = 0; i < fps.size() && i < writable.size(); ++i) {
-                canWriteTo_.insert(fps[i], writable[i].toInt());
+        [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
+            contactFps_.clear();
+            contactState_.clear();
+            for (const ContactState& contact : contacts) {
+                contactFps_ << contact.fingerprint;
+                contactState_.insert(contact.fingerprint, contact);
             }
-            for (int i = 0; i < fps.size() && i < names.size(); ++i) {
-                if (!names[i].isEmpty()) {
-                    contactNames_.insert(fps[i], names[i]);
-                }
-            }
-            for (int i = 0; i < fps.size() && i < links.size(); ++i) {
-                if (!links[i].isEmpty()) {
-                    contactLinks_.insert(fps[i], links[i]);
-                }
-            }
-            shareRefused_.clear();
-            for (int i = 0; i < fps.size() && i < shareStates.size(); ++i) {
-                if (shareStates[i] == QStringLiteral("refused")) {
-                    shareRefused_.insert(fps[i]);
-                }
-            }
-            agreeingContacts_.clear();
-            for (int i = 0; i < fps.size() && i < pending.size(); ++i) {
-                if (pending[i] == QStringLiteral("1") || pending[i] == QStringLiteral("2")) {
-                    // Still unanswered as far as the peer is concerned, so the
-                    // button stays: an acceptance that never landed has to be
-                    // pressable again.
-                    pendingContacts_.insert(fps[i]);
-                }
-                if (pending[i] == QStringLiteral("2")) {
-                    agreeingContacts_.insert(fps[i]);
-                }
-            }
+            blocked_ = blocked;
             syncAgreeingRows();
             rebuildChatList();
             emit activePeerNameChanged();  // the open chat's header may have renamed
             // Re-drive any contact-request bubble's "Agree" visibility.
-            ++contactsRevision_;
-            emit contactsRevisionChanged();
-        });
-    connect(worker_, &SessionWorker::contactFlagsRefreshed, this,
-        [this](const QStringList& flags, const QStringList& blocked) {
-            mutedPeers_.clear();
-            callBarredPeers_.clear();
-            for (int i = 0; i < contactFps_.size() && i < flags.size(); ++i) {
-                if (!flags[i].contains(QLatin1Char('n'))) {
-                    mutedPeers_.insert(contactFps_[i]);
-                }
-                if (!flags[i].contains(QLatin1Char('c'))) {
-                    callBarredPeers_.insert(contactFps_[i]);
-                }
-            }
-            blocked_ = blocked;
             ++contactsRevision_;
             emit contactsRevisionChanged();
         });
@@ -3544,7 +3482,7 @@ QString SessionController::peerName(const QString& id) const
     if (!id.isEmpty() && id == fingerprint_) {
         return savedChatName();
     }
-    const QString name = contactNames_.value(id);
+    const QString name = contactState_.value(id).name;
     if (!name.isEmpty()) {
         return name;  // the local display name (alias / invite name / rename)
     }
@@ -3553,7 +3491,7 @@ QString SessionController::peerName(const QString& id) const
 
 QString SessionController::contactName(const QString& fp) const
 {
-    return contactNames_.value(fp);
+    return contactState_.value(fp).name;
 }
 
 void SessionController::setAvatar(const QString& fileOrUrl)
@@ -3599,12 +3537,12 @@ void SessionController::setDisplayName(const QString& name)
 
 bool SessionController::canWriteTo(const QString& fp) const
 {
-    return canWriteTo_.value(fp, 0) != 0;
+    return contactState_.value(fp).writable;
 }
 
 QString SessionController::contactInvite(const QString& fp) const
 {
-    return contactLinks_.value(fp);
+    return contactState_.value(fp).invite;
 }
 
 void SessionController::renameContact(const QString& fp, const QString& name)
@@ -3615,11 +3553,7 @@ void SessionController::renameContact(const QString& fp, const QString& name)
     const QString trimmed = name.trimmed();
     // Optimistic local update so the UI reflects the rename at once; the worker
     // persists it and mirrors it to the account's own other devices.
-    if (trimmed.isEmpty()) {
-        contactNames_.remove(fp);
-    } else {
-        contactNames_.insert(fp, trimmed);
-    }
+    contactState_[fp].name = trimmed;
     rebuildChatList();
     emit activePeerNameChanged();
     emit requestRenameContact(fp, trimmed);
@@ -3667,7 +3601,7 @@ void SessionController::deleteContact()
     // it from the contact list and clears its avatar. Irreversible.
     store_.forgetPeer(peer);
     contactFps_.removeAll(peer);
-    contactNames_.remove(peer);
+    contactState_.remove(peer);
     openConversation({});  // close the conversation we just deleted
     rebuildChatList();
     refreshUnreadTotal();
@@ -3717,12 +3651,12 @@ void SessionController::setBlocked(const QString& peer, const bool blocked)
 
 bool SessionController::contactNotifications(const QString& peer) const
 {
-    return !mutedPeers_.contains(peer);
+    return contactState_.value(peer).notifications;
 }
 
 bool SessionController::contactCalls(const QString& peer) const
 {
-    return !callBarredPeers_.contains(peer);
+    return contactState_.value(peer).calls;
 }
 
 void SessionController::setContactNotifications(const QString& peer, const bool on)
@@ -3730,11 +3664,7 @@ void SessionController::setContactNotifications(const QString& peer, const bool 
     if (peer.isEmpty()) {
         return;
     }
-    if (on) {
-        mutedPeers_.remove(peer);
-    } else {
-        mutedPeers_.insert(peer);
-    }
+    contactState_[peer].notifications = on;
     ++contactsRevision_;
     emit contactsRevisionChanged();
     emit requestSetContactNotifications(peer, on);
@@ -3745,11 +3675,7 @@ void SessionController::setContactCalls(const QString& peer, const bool allowed)
     if (peer.isEmpty()) {
         return;
     }
-    if (allowed) {
-        callBarredPeers_.remove(peer);
-    } else {
-        callBarredPeers_.insert(peer);
-    }
+    contactState_[peer].calls = allowed;
     ++contactsRevision_;
     emit contactsRevisionChanged();
     emit requestSetContactCalls(peer, allowed);
@@ -4203,9 +4129,20 @@ void SessionController::retryContactRequest(const QString& fingerprint)
     }
 }
 
+QStringList SessionController::agreeingFingerprints() const
+{
+    QStringList out;
+    for (const ContactState& contact : contactState_) {
+        if (contact.request == ContactState::eAccepting) {
+            out << contact.fingerprint;
+        }
+    }
+    return out;
+}
+
 void SessionController::syncAgreeingRows()
 {
-    for (const QString& fingerprint : agreeingContacts_) {
+    for (const QString& fingerprint : agreeingFingerprints()) {
         if (agreeingShown_.contains(fingerprint)
             || operations_.indexOf(QStringLiteral("accept:") + fingerprint) >= 0) {
             continue;  // the command that sends it is saying so already
@@ -4216,7 +4153,7 @@ void SessionController::syncAgreeingRows()
             QStringLiteral("Waiting for their server…"), fingerprint);
     }
     for (auto at = agreeingShown_.begin(); at != agreeingShown_.end();) {
-        if (agreeingContacts_.contains(*at)) {
+        if (contactState_.value(*at).request == ContactState::eAccepting) {
             ++at;
             continue;
         }
@@ -4327,7 +4264,7 @@ void SessionController::acceptContact()
 
 bool SessionController::contactCanAccept(const QString& fp) const
 {
-    return pendingContacts_.contains(fp);
+    return contactState_.value(fp).request != ContactState::eAnswered;
 }
 
 bool SessionController::contactAgreeing(const QString& fp) const
@@ -4335,7 +4272,8 @@ bool SessionController::contactAgreeing(const QString& fp) const
     // The optimistic half is this device's own click, so the button answers the
     // press at once; the other half is the account's real state, which outlives
     // the click and comes back if the acceptance never lands.
-    return acceptingContact_ == fp || agreeingContacts_.contains(fp);
+    return acceptingContact_ == fp
+        || contactState_.value(fp).request == ContactState::eAccepting;
 }
 
 void SessionController::requestInvite()
@@ -6377,7 +6315,7 @@ void SessionController::onContactAccepted(const QString& peer, const bool ok,
         bazarish::log::warn("agreeing to {} failed: {}", peer.toStdString(), reason.toStdString());
         return;  // the button comes back enabled; the failure is on screen already
     }
-    pendingContacts_.remove(peer);
+    contactState_[peer].request = ContactState::eAnswered;
     ++contactsRevision_;
     emit contactsRevisionChanged();
 }

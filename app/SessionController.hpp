@@ -37,6 +37,26 @@ namespace bazarish::app {
 // federated fetch of a contact add), drained and finalized on the worker thread.
 // Shared by shared_ptr with each background resolve so it outlives the worker if a
 // resolve is still in flight at teardown. Defined in the .cpp.
+// One contact as the account knows it. The worker ships these whole, so the
+// values describing the same person cannot fall out of step with one another.
+struct ContactState {
+    // Where a contact request stands. Three states, not two: the middle one
+    // draws a button to press, the last one the same button saying what it is
+    // doing.
+    enum Request { eAnswered, eWaiting, eAccepting };
+
+    QString fingerprint;
+    QString name;
+    // Their invite, to pass on. Empty until they have handed over a card - which
+    // is a different thing from having refused to be passed on.
+    QString invite;
+    bool writable = false;
+    bool sharingRefused = false;
+    bool notifications = true;
+    bool calls = true;
+    Request request = eAnswered;
+};
+
 struct ResolvedContactAddQueue;
 struct AliasErrandQueue;
 
@@ -219,13 +239,11 @@ signals:
     // accepted) - all parallel lists.
     // links carries each contact's shareable descriptor, empty where none is
     // known yet - it is built from routing the session already holds.
-    void contactsRefreshed(const QStringList& fingerprints, const QStringList& names,
-        const QStringList& pending, const QStringList& links, const QStringList& writable,
-        const QStringList& shareStates);
+    void contactsRefreshed(const QVector<ContactState>& contacts,
+        const QStringList& blocked);
     // What each contact may do here, in the order of the list above ("n" for
     // notifications, "c" for calls, "-" where the account has said no), and the
     // fingerprints it has blocked outright.
-    void contactFlagsRefreshed(const QStringList& flags, const QStringList& blocked);
     // A real avatar became available for an identity (own or a contact): the GUI
     // feeds it to the shared avatar store. Empty data clears it.
     void avatarReady(const QString& fingerprint, const QByteArray& data);
@@ -930,9 +948,8 @@ public:
     // a different thing from not having sent us one yet.
     Q_INVOKABLE bool contactSharingRefused(const QString& fp) const
     {
-        return shareRefused_.contains(fp);
+        return contactState_.value(fp).sharingRefused;
     }
-    // Messages this device can still send that contact before it asks them for
     // Whether this device holds the pass that admits it to a contact's mailbox.
     Q_INVOKABLE bool canWriteTo(const QString& fp) const;
     // Our own invite, from what this account already holds: the fingerprint and
@@ -1397,13 +1414,13 @@ private:
     // Contacts we received a request from but have not accepted yet (their
     // fingerprints), so a request bubble can offer "Agree". Refreshed from the
     // worker; contactsRevision_ bumps on every refresh to re-drive the binding.
-    QSet<QString> pendingContacts_;
-    QSet<QString> agreeingContacts_;
     // Whose acceptance has a row in the activity panel. An acceptance that has
     // left this device and has not reached the other side is still in flight,
     // and it outlives the command that sent it.
     QSet<QString> agreeingShown_;
     void syncAgreeingRows();
+    // Contacts whose acceptance this account has sent and is still waiting on.
+    QStringList agreeingFingerprints() const;
     // Reactions that arrived while their conversation was not being looked at,
     // as "peer\ntarget". Kept in the account's database rather than in the
     // reactions table: that table is keyed by who reacted and has no room for
@@ -1465,22 +1482,12 @@ private:
     // Read receipts for messages this device does not hold yet, by peer. The two
     // travel as separate mailbox items and can arrive in either order.
     QHash<QString, QSet<QString>> receiptsAhead_;
-    // This account's contact fingerprints, kept in sync from the worker.
+    // The order the worker reported the contacts in, and what it said about each
+    // of them. Two views of one refresh: the list carries the order, the map the
+    // contacts themselves.
     QStringList contactFps_;
-    // Per-contact local display names (fingerprint -> name), kept in sync from the
-    // worker. Drives peerName() and the chat-list labels.
-    QHash<QString, QString> contactNames_;
-    QHash<QString, QString> contactLinks_;
-    // Contacts that have said their invite may not be passed on: "no link yet"
-    // and "not allowed" read the same in the UI otherwise.
-    QSet<QString> shareRefused_;
-    // Contacts this account has turned notifications or calls off for, and the
-    // fingerprints it has blocked. Kept in sync from the worker.
-    QSet<QString> mutedPeers_;
-    QSet<QString> callBarredPeers_;
+    QHash<QString, ContactState> contactState_;
     QStringList blocked_;
-    // Whether this device can write to each contact: whether it holds their pass.
-    QHash<QString, int> canWriteTo_;
     QStringList recentReactions_;
     // Where this account lives and what unlocks it, for the store below.
     QString accountPath_;
