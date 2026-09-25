@@ -155,6 +155,12 @@ private:
     QString status_ = QStringLiteral("Failed");
 };
 
+// A pass on the worker thread holds every command the user asks for behind it,
+// so one that runs longer than this says so with its name. It is not a fault -
+// a mailbox pass is a round trip and takes what it takes - it is the only way to
+// know which pass is the one a person is waiting out.
+constexpr qint64 kSlowPassMs = 400;
+
 // How often the queue of commands is looked over, and how long a command has to
 // be unfinished before it is worth a row: a local one is done in a moment, and
 // a panel that flickers with those is a panel nobody reads.
@@ -309,6 +315,30 @@ qint64 nowMillis()
 {
     return QDateTime::currentMSecsSinceEpoch();
 }
+
+// Times one pass of the worker thread and says which one it was when it held
+// the thread long enough for a person to notice.
+class TimedPass {
+public:
+    explicit TimedPass(const char* const what)
+        : what_(what)
+        , startedAt_(nowMillis())
+    {
+    }
+    ~TimedPass()
+    {
+        const qint64 took = nowMillis() - startedAt_;
+        if (took >= kSlowPassMs) {
+            bazarish::log::info("{} held the worker for {} ms", what_, took);
+        }
+    }
+    TimedPass(const TimedPass&) = delete;
+    TimedPass& operator=(const TimedPass&) = delete;
+
+private:
+    const char* const what_;
+    const qint64 startedAt_;
+};
 
 // A compact human size (e.g. "1.4 MB") for transfer progress in the activity panel.
 QString humanBytes(qint64 bytes)
@@ -494,8 +524,10 @@ SessionWorker::~SessionWorker()
     downloadPool_.waitForDone();
     // The long-poll thread pokes this worker when its wait returns, so it is
     // joined here and never left running: a thread that outlives its worker
-    // writes into freed memory, which is how a closed account used to end.
+    // writes into freed memory, which is how a closed account used to end. The
+    // errands thread holds the session the same way.
     stopEventWaiter();
+    stopErrands();
 }
 
 void SessionWorker::startReceiving()
@@ -509,6 +541,66 @@ void SessionWorker::startReceiving()
         maintenanceTimer_->start();
     }
     startEventWaiter();
+}
+
+void SessionWorker::startErrands()
+{
+    if (errands_.joinable()) {
+        return;
+    }
+    errandsRunning_ = true;
+    errands_ = std::thread([this]() {
+        while (true) {
+            std::string pendingId;
+            {
+                std::unique_lock<std::mutex> lock(errandMutex_);
+                errandWake_.wait(
+                    lock, [this]() { return !errandsRunning_ || !errandAcks_.empty(); });
+                if (!errandsRunning_ && errandAcks_.empty()) {
+                    return;
+                }
+                pendingId = std::move(errandAcks_.front());
+                errandAcks_.pop_front();
+            }
+            try {
+                session_->releasePending(pendingId);
+            } catch (const std::exception& error) {
+                // The server was momentarily unreachable: the item stays in the
+                // mailbox and the next pass offers it again (the interface dedups
+                // by protocol id, so nothing is shown twice).
+                bazarish::log::warn("pending item not given back: {}", error.what());
+            }
+            // Either way this device is no longer carrying it - a failed ack left
+            // the item where it was, and counting it here forever would park the
+            // mail loop for good. The count and the handshake it drives belong to
+            // the worker thread, so they are touched there.
+            QMetaObject::invokeMethod(
+                this,
+                [this, pendingId]() {
+                    if (session_) {
+                        session_->forgetPending(pendingId);
+                    }
+                    settleDrain();
+                },
+                Qt::QueuedConnection);
+        }
+    });
+}
+
+void SessionWorker::stopErrands()
+{
+    if (!errands_.joinable()) {
+        return;
+    }
+    {
+        const std::lock_guard<std::mutex> lock(errandMutex_);
+        errandsRunning_ = false;
+        // What is left is dropped rather than sent: the account is closing, and
+        // an item left in the mailbox is offered again next time.
+        errandAcks_.clear();
+    }
+    errandWake_.notify_all();
+    errands_.join();
 }
 
 void SessionWorker::startEventWaiter()
@@ -971,6 +1063,7 @@ void SessionWorker::drainMailbox()
     if (!session_ || !session_->isConnected()) {
         return;
     }
+    const TimedPass timed("reading the mailbox");
     std::vector<IncomingMessage> messages;
     try {
         try {
@@ -1098,6 +1191,7 @@ void SessionWorker::maintain()
     if (!session_ || !session_->isConnected()) {
         return;
     }
+    const TimedPass timed("the maintenance pass");
     // Finalize contact-card resolutions that completed off-thread. The thread
     // that runs them holds nothing of this worker, so it cannot say when it is
     // done; this is where that is noticed.
@@ -1330,15 +1424,17 @@ void SessionWorker::ackPending(const QString& pendingId)
     if (!session_ || pendingId.isEmpty()) {
         return;
     }
-    try {
-        session_->ackPending(pendingId.toStdString());
-    } catch (const std::exception& error) {
-        // The server was momentarily unreachable: leave the item un-acked so the
-        // next sync re-offers it (the GUI dedups by protocol id, so no duplicate).
-        bazarish::log::warn("pending item not acked: {}", error.what());
+    // The round trip goes on the errands thread: this runs once per item of a
+    // mailbox pass, and what waits behind it is whatever the user asked for
+    // next. The item stays counted as carried until the server has actually been
+    // told, because that count is what holds the mail loop off - a wait asked
+    // while the mailbox still holds these items is answered by them at once.
+    startErrands();
+    {
+        const std::lock_guard<std::mutex> lock(errandMutex_);
+        errandAcks_.push_back(pendingId.toStdString());
     }
-    // Given back what this device was carrying, the mail loop may ask again.
-    settleDrain();
+    errandWake_.notify_one();
 }
 
 void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
@@ -1853,6 +1949,8 @@ void SessionWorker::shutdown()
     // then the session itself - which closes the courier, the leases and the I2P
     // links it raised. When this returns nothing of this account is running.
     stopEventWaiter();
+    // Before the session goes: the errand in flight is holding it.
+    stopErrands();
     if (maintenanceTimer_ != nullptr) {
         maintenanceTimer_->stop();
     }

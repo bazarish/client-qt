@@ -22,9 +22,11 @@
 #include <condition_variable>
 #include <functional>
 #include <map>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 
 class QTimer;
 
@@ -401,6 +403,20 @@ private:
     std::shared_ptr<std::atomic<bool>> eventWaiterRunning_;
     void startEventWaiter();
     void stopEventWaiter();
+    // What a user never waits for and what costs a round trip each: giving a
+    // mailbox item back once the interface has stored it. A pass hands back one
+    // per item, and every one of them used to sit in this thread's queue - so a
+    // message written just after mail arrived waited out five round trips before
+    // its own command was even reached. They are made here instead; the API
+    // client serializes its own requests, which is what makes that safe.
+    std::thread errands_;
+    std::mutex errandMutex_;
+    std::condition_variable errandWake_;
+    std::deque<std::string> errandAcks_;
+    bool errandsRunning_ = false;
+    void startErrands();
+    void stopErrands();
+
     // The handshake between that loop and this worker. A mailbox holds an item
     // until it is acked, so it answers the next wait the instant one is asked
     // for - and the loop would spin through the drain. It therefore waits here
