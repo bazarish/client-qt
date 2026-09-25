@@ -21,4 +21,12 @@ QString humanBytes(qint64 bytes);
 // rather than a made-up one.
 QString waveformHex(const Bytes& opus);
 
+// The protocol id a new outgoing message is named by. Drawn here so a send and
+// the record it leaves behind carry the same one.
+QString newE2eId();
+
+// The activity row the alias errand runs under. Named in one place because the
+// row is opened where the errand starts and closed where its answer arrives.
+inline const QString kAliasOperationId = QStringLiteral("alias");
+
 }  // namespace bazarish::app

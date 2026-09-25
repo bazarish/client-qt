@@ -61,6 +61,12 @@ if(Qt6_FOUND)
         app/SessionController.hpp
         app/SessionWorker.cpp
         app/SessionWorker.hpp
+        app/SessionCalls.cpp
+        app/SessionVoice.cpp
+        app/SessionTransfers.cpp
+        app/SessionReactions.cpp
+        app/SessionReceive.cpp
+        app/SessionContacts.cpp
         app/DeliveryStatus.hpp
         app/SessionShared.cpp
         app/SessionShared.hpp

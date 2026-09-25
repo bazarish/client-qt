@@ -12,6 +12,7 @@
 
 #include <QChar>
 #include <QDateTime>
+#include <QRandomGenerator>
 
 #include <cstdint>
 #include <vector>
@@ -64,6 +65,11 @@ QString waveformHex(const Bytes& opus)
         hex.append(QChar::fromLatin1("0123456789abcdef"[bar]));
     }
     return hex;
+}
+
+QString newE2eId()
+{
+    return QString::number(QRandomGenerator::global()->generate64(), 16);
 }
 
 }  // namespace bazarish::app
