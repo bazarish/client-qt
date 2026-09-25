@@ -147,7 +147,7 @@ ApplicationWindow {
         width: Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 32)
         padding: 18
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.green }
-        onVisibleChanged: if (visible) { App.closeAllAccounts() }
+        onVisibleChanged: if (visible) { App.closeAllSessions() }
         contentItem: ColumnLayout {
             spacing: 12
             Label {
@@ -174,7 +174,12 @@ ApplicationWindow {
                 iconName: "close"
                 text: "Quit"
                 Layout.alignment: Qt.AlignRight
-                onClicked: Qt.quit()
+                // The way out this application has: it lets the accounts close
+                // and ends the process itself. Qt.quit() instead unwinds the
+                // engine and joins every thread, including one that may be
+                // halfway through a request meant to hang - which is a window
+                // that does not close when it is told to.
+                onClicked: App.prepareForExit()
             }
         }
     }

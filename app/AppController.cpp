@@ -1159,14 +1159,5 @@ void AppController::closeAccount()
     refreshAccountList();
 }
 
-void AppController::closeAllAccounts()
-{
-    // Taken by value: removeSession edits the list this walks.
-    const QList<SessionController*> open = sessions_;
-    for (SessionController* const ctrl : open) {
-        removeSession(ctrl);
-    }
-    refreshAccountList();
-}
 
 }  // namespace bazarish::app

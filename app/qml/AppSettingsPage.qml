@@ -188,8 +188,10 @@ Popup {
                                     checked: I2p.transport === "sam"
                                     onToggled: {
                                         if (checked) {
-                                            I2p.saveSam(true, samHostField.text,
+                                            I2p.saveSam(samHostField.text,
                                                 parseInt(samPortField.text || "0"))
+                                            I2p.useSam(true)
+                                            checked = I2p.transport === "sam"
                                         } else {
                                             checked = true  // something has to carry the traffic
                                         }
@@ -224,7 +226,7 @@ Popup {
                                 iconName: "check"
                                 text: "Save"
                                 Layout.alignment: Qt.AlignRight
-                                onClicked: I2p.saveSam(samToggle.checked, samHostField.text,
+                                onClicked: I2p.saveSam(samHostField.text,
                                     parseInt(samPortField.text || "0"))
                             }
                         }
@@ -241,8 +243,10 @@ Popup {
                                     enabled: !I2p.gatewayChecking
                                     onToggled: {
                                         if (checked) {
+                                            // The address is saved by the button
+                                            // below; this only chooses it.
                                             root.gatewayProblem = ""
-                                            I2p.checkAndSaveGateway(gatewayField.text)
+                                            I2p.useGateway(true)
                                             checked = I2p.transport === "gateway"
                                         } else {
                                             checked = true

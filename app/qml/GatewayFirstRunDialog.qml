@@ -47,6 +47,10 @@ Dialog {
     Connections {
         target: I2p
         function onGatewaySaved() {
+            // Asked before any engine is up, so choosing here is what this run
+            // will use rather than a change to anything: saving the address and
+            // using it are one act at this door, and two everywhere else.
+            I2p.useGateway(true)
             root.answered()
             root.close()
         }

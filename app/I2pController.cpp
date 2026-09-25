@@ -123,16 +123,53 @@ bool I2pController::samReachable(const QString& host, const int port) const
     }
 }
 
-void I2pController::saveSam(const bool enabled, const QString& host, const int port)
+void I2pController::saveSam(const QString& host, const int port)
 {
-    samEnabled_ = enabled;
+    // Where the router is, not whether it is the one in use: the switch above
+    // decides that, and saving an address is not choosing it.
     samHost_ = host.trimmed();
     samPort_ = port;
     AppSettings::instance().setSam(samEnabled_, samHost_.toStdString(), samPort_);
+    emit samChanged();
+}
+
+// Nothing has started yet, so this is what the process will run on: the choice
+// made before the engine is brought up is not a change to anything.
+void I2pController::noteChoiceInForce()
+{
+    if (client::sharedI2pRouterIfRunning() == nullptr) {
+        transportAtStart_ = transport();
+    }
+}
+
+void I2pController::useGateway(const bool on)
+{
+    if (on && gatewayAddress_.isEmpty()) {
+        emit gatewayRefused(tr("Save a gateway address first: there is nothing to use yet."));
+        return;
+    }
+    AppSettings::instance().useGateway(on);
+    gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
+    samEnabled_ = AppSettings::instance().samEnabled();
+    noteChoiceInForce();
+    emit samChanged();
+    emit gatewayChanged();
+    emit transportChanged();
+}
+
+void I2pController::useSam(const bool on)
+{
+    if (on && samHost_.isEmpty()) {
+        emit gatewayRefused(tr("Give the router's address first: there is nothing to use yet."));
+        return;
+    }
+    samEnabled_ = on;
+    AppSettings::instance().setSam(on, samHost_.toStdString(), samPort_);
     // Turning this on turned a gateway off, which the page has to hear.
     gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
     // Deliberately nothing else: this process is already running one engine or
     // the other, and libi2pd cannot be initialised a second time in it.
+    noteChoiceInForce();
     emit samChanged();
     emit gatewayChanged();
     emit transportChanged();
@@ -220,15 +257,14 @@ void I2pController::checkAndSaveGateway(const QString& address)
                     return;
                 }
                 // Stored with the key the host presented, which every later
-                // connection is checked against.
-                AppSettings::instance().setGateway(parsed->toString(), check.pin);
+                // connection is checked against. Stored is all it is: what
+                // carries the traffic is the switch above it, and a check that
+                // moved the whole application onto a gateway was deciding
+                // something nobody asked it to.
+                AppSettings::instance().rememberGateway(parsed->toString(), check.pin);
                 gatewayAsked_ = true;
-                gatewayEnabled_ = true;
                 gatewayAddress_ = QString::fromStdString(parsed->toString());
-                samEnabled_ = AppSettings::instance().samEnabled();
-                emit samChanged();
                 emit gatewayChanged();
-                emit transportChanged();
                 emit gatewaySaved();
             },
             Qt::QueuedConnection);
@@ -253,9 +289,10 @@ QString I2pController::transport() const
 void I2pController::useEmbedded()
 {
     AppSettings::instance().setSam(false, samHost_.toStdString(), samPort_);
-    AppSettings::instance().skipGateway();
+    AppSettings::instance().useGateway(false);
     samEnabled_ = false;
     gatewayEnabled_ = false;
+    noteChoiceInForce();
     emit samChanged();
     emit gatewayChanged();
     emit transportChanged();
@@ -266,6 +303,7 @@ void I2pController::skipGateway()
     AppSettings::instance().skipGateway();
     gatewayAsked_ = true;
     gatewayEnabled_ = false;
+    noteChoiceInForce();
     // The address stays: turning a gateway off is not forgetting it.
     emit gatewayChanged();
     emit transportChanged();
@@ -275,6 +313,7 @@ void I2pController::clearGateway()
 {
     AppSettings::instance().skipGateway();
     gatewayEnabled_ = false;
+    noteChoiceInForce();
     emit gatewayChanged();
     emit transportChanged();
 }

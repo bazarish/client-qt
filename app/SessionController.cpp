@@ -616,11 +616,12 @@ void SessionWorker::startEventWaiter()
         // server's or the network's, not this client's.
         std::unique_ptr<bazarish::client::Client> waiter;
         while (running->load()) {
+            std::vector<bazarish::client::PendingEntry> waiting;
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
                 }
-                bazarish::client::Session::waitForEvents(*waiter, kEventWaitSeconds);
+                waiting = bazarish::client::Session::waitForMail(*waiter, kEventWaitSeconds);
             } catch (const std::exception& error) {
                 // The wait is how this client learns about mail, and there is
                 // nothing slower standing behind it to hand the job to: a wait
@@ -639,15 +640,21 @@ void SessionWorker::startEventWaiter()
             }
             QMetaObject::invokeMethod(
                 this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
+            if (waiting.empty()) {
+                // The window closed with nothing in it. There is nothing to
+                // read, and asking anyway was a round trip every half minute
+                // for an answer this wait had already given.
+                continue;
+            }
             // The items themselves are fetched here, on this thread, before
             // the pass that applies them is asked for: a round trip each, and
             // the pass would have paid them one after another on the thread
-            // every command of the user's queues on. What is not fetched is
-            // simply asked for by the pass as before.
+            // every command of the user's queues on. The list is the one the
+            // wait came back with, so nothing is asked for twice.
             try {
                 std::vector<bazarish::client::Session::MailboxItem> ahead
                     = bazarish::client::Session::fetchMailbox(
-                        *waiter, bazarish::client::Session::kPendingItemsPerPass);
+                        *waiter, waiting, bazarish::client::Session::kPendingItemsPerPass);
                 if (!ahead.empty()) {
                     QMetaObject::invokeMethod(
                         this,

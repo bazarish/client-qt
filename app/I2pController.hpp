@@ -99,7 +99,13 @@ public:
     int samPort() const { return samPort_; }
     // Stores the transport for the next start. Nothing changes in this process:
     // the caller restarts the application, which is the only way to swap engines.
-    Q_INVOKABLE void saveSam(bool enabled, const QString& host, int port);
+    // Where the router on this machine is. Saving it is not choosing it.
+    Q_INVOKABLE void saveSam(const QString& host, int port);
+    // Which engine carries I2P from the next run. The only two things that
+    // change it: nothing else in this class does, so a check or a save can
+    // never move the application onto a transport by itself.
+    Q_INVOKABLE void useSam(bool on);
+    Q_INVOKABLE void useGateway(bool on);
     // Whether a router answers at that address right now, so the page can say so
     // before the user commits to a restart.
     Q_INVOKABLE bool samReachable(const QString& host, int port) const;
@@ -174,6 +180,7 @@ private:
     // What this process actually runs on, taken once at start-up: the engine is
     // settled then and cannot be swapped under a running account.
     QString transportAtStart_;
+    void noteChoiceInForce();
     QString samHost_;
     int samPort_ = 0;
     int floodfills_ = 0;

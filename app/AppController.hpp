@@ -108,6 +108,11 @@ public:
     // the tray's Quit: the interface must never sit waiting for a request that is
     // meant to hang for half a minute.
     Q_INVOKABLE void prepareForExit();
+    // Closes every open account, without waiting for any of them. What the
+    // transport change uses: the engine that carries them is settled when the
+    // application starts, so an account left open after that choice changes is
+    // an account still riding the old one.
+    Q_INVOKABLE void closeAllSessions();
 
     Q_INVOKABLE void deleteAccount(const QString& id);
     // The account being deleted right now, empty when none is. Deleting takes as
@@ -177,10 +182,6 @@ public:
     Q_INVOKABLE void requestAddAccount();
     // Signs out (closes) the active account; switches to another if any remain.
     Q_INVOKABLE void closeAccount();
-    // Closes every open account. What the transport change uses: the engine that
-    // carries them is settled when the application starts, so an account left
-    // open after that choice changes is an account still riding the old one.
-    Q_INVOKABLE void closeAllAccounts();
     // A writable path for a short-lived working file (the cropped avatar on its
     // way to the compressor). QML resolves relative names against the qrc bundle,
     // which is read-only, so the location has to come from here.
@@ -308,7 +309,6 @@ private:
     void removeAccountFiles(const QString& id);
     // Closes every open account, joining their workers - so nothing is holding a
     // transcript open while the data directory moves.
-    void closeAllSessions();
     void refreshAccounts();
     // Patches the listed accounts with what the open sessions know.
     void refreshAccountRows();

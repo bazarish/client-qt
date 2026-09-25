@@ -240,12 +240,18 @@ std::string AppSettings::gatewayAddress() const { return gatewayAddress_; }
 
 std::string AppSettings::gatewayPin() const { return gatewayPin_; }
 
-void AppSettings::setGateway(const std::string& address, const std::string& pin)
+void AppSettings::rememberGateway(const std::string& address, const std::string& pin)
 {
     gatewayAsked_ = true;
-    gatewayEnabled_ = !address.empty();
     gatewayAddress_ = address;
     gatewayPin_ = pin;
+    save();
+}
+
+void AppSettings::useGateway(const bool on)
+{
+    gatewayAsked_ = true;
+    gatewayEnabled_ = on && !gatewayAddress_.empty();
     if (gatewayEnabled_) {
         // One transport carries the traffic. Two flags that must never both be
         // set are two flags that will both be set one day, so the one being

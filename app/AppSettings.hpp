@@ -71,7 +71,14 @@ public:
     bool gatewayEnabled() const;
     std::string gatewayAddress() const;
     std::string gatewayPin() const;
-    void setGateway(const std::string& address, const std::string& pin);
+    // Remembering where a gateway is, and the key it presented, without saying
+    // that this is what carries the traffic: an address is checked and kept long
+    // before anybody chooses to use it, and a check that switched the transport
+    // by itself is a check that decided something it was not asked about.
+    void rememberGateway(const std::string& address, const std::string& pin);
+    // Which engine carries I2P. One of them, always: turning one on turns the
+    // other off here rather than in a caller.
+    void useGateway(bool on);
     // The user said no. The answer is recorded so it is not asked again, and
     // the embedded router or SAM takes over as it always did.
     void skipGateway();
