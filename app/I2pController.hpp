@@ -115,6 +115,12 @@ public:
     bool gatewayChecking() const { return gatewayChecking_; }
     QString gatewayHost() const;
     QString transport() const;
+    // The choice in force is the one this process started with: the engine is
+    // settled once, at start-up, and cannot be swapped under a running account.
+    // True from the moment the chosen one differs, and the window then says so
+    // and stops taking anything else.
+    Q_PROPERTY(bool restartNeeded READ restartNeeded NOTIFY transportChanged)
+    bool restartNeeded() const { return transport() != transportAtStart_; }
     // Checks the address off the GUI thread and, if it answers, stores it with
     // the key it presented. An address that does not answer is not stored:
     // there is nothing useful to do with one, and saving it would only move the
@@ -165,6 +171,9 @@ private:
     QString gatewayAddress_;
     bool gatewayChecking_ = false;
     bool samEnabled_ = false;
+    // What this process actually runs on, taken once at start-up: the engine is
+    // settled then and cannot be swapped under a running account.
+    QString transportAtStart_;
     QString samHost_;
     int samPort_ = 0;
     int floodfills_ = 0;

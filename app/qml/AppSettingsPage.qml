@@ -188,9 +188,10 @@ Popup {
                                     checked: I2p.transport === "sam"
                                     onToggled: {
                                         if (checked) {
-                                            samRestartDialog.open()
+                                            I2p.saveSam(true, samHostField.text,
+                                                parseInt(samPortField.text || "0"))
                                         } else {
-                                            checked = true
+                                            checked = true  // something has to carry the traffic
                                         }
                                     }
                                 }
@@ -223,7 +224,8 @@ Popup {
                                 iconName: "check"
                                 text: "Save"
                                 Layout.alignment: Qt.AlignRight
-                                onClicked: samRestartDialog.open()
+                                onClicked: I2p.saveSam(samToggle.checked, samHostField.text,
+                                    parseInt(samPortField.text || "0"))
                             }
                         }
 
@@ -309,25 +311,6 @@ Popup {
         target: I2p
         function onGatewayRefused(reason) { root.gatewayProblem = reason }
         function onGatewaySaved() { root.gatewayProblem = "" }
-    }
-
-    // Swapping the transport is not something this process can do while it runs:
-    // the embedded engine cannot be started a second time in one process. So the
-    // choice is saved and the application closes.
-    SamRestartDialog {
-        id: samRestartDialog
-        samOn: samToggle.checked
-        host: samHostField.text
-        port: parseInt(samPortField.text || "0")
-        // Nothing was saved, so the switch goes back to what is in force.
-        onCancelled: samToggle.checked = I2p.samEnabled
-        onAnswered: (closeNow) => {
-            I2p.saveSam(samToggle.checked, samHostField.text,
-                parseInt(samPortField.text || "0"))
-            if (closeNow) {
-                Qt.quit()
-            }
-        }
     }
 
     // Moving the data is not something to do on a stray tap.

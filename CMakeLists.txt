@@ -185,7 +185,6 @@ if(Qt6_FOUND)
         app/qml/StoragePage.qml
             app/qml/ProxyRestartDialog.qml
             app/qml/GatewayFirstRunDialog.qml
-            app/qml/SamRestartDialog.qml
             app/qml/ServerHelloDialog.qml
             app/qml/AccountDeleteConfirmDialog.qml
             app/qml/AddressChoiceDialog.qml

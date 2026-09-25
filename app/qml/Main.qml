@@ -130,6 +130,55 @@ ApplicationWindow {
     }
     Component.onCompleted: if (!I2p.gatewayAsked) gatewayFirstRun.open()
 
+    // The engine that carries I2P is settled when this application starts, so a
+    // different one is a different run. Nothing is left half-switched: every
+    // account is closed the moment the choice changes - an open one would go on
+    // riding the engine that is no longer chosen - and this stands in front of
+    // the window until Bazarish is started again. It cannot be dismissed,
+    // because there is nothing useful left to do here.
+    Popup {
+        id: transportRestart
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        z: 1200
+        closePolicy: Popup.NoAutoClose
+        visible: I2p.restartNeeded
+        width: Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 32)
+        padding: 18
+        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.green }
+        onVisibleChanged: if (visible) { App.closeAllAccounts() }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: "Start Bazarish again"
+                color: Theme.green
+                font.pixelSize: Theme.fontTitle
+                font.weight: Font.DemiBold
+                Layout.fillWidth: true
+            }
+            Label {
+                text: (I2p.transport === "gateway"
+                        ? "I2P will be carried by the private gateway."
+                        : (I2p.transport === "sam"
+                            ? "I2P will be carried by the router on this machine."
+                            : "I2P will be carried by the engine inside this application."))
+                    + " Which one carries it is settled when the application starts, so your"
+                    + " accounts have been closed and the choice takes effect on the next run."
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            MenuButton {
+                iconName: "close"
+                text: "Quit"
+                Layout.alignment: Qt.AlignRight
+                onClicked: Qt.quit()
+            }
+        }
+    }
+
     // Server onboarding / hello (unregistered-key connect): its own top-layer
     // window with copyable links, dismissed only by its button.
     ServerHelloDialog { id: helloDialog }

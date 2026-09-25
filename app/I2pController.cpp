@@ -49,6 +49,12 @@ bazarish::i2p::Privacy privacyForLevel(const int level)
 I2pController::I2pController(QObject* parent)
     : QObject(parent)
 {
+    // Read before anything can change it: this is what the process is actually
+    // running on, and every later choice is compared with it.
+    transportAtStart_ = AppSettings::instance().gatewayEnabled()
+        ? QStringLiteral("gateway")
+        : (AppSettings::instance().samEnabled() ? QStringLiteral("sam")
+                                                : QStringLiteral("embedded"));
     // libi2pd logging is off by default: fully silent.
     loggingEnabled_ = AppSettings::instance().i2pLogging();
     // Tunnel hop length. The default is the shortest tunnels: the application has
