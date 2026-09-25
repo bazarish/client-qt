@@ -159,7 +159,10 @@ private:
 // so one that runs longer than this says so with its name. It is not a fault -
 // a mailbox pass is a round trip and takes what it takes - it is the only way to
 // know which pass is the one a person is waiting out.
-constexpr qint64 kSlowPassMs = 400;
+constexpr std::chrono::milliseconds kSlowPass{400};
+// A piece of one of those passes: smaller, so the piece that is the pass can be
+// told from the pieces that are not.
+constexpr std::chrono::milliseconds kSlowStretch{200};
 
 // How often the queue of commands is looked over, and how long a command has to
 // be unfinished before it is worth a row: a local one is done in a moment, and
@@ -315,30 +318,6 @@ qint64 nowMillis()
 {
     return QDateTime::currentMSecsSinceEpoch();
 }
-
-// Times one pass of the worker thread and says which one it was when it held
-// the thread long enough for a person to notice.
-class TimedPass {
-public:
-    explicit TimedPass(const char* const what)
-        : what_(what)
-        , startedAt_(nowMillis())
-    {
-    }
-    ~TimedPass()
-    {
-        const qint64 took = nowMillis() - startedAt_;
-        if (took >= kSlowPassMs) {
-            bazarish::log::info("{} held the worker for {} ms", what_, took);
-        }
-    }
-    TimedPass(const TimedPass&) = delete;
-    TimedPass& operator=(const TimedPass&) = delete;
-
-private:
-    const char* const what_;
-    const qint64 startedAt_;
-};
 
 // A compact human size (e.g. "1.4 MB") for transfer progress in the activity panel.
 QString humanBytes(qint64 bytes)
@@ -1089,7 +1068,7 @@ void SessionWorker::drainMailbox()
     if (!session_ || !session_->isConnected()) {
         return;
     }
-    const TimedPass timed("reading the mailbox");
+    const bazarish::log::Slow timed("reading the mailbox", kSlowPass);
     std::vector<IncomingMessage> messages;
     try {
         try {
@@ -1217,17 +1196,21 @@ void SessionWorker::maintain()
     if (!session_ || !session_->isConnected()) {
         return;
     }
-    const TimedPass timed("the maintenance pass");
+    const bazarish::log::Slow timed("the maintenance pass", kSlowPass);
     // Finalize contact-card resolutions that completed off-thread. The thread
     // that runs them holds nothing of this worker, so it cannot say when it is
     // done; this is where that is noticed.
     drainResolvedAdds();
     drainAliasErrands();
-    refreshCalls();
+    {
+        const bazarish::log::Slow timedCalls("keeping the calls current", kSlowStretch);
+        refreshCalls();
+    }
     // A send the courier finished on its own thread leaves an echo for this
     // account's other devices. Nothing else carries it now that the mailbox is
     // read only when there is mail in it.
     try {
+        const bazarish::log::Slow timedEchoes("telling our own devices", kSlowStretch);
         session_->flushPendingEchoes();
     } catch (const std::exception& error) {
         bazarish::log::warn("self-sync of our own sends failed: {}", error.what());
