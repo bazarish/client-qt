@@ -67,7 +67,7 @@ Popup {
             id: headerRow
             Layout.fillWidth: true
             Layout.margins: 14
-            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
+            IconButton { iconName: "back"; onClicked: root.back() }
             Label {
                 text: "Sign in with your key"
                 color: Theme.green

@@ -204,8 +204,7 @@ signals:
     // alias for the table, and the one line said under it (or nothing).
     void aliasHoldings(const QVariantList& rows, const QString& note);
     void aliasActivationDone(bool ok, const QString& text);
-    void opened(const QString& fingerprint, const QString& displayName, bool connected,
-        const QString& connectionNote);
+    void opened(const QString& fingerprint, const QString& displayName, bool connected);
     // The account's own display name was changed (so the GUI updates it without a
     // full re-open).
     void renamed(const QString& newName);
@@ -458,7 +457,6 @@ class SessionController : public QObject {
     Q_PROPERTY(QString fingerprint READ fingerprint NOTIFY identityChanged)
     Q_PROPERTY(QString displayName READ displayName NOTIFY identityChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
-    Q_PROPERTY(QString connectionNote READ connectionNote NOTIFY connectedChanged)
     // online: this account is syncing in the background (receiving). reachable:
     // the last sync actually reached the facade. Together they give the live
     // connection status shown in the account list.
@@ -506,7 +504,6 @@ class SessionController : public QObject {
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
     // The facade the transport is connected/connecting through, and the full
     // configured facade list (for the connection editor and status display).
-    Q_PROPERTY(QString activeFacade READ activeFacade NOTIFY facadeInfoChanged)
     // Just the host of the active facade: what the status line shows, where the
     // scheme and base path only cost characters of an already long b32 name.
     Q_PROPERTY(QString activeFacadeHost READ activeFacadeHost NOTIFY facadeInfoChanged)
@@ -514,7 +511,6 @@ class SessionController : public QObject {
     // Whether any configured facade is an I2P facade (host ends in ".b32.i2p"). When
     // full privacy mode is on and this is false, the account cannot reach its server
     // (clearnet is refused), so its status reads as an explicit I2P-only offline error.
-    Q_PROPERTY(bool hasI2pFacade READ hasI2pFacade NOTIFY facadeInfoChanged)
     // Connect-in-flight state for the connect screen: whether a connect is
     // running, what it is doing, and why the last one failed.
     Q_PROPERTY(bool connecting READ connecting NOTIFY connectStateChanged)
@@ -657,7 +653,6 @@ public:
     QString fingerprint() const { return fingerprint_; }
     QString displayName() const { return displayName_; }
     bool connected() const { return connected_; }
-    QString connectionNote() const { return connectionNote_; }
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
     QString syncError() const { return syncError_; }
@@ -684,7 +679,6 @@ public:
     QString activeFacade() const { return activeFacade_; }
     QString activeFacadeHost() const;
     QStringList configuredFacades() const { return configuredFacades_; }
-    bool hasI2pFacade() const;
     bool connecting() const { return connecting_; }
     QString connectPhase() const { return connectPhase_; }
     int connectPercent() const { return connectPercent_; }
@@ -701,10 +695,9 @@ public:
     QObject* chatList() { return &contactsProxy_; }
     // Filters the chat list by name (case-insensitive substring); empty shows all.
     Q_INVOKABLE void setChatFilter(const QString& text);
-    // Pin/unpin a chat to the top of the list (synced to the account's other
-    // devices); isChatPinned drives the menu label + the row's pin marker.
+    // Pin/unpin a chat to the top of the list, synced to the account's other
+    // devices. The row reads its own state from the model.
     Q_INVOKABLE void pinChat(const QString& peer, bool pinned);
-    Q_INVOKABLE bool isChatPinned(const QString& peer) const;
     QObject* conversation() { return &conversation_; }
     QObject* operations() { return &operations_; }
     int activeOperations() const { return operations_.runningCount(); }
@@ -778,8 +771,8 @@ public:
     Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
     // Brings this account online (resume syncing) or offline (stop syncing
     // without unloading it).
-    Q_INVOKABLE void goOnline();
-    Q_INVOKABLE void goOffline();
+    void goOnline();
+    void goOffline();
     // Drops the I2P destinations this account holds so they are built again with
     // the tunnel profile now in force.
     void rebuildI2pLinks();
@@ -848,14 +841,14 @@ public:
     Q_INVOKABLE void cancelVoiceRecording();
     // Listening to the held take before sending it, and sending or dropping it.
     Q_INVOKABLE void playVoiceTake();
-    Q_INVOKABLE void stopVoiceTake();
+    void stopVoiceTake();
     Q_INVOKABLE void sendVoiceTake();
     Q_INVOKABLE void discardVoiceTake();
     // Plays a voice message. fromMs of -1 means "the play button": start from
     // the beginning, or stop if this message is the one already playing. A real
     // position means the waveform was tapped there, and playback moves to it.
     Q_INVOKABLE void playVoice(const QString& e2eId, qint64 fromMs = -1);
-    Q_INVOKABLE void stopVoice();
+    void stopVoice();
     // Steps the playback speed through the offered rates and back to normal.
     Q_INVOKABLE void cycleVoiceSpeed();
     // A name to suggest for that file.
@@ -870,7 +863,7 @@ public:
     Q_INVOKABLE QString peerName(const QString& id) const;
     // The saved-messages chat: our own fingerprint, and the name it goes by. Not
     // a contact, never deletable, and the same chat on every device.
-    Q_INVOKABLE QString savedPeer() const;
+    QString savedPeer() const;
     static QString savedChatName();
     Q_INVOKABLE bool isSavedChat(const QString& peer) const
     {
@@ -921,9 +914,9 @@ public:
     QStringList standardReactions() const;
     Q_PROPERTY(QStringList recentReactions READ recentReactions NOTIFY recentReactionsChanged)
     QStringList recentReactions() const { return recentReactions_; }
-    Q_INVOKABLE void rememberReaction(const QString& emoji);
+    void rememberReaction(const QString& emoji);
     // Our current reaction emoji on a message (empty when none) - for the toggle.
-    Q_INVOKABLE QString myReaction(const QString& e2eId) const;
+    QString myReaction(const QString& e2eId) const;
     // The reaction chips for a message: a list of { emoji, count, mine } aggregated
     // across reactors, in first-seen order.
     Q_INVOKABLE QVariantList reactionSummary(const QString& e2eId) const;
@@ -1030,7 +1023,6 @@ public:
     Q_INVOKABLE void askForContacts();
     Q_INVOKABLE void refreshConnectionLog();
     Q_INVOKABLE void clearConnectionLog();
-    Q_INVOKABLE void saveAttachment(const QString& peer, const QString& e2eId, const QString& fileUrl);
     // Saves a received attachment to the file the user picked in the native Save
     // dialog (which already resolved any name conflict), reporting byte progress
     // and the outcome back onto the message identified by token.
@@ -1265,8 +1257,7 @@ private slots:
     // shows up in the activity panel whether or not anybody remembered it.
     void noteCommandQueued();
     void onCommandFinished();
-    void onOpened(const QString& fingerprint, const QString& displayName, bool connected,
-        const QString& connectionNote);
+    void onOpened(const QString& fingerprint, const QString& displayName, bool connected);
     void onConnectionChanged(bool connected, const QString& connectionNote);
     void onMessageReceived(const QVariantMap& message);
     // Connected to messageReceived AFTER onMessageReceived, so it runs once that has
@@ -1378,7 +1369,6 @@ private:
     bool i2pBusy_ = false;
     bool awaitingApproval_ = false;
     QString approvalNote_;
-    QString connectionNote_;
     QString activePeer_;
     QString activeFacade_;
     bool avatarBusy_ = false;

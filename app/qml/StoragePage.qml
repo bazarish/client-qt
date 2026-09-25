@@ -46,7 +46,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
+            IconButton { iconName: "back"; onClicked: root.back() }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 0

@@ -13,7 +13,6 @@ Item {
 
     IconButton {
         iconName: "back"
-        font.pixelSize: 26
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.margins: 12

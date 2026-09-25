@@ -285,16 +285,17 @@ Popup {
                         readonly property double quota: info.mailboxQuota !== undefined
                             ? info.mailboxQuota : 0
                         Rectangle {
+                            id: storageBox
                             Layout.fillWidth: true
                             radius: Theme.radiusSmall
                             color: "transparent"
                             implicitHeight: storageRow.implicitHeight + 10
                             SequentialAnimation {
                                 id: storageFlash
-                                PropertyAction { target: parent; property: "color"
+                                PropertyAction { target: storageBox; property: "color"
                                     value: Qt.rgba(0.12, 0.48, 0.08, 0.5) }
                                 PauseAnimation { duration: 550 }
-                                ColorAnimation { target: parent; property: "color"
+                                ColorAnimation { target: storageBox; property: "color"
                                     to: "transparent"; duration: 500 }
                             }
                             ColumnLayout {
@@ -1124,7 +1125,7 @@ Popup {
         background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
         header: RowLayout {
             spacing: 4
-            IconButton { iconName: "back"; font.pixelSize: 26; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
+            IconButton { iconName: "back"; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
             Label {
                 text: "Server connection"
                 color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold

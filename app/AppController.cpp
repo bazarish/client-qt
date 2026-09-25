@@ -960,21 +960,6 @@ constexpr int kMinJpegQuality = 45;
 constexpr double kEdgeStep = 0.75;
 constexpr int kMinImageEdge = 640;
 
-// The first bytes of the formats worth rendering. A name says nothing and the
-// sender's declared type says less.
-bool looksLikePng(const QByteArray& head)
-{
-    static const QByteArray kSignature
-        = QByteArray::fromHex("89504E470D0A1A0A");
-    return head.startsWith(kSignature);
-}
-
-bool looksLikeJpeg(const QByteArray& head)
-{
-    return head.size() >= 3 && static_cast<unsigned char>(head[0]) == 0xFF
-        && static_cast<unsigned char>(head[1]) == 0xD8 && static_cast<unsigned char>(head[2]) == 0xFF;
-}
-
 // Encodes into the smallest of the formats that keeps the picture honest: PNG
 // when it has transparency to lose, JPEG otherwise, stepping quality and then
 // size down until it fits.
@@ -1064,11 +1049,6 @@ QString AppController::writePreparedImage(const QImage& image, const QString& ba
     return QUrl::fromLocalFile(path).toString();
 }
 
-bool AppController::looksLikeImage(const QString& mime) const
-{
-    return mime.startsWith(QStringLiteral("image/"));
-}
-
 QString AppController::markupHtml(const QString& text, const QColor& actionColor,
     const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const
 {
@@ -1082,28 +1062,6 @@ QString AppController::markupHtml(const QString& text, const QColor& actionColor
 QString AppController::markupPlain(const QString& text) const
 {
     return markup::toPlain(text);
-}
-
-QString AppController::imageUrlIfSafe(const QString& localPath) const
-{
-    const QString path = QUrl(localPath).isLocalFile() ? QUrl(localPath).toLocalFile() : localPath;
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return {};
-    }
-    // Only the two formats worth showing, recognised by their own first bytes.
-    constexpr qint64 kSignatureBytes = 8;
-    const QByteArray head = file.read(kSignatureBytes);
-    if (!looksLikePng(head) && !looksLikeJpeg(head)) {
-        return {};
-    }
-    // And it still has to decode: a file that starts like a PNG and is not one
-    // must not reach the renderer as a picture.
-    const QImageReader reader(path);
-    if (!reader.canRead()) {
-        return {};
-    }
-    return QUrl::fromLocalFile(path).toString();
 }
 
 QString AppController::scratchFile(const QString& name) const

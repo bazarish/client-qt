@@ -13,8 +13,6 @@ Dialog {
     property bool busy: I2p.gatewayChecking
     property string problem: ""
 
-    signal answered()
-
     anchors.centerIn: Overlay.overlay
     modal: true
     closePolicy: Popup.NoAutoClose
@@ -39,7 +37,6 @@ Dialog {
         }
         onRejected: {
             I2p.skipGateway()
-            root.answered()
             root.close()
         }
     }
@@ -51,7 +48,6 @@ Dialog {
             // will use rather than a change to anything: saving the address and
             // using it are one act at this door, and two everywhere else.
             I2p.useGateway(true)
-            root.answered()
             root.close()
         }
         function onGatewayRefused(reason) {

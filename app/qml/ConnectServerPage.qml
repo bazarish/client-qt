@@ -10,7 +10,6 @@ Item {
     // Back to the account list (no server needed to switch/create an account).
     IconButton {
         iconName: "back"
-        font.pixelSize: 26
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.margins: 12

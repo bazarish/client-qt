@@ -52,9 +52,6 @@ Popup {
             anchors.margins: 16
             source: root.source
             fillMode: Image.PreserveAspectFit
-            // Never upscale past the picture's own pixels: a small picture blown
-            // up to a 4K window is mush.
-            readonly property bool fits: implicitWidth <= width && implicitHeight <= height
             horizontalAlignment: Image.AlignHCenter
             verticalAlignment: Image.AlignVCenter
             asynchronous: true

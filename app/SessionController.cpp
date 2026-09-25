@@ -780,8 +780,7 @@ void SessionWorker::openAccount(
     });
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
-        QString::fromStdString(session_->displayName()), connected,
-        connected ? "connected" : "");
+        QString::fromStdString(session_->displayName()), connected);
     // Settings the account carries, so the window shows what is actually in force
     // rather than its own defaults.
     emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
@@ -3227,16 +3226,6 @@ void SessionController::onConnectProgress(const int percent, const QString& phas
     emit connectStateChanged();
 }
 
-bool SessionController::hasI2pFacade() const
-{
-    for (const QString& url : configuredFacades_) {
-        if (url.contains(QStringLiteral(".b32.i2p"))) {
-            return true;
-        }
-    }
-    return false;
-}
-
 QString SessionController::activeFacadeHost() const
 {
     return facadeHost(activeFacade_);
@@ -4422,15 +4411,6 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
     return described;
 }
 
-void SessionController::saveAttachment(
-    const QString& peer, const QString& e2eId, const QString& fileUrl)
-{
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (!localPath.isEmpty()) {
-        emit requestSaveAttachment(peer, e2eId, localPath, 0);
-    }
-}
-
 void SessionController::saveAttachmentToFile(const QString& peer, const QString& e2eId,
     const QString& fileUrl, qint64 token)
 {
@@ -4531,11 +4511,6 @@ void SessionController::pinChat(const QString& peer, bool pinned)
     store_.setPinned(peer, pinned);
     rebuildChatList();
     emit requestSyncChatPin(peer, pinned);
-}
-
-bool SessionController::isChatPinned(const QString& peer) const
-{
-    return store_.isPinned(peer);
 }
 
 void SessionController::beginOperation(const QString& id, const QString& kind, const QString& title,
@@ -5326,13 +5301,12 @@ void SessionController::runTrim(const QString& peer, const int keep)
         });
 }
 
-void SessionController::onOpened(const QString& fingerprint, const QString& displayName,
-    bool connected, const QString& connectionNote)
+void SessionController::onOpened(
+    const QString& fingerprint, const QString& displayName, bool connected)
 {
     fingerprint_ = fingerprint;
     displayName_ = displayName;
     connected_ = connected;
-    connectionNote_ = connectionNote;
     emit identityChanged();
     emit connectedChanged();
     // A connected account starts syncing on open, so it comes up online - unless
@@ -5356,7 +5330,6 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
         emit connectStateChanged();
     }
     connected_ = connected;
-    connectionNote_ = connectionNote;
     emit connectedChanged();
     if (online_ != connected) {
         online_ = connected;

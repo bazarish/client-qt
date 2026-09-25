@@ -201,15 +201,6 @@ public:
     Q_INVOKABLE bool clipboardHasImage() const;
     Q_INVOKABLE QString prepareClipboardImage();
 
-    // A file:// URL for a picture that is safe to render, or an empty string.
-    // What decides is the file's own first bytes, never the name or the type the
-    // sender claimed: a bubble must not run a renderer over whatever arrived
-    // because the other side called it a PNG.
-    Q_INVOKABLE QString imageUrlIfSafe(const QString& localPath) const;
-    // Whether an attachment is worth trying to show inline at all, by the type
-    // the sender declared. The bytes still decide (imageUrlIfSafe).
-    Q_INVOKABLE bool looksLikeImage(const QString& mime) const;
-
     // --- Message text ---
     //
     // A message body carries light markup, and a bubble draws it as a rich text

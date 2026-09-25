@@ -99,7 +99,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
+            IconButton { iconName: "back"; onClicked: root.back() }
             Label {
                 text: "Connection log"
                 color: Theme.green

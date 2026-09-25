@@ -222,7 +222,6 @@ struct OperationRow {
     QString cancelId;
 };
 
-// kOperationState* mirror OperationRow::state for readable call sites.
 enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
 
 class OperationListModel : public QAbstractListModel {

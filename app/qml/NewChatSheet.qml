@@ -78,7 +78,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             // Back to the menu page, shown left of the title while on a sub-page.
-            IconButton { iconName: "back"; font.pixelSize: 26; visible: root.mode !== "menu"; onClicked: root.mode = "menu" }
+            IconButton { iconName: "back"; visible: root.mode !== "menu"; onClicked: root.mode = "menu" }
             Label { text: "New chat"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }

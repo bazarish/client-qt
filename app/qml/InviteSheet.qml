@@ -55,7 +55,7 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            IconButton { iconName: "back"; font.pixelSize: 26; onClicked: root.back() }
+            IconButton { iconName: "back"; onClicked: root.back() }
             Label { text: "My invite"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
