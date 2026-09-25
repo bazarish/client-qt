@@ -416,6 +416,10 @@ private:
     bool errandsRunning_ = false;
     void startErrands();
     void stopErrands();
+    // Hands one item back to the server, later and elsewhere. Both ack paths
+    // come here: the one the interface asks for once it has stored a message,
+    // and the one a mailbox pass decides on for what it consumed itself.
+    void queueAck(const std::string& pendingId);
 
     // The handshake between that loop and this worker. A mailbox holds an item
     // until it is acked, so it answers the next wait the instant one is asked

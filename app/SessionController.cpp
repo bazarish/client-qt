@@ -648,6 +648,28 @@ void SessionWorker::startEventWaiter()
             }
             QMetaObject::invokeMethod(
                 this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
+            // The items themselves are fetched here, on this thread, before
+            // the pass that applies them is asked for: a round trip each, and
+            // the pass would have paid them one after another on the thread
+            // every command of the user's queues on. What is not fetched is
+            // simply asked for by the pass as before.
+            try {
+                std::vector<bazarish::client::Session::MailboxItem> ahead
+                    = bazarish::client::Session::fetchMailbox(
+                        *waiter, bazarish::client::Session::kPendingItemsPerPass);
+                if (!ahead.empty()) {
+                    QMetaObject::invokeMethod(
+                        this,
+                        [this, items = std::move(ahead)]() mutable {
+                            if (session_) {
+                                session_->holdFetched(std::move(items));
+                            }
+                        },
+                        Qt::QueuedConnection);
+                }
+            } catch (const std::exception& error) {
+                bazarish::log::info("nothing fetched ahead of the pass: {}", error.what());
+            }
             // Something is waiting (or the server's window closed): read the
             // mailbox now, on the worker thread where every other session call
             // runs, and hold the next wait until that pass has finished. A
@@ -729,6 +751,10 @@ void SessionWorker::openAccount(
     session_->setAudioBackend(
         []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<QtAudioSource>(); },
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<QtAudioSink>(); });
+    // What a pass decides to hand back goes out on the errands thread, like the
+    // acks the interface asks for: a round trip taken in the middle of a pass is
+    // one the next thing the user does waits behind.
+    session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     // Signing a login needs a key and nothing else, so the front-end gets a
     // signer of its own here: it must not wait behind a sync that may be minutes
     // long to answer a click.
@@ -1419,6 +1445,16 @@ void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
     }
 }
 
+void SessionWorker::queueAck(const std::string& pendingId)
+{
+    startErrands();
+    {
+        const std::lock_guard<std::mutex> lock(errandMutex_);
+        errandAcks_.push_back(pendingId);
+    }
+    errandWake_.notify_one();
+}
+
 void SessionWorker::ackPending(const QString& pendingId)
 {
     if (!session_ || pendingId.isEmpty()) {
@@ -1429,12 +1465,7 @@ void SessionWorker::ackPending(const QString& pendingId)
     // next. The item stays counted as carried until the server has actually been
     // told, because that count is what holds the mail loop off - a wait asked
     // while the mailbox still holds these items is answered by them at once.
-    startErrands();
-    {
-        const std::lock_guard<std::mutex> lock(errandMutex_);
-        errandAcks_.push_back(pendingId.toStdString());
-    }
-    errandWake_.notify_one();
+    queueAck(pendingId.toStdString());
 }
 
 void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
