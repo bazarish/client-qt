@@ -336,24 +336,31 @@ QString humanBytes(qint64 bytes)
         + QString::fromLatin1(kUnits[unit]);
 }
 
+// A send is retrying. The courier writes "retry <n>/<attempts>", so the prefix
+// is what names the phase and the rest is the count.
+bool isRetryPhase(const QString& phase)
+{
+    return phase.startsWith(QLatin1StringView(bazarish::client::kPhaseRetryPrefix));
+}
+
 // Maps a delivery phase reported by the courier to a human-readable activity
-// status.
+// status. The phase words are the transport's, so they are taken from it.
 QString humanDeliveryPhase(const QString& phase)
 {
-    if (phase == QStringLiteral("preparing")) {
+    if (phase == QLatin1StringView(bazarish::client::kPhasePreparing)) {
         // Making the one-time address this correspondent's mail leaves from, and
         // waiting for its tunnels when it had to be built cold.
         return QStringLiteral("Preparing an address to send from…");
     }
-    if (phase == QStringLiteral("dialing")) {
+    if (phase == QLatin1StringView(bazarish::client::kPhaseDialing)) {
         return QStringLiteral("Reaching the recipient's server…");
     }
-    if (phase == QStringLiteral("sending")) {
+    if (phase == QLatin1StringView(bazarish::client::kPhaseSending)) {
         return QStringLiteral("Sending over I2P…");
     }
-    if (phase.startsWith(QStringLiteral("retry"))) {
-        // "retry 3/4" -> "Trying again (3 of 4)…"
-        const QStringList parts = phase.mid(6).trimmed().split(QChar('/'));
+    if (isRetryPhase(phase)) {
+        const QLatin1StringView prefix(bazarish::client::kPhaseRetryPrefix);
+        const QStringList parts = phase.sliced(prefix.size()).trimmed().split(QChar('/'));
         if (parts.size() == 2) {
             return QStringLiteral("Trying again (") + parts.at(0) + QStringLiteral(" of ")
                 + parts.at(1) + QStringLiteral(")…");
@@ -6051,7 +6058,7 @@ void SessionController::onSendPhase(qint64 localId, const QString& phase)
     // settled) and, while it is retrying, under the bubble itself: a message that
     // is being tried again should say so where the user is looking.
     updateOperation(QStringLiteral("send:") + QString::number(localId), human);
-    if (phase.startsWith(QStringLiteral("retry"))) {
+    if (isRetryPhase(phase)) {
         conversation_.setErrorForId(localId, human);
     }
 }
