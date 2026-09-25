@@ -72,6 +72,7 @@ ApplicationWindow {
         // the process, so there is nothing to do here but say so and stand down.
         function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
+        function onImageRejected(reason) { window.showError(reason) }
         // The server would not end the account, so nothing was deleted anywhere.
         function onAccountDeleteFailed(id, error, profileNotOpened) {
             deleteFailedDialog.show(id, error, profileNotOpened)

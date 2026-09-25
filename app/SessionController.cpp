@@ -3165,8 +3165,13 @@ void SessionController::open(const QString& file, const QString& accountId,
     accountPath_ = file;
     accountPassphrase_ = passphrase;
     // Everything an account keeps lives in its one encrypted database; the
-    // transcript is its largest table, the rest are named rows.
-    store_.open(accountId, file, passphrase);
+    // transcript is its largest table, the rest are named rows. A store that
+    // will not open answers nothing to every read after it, so the account does
+    // not open either.
+    if (!store_.open(accountId, file, passphrase)) {
+        emit openFailed(QStringLiteral("This profile could not be opened."));
+        return;
+    }
     const QJsonDocument recents = QJsonDocument::fromJson(
         QByteArray::fromStdString(accountDb().text("recent-reactions")));
     for (const QJsonValue& entry : recents.array()) {

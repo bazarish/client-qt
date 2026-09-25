@@ -252,13 +252,13 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     if (db_ == nullptr) {
         return false;
     }
-    path_ = dbPath;
     if (!readable(db_)) {
         // Wrong key: the pages do not decrypt. Say so by failing the open.
         sqlite3_close(db_);
         db_ = nullptr;
         return false;
     }
+    path_ = dbPath;
 
     Query query(db_);
     // What schema this database was written against. SQLite carries the number
