@@ -52,7 +52,7 @@ Popup {
             Label { text: "Accounts"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         ListView {
             id: accountList
@@ -161,7 +161,7 @@ Popup {
                 }
             }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         Button {
             Layout.fillWidth: true

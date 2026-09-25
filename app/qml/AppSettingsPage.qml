@@ -36,7 +36,7 @@ Popup {
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         ScrollView {
             Layout.fillWidth: true
@@ -83,7 +83,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -111,7 +111,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // One choice, three ways of making it. Each tab carries the
                 // description of a transport and its settings, and the switch

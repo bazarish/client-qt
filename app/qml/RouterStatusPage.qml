@@ -72,7 +72,7 @@ Popup {
             Label { text: "I2P router"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         ScrollView {
             Layout.fillWidth: true
@@ -145,7 +145,7 @@ Popup {
                         StatRow { label: "Outbound tunnels"; value: I2p.outboundTunnels }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // The destinations this router serves right now. The tunnel counts
                 // above are router-wide, so without this it is impossible to tell
@@ -226,7 +226,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // Tunnel hop length. Each hop is another router that has to be
                 ColumnLayout {
@@ -304,7 +304,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // Everything this router does outside I2P, through a SOCKS5 proxy.
                 ColumnLayout {
@@ -419,7 +419,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // libi2pd's own logging - off by default, on demand for debugging.
                 ColumnLayout {

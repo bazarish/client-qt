@@ -119,7 +119,7 @@ Item {
                 }
                 IconButton { iconName: "close"; onClicked: overlay.open = false }
             }
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+            Hairline { }
 
             // Empty state.
             Label {

@@ -83,7 +83,7 @@ Popup {
             Label { text: "Account"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         ScrollView {
             id: settingsScroll
@@ -216,7 +216,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // App & privacy — GLOBAL settings, shared by every account on this
                 // device (the per-account sections are below).
@@ -444,7 +444,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // Personal I2P destination
                 ColumnLayout {
@@ -618,7 +618,7 @@ Popup {
                         onClicked: deleteKeyDialog.open()
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // Backup
                 // What this account alone does. The switches above are the app's;
@@ -781,7 +781,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -800,7 +800,7 @@ Popup {
                     }
                     MenuButton { Layout.fillWidth: true; iconName: "save"; text: "Export encrypted backup"; onClicked: exportDialog.open() }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -829,7 +829,7 @@ Popup {
                         }
                     }
                 }
-                Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+                Hairline { }
 
                 // Who is not heard here. A block is per account and reaches its
                 // other devices; unblocking does not bring back what was dropped.

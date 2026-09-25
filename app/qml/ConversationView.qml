@@ -268,7 +268,7 @@ Item {
                 IconButton { iconName: "info"; onClicked: root.contactInfoRequested() }
             }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         // The message list shows only a window of the conversation: the newest
         // page on open, with older messages paged in at the top and newer ones at

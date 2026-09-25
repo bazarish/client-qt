@@ -88,7 +88,7 @@ Item {
                 }
             }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         // Search the chat list by name (filters the list as you type). Clears when
         // the field is emptied.

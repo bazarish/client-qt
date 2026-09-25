@@ -46,7 +46,7 @@ Popup {
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         ScrollView {
             Layout.fillWidth: true

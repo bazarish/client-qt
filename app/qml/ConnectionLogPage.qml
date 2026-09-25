@@ -109,7 +109,7 @@ Popup {
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
 
         Label {
             Layout.fillWidth: true
@@ -201,7 +201,7 @@ Popup {
             }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+        Hairline { }
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14

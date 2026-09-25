@@ -275,7 +275,7 @@ Popup {
                 wrapMode: Text.Wrap; Layout.fillWidth: true
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border }
+            Hairline { }
 
             RowLayout {
                 Layout.fillWidth: true
