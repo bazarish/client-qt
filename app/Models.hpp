@@ -88,6 +88,20 @@ private:
     QVector<ContactRow> contacts_;
 };
 
+// What a message is doing right now, as against what it is. None of this is
+// stored: it belongs to this run of the window and goes with it.
+struct LiveMessageState {
+    QString error;          // a send that failed, shown under the bubble
+    QString downloadError;  // a save that failed
+    QString transferStage;  // what a direct transfer is doing, in the user's words
+    double uploadProgress = -1.0;  // negative: no determinate progress
+    qint64 downloadReceived = 0;
+    qint64 downloadTotal = 0;
+    // A download is under way. Kept apart from the byte counts, which are
+    // still zero for the stretch before the first byte arrives.
+    bool downloading = false;
+};
+
 // The open conversation's messages.
 class ConversationModel : public QAbstractListModel {
     Q_OBJECT
@@ -122,24 +136,18 @@ public:
     // (for the read high-water). Returns false when there is none.
     bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol, qint64& outSentAt) const;
     void setStatusForId(qint64 id, int status);
-    // Replaces a row's text in place (a system note tracking a running operation).
+    // Replaces a row's text in place: a system note tracking a running operation.
     void setTextForId(qint64 id, const QString& text);
     void setTypeForId(qint64 id, const QString& type);
-    // Attaches (or, when empty, clears) a delivery-error string for a message,
-    // shown inline on a failed outgoing bubble. Session-only; not persisted.
+
+    // The live state above, one field at a time. An id outside the loaded window
+    // still records its state: a transfer goes on while the user reads elsewhere.
     void setErrorForId(qint64 id, const QString& error);
-    // Sets the upload progress fraction (0..1) for an outgoing file in flight;
-    // a negative value (the default) means "no determinate progress". Session-only.
     void setUploadProgressForId(qint64 id, double fraction);
-    // Download progress for an incoming attachment being saved: received/total
-    // ciphertext bytes (total > 0 means a download is in flight). Session-only.
     void setDownloadProgressForId(qint64 id, qint64 received, qint64 total);
-    // What a direct transfer is doing right now, in the user's words (empty
-    // clears it). Most of a transfer happens before the first byte, so the bubble
-    // says which step it is on instead of one long "connecting". Session-only.
+    // Most of a transfer happens before the first byte, so the bubble says which
+    // step it is on instead of one long "connecting".
     void setTransferStageForId(qint64 id, const QString& stage);
-    // Marks a download finished: ok clears the progress; otherwise records an
-    // inline error and clears the progress. Session-only.
     void finishDownloadForId(qint64 id, bool ok, const QString& error);
     // Records where an incoming attachment was saved, so the bubble can offer to
     // open it instead of re-saving.
@@ -158,13 +166,12 @@ public:
     Q_INVOKABLE bool lastMessageOutgoing() const;
 
 private:
+    // Tells the view that one row changed. A row that is not in the loaded
+    // window has nothing to redraw, so a negative index is a no-op.
+    void notifyRow(int row, const QList<int>& roles);
+
     QVector<StoredMessage> messages_;
-    QHash<qint64, QString> errorById_;
-    QHash<qint64, double> uploadProgressById_;
-    QHash<qint64, qint64> downloadReceivedById_;
-    QHash<qint64, qint64> downloadTotalById_;
-    QHash<qint64, QString> downloadErrorById_;
-    QHash<qint64, QString> transferStageById_;
+    QHash<qint64, LiveMessageState> live_;
 };
 
 // One account in the unified account list. Covers every on-disk account, with

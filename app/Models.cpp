@@ -204,13 +204,13 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case TimeRole: return m.ts;
     case StatusRole: return m.status;
     case MsgIdRole: return m.id;
-    case ErrorRole: return errorById_.value(m.id);
-    case UploadProgressRole: return uploadProgressById_.value(m.id, -1.0);
-    case DownloadingRole: return downloadReceivedById_.contains(m.id);
-    case DownloadReceivedRole: return downloadReceivedById_.value(m.id, 0);
-    case DownloadTotalRole: return downloadTotalById_.value(m.id, 0);
-    case DownloadErrorRole: return downloadErrorById_.value(m.id);
-    case TransferStageRole: return transferStageById_.value(m.id);
+    case ErrorRole: return live_.value(m.id).error;
+    case UploadProgressRole: return live_.value(m.id).uploadProgress;
+    case DownloadingRole: return live_.value(m.id).downloading;
+    case DownloadReceivedRole: return live_.value(m.id).downloadReceived;
+    case DownloadTotalRole: return live_.value(m.id).downloadTotal;
+    case DownloadErrorRole: return live_.value(m.id).downloadError;
+    case TransferStageRole: return live_.value(m.id).transferStage;
     case SavedPathRole: return m.savedPath;
     case PictureRole: return m.hasPicture;
     case DurationRole: return m.attDurationMs;
@@ -247,12 +247,7 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
 {
     beginResetModel();
     messages_ = std::move(messages);
-    errorById_.clear();
-    uploadProgressById_.clear();
-    downloadReceivedById_.clear();
-    downloadTotalById_.clear();
-    downloadErrorById_.clear();
-    transferStageById_.clear();
+    live_.clear();
     endResetModel();
 }
 
@@ -312,6 +307,15 @@ int ConversationModel::rowForId(qint64 id) const
     return -1;
 }
 
+void ConversationModel::notifyRow(const int row, const QList<int>& roles)
+{
+    if (row < 0) {
+        return;
+    }
+    const QModelIndex at = index(row);
+    emit dataChanged(at, at, roles);
+}
+
 QVector<qint64> ConversationModel::markDeliveredThrough(qint64 uptoId)
 {
     QVector<qint64> changed;
@@ -347,172 +351,117 @@ bool ConversationModel::newestIncomingThrough(
 
 void ConversationModel::setStatusForId(qint64 id, int status)
 {
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            messages_[i].status = status;
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {StatusRole});
-            return;
-        }
+    const int row = rowForId(id);
+    if (row < 0) {
+        return;
     }
+    messages_[row].status = status;
+    notifyRow(row, {StatusRole});
 }
 
 void ConversationModel::setTextForId(qint64 id, const QString& text)
 {
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            messages_[i].text = text;
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {TextRole});
-            return;
-        }
+    const int row = rowForId(id);
+    if (row < 0) {
+        return;
     }
+    messages_[row].text = text;
+    notifyRow(row, {TextRole});
 }
 
 void ConversationModel::setTypeForId(qint64 id, const QString& type)
 {
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            messages_[i].type = type;
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {TypeRole});
-            return;
-        }
+    const int row = rowForId(id);
+    if (row < 0) {
+        return;
     }
+    messages_[row].type = type;
+    notifyRow(row, {TypeRole});
 }
 
 void ConversationModel::setErrorForId(qint64 id, const QString& error)
 {
-    if (error.isEmpty()) {
-        errorById_.remove(id);
-    } else {
-        errorById_.insert(id, error);
-    }
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {ErrorRole});
-            return;
-        }
-    }
+    live_[id].error = error;
+    notifyRow(rowForId(id), {ErrorRole});
 }
 
 void ConversationModel::setUploadProgressForId(qint64 id, double fraction)
 {
-    uploadProgressById_.insert(id, fraction);
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {UploadProgressRole});
-            return;
-        }
-    }
+    live_[id].uploadProgress = fraction;
+    notifyRow(rowForId(id), {UploadProgressRole});
 }
 
 void ConversationModel::setDownloadProgressForId(qint64 id, qint64 received, qint64 total)
 {
-    downloadReceivedById_.insert(id, received);
-    downloadTotalById_.insert(id, total);
-    downloadErrorById_.remove(id);
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx,
-                {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
-            return;
-        }
-    }
+    LiveMessageState& state = live_[id];
+    state.downloading = true;
+    state.downloadReceived = received;
+    state.downloadTotal = total;
+    state.downloadError.clear();
+    notifyRow(rowForId(id),
+        {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
 }
 
 void ConversationModel::setTransferStageForId(const qint64 id, const QString& stage)
 {
-    if (stage.isEmpty()) {
-        transferStageById_.remove(id);
-    } else {
-        transferStageById_.insert(id, stage);
-    }
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {TransferStageRole});
-            return;
-        }
-    }
+    live_[id].transferStage = stage;
+    notifyRow(rowForId(id), {TransferStageRole});
 }
 
 void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& error)
 {
-    downloadReceivedById_.remove(id);
-    downloadTotalById_.remove(id);
-    transferStageById_.remove(id);
-    if (ok || error.isEmpty()) {
-        downloadErrorById_.remove(id);
-    } else {
-        downloadErrorById_.insert(id, error);
-    }
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {DownloadingRole, DownloadReceivedRole,
-                                           DownloadTotalRole, DownloadErrorRole});
-            return;
-        }
-    }
+    LiveMessageState& state = live_[id];
+    state.downloading = false;
+    state.downloadReceived = 0;
+    state.downloadTotal = 0;
+    state.transferStage.clear();
+    state.downloadError = (ok || error.isEmpty()) ? QString() : error;
+    notifyRow(rowForId(id),
+        {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
 }
 
 void ConversationModel::setSavedPathForId(qint64 id, const QString& path)
 {
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            messages_[i].savedPath = path;
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {SavedPathRole});
-            return;
-        }
+    const int row = rowForId(id);
+    if (row < 0) {
+        return;
     }
+    messages_[row].savedPath = path;
+    notifyRow(row, {SavedPathRole});
 }
 
 void ConversationModel::setPictureReadyForId(qint64 id, const bool ready)
 {
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            messages_[i].hasPicture = ready;
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {PictureRole});
-            return;
-        }
+    const int row = rowForId(id);
+    if (row < 0) {
+        return;
     }
+    messages_[row].hasPicture = ready;
+    notifyRow(row, {PictureRole});
 }
 
 void ConversationModel::editById(qint64 id, const QString& text, const QString& keyboard)
 {
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            messages_[i].text = text;
-            messages_[i].keyboard = keyboard;
-            messages_[i].edited = true;
-            const QModelIndex idx = index(i);
-            emit dataChanged(idx, idx, {TextRole, KeyboardRole, EditedRole});
-            return;
-        }
+    const int row = rowForId(id);
+    if (row < 0) {
+        return;
     }
+    messages_[row].text = text;
+    messages_[row].keyboard = keyboard;
+    messages_[row].edited = true;
+    notifyRow(row, {TextRole, KeyboardRole, EditedRole});
 }
 
 void ConversationModel::removeById(qint64 id)
 {
-    for (int i = 0; i < messages_.size(); ++i) {
-        if (messages_[i].id == id) {
-            beginRemoveRows({}, i, i);
-            messages_.removeAt(i);
-            endRemoveRows();
-            errorById_.remove(id);
-            uploadProgressById_.remove(id);
-            downloadReceivedById_.remove(id);
-            downloadTotalById_.remove(id);
-            downloadErrorById_.remove(id);
-            return;
-        }
+    const int row = rowForId(id);
+    if (row < 0) {
+        return;
     }
+    beginRemoveRows({}, row, row);
+    messages_.removeAt(row);
+    endRemoveRows();
+    live_.remove(id);
 }
 
 bool ConversationModel::lastMessageOutgoing() const
