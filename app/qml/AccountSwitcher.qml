@@ -22,7 +22,7 @@ Popup {
     // Wide enough for the widest count the badge draws.
     readonly property int unreadSlotWidth: 34
     padding: 0
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     function statusText(m) {
         if (!m.open) {

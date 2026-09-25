@@ -186,6 +186,9 @@ public:
     // way to the compressor). QML resolves relative names against the qrc bundle,
     // which is read-only, so the location has to come from here.
     Q_INVOKABLE QString scratchFile(const QString& name) const;
+    // Puts text on the system clipboard. Here rather than on a session because
+    // the account picker copies a fingerprint before any account is open.
+    Q_INVOKABLE void copyText(const QString& text) const;
 
     // --- Images ---
     //

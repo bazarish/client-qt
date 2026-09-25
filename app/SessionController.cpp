@@ -1600,13 +1600,6 @@ void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool
     }
 }
 
-void SessionController::copyText(const QString& text) const
-{
-    if (QClipboard* const clipboard = QGuiApplication::clipboard()) {
-        clipboard->setText(text);
-    }
-}
-
 
 void SessionController::keepThisDeviceAddress()
 {

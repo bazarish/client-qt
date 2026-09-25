@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import Bazarish
+import "Format.js" as Format
 
 Popup {
     id: root
@@ -46,17 +47,6 @@ Popup {
     }
 
     // Human-readable byte count (B / KB / MB / GB).
-    function humanBytes(n) {
-        if (!n || n <= 0) {
-            return "0 B"
-        }
-        const u = ["B", "KB", "MB", "GB", "TB"]
-        var v = n
-        var i = 0
-        while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
-        return (i === 0 ? v : v.toFixed(1)) + " " + u[i]
-    }
-
     // "updated N ago" from a wall-clock-ms timestamp (0 = never). Reads agoTick so it
     // re-evaluates as the timer ticks.
     function agoText(updatedAtMs) {
@@ -80,7 +70,7 @@ Popup {
         return "updated " + Math.floor(s / 86400) + "d ago"
     }
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     property string pendingExportFile: ""
 
@@ -194,7 +184,7 @@ Popup {
                                         if (!root.session) {
                                             return
                                         }
-                                        root.session.copyText(root.session.fingerprint)
+                                        App.copyText(root.session.fingerprint)
                                         fingerprintLine.copied = true
                                         copiedTimer.restart()
                                     }
@@ -314,8 +304,8 @@ Popup {
                                     }
                                     Label {
                                         text: storageSection.ok
-                                            ? (root.humanBytes(storageSection.used) + " / "
-                                                + root.humanBytes(storageSection.quota))
+                                            ? (Format.bytes(storageSection.used) + " / "
+                                                + Format.bytes(storageSection.quota))
                                             : "unavailable"
                                         color: storageSection.ok ? Theme.textDim : Theme.warn
                                         font.pixelSize: Theme.fontSmall
@@ -933,7 +923,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(380, root.width - 24)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: "Forget this device?"
             color: Theme.text
@@ -981,7 +971,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(360, root.width - 24)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: "Remove your avatar?"
             color: Theme.text
@@ -1015,7 +1005,7 @@ Popup {
         width: Math.min(320, parent ? parent.width - 24 : 320)
         title: "Change name"
         onAccepted: if (root.session) root.session.setDisplayName(renameSelfField.text)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label { text: "Change name"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         // An account with no name is one the user cannot tell from another, here
         // or on their other devices, so Save has nothing to save.
@@ -1053,7 +1043,7 @@ Popup {
         modal: true
         title: "Backup password"
         onAccepted: root.session.exportAccount(root.pendingExportFile, exportPass.text)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label { text: "Backup password"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { onAccepted: exportPassDialog.accept(); onRejected: exportPassDialog.reject() }
         contentItem: TextField { id: exportPass; echoMode: TextInput.Password; placeholderText: "password"; color: Theme.text; placeholderTextColor: Theme.textDim; implicitWidth: 260; onAccepted: exportPassDialog.accept()
@@ -1068,7 +1058,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         title: "Database password"
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label { text: "Database password"; color: Theme.green
             font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         readonly property bool matched: newPass.text === newPassAgain.text
@@ -1122,7 +1112,7 @@ Popup {
         modal: true
         width: 460
         onOpened: connectionForm.reset()
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: RowLayout {
             spacing: 4
             IconButton { iconName: "back"; Layout.leftMargin: 8; onClicked: connectionDialog.close() }
@@ -1175,7 +1165,7 @@ Popup {
         title: "Delete personal I2P key"
         footer: DialogButtons { acceptText: "Delete"; danger: true; onAccepted: deleteKeyDialog.accept(); onRejected: deleteKeyDialog.reject() }
         onAccepted: if (root.session) root.session.deletePersonalKey()
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        background: DialogFrame { destructive: true }
         header: Label { text: "Delete personal I2P key"; color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
             text: "The old key will be permanently deleted and cannot be recovered. "

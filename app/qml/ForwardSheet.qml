@@ -24,7 +24,7 @@ Popup {
     height: Math.min(parent ? parent.height - 80 : 520, 520)
     padding: 0
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     contentItem: ColumnLayout {
         spacing: 0

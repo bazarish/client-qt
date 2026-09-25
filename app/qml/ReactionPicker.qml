@@ -18,7 +18,7 @@ Popup {
     width: Math.min(parent ? parent.width - 24 : 400,
         kColumns * kChipSize + (kColumns - 1) * kChipSpacing + 2 * padding)
     padding: 12
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     // Where the user pressed "React", in scene coordinates. The window opens
     // there rather than in the middle of the screen, which made the user find

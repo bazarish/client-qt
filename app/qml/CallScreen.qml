@@ -51,7 +51,7 @@ Popup {
     height: Math.min(440, parent ? parent.height - 24 : 440)
     padding: 18
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     // A rolling level meter: one bar per sample of the recent past, newest on the
     // right. Drawn from a timer rather than from the value changing, so a silent
@@ -124,36 +124,6 @@ Popup {
     }
 
     // A round, coloured action button.
-    component CallButton: Button {
-        id: callButton
-        property color fill: Theme.accent
-        property color label: "white"
-        // One width for every call action: a row of buttons that size themselves
-        // to their labels is a row that is never centred under the avatar.
-        Layout.preferredWidth: 120
-        padding: 0
-        hoverEnabled: true
-        HoverHandler { enabled: callButton.enabled; cursorShape: Qt.PointingHandCursor }
-        background: Rectangle {
-            radius: 24
-            // A request in flight dims its button, so a press that is already
-            // being carried out does not look like one that was ignored.
-            color: !callButton.enabled ? Theme.surfaceAlt
-                : callButton.down ? Qt.darker(callButton.fill, 1.2)
-                : callButton.hovered ? Qt.lighter(callButton.fill, 1.15)
-                : callButton.fill
-            border.color: callButton.hovered && callButton.enabled ? Theme.text : Theme.border
-            implicitWidth: 120
-            implicitHeight: 48
-            Behavior on color { ColorAnimation { duration: 90 } }
-        }
-        contentItem: Label {
-            text: callButton.text
-            color: callButton.enabled ? callButton.label : Theme.textDim
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
-    }
 
     // A round icon action. The microphone toggle is one: a drawn mic says what it
     // is, and crossed out in red says it is off, in the one glance a call allows.

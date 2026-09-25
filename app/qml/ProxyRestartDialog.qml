@@ -14,7 +14,7 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(400, parent ? parent.width - 24 : 400)
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+    background: DialogFrame { destructive: true }
     header: Label {
         text: "Restart the router?"
         color: Theme.neon

@@ -38,7 +38,7 @@ Popup {
     width: Math.min(720, parent ? parent.width - 24 : 720)
     height: Math.min(parent ? parent.height - 40 : 600, 560)
     padding: 0
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     // Live enough to watch a send go out, without a worker thread reaching into
     // the interface: the window asks, the account answers.
@@ -87,7 +87,7 @@ Popup {
         if (!root.session) {
             return
         }
-        root.session.copyText(root.lineText(line))
+        App.copyText(root.lineText(line))
         root.copiedKey = root.lineKey(line)
         root.allCopied = false
         copiedReset.restart()
@@ -215,7 +215,7 @@ Popup {
                     if (!root.session) {
                         return
                     }
-                    root.session.copyText(root.asText())
+                    App.copyText(root.asText())
                     root.copiedKey = ""
                     root.allCopied = true
                     copiedReset.restart()

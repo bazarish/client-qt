@@ -17,7 +17,7 @@ Dialog {
     modal: true
     closePolicy: Popup.NoAutoClose
     width: Math.min(520, parent ? parent.width - 24 : 520)
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+    background: DialogFrame { destructive: true }
 
     header: Label {
         text: "Use a private gateway?"

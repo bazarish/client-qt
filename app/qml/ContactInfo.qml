@@ -29,7 +29,7 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 620, body.implicitHeight + 36)
     padding: 18
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     // Prefill the rename field with the current local name each time it opens.
     onOpened: nameField.text = (session ? session.contactName(session.activePeer) : "")
@@ -169,7 +169,7 @@ Popup {
                         if (!root.session) {
                             return
                         }
-                        root.session.copyText(root.session.activePeer)
+                        App.copyText(root.session.activePeer)
                         fingerprintLine.copied = true
                         fingerprintCopied.restart()
                     }
@@ -326,7 +326,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: "Clear saved messages"
             color: Theme.green
@@ -361,7 +361,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(380, parent ? parent.width - 24 : 380)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: "Block this contact?"
             color: Theme.green
@@ -395,7 +395,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: "Clear chat"
             color: Theme.green
@@ -453,7 +453,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        background: DialogFrame { destructive: true }
         header: Label {
             text: "Delete contact"
             color: Theme.neon

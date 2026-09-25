@@ -1064,6 +1064,13 @@ QString AppController::markupPlain(const QString& text) const
     return markup::toPlain(text);
 }
 
+void AppController::copyText(const QString& text) const
+{
+    if (QClipboard* const clipboard = QGuiApplication::clipboard()) {
+        clipboard->setText(text);
+    }
+}
+
 QString AppController::scratchFile(const QString& name) const
 {
     return QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(name);

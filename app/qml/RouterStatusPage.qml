@@ -16,7 +16,7 @@ Popup {
     width: 460
     height: Math.min(parent ? parent.height - 40 : 600, 560)
     padding: 0
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     // The slider is drawn small: the stock handle is a touch target and swamped
     // a settings row.

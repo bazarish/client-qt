@@ -25,7 +25,7 @@ Dialog {
     width: Math.min(380, parent ? parent.width - 24 : 380)
     padding: 0
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
     header: Label {
         text: "Send file"
         color: Theme.green

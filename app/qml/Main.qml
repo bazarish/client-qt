@@ -267,7 +267,7 @@ ApplicationWindow {
         modal: true
         closePolicy: Popup.NoAutoClose
         width: Math.min(360, parent ? parent.width - 24 : 360)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        background: DialogFrame { destructive: true }
         header: Label {
             text: "Restart Bazarish"
             color: Theme.neon

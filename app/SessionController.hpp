@@ -528,8 +528,6 @@ public:
     // own one-to-one message (outgoing, e2eId set) the recipient is asked to
     // remove its copy too. A received message is removed locally only.
     Q_INVOKABLE void deleteMessage(qint64 localId, const QString& e2eId, bool outgoing);
-    // Copies arbitrary text (a whole message) to the system clipboard.
-    Q_INVOKABLE void copyText(const QString& text) const;
     // Why this text is not a usable invite, or empty when it parses. Local and
     // instant: a paste that cannot work must be refused at the field, not by a
     // background operation that dials I2P first.

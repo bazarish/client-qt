@@ -30,15 +30,10 @@ Popup {
     height: Math.min(helloCol.implicitHeight + topPadding + bottomPadding,
         (Overlay.overlay ? Overlay.overlay.height : 600) - 32)
     padding: 18
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+    background: DialogFrame { destructive: true }
 
-    // Off-screen helper for copying a link to the system clipboard.
-    TextEdit { id: clip; visible: false }
     function copyText(t) {
-        clip.text = t
-        clip.selectAll()
-        clip.copy()
-        clip.deselect()
+        App.copyText(t)
         if (typeof window !== "undefined") window.showToast("Copied")
     }
 

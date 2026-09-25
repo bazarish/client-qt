@@ -25,13 +25,8 @@ Item {
         }
     }
 
-    // Off-screen helper used to put a fingerprint on the system clipboard.
-    TextEdit { id: clip; visible: false }
     function copyFingerprint(fp) {
-        clip.text = fp
-        clip.selectAll()
-        clip.copy()
-        clip.deselect()
+        App.copyText(fp)
         if (typeof window !== "undefined") window.showToast("Fingerprint copied")
     }
 
@@ -198,7 +193,7 @@ Item {
         }
         onRejected: App.cancelUnlock()
         onOpened: passField.forceActiveFocus()
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label { text: "Unlock account"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.submit(); onRejected: passDialog.reject() }
         contentItem: ColumnLayout {

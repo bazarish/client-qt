@@ -126,7 +126,7 @@ Item {
         // for the password the backup file was sealed with.
         onAccepted: App.importAccount(nameField.text.trim(), root.pendingBackupFile,
             backupPass.text, passField.text)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label { text: "Backup password"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { onAccepted: backupPassDialog.accept(); onRejected: backupPassDialog.reject() }
         contentItem: TextField {

@@ -19,7 +19,7 @@ Popup {
     // As tall as what it holds, not a fixed box: there are two settings here.
     height: Math.min(parent ? parent.height - 40 : 520, body.implicitHeight + 60)
     padding: 0
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -324,7 +324,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: portableConfirm.turningOn ? "Move data beside the app?" : "Move data back?"
             color: Theme.text

@@ -239,7 +239,7 @@ Item {
         onRejected: App.cancelUnlock()
         // The one thing to do here is type a passphrase.
         onOpened: unlockField.forceActiveFocus()
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label { text: unlockDialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
         footer: DialogButtons { acceptText: "Unlock"; onAccepted: unlockDialog.submit(); onRejected: unlockDialog.reject() }
         contentItem: ColumnLayout {

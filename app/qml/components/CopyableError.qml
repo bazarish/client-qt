@@ -30,7 +30,7 @@ Label {
             if (!root.session) {
                 return
             }
-            root.session.copyText(root.reason)
+            App.copyText(root.reason)
             root.copied = true
             copiedFor.restart()
         }

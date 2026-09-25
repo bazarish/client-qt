@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import Bazarish
+import "Format.js" as Format
 
 Item {
     id: delegate
@@ -56,7 +57,7 @@ Item {
             delegate.aliasRequested(decodeURIComponent(link.substring(delegate.kAliasScheme.length)))
         } else if (link.startsWith(delegate.kCopyScheme)) {
             if (delegate.session) {
-                delegate.session.copyText(
+                App.copyText(
                     decodeURIComponent(link.substring(delegate.kCopyScheme.length)))
                 delegate.copiedBlock = true
                 copiedBlockFor.restart()
@@ -67,17 +68,6 @@ Item {
     }
 
     // Human-readable byte count for the download progress line.
-    function humanSize(n) {
-        if (!n || n <= 0) {
-            return "0 B"
-        }
-        const u = ["B", "KB", "MB", "GB"]
-        var v = n
-        var i = 0
-        while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
-        return (i === 0 ? v : v.toFixed(1)) + " " + u[i]
-    }
-
     // An attachment card is shown both for an incoming message (which carries a
     // content-store ref) and for one's own outgoing file (which has the type set
     // locally before the upload finishes, so the ref is not there yet).
@@ -379,7 +369,7 @@ Item {
                 sourceComponent: ColumnLayout {
                     spacing: 2
                     Label { text: "" + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
-                    Label { visible: model.attSize > 0; text: delegate.humanSize(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { visible: model.attSize > 0; text: Format.bytes(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     // Upload feedback on one's own file while it is actively being
                     // sent (status stays Sending only during the live upload; an
                     // interrupted send is demoted to Failed on load). Shows the real
@@ -513,8 +503,8 @@ Item {
                         Label {
                             Layout.fillWidth: true
                             text: model.downloadTotal > 0
-                                ? (delegate.humanSize(model.downloadReceived) + " / "
-                                    + delegate.humanSize(model.downloadTotal))
+                                ? (Format.bytes(model.downloadReceived) + " / "
+                                    + Format.bytes(model.downloadTotal))
                                 : (model.transferStage.length > 0
                                     ? model.transferStage
                                     : "Connecting over I2P…")
@@ -692,9 +682,7 @@ Item {
                         const leftMs = delegate.voicePlaying
                             ? Math.max(0, (durationMs - delegate.session.voicePositionMs) / speed)
                             : durationMs
-                        const total = Math.round(leftMs / 1000)
-                        const seconds = total % 60
-                        return Math.floor(total / 60) + ":" + (seconds < 10 ? "0" : "") + seconds
+                        return Format.minutesSeconds(Math.round(leftMs / 1000))
                     }
                     color: Theme.text
                     font.pixelSize: Theme.fontSmall
@@ -870,7 +858,7 @@ Item {
                 spacing: 4
                 Label {
                     visible: (delegate.isVoice || delegate.isPicture) && model.attSize > 0
-                    text: delegate.humanSize(model.attSize)
+                    text: Format.bytes(model.attSize)
                     color: Theme.textFaint
                     font.pixelSize: 10
                 }
@@ -1134,7 +1122,7 @@ Item {
                 visible: !delegate.isAttachment && !delegate.isContactRequest
                     && delegate.fullText.length > 0
                 height: visible ? implicitHeight : 0
-                onTriggered: delegate.session.copyText(delegate.fullText)
+                onTriggered: App.copyText(delegate.fullText)
             }
             ContextMenuItem {
                 text: "Edit"

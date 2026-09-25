@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
+import "Format.js" as Format
 
 // What one account keeps on this machine, conversation by conversation, and the
 // one thing that can be done about it: keep the newest messages of a chat and
@@ -23,22 +24,11 @@ Popup {
     width: Math.min(600, parent ? parent.width - 24 : 600)
     height: Math.min(parent ? parent.height - 40 : 600, 560)
     padding: 0
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     // A full pass over the transcript, so it runs when the window opens and when
     // a trim changes what there is to count - never on a timer.
     onOpened: if (root.session) { root.session.measureDeviceStorage() }
-
-    function humanBytes(n) {
-        if (!n || n <= 0) {
-            return "0 B"
-        }
-        const u = ["B", "KB", "MB", "GB", "TB"]
-        var v = n
-        var i = 0
-        while (v >= 1024 && i < u.length - 1) { v /= 1024; i++ }
-        return (i === 0 ? v : v.toFixed(1)) + " " + u[i]
-    }
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -85,13 +75,13 @@ Popup {
                     Layout.margins: 14
                     spacing: 4
                     Label {
-                        text: "Database file: " + root.humanBytes(root.info.fileBytes)
+                        text: "Database file: " + Format.bytes(root.info.fileBytes)
                         color: Theme.text
                         font.pixelSize: Theme.fontBody
                     }
                     Label {
                         visible: root.info.freeBytes > 0
-                        text: "About " + root.humanBytes(root.info.freeBytes)
+                        text: "About " + Format.bytes(root.info.freeBytes)
                             + " of it is free space compacting returns to the disk."
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
@@ -158,7 +148,7 @@ Popup {
                             }
                             Label {
                                 text: chatRow.modelData.messages + " messages  ·  "
-                                    + root.humanBytes(chatRow.modelData.bytes)
+                                    + Format.bytes(chatRow.modelData.bytes)
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                             }
@@ -206,7 +196,7 @@ Popup {
         anchors.centerIn: Overlay.overlay
         modal: true
         width: Math.min(380, parent ? parent.width - 24 : 380)
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: "Trim " + trimDialog.who
             color: Theme.green
@@ -277,7 +267,7 @@ Popup {
         visible: root.busy
         closePolicy: Popup.NoAutoClose
         padding: 20
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         contentItem: ColumnLayout {
             spacing: 6
             Label {

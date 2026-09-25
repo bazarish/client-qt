@@ -35,7 +35,7 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(kViewport + 48, parent ? parent.width - 24 : kViewport + 48)
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
     header: Label {
         text: "Position your avatar"
         color: Theme.text

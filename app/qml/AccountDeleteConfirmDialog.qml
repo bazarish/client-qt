@@ -36,7 +36,7 @@ Dialog {
     }
     onAccepted: root.confirmed(root.accountId)
     // Destructive: brightest-neon outline, dark surface, light text.
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+    background: DialogFrame { destructive: true }
     header: Label {
         text: "Delete account"
         color: Theme.neon

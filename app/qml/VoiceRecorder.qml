@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
+import "Format.js" as Format
 
 // Recording a voice message. What the microphone is picking up is drawn while it
 // records, so a microphone that is not working shows itself as a flat line
@@ -17,7 +18,7 @@ Popup {
     width: 420
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     readonly property bool recording: root.session ? root.session.voiceRecording : false
     // The microphone is open and drawing, with nothing kept: what the window does
@@ -42,22 +43,6 @@ Popup {
         }
         const db = 20 * Math.log10(rms)
         return Math.max(0, Math.min(1, (db - kFloorDb) / -kFloorDb))
-    }
-
-    function formatDuration(ms) {
-        const total = Math.floor(ms / 1000)
-        const seconds = total % 60
-        return Math.floor(total / 60) + ":" + (seconds < 10 ? "0" : "") + seconds
-    }
-
-    function humanSize(bytes) {
-        if (bytes < 1024) {
-            return bytes + " B"
-        }
-        if (bytes < 1024 * 1024) {
-            return (bytes / 1024).toFixed(1) + " KB"
-        }
-        return (bytes / (1024 * 1024)).toFixed(1) + " MB"
     }
 
     function clearLevels() {
@@ -172,15 +157,15 @@ Popup {
             Layout.rightMargin: 14
             Label {
                 text: root.recording
-                    ? root.formatDuration(root.session.voiceElapsedMs)
-                    : (root.takeReady ? root.formatDuration(root.session.voiceTakeMs) : "0:00")
+                    ? Format.minutesSeconds(Math.floor(root.session.voiceElapsedMs / 1000))
+                    : (root.takeReady ? Format.minutesSeconds(Math.floor(root.session.voiceTakeMs / 1000)) : "0:00")
                 color: Theme.text
                 font.pixelSize: Theme.fontSmall
                 Layout.fillWidth: true
             }
             Label {
                 visible: root.takeReady
-                text: root.humanSize(root.session ? root.session.voiceTakeBytes : 0)
+                text: Format.bytes(root.session ? root.session.voiceTakeBytes : 0)
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall
             }

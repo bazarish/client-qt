@@ -38,34 +38,6 @@ Window {
     title: root.heading
 
     // The call screen's own action button, kept identical here.
-    component CallButton: Button {
-        id: callButton
-        property color fill: Theme.accent
-        property color label: "white"
-        // One width for every call action: a row of buttons that size themselves
-        // to their labels is a row that is never centred under the avatar.
-        Layout.preferredWidth: 120
-        padding: 0
-        hoverEnabled: true
-        HoverHandler { enabled: callButton.enabled; cursorShape: Qt.PointingHandCursor }
-        background: Rectangle {
-            radius: 24
-            color: !callButton.enabled ? Theme.surfaceAlt
-                : callButton.down ? Qt.darker(callButton.fill, 1.2)
-                : callButton.hovered ? Qt.lighter(callButton.fill, 1.15)
-                : callButton.fill
-            border.color: callButton.hovered && callButton.enabled ? Theme.text : Theme.border
-            implicitWidth: 120
-            implicitHeight: 48
-            Behavior on color { ColorAnimation { duration: 90 } }
-        }
-        contentItem: Label {
-            text: callButton.text
-            color: callButton.enabled ? callButton.label : Theme.textDim
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-        }
-    }
 
     Rectangle {
         anchors.fill: parent

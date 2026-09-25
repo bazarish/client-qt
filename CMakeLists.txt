@@ -166,6 +166,7 @@ if(Qt6_FOUND)
         QML_FILES
             app/qml/Main.qml
             app/qml/Theme.qml
+            app/qml/Format.js
             app/qml/AccountPicker.qml
             app/qml/CreateAccountWizard.qml
             app/qml/ConnectServerPage.qml
@@ -211,6 +212,7 @@ if(Qt6_FOUND)
             app/qml/components/ContextMenuItem.qml
             app/qml/components/UnreadBadge.qml
             app/qml/components/DialogButtons.qml
+            app/qml/components/DialogFrame.qml
             app/qml/components/Icon.qml
             app/qml/components/IconButton.qml
             app/qml/components/IconLabel.qml
@@ -221,6 +223,7 @@ if(Qt6_FOUND)
             app/qml/components/ConnectProgressDialog.qml
             app/qml/components/LinkWarningDialog.qml
             app/qml/components/CallGlow.qml
+            app/qml/components/CallButton.qml
             app/qml/components/CopyableError.qml
     )
     message(STATUS "Qt6 Quick found: building bazarish-app")

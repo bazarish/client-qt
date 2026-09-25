@@ -34,7 +34,7 @@ Popup {
         }
     }
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     Connections {
         target: root.session
@@ -126,7 +126,7 @@ Popup {
                                 if (!root.session) {
                                     return
                                 }
-                                root.session.copyText("!" + aliasRow.modelData.alias)
+                                App.copyText("!" + aliasRow.modelData.alias)
                                 aliasRow.copied = true
                                 aliasCopied.restart()
                             }
@@ -186,7 +186,7 @@ Popup {
                 // Copied from what the sheet holds, not from the box: the box is
                 // not on screen once there are aliases to show instead.
                 onClicked: {
-                    root.session.copyText(root.uri)
+                    App.copyText(root.uri)
                     copied = true; copiedTimer.restart()
                 }
                 background: Rectangle {
@@ -235,7 +235,7 @@ Popup {
         width: Math.min(420, parent ? parent.width - 24 : 420)
         closePolicy: root.session && root.session.servingKeyBusy
             ? Popup.NoAutoClose : Popup.CloseOnEscape
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+        background: DialogFrame { }
         header: Label {
             text: "Change the server key"
             color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold

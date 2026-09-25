@@ -186,7 +186,7 @@ Item {
             root.pendingDeleteId = null
         }
         onRejected: root.pendingDeleteId = null
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.neon; border.width: 2 }
+        background: DialogFrame { destructive: true }
         header: Label {
             text: "Delete message"
             color: Theme.neon

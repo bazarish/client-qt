@@ -22,7 +22,7 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 640, body.implicitHeight + 84)
     padding: 0
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     onOpened: {
         copied = false

@@ -40,7 +40,7 @@ Popup {
         copyBtn.copied = false
     }
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     Connections {
         target: root.session
@@ -50,7 +50,7 @@ Popup {
                 return
             }
             root.copyPending = false
-            root.session.copyText(blob)
+            App.copyText(blob)
             copyBtn.copied = true
             copiedTimer.restart()
         }

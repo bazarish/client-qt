@@ -45,7 +45,7 @@ Popup {
         root.prefillAlias = ""
     }
 
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.border }
+    background: DialogFrame { }
 
     // The add-contact actions run on the worker thread (a lookup plus a sealed
     // delivery with retries - slow over I2P). The conversation the request belongs
