@@ -59,7 +59,11 @@ if(Qt6_FOUND)
         app/I2pController.hpp
         app/SessionController.cpp
         app/SessionController.hpp
+        app/SessionWorker.cpp
+        app/SessionWorker.hpp
         app/DeliveryStatus.hpp
+        app/SessionShared.cpp
+        app/SessionShared.hpp
         app/Markup.cpp
         app/Markup.hpp
         app/Models.cpp
