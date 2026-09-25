@@ -1420,6 +1420,10 @@ private:
     // (e.g. "yellow" arriving after "green") never downgrades the tick.
     QHash<qint64, int> statusById_;
     void bumpStatus(qint64 localId, int status);
+    // Puts a message back at the start of delivery and clears the error it is
+    // showing: what an edit or a resend does before dispatching again. This is
+    // the one downgrade there is, so it does not go through bumpStatus.
+    void restartDelivery(qint64 localId);
     void setAvatarBusy(bool busy);
     // Conversation paging window. The model holds only [oldestLoadedId_ ..
     // newestLoadedId_]; the has-more flags say whether the store has rows beyond

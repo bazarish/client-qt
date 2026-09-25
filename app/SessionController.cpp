@@ -4037,10 +4037,7 @@ void SessionController::commitEdit(const QString& newText)
         // The edited version starts its delivery afresh: reset the bubble's status
         // and clear any prior error, so it then advances on the edit's own
         // delivery instead of showing the original message's state.
-        statusById_[editingLocalId_] = DeliveryStatus::Preparing;
-        store_.updateStatus(editingLocalId_, DeliveryStatus::Preparing);
-        conversation_.setStatusForId(editingLocalId_, DeliveryStatus::Preparing);
-        conversation_.setErrorForId(editingLocalId_, {});
+        restartDelivery(editingLocalId_);
         emit requestSendEdit(activePeer_, editingE2eId_, editingLocalId_, trimmed);
     }
     cancelEdit();
@@ -5788,6 +5785,14 @@ void SessionController::onAvatarReady(const QString& fingerprint, const QByteArr
     }
 }
 
+void SessionController::restartDelivery(qint64 localId)
+{
+    statusById_[localId] = DeliveryStatus::Preparing;
+    store_.updateStatus(localId, DeliveryStatus::Preparing);
+    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
+    conversation_.setErrorForId(localId, {});
+}
+
 void SessionController::bumpStatus(qint64 localId, int status)
 {
     // Never downgrade (e.g. "yellow" arriving after "green"); failed is terminal.
@@ -6071,10 +6076,7 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     // Reset to "sending" and clear the prior error, then re-dispatch with the
     // SAME protocol id so the recipient's server still deduplicates it (a retry
     // must never double-deliver).
-    statusById_[localId] = DeliveryStatus::Preparing;
-    store_.updateStatus(localId, DeliveryStatus::Preparing);
-    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
-    conversation_.setErrorForId(localId, {});
+    restartDelivery(localId);
     // Preserve the original reply reference on a resend.
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     // A resend is a send: it travels the same way and takes the same time, so it
@@ -6100,10 +6102,7 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
     // Reset to "sending" and re-upload from the saved path, reusing this bubble.
     // Same protocol id as resendText: the inner content id is preserved so the
     // recipient still recognises the message.
-    statusById_[localId] = DeliveryStatus::Preparing;
-    store_.updateStatus(localId, DeliveryStatus::Preparing);
-    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
-    conversation_.setErrorForId(localId, {});
+    restartDelivery(localId);
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
@@ -6125,10 +6124,7 @@ void SessionController::resendVoice(qint64 localId, const QString& e2eId)
         return;
     }
     const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
-    statusById_[localId] = DeliveryStatus::Preparing;
-    store_.updateStatus(localId, DeliveryStatus::Preparing);
-    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
-    conversation_.setErrorForId(localId, {});
+    restartDelivery(localId);
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
         QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending again…"),
         activePeer_);

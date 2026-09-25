@@ -72,6 +72,21 @@ void attachConsole()
 
 #endif
 
+namespace {
+
+// The brand tokens the palette needs. The QML Theme carries the same values,
+// but it cannot be the source for them: the palette is set before the engine
+// exists, so the two are level by hand.
+constexpr const char* kBrandCanvas = "#16191c";
+constexpr const char* kBrandSurface = "#1b2026";
+constexpr const char* kBrandSurfaceAlt = "#232a31";
+constexpr const char* kBrandText = "#d7dbd8";
+constexpr const char* kBrandTextDim = "#8b948c";
+constexpr const char* kBrandNeon = "#39ff14";
+constexpr const char* kBrandAccentInk = "#11151a";
+
+}  // namespace
+
 int main(int argc, char** argv)
 {
 #ifdef _WIN32
@@ -192,18 +207,18 @@ int main(int argc, char** argv)
     // for default text, etc. (the QML Theme still drives explicitly-styled
     // surfaces). Without this, placeholders default to a dark, unreadable tone.
     QPalette palette;
-    palette.setColor(QPalette::Window, QColor("#16191c"));
-    palette.setColor(QPalette::WindowText, QColor("#d7dbd8"));
-    palette.setColor(QPalette::Base, QColor("#1b2026"));
-    palette.setColor(QPalette::AlternateBase, QColor("#232a31"));
-    palette.setColor(QPalette::Text, QColor("#d7dbd8"));
-    palette.setColor(QPalette::PlaceholderText, QColor("#8b948c"));
-    palette.setColor(QPalette::Button, QColor("#1b2026"));
-    palette.setColor(QPalette::ButtonText, QColor("#d7dbd8"));
-    palette.setColor(QPalette::Highlight, QColor("#39ff14"));
-    palette.setColor(QPalette::HighlightedText, QColor("#11151a"));
-    palette.setColor(QPalette::ToolTipBase, QColor("#1b2026"));
-    palette.setColor(QPalette::ToolTipText, QColor("#d7dbd8"));
+    palette.setColor(QPalette::Window, QColor(kBrandCanvas));
+    palette.setColor(QPalette::WindowText, QColor(kBrandText));
+    palette.setColor(QPalette::Base, QColor(kBrandSurface));
+    palette.setColor(QPalette::AlternateBase, QColor(kBrandSurfaceAlt));
+    palette.setColor(QPalette::Text, QColor(kBrandText));
+    palette.setColor(QPalette::PlaceholderText, QColor(kBrandTextDim));
+    palette.setColor(QPalette::Button, QColor(kBrandSurface));
+    palette.setColor(QPalette::ButtonText, QColor(kBrandText));
+    palette.setColor(QPalette::Highlight, QColor(kBrandNeon));
+    palette.setColor(QPalette::HighlightedText, QColor(kBrandAccentInk));
+    palette.setColor(QPalette::ToolTipBase, QColor(kBrandSurface));
+    palette.setColor(QPalette::ToolTipText, QColor(kBrandText));
     QGuiApplication::setPalette(palette);
 
     // One application per account folder: two sharing one folder each hold their
