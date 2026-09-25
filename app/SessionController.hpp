@@ -412,10 +412,20 @@ private:
     std::thread errands_;
     std::mutex errandMutex_;
     std::condition_variable errandWake_;
-    std::deque<std::string> errandAcks_;
+    // One small request the user is not waiting for: handing a mailbox item
+    // back, or putting the copy of a sent message where this account's other
+    // devices will find it.
+    struct Errand {
+        std::string pendingId;   // an ack when this is set
+        std::string deliveryId;  // an envelope for our own devices when this is
+        bazarish::Bytes sealed;
+        std::string kind;
+    };
+    std::deque<Errand> errandQueue_;
     bool errandsRunning_ = false;
     void startErrands();
     void stopErrands();
+    void queueErrand(Errand errand);
     // Hands one item back to the server, later and elsewhere. Both ack paths
     // come here: the one the interface asks for once it has stored a message,
     // and the one a mailbox pass decides on for what it consumed itself.

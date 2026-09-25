@@ -530,19 +530,31 @@ void SessionWorker::startErrands()
     errandsRunning_ = true;
     errands_ = std::thread([this]() {
         while (true) {
-            std::string pendingId;
+            Errand errand;
             {
                 std::unique_lock<std::mutex> lock(errandMutex_);
                 errandWake_.wait(
-                    lock, [this]() { return !errandsRunning_ || !errandAcks_.empty(); });
-                if (!errandsRunning_ && errandAcks_.empty()) {
+                    lock, [this]() { return !errandsRunning_ || !errandQueue_.empty(); });
+                if (!errandsRunning_ && errandQueue_.empty()) {
                     return;
                 }
-                pendingId = std::move(errandAcks_.front());
-                errandAcks_.pop_front();
+                errand = std::move(errandQueue_.front());
+                errandQueue_.pop_front();
+            }
+            if (!errand.deliveryId.empty()) {
+                try {
+                    session_->submitPrepared(errand.deliveryId, errand.sealed, errand.kind);
+                } catch (const std::exception& error) {
+                    // The other devices will not see this one. Said rather than
+                    // retried: what it carries is a copy, and the next thing this
+                    // device sends brings its own.
+                    bazarish::log::warn(
+                        "could not echo what was sent to our own devices: {}", error.what());
+                }
+                continue;
             }
             try {
-                session_->releasePending(pendingId);
+                session_->releasePending(errand.pendingId);
             } catch (const std::exception& error) {
                 // The server was momentarily unreachable: the item stays in the
                 // mailbox and the next pass offers it again (the interface dedups
@@ -555,7 +567,7 @@ void SessionWorker::startErrands()
             // the worker thread, so they are touched there.
             QMetaObject::invokeMethod(
                 this,
-                [this, pendingId]() {
+                [this, pendingId = errand.pendingId]() {
                     if (session_) {
                         session_->forgetPending(pendingId);
                     }
@@ -576,7 +588,7 @@ void SessionWorker::stopErrands()
         errandsRunning_ = false;
         // What is left is dropped rather than sent: the account is closing, and
         // an item left in the mailbox is offered again next time.
-        errandAcks_.clear();
+        errandQueue_.clear();
     }
     errandWake_.notify_all();
     errands_.join();
@@ -734,6 +746,17 @@ void SessionWorker::openAccount(
     // acks the interface asks for: a round trip taken in the middle of a pass is
     // one the next thing the user does waits behind.
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
+    // The same for the copy of a sent message that this account's other devices
+    // are owed: it was the whole of the maintenance pass, and the pass is what
+    // the next thing the user does waits behind.
+    session_->setSelfSendSink(
+        [this](std::string deliveryId, bazarish::Bytes sealed, std::string kind) {
+            Errand errand;
+            errand.deliveryId = std::move(deliveryId);
+            errand.sealed = std::move(sealed);
+            errand.kind = std::move(kind);
+            queueErrand(std::move(errand));
+        });
     // Signing a login needs a key and nothing else, so the front-end gets a
     // signer of its own here: it must not wait behind a sync that may be minutes
     // long to answer a click.
@@ -1428,14 +1451,21 @@ void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
     }
 }
 
-void SessionWorker::queueAck(const std::string& pendingId)
+void SessionWorker::queueErrand(Errand errand)
 {
     startErrands();
     {
         const std::lock_guard<std::mutex> lock(errandMutex_);
-        errandAcks_.push_back(pendingId);
+        errandQueue_.push_back(std::move(errand));
     }
     errandWake_.notify_one();
+}
+
+void SessionWorker::queueAck(const std::string& pendingId)
+{
+    Errand errand;
+    errand.pendingId = pendingId;
+    queueErrand(std::move(errand));
 }
 
 void SessionWorker::ackPending(const QString& pendingId)
