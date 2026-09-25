@@ -21,6 +21,7 @@
 #pragma pop_macro("emit")
 
 #include <QColor>
+#include <QDir>
 #include <QFile>
 #include <QFont>
 #include <QFontDatabase>
@@ -85,10 +86,55 @@ constexpr const char* kBrandTextDim = "#8b948c";
 constexpr const char* kBrandNeon = "#39ff14";
 constexpr const char* kBrandAccentInk = "#11151a";
 
+
+#ifdef Q_OS_LINUX
+// Whether a platform theme by this name is one this build can actually load.
+// The plugins are named after their key (libqgtk3.so, libqxdgdesktopportal.so),
+// so the key is looked for in the file names rather than guessed at.
+bool platformThemeIsHere(const QString& key)
+{
+    const QDir themes(QLibraryInfo::path(QLibraryInfo::PluginsPath)
+        + QStringLiteral("/platformthemes"));
+    for (const QString& file : themes.entryList({QStringLiteral("*.so")}, QDir::Files)) {
+        if (file.contains(key)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Qt draws a file chooser of its own unless a platform theme hands it the
+// desktop's. The name a session exports is often one this build cannot load - a
+// Qt 5 plugin, or one the package does not carry - and Qt then falls back
+// without a word, so opening or saving a file lands in a dialog nobody
+// recognises and a suggested file name never appears. Ask instead for the first
+// theme that is here: the portal is what a packaged build carries, gtk3 what a
+// distribution installs beside Qt.
+void useTheDesktopsDialogs()
+{
+    const QString asked = qEnvironmentVariable("QT_QPA_PLATFORMTHEME");
+    if (!asked.isEmpty() && platformThemeIsHere(asked)) {
+        return;  // the session named one that is here; it is theirs to name
+    }
+    for (const QString& candidate :
+        {QStringLiteral("xdgdesktopportal"), QStringLiteral("gtk3")}) {
+        if (platformThemeIsHere(candidate)) {
+            qputenv("QT_QPA_PLATFORMTHEME", candidate.toLatin1());
+            return;
+        }
+    }
+}
+#endif
+
 }  // namespace
 
 int main(int argc, char** argv)
 {
+#ifdef Q_OS_LINUX
+    // Before QApplication: the theme is read when it is built.
+    useTheDesktopsDialogs();
+#endif
+
 #ifdef _WIN32
     // Before anything that logs: the console has to be there to be written to.
     for (int i = 1; i < argc; ++i) {

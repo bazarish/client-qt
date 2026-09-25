@@ -883,7 +883,10 @@ Popup {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "bazarish"
         nameFilters: ["Bazarish backup (*.bazarish)", "All files (*)"]
-        currentFile: "file:///" + root.backupName + ".bazarish"
+        // Downloads, like every other save here. A bare "file:///name" would
+        // open the chooser at the filesystem root.
+        currentFile: root.session
+            ? root.session.defaultSaveUrl(root.backupName + ".bazarish") : ""
         onAccepted: { root.pendingExportFile = selectedFile; exportPassDialog.open() }
     }
     FileDialog {
