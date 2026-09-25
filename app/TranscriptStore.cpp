@@ -443,7 +443,8 @@ void TranscriptStore::updateStatus(qint64 id, int status)
     query.prepare("UPDATE messages SET status = ? WHERE id = ?");
     query.addBindValue(status);
     query.addBindValue(id);
-    if (query.exec()) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the delivery status could not be stored");
     }
 }
 
@@ -639,7 +640,8 @@ void TranscriptStore::markOutgoingReadUpTo(
     query.addBindValue(uptoId);
     query.addBindValue(minStatus);
     query.addBindValue(maxStatus);
-    if (query.exec() && query.numRowsAffected() > 0) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the read mark could not be applied to sent messages");
     }
 }
 
@@ -660,7 +662,8 @@ void TranscriptStore::setSavedPath(qint64 id, const QString& path)
     query.prepare("UPDATE messages SET savedPath = ? WHERE id = ?");
     query.addBindValue(path);
     query.addBindValue(id);
-    if (query.exec()) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: where the attachment was saved could not be stored");
     }
 }
 
@@ -775,7 +778,8 @@ void TranscriptStore::editContent(qint64 id, const QString& text, const QString&
     query.addBindValue(text);
     query.addBindValue(keyboard);
     query.addBindValue(id);
-    if (query.exec()) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the edited body could not be stored");
     }
 }
 
@@ -785,7 +789,8 @@ void TranscriptStore::setType(qint64 id, const QString& type)
     query.prepare("UPDATE messages SET type = ? WHERE id = ?");
     query.addBindValue(type);
     query.addBindValue(id);
-    if (query.exec()) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the message kind could not be stored");
     }
 }
 
@@ -927,7 +932,8 @@ void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
     query.addBindValue(peer);
     query.addBindValue(id);
     query.addBindValue(peer);
-    if (query.exec() && query.numRowsAffected() > 0) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the read mark could not be stored");
     }
 }
 
@@ -977,7 +983,8 @@ void TranscriptStore::setPinned(const QString& peer, bool pinned)
         query.prepare("DELETE FROM pinned_chats WHERE peer = ?");
     }
     query.addBindValue(peer);
-    if (query.exec() && query.numRowsAffected() > 0) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the pinned state could not be stored");
     }
 }
 
@@ -1054,7 +1061,8 @@ void TranscriptStore::setReaction(
         query.addBindValue(reactor);
         query.addBindValue(emoji);
     }
-    if (query.exec()) {
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the reaction could not be stored");
     }
 }
 
