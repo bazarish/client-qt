@@ -95,7 +95,8 @@ that device connects it registers again and works as before.
 
 Deleting the account offers the same distinction. **Delete everywhere** ends the
 account on its server: the address, the mailbox, everything in it. **This device
-only** asks the server for nothing but forgetting this device, and leaves the
-account, its address and its mail standing for the user's other devices. The
+only** asks the server for nothing at all, and leaves the account, its address
+and its mail standing for the user's other devices - the server works out that
+this device is gone when it stops collecting mail. The
 second was previously reachable only for a profile that could not be unlocked; it
 is now a choice on its own.

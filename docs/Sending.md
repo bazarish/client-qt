@@ -67,6 +67,8 @@ be reached - the message may well be stored, with only the confirmation missing.
 | in flight | Grey indicator; during retries the message reports the attempt in progress |
 | stored | Amber indicator |
 | read | Green indicator |
+| failed | Red indicator, with the reason under the message and a Resend |
+| received | No indicator: the state an incoming message carries |
 
 A delivery run is also listed in the background-activity panel for its duration.
 

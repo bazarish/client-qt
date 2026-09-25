@@ -2,7 +2,7 @@
 
 ## Scope
 
-The client makes three sounds of its own, and carries all of them. This document
+The client carries three sounds of its own. This document
 states where a recording of the user's own goes instead, what each one has to be,
 and what the ringing call window's pulse is taken from.
 
@@ -50,10 +50,14 @@ At the root of the installation - the directory that holds `accounts/`,
 Nothing beside the executable is read in any other case, and `BAZARISH_ACCOUNTS_DIR`
 moves the root with the accounts directory it names.
 
-The two names above are the only ones looked for, and `.wav` is the only format:
-a sound is a known file rather than a directory to be searched through. Both are
-consulted every time the sound is made, so a file put there is used without
-restarting and taking it away brings the carried one back.
+The three names above are the only ones looked for, and `.wav` is the only
+format: a sound is a known file rather than a directory to be searched through.
+All three are consulted every time the sound is made, so a file put there is
+used without restarting and taking it away brings the carried one back.
+
+The two call-progress tones - ringback while a call is being placed, and a
+short burst when it fails - are synthesised at 425 Hz (ITU-T E.180) rather than
+carried as files, so there is nothing to replace them with.
 
 ## What the ringtone has to be
 

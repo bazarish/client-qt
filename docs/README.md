@@ -16,7 +16,7 @@ this client performs before reporting failure is not.
 
 | Document | Subject |
 |---|---|
-| [I2pRouter.md](I2pRouter.md) | The embedded I2P router: tunnel length, engine logging, and the SOCKS5 proxy applied to its clearnet traffic |
+| [I2pRouter.md](I2pRouter.md) | How I2P is carried: the three transports and how one is chosen, tunnel length, engine logging, and the SOCKS5 proxy applied to the embedded engine's clearnet traffic |
 | [Sending.md](Sending.md) | Outbound delivery: attempt schedule, reported states, failure handling, what admits a message |
 | [Receiving.md](Receiving.md) | Incoming mail: the one request that hears about it, what a pass takes, what the upkeep tick carries, and what orders a conversation |
 | [ConnectionLog.md](ConnectionLog.md) | The connection log window: what it records, what it deliberately leaves out, and how much it keeps |
@@ -26,6 +26,14 @@ this client performs before reporting failure is not.
 | [Calls.md](Calls.md) | Calls: what carries the media, the router patch a b33 datagram needs, the lane kept for real time, and why a call leaves nothing in the chat |
 | [Sounds.md](Sounds.md) | The notification sound and the ringtone: where a recording of the user's own goes, what the ringtone has to be, and what the call window's pulse follows |
 | [Formatting.md](Formatting.md) | Message formatting: the markers a body may carry, what a press on one does, and where a body is shown without them |
+
+## Not documented yet
+
+Implemented and in use, with no page here: voice messages, pictures, avatars,
+reactions, bots and inline keyboards, aliases as the client services them,
+sign-in-with-key, invites and QR, several accounts at once, and conversation
+search with its paging. They are listed rather than left unmentioned: the gap
+is in this directory, not in the client.
 
 Application structure, build instructions and packaging are described in the
 repository `README.md`.

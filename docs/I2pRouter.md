@@ -9,23 +9,36 @@ storage, and the constraints that apply to each.
 ### Choosing the transport
 
 The in-process engine carries the traffic unless the user says otherwise. The
-choice sits at the foot of Global settings as a **SAM API** switch with the
-router's address and port (127.0.0.1:7656 by default), below the block that names
-the in-process engine and its version - that block is dimmed while an external
-router is selected. Turning the switch on asks the address whether anything is
-there and reports the answer in the same dialog that says the application has to
-be restarted for the change to take hold. Settings -> I2P router then reports
-whichever transport is in force. Changing
-it takes effect at the next start, because the in-process engine can be started
-only once in a process and the two cannot swap places while one is running - the
-dialog offers to close the application there and then.
+choice sits at the foot of Global settings as three tabs - **Embedded**, **SAM
+API** and **Private gateway** - each with a switch of its own; turning one on
+turns the others off, because only one of them can carry the traffic.
+
+- **Embedded** is the in-process engine, and what a desktop uses.
+- **SAM API** is a router outside the process, reached over SAM v3 on loopback
+  (127.0.0.1:7656 by default). It exists for a service running many accounts,
+  where one router serves every process.
+- **Private gateway** is a host that runs a router for this device, reached over
+  a WebSocket. Its address carries a key, which is what admits this device; the
+  address is checked before it is saved, and a gateway that does not answer is
+  not stored.
+
+Turning a switch on asks the address whether anything is there and reports the
+answer in the same dialog that says the application has to be restarted. The
+change takes effect at the next start: the in-process engine can be started only
+once in a process, and the engines cannot swap places while one is running - the
+dialog offers to close the application there and then. Settings -> I2P router
+then reports whichever transport is in force.
+
+On a first run, before any engine is up, the application asks once whether a
+private gateway should be used. Skipping the question leaves the embedded engine
+in place and it is not asked again.
 
 While an external router carries the traffic, what belongs to it rather than to
 this application is not shown: the network-database counters, the transport
 peers and the clearnet proxy. Tunnel length still applies - it is sent with every
 destination this client opens - and so does the list of local destinations.
 
-The transport is a facade over two engines. The desktop uses the in-process one,
+The transport is a facade over three engines. The desktop uses the in-process one,
 for the reasons this document sets out: the network database comes from the
 user's own server rather than a public reseed host, and the clearnet side can be
 put behind a proxy. A router outside the process, reached over SAM v3 on
@@ -81,6 +94,14 @@ such an address, because the check above refuses it.
 | Tunnel length | `i2p.tunnelLength` | 0 (minimal) |
 | Engine logging | `i2p.logging` | `false` |
 | SOCKS5 proxy | `i2p.proxy.host`, `i2p.proxy.port` | empty, 0 (no proxy) |
+| External router | `i2p.sam.enabled`, `i2p.sam.host`, `i2p.sam.port` | `false`, 127.0.0.1, 7656 |
+| Private gateway | `i2p.gateway.enabled`, `i2p.gateway.address`, `i2p.gateway.pin` | `false`, empty, empty |
+| Gateway question answered | `i2p.gateway.asked` | `false` |
+
+The gateway address carries the key that admits this device, and it is kept in
+`settings.json` as it was typed. The settings document is not encrypted - it is
+installation-wide and is read before any account is unlocked - so anybody who
+can read the file can read that key.
 
 All application settings are held in one JSON document, `settings.json`, at the
 root of the installation; see the repository `README.md`. The accounts directory

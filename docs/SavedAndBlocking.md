@@ -91,13 +91,13 @@ for nothing: one revocation is enough, and it is the same server.
 
 ## Notifications and calls, per contact
 
-Two switches in a contact's panel, under **Share contact**:
+Two switches in a contact's panel, above **Share contact**:
 
 - **Notifications** off: their messages arrive and are counted in the chat list
   as usual, and nothing is announced outside the window - no popup, no sound.
 - **Allow calls** off: their call is refused the moment it arrives, exactly as
-  the account-wide setting refuses one, and the refusal is written into the chat
-  as `Incoming call, refused`. They are told at once rather than left ringing.
+  the account-wide setting refuses one. They are told at once rather than left
+  ringing. Nothing is written into the chat: a call leaves no line there.
 
 Both are exceptions to the global settings and can only take something away: with
 notifications off account-wide, a contact's switch does not bring them back.

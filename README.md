@@ -52,7 +52,7 @@ itself - wire formats, delivery states, admission rules - is specified in
 
 ## Build
 
-Requires CMake >= 3.20, C++20, OpenSSL >= 3.2 (Argon2id), **SQLCipher 4**, Opus,
+Requires CMake >= 3.20, C++20, OpenSSL >= 3.5, **SQLCipher 4**, Opus,
 libqrencode and Boost. Qt6 (Quick, QuickControls2, Qml, Gui, Multimedia, Widgets,
 Network) is what builds the application; without it only the core library and its
 tests are built. `common` is a submodule.
@@ -63,7 +63,7 @@ is not the one it writes, and there is no compatibility pragma from that side. S
 
 ```bash
 git clone --recurse-submodules https://github.com/bazarish/client-qt6
-cmake -S . -B build && cmake --build build -j
+cmake -S . -B build && cmake --build build -j4
 ctest --test-dir build
 ```
 
@@ -94,6 +94,7 @@ copy runs beside the first.
 <root>/
   settings.json     application settings: one JSON document
   notify.wav        replaces the notification sound, if present
+  reaction.wav      replaces the reaction sound, if present
   ringtone.wav      replaces the ringtone, if present
   accounts/         one account per file: <id>.db and <id>.key beside it
   i2p/              the embedded router's state
@@ -101,8 +102,9 @@ copy runs beside the first.
 
 `settings.json` holds what belongs to the installation rather than to an account:
 the account last in the foreground, the accounts switched off, notifications,
-whether the background-activity panel is shown, and the embedded router's
-settings (logging, tunnel length, the SAM transport, the clearnet proxy). It is
+whether the background-activity panel is shown, and how I2P is carried
+(which of the three transports, tunnel length, engine logging, the clearnet
+proxy, and a private gateway's address and key). It is
 read at start and rewritten whole on every change, so the file on disk is always
 a complete document. A file larger than 64 KiB at that path is refused unread and
 the defaults apply: settings run to a few hundred bytes, and nothing at that path
