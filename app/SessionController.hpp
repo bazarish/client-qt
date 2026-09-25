@@ -19,12 +19,8 @@ class SessionController : public QObject {
     Q_PROPERTY(bool reachable READ reachable NOTIFY reachableChanged)
     // Why the last sync failed, empty while it is succeeding.
     Q_PROPERTY(QString syncError READ syncError NOTIFY reachableChanged)
-    // The server has this account but does not serve it yet: an operator has to
-    // let it in. Connected and reachable are both true meanwhile, so without this
-    // the app looks healthy while nothing it sends can leave.
-    // A destination action (publish, take offline) is under way. The worker may
-    // be minutes deep in a sync before it gets to it, so the press has to show
-    // somewhere or it reads as a button that does nothing.
+    // A destination action (publish, take offline) is under way. The worker may be
+    // minutes deep in a sync before it gets to it, so the press has to show.
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     // This account's devices, newest answer first asked for.
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
@@ -63,11 +59,8 @@ class SessionController : public QObject {
     // scheme and base path only cost characters of an already long b32 name.
     Q_PROPERTY(QString activeFacadeHost READ activeFacadeHost NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
-    // Whether any configured facade is an I2P facade (host ends in ".b32.i2p"). When
-    // full privacy mode is on and this is false, the account cannot reach its server
-    // (clearnet is refused), so its status reads as an explicit I2P-only offline error.
-    // Connect-in-flight state for the connect screen: whether a connect is
-    // running, what it is doing, and why the last one failed.
+    // Connect-in-flight state for the connect screen: whether one is running, what
+    // it is doing, and why the last one failed.
     Q_PROPERTY(bool connecting READ connecting NOTIFY connectStateChanged)
     Q_PROPERTY(QString connectPhase READ connectPhase NOTIFY connectStateChanged)
     Q_PROPERTY(int connectPercent READ connectPercent NOTIFY connectStateChanged)
@@ -160,11 +153,9 @@ class SessionController : public QObject {
     // Unix second the personal destination is paid through (0 when inactive), so
     // the settings page can show an expiry date or the phrase "Inactive".
     Q_PROPERTY(qint64 i2pTransientExpires READ i2pTransientExpires NOTIFY i2pStatusChanged)
-    // This account's storage usage for the settings view: a map with mailboxOk,
-    // mailboxUsed, mailboxQuota (bytes), updatedAt (the
-    // unix-ms time it was last fetched, 0 if never) and everFetched. The figures
-    // persist for the session, so an offline account still shows its last-known
-    // usage with a "updated N ago" age.
+    // Mailbox usage for the settings view: mailboxOk, mailboxUsed, mailboxQuota,
+    // updatedAt and everFetched. Held for the session, so an offline account still
+    // shows its last-known figures with their age.
     Q_PROPERTY(QVariantMap storageInfo READ storageInfo NOTIFY storageChanged)
     // What this account holds on THIS device, for the storage window: a map with
     // busy, measuredAt (unix ms, 0 when never), fileBytes, freeBytes and chats -
@@ -190,7 +181,6 @@ class SessionController : public QObject {
     Q_PROPERTY(QString callPeer READ callPeer NOTIFY callChanged)
     Q_PROPERTY(QString callPeerName READ callPeerName NOTIFY callChanged)
     Q_PROPERTY(bool callMuted READ callMuted NOTIFY callChanged)
-    // and the remote peer). Stable for the controller's lifetime.
 public:
     explicit SessionController(QObject* parent = nullptr);
     ~SessionController() override;
@@ -344,11 +334,9 @@ public:
     Q_INVOKABLE int loadNewerMessages();
     // Returns to the newest page (reloading it if the window was scrolled back).
     Q_INVOKABLE void jumpToLatest();
-    // Remembers / restores the open conversation's scroll position, so switching
-    // this account out and back brings the dialog back to where it was left (or
-    // keeps it pinned to the bottom if it was). The view saves the top-visible row
-    // index as the user scrolls (-1 when pinned to the bottom), keyed by peer, and
-    // restores it when this account becomes active again.
+    // The open conversation's scroll position, kept per peer so switching accounts
+    // out and back comes back to it. The view saves its top-visible row, or -1 when
+    // it was pinned to the bottom.
     Q_INVOKABLE void saveScroll(const QString& peer, int anchorRow, bool stick);
     Q_INVOKABLE QVariantMap scrollFor(const QString& peer) const;
     // The user is reading: the view is open, the window is focused and scrolled so
@@ -386,11 +374,9 @@ public:
 
     // --- Voice messages ---
     //
-    // Recorded from the microphone, encoded with the same codec a call uses, and
-    // sent inside the message: small enough to ride there, so nothing is
-    // announced and nothing is fetched.
-    // Recording runs in three steps, because a voice message is confirmed before
-    // it goes: record, stop (which holds the take), then send or drop it.
+    // Recorded with the codec a call uses and sent inside the message, so nothing
+    // is announced and nothing is fetched. Three steps, because a voice message is
+    // confirmed before it goes: record, stop (which holds the take), send or drop.
     Q_INVOKABLE void startVoiceRecording();
     Q_INVOKABLE void stopVoiceRecording();
     Q_INVOKABLE void cancelVoiceRecording();
@@ -460,11 +446,8 @@ public:
     // Sets our reaction emoji on a message (by its protocol id) in the active chat:
     // optimistic local store + send. Tapping the emoji we already set removes it.
     Q_INVOKABLE void react(const QString& e2eId, const QString& emoji);
-    // Reactions this user reached for that are not in the standard set, newest
-    // first. Kept per account so the picker offers what this person actually uses.
-    // The set the picker offers by default. Held here because it also decides
-    // what counts as "one of this user's own" for the recents below, and that
-    // decision has to be the same wherever a reaction is set from.
+    // The set the picker offers by default. Held here because it also decides what
+    // counts as one of this user's own, and that has to be the same everywhere.
     Q_PROPERTY(QStringList standardReactions READ standardReactions CONSTANT)
     QStringList standardReactions() const;
     Q_PROPERTY(QStringList recentReactions READ recentReactions NOTIFY recentReactionsChanged)
@@ -555,31 +538,24 @@ public:
     // Stop flashing: everything pending in the open conversation has been seen.
     Q_INVOKABLE void forgetReactionFlash();
     Q_INVOKABLE void requestInvite();
-    // Signs a sign-in-with-key challenge with this account's key (no server
-    // needed); the result arrives via loginSigned(). The key never leaves the app.
-    // Signs a portal challenge and answers with loginSigned(). Runs here, not on
-    // the account's thread: it is local work, and the click must not wait for a
-    // sync to end.
+    // Signs a portal challenge with this account's key and answers with
+    // loginSigned(). Local work, run here rather than on the account's thread so
+    // the click does not wait for a sync to end. The key never leaves the app.
     Q_INVOKABLE void signLogin(const QString& challenge);
     // Who a pasted challenge says will consume the signature, for the window to
     // put in front of the user before they sign: {ok, name, place, role} or
     // {ok: false, problem}. A challenge that names nobody is not signable, so
     // this is also what disables the button.
     Q_INVOKABLE QVariantMap describeLoginChallenge(const QString& challenge) const;
-    // The account's connection log: what went to the server and what came back,
-    // including deliveries to correspondents and their outcome. Answered by
-    // connectionLogUpdated(); kept in memory only, and short.
-    // Asks this account's other devices for the address book. Automatic once on
-    // a device's first sync; this is the same question by hand, for when that
-    // did not reach anybody (no other device was online).
+    // Asks this account's other devices for the address book. Automatic once on a
+    // device's first sync; this is the same question by hand, for when no other
+    // device was online to hear it.
     Q_INVOKABLE void askForContacts();
     Q_INVOKABLE void refreshConnectionLog();
     Q_INVOKABLE void clearConnectionLog();
-    // Saves a received attachment to the file the user picked in the native Save
-    // dialog (which already resolved any name conflict), reporting byte progress
-    // and the outcome back onto the message identified by token.
-    // A file is fetched from the peer that announced it, by the announcing
-    // message's protocol id - there is no store to fetch it from.
+    // Saves a received attachment where the user picked, reporting progress and the
+    // outcome onto the message named by token. The bytes are fetched from the peer
+    // that announced it: there is no store to fetch them from.
     Q_INVOKABLE void saveAttachmentToFile(const QString& peer, const QString& e2eId,
         const QString& fileUrl, qint64 token);
     // A suggested save location (the Downloads folder joined with fileName) as a
@@ -673,12 +649,8 @@ signals:
     void contactsRevisionChanged();
     void reactionsRevisionChanged();
     void unreadTotalChanged();
-    // Something arrived that a person would want to be told about, by the name it
-    // came from. Everything that is not a message - receipts, refills, control
-    // traffic - is filtered out before this.
-    // A message arrived from `peer` (named by `fromName`). The fingerprint rides
-    // with the name because a notification is something to click: what it is
-    // about has to be enough to open the conversation it came from.
+    // A message arrived, filtered clear of receipts and control traffic. The
+    // fingerprint rides with the name because a notification is something to click.
     void messageNotification(const QString& peer, const QString& fromName);
     // A reaction arrived on one of our messages: who reacted, and with what. Its
     // own signal because it is announced with its own, shorter sound.
@@ -946,21 +918,16 @@ private:
     QString replyingE2eId_;
     QString replyingText_;
     QString replyingSender_;
-    // Contacts we received a request from but have not accepted yet (their
-    // fingerprints), so a request bubble can offer "Agree". Refreshed from the
-    // worker; contactsRevision_ bumps on every refresh to re-drive the binding.
-    // Whose acceptance has a row in the activity panel. An acceptance that has
-    // left this device and has not reached the other side is still in flight,
-    // and it outlives the command that sent it.
+    // Whose acceptance has a row in the activity panel. One that has left this
+    // device and not reached the other side outlives the command that sent it.
     QSet<QString> agreeingShown_;
     void syncAgreeingRows();
     // Contacts whose acceptance this account has sent and is still waiting on.
     QStringList agreeingFingerprints() const;
-    // Reactions that arrived while their conversation was not being looked at,
-    // as "peer\ntarget". Kept in the account's database rather than in the
-    // reactions table: that table is keyed by who reacted and has no room for
-    // this, and its schema is refused when the number does not match - a column
-    // here would make every account made by an earlier build unreadable.
+    // Reactions that arrived while nobody was looking at their conversation, as
+    // "peer\ntarget". Kept as a named row rather than a column in the reactions
+    // table: the schema number is checked at open, so adding one would refuse
+    // every account an earlier build made.
     QStringList reactionsToFlash_;
     // Remembers one, and writes the list down.
     void noteReactionToFlash(const QString& peer, const QString& target);

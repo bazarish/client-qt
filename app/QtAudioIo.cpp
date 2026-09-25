@@ -33,8 +33,6 @@ QAudioFormat callAudioFormat()
     return format;
 }
 
-// --- capture ---
-
 // A QIODevice that QAudioSource writes captured PCM into; the call engine pops
 // fixed-size frames. Only the ring + its lock are shared across threads.
 class QtAudioSource::CaptureDevice : public QIODevice {
@@ -164,8 +162,6 @@ std::vector<std::int16_t> QtAudioSource::readFrame()
 {
     return device_->popFrame();
 }
-
-// --- playback ---
 
 // A QIODevice QAudioSink pulls PCM from; the call engine pushes decoded frames.
 class QtAudioSink::PlaybackDevice : public QIODevice {

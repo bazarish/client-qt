@@ -38,8 +38,6 @@ public:
     std::vector<std::string> offlineAccounts() const;
     void setOfflineAccounts(std::vector<std::string> ids);
 
-    // Refuse every clearnet facade, so all traffic goes over I2P only.
-
     // Desktop notifications for incoming messages and calls.
     bool notifications() const;
     void setNotifications(bool on);

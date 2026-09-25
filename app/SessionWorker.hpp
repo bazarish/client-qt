@@ -33,10 +33,6 @@ class QTimer;
 namespace bazarish::app {
 
 
-// Holds contact-card resolutions produced off the worker thread (the slow
-// federated fetch of a contact add), drained and finalized on the worker thread.
-// Shared by shared_ptr with each background resolve so it outlives the worker if a
-// resolve is still in flight at teardown. Defined in the .cpp.
 // One contact as the account knows it. The worker ships these whole, so the
 // values describing the same person cannot fall out of step with one another.
 struct ContactState {
@@ -57,6 +53,10 @@ struct ContactState {
     Request request = eAnswered;
 };
 
+// Holds contact-card resolutions produced off the worker thread - the slow
+// federated fetch of a contact add - drained on the worker thread. Shared by
+// shared_ptr with each resolve, so it outlives the worker if one is still in
+// flight at teardown. Defined in the .cpp.
 struct ResolvedContactAddQueue;
 struct AliasErrandQueue;
 
@@ -208,7 +208,6 @@ public slots:
     void declineCall(const QString& callId);
     void endCall();
     void setCallMuted(bool muted);
-    // first openAccount so the injected backend can reach them.
 
 signals:
     void commandFinished();
@@ -218,11 +217,9 @@ signals:
     // Handed to the controller when the account opens, so a login is signed on
     // the thread the user clicked on rather than behind this worker's queue.
     void loginSignerReady(std::shared_ptr<bazarish::client::LoginSigner> signer);
-    // General background-activity stream: every observable worker operation - a
-    // contact request, a reaction, a read receipt, an incoming-mail pull - opens
-    // with opBegin and closes with opDone, so the activity panel shows one uniform,
-    // responsive row per operation.
-    // (Message/file sends and calls keep their richer dedicated rows.)
+    // Every observable worker operation opens with opBegin and closes with opDone,
+    // so the activity panel shows one row per operation. Sends and calls keep their
+    // own richer rows.
     void opBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
     void opDone(const QString& opId, bool ok, const QString& status);
@@ -251,16 +248,10 @@ signals:
     // trips and, over I2P, minutes - the connect screen must see it move.
     void connectProgress(int percent, const QString& phase);
     void messageReceived(const QVariantMap& message);
-    // The current contacts, their local display names, and per-contact "1"/"0"
-    // pending flags (a contact we received a request from but have not yet
-    // accepted) - all parallel lists.
-    // links carries each contact's shareable descriptor, empty where none is
-    // known yet - it is built from routing the session already holds.
+    // Every contact this account holds, and the fingerprints it has blocked. The
+    // blocked are separate because one of them need not be a contact.
     void contactsRefreshed(const QVector<ContactState>& contacts,
         const QStringList& blocked);
-    // What each contact may do here, in the order of the list above ("n" for
-    // notifications, "c" for calls, "-" where the account has said no), and the
-    // fingerprints it has blocked outright.
     // A real avatar became available for an identity (own or a contact): the GUI
     // feeds it to the shared avatar store. Empty data clears it.
     void avatarReady(const QString& fingerprint, const QByteArray& data);
@@ -290,11 +281,9 @@ signals:
     // A button press has left (or has not): the activity panel's row is closed
     // by this, whichever way it went.
     void botActionDone(const QString& opId, bool ok, const QString& error);
-    // A contact request was sent (add-by-invite or add-by-alias succeeded):
-    // the resolved peer fingerprint and the intro text it carried, so the GUI can
-    // open the chat and show the sent request straight away.
-    // A contact request that went out, and the name it goes by on the wire: a
-    // resend carries the same one, so the note in the chat is the same note.
+    // A contact request went out: who it reached, the intro it carried, and the
+    // name it goes by on the wire. A resend carries the same name, so the note in
+    // the chat stays the same note.
     void contactRequestSent(
         const QString& fingerprint, const QString& intro, const QString& requestId);
     // Activity-panel progress for an in-flight contact add (opId assigned by the

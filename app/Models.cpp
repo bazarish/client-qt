@@ -9,8 +9,6 @@
 
 namespace bazarish::app {
 
-// ---------------- AccountListModel ----------------
-
 int AccountListModel::rowCount(const QModelIndex&) const
 {
     return static_cast<int>(accounts_.size());
@@ -44,8 +42,6 @@ void AccountListModel::setAccounts(QVector<AccountListRow> accounts)
     accounts_ = std::move(accounts);
     endResetModel();
 }
-
-// ---------------- ContactListModel ----------------
 
 int ContactListModel::rowCount(const QModelIndex&) const
 {
@@ -175,8 +171,6 @@ int ContactListModel::totalUnread() const
     }
     return total;
 }
-
-// ---------------- ConversationModel ----------------
 
 int ConversationModel::rowCount(const QModelIndex&) const
 {
@@ -468,8 +462,6 @@ bool ConversationModel::lastMessageOutgoing() const
 {
     return !messages_.isEmpty() && messages_.last().outgoing;
 }
-
-// ---------------- OpenAccountsModel ----------------
 
 int OpenAccountsModel::rowCount(const QModelIndex&) const
 {
