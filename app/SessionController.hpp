@@ -68,6 +68,23 @@ class SessionWorker : public QObject {
 public:
     ~SessionWorker() override;
 
+private:
+    // Runs one action against the open account and reports a failure the way the
+    // window shows it. There is nothing to run against when no account is open,
+    // which is the normal state between closing one and opening the next.
+    template <typename Work>
+    void withSession(Work&& work)
+    {
+        if (!session_) {
+            return;
+        }
+        try {
+            work();
+        } catch (const std::exception& error) {
+            emit actionFailed(QString::fromUtf8(error.what()));
+        }
+    }
+
 public slots:
     // startOnline false opens the account and touches the network for nothing:
     // no sync, no long poll, no add resumed. An account the user turned off is
@@ -1441,6 +1458,10 @@ private:
     // showing: what an edit or a resend does before dispatching again. This is
     // the one downgrade there is, so it does not go through bumpStatus.
     void restartDelivery(qint64 localId);
+    // Records an outgoing attachment and opens its activity row, up to the point
+    // where the two kinds differ. Returns an empty message when there is nothing
+    // to send or nobody to send it to.
+    StoredMessage beginAttachmentSend(const QString& fileUrl, const QString& type);
     void setAvatarBusy(bool busy);
     // Conversation paging window. The model holds only [oldestLoadedId_ ..
     // newestLoadedId_]; the has-more flags say whether the store has rows beyond

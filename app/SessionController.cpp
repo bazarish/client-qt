@@ -1833,29 +1833,19 @@ void SessionWorker::clearAvatar()
 
 void SessionWorker::setDisplayName(const QString& name)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->setDisplayName(name.toStdString());
         emit renamed(QString::fromStdString(session_->displayName()));
         emit actionOk(QStringLiteral("Name updated"));
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
+    });
 }
 
 void SessionWorker::renameContact(const QString& peer, const QString& name)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->renameContact(peer.toStdString(), name.toStdString());
         emitContacts();  // reflect the new name in the chat list at once
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
+    });
 }
 
 void SessionWorker::emitSettings()
@@ -1910,81 +1900,51 @@ void SessionWorker::syncChatPin(const QString& peer, bool pinned)
 
 void SessionWorker::clearSaved()
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->clearSaved();
-    } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    });
 }
 
 void SessionWorker::setBlocked(const QString& peer, const bool blocked)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->setBlocked(peer.toStdString(), blocked);
         emitContacts();
-    } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    });
 }
 
 void SessionWorker::setContactNotifications(const QString& peer, const bool on)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->setContactNotifications(peer.toStdString(), on);
         emitContacts();
-    } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    });
 }
 
 void SessionWorker::setContactCalls(const QString& peer, const bool allowed)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->setContactCalls(peer.toStdString(), allowed);
         emitContacts();
-    } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    });
 }
 
 void SessionWorker::removeContact(const QString& peer)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->removeContactEverywhere(peer.toStdString());
         // Clear the avatar store entry and re-emit the (now shorter) contact list.
         emit avatarReady(peer, QByteArray());
         emitContacts();
         emit actionOk(QStringLiteral("Contact deleted"));
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
+    });
 }
 
 void SessionWorker::clearChatForEveryone(const QString& peer)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->sendChatClear(peer.toStdString());
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
+    });
 }
 
 void SessionWorker::shutdown()
@@ -2009,15 +1969,10 @@ void SessionWorker::shutdown()
 
 void SessionWorker::askDevicesForContacts()
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->askDevicesForContacts();
         emit actionOk(QStringLiteral("Asked your other devices for your contacts"));
-    } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    });
 }
 
 void SessionWorker::connectionLog()
@@ -2320,38 +2275,23 @@ void SessionWorker::deletePersonalKey()
 
 void SessionWorker::setDelegationDays(const int days)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->setDelegationDays(days);
-    } catch (const std::exception& error) {
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    });
 }
 
 void SessionWorker::setSendReceipts(const bool on)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->setSendReceipts(on);
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
+    });
 }
 
 void SessionWorker::setAcceptCalls(const bool accept)
 {
-    if (!session_) {
-        return;
-    }
-    try {
+    withSession([&] {
         session_->setAcceptCalls(accept);
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
-    }
+    });
 }
 
 void SessionWorker::cancelTransfer(const QString& e2eId)
@@ -3756,15 +3696,18 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     emit requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
 }
 
-void SessionController::sendFile(const QString& fileUrl)
+// Records an outgoing attachment in the transcript and the open view and opens
+// its activity row. The returned message is empty (id 0) when there is nobody to
+// send to or nothing to send.
+StoredMessage SessionController::beginAttachmentSend(const QString& fileUrl, const QString& type)
 {
     if (activePeer_.isEmpty()) {
-        return;
+        return {};
     }
     unblockBeforeWriting(activePeer_);
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (localPath.isEmpty()) {
-        return;
+        return {};
     }
     const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
@@ -3773,77 +3716,54 @@ void SessionController::sendFile(const QString& fileUrl)
     StoredMessage m;
     m.peer = activePeer_;
     m.outgoing = true;
-    m.type = "file";
+    m.type = type;
     m.e2eId = SessionController_genE2eId();
     m.replyTo = replyTo;
     m.attName = QUrl(fileUrl).fileName();
-    // Record the local size and mime so the sender's own bubble renders a real
-    // attachment card (name + size) immediately, without waiting for the upload.
+    // The local size and mime, so the sender's own bubble draws a real attachment
+    // card at once rather than waiting for the upload.
     const QFileInfo info(localPath);
     m.attSize = info.size();
     m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
-    // Keep the local source path so a failed send can be resent without re-picking
-    // the file (the bytes are not kept; only the path).
+    // The source path, so a failed send can be tried again without re-picking the
+    // file. The bytes are not kept, only the path.
     m.attSrcPath = localPath;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = 0;
+    m.status = DeliveryStatus::Preparing;
     m.id = store_.append(m);
-    statusById_[m.id] = 0;
+    statusById_[m.id] = DeliveryStatus::Preparing;
     showInActiveView(m, true);
     contacts_.touch(activePeer_, {}, "[" + m.type + "] " + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
         m.attName, QStringLiteral("Sending…"), activePeer_);
-    emit requestSendFile(activePeer_, localPath, m.id, m.e2eId, replyTo);
+    return m;
+}
+
+void SessionController::sendFile(const QString& fileUrl)
+{
+    const StoredMessage m = beginAttachmentSend(fileUrl, QStringLiteral("file"));
+    if (m.id == 0) {
+        return;
+    }
+    emit requestSendFile(activePeer_, m.attSrcPath, m.id, m.e2eId, m.replyTo);
 }
 
 void SessionController::sendPicture(const QString& fileUrl)
 {
-    if (activePeer_.isEmpty()) {
+    const StoredMessage m = beginAttachmentSend(fileUrl, QStringLiteral("image"));
+    if (m.id == 0) {
         return;
     }
-    unblockBeforeWriting(activePeer_);
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (localPath.isEmpty()) {
-        return;
-    }
-    const QString replyTo = replying_ ? replyingE2eId_ : QString();
-    if (replying_) {
-        cancelReply();
-    }
-    StoredMessage m;
-    m.peer = activePeer_;
-    m.outgoing = true;
-    m.type = "image";
-    m.e2eId = SessionController_genE2eId();
-    m.replyTo = replyTo;
-    m.attName = QUrl(fileUrl).fileName();
-    // Record the local size and mime so the sender's own bubble renders a real
-    // attachment card (name + size) immediately, without waiting for the upload.
-    const QFileInfo info(localPath);
-    m.attSize = info.size();
-    m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
-    // Keep the local source path so a failed send can be resent without re-picking
-    // the file (the bytes are not kept; only the path).
-    m.attSrcPath = localPath;
-    m.ts = nowMillis();
-    m.orderKey = m.ts;
-    m.status = 0;
-    m.id = store_.append(m);
-    statusById_[m.id] = 0;
-    showInActiveView(m, true);
-    contacts_.touch(activePeer_, {}, "[" + m.type + "] " + m.attName, m.ts, false);
-    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
-        m.attName, QStringLiteral("Sending…"), activePeer_);
     // The prepared file is right here, so the sender's bubble draws it without
     // asking anyone: the core stores the same bytes in the account.
     pictureOwners_.insert(m.e2eId, m.id);
-    QFile prepared(localPath);
+    QFile prepared(m.attSrcPath);
     const bool drawable = prepared.open(QIODevice::ReadOnly)
         && PictureStore::instance().put(m.e2eId, prepared.readAll());
     store_.setHasPicture(m.id, drawable);
     conversation_.setPictureReadyForId(m.id, drawable);
-    emit requestSendPicture(activePeer_, localPath, m.id, m.e2eId, replyTo);
+    emit requestSendPicture(activePeer_, m.attSrcPath, m.id, m.e2eId, m.replyTo);
 }
 
 void SessionController::sendCallback(
