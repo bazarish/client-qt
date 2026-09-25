@@ -3,20 +3,15 @@
 
 #include "SessionShared.hpp"
 
-#include <QFile>
-
-#include <QJsonDocument>
-
-#include <QJsonArray>
-
-#include "I2pRouter.hpp"
-
-#include "AvatarStore.hpp"
-#include "PictureStore.hpp"
-#include "DeliveryStatus.hpp"
-#include "FederationFetch.hpp"
-#include "Invite.hpp"
 #include "QtAudioIo.hpp"
+#include "I2pRouter.hpp"
+#include "FederationFetch.hpp"
+
+
+
+
+
+#include "DeliveryStatus.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -33,28 +28,13 @@
 
 #include <QBuffer>
 #include <QByteArray>
-#include <QClipboard>
 #include <QDateTime>
-#include <QDesktopServices>
-#include <QDir>
-#include <QFileInfo>
-#include <QGuiApplication>
-#include <QMetaMethod>
-#include <QSet>
 #include <QImage>
-#include <QMimeDatabase>
-#include <QRandomGenerator>
-#include <QStandardPaths>
-#include <QRegularExpression>
 #include <chrono>
 #include <QTimer>
 #include <cstring>
-#include <QUrl>
 
 #if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#include <QDBusConnection>
-#include <QDBusInterface>
-#include <QDBusReply>
 #endif
 
 #include <algorithm>
