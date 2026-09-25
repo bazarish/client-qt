@@ -745,6 +745,11 @@ void SessionWorker::openAccount(
     // What a pass decides to hand back goes out on the errands thread, like the
     // acks the interface asks for: a round trip taken in the middle of a pass is
     // one the next thing the user does waits behind.
+    // The server answering is what the connection plate is about, and it
+    // answers at the start of a pass rather than at the end of one. A pass that
+    // took minutes used to leave the plate saying there was no connection for
+    // all of them.
+    session_->onServerAnswered([this]() { emit syncReachable(true, {}); });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     // The same for the copy of a sent message that this account's other devices
     // are owed: it was the whole of the maintenance pass, and the pass is what
