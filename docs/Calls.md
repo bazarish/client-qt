@@ -22,16 +22,20 @@ carries them, and the choices the protocol leaves to it.
 ## Datagrams to a blinded address
 
 The protocol requires media datagrams addressed to a b33, and a call's media
-destination is published like any other. A stock i2pd routes datagrams by
-identity hash only, so the routing is carried as a patch in
-**`libi2pd_bazarish`**. Without it the media never arrives.
+destination is published like any other. Routing a datagram to a blinded address
+means looking the leaseset up first, which a router does not do for a plain
+identity hash.
 
-Which router has to carry the patch follows the transport: the embedded engine is
-this client's own and carries it, and so does a private gateway, which builds the
-same library. A router reached over SAM is somebody else's, and a stock one will
-route no media to a b33 - the call still connects and signals, and no audio
-crosses. Nothing refuses the call on that account, so the symptom is a call with
-no sound and the log is where it is read.
+Where that lookup happens follows the transport. The embedded engine does it in
+this client's own code, which resolves the blinded address once and remembers it
+for the length of the call - a call is a stream of media, not one message. A
+private gateway does the same, because it runs the same code. Over **SAM** the
+router does it, and i2pd has done so since **2.61.0**, which is the version this
+project requires anyway; against an older one a datagram to a b33 is refused as
+an invalid destination and the call connects and signals with no audio.
+
+File transfer is not affected either way: it opens a stream, and SAM has
+connected a stream to a b33 since i2pd 2.38.0.
 
 ## A lane of its own
 
