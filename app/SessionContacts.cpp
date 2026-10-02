@@ -117,8 +117,8 @@ void SessionController::addByInvite(
             return;
         }
     } catch (const std::exception&) {
-        // inviteProblem() already vetted the link; the add below reports anything
-        // it still cannot read.
+        // error-hiding: allowed - inviteProblem() already vetted the link, and the
+        // add below parses it again and reports anything it still cannot read.
     }
     const QString opId = QStringLiteral("contact:") + newE2eId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding contact"),
