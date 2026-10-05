@@ -64,7 +64,6 @@ public:
 
     Q_INVOKABLE void importAccount(const QString& name, const QString& fileUrl,
         const QString& password, const QString& atRestPassphrase);
-    // Says when the application may end.
     Q_INVOKABLE void prepareForExit();
     Q_INVOKABLE void closeAllSessions();
 

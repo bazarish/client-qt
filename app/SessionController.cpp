@@ -1878,7 +1878,6 @@ void SessionController::trimEveryChat(const int keep)
 
 void SessionController::beginStorageWork(const QString& what, const std::function<void()>& work)
 {
-    // A trim and a rewrite both take the database exclusively and both run on the thread that draws.
     deviceStorageBusy_ = true;
     deviceStorage_[QStringLiteral("busy")] = true;
     deviceStorage_[QStringLiteral("busyWhat")] = what;

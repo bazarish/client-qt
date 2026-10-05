@@ -146,7 +146,6 @@ QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
     return QStringLiteral("Your deposit will not cover the next renewal.");
 }
 
-// How a send reports itself back to the model.
 bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint64 localId)
 {
     bazarish::client::DeliveryWatch watch;
@@ -622,7 +621,6 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
 
 void SessionWorker::setSyncEnabled(bool on)
 {
-    // Off is off in both directions.
     if (session_) {
         session_->setSwitchedOff(!on);
     }

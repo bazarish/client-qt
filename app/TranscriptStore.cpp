@@ -247,7 +247,6 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
         }
     }
     if (hasTables && schema != kAccountSchemaVersion) {
-        // Either older than the numbering or newer than this build understands.
         throw std::runtime_error("this account is schema version " + std::to_string(schema)
             + ", and this build reads version " + std::to_string(kAccountSchemaVersion));
     }

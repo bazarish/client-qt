@@ -665,7 +665,6 @@ private:
     QVariantList devices_;
     QString i2pServerState_;
     QString acceptingContact_;
-    // Transfers in flight, by the file's protocol id.
     struct TransferProgress {
         QString peer;
         QString stage;
