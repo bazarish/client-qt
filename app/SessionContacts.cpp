@@ -100,6 +100,7 @@ void SessionController::addByInvite(
             return;
         }
     } catch (const std::exception&) {
+        // error-hiding: allowed - the link was vetted; the add below parses it and reports again.
     }
     const QString opId = QStringLiteral("contact:") + newE2eId();
     beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding contact"),
