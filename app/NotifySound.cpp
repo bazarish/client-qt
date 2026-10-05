@@ -18,9 +18,6 @@ namespace bazarish::app {
 
 namespace {
 
-// Where the sounds carried inside the application live. One is used unless the
-// user leaves one of their own at the root of the installation, under the same
-// name - the rule the ringtone follows too: a known file, not a search.
 const char* const kBuiltInPrefix = "qrc:/sound/";
 
 }  // namespace
@@ -53,27 +50,23 @@ qint64 NotifySound::durationMs() const
 void NotifySound::play()
 {
     if (QMediaDevices::defaultAudioOutput().isNull()) {
-        return;  // no output device: the popup still shows, which is the point
+        return;
     }
     if (!player_) {
         player_ = std::make_unique<QMediaPlayer>();
         output_ = std::make_unique<QAudioOutput>();
         player_->setAudioOutput(output_.get());
-        // A recording of the user's own that will not play is otherwise a silence
-        // with nothing to explain it.
         connect(player_.get(), &QMediaPlayer::errorOccurred, this,
             [this](QMediaPlayer::Error, const QString& text) {
                 bazarish::log::warn("notification sound: {} ({})", text.toStdString(),
                     player_->source().toString().toStdString());
             });
     }
-    // Read every time: a file put at the root of the installation is picked up
-    // without restarting, and taken away again the same way.
     const QUrl wanted = source();
     if (player_->source() != wanted) {
         player_->setSource(wanted);
     }
-    player_->stop();  // a second arrival restarts the sound rather than being lost
+    player_->stop();
     player_->play();
 }
 

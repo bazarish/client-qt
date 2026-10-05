@@ -24,22 +24,15 @@ struct StyleMarker {
     StyleKind kind;
 };
 
-// Longest first: tried in this order, so a bold pair is never read as an empty
-// italic one followed by a stray asterisk.
 constexpr std::array<StyleMarker, 3> kStyleMarkers{{
     {QLatin1String("**"), StyleKind::eBold},
     {QLatin1String("~~"), StyleKind::eStrike},
     {QLatin1String("*"), StyleKind::eItalic},
 }};
 
-// What wraps text the message offers to send back with one click.
 constexpr QLatin1String kSendMarker("!!");
-// What wraps a block kept exactly as it was written.
 constexpr QLatin1String kCodeMarker("```");
-// What a tab is worth when such a block is drawn. A rich text document has no
-// tab stops of its own, so the width has to be chosen here.
 constexpr int kTabWidth = 4;
-// What introduces an alias.
 constexpr QChar kAliasMarker(u'!');
 
 constexpr std::array<QLatin1String, 2> kLinkSchemes{
@@ -47,9 +40,7 @@ constexpr std::array<QLatin1String, 2> kLinkSchemes{
     QLatin1String("http://"),
 };
 
-// Punctuation that ends a sentence rather than the address inside it.
 constexpr QStringView kTrailingPunctuation = u".,;:!?'\"\u00bb";
-// Closing brackets are only dropped when the address does not open them itself.
 struct Bracket {
     QChar open;
     QChar close;
@@ -60,8 +51,6 @@ constexpr std::array<Bracket, 3> kBrackets{{
     {QChar(u'{'), QChar(u'}')},
 }};
 
-// The schemes the interface answers a click on. Ours alone: they are built here
-// and never come from a message, which is escaped before it reaches the document.
 constexpr QLatin1String kSendScheme("bz-send:");
 constexpr QLatin1String kAliasScheme("bz-alias:");
 constexpr QLatin1String kCopyScheme("bz-copy:");
@@ -93,9 +82,6 @@ bool isWordChar(const QChar c)
     return c.isLetterOrNumber();
 }
 
-// The grammar the add-a-contact form actually resolves: letters and digits only,
-// case folded when it is looked up. Deliberately not the wider address grammar -
-// highlighting a name the form would then refuse is worse than not marking it.
 bool isAliasChar(const QChar c)
 {
     return (c >= u'a' && c <= u'z') || (c >= u'A' && c <= u'Z') || (c >= u'0' && c <= u'9');
@@ -520,14 +506,9 @@ QString toHtml(const QString& text, const Colors& colors)
             out += body;
             continue;
         }
-        // The colour is written into the run as well as onto the anchor: a
-        // document draws an anchor in its own link colour unless the text under
-        // it carries one, and this one has no palette to set.
         QString style = QLatin1String("color:") + colors.action + QLatin1String(";");
         style += run.action == Action::eLink ? QLatin1String("text-decoration:underline;")
                                              : QLatin1String("text-decoration:none;");
-        // What acts inside the client stands on a ground of its own; what leaves
-        // it is underlined. Left plain, a name in a sentence reads as a sentence.
         if (run.action != Action::eLink) {
             style += QLatin1String("background-color:") + colors.chip + QLatin1String(";");
         }

@@ -21,21 +21,12 @@ namespace bazarish::app {
 
 namespace {
 
-// The lowest tunnel-length level, and the count of them. Kept here rather than
-// taken from the I2P layer: this file stores a number, and what it selects is
-// the caller's business.
-// Where a SAM router listens unless the user says otherwise. Kept here rather
-// than taken from the SAM layer: this file stores a number, and the meaning of
-// it is the caller's business.
 constexpr const char* kDefaultSamHost = "127.0.0.1";
 constexpr int kDefaultSamPort = 7656;
 
 constexpr int kMinTunnelLength = 0;
 constexpr int kMaxTunnelLength = 2;
 
-// A settings document is a few hundred bytes; the only part that grows is the
-// list of switched-off accounts. Whatever sits at the path past this size is
-// not settings, and parsing it would spend memory on someone else's file.
 constexpr std::streamsize kMaxSettingsBytes = 64 * 1024;
 
 }  // namespace
@@ -70,10 +61,8 @@ void AppSettings::load()
 {
     std::ifstream in(path_, std::ios::binary);
     if (!in.good()) {
-        return;  // no file yet: the defaults above are the settings
+        return;
     }
-    // One byte past the limit is read so an oversized file is recognised as
-    // such, and nothing larger is ever held in memory.
     std::string text(static_cast<std::size_t>(kMaxSettingsBytes) + 1, '\0');
     in.read(text.data(), static_cast<std::streamsize>(text.size()));
     const std::streamsize taken = in.gcount();
@@ -115,8 +104,6 @@ void AppSettings::load()
             i2pProxyPort_ = 0;
         }
     } catch (const std::exception& error) {
-        // Defaults from here, which is survivable - but a privacy setting that
-        // has quietly reverted must be visible somewhere.
         bazarish::log::warn("settings not read, using defaults: {}", error.what());
     }
 }
@@ -138,8 +125,6 @@ void AppSettings::save() const
         {"backgroundTasks", backgroundTasks_},
         {"i2p", i2p},
     };
-    // Written beside the file and renamed over it: a crash mid-write leaves the
-    // previous settings rather than half a document.
     const std::filesystem::path scratch = path_.string() + ".new";
     {
         std::ofstream out(scratch, std::ios::trunc);
@@ -253,9 +238,6 @@ void AppSettings::useGateway(const bool on)
     gatewayAsked_ = true;
     gatewayEnabled_ = on && !gatewayAddress_.empty();
     if (gatewayEnabled_) {
-        // One transport carries the traffic. Two flags that must never both be
-        // set are two flags that will both be set one day, so the one being
-        // turned on turns the other off here rather than in a caller.
         samEnabled_ = false;
     }
     save();
@@ -265,9 +247,6 @@ void AppSettings::skipGateway()
 {
     gatewayAsked_ = true;
     gatewayEnabled_ = false;
-    // The address and the key it presented are kept: turning a gateway off is
-    // not forgetting it, and a user who comes back should not have to paste it
-    // again.
     save();
 }
 

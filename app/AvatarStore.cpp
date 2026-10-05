@@ -16,17 +16,16 @@ void AvatarStore::put(const QString& fingerprint, const QByteArray& imageData)
     }
     QImage decoded;
     if (!imageData.isEmpty()) {
-        decoded = QImage::fromData(imageData);  // format auto-detected (PNG/JPEG)
+        decoded = QImage::fromData(imageData);
     }
     {
         QWriteLocker locker(&lock_);
         if (decoded.isNull()) {
-            images_.remove(fingerprint);  // empty/undecodable: fall back to the identicon
+            images_.remove(fingerprint);
         } else {
             images_.insert(fingerprint, decoded);
         }
     }
-    // Bump after releasing the lock; revision_ is only touched on the GUI thread.
     ++revision_;
     emit revisionChanged();
 }
@@ -34,7 +33,7 @@ void AvatarStore::put(const QString& fingerprint, const QByteArray& imageData)
 QImage AvatarStore::image(const QString& fingerprint) const
 {
     QReadLocker locker(&lock_);
-    return images_.value(fingerprint);  // QImage is implicitly shared: a cheap copy
+    return images_.value(fingerprint);
 }
 
 }  // namespace bazarish::app

@@ -19,12 +19,8 @@ namespace bazarish::app {
 
 namespace {
 
-// 425 Hz is the call-progress tone of ITU-T E.180, the one European telephony
-// rings and beeps with.
 constexpr double kToneHz = 425.0;
 constexpr double kAmplitude = 0.22;
-// Edges shaped over a few milliseconds: a tone that starts at full amplitude
-// starts with a click.
 constexpr double kRampMs = 8.0;
 constexpr int kMsPerSecond = 1000;
 
@@ -33,13 +29,10 @@ constexpr int kRingbackOffMs = 4000;
 constexpr int kBusyOnMs = 250;
 constexpr int kBusyOffMs = 250;
 constexpr int kBusyBursts = 4;
-// Endless patterns run until stopped.
 constexpr int kForever = 0;
 
 }  // namespace
 
-// Generates the cadence on demand: every sample is a function of its position, so
-// the pattern needs no timer of its own and cannot drift.
 class CallTones::Voice : public QIODevice {
 public:
     Voice(const int onMs, const int offMs, const int bursts)
@@ -49,7 +42,6 @@ public:
     {
     }
 
-    // How long a finite pattern lasts; zero for one that does not end.
     int durationMs() const
     {
         return bursts_ * (onMs_ + offMs_);
@@ -68,7 +60,7 @@ protected:
 
     qint64 writeData(const char*, qint64) override
     {
-        return 0;  // tones are generated, never written into
+        return 0;
     }
 
     bool isSequential() const override
@@ -132,11 +124,11 @@ void CallTones::endRingback()
 void CallTones::play(const int onMs, const int offMs, const int bursts)
 {
     if (voice_ && voice_->durationMs() == 0 && bursts == kForever && sink_) {
-        return;  // the same endless pattern is already playing
+        return;
     }
     stop();
     if (QMediaDevices::defaultAudioOutput().isNull()) {
-        return;  // nothing to play through: the call itself already reports that
+        return;
     }
     voice_ = std::make_unique<Voice>(onMs, offMs, bursts);
     voice_->open(QIODevice::ReadOnly);

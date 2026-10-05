@@ -3,8 +3,6 @@
 
 #include "AudioCodec.hpp"
 
-// Qt makes `emit` a macro and the log header declares a function of that name,
-// so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -20,12 +18,9 @@
 namespace bazarish::app {
 
 namespace {
-// Bars in a voice message's drawn shape.
 constexpr int kVoiceWaveBars = 40;
 constexpr qint64 kBytesPerUnit = 1024;
-// KB, MB, GB, TB: the last index the loop may climb to.
 constexpr int kLargestUnit = 3;
-// Below this a size is written with a decimal; above it, whole units read better.
 constexpr double kDecimalBelow = 10.0;
 }  // namespace
 

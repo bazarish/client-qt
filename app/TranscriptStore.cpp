@@ -4,8 +4,6 @@
 #include "AccountKey.hpp"
 
 #include <bazarish/Bytes.hpp>
-// Qt makes `emit` a macro and the log header declares a function of that name,
-// so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -25,7 +23,6 @@ namespace bazarish::app {
 
 namespace {
 
-// One value read out of a result row, in the shape the readers below expect.
 class Value {
 public:
     Value(sqlite3_stmt* const stmt, const int column)
@@ -55,9 +52,6 @@ private:
     int column_ = 0;
 };
 
-// A prepared statement in the shape the call sites are written against: prepare,
-// bind in order, exec or next, read by column. Thin on purpose - it exists so the
-// queries below read as queries and every sqlite3 handle has an owner.
 class Query {
 public:
     explicit Query(sqlite3* const db)
@@ -91,7 +85,6 @@ public:
     void addBindValue(const qint64 value) { sqlite3_bind_int64(stmt_, ++bound_, value); }
     void addBindValue(const int value) { sqlite3_bind_int(stmt_, ++bound_, value); }
 
-    // Runs a prepared statement that returns nothing (or whose rows are ignored).
     bool exec()
     {
         const int status = sqlite3_step(stmt_);
@@ -104,15 +97,12 @@ public:
         return true;
     }
 
-    // Prepares and runs a statement in one call (the DDL and the parameterless
-    // selects below).
     bool exec(const QString& sql) { return prepare(sql) && exec(); }
 
-    // Advances to the next row; true while there is one.
     bool next()
     {
         if (stepped_) {
-            stepped_ = false;  // exec() already stepped onto the first row
+            stepped_ = false;
             return true;
         }
         return sqlite3_step(stmt_) == SQLITE_ROW;
@@ -130,17 +120,11 @@ private:
     bool stepped_ = false;
 };
 
-// Column list shared by every full-row query, so the indices in readMessageRow
-// stay aligned with it. Change one and change the other.
 const char* const kMessageColumns = "id, peer, outgoing, type, e2eId, text, attName,"
                                     " attMime, attSize, attRef, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, replyTo,"
                                     " hasPicture, attDurationMs, attWave, forwarded";
 
-// Orders a loaded window oldest-first by the sort position (orderKey), then id as
-// a stable tiebreak. Each window is a contiguous id-range, so this repairs an
-// out-of-order burst within the window; orderKey is near-monotonic with id, so a
-// burst straddling a page boundary is at most a hair off (see Messages.md).
 void sortByOrder(QVector<StoredMessage>& rows)
 {
     std::sort(rows.begin(), rows.end(), [](const StoredMessage& a, const StoredMessage& b) {
@@ -151,7 +135,6 @@ void sortByOrder(QVector<StoredMessage>& rows)
     });
 }
 
-// Reads one row produced by a SELECT over kMessageColumns into a StoredMessage.
 StoredMessage readMessageRow(const Query& query)
 {
     StoredMessage m;
@@ -191,15 +174,13 @@ TranscriptStore::~TranscriptStore()
 
 void TranscriptStore::close()
 {
-    sqlite3_close(db_);  // a no-op on a connection already closed
+    sqlite3_close(db_);
     db_ = nullptr;
     path_.clear();
 }
 
 namespace {
 
-// Opens a connection and unlocks it with `key`. The pragma has to be the first
-// statement on the connection.
 sqlite3* openKeyed(const QString& path, const Bytes& key)
 {
     sqlite3* db = nullptr;
@@ -207,16 +188,9 @@ sqlite3* openKeyed(const QString& path, const Bytes& key)
         sqlite3_close(db);
         return nullptr;
     }
-    // SQLCipher reports a failed decryption on stderr; the caller reports it
-    // through the return value instead, so the library's own chatter is off.
     sqlite3_exec(db, "PRAGMA cipher_log_level = NONE", nullptr, nullptr, nullptr);
-    // The account's other connection - the one the worker thread holds - waits
-    // this long for a lock. This one never did, and it is this one that takes the
-    // database exclusively when history is trimmed.
     constexpr int kBusyTimeoutMs = 5000;
     sqlite3_busy_timeout(db, kBusyTimeoutMs);
-    // The raw key goes in as a blob literal, so SQLCipher derives nothing: the
-    // passphrase guards the key file beside the database (see AccountKey).
     const std::string pragma = "PRAGMA key = \"x'" + toHex(key) + "'\"";
     if (sqlite3_exec(db, pragma.c_str(), nullptr, nullptr, nullptr) != SQLITE_OK) {
         sqlite3_close(db);
@@ -225,8 +199,6 @@ sqlite3* openKeyed(const QString& path, const Bytes& key)
     return db;
 }
 
-// Whether the connection can actually read the database: with the wrong key the
-// pages do not decrypt and the first read fails.
 bool readable(sqlite3* const db)
 {
     return sqlite3_exec(db, "SELECT count(*) FROM sqlite_master", nullptr, nullptr, nullptr)
@@ -237,10 +209,7 @@ bool readable(sqlite3* const db)
 
 bool TranscriptStore::open(const QString& accountId, const QString& dbPath, const QString& passphrase)
 {
-    (void)accountId;  // one connection per store now; the id no longer names it
-    // The same key the account store holds: unwrapped once per process. A wrong
-    // passphrase cannot unwrap it, and this store answers that with false rather
-    // than an exception - a failed open, never an empty transcript.
+    (void)accountId;
     Bytes key;
     try {
         key = client::accountkey::keyFor(dbPath.toStdString(), passphrase.toStdString());
@@ -253,7 +222,6 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
         return false;
     }
     if (!readable(db_)) {
-        // Wrong key: the pages do not decrypt. Say so by failing the open.
         sqlite3_close(db_);
         db_ = nullptr;
         return false;
@@ -261,26 +229,16 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     path_ = dbPath;
 
     Query query(db_);
-    // What schema this database was written against. SQLite carries the number
-    // itself (user_version), so it costs no table and cannot get out of step with
-    // the tables it describes. A database from before the number existed reads as
-    // 0 and is told apart from a fresh one by whether it holds anything.
     Query version(db_);
     std::int64_t schema = 0;
     if (version.exec("PRAGMA user_version") && version.next()) {
         schema = version.value(0).toLongLong();
     }
-    // Asked of the catalogue rather than of the table itself: a fresh database has
-    // no messages table, and probing for one would report a failure that is the
-    // normal case for every account ever created.
     Query written(db_);
     const bool hasTables
         = written.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'messages'")
         && written.next();
     if (hasTables) {
-        // The number alone cannot catch a column added before the first release,
-        // when the number is frozen: ask the table itself whether it holds what
-        // this build writes.
         Query columns(db_);
         if (!columns.exec(QStringLiteral("SELECT %1 FROM messages LIMIT 1").arg(kMessageColumns))) {
             throw std::runtime_error(
@@ -290,8 +248,6 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     }
     if (hasTables && schema != kAccountSchemaVersion) {
         // Either older than the numbering or newer than this build understands.
-        // Both are refused with the number, because a migration that does not
-        // exist yet must not be improvised at runtime.
         throw std::runtime_error("this account is schema version " + std::to_string(schema)
             + ", and this build reads version " + std::to_string(kAccountSchemaVersion));
     }
@@ -307,59 +263,37 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
         return false;
     }
 
-    // Per-peer read high-water for persistent unread tracking (see read state).
     if (!query.exec("CREATE TABLE IF NOT EXISTS read_state ("
                     "peer TEXT PRIMARY KEY, last_read_id INTEGER NOT NULL)")) {
         return false;
     }
-    // One reaction per (peer, message, reactor): a new emoji overwrites the old.
     if (!query.exec("CREATE TABLE IF NOT EXISTS reactions ("
                     "peer TEXT, target TEXT, reactor TEXT, emoji TEXT,"
                     " PRIMARY KEY (peer, target, reactor))")) {
         return false;
     }
-    // Stamp the number on a database that has just been laid out.
     if (!hasTables
         && !query.exec(
             "PRAGMA user_version = " + QString::number(kAccountSchemaVersion))) {
         return false;
     }
-    // Chats the user pinned to the top of the list (one row per pinned peer).
     if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
         return false;
     }
-    // The three below tidy what is already there; none of them is what makes the
-    // account readable, so one that fails is said out loud and the account still
-    // opens. Refusing to open it over a housekeeping statement would cost the
-    // user their messages to save them from a duplicate.
-    //
-    // Calls used to leave a line in the conversation and a preview in the chat
-    // list. They no longer do, and the lines already written go with them: these
-    // are the only system notes this client ever wrote with those openings.
     if (!query.exec("DELETE FROM messages WHERE type = 'system' AND ("
                     "text LIKE 'Incoming call%' OR text LIKE 'Outgoing call%'"
                     " OR text = 'Missed call')")) {
         bazarish::log::warn("transcript: the call lines could not be cleared");
     }
-    // One message, one row. The rule is the index below; this clears what was
-    // written before there was one, keeping the copy that arrived first.
     if (!query.exec("DELETE FROM messages WHERE e2eId != '' AND id NOT IN ("
                     "SELECT MIN(id) FROM messages WHERE e2eId != ''"
                     " GROUP BY peer, e2eId, outgoing)")) {
         bazarish::log::warn("transcript: the duplicate rows could not be cleared");
     }
-    // A message is named by its protocol id, and the same id in the same
-    // conversation on the same side is the same message however many times it is
-    // offered. System notes carry no id and are not constrained. This is the
-    // backstop; what every row goes through first is append().
     if (!query.exec("CREATE UNIQUE INDEX IF NOT EXISTS messages_by_e2e"
                     " ON messages (peer, e2eId, outgoing) WHERE e2eId != ''")) {
         bazarish::log::warn("transcript: one message per row is not enforced here");
     }
-    // Every per-conversation statement stands on this: the index above is partial
-    // and a plain "where peer = ?" cannot use it, so a windowed read, a preview
-    // and a trim each scanned the whole table. One conversation is one scan is
-    // survivable; trimming every conversation would be one scan per conversation.
     if (!query.exec("CREATE INDEX IF NOT EXISTS messages_by_peer_id ON messages (peer, id)")) {
         bazarish::log::warn("transcript: conversations are read without an index");
     }
@@ -368,9 +302,6 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
 
 qint64 TranscriptStore::append(const StoredMessage& message)
 {
-    // At-least-once delivery means the same message legitimately arrives more
-    // than once; it is one message either way, and this is the one place every
-    // row goes through.
     if (!message.e2eId.isEmpty()) {
         if (const qint64 existing = idForKey(message.peer, message.e2eId, message.outgoing);
             existing != 0) {
@@ -405,8 +336,6 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.attWave);
     query.addBindValue(message.forwarded ? 1 : 0);
     if (!query.exec()) {
-        // The index above is the backstop for a path that did not ask first. Say
-        // which row it is rather than answering with an id nobody has.
         const qint64 existing = message.e2eId.isEmpty()
             ? 0
             : idForKey(message.peer, message.e2eId, message.outgoing);
@@ -467,8 +396,6 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
 
 QVector<StoredMessage> TranscriptStore::latestMessages(const QString& peer, int limit) const
 {
-    // Newest `limit` rows, returned oldest-first (the display order). DESC+LIMIT
-    // reads only the tail of a huge conversation; the result is then reversed.
     QVector<StoredMessage> result;
     Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? ORDER BY id DESC LIMIT ?")
@@ -488,7 +415,6 @@ QVector<StoredMessage> TranscriptStore::latestMessages(const QString& peer, int 
 QVector<StoredMessage> TranscriptStore::olderMessages(
     const QString& peer, qint64 beforeId, int limit) const
 {
-    // The `limit` rows immediately older than beforeId, oldest-first.
     QVector<StoredMessage> result;
     Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id < ?"
@@ -525,7 +451,6 @@ StoredMessage TranscriptStore::nextVoiceAfter(const QString& peer, const qint64 
 QVector<StoredMessage> TranscriptStore::newerMessages(
     const QString& peer, qint64 afterId, int limit) const
 {
-    // The `limit` rows immediately newer than afterId, already oldest-first.
     QVector<StoredMessage> result;
     Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id > ?"
@@ -564,9 +489,6 @@ bool TranscriptStore::hasMessagesAfter(const QString& peer, qint64 id) const
 
 QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QString& query) const
 {
-    // Full-text scan of a conversation's text, newest first. The match is done in
-    // C++ so it is case-insensitive for non-ASCII (Cyrillic) too, which SQLite's
-    // LIKE/lower() is not. Capped so a degenerate query cannot flood the popup.
     QVector<SearchHit> hits;
     if (query.isEmpty()) {
         return hits;
@@ -582,7 +504,6 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
     while (sql.next() && hits.size() < kMaxHits) {
         const QString text = sql.value(2).toString();
         const QString attName = sql.value(4).toString();
-        // Match the message text or, for an attachment, its file name.
         if (!text.contains(query, Qt::CaseInsensitive)
             && !attName.contains(query, Qt::CaseInsensitive)) {
             continue;
@@ -590,8 +511,6 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
         SearchHit hit;
         hit.id = sql.value(0).toLongLong();
         hit.ts = sql.value(1).toLongLong();
-        // Show the message text, or the file name (with a paperclip) for an
-        // attachment, so a file hit reads as a file in the results.
         hit.text = !text.isEmpty() ? text : (QStringLiteral("📎 ") + attName);
         hit.outgoing = sql.value(3).toInt() != 0;
         hits.push_back(hit);
@@ -670,7 +589,6 @@ void TranscriptStore::setSavedPath(qint64 id, const QString& path)
 QByteArray TranscriptStore::media(const QString& key) const
 {
     Query query(db_);
-    // The same table the core keeps its state in: one account, one database.
     if (!query.prepare("SELECT value FROM state WHERE name = ?")) {
         return {};
     }
@@ -796,8 +714,6 @@ void TranscriptStore::setType(qint64 id, const QString& type)
 
 void TranscriptStore::removeById(qint64 id)
 {
-    // Read before the row goes: the message is what names its picture or voice
-    // note, and once it is gone nothing does.
     QString named;
     Query naming(db_);
     if (naming.prepare("SELECT e2eId FROM messages WHERE id = ?")) {
@@ -809,9 +725,6 @@ void TranscriptStore::removeById(qint64 id)
     if (!removeMediaOfMessage(named)) {
         bazarish::log::warn("transcript: the picture or voice note of a deleted message stayed");
     }
-    // A reaction names its target by the message's own id, so one left behind is
-    // a record that this account was reacted to, kept after the thing it points
-    // at is gone.
     if (!named.isEmpty()) {
         Query emoji(db_);
         emoji.prepare("DELETE FROM reactions WHERE target = ?");
@@ -830,9 +743,6 @@ void TranscriptStore::removeById(qint64 id)
 
 void TranscriptStore::clearPeer(const QString& peer)
 {
-    // The media first, while the rows that name it are still there: a cleared
-    // conversation used to leave every picture and voice note it held in the
-    // database for good.
     if (!removeMediaOfPeer(peer)) {
         bazarish::log::warn("transcript: the media of a cleared conversation stayed behind");
     }
@@ -842,9 +752,6 @@ void TranscriptStore::clearPeer(const QString& peer)
     if (!query.exec()) {
         bazarish::log::warn("transcript: a conversation could not be cleared");
     }
-    // What was about those messages goes with them: every reaction, and the read
-    // mark, which now points at a row that is not there. The pin is not among
-    // them - it is about the chat, which an emptied one still is.
     for (const char* statement :
         {"DELETE FROM reactions WHERE peer = ?", "DELETE FROM read_state WHERE peer = ?"}) {
         Query side(db_);
@@ -858,8 +765,6 @@ void TranscriptStore::clearPeer(const QString& peer)
 
 void TranscriptStore::forgetPeer(const QString& peer)
 {
-    // A contact that is gone, as against a conversation that is merely empty:
-    // nothing of theirs is kept, the pin included.
     clearPeer(peer);
     setPinned(peer, false);
 }
@@ -879,10 +784,6 @@ QStringList TranscriptStore::conversationPeers() const
 QString TranscriptStore::lastText(const QString& peer) const
 {
     Query query(db_);
-    // The newest row that has something to show, not simply the newest row. A row
-    // with no words and nothing carried - a control message stored for its own
-    // reasons - would otherwise leave the chat list saying nothing at all about a
-    // conversation that is full of messages.
     query.prepare("SELECT text, type, attName FROM messages WHERE peer = ?"
                   " AND (text != '' OR type IN ('file','image','voice','audio','photo'))"
                   " ORDER BY orderKey DESC, id DESC LIMIT 1");
@@ -894,9 +795,6 @@ QString TranscriptStore::lastText(const QString& peer) const
         if (!text.isEmpty()) {
             return text;
         }
-        // A message with no words of its own is named by what it carries, so the
-        // chat list says something rather than nothing. The names are the ones
-        // the transcript stores, which is what a picture is written as.
         if (type == "file" || type == "image" || type == "voice" || type == "audio"
             || type == "photo") {
             return attachment.isEmpty() ? "[" + type + "]" : "[" + type + "] " + attachment;
@@ -923,10 +821,6 @@ void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
         return;
     }
     Query query(db_);
-    // Never lower the high-water (a re-read of older history must not resurrect
-    // newer messages as unread). Written without UPSERT, which arrived in SQLite
-    // 3.24 and is not in the SQLCipher some distributions ship: the row is
-    // replaced with whichever mark is further along.
     query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
                   " max(?, coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0)))");
     query.addBindValue(peer);
@@ -943,8 +837,6 @@ void TranscriptStore::applyReadThrough(const QString& peer, const qint64 sentAtM
         return;
     }
     Query query(db_);
-    // The newest incoming row at or before that moment, and never below the mark
-    // already held: like every other write of this high-water, it only advances.
     if (!query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
                        " max(coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0),"
                        " coalesce((SELECT MAX(id) FROM messages WHERE peer = ? AND outgoing = 0"
@@ -1011,9 +903,6 @@ QStringList TranscriptStore::pinnedPeers() const
 int TranscriptStore::unreadCount(const QString& peer) const
 {
     Query query(db_);
-    // Incoming messages newer than the read high-water. Only inbound rows count
-    // (our own messages are always "read"), and locally-generated service banners
-    // (type 'system', e.g. "X cleared the chat") are not messages to be read.
     query.prepare("SELECT COUNT(*) FROM messages WHERE peer = ? AND outgoing = 0 AND type != 'system' AND id >"
                   " (SELECT COALESCE(MAX(last_read_id), 0) FROM read_state WHERE peer = ?)");
     query.addBindValue(peer);
@@ -1045,15 +934,11 @@ void TranscriptStore::setReaction(
     }
     Query query(db_);
     if (emoji.isEmpty()) {
-        // An empty emoji clears the reactor's reaction on this message.
         query.prepare("DELETE FROM reactions WHERE peer = ? AND target = ? AND reactor = ?");
         query.addBindValue(peer);
         query.addBindValue(target);
         query.addBindValue(reactor);
     } else {
-        // The key is (peer, target, reactor) and emoji is the whole value, so
-        // replacing the row is the same as updating it - and works on the older
-        // SQLite that has no UPSERT.
         query.prepare("INSERT OR REPLACE INTO reactions (peer, target, reactor, emoji)"
                       " VALUES (?, ?, ?, ?)");
         query.addBindValue(peer);
@@ -1085,17 +970,11 @@ QVector<Reaction> TranscriptStore::reactionsFor(const QString& peer, const QStri
     return result;
 }
 
-
 namespace {
 
-// Where the core keeps a message's media, under the same names it writes them.
 const char* const kPictureKeyPrefix = "picture:";
 const char* const kVoiceKeyPrefix = "voice:";
 
-// The bytes one message row's own values hold. LENGTH counts characters over
-// TEXT, so every column is measured as a blob instead. The fixed-width columns
-// share one flat allowance: their width is per row, and this whole figure is an
-// account of content rather than a measurement of pages.
 constexpr int kFixedColumnBytes = 32;
 
 QString messageBytesExpression()
@@ -1109,9 +988,6 @@ QString messageBytesExpression()
     return parts.join(" + ") + QStringLiteral(" + %1").arg(kFixedColumnBytes);
 }
 
-// The media of the messages a SELECT picks, by the reference each row carries.
-// Rows with no protocol id name nothing, and are left out here rather than
-// producing a key of their own.
 QString mediaOfRows(const QString& rowCondition)
 {
     return QStringLiteral("DELETE FROM state WHERE name IN ("
@@ -1122,8 +998,6 @@ QString mediaOfRows(const QString& rowCondition)
             rowCondition);
 }
 
-// One change, taken as one. IMMEDIATE asks for the write lock up front instead
-// of discovering halfway through that the other connection holds it.
 class Transaction {
 public:
     explicit Transaction(sqlite3* const db)
@@ -1204,7 +1078,6 @@ bool TranscriptStore::removeMediaOfTrimmed(const QString& peer, const int keep)
     if (!hasMediaTable()) {
         return true;
     }
-    // The same rows the trim is about to remove, named the same way.
     const QString doomed = QStringLiteral(
         "peer = ? AND id NOT IN (SELECT id FROM messages WHERE peer = ? ORDER BY id DESC LIMIT ?)");
     Query query(db_);
@@ -1222,9 +1095,6 @@ bool TranscriptStore::removeMediaOfTrimmed(const QString& peer, const int keep)
 QVector<ChatWeight> TranscriptStore::chatWeights() const
 {
     QVector<ChatWeight> weights;
-    // messages is the outer loop and the media table is probed by its primary
-    // key, which is what the outer joins pin down: the other order has no index
-    // to stand on and would read every blob for every message.
     const QString media = hasMediaTable()
         ? QStringLiteral(" LEFT JOIN state AS p ON m.e2eId != '' AND p.name = '%1' || m.e2eId"
                          " LEFT JOIN state AS v ON m.e2eId != '' AND v.name = '%2' || m.e2eId")
@@ -1270,12 +1140,9 @@ DatabaseFootprint TranscriptStore::footprint() const
 
 qint64 TranscriptStore::pruneRowsOf(const QString& peer, const int keep)
 {
-    // The media of the rows about to go, while they are still there to name it.
     if (!removeMediaOfTrimmed(peer, keep)) {
         throw std::runtime_error("the media of trimmed messages could not be removed");
     }
-    // Newest by id, which is the key the windowed reads page by: trimming on any
-    // other order would keep a different set than the conversation shows.
     Query messages(db_);
     if (!messages.prepare("DELETE FROM messages WHERE peer = ? AND id NOT IN ("
                           "SELECT id FROM messages WHERE peer = ? ORDER BY id DESC LIMIT ?)")) {
@@ -1330,8 +1197,6 @@ qint64 TranscriptStore::pruneEveryChatToLatest(const int keep)
 bool TranscriptStore::rebuild(QString& reason)
 {
     const QFileInfo file(path_);
-    // A rewrite is a whole second copy of the database before it replaces the
-    // first, so the room for one is checked rather than discovered.
     if (QStorageInfo(file.absolutePath()).bytesAvailable() < file.size()) {
         reason = QStringLiteral("there is not enough free disk space to rewrite the database");
         return false;
@@ -1341,8 +1206,6 @@ bool TranscriptStore::rebuild(QString& reason)
         reason = QString::fromUtf8(sqlite3_errmsg(db_));
         return false;
     }
-    // An account whose schema mark is not the one it was written against is
-    // refused at open, so the mark is put back rather than trusted to a rewrite.
     qint64 stamped = 0;
     Query version(db_);
     if (version.exec("PRAGMA user_version") && version.next()) {

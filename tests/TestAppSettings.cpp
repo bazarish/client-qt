@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-// Padding that carries a valid document past the size the reader accepts.
 constexpr std::size_t kOversizedNoteBytes = 128 * 1024;
 
 #define CHECK(condition)                                                            \
@@ -28,13 +27,10 @@ using bazarish::app::AppSettings;
 int main(int argc, char** argv)
 {
     if (argc > 1) {
-        // The settings are read once, when the instance is first asked for, so
-        // reading a different file means a second process.
         const std::string mode = argv[1];
         const AppSettings& loaded = AppSettings::instance();
         if (mode == "expect-active") {
             CHECK(loaded.activeAccount() == "alice");
-            // Switched on in the parent: a setting is permanent or it is not one.
             CHECK(loaded.backgroundTasks());
         } else {
             CHECK(mode == "expect-default");
@@ -47,8 +43,6 @@ int main(int argc, char** argv)
     const fs::path root = fs::temp_directory_path() / "bazarish-settings-test";
     fs::remove_all(root);
     fs::create_directories(root / "accounts");
-    // The instance resolves its path once, from the accounts directory named by
-    // the environment, and keeps the file at the root beside it.
     const std::string accountsDir = (root / "accounts").string();
 #ifdef _WIN32
     CHECK(::_putenv_s("BAZARISH_ACCOUNTS_DIR", accountsDir.c_str()) == 0);
@@ -59,25 +53,19 @@ int main(int argc, char** argv)
 
     AppSettings& settings = AppSettings::instance();
 
-    // Nothing written yet: the defaults, and no file created for reading alone.
     CHECK(settings.activeAccount().empty());
     CHECK(settings.offlineAccounts().empty());
     CHECK(settings.notifications());
-    // The background-activity panel is not on screen until it is asked for.
     CHECK(!settings.backgroundTasks());
     CHECK(!settings.i2pLogging());
     CHECK(settings.i2pTunnelLength() == 0);
     CHECK(settings.i2pProxyHost().empty());
     CHECK(settings.i2pProxyPort() == 0);
-    // The transport is the engine in this process until the user says otherwise,
-    // whatever else may be listening on this machine.
     CHECK(!settings.samEnabled());
     CHECK(settings.samHost() == "127.0.0.1");
     CHECK(settings.samPort() == 7656);
     CHECK(!fs::exists(file));
 
-    // One document holds all of it, at the root of the installation rather than
-    // among the accounts.
     settings.setActiveAccount("alice");
     settings.setOfflineAccounts({"bob", "carol"});
     settings.setNotifications(false);
@@ -102,11 +90,9 @@ int main(int argc, char** argv)
         CHECK(document.at("i2p").at("proxy").at("port") == 9050);
     }
 
-    // A tunnel length outside the known profiles is clamped rather than stored.
     settings.setI2pTunnelLength(7);
     CHECK(settings.i2pTunnelLength() == 2);
 
-    // An incomplete proxy is no proxy: neither half is kept on its own.
     settings.setI2pProxy("127.0.0.1", 0);
     CHECK(settings.i2pProxyHost().empty());
     CHECK(settings.i2pProxyPort() == 0);
@@ -116,7 +102,6 @@ int main(int argc, char** argv)
         return std::system(command.c_str()) == 0;
     };
 
-    // A document of the size settings actually reach is read as written.
     const nlohmann::json document = {{"activeAccount", "alice"}, {"backgroundTasks", true}};
     {
         std::ofstream out(file, std::ios::trunc);
@@ -124,8 +109,6 @@ int main(int argc, char** argv)
     }
     CHECK(readsAs("expect-active"));
 
-    // The same document behind a large field is refused whole rather than read
-    // into memory: a file at this path is not allowed to size the process.
     {
         nlohmann::json oversized = document;
         oversized["note"] = std::string(kOversizedNoteBytes, 'x');
@@ -135,7 +118,6 @@ int main(int argc, char** argv)
     CHECK(fs::file_size(file) > kOversizedNoteBytes);
     CHECK(readsAs("expect-default"));
 
-    // A malformed document is reported and the defaults stand.
     {
         std::ofstream out(file, std::ios::trunc);
         out << "{ this is not json";

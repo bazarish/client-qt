@@ -3,10 +3,6 @@
 
 #include "SessionShared.hpp"
 
-
-
-
-
 #include "DeliveryStatus.hpp"
 #include "Session.hpp"
 
@@ -15,8 +11,6 @@
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
 
-// Qt makes `emit` a macro and the log header declares a function of that name,
-// so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -45,25 +39,12 @@
 namespace bazarish::app {
 
 namespace {
-// A voice message rides inside one message, so what really bounds it is the
-// payload cap, not the clock: recording stops once the encoded audio has spent
-// its share. The reserve covers the message around it (ids, reply, the CBOR
-// keys), which is far smaller than this but must not be cut fine.
 constexpr qint64 kMaxVoiceMs = 2 * 60 * 1000;
 constexpr std::size_t kVoiceEnvelopeReserveBytes = 8 * 1024;
 constexpr std::size_t kMaxVoiceBytes
     = bazarish::kMaxMessagePayloadBytes - kVoiceEnvelopeReserveBytes;
-// Below this it is a slip of the finger, not a message.
 constexpr qint64 kMinVoiceMs = 700;
-// How often the recording clock and the input level are reported to the UI: the
-// level is a live picture of the microphone, so it is sampled at a rate a user
-// reads as movement rather than as steps.
 constexpr int kVoiceTickMs = 50;
-// How many bars a voice message's drawn waveform has - enough shape to read at
-// the width of a bubble.
-// The speeds a voice message plays back at, stepped through by the bubble's own
-// control. Faster playback raises the pitch with it: the samples are handed to
-// the device faster, and nothing time-stretches them back.
 constexpr std::array<double, 3> kVoiceSpeeds = {1.0, 1.5, 2.0};
 }  // namespace
 
@@ -71,10 +52,6 @@ using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
-// Voice messages: recording, the take waiting to be sent, and playback.
-
-// The one VoiceNote this controller records and plays through, built on first
-// use. Both playback kinds end on the same signal, so both are cleared there.
 VoiceNote* SessionController::voiceNote()
 {
     if (!voice_) {
@@ -86,14 +63,9 @@ VoiceNote* SessionController::voiceNote()
             playbackTimer_.stop();
             voicePositionMs_ = 0;
             emit voiceChanged();
-            // Run on to the next voice message in this chat, from either side:
-            // a run of them is one thing to listen to, not a row of buttons.
             if (finished.isEmpty() || activePeer_.isEmpty()) {
                 return;
             }
-            // By protocol id in this conversation, either direction: the
-            // outgoing-only lookup that serves delivery receipts found nothing
-            // for a message we had received, and the run stopped at the first one.
             const qint64 playedId = store_.messageByE2e(finished, activePeer_).id;
             if (playedId == 0) {
                 return;
@@ -112,13 +84,11 @@ VoiceNote* SessionController::voiceNote()
         connect(&voiceTimer_, &QTimer::timeout, this, [this]() {
             voiceLevel_ = voice_->inputLevel();
             if (!voiceRecording_) {
-                emit voiceChanged();  // watching the microphone, not filling a take
+                emit voiceChanged();
                 return;
             }
             voiceElapsedMs_ = voice_->elapsedMs();
             emit voiceChanged();
-            // Full is full, by weight or by the clock. Recording stops on its
-            // own - the take is kept, and the user still decides whether it goes.
             if (voiceElapsedMs_ >= kMaxVoiceMs
                 || voice_->encodedBytes() >= kMaxVoiceBytes) {
                 stopVoiceRecording();
@@ -137,7 +107,6 @@ void SessionController::startVoiceMonitor()
     try {
         voiceNote()->startMonitoring();
     } catch (const std::exception& error) {
-        // A microphone that cannot be opened is the very thing this is for.
         voiceError_ = QString::fromUtf8(error.what());
         emit voiceChanged();
         return;
@@ -169,14 +138,12 @@ void SessionController::startVoiceRecording()
     if (activePeer_.isEmpty() || voiceRecording_) {
         return;
     }
-    // The same microphone cannot be watched and recorded at once.
     stopVoiceMonitor();
     discardVoiceTake();
     voiceError_.clear();
     try {
         voiceNote()->startRecording();
     } catch (const std::exception& error) {
-        // Shown in the recorder itself, where the button that failed is.
         voiceError_ = QString::fromUtf8(error.what());
         emit voiceChanged();
         return;
@@ -320,7 +287,6 @@ void SessionController::cycleVoiceSpeed()
 {
     voiceSpeedStep_ = (voiceSpeedStep_ + 1) % static_cast<int>(kVoiceSpeeds.size());
     emit voiceChanged();
-    // A speed chosen mid-playback applies to what is playing, from where it is.
     if (!voicePlaying_.isEmpty()) {
         const QString playing = voicePlaying_;
         stopVoice();
@@ -330,8 +296,6 @@ void SessionController::cycleVoiceSpeed()
 
 void SessionController::playVoice(const QString& e2eId, const qint64 fromMs)
 {
-    // The play button on the message that is playing stops it; a tap on its
-    // waveform moves playback instead, which is why the position decides.
     if (voicePlaying_ == e2eId && fromMs < 0) {
         stopVoice();
         return;
@@ -366,8 +330,6 @@ void SessionController::onVoiceLoaded(const QString& e2eId, const QByteArray& by
         voice_->play(Bytes(bytes.begin(), bytes.end()), voiceSpeed(), voiceSeekMs_);
         playbackTimer_.start();
     } catch (const std::exception& error) {
-        // Audio that will not unpack is a broken message, and saying so beats
-        // silence from a button that was just pressed.
         emit actionFailed(QStringLiteral("This voice message is broken."));
         bazarish::log::warn("voice audio did not unpack: {}", error.what());
         voicePlaying_.clear();

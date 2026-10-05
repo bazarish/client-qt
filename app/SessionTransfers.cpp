@@ -3,10 +3,6 @@
 
 #include "SessionShared.hpp"
 
-
-
-
-
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -14,8 +10,6 @@
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
 
-// Qt makes `emit` a macro and the log header declares a function of that name,
-// so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -53,8 +47,6 @@ using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
-// Files in both directions: what a transfer is doing and where it lands.
-
 void SessionController::saveAttachmentToFile(const QString& peer, const QString& e2eId,
     const QString& fileUrl, qint64 token)
 {
@@ -64,15 +56,8 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
             token, false, QStringLiteral("Choose where to save the file."));
         return;
     }
-    // Mark the message as downloading at once, so the bubble shows activity even
-    // before the first byte-progress callback arrives.
     conversation_.setDownloadProgressForId(token, 0, 0);
-    // Remember the destination so a successful download can record where it landed
-    // (for the later "Open" action).
     pendingSavePath_.insert(token, dest);
-    // The row carries the transfer's id, which is what stops it: a download that
-    // has outlived its point must be endable from the activity panel, the same
-    // way a send is.
     beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
         QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_, e2eId);
     emit requestSaveAttachment(peer, e2eId, dest, token);
@@ -117,20 +102,14 @@ void SessionController::onTransferStage(
     if (m.id == 0) {
         return;
     }
-    // A transfer runs long and can be stopped, so it gets a row of its own the
-    // moment it starts - a send row from an hour ago is not that row.
     const QString opId = (m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
         + QString::number(m.id);
     if (operations_.indexOf(opId) < 0) {
         beginOperation(opId, m.outgoing ? QStringLiteral("file-up") : QStringLiteral("file-down"),
             m.attName.isEmpty() ? QStringLiteral("file") : m.attName, stage, peer, e2eId);
     } else {
-        // The send's own row, opened when the file was announced: now there is a
-        // transfer behind it, and it is stoppable.
         operations_.setCancelId(opId, e2eId);
     }
-    // The row exists whether or not this conversation is on screen; the model
-    // only has it while it is, and replayTransfersForActivePeer puts it back.
     if (peer == activePeer_) {
         conversation_.setTransferStageForId(m.id, stage);
     }
@@ -171,8 +150,6 @@ void SessionController::onServedFinished(
 {
     const StoredMessage m = store_.messageByE2e(e2eId, peer);
     if (m.id == 0 || peer != activePeer_) {
-        // Nobody is looking at this conversation: remember the outcome so opening
-        // it shows what happened, instead of a bubble that quietly lost its bar.
         TransferProgress& kept = transfers_[e2eId];
         kept.peer = peer;
         kept.stage.clear();
@@ -180,7 +157,7 @@ void SessionController::onServedFinished(
         kept.ok = ok;
         kept.error = error;
         if (!ok) {
-            emit actionFailed(error);  // and say it now, wherever the user is
+            emit actionFailed(error);
         }
         if (m.id != 0) {
             finishOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
@@ -191,8 +168,6 @@ void SessionController::onServedFinished(
     }
     transfers_.remove(e2eId);
     if (!m.outgoing) {
-        // An incoming transfer ends where a download ends: the saved path, the
-        // bubble's own state and its row, all keyed by the message id.
         conversation_.setTransferStageForId(m.id, {});
         onDownloadFinished(m.id, ok, error);
         return;
@@ -226,7 +201,6 @@ void SessionController::replayTransfersForActivePeer()
             continue;
         }
         if (it.value().finished) {
-            // The outcome arrived while this conversation was closed.
             conversation_.setTransferStageForId(m.id, {});
             if (m.outgoing) {
                 conversation_.setUploadProgressForId(m.id, -1.0);
@@ -261,8 +235,6 @@ void SessionController::onDownloadFinished(qint64 token, bool ok, const QString&
     finishOperation(opId, ok, ok ? QStringLiteral("Saved") : (QStringLiteral("Failed: ") + error));
     conversation_.finishDownloadForId(token, ok, error);
     if (ok && !path.isEmpty()) {
-        // Remember where it landed, in the store and the open view, so the bubble
-        // can offer to open it (falling back to re-save when the file is gone).
         store_.setSavedPath(token, path);
         conversation_.setSavedPathForId(token, path);
     }
@@ -280,8 +252,6 @@ void SessionController::showInFolder(const QString& path) const
     }
     const QFileInfo info(path);
 #if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-    // Ask the desktop's file manager to reveal the file with it selected, via the
-    // freedesktop.org FileManager1 D-Bus interface (Nautilus, Dolphin, Nemo, ...).
     if (info.exists()) {
         QDBusInterface fm(QStringLiteral("org.freedesktop.FileManager1"),
             QStringLiteral("/org/freedesktop/FileManager1"),
@@ -295,8 +265,6 @@ void SessionController::showInFolder(const QString& path) const
         }
     }
 #endif
-    // Fallback (no D-Bus file manager, or the call failed): open the containing
-    // directory without a selection.
     const QString dir = info.absolutePath();
     if (!dir.isEmpty()) {
         QDesktopServices::openUrl(QUrl::fromLocalFile(dir));

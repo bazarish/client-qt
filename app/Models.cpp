@@ -76,9 +76,6 @@ QHash<int, QByteArray> ContactListModel::roleNames() const
 
 namespace {
 
-// Pinned chats first, then by most-recent activity. The saved chat takes its
-// place among the rest: it is a chat, and a chat nobody has written in has no
-// claim on the top of the list.
 bool before(const ContactRow& a, const ContactRow& b)
 {
     if (a.pinned != b.pinned) {
@@ -210,9 +207,6 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case DurationRole: return m.attDurationMs;
     case WaveRole: return m.attWave;
     case ReplyToRole: return m.replyTo;
-    // The local calendar day this message belongs to, as an ISO date string. The
-    // view groups messages into per-day sections off this role and renders a
-    // centered date separator at each change.
     case DayRole:
         return m.ts > 0
             ? QDateTime::fromMSecsSinceEpoch(m.ts).date().toString(QStringLiteral("yyyy-MM-dd"))
@@ -247,11 +241,6 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
 
 int ConversationModel::appendMessage(const StoredMessage& message)
 {
-    // Insert keeping the list sorted by (orderKey, id). A local send and a late
-    // arrival both carry orderKey ~= now, so they land at the end; a message that
-    // was sent recently but arrived out of order (smaller orderKey) slots back
-    // into its place among the recent tail. Scanning from the end keeps the common
-    // append case O(1) (see docs-main Messages.md "Ordering and timestamps").
     int row = static_cast<int>(messages_.size());
     while (row > 0) {
         const StoredMessage& prev = messages_[row - 1];
@@ -315,8 +304,6 @@ QVector<qint64> ConversationModel::markDeliveredThrough(qint64 uptoId)
     QVector<qint64> changed;
     for (int i = 0; i < messages_.size(); ++i) {
         StoredMessage& m = messages_[i];
-        // Only what reached the recipient's server: a message still at our own is
-        // not one a later read receipt can speak for.
         if (m.outgoing && m.id <= uptoId && m.status == DeliveryStatus::AtRecipientServer) {
             m.status = DeliveryStatus::Delivered;
             const QModelIndex idx = index(i);
@@ -551,7 +538,6 @@ void OperationListModel::upsert(const OperationRow& row)
 {
     const int i = indexOf(row.id);
     if (i < 0) {
-        // Newest at the top, matching how the panel reads top-to-bottom.
         beginInsertRows({}, 0, 0);
         ops_.prepend(row);
         endInsertRows();

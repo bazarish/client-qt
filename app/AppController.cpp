@@ -8,8 +8,6 @@
 
 #include <bazarish/I2p.hpp>
 
-// Qt makes `emit` a macro and the log header declares a function of that name,
-// so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -36,28 +34,18 @@
 
 namespace bazarish::app {
 
-
 AppController::AppController(QObject* parent)
     : QObject(parent)
     , manager_(std::make_unique<client::AccountManager>(accountsRoot()))
     , ringtone_(soundFolder())
 {
-    // The call window pulses with the ringtone, so the loudness of what is being
-    // heard is carried out to it as the sound plays.
     connect(&ringtone_, &Ringtone::levelChanged, this, [this](const qreal level) {
         ringLevel_ = level;
         emit ringLevelChanged();
     });
     refreshAccountList();
-    // Apply global settings (e.g. full privacy mode) before opening any account, so
-    // the first background sync already honours them.
     loadSettings();
-    // Accounts the user turned offline last run must stay offline: load that set
-    // before opening anything so they are skipped.
     loadOfflineSet();
-    // Open every unencrypted account in the background so they are all online by
-    // default (except the ones kept offline), then focus the last active one -
-    // no startup dialog when at least one account could be opened.
     openAllAccounts();
     const QString last = readLastActive();
     if (sessionFor(last) != nullptr) {
@@ -66,7 +54,7 @@ AppController::AppController(QObject* parent)
         activeId_ = sessions_.first()->accountId();
     }
     if (!activeId_.isEmpty()) {
-        writeLastActive(activeId_);  // stabilize the choice across runs
+        writeLastActive(activeId_);
     }
     refreshAccounts();
 }
@@ -114,9 +102,6 @@ void AppController::persistSettings() const
 
 QString AppController::notificationTitle(const SessionController* const ctrl) const
 {
-    // The bold line of a popup is which account of this user the event reached -
-    // that is what decides whether they need to look at all, and it is the one
-    // thing the body has no room to repeat. Who it was with is the body's job.
     if (ctrl == nullptr || ctrl->displayName().isEmpty()) {
         return QStringLiteral("Bazarish");
     }
@@ -141,8 +126,6 @@ void AppController::setNotificationsEnabled(const bool on)
     notifications_ = on;
     persistSettings();
     emit notificationsEnabledChanged();
-    // Turning them off silences a call that is ringing at that moment too: the
-    // setting is about what this application does outside its own window.
     updateRinging();
 }
 
@@ -152,9 +135,6 @@ void AppController::setBackgroundTasksVisible(const bool on)
         return;
     }
     backgroundTasks_ = on;
-    // Written straight through rather than through persistSettings(), which
-    // carries the notification flag alone and is called from the paths that own
-    // it.
     AppSettings::instance().setBackgroundTasks(backgroundTasks_);
     emit backgroundTasksVisibleChanged();
 }
@@ -165,8 +145,6 @@ void AppController::updateRinging()
     if (notifications_) {
         for (const SessionController* const ctrl : sessions_) {
             if (ctrl->callState() == QLatin1String("incoming")) {
-                // The first one found: two calls ringing at once is one call to
-                // answer and one to keep ringing behind it.
                 ringing = ctrl;
                 break;
             }
@@ -175,9 +153,6 @@ void AppController::updateRinging()
     const QString account = ringing ? ringing->accountId() : QString();
     const QString peer = ringing ? ringing->callPeerName() : QString();
     const QString fingerprint = ringing ? ringing->callPeer() : QString();
-    // Always named, not only when there are several accounts: the call window
-    // stands on the desktop with no title bar of its own, and its heading is
-    // where it says which account is being called.
     const QString accountName = ringing ? ringing->displayName() : QString();
     if (account != ringingAccount_ || peer != ringingPeer_
         || fingerprint != ringingPeerFingerprint_ || accountName != ringingAccountName_) {
@@ -198,7 +173,7 @@ void AppController::answerRinging()
 {
     SessionController* const ctrl = sessionFor(ringingAccount_);
     if (ctrl == nullptr) {
-        return;  // it stopped ringing while the press was on its way
+        return;
     }
     if (ctrl->accountId() != activeId_) {
         switchTo(ctrl->accountId());
@@ -263,7 +238,6 @@ void AppController::refreshAccountList()
                 sessionFor(id) != nullptr});
         }
     } catch (const std::exception& error) {
-        // A malformed account dir should not break the picker.
         bazarish::log::warn("account list incomplete: {}", error.what());
     }
     haveAccounts_ = !rows.isEmpty();
@@ -274,16 +248,9 @@ void AppController::refreshAccountList()
 
 void AppController::refreshAccountRows()
 {
-    // The picker lists what is on disk, but an open account knows better: it has
-    // learnt its own name or fingerprint while the listing was taken before any
-    // of that. Patch the rows from the live sessions instead of re-reading the
-    // files - unlocking an account database is expensive by design.
     bool changed = false;
     for (AccountListRow& row : accountRows_) {
         const SessionController* const ctrl = sessionFor(row.id);
-        // Whether it is open is the picker's business even when nothing else
-        // about the row has changed: an encrypted account that has been unlocked
-        // must stop being drawn, and treated, as a locked one.
         if (row.open != (ctrl != nullptr)) {
             row.open = ctrl != nullptr;
             changed = true;
@@ -313,11 +280,6 @@ void AppController::refreshAccountRows()
 void AppController::refreshAccounts()
 {
     refreshAccountRows();
-    // The unified list is every on-disk account, with live status merged in for
-    // the ones currently open. It reads the accounts this controller already
-    // listed, never the disk: this runs on every unread count change, and opening
-    // an account database means running its key derivation (a quarter of a second
-    // each, by design).
     QVector<AccountRow> rows;
     for (const AccountListRow& info : accountRows_) {
         const QString id = info.id;
@@ -330,9 +292,6 @@ void AppController::refreshAccounts()
             row.online = ctrl->online();
             row.connected = ctrl->reachable();
             row.unread = ctrl->unreadTotal();
-            // The active connection: which facade, and whether it is an I2P
-            // facade (host ends in ".b32.i2p") - drives the account list's
-            // positive green marking vs grey for a clearnet facade.
             row.activeFacade = ctrl->activeFacade();
             row.name = ctrl->displayName().isEmpty() ? info.name : ctrl->displayName();
             row.fingerprint
@@ -345,9 +304,6 @@ void AppController::refreshAccounts()
     }
     accountStatuses_ = rows;
     accounts_.setAccounts(std::move(rows));
-    // Warm spares are only ever handed to a lookup an open account makes. With
-    // every account offline nobody will ask, so the pool stops holding tunnels
-    // open on their behalf.
     bool anyOnline = false;
     for (const SessionController* const session : sessions_) {
         if (session != nullptr && session->online()) {
@@ -384,7 +340,6 @@ int AppController::unreadElsewhere() const
 void AppController::openSession(const QString& id, const QString& passphrase,
     const bool makeActive, const bool startOnline)
 {
-    // Already open: just focus it (or do nothing for a background request).
     if (sessionFor(id) != nullptr) {
         if (makeActive) {
             setActive(id);
@@ -393,7 +348,6 @@ void AppController::openSession(const QString& id, const QString& passphrase,
         return;
     }
 
-    // An encrypted account needs its passphrase; ask the UI for it.
     if (passphrase.isEmpty() && manager_->exists(id.toStdString())) {
         try {
             for (const AccountListRow& info : accountRows_) {
@@ -404,7 +358,6 @@ void AppController::openSession(const QString& id, const QString& passphrase,
                 }
             }
         } catch (const std::exception& error) {
-            // fall through and attempt the open
             bazarish::log::warn("could not tell whether the account is encrypted: {}",
                 error.what());
         }
@@ -424,18 +377,11 @@ void AppController::openSession(const QString& id, const QString& passphrase,
     connect(ctrl, &SessionController::openFailed, this, [this, ctrl, id](const QString& error) {
         removeSession(ctrl);
         if (unlockingId_ == id) {
-            // The prompt stays open with the reason on it; the account it was
-            // opened for does not come online on a wrong passphrase.
             refreshAccounts();
             emit unlockFailed(error);
             return;
         }
         if (pendingDeleteId_ == id) {
-            // The profile was opened so the account could be ended on its server,
-            // and it did not open. The directory is still just files and can go,
-            // but the key that ends the account is inside it - so this is the
-            // user's call, not a silent return that leaves a profile nothing can
-            // remove.
             pendingDeleteId_.clear();
             bazarish::log::warn("account {} could not be opened to delete it: {}",
                 id.toStdString(), error.toStdString());
@@ -449,17 +395,11 @@ void AppController::openSession(const QString& id, const QString& passphrase,
             emit notificationRequested(ctrl->accountId(), peer, notificationTitle(ctrl),
                 tr("New message from %1").arg(fromName));
         });
-    // A reaction is announced like a message, and says what it was: the emoji
-    // itself, not the text it was put on - the message is already the user's own
-    // and they will see it when the notification takes them there.
     connect(ctrl, &SessionController::reactionNotification, this,
         [this, ctrl](const QString& peer, const QString& fromName, const QString& emoji) {
             emit reactionNotificationRequested(ctrl->accountId(), peer, notificationTitle(ctrl),
                 tr("%1 reacted %2").arg(fromName, emoji));
         });
-    // A call is not announced in the tray. It rings, and it puts a window of its
-    // own where it will be seen; both are decided here, from the state of every
-    // open account.
     connect(ctrl, &SessionController::callChanged, this, [this]() { updateRinging(); });
     connect(ctrl, &SessionController::unreadTotalChanged, this, &AppController::refreshAccounts);
     connect(ctrl, &SessionController::onlineChanged, this, &AppController::refreshAccounts);
@@ -491,8 +431,6 @@ void AppController::openAllAccounts()
 {
     for (const AccountListRow& info : accountRows_) {
         const QString id = info.id;
-        // Skip accounts the user turned offline: they stay closed (shown as
-        // Offline) until explicitly switched on, so the choice survives a restart.
         if (!info.encrypted && offline_.constFind(id) == offline_.cend()) {
             openSession(id, {}, /*makeActive=*/false);
         }
@@ -503,23 +441,13 @@ void AppController::removeSession(SessionController* const ctrl)
 {
     const QString id = ctrl->accountId();
     sessions_.removeAll(ctrl);
-    // The interface lets go first. A binding still pointing at this session when
-    // it is destroyed reads freed memory, and the account list, the ringing state
-    // and the window all hold it - so they are told while it is still there.
     if (activeId_ == id) {
         activeId_ = sessions_.isEmpty() ? QString() : sessions_.first()->accountId();
         writeLastActive(activeId_);
         emit sessionChanged();
     }
-    // An account that has just been closed cannot go on ringing.
     updateRinging();
     refreshAccounts();
-    // Closed in the background. Nothing the user is looking at may wait for this:
-    // a session that is closing has a long poll to bring home, and that request
-    // is meant to hang for half a minute. The object goes when its thread has
-    // ended - and later than this call, because we are often standing inside one
-    // of its own signals (the server answering that the account is ended), where
-    // deleting the sender is a use-after-free.
     ++closingCount_;
     connect(ctrl, &SessionController::closed, this, [this, ctrl, id]() {
         --closingCount_;
@@ -534,8 +462,6 @@ void AppController::removeSession(SessionController* const ctrl)
 
 void AppController::onSessionClosed(const QString& id)
 {
-    // An account being deleted keeps its files until it is closed: they are what
-    // the session was reading and writing.
     if (pendingRemovals_.remove(id)) {
         removeAccountFiles(id);
     }
@@ -550,7 +476,6 @@ void AppController::removeAccountFiles(const QString& id)
     try {
         manager_->remove(id.toStdString());
     } catch (const std::exception& error) {
-        // What is left behind is on disk, and the user must be able to find out.
         bazarish::log::warn("account directory not removed: {}", error.what());
     }
     refreshAccountList();
@@ -574,25 +499,17 @@ void AppController::createAccount(const QString& name, const QString& passphrase
 
 void AppController::openAccount(const QString& id, const QString& passphrase)
 {
-    // Unlocking is not the same as switching on. An account the user turned off
-    // is unlocked to be read: it opens, its chats are there, and it stays off
-    // until the switch says otherwise. Only an unlock asked for by that switch -
-    // or an account that was never turned off - comes online here.
     const bool wasOff = offline_.constFind(id) != offline_.cend();
     const bool bringOnline = !wasOff || (unlockingId_ == id && unlockToBringOnline_);
-    // The attempt is still an unlock until it is known to have worked: clearing
-    // this before the open meant a wrong passphrase was reported as if nobody had
-    // been asked for one, which is to say not reported at all.
     unlockingId_ = id;
     openSession(id, passphrase, /*makeActive=*/true, /*startOnline=*/bringOnline);
     if (sessionFor(id) == nullptr) {
-        return;  // it did not open; the prompt has been told why
+        return;
     }
     unlockingId_.clear();
     unlockToBringOnline_ = false;
     emit accountUnlocked(id);
     if (pendingDeleteId_ == id) {
-        // It was unlocked to be deleted; now it can be.
         deleteAccount(id);
         return;
     }
@@ -611,11 +528,7 @@ void AppController::cancelUnlock()
 {
     unlockingId_.clear();
     unlockToBringOnline_ = false;
-    // A deletion waiting on this unlock is off as well: nothing was deleted, and
-    // the user has to say so again.
     pendingDeleteId_.clear();
-    // Nothing changed on disk while the prompt was open, so redrawing the rows
-    // puts every switch back to what it says there.
     refreshAccounts();
 }
 
@@ -623,10 +536,6 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
     const QString& password, const QString& atRestPassphrase)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
-    // Unsealing a bundle, writing a keyed database and laying out the account is
-    // seconds to a minute of work with the avatars in it. It runs off this thread
-    // and reports where every other slow thing reports, so the window stays alive
-    // and the user can see that something is happening.
     OperationRow row;
     row.id = QStringLiteral("restore");
     row.kind = QStringLiteral("account");
@@ -647,7 +556,6 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
         } catch (const std::exception& e) {
             failure = QString::fromUtf8(e.what());
         }
-        // Back on the GUI thread: the models and the session belong to it.
         QMetaObject::invokeMethod(this,
             [this, id, failure, atRestPassphrase]() {
                 operations_.update(QStringLiteral("restore"),
@@ -668,20 +576,12 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
 void AppController::deleteAccount(const QString& id)
 {
     if (!deletingId_.isEmpty()) {
-        // One at a time. Every press used to start another conversation with the
-        // server about the same account.
         return;
     }
     deletingId_ = id;
     emit deletingChanged();
     SessionController* ctrl = sessionFor(id);
     if (ctrl == nullptr) {
-        // Only the account itself can end itself: the server is told by a request
-        // signed with the identity key, and that key is inside the profile. A
-        // locked profile therefore has to be unlocked first - or deleted from this
-        // device alone, which leaves the account standing on its server. That is a
-        // real choice with a real consequence, so it is put to the user rather
-        // than decided here.
         for (const AccountListRow& info : accountRows_) {
             if (info.id == id && info.encrypted) {
                 deletingId_.clear();
@@ -701,21 +601,14 @@ void AppController::deleteAccount(const QString& id)
     }
     pendingDeleteId_.clear();
     if (ctrl->configuredFacades().isEmpty()) {
-        // A profile that never reached a server: there is no registration to end,
-        // no destination to revoke and no mailbox to drop, so asking would only
-        // fail and put a warning in front of the user about nothing.
         forgetAccountLocally(id);
         return;
     }
-    // One answer, whichever way it goes, and then this connection is done with.
     const auto connection = std::make_shared<QMetaObject::Connection>();
     *connection = connect(ctrl, &SessionController::accountClosedOnServer, this,
         [this, id, connection](const bool ok, const QString& error) {
             disconnect(*connection);
             if (!ok) {
-                // The profile stays: it holds the only key that can ask again, and
-                // deleting it here would leave an account on the server that
-                // nobody can ever end.
                 deletingId_.clear();
                 emit deletingChanged();
                 emit accountDeleteFailed(id, error, /*profileNotOpened=*/false);
@@ -729,7 +622,6 @@ void AppController::deleteAccount(const QString& id)
 void AppController::deleteAccountAfterUnlock(const QString& id)
 {
     pendingDeleteId_ = id;
-    // Asks for the passphrase; the deletion goes on from where the unlock lands.
     openSession(id, {}, /*makeActive=*/false);
     if (sessionFor(id) != nullptr) {
         deleteAccount(id);
@@ -738,22 +630,9 @@ void AppController::deleteAccountAfterUnlock(const QString& id)
 
 void AppController::forgetAccountLocally(const QString& id)
 {
-    // If the account is open, it has to let go of its files before they can be
-    // removed - and letting go takes as long as the request it has in flight.
     if (SessionController* const ctrl = sessionFor(id)) {
-        // Which is why the row says so meanwhile: without it a press on
-        // "this device only" answers with nothing at all until the session
-        // finishes whatever it was doing.
         deletingId_ = id;
         emit deletingChanged();
-        // Nothing is asked of the server. The user chose to remove this device's
-        // copy, and a request queued onto the very thread that is about to be
-        // stopped would be one more round trip to wait out before the files can
-        // go - for a courtesy the server works out for itself when this device
-        // stops collecting mail.
-        //
-        // The files go when the session lets go of them, which is not now.
-        // onSessionClosed finishes the job.
         pendingRemovals_.insert(id);
         removeSession(ctrl);
         return;
@@ -765,12 +644,8 @@ void AppController::openConversationOf(const QString& accountId, const QString& 
 {
     SessionController* const ctrl = sessionFor(accountId);
     if (ctrl == nullptr) {
-        // Nothing to open: an account only announces anything while it is open,
-        // so this is the account having been closed between the popup and the
-        // click. The window still comes back.
         return;
     }
-    // Already a no-op when this is the account on screen.
     setActive(accountId);
     ctrl->openConversation(peer);
 }
@@ -781,10 +656,6 @@ void AppController::switchTo(const QString& id)
         setActive(id);
         return;
     }
-    // Opening an account is not switching it on. One the user turned off opens
-    // to be read - its chats are there, and nothing of it goes on the network -
-    // and stays off until its own switch says otherwise. Only that switch, and
-    // nothing else, takes an account online.
     const bool wasOff = offline_.constFind(id) != offline_.cend();
     openSession(id, {}, /*makeActive=*/true, /*startOnline=*/!wasOff);
 }
@@ -793,8 +664,6 @@ void AppController::setOnline(const QString& id, bool on)
 {
     SessionController* ctrl = sessionFor(id);
     if (!on) {
-        // Remembered across runs: an account switched off is not opened at the
-        // next launch either.
         setAccountOffline(id, true);
         if (ctrl != nullptr) {
             ctrl->goOffline();
@@ -808,13 +677,9 @@ void AppController::setOnline(const QString& id, bool on)
         refreshAccounts();
         return;
     }
-    // A locked account cannot come online until it is unlocked, and the switch
-    // must not claim otherwise in the meantime: nothing is written here, and
-    // openAccount writes it once the passphrase actually opens the account.
     unlockToBringOnline_ = true;
     openSession(id, {}, /*makeActive=*/false);
     if (unlockingId_.isEmpty()) {
-        // Not a locked account: it opened (or failed) on the spot.
         unlockToBringOnline_ = false;
         setAccountOffline(id, false);
         refreshAccounts();
@@ -833,10 +698,6 @@ QString AppController::dataLocation() const
 
 namespace {
 
-// Whether a path sits inside the system's temporary directory. An AppImage run
-// with APPIMAGE_EXTRACT_AND_RUN unpacks itself there, and the unpacked copy is
-// writable - so "beside the application" would be a directory that the next
-// reboot clears, with every account in it.
 bool underTempDirectory(const std::filesystem::path& path)
 {
     std::error_code error;
@@ -851,8 +712,6 @@ bool underTempDirectory(const std::filesystem::path& path)
     return mismatch.first == temp.end();
 }
 
-// Whether a directory can be created in and written to, answered by doing it:
-// permissions alone do not say whether the filesystem underneath is read-only.
 bool directoryIsWritable(const std::filesystem::path& directory)
 {
     std::error_code error;
@@ -877,10 +736,6 @@ void AppController::setPortable(const bool on)
                              : client::AccountManager::portableRoot();
     const fs::path to = on ? client::AccountManager::portableRoot()
                            : client::AccountManager::globalRoot();
-    // Asked before anything is closed or moved: a directory that cannot be
-    // written to (an AppImage on a read-only medium, an application directory
-    // owned by root) would otherwise be discovered halfway through, with the
-    // accounts already shut and the data already moved.
     if (on && underTempDirectory(client::AccountManager::portableRoot())) {
         emit createFailed(QStringLiteral("This copy of the application is running from a "
                                          "temporary directory (")
@@ -899,8 +754,6 @@ void AppController::setPortable(const bool on)
                              "and try again."));
         return;
     }
-    // Close everything first: accounts hold their transcripts open, and moving a
-    // directory out from under them would be moving files that are being written.
     closeAllSessions();
     std::error_code error;
     if (fs::exists(from, error) && !fs::is_empty(from, error)) {
@@ -913,8 +766,6 @@ void AppController::setPortable(const bool on)
         fs::create_directories(to.parent_path(), error);
         fs::rename(from, to, error);
         if (error) {
-            // Across devices rename fails; copy then remove, which is the same
-            // thing at a cost.
             error.clear();
             fs::copy(from, to, fs::copy_options::recursive, error);
             if (error) {
@@ -932,9 +783,6 @@ void AppController::setPortable(const bool on)
         fs::remove(client::AccountManager::portableMarker(), error);
     }
     emit portableChanged();
-    // Nothing in this window works from here on: the accounts are closed and the
-    // embedded router is still holding the directory that just moved. The dialog
-    // this raises has one button, and it quits.
     emit restartRequired(on
             ? QStringLiteral("Your data now lives beside the app. Bazarish has to be started "
                              "again to use it.")
@@ -944,25 +792,14 @@ void AppController::setPortable(const bool on)
 
 namespace {
 
-// What a picture is allowed to grow to before it is sent. A tunnel carries this
-// in a few seconds; a phone camera's original would sit in the transfer for
-// minutes and be resized on arrival anyway.
 constexpr int kMaxImageEdge = 1600;
-// A picture travels inside the message, so what has to fit is not the picture
-// but its base64 (a third larger) plus the envelope around it, inside the
-// protocol's 512 KiB message ceiling. A quarter of a megabyte leaves room for
-// both and still crosses a tunnel in seconds.
 constexpr qint64 kMaxImageBytes = 256 * 1024;
 constexpr int kJpegQuality = 85;
-// Each step down when the encoded picture still does not fit.
 constexpr int kQualityStep = 10;
 constexpr int kMinJpegQuality = 45;
 constexpr double kEdgeStep = 0.75;
 constexpr int kMinImageEdge = 640;
 
-// Encodes into the smallest of the formats that keeps the picture honest: PNG
-// when it has transparency to lose, JPEG otherwise, stepping quality and then
-// size down until it fits.
 QByteArray encodedImage(QImage image, QString* format)
 {
     if (image.width() > kMaxImageEdge || image.height() > kMaxImageEdge) {
@@ -982,14 +819,13 @@ QByteArray encodedImage(QImage image, QString* format)
         if (bytes.size() <= kMaxImageBytes) {
             return bytes;
         }
-        // Quality first (invisible at these sizes), then the picture itself.
         if (!transparent && quality > kMinJpegQuality) {
             quality -= kQualityStep;
             continue;
         }
         const int edge = static_cast<int>(std::max(image.width(), image.height()) * kEdgeStep);
         if (edge < kMinImageEdge) {
-            return bytes;  // as small as this is worth making it
+            return bytes;
         }
         image = image.scaled(edge, edge, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     }
@@ -1052,8 +888,6 @@ QString AppController::writePreparedImage(const QImage& image, const QString& ba
 QString AppController::markupHtml(const QString& text, const QColor& actionColor,
     const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const
 {
-    // name() and not the colour as QML would spell it: a document reads #rrggbb,
-    // and the alpha QML puts in front of it is not a colour it understands.
     return markup::toHtml(text,
         markup::Colors{actionColor.name(), chipColor.name(), codeColor.name(),
             codeTextColor.name()});
@@ -1097,13 +931,6 @@ void AppController::prepareForExit()
         return;
     }
     exiting_ = true;
-    // Nothing is torn down on the way out, and nothing is waited for. Everything
-    // durable is already on disk - the transcript and the account file commit as
-    // they are written - so what is left standing is the I2P engine, whose lanes
-    // are still carrying packets. Closing its destinations here means freeing,
-    // from this thread, what those lanes are using, and that is a crash on the
-    // way out rather than an exit. The process ends instead; the sockets and the
-    // tunnels go with it.
     emit readyToExit();
 }
 
@@ -1123,6 +950,5 @@ void AppController::closeAccount()
     }
     refreshAccountList();
 }
-
 
 }  // namespace bazarish::app

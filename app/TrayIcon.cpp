@@ -21,29 +21,12 @@ namespace bazarish::app {
 
 namespace {
 
-// The sizes a tray asks for. The master icon is 512x512, and a tray handed that
-// alone has nothing to draw at the size it actually wants.
 constexpr std::array<int, 5> kTraySizes{16, 22, 24, 32, 48};
-// Unread turns the icon the brand's own green (#39ff14), washed over the tile
-// rather than replacing it: the mark stays readable, and the colour change is
-// visible at 22 pixels on a light panel and a dark one alike.
 constexpr int kUnreadTintAlpha = 140;
-// How long a popup stays up. Long enough to read a name, short enough not to sit
-// over other work.
 constexpr int kPopupMs = 6000;
-// How closely two notification sounds may follow one another while what they
-// announced is still unread: half again the length of the sound in use. Enough
-// that a flood of messages is heard as a flood rather than smeared into one long
-// noise by sounds starting over each other, and no more than that - a fixed ten
-// seconds silenced everything after the first arrival. The popup is not held back
-// either way; only the sound is.
 constexpr int kSoundSpacingNumerator = 3;
 constexpr int kSoundSpacingDenominator = 2;
-// Stands in until the player has read the length of the file, which it has not
-// before the first sound of a session has played.
 constexpr int kAssumedSoundMs = 1000;
-// How recently the window must have been the active one for a tray click to read
-// as "put it away" rather than "bring it here".
 constexpr int kRecentlyActiveMs = 400;
 
 QIcon iconFromMaster(const QImage& master, const QColor& tint)
@@ -54,8 +37,6 @@ QIcon iconFromMaster(const QImage& master, const QColor& tint)
             master.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation));
         if (tint.alpha() > 0) {
             QPainter painter(&pixmap);
-            // Only where the icon already is: the tile takes the colour and the
-            // transparent corners stay transparent.
             painter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
             painter.fillRect(pixmap.rect(), tint);
         }
@@ -66,8 +47,6 @@ QIcon iconFromMaster(const QImage& master, const QColor& tint)
 
 QString statusOf(const AccountRow& account)
 {
-    // An account that is not open is not running either, which is the same thing
-    // to a user reading a list of them.
     if (!account.open || !account.online) {
         return QObject::tr("disabled");
     }
@@ -92,9 +71,6 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
     unreadIcon_ = iconFromMaster(master, QColor(0x39, 0xff, 0x14, kUnreadTintAlpha));
     tray_.setIcon(idleIcon_);
     tray_.setContextMenu(&menu_);
-    // Built when it is about to be shown rather than on every change: the accounts
-    // republish their status on each sync, and a menu rebuilt under the pointer is
-    // a menu that closes itself while being read.
     connect(&menu_, &QMenu::aboutToShow, this, &TrayIcon::rebuildMenu);
     rebuildMenu();
     refreshIcon();
@@ -108,9 +84,6 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
                 toggleWindow();
             }
         });
-    // A popup that is clicked is a request to see what it was about, never to put
-    // the window away - and what it was about is a conversation, so that is what
-    // opens, not merely the window it is in.
     connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::openNotified);
     connect(&app_, &AppController::accountsChanged, this, &TrayIcon::refreshIcon);
     connect(&app_, &AppController::notificationRequested, this, &TrayIcon::notify);
@@ -138,8 +111,6 @@ void TrayIcon::showWindow()
     if (window_ == nullptr) {
         return;
     }
-    // Only the minimised bit is cleared: a window that was maximised comes back
-    // maximised, which is how it was left.
     window_->setWindowStates(window_->windowStates() & ~Qt::WindowMinimized);
     window_->show();
     window_->raise();
@@ -202,8 +173,6 @@ void TrayIcon::refreshIcon()
     }
     const bool hasUnread = unread > 0;
     if (!hasUnread) {
-        // Everything announced has been read: the next arrival is heard when it
-        // comes rather than at the end of the interval.
         announcedWasRead_ = true;
     }
     if (hasUnread != showingUnread_) {
@@ -223,8 +192,6 @@ void TrayIcon::notify(const QString& accountId, const QString& peer, const QStri
 void TrayIcon::notifyReaction(
     const QString& accountId, const QString& peer, const QString& title, const QString& body)
 {
-    // The same popup as a message, with its own shorter sound. What it was put
-    // on is one of the user's own messages, and a click takes them to it.
     announce(accountId, peer, title, body, reactionSound_, sinceReactionSound_);
 }
 
@@ -242,26 +209,15 @@ void TrayIcon::announce(const QString& accountId, const QString& peer, const QSt
     if (!app_.notificationsEnabled()) {
         return;
     }
-    // Nothing is announced while the user is looking at the application: they can
-    // already see it happen.
     if (QApplication::applicationState() == Qt::ApplicationActive) {
         return;
     }
-    // A call that is ringing owns the sound and the screen: nothing else beeps
-    // over it or pops up in front of it. Whatever arrived is still in the chat
-    // list when the call is over.
     if (!app_.ringingPeer().isEmpty()) {
         return;
     }
-    // Remembered before it is shown: a click on it has to know where to go.
     notifiedAccount_ = accountId;
     notifiedPeer_ = peer;
     tray_.showMessage(title, body, idleIcon_, kPopupMs);
-    // Every message shows, and the sound is what is rationed: while what was
-    // announced is still unread, one sound stands for everything that arrives in
-    // the interval. Reading it clears the hold, so the next arrival is heard as
-    // soon as it comes. A call is not rationed at all - it has its own sound, and
-    // it does not come through here.
     const qint64 length = sound.durationMs() > 0 ? sound.durationMs() : kAssumedSoundMs;
     const qint64 spacing = length * kSoundSpacingNumerator / kSoundSpacingDenominator;
     const bool quiet = !announcedWasRead_ && since.isValid() && since.elapsed() < spacing;

@@ -11,7 +11,6 @@
 #include <bazarish/I2p.hpp>
 #include <bazarish/Sam.hpp>
 
-// Qt's "emit" keyword macro collides with bazarish::log::emit.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -29,8 +28,6 @@
 namespace bazarish::app {
 
 namespace {
-// The router serves the whole installation, so its state sits at the root of it
-// rather than among the accounts.
 std::filesystem::path i2pRoot()
 {
     return appRoot() / "i2p";
@@ -49,22 +46,14 @@ bazarish::i2p::Privacy privacyForLevel(const int level)
 I2pController::I2pController(QObject* parent)
     : QObject(parent)
 {
-    // Read before anything can change it: this is what the process is actually
-    // running on, and every later choice is compared with it.
     transportAtStart_ = AppSettings::instance().gatewayEnabled()
         ? QStringLiteral("gateway")
         : (AppSettings::instance().samEnabled() ? QStringLiteral("sam")
                                                 : QStringLiteral("embedded"));
     // libi2pd logging is off by default: fully silent.
     loggingEnabled_ = AppSettings::instance().i2pLogging();
-    // Tunnel hop length. The default is the shortest tunnels: the application has
-    // to be usable before it can be anything else, and the page states what one
-    // hop does and does not conceal.
     privacyLevel_ = std::clamp(
         AppSettings::instance().i2pTunnelLength(), kMinimalPrivacyLevel, kMaxPrivacyLevel);
-    // The clearnet side of the router: nothing by default, so it goes straight
-    // out. Read before the router is brought up, because the transports read it
-    // as they start.
     {
         proxyHost_ = QString::fromStdString(AppSettings::instance().i2pProxyHost());
         proxyPort_ = AppSettings::instance().i2pProxyPort();
@@ -74,9 +63,6 @@ I2pController::I2pController(QObject* parent)
                 proxyHost_.toStdString(), proxyPort_);
         }
     }
-    // Which transport carries this process. The engine inside it unless the user
-    // has said otherwise: a router outside is somebody else's process, and
-    // putting the traffic through it is a decision to make deliberately.
     samHost_ = QString::fromStdString(AppSettings::instance().samHost());
     samPort_ = AppSettings::instance().samPort();
     samEnabled_ = AppSettings::instance().samEnabled();
@@ -84,8 +70,6 @@ I2pController::I2pController(QObject* parent)
     gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
     gatewayAddress_ = QString::fromStdString(AppSettings::instance().gatewayAddress());
     if (gatewayEnabled_) {
-        // Named before anything asks for the router, because which one comes up
-        // is settled at its first use and not afterwards.
         const std::optional<client::GatewayAddress> parsed
             = client::GatewayAddress::parse(gatewayAddress_.toStdString());
         if (parsed.has_value()) {
@@ -97,13 +81,9 @@ I2pController::I2pController(QObject* parent)
     if (samEnabled_) {
         client::setSamTransport(samHost_.toStdString(), samPort_);
     }
-    // The router is the transport, not a feature: without it there is no way to
-    // reach a server, so there is nothing to turn off.
     client::setI2pEnabled(true);
     bazarish::i2p::setI2pLogging(loggingEnabled_);
     client::setTunnelPrivacy(privacyForLevel(privacyLevel_));
-    // Brought up at launch so it passively learns the network (routers +
-    // floodfills) even before any account uses it.
     reconcileRouter();
     refresh();
 }
@@ -125,16 +105,12 @@ bool I2pController::samReachable(const QString& host, const int port) const
 
 void I2pController::saveSam(const QString& host, const int port)
 {
-    // Where the router is, not whether it is the one in use: the switch above
-    // decides that, and saving an address is not choosing it.
     samHost_ = host.trimmed();
     samPort_ = port;
     AppSettings::instance().setSam(samEnabled_, samHost_.toStdString(), samPort_);
     emit samChanged();
 }
 
-// Nothing has started yet, so this is what the process will run on: the choice
-// made before the engine is brought up is not a change to anything.
 void I2pController::noteChoiceInForce()
 {
     if (client::sharedI2pRouterIfRunning() == nullptr) {
@@ -165,10 +141,7 @@ void I2pController::useSam(const bool on)
     }
     samEnabled_ = on;
     AppSettings::instance().setSam(on, samHost_.toStdString(), samPort_);
-    // Turning this on turned a gateway off, which the page has to hear.
     gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
-    // Deliberately nothing else: this process is already running one engine or
-    // the other, and libi2pd cannot be initialised a second time in it.
     noteChoiceInForce();
     emit samChanged();
     emit gatewayChanged();
@@ -185,7 +158,6 @@ void I2pController::saveProxy(const QString& host, const int port, const bool re
     client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
     emit proxyChanged();
     if (restartNow) {
-        // Heavyweight (the engine's threads stop and start), so off the GUI thread.
         const std::filesystem::path dataDir = i2pRoot();
         std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
     }
@@ -195,9 +167,6 @@ void I2pController::saveProxy(const QString& host, const int port, const bool re
 void I2pController::reconcileRouter()
 {
     const std::filesystem::path dir = i2pRoot();
-    // Starting or stopping the engine is heavyweight (it joins worker threads), so
-    // do it off the GUI thread. reconcileI2pRouter reads the enable flag itself, so
-    // rapid toggles converge on the final state (idempotent, mutex-guarded).
     std::thread([dir]() { client::reconcileI2pRouter(dir); }).detach();
 }
 
@@ -243,8 +212,6 @@ void I2pController::checkAndSaveGateway(const QString& address)
     }
     gatewayChecking_ = true;
     emit gatewayChanged();
-    // The check talks to a host over the network and may wait out a timeout; the
-    // interface is not the thread to do that on.
     std::thread([this, parsed]() {
         const client::GatewayCheck check = client::checkGateway(parsed.value(), std::string());
         QMetaObject::invokeMethod(
@@ -256,11 +223,6 @@ void I2pController::checkAndSaveGateway(const QString& address)
                     emit gatewayRefused(QString::fromStdString(check.error));
                     return;
                 }
-                // Stored with the key the host presented, which every later
-                // connection is checked against. Stored is all it is: what
-                // carries the traffic is the switch above it, and a check that
-                // moved the whole application onto a gateway was deciding
-                // something nobody asked it to.
                 AppSettings::instance().rememberGateway(parsed->toString(), check.pin);
                 gatewayAsked_ = true;
                 gatewayAddress_ = QString::fromStdString(parsed->toString());
@@ -304,7 +266,6 @@ void I2pController::skipGateway()
     gatewayAsked_ = true;
     gatewayEnabled_ = false;
     noteChoiceInForce();
-    // The address stays: turning a gateway off is not forgetting it.
     emit gatewayChanged();
     emit transportChanged();
 }
@@ -320,16 +281,9 @@ void I2pController::clearGateway()
 
 void I2pController::refresh()
 {
-    // Never start the router here: report it only when another path (warmup, a
-    // connect, a call) has already brought it up.
     bazarish::i2p::Router* const router = client::sharedI2pRouterIfRunning();
     const bool running = router != nullptr;
     bool ready = false;
-    // A stopped router still has a netDb on disk, and how big it is says whether
-    // it is waiting for a bootstrap or just about to come up. Only this
-    // process's own engine has one: with the engine elsewhere the directory is
-    // either absent or left over from a time when it was here, and a count off
-    // it would be a number about nothing.
     const bool ownEngine = !samEnabled_ && !gatewayEnabled_;
     int knownRouters = ownEngine ? static_cast<int>(client::knownRouterCount(i2pRoot())) : 0;
     int floodfills = 0;
@@ -345,17 +299,12 @@ void I2pController::refresh()
     if (running) {
         ready = router->ready();
     }
-    // A router outside this process answers nothing about the network it is on,
-    // and asking throws rather than returning a zero that would read like a fact.
     if (running && router->capabilities().routerCounters) {
         knownRouters = router->knownRouters();
         floodfills = router->floodfills();
         inboundTunnels = router->inboundTunnels();
         outboundTunnels = router->outboundTunnels();
         for (const bazarish::i2p::TransportPeer& peer : router->transportPeers()) {
-            // Only the exception is marked. This router relays no transit and is no
-            // floodfill, so nothing has a reason to dial it and every session is
-            // one it opened: labelling them all "outgoing" said nothing.
             QString row = QString::fromStdString(peer.transport)
                 + (peer.outbound ? " · " : " · incoming · ");
             if (!peer.endpoint.empty()) {
@@ -367,10 +316,6 @@ void I2pController::refresh()
         transports.sort();
     }
     if (running) {
-        // The destinations are this process's own bookkeeping, so both transports
-        // can name them - only their tunnel counts belong to the engine.
-        // One router serves every open account, so a destination says whose it is
-        // as soon as there is more than one account to confuse it with.
         const bool manyAccounts = client::AccountManager(accountsRoot()).list().size() > 1;
         for (const bazarish::i2p::LocalDestination& dest : router->localDestinations()) {
             QVariantMap row;
@@ -380,14 +325,10 @@ void I2pController::refresh()
                 ? (QString::fromStdString(dest.owner) + QStringLiteral(": ") + what)
                 : what;
             row[QStringLiteral("host")] = QString::fromStdString(dest.host);
-            // A destination on its way out has no tunnels either, and calling that
-            // "building" said the opposite of what was happening.
             row[QStringLiteral("state")] = dest.closing ? QStringLiteral("closing")
                 : dest.ready
                 ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
                 : QStringLiteral("building");
-            // Zero here means "not known" under an external router, which is
-            // what the counters capability is for.
             row[QStringLiteral("tunnelsIn")] = dest.inboundTunnels;
             row[QStringLiteral("tunnelsOut")] = dest.outboundTunnels;
             row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;

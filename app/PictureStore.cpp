@@ -11,17 +11,10 @@ namespace bazarish::app {
 
 namespace {
 
-// What the decoded pictures may take between them. A window's worth of chat is a
-// few of them; an afternoon of scrolling is not worth a heap.
 constexpr qint64 kDecodedBudgetBytes = 64 * 1024 * 1024;
-// And what their bytes may take. These are small by construction (a picture is
-// prepared to a quarter of a megabyte), so this is hundreds of them.
 constexpr qint64 kStoredBudgetBytes = 32 * 1024 * 1024;
 constexpr int kBytesPerPixel = 4;
 
-// The first bytes of the two formats worth drawing. A message that announced a
-// picture and carried something else is broken, and this is where that is found
-// out - decoding waits until something draws it.
 bool looksLikeAPicture(const QByteArray& bytes)
 {
     static const QByteArray kPng = QByteArray::fromHex("89504E470D0A1A0A");
@@ -55,7 +48,7 @@ bool PictureStore::put(const QString& e2eId, const QByteArray& data)
         const QWriteLocker locker(&lock_);
         const auto existing = entries_.constFind(e2eId);
         if (existing != entries_.constEnd()) {
-            return true;  // already here, and the bytes cannot have changed
+            return true;
         }
         Entry entry;
         entry.bytes = data;
@@ -84,14 +77,10 @@ QImage PictureStore::image(const QString& e2eId)
             return {};
         }
         if (!found->decoded.isNull()) {
-            // A read lock cannot bump the clock; the entry is used, which is
-            // enough to keep it above the ones nothing has drawn.
             return found->decoded;
         }
     }
 
-    // Decode outside the lock: this runs on the image-loading thread and takes
-    // as long as the picture is large.
     QByteArray data;
     {
         const QReadLocker locker(&lock_);
@@ -112,7 +101,7 @@ QImage PictureStore::image(const QString& e2eId)
     const QWriteLocker locker(&lock_);
     const auto found = entries_.find(e2eId);
     if (found == entries_.end()) {
-        return decoded;  // dropped while decoding; the caller still gets it
+        return decoded;
     }
     if (found->decoded.isNull()) {
         found->decoded = decoded;
@@ -149,8 +138,6 @@ void PictureStore::evictLocked()
         if (found == entries_.end()) {
             continue;
         }
-        // The picture on the way out costs nothing to bring back: its bytes are
-        // in the account, and this is a cache, not the copy.
         decodedBytes_ -= decodedSize(found->decoded);
         storedBytes_ -= found->bytes.size();
         entries_.erase(found);
@@ -171,8 +158,6 @@ void PictureStore::clear()
 
 QImage PictureProvider::requestImage(const QString& id, QSize* size, const QSize& requestedSize)
 {
-    // The id carries a cache-busting revision after "?"; the picture is what is
-    // before it.
     const QString e2eId = id.section(QLatin1Char('?'), 0, 0);
     const QImage image = PictureStore::instance().image(e2eId);
     if (image.isNull()) {

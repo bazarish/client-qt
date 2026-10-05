@@ -14,13 +14,9 @@ class QAudioSink;
 
 namespace bazarish::app {
 
-// The shared call audio format: 48 kHz mono signed-16, matching the Opus codec.
 QAudioFormat callAudioFormat();
 
-// Microphone capture via Qt Multimedia. QAudioSource runs in pull mode, writing
-// captured PCM into an internal thread-safe ring; the call engine's capture
-// thread pops 20 ms frames from it. The QAudioSource itself is only ever touched
-// on the thread that constructs this object (the session worker thread).
+// Microphone capture via Qt Multimedia.
 class QtAudioSource : public bazarish::AudioSource {
 public:
     QtAudioSource();
@@ -36,9 +32,7 @@ private:
     std::unique_ptr<CaptureDevice> device_;
 };
 
-// Speaker playback via Qt Multimedia. QAudioSink runs in pull mode, reading PCM
-// from an internal thread-safe ring the call engine's receive thread fills;
-// underruns play silence. Same thread-affinity rule as QtAudioSource.
+// Speaker playback via Qt Multimedia.
 class QtAudioSink : public bazarish::AudioSink {
 public:
     QtAudioSink();

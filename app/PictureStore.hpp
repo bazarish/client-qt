@@ -11,19 +11,6 @@
 
 namespace bazarish::app {
 
-// The pictures of the conversations that have been on screen, keyed by the
-// message that carries them. The bytes come out of the account database - the
-// only place they are kept - and are decoded when something actually draws them,
-// on the thread that draws.
-//
-// It holds a bounded amount: a chat scrolled through for an hour must not turn
-// into a heap full of bitmaps, so the least recently drawn are dropped once the
-// budget is passed. Dropping costs nothing but a re-decode of bytes that are
-// still there.
-//
-// Thread-safe: filled from the GUI thread, decoded and read from the QML
-// image-loading thread. A revision that bumps on every change lets an Image whose
-// source embeds it reload when its picture arrives.
 class PictureStore : public QObject {
     Q_OBJECT
     Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
@@ -32,20 +19,14 @@ public:
 
     int revision() const { return revision_; }
 
-    // Keeps a picture's bytes. Returns false when they are not a picture at all -
-    // the message that carried them is broken, and says so.
     bool put(const QString& e2eId, const QByteArray& bytes);
 
-    // Whether this message's bytes are here.
     bool has(const QString& e2eId) const;
 
-    // The picture, decoded on first use and kept while it fits in the budget.
     QImage image(const QString& e2eId);
 
-    // The bytes as they were stored, for writing the picture out or copying it.
     QByteArray bytes(const QString& e2eId) const;
 
-    // Drops everything (an account closing).
     void clear();
 
 signals:
@@ -59,11 +40,10 @@ private:
 
     struct Entry {
         QByteArray bytes;
-        QImage decoded;      // empty until something draws it
-        quint64 usedAt = 0;  // for dropping the least recently drawn first
+        QImage decoded;
+        quint64 usedAt = 0;
     };
 
-    // Caller must hold the write lock.
     void evictLocked();
 
     mutable QReadWriteLock lock_;
@@ -74,7 +54,6 @@ private:
     int revision_ = 0;
 };
 
-// Serves image://picture/<e2eId>.
 class PictureProvider : public QQuickImageProvider {
 public:
     PictureProvider()

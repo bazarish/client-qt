@@ -18,12 +18,8 @@ namespace bazarish::app {
 
 namespace {
 
-// The name the window reports itself under (Qt's desktop file name on Wayland,
-// the WM class on X11); the entry has to be called the same or nothing matches.
 const char* const kEntryName = "bazarish";
 const char* const kWmClass = "Bazarish";
-// hicolor is where a desktop looks for an icon named in an entry, and this is the
-// size the master is.
 constexpr int kInstalledIconSize = 512;
 
 bool writeIfChanged(const QString& path, const QByteArray& content)
@@ -31,7 +27,7 @@ bool writeIfChanged(const QString& path, const QByteArray& content)
     QFile existing(path);
     if (existing.exists() && existing.open(QIODevice::ReadOnly)
         && existing.readAll() == content) {
-        return false;  // leaving it alone keeps its timestamp, and the caches with it
+        return false;
     }
     existing.close();
     QFile out(path);
@@ -49,7 +45,7 @@ void ensureDesktopEntry()
 {
     const QByteArray image = qgetenv("APPIMAGE");
     if (image.isEmpty()) {
-        return;  // not an AppImage: whoever installed this owns its entry
+        return;
     }
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     if (dataDir.isEmpty()) {

@@ -3,11 +3,9 @@
 
 #include "SessionShared.hpp"
 
-
 #include <QJsonDocument>
 
 #include <QJsonArray>
-
 
 #include "Session.hpp"
 
@@ -16,8 +14,6 @@
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
 
-// Qt makes `emit` a macro and the log header declares a function of that name,
-// so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -45,21 +41,12 @@
 namespace bazarish::app {
 
 namespace {
-// How many reactions outside the standard set the picker remembers.
 constexpr int kRecentReactions = 5;
-// How many unseen reactions are remembered for their flash. A person who has
-// been away comes back to a handful of them, not to a list that grew all week;
-// past this the oldest is dropped, and the reaction is still there to be read -
-// only its flash is not.
 constexpr int kReactionsToFlash = 64;
-// What one pending flash is written as: the conversation and the message, which
-// together name the reaction wherever the chat is scrolled to.
 QString flashKey(const QString& peer, const QString& target)
 {
     return peer + "\n" + target;
 }
-// The reactions offered without being asked for. Anything else a user reaches
-// for - typed, or tapped on someone else's chip - is theirs, and is remembered.
 const QStringList kStandardReactions = {QStringLiteral("\U0001F44D"),
     QStringLiteral("\u2764\uFE0F"), QStringLiteral("\U0001F602"),
     QStringLiteral("\U0001F389"), QStringLiteral("\U0001F525"), QStringLiteral("\U0001F62E"),
@@ -72,8 +59,6 @@ const QStringList kStandardReactions = {QStringLiteral("\U0001F44D"),
 using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
-
-// Reactions: the set offered, the ones recently used, and the flash on open.
 
 QStringList SessionController::standardReactions() const
 {
@@ -127,8 +112,6 @@ QStringList SessionController::reactionsToFlash(const QString& e2eId) const
         || !reactionsToFlash_.contains(flashKey(activePeer_, e2eId))) {
         return {};
     }
-    // Which of the emoji on this message to flash: the ones somebody else put
-    // there. Our own, echoed from another device of ours, was never news.
     QStringList emoji;
     for (const Reaction& reaction : store_.reactionsFor(activePeer_, e2eId)) {
         if (reaction.reactor != fingerprint_ && !reaction.emoji.isEmpty()) {
@@ -151,7 +134,6 @@ void SessionController::forgetReactionFlash()
         return;
     }
     persistReactionsToFlash();
-    // The chips are what read this, and they re-read on this revision.
     ++reactionsRevision_;
     emit reactionsRevisionChanged();
 }
@@ -161,10 +143,7 @@ void SessionController::react(const QString& e2eId, const QString& emoji)
     if (activePeer_.isEmpty() || e2eId.isEmpty()) {
         return;
     }
-    // Toggle: tapping the emoji we already set removes our reaction.
     const QString next = (myReaction(e2eId) == emoji) ? QString() : emoji;
-    // Setting one they reached for outside the standard set - typed, or tapped on
-    // somebody else's chip - puts it in their recents. Removing one does not.
     if (!next.isEmpty() && !kStandardReactions.contains(next)) {
         rememberReaction(next);
     }
@@ -190,7 +169,6 @@ QVariantList SessionController::reactionSummary(const QString& e2eId) const
     if (activePeer_.isEmpty() || e2eId.isEmpty()) {
         return out;
     }
-    // Aggregate by emoji, preserving the order each emoji was first seen.
     QStringList order;
     QHash<QString, int> counts;
     QString mine;

@@ -26,35 +26,21 @@ namespace bazarish::app {
 
 namespace {
 
-// The track carried inside the application, used unless the user leaves one of
-// their own at the root of the installation, under this name.
 const char* const kBuiltInTrack = ":/sound/ringtone.wav";
 const char* const kTrackName = "ringtone.wav";
 
-// The whole track is read into memory and walked through at the moment a call
-// arrives, on the thread that draws the window. What is past this size is not a
-// ringtone.
 constexpr qint64 kMaxTrackBytes = 8 * 1024 * 1024;
 
-// The track is measured in frames this long: short enough to follow a beat, long
-// enough that the light does not flicker between two neighbouring samples.
 constexpr int kEnvelopeFrameMs = 20;
-// How often the interface is told the level - about thirty times a second, which
-// is what a pulse needs to look like light rather than like steps.
 constexpr int kLevelIntervalMs = 33;
 constexpr int kMsPerSecond = 1000;
 constexpr int kUsPerMs = 1000;
 constexpr qint64 kUsPerSecond = static_cast<qint64>(kUsPerMs) * kMsPerSecond;
 
-// The one audio layout this plays: signed 16-bit samples, one channel. The
-// samples are read here rather than by a player, and it is that layout they are
-// read as; a track in any other is refused rather than guessed at.
 constexpr std::uint16_t kPcmFormatTag = 1;
 constexpr int kBitsPerSample = 16;
 constexpr int kChannels = 1;
 
-// RIFF (Multimedia Programming Interface and Data Specifications 1.0): the file
-// header, then chunks of an eight-byte header and a body padded to even length.
 constexpr int kRiffHeaderBytes = 12;
 constexpr int kChunkHeaderBytes = 8;
 constexpr int kTagBytes = 4;
@@ -80,8 +66,6 @@ std::uint32_t readU32(const char* const at)
     return qFromLittleEndian(value);
 }
 
-// Reads the parts of a WAV this needs and nothing else. False for anything that
-// is not the layout above.
 bool parseWav(const QByteArray& bytes, int& sampleRate, std::vector<std::int16_t>& samples)
 {
     if (bytes.size() < kRiffHeaderBytes
@@ -127,9 +111,6 @@ bool parseWav(const QByteArray& bytes, int& sampleRate, std::vector<std::int16_t
 
 }  // namespace
 
-// Hands the track over one buffer at a time, and from the top again when it runs
-// out. The repeat is here rather than in a player: there is no seam to hear and
-// no state to lose across it.
 class Ringtone::Loop : public QIODevice {
 public:
     explicit Loop(const std::vector<std::int16_t>& samples)
@@ -154,7 +135,7 @@ protected:
 
     qint64 writeData(const char*, qint64) override
     {
-        return 0;  // a ringtone is read, never written into
+        return 0;
     }
 
     bool isSequential() const override
@@ -194,8 +175,6 @@ bool Ringtone::loadFrom(const QString& path)
     }
     frameSamples_ = static_cast<std::size_t>(sampleRate_) * kEnvelopeFrameMs / kMsPerSecond;
     if (frameSamples_ == 0) {
-        // A rate this low has no frame to measure, and the walk below would stand
-        // still on it.
         bazarish::log::warn(
             "ringtone: {} is sampled at {} Hz, too low to measure", path.toStdString(),
             sampleRate_);
@@ -218,8 +197,6 @@ bool Ringtone::loadFrom(const QString& path)
         samples_.clear();
         return false;
     }
-    // Against its own loudest moment: what pulses is the shape of the track, not
-    // how far up the machine is turned.
     for (float& value : envelope_) {
         value /= loudest;
     }
@@ -230,8 +207,6 @@ bool Ringtone::loadTrack()
 {
     if (!folder_.isEmpty()) {
         const QString own = QDir(folder_).filePath(QString::fromLatin1(kTrackName));
-        // A track the user chose that cannot be played must not leave the call
-        // silent: the reason is in the log above, and the carried one rings.
         if (QFileInfo(own).isFile() && loadFrom(own)) {
             return true;
         }
@@ -244,22 +219,18 @@ void Ringtone::start()
     if (sink_) {
         return;
     }
-    // Read again on every ring rather than kept: a file put at the root is used
-    // without restarting, and taken away again the same way.
     if (!loadTrack()) {
         return;
     }
     const QAudioDevice device = QMediaDevices::defaultAudioOutput();
     if (device.isNull()) {
-        return;  // no output device: the call window is still there to be answered
+        return;
     }
     QAudioFormat format;
     format.setSampleRate(sampleRate_);
     format.setChannelCount(kChannels);
     format.setSampleFormat(QAudioFormat::Int16);
     if (!device.isFormatSupported(format)) {
-        // Said out loud: a call that arrives in silence is otherwise noticed as a
-        // missed call and nothing else.
         bazarish::log::warn(
             "ringtone: the audio device does not take {} Hz mono 16-bit", sampleRate_);
         return;
@@ -298,10 +269,6 @@ void Ringtone::publishLevel()
     if (!sink_ || envelope_.empty()) {
         return;
     }
-    // Where the sound is, not where the samples are: the sink has been handed
-    // more than has been heard, and the light follows what is heard. Counted in
-    // samples rather than in milliseconds, so the repeat takes the light back to
-    // the start of the track whatever length the track is.
     const qint64 played = sink_->processedUSecs() * sampleRate_ / kUsPerSecond;
     const std::size_t at = static_cast<std::size_t>(played) % samples_.size();
     emit levelChanged(static_cast<qreal>(envelope_[at / frameSamples_]));

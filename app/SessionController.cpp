@@ -10,8 +10,6 @@
 
 #include <QJsonDocument>
 
-
-
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
 #include "DeliveryStatus.hpp"
@@ -22,8 +20,6 @@
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
 
-// Qt makes `emit` a macro and the log header declares a function of that name,
-// so the keyword is stood down for the length of this include.
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -60,22 +56,13 @@
 
 namespace bazarish::app {
 
-// Completed off-thread contact-card resolutions awaiting finalize on the worker
-// thread (declared in the header). Shared by shared_ptr with each background
-// resolve so it outlives the worker if a resolve is still running at teardown.
 struct ResolvedContactAddQueue {
     std::mutex mutex;
-    // Each result carries the UI operation id assigned when the add started, so the
-    // finalize step can update the matching activity row.
     struct Entry {
         QString opId;
         bazarish::client::Session::ContactCardResolved resolved;
     };
     std::vector<Entry> results;
-    // What the resolve is doing while it runs, in the order it said it. Held
-    // here rather than emitted from the resolve thread for the reason the
-    // results are: that thread must touch nothing that can be destroyed under
-    // it.
     std::vector<std::pair<QString, QString>> stages;
 };
 
@@ -88,14 +75,9 @@ using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
-
 namespace {
-// Length of the "://" that separates a URL scheme from its authority.
 constexpr int kSchemeSeparatorLength = 3;
 
-// The facade as the status line shows it: host (with port, if any), without the
-// scheme and without the base path. Parsing by hand rather than through QUrl,
-// which reads a scheme-less "host/path" as a path with no host at all.
 QString facadeHost(const QString& url)
 {
     QString rest = url.trimmed();
@@ -110,18 +92,10 @@ QString facadeHost(const QString& url)
     return rest;
 }
 
-// How often the queue of commands is looked over, and how long a command has to
-// be unfinished before it is worth a row: a local one is done in a moment, and
-// a panel that flickers with those is a panel nobody reads.
 constexpr int kCommandTickMs = 200;
 
 constexpr qint64 kCommandVisibleAfterMs = 400;
 
-// Commands that raise a row of their own, with more in it than a generic one
-// has: what is being sent, to whom, how far it has got. A second row for them
-// would say less and be in the way. Everything not named here is covered by
-// the generic rows, which is what keeps new commands from having to be
-// remembered one by one.
 const QSet<QByteArray> kSelfDescribingCommands = {
     "requestOpen", "requestConnect", "requestShutdown", "requestSendText", "requestSendFile",
     "requestSendPicture", "requestSendVoice", "requestSendCallback", "requestSendCommand",
@@ -133,32 +107,18 @@ const QSet<QByteArray> kSelfDescribingCommands = {
     "requestDeletePersonalKey", "requestPublishPersonalDest",
 };
 
-
-
-
-
-
-// The background-activity row for a connect: the user can hide the progress
-// dialog and still watch the connect finish in the activity panel.
 const QString kConnectOperationId = QStringLiteral("connect");
-
 
 constexpr double kPercentFull = 100.0;
 
-// A send is retrying. The courier writes "retry <n>/<attempts>", so the prefix
-// is what names the phase and the rest is the count.
 bool isRetryPhase(const QString& phase)
 {
     return phase.startsWith(QLatin1StringView(bazarish::client::kPhaseRetryPrefix));
 }
 
-// Maps a delivery phase reported by the courier to a human-readable activity
-// status. The phase words are the transport's, so they are taken from it.
 QString humanDeliveryPhase(const QString& phase)
 {
     if (phase == QLatin1StringView(bazarish::client::kPhasePreparing)) {
-        // Making the one-time address this correspondent's mail leaves from, and
-        // waiting for its tunnels when it had to be built cold.
         return QStringLiteral("Preparing an address to send from…");
     }
     if (phase == QLatin1StringView(bazarish::client::kPhaseDialing)) {
@@ -178,34 +138,15 @@ QString humanDeliveryPhase(const QString& phase)
     return phase;
 }
 
-
-
-// How many messages a conversation loads per page (initial window and each
-// older/newer step). Small on purpose: opening a chat should cost what is on
-// screen, not what the chat has ever held, and the rest arrives as the user
-// scrolls into it.
-// One window of a conversation, and one page of older history. It has to be worth
-// a screen: paging asks for a screenful of loaded content above the viewport, so a
-// page shorter than the screen leaves the condition true and the next scroll loads
-// another one - which is how a scroll upwards turned into a page per tick.
 constexpr int kPageSize = 50;
 
-// How long the storage window is given to paint "this is running" before the work
-// that holds the thread begins. One frame is enough; this is two at 60 Hz.
 constexpr int kBusyPaintDelayMs = 32;
 
-// How long reading settles before the account's other devices are told about it.
-// Long enough that scrolling through a conversation is one message rather than
-// dozens, short enough that closing the lid right after does not lose the mark.
 constexpr int kReadSyncIdleMs = 4000;
-
 
 }  // namespace
 
-// ============================ SessionController ============================
-
-// Both travel through a queued signal from the worker, so Qt has to know them
-// by name.
+// Both travel through a queued signal from the worker, so Qt has to know them by name.
 namespace {
 const int kLoginSignerMetaType
     = qRegisterMetaType<std::shared_ptr<bazarish::client::LoginSigner>>(
@@ -217,14 +158,10 @@ const int kContactStateMetaType
 SessionController::SessionController(QObject* parent)
     : QObject(parent)
 {
-    // The chat-list search is a name-filtered view over the contacts model; the
-    // source keeps its own order (pinned-first, then most-recent), which the proxy
-    // preserves. An empty filter shows everything.
     contactsProxy_.setSourceModel(&contacts_);
     contactsProxy_.setFilterRole(ContactListModel::NameRole);
     contactsProxy_.setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-    // Read marks are batched: the timer is the wait, and it runs once per batch.
     readSyncTimer_.setSingleShot(true);
     connect(&readSyncTimer_, &QTimer::timeout, this, &SessionController::flushReadSync);
 
@@ -232,8 +169,6 @@ SessionController::SessionController(QObject* parent)
     worker_->moveToThread(&thread_);
     connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);
 
-
-    // Commands -> worker (queued across threads).
     connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openAccount);
     connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndRegister);
     connect(worker_, &SessionWorker::connectProgress, this, &SessionController::onConnectProgress);
@@ -290,8 +225,6 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestContactsFromDevices, worker_,
         &SessionWorker::askDevicesForContacts);
     connect(this, &SessionController::requestShutdown, worker_, &SessionWorker::shutdown);
-    // The account is closed on its thread; only then does the loop end, and only
-    // then is this session finished with.
     connect(worker_, &SessionWorker::stopped, this, [this]() {
         accountDb_.reset();
         store_.close();
@@ -302,7 +235,6 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::clearConnectionLog);
     connect(this, &SessionController::requestSaveAttachment, worker_,
         &SessionWorker::saveAttachment);
-    // Download progress / outcome land on the message via the conversation model.
     connect(worker_, &SessionWorker::downloadProgress, this,
         &SessionController::onDownloadProgress);
     connect(worker_, &SessionWorker::servedProgress, this, &SessionController::onServedProgress);
@@ -381,7 +313,6 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestEndCall, worker_, &SessionWorker::endCall);
     connect(this, &SessionController::requestSetCallMuted, worker_, &SessionWorker::setCallMuted);
 
-    // Results -> controller (queued).
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
     connect(worker_, &SessionWorker::accountSettings, this,
         [this](const bool acceptCalls, const bool sendReceipts, const bool sharingAllowed) {
@@ -409,9 +340,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onConnectionChanged);
     connect(worker_, &SessionWorker::messageReceived, this,
         &SessionController::onMessageReceived);
-    // Connected AFTER onMessageReceived (Qt invokes slots in connection order), so it
-    // acks the item only once it has been durably stored - the deferred ack that
-    // closes the ack-before-store window.
     connect(worker_, &SessionWorker::messageReceived, this,
         &SessionController::ackAfterReceive);
     connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
@@ -426,8 +354,7 @@ SessionController::SessionController(QObject* parent)
             blocked_ = blocked;
             syncAgreeingRows();
             rebuildChatList();
-            emit activePeerNameChanged();  // the open chat's header may have renamed
-            // Re-drive any contact-request bubble's "Agree" visibility.
+            emit activePeerNameChanged();
             ++contactsRevision_;
             emit contactsRevisionChanged();
         });
@@ -465,8 +392,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::accountClosedOnServer);
     connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
-    // A button press closes its own row in the activity panel, and a refusal is
-    // said there rather than on the message.
     connect(worker_, &SessionWorker::botActionDone, this,
         [this](const QString& opId, const bool ok, const QString& error) {
             finishOperation(opId, ok, ok ? QStringLiteral("Sent") : error);
@@ -510,8 +435,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onCallStateChanged);
     connect(worker_, &SessionWorker::callLogged, this, &SessionController::onCallLogged);
 
-    // Keep the account-wide unread total in sync with the contacts model, so the
-    // switcher badge updates even while this account is in the background.
     connect(&contacts_, &QAbstractItemModel::dataChanged, this,
         &SessionController::refreshUnreadTotal);
     connect(&contacts_, &QAbstractItemModel::rowsInserted, this,
@@ -519,18 +442,10 @@ SessionController::SessionController(QObject* parent)
     connect(&contacts_, &QAbstractItemModel::modelReset, this,
         &SessionController::refreshUnreadTotal);
 
-    // Every command this controller asks of the worker becomes background work
-    // without the command itself having to say so. A command is a signal whose
-    // name starts with "request", so they are enumerated here: one connection
-    // notes that it was asked for, and one behind the real slot runs when the
-    // worker has finished it. Anything added later is covered by being written
-    // the same way as the rest.
     const QMetaObject* const meta = metaObject();
     const QMetaMethod noted = meta->method(meta->indexOfSlot("noteCommandQueued()"));
     const QMetaMethod done = SessionWorker::staticMetaObject.method(
         SessionWorker::staticMetaObject.indexOfSlot("noteCommandDone()"));
-    // A signal with a default argument is two methods here, and both fire on one
-    // emission: bracketing each would count every such command twice.
     QSet<QByteArray> bracketed;
     for (int i = meta->methodOffset(); i < meta->methodCount(); ++i) {
         const QMetaMethod method = meta->method(i);
@@ -542,8 +457,6 @@ SessionController::SessionController(QObject* parent)
         }
         bracketed.insert(method.name());
         connect(this, method, this, noted);
-        // Behind the command's own slot, which is what makes it the end of it:
-        // queued calls reach the worker in the order they were connected.
         connect(this, method, worker_, done);
     }
     connect(worker_, &SessionWorker::commandFinished, this,
@@ -554,11 +467,8 @@ SessionController::SessionController(QObject* parent)
     thread_.start();
 }
 
-
 namespace {
 
-// What a command is called in the activity panel. Most read well enough from
-// the name of the signal that carries them; these do not.
 QString commandTitle(const QByteArray& signalName)
 {
     static const QHash<QByteArray, QString> kNamed = {
@@ -583,7 +493,6 @@ QString commandTitle(const QByteArray& signalName)
     if (const auto found = kNamed.constFind(signalName); found != kNamed.cend()) {
         return found.value();
     }
-    // "requestSetDisplayName" -> "Set display name".
     QString words;
     for (int at = static_cast<int>(strlen("request")); at < signalName.size(); ++at) {
         const char letter = signalName.at(at);
@@ -674,14 +583,7 @@ void SessionController::beginShutdown()
         emit closed();
         return;
     }
-    // First, from this thread: the worker cannot be asked anything while it is
-    // inside a dial, and a dial has a minute of deadline to spend. Taking its
-    // facade link out of service is what ends that wait, so the request below is
-    // reached in seconds rather than after whatever the account was in the middle
-    // of. The account is closing, so the link has no next user.
     client::stopFacadeLinkFor(accountId_.toStdString());
-    // Asked, not waited for: the worker stops its own long poll and closes the
-    // account on its own thread, and says so.
     emit requestShutdown();
 }
 
@@ -689,9 +591,6 @@ void SessionController::shutdown()
 {
     shuttingDown_ = true;
     if (thread_.isRunning()) {
-        // The worker is deleted as the thread finishes (deleteLater posted on
-        // QThread::finished), and with it the session and the account database
-        // it holds - so when this returns, nothing here holds the file open.
         thread_.quit();
         thread_.wait();
     }
@@ -699,8 +598,6 @@ void SessionController::shutdown()
     store_.close();
 }
 
-// The account's own store, opened on demand: a second connection to the same
-// database the worker's session holds, which is what SQLite is built for.
 client::AccountDb& SessionController::accountDb()
 {
     if (!accountDb_) {
@@ -717,10 +614,6 @@ void SessionController::open(const QString& file, const QString& accountId,
     accountId_ = accountId;
     accountPath_ = file;
     accountPassphrase_ = passphrase;
-    // Everything an account keeps lives in its one encrypted database; the
-    // transcript is its largest table, the rest are named rows. A store that
-    // will not open answers nothing to every read after it, so the account does
-    // not open either.
     if (!store_.open(accountId, file, passphrase)) {
         emit openFailed(QStringLiteral("This profile could not be opened."));
         return;
@@ -738,16 +631,8 @@ void SessionController::open(const QString& file, const QString& accountId,
     for (const QJsonValue& entry : flashes.array()) {
         reactionsToFlash_ << entry.toString();
     }
-    // There is no outbound queue on disk - by design - so an outgoing message
-    // still preparing or still being delivered is one this client was carrying
-    // when it closed, not one in flight. They come back explicitly failed, and
-    // sending them again is the user's decision, never this client's.
     store_.failUnsentOnLoad(
         DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed);
-    // A contact add that was still running when this client closed has nothing
-    // carrying it now. Its line in the conversation said what it was doing, and
-    // must stop saying it: it is picked up again below, and either way it is no
-    // longer a progress line for an operation that does not exist.
     store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
         DeliveryStatus::Received, QStringLiteral("The contact request did not finish."));
     emit requestOpen(file, passphrase, startOnline);
@@ -768,9 +653,6 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
 
 void SessionController::onConnectProgress(const int percent, const QString& phase)
 {
-    // Never walk backwards: the steps can repeat (every later request re-reports
-    // the reseed milestone, say) and a bar or a caption that jumps back reads as
-    // a fault. A repeat of the milestone we are already on still refreshes it.
     if (percent < connectPercent_) {
         return;
     }
@@ -813,7 +695,6 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
         }
         result["reseeds"] = reseeds;
     } catch (const std::exception& error) {
-        // Malformed link: return an empty map (the caller checks).
         bazarish::log::debug("server link not parsed: {}", error.what());
     }
     return result;
@@ -821,29 +702,20 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
 
 void SessionController::activateConversation(const QString& peer)
 {
-    // Leaving a conversation ends the wait: what was read in it is owed to the
-    // other devices now, not four seconds into the next one.
     flushReadSync();
     activePeer_ = peer;
     emit activePeerChanged();
     emit activePeerNameChanged();
-    // The unread badge is NOT cleared on open: a message counts as read only when it
-    // genuinely scrolls into the focused viewport (markReadThroughRow), so opening a
-    // chat and immediately leaving does not silently swallow unread messages. Seed
-    // the receipt high-water from the persistent read state so we never re-ack
-    // already-read messages after a restart.
     lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
 }
 
 void SessionController::loadLatestWindow()
 {
-    // The newest page. A huge conversation opens at its end instantly because only
-    // the tail is read; older messages page in when the user scrolls up.
     const QVector<StoredMessage> msgs = store_.latestMessages(activePeer_, kPageSize);
     oldestLoadedId_ = msgs.isEmpty() ? 0 : msgs.front().id;
     newestLoadedId_ = msgs.isEmpty() ? 0 : msgs.back().id;
     hasMoreOlder_ = !msgs.isEmpty() && store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
-    hasMoreNewer_ = false;  // the latest page is, by definition, at the newest
+    hasMoreNewer_ = false;
     conversation_.setMessages(msgs);
     requestPicturesFor(msgs);
     replayTransfersForActivePeer();
@@ -853,14 +725,9 @@ void SessionController::loadLatestWindow()
 void SessionController::showInActiveView(const StoredMessage& m, bool isOwn)
 {
     if (m.peer != activePeer_) {
-        return;  // not the open conversation
+        return;
     }
     if (hasMoreNewer_) {
-        // The window is scrolled back into history (e.g. opened at a search hit),
-        // so the newest page is not loaded and a bottom append would be out of
-        // place. The message is already persisted. For our own send, jump to the
-        // newest page so it is visible; for an incoming one, leave it to the
-        // jump-to-latest control.
         if (isOwn) {
             loadLatestWindow();
             emit scrollToBottom();
@@ -885,12 +752,6 @@ void SessionController::closeConversation()
 void SessionController::openConversation(const QString& peer)
 {
     activateConversation(peer);
-    // Always load the newest page first so the conversation opens on its recent
-    // history. When there is unread, jump to the first unread within that page; only
-    // when the first unread is OLDER than a whole page do we anchor the window on it.
-    // (Opening directly at the first unread used to show just the unread tail - a
-    // single freshly received message - with the rest of the history collapsed
-    // above, which read as "lost history" until the next open.)
     const qint64 firstUnread = store_.firstUnreadId(peer);
     loadLatestWindow();
     if (firstUnread > 0) {
@@ -904,8 +765,6 @@ void SessionController::openConversation(const QString& peer)
 
 void SessionController::openWindowAtUnread(const QString& peer, qint64 firstUnread)
 {
-    // A page starting at the first unread message (oldest unread at the top), with
-    // older read context paging in above and any further unread below.
     const QVector<StoredMessage> win = store_.newerMessages(peer, firstUnread - 1, kPageSize);
     if (win.isEmpty()) {
         loadLatestWindow();
@@ -924,8 +783,6 @@ void SessionController::openWindowAtUnread(const QString& peer, qint64 firstUnre
 
 void SessionController::saveScroll(const QString& peer, int anchorRow, bool stick)
 {
-    // The view reports the open conversation's position as the user scrolls, so it
-    // is already current the moment this account is switched away.
     scrollPeer_ = peer;
     scrollAnchorRow_ = anchorRow;
     scrollStick_ = stick;
@@ -933,8 +790,6 @@ void SessionController::saveScroll(const QString& peer, int anchorRow, bool stic
 
 QVariantMap SessionController::scrollFor(const QString& peer) const
 {
-    // "has" is false for any peer we never saved; the view then falls back to
-    // pinning to the bottom, the default for a freshly opened conversation.
     QVariantMap m;
     const bool has = !peer.isEmpty() && peer == scrollPeer_;
     m[QStringLiteral("has")] = has;
@@ -946,8 +801,6 @@ QVariantMap SessionController::scrollFor(const QString& peer) const
 void SessionController::openConversationAtMessage(const QString& peer, qint64 localId)
 {
     activateConversation(peer);
-    // A window ending at the target message (it sits at the window's newest edge),
-    // so older context pages in above and newer messages page in below.
     const QVector<StoredMessage> win = store_.olderMessages(peer, localId + 1, kPageSize);
     oldestLoadedId_ = win.isEmpty() ? 0 : win.front().id;
     newestLoadedId_ = win.isEmpty() ? 0 : win.back().id;
@@ -975,9 +828,6 @@ int SessionController::loadOlderMessages()
     oldestLoadedId_ = older.front().id;
     hasMoreOlder_ = store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
     conversation_.prependMessages(older);
-    // A page read from disk carries pictures the same way the first one does.
-    // Without this the bubbles scrolled up into are drawn empty: the picture is
-    // in the account, and nothing had asked for it.
     requestPicturesFor(older);
     emit pagingChanged();
     return static_cast<int>(older.size());
@@ -1009,7 +859,7 @@ void SessionController::jumpToLatest()
         return;
     }
     if (hasMoreNewer_) {
-        loadLatestWindow();  // a model reset; the view autoscrolls to the bottom
+        loadLatestWindow();
     }
     emit scrollToBottom();
 }
@@ -1046,10 +896,6 @@ void SessionController::rebuildChatList()
 {
     QVector<ContactRow> rows;
     QSet<QString> known;
-    // The saved chat is always in the list, whether or not anything is in it: it
-    // is not a contact and cannot be deleted, so nothing else decides it exists.
-    // Where it sits is another matter - that is the sort's business, like any
-    // other chat's, and it can be pinned the same way.
     if (!savedPeer().isEmpty()) {
         ContactRow saved{savedPeer(), savedChatName(), store_.lastText(savedPeer()),
             store_.lastTime(savedPeer()), 0, store_.isPinned(savedPeer())};
@@ -1062,10 +908,6 @@ void SessionController::rebuildChatList()
             store_.unreadCount(fp), store_.isPinned(fp)});
         known.insert(fp);
     }
-    // Resilience: surface a conversation whose contact record is gone but whose
-    // transcript still holds messages, so a chat never silently vanishes while its
-    // history persists on disk - a lost or inconsistent contact must not read as
-    // data loss. Shown under the peer's name, or its short fingerprint when unknown.
     for (const QString& peer : store_.conversationPeers()) {
         if (peer.isEmpty() || known.contains(peer)) {
             continue;
@@ -1093,7 +935,7 @@ QString SessionController::peerName(const QString& id) const
     }
     const QString name = contactState_.value(id).name;
     if (!name.isEmpty()) {
-        return name;  // the local display name (alias / invite name / rename)
+        return name;
     }
     return shortFingerprint(id);
 }
@@ -1160,8 +1002,6 @@ void SessionController::renameContact(const QString& fp, const QString& name)
         return;
     }
     const QString trimmed = name.trimmed();
-    // Optimistic local update so the UI reflects the rename at once; the worker
-    // persists it and mirrors it to the account's own other devices.
     contactState_[fp].name = trimmed;
     rebuildChatList();
     emit activePeerNameChanged();
@@ -1175,15 +1015,11 @@ void SessionController::clearChat(bool forEveryone)
     }
     const QString peer = activePeer_;
     store_.clearPeer(peer);
-    // Either way the account's other devices drop their copy: "only for me" means
-    // this account, not this device. When it is for everyone the peer is asked as
-    // well, and that request is echoed to our own devices by the core.
     if (!forEveryone) {
         emit requestSyncChatClear(peer);
     }
     if (forEveryone) {
         emit requestClearChatForEveryone(peer);
-        // A single note so the now-empty chat explains itself.
         StoredMessage sys;
         sys.peer = peer;
         sys.type = QStringLiteral("system");
@@ -1193,8 +1029,6 @@ void SessionController::clearChat(bool forEveryone)
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
     }
-    // The chat row stays (clearing is not deleting); reload its window and refresh
-    // the chat-list preview to the now-empty / one-line state.
     loadLatestWindow();
     contacts_.touch(peer, peerName(peer), store_.lastText(peer), store_.lastTime(peer), false);
     refreshUnreadTotal();
@@ -1206,12 +1040,10 @@ void SessionController::deleteContact()
         return;
     }
     const QString peer = activePeer_;
-    // Wipe the chat and drop the contact from the list at once; the worker removes
-    // it from the contact list and clears its avatar. Irreversible.
     store_.forgetPeer(peer);
     contactFps_.removeAll(peer);
     contactState_.remove(peer);
-    openConversation({});  // close the conversation we just deleted
+    openConversation({});
     rebuildChatList();
     refreshUnreadTotal();
     emit requestRemoveContact(peer);
@@ -1290,18 +1122,11 @@ void SessionController::setContactCalls(const QString& peer, const bool allowed)
     emit requestSetContactCalls(peer, allowed);
 }
 
-
 void SessionController::unblockBeforeWriting(const QString& peer)
 {
     if (peer.isEmpty() || !isBlocked(peer)) {
         return;
     }
-    // Writing to somebody you blocked is the plainest way of saying you no longer
-    // mean to keep them blocked. The block lifts here exactly as the button lifts
-    // it - the same one action, told to the account's other devices the same way -
-    // rather than the message failing and the user hunting for the switch.
-    // Only what a person composes does this; nothing automatic writes into a
-    // blocked conversation, and the core still refuses it.
     setBlocked(peer, false);
 }
 
@@ -1310,7 +1135,6 @@ void SessionController::sendText(const QString& text)
     if (activePeer_.isEmpty() || text.isEmpty()) {
         return;
     }
-    // Consume any reply-in-progress: the reference rides with this one message.
     const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
         cancelReply();
@@ -1323,8 +1147,6 @@ void SessionController::sendOffered(const QString& text)
     if (activePeer_.isEmpty() || text.isEmpty()) {
         return;
     }
-    // A tap on what a message offers is not the composer: whatever is being
-    // written there, and whatever a reply is aimed at, is left alone.
     deliverText(text, QString());
 }
 
@@ -1340,10 +1162,6 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     m.replyTo = replyTo;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    // A note to the saved chat is not delivered to anybody, but it is still
-    // written to this account's own server for its other devices - so it is
-    // watched like any other send rather than painted green before it has
-    // happened. What it skips is the activity row: there is no dialling to show.
     const bool saved = isSavedChat(activePeer_);
     m.status = DeliveryStatus::Preparing;
     m.id = store_.append(m);
@@ -1361,9 +1179,6 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     emit requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
 }
 
-// Records an outgoing attachment in the transcript and the open view and opens
-// its activity row. The returned message is empty (id 0) when there is nobody to
-// send to or nothing to send.
 StoredMessage SessionController::beginAttachmentSend(const QString& fileUrl, const QString& type)
 {
     if (activePeer_.isEmpty()) {
@@ -1385,13 +1200,9 @@ StoredMessage SessionController::beginAttachmentSend(const QString& fileUrl, con
     m.e2eId = newE2eId();
     m.replyTo = replyTo;
     m.attName = QUrl(fileUrl).fileName();
-    // The local size and mime, so the sender's own bubble draws a real attachment
-    // card at once rather than waiting for the upload.
     const QFileInfo info(localPath);
     m.attSize = info.size();
     m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
-    // The source path, so a failed send can be tried again without re-picking the
-    // file. The bytes are not kept, only the path.
     m.attSrcPath = localPath;
     m.ts = nowMillis();
     m.orderKey = m.ts;
@@ -1420,8 +1231,6 @@ void SessionController::sendPicture(const QString& fileUrl)
     if (m.id == 0) {
         return;
     }
-    // The prepared file is right here, so the sender's bubble draws it without
-    // asking anyone: the core stores the same bytes in the account.
     pictureOwners_.insert(m.e2eId, m.id);
     QFile prepared(m.attSrcPath);
     const bool drawable = prepared.open(QIODevice::ReadOnly)
@@ -1437,9 +1246,6 @@ void SessionController::sendCallback(
     if (activePeer_.isEmpty()) {
         return;
     }
-    // A button press is silent in the transcript (inline-keyboard semantics): the
-    // bot's reply is what appears. What is in flight belongs in the activity
-    // panel like every other request, and nothing is written on the message.
     const QString opId = QStringLiteral("bot:") + refMsgId + QStringLiteral(":") + data;
     beginOperation(opId, QStringLiteral("bot"),
         (label.isEmpty() ? data : label) + QStringLiteral(" → ") + peerName(activePeer_),
@@ -1464,7 +1270,7 @@ void SessionController::sendCommand(
 void SessionController::beginEdit(qint64 localId, const QString& e2eId, const QString& text)
 {
     if (replying_) {
-        cancelReply();  // editing and replying are mutually exclusive composer modes
+        cancelReply();
     }
     editing_ = true;
     editingLocalId_ = localId;
@@ -1480,7 +1286,7 @@ void SessionController::beginReply(
         return;
     }
     if (editing_) {
-        cancelEdit();  // mutually exclusive composer modes
+        cancelEdit();
     }
     replying_ = true;
     replyingE2eId_ = e2eId;
@@ -1513,17 +1319,15 @@ QVariantMap SessionController::replyPreview(const QString& e2eId) const
     }
     const StoredMessage m = store_.messageByE2e(e2eId, activePeer_);
     if (m.id == 0) {
-        return info;  // the original is not in our local history: a dead reference
+        return info;
     }
     info[QStringLiteral("found")] = true;
     info[QStringLiteral("localId")] = m.id;
-    // A short preview: the text, or a file label for an attachment.
     QString preview = m.text;
     if (preview.isEmpty() && !m.attName.isEmpty()) {
-        preview = QStringLiteral("\xF0\x9F\x93\x8E ") + m.attName;  // paperclip + name
+        preview = QStringLiteral("\xF0\x9F\x93\x8E ") + m.attName;
     }
     info[QStringLiteral("text")] = preview;
-    // The author label: "You" for our own, else a contact/self name or short fp.
     if (m.outgoing) {
         info[QStringLiteral("sender")] = QStringLiteral("You");
     } else {
@@ -1538,16 +1342,10 @@ void SessionController::commitEdit(const QString& newText)
         return;
     }
     const QString trimmed = newText.trimmed();
-    // An empty edit, or no real change, just cancels.
     if (!trimmed.isEmpty() && trimmed != editingText_) {
-        // Update our own copy in place (user messages carry no keyboard), then
-        // tell the peer to update theirs.
         store_.editContent(editingLocalId_, trimmed, {});
         conversation_.editById(editingLocalId_, trimmed, {});
         contacts_.touch(activePeer_, {}, trimmed, nowMillis(), false);
-        // The edited version starts its delivery afresh: reset the bubble's status
-        // and clear any prior error, so it then advances on the edit's own
-        // delivery instead of showing the original message's state.
         restartDelivery(editingLocalId_);
         emit requestSendEdit(activePeer_, editingE2eId_, editingLocalId_, trimmed);
     }
@@ -1571,24 +1369,18 @@ void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool
     if (activePeer_.isEmpty() || localId == 0) {
         return;
     }
-    // Remove our own copy with no trace - which includes the record that would
-    // still serve this message's file to the peer if they asked.
     if (!e2eId.isEmpty()) {
         emit requestUnsend(e2eId);
     }
     store_.removeById(localId);
     conversation_.removeById(localId);
     statusById_.remove(localId);
-    // Refresh the chat-list preview to whatever the new last message now is.
     contacts_.touch(activePeer_, {}, store_.lastText(activePeer_), store_.lastTime(activePeer_),
         false);
-    // Ask the recipient to delete it too, but only for our own message: a peer cannot
-    // be told to drop a message we received from them.
     if (outgoing && !e2eId.isEmpty()) {
         emit requestSendDelete(activePeer_, e2eId);
     }
 }
-
 
 void SessionController::keepThisDeviceAddress()
 {
@@ -1602,15 +1394,6 @@ void SessionController::useFreshAddress()
 
 void SessionController::signLogin(const QString& challenge)
 {
-    // Right here on the GUI thread: the signature is a few milliseconds of local
-    // work, and the worker may be halfway through a sync.
-    //
-    // The answer goes back on the next turn of the event loop rather than from
-    // inside this call. Emitted straight from here it reached the caller's own
-    // handler before that handler had finished - so the button's "a signature is
-    // being made" guard was already cleared by the time the click returned, and
-    // the copy that follows can spin the event loop, which is an invitation to
-    // re-enter a half-finished handler.
     if (loginSigner_) {
         QString blob;
         try {
@@ -1654,14 +1437,11 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
         described["place"] = QString::fromStdString(consumer.place);
         described["role"] = QString::fromStdString(consumer.role);
     } catch (const std::exception& error) {
-        // The reason belongs on screen: this is the window where a user decides
-        // whether to sign, and "it did not work" decides nothing for them.
         described["ok"] = false;
         described["problem"] = QString::fromUtf8(error.what());
     }
     return described;
 }
-
 
 void SessionController::rotateServingKey()
 {
@@ -1686,8 +1466,6 @@ void SessionController::setSharingAllowed(const bool allowed)
 
 void SessionController::changePassphrase(const QString& passphrase)
 {
-    // Kept here too: the transcript store and the account database are opened
-    // again on this side, and they open with what this holds.
     accountPassphrase_ = passphrase;
     emit requestChangePassphrase(passphrase);
 }
@@ -1698,10 +1476,6 @@ void SessionController::exportAccount(const QString& fileUrl, const QString& pas
     if (localPath.isEmpty()) {
         return;
     }
-    // The row goes up here, at the click, and not when the account's thread gets
-    // round to the work: that thread may be minutes into a sync, and a button
-    // that answers nothing until then reads as a button that did nothing. The
-    // worker upserts the same row when it starts and closes it when it is done.
     beginOperation(QStringLiteral("export"), QStringLiteral("account"),
         QStringLiteral("Exporting your backup"), QStringLiteral("Waiting for this account…"));
     emit requestExport(localPath, password);
@@ -1725,8 +1499,6 @@ void SessionController::pinChat(const QString& peer, bool pinned)
     if (peer.isEmpty()) {
         return;
     }
-    // Local store + immediate re-sort (pinned float to the top), then mirror to the
-    // account's other devices so the pinned set stays the same everywhere.
     store_.setPinned(peer, pinned);
     rebuildChatList();
     emit requestSyncChatPin(peer, pinned);
@@ -1760,10 +1532,7 @@ void SessionController::finishOperation(const QString& id, bool ok, const QStrin
         return;
     }
     operations_.update(id, finalStatus, {}, -1.0, ok ? eOpDone : eOpFailed);
-    emit operationsChanged();  // the running count just dropped
-    // Keep the finished row on screen briefly (longer on failure, so the error is
-    // readable), then drop it. Removing a missing id is a no-op, so a row the user
-    // already dismissed or that was reused is handled safely.
+    emit operationsChanged();
     QTimer::singleShot(ok ? 3500 : 6000, this, [this, id]() {
         operations_.remove(id);
         emit operationsChanged();
@@ -1772,9 +1541,6 @@ void SessionController::finishOperation(const QString& id, bool ok, const QStrin
 
 void SessionController::generatePersonalKey()
 {
-    // The worker may be minutes deep in a publish or a slow sync, so the row is
-    // opened here, on the GUI thread: the press is acknowledged at once and the
-    // worker finishes the same row when it gets to it.
     beginOperation(QStringLiteral("dest-key"), QStringLiteral("dest"),
         QStringLiteral("Creating your destination key"), QStringLiteral("Queued…"));
     emit requestGeneratePersonalKey();
@@ -1826,8 +1592,6 @@ void SessionController::setSendReceipts(const bool on)
 
 void SessionController::publishPersonalDest()
 {
-    // The worker answers with a fresh status when it is done, which is what
-    // clears this; until then the button says it is working.
     i2pBusy_ = true;
     emit i2pStatusChanged();
     emit requestPublishPersonalDest();
@@ -1887,7 +1651,6 @@ void SessionController::closeAccountOnServer()
     emit requestCloseAccountOnServer();
 }
 
-
 void SessionController::forwardMessage(const QString& e2eId, const QString& toPeer)
 {
     if (e2eId.isEmpty() || toPeer.isEmpty()) {
@@ -1895,13 +1658,9 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     }
     const StoredMessage source = store_.messageByE2e(e2eId, activePeer_);
     if (source.id == 0) {
-        return;  // not a message this chat holds
+        return;
     }
-    // Passing something on to somebody is writing to them.
     unblockBeforeWriting(toPeer);
-    // A forward is a message of this account's own: new id, new row, the content
-    // carried over and marked. Nothing of the original travels - not its sender,
-    // not its id, not its history of being passed on before.
     StoredMessage m;
     m.peer = toPeer;
     m.outgoing = true;
@@ -1924,7 +1683,6 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
         m.attDurationMs = source.attDurationMs;
         m.attWave = source.attWave;
         m.id = store_.append(m);
-        // The core keeps its own copy under the new id when it sends it.
         forwardShown(m, toPeer, QStringLiteral("[voice]"));
         emit requestSendVoice(toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
         return;
@@ -1935,9 +1693,6 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
         emit requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
         return;
     }
-    // A picture or a file is announced from a path, so it can only be passed on
-    // while this device still holds the bytes. A picture it does hold - they ride
-    // inside the message - is written out for the send to read.
     QString path = source.savedPath;
     if (source.type == QStringLiteral("image")) {
         const QByteArray picture = store_.media(QStringLiteral("picture:") + source.e2eId);
@@ -1976,9 +1731,6 @@ void SessionController::forwardShown(
     if (toPeer == activePeer_) {
         showInActiveView(m, true);
     }
-    // Passed on to the saved chat, this is a note kept here: the account's own
-    // server holding it is the end of the road, and there is no dialling to show
-    // in the activity panel either.
     const bool saved = isSavedChat(toPeer);
     if (saved) {
         savedSends_.insert(m.id);
@@ -1990,12 +1742,6 @@ void SessionController::forwardShown(
     }
 }
 
-
-// Brings the pictures of the messages now on screen into the cache. The bytes
-// come out of the account through this side's own connection: routing the read
-// through the session worker put it behind whatever that thread was doing - a
-// connect, a sync - which is why a chat opened on grey squares and filled in
-// minutes later.
 void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
 {
     for (const StoredMessage& message : messages) {
@@ -2008,16 +1754,11 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
         }
         const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.e2eId);
         if (bytes.isEmpty()) {
-            // The bytes travel with the message, so nothing is on its way: this
-            // one is broken and has to say so. Left alone it sat as a dark
-            // placeholder for a picture that was never going to arrive.
             store_.setHasPicture(message.id, false);
             conversation_.setPictureReadyForId(message.id, false);
             continue;
         }
         if (!PictureStore::instance().put(message.e2eId, bytes)) {
-            // What was stored is not a picture: the message is broken and stays
-            // marked so.
             store_.setHasPicture(message.id, false);
             conversation_.setPictureReadyForId(message.id, false);
         }
@@ -2059,7 +1800,6 @@ void SessionController::copyPicture(const QString& e2eId)
 QUrl SessionController::defaultPictureSaveUrl(const QString& e2eId, const QString& name) const
 {
     const QByteArray bytes = PictureStore::instance().bytes(e2eId);
-    // The extension follows what the bytes are, not what the message called them.
     const QString suffix = bytes.startsWith(QByteArray::fromHex("89504E47"))
         ? QStringLiteral(".png") : QStringLiteral(".jpg");
     const QString base = name.isEmpty() ? QStringLiteral("picture") : QFileInfo(name).completeBaseName();
@@ -2075,8 +1815,6 @@ void SessionController::onDevicesReady(const QVariantList& devices)
 void SessionController::onStorageUsageReady(
     const bool mailboxOk, const qulonglong mailboxUsed, const qulonglong mailboxQuota)
 {
-    // A failed poll leaves the last-known figures and the previous "updated N
-    // ago" standing, so a momentarily offline server does not blank the view.
     if (!mailboxOk) {
         return;
     }
@@ -2140,12 +1878,7 @@ void SessionController::trimEveryChat(const int keep)
 
 void SessionController::beginStorageWork(const QString& what, const std::function<void()>& work)
 {
-    // A trim and a rewrite both take the database exclusively and both run on the
-    // thread that draws. Moving them off it would put an arriving message against
-    // that lock, and a message that cannot be stored is worse than a window that
-    // waits - so the window is deliberately held, and the only thing that must not
-    // happen is holding it before it has said why. The delay is what buys the
-    // frame that paints the notice; a queued call alone can beat it to the screen.
+    // A trim and a rewrite both take the database exclusively and both run on the thread that draws.
     deviceStorageBusy_ = true;
     deviceStorage_[QStringLiteral("busy")] = true;
     deviceStorage_[QStringLiteral("busyWhat")] = what;
@@ -2174,8 +1907,6 @@ void SessionController::compactDatabase()
             return;
         }
         const qint64 after = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
-        // What it actually returned, rather than what it might have: the figure
-        // the user is watching is the one on disk.
         emit actionOk(QStringLiteral("The database was compacted; ")
             + humanBytes(std::max<qint64>(0, before - after))
             + QStringLiteral(" came back to the disk"));
@@ -2194,8 +1925,6 @@ void SessionController::runTrim(const QString& peer, const int keep)
                 removed = peer.isEmpty() ? store_.pruneEveryChatToLatest(keep)
                                          : store_.pruneToLatest(peer, keep);
             } catch (const std::exception& error) {
-                // Nothing was removed: the whole trim is one transaction and it
-                // rolled back.
                 endStorageWork();
                 emit actionFailed(QString::fromUtf8(error.what()));
                 return;
@@ -2211,8 +1940,6 @@ void SessionController::runTrim(const QString& peer, const int keep)
                     + QStringLiteral(" messages and compacted the database"));
                 return;
             }
-            // The trim itself committed. Reporting this as a failure would say
-            // the messages are still there, and they are not.
             emit actionFailed(QStringLiteral("Removed ") + QString::number(removed)
                 + QStringLiteral(" messages, but the space has not been returned to the disk: ")
                 + reason + QStringLiteral(". Trimming again returns it."));
@@ -2227,8 +1954,6 @@ void SessionController::onOpened(
     connected_ = connected;
     emit identityChanged();
     emit connectedChanged();
-    // A connected account starts syncing on open, so it comes up online - unless
-    // it was opened offline, which is an account read without being switched on.
     if (const bool nowOnline = connected && startOnline_; online_ != nowOnline) {
         online_ = nowOnline;
         emit onlineChanged();
@@ -2237,8 +1962,6 @@ void SessionController::onOpened(
 
 void SessionController::onConnectionChanged(bool connected, const QString& connectionNote)
 {
-    // Any outcome ends the connect: success clears the screen's busy state,
-    // failure leaves the reason on it instead of a silent button.
     if (connecting_) {
         connecting_ = false;
         connectPhase_.clear();
@@ -2257,7 +1980,6 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
 
 void SessionController::goOnline()
 {
-    // Whatever this account was opened as, it is switched on now.
     startOnline_ = true;
     if (!online_) {
         online_ = true;
@@ -2304,7 +2026,6 @@ void SessionController::onApprovalState(const bool pending, const QString& note)
     emit approvalChanged();
 }
 
-
 void SessionController::restartDelivery(qint64 localId)
 {
     statusById_[localId] = DeliveryStatus::Preparing;
@@ -2315,7 +2036,6 @@ void SessionController::restartDelivery(qint64 localId)
 
 void SessionController::bumpStatus(qint64 localId, int status)
 {
-    // Never downgrade (e.g. "yellow" arriving after "green"); failed is terminal.
     const int current = statusById_.value(localId, DeliveryStatus::Preparing);
     if (status != DeliveryStatus::Failed && status <= current) {
         return;
@@ -2329,33 +2049,21 @@ void SessionController::onSendProgress(qint64 localId, int state)
 {
     bumpStatus(localId, state);
     if (state == DeliveryStatus::AtRecipientServer) {
-        // There is no handover to a server of ours any more, so the row follows
-        // the whole journey: it is done when the recipient's server has signed for
-        // the envelope. Reading shows up on the message itself.
         finishOperation(QStringLiteral("send:") + QString::number(localId), true,
             QStringLiteral("Handed to the recipient's server"));
     }
 }
 
-
 void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)
 {
     if (ok) {
-        // The amber state was already set through sendProgress, which is also what
-        // closes the activity row. Just clear any prior failure note.
         conversation_.setErrorForId(localId, {});
-        // A note to the saved chat is finished the moment this account's own
-        // server holds it: there is no correspondent to read it and no receipt
-        // coming, so amber would be a wait for something that never arrives.
         if (savedSends_.remove(localId)) {
             bumpStatus(localId, DeliveryStatus::Delivered);
         }
         return;
     }
     savedSends_.remove(localId);
-    // A delivery failure belongs to one message, not the whole app: mark that
-    // bubble failed and attach the reason inline (with a resend affordance in the
-    // UI) instead of raising an application-wide error banner.
     bumpStatus(localId, DeliveryStatus::Failed);
     conversation_.setErrorForId(localId, error);
     finishOperation(QStringLiteral("send:") + QString::number(localId), false,
@@ -2365,9 +2073,6 @@ void SessionController::onSendResult(qint64 localId, bool ok, const QString& err
 void SessionController::onSendPhase(qint64 localId, const QString& phase)
 {
     const QString human = humanDeliveryPhase(phase);
-    // Where the send has got to, on its activity row (a no-op if the row already
-    // settled) and, while it is retrying, under the bubble itself: a message that
-    // is being tried again should say so where the user is looking.
     updateOperation(QStringLiteral("send:") + QString::number(localId), human);
     if (isRetryPhase(phase)) {
         conversation_.setErrorForId(localId, human);
@@ -2379,14 +2084,8 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     if (activePeer_.isEmpty() || text.isEmpty()) {
         return;
     }
-    // Reset to "sending" and clear the prior error, then re-dispatch with the
-    // SAME protocol id so the recipient's server still deduplicates it (a retry
-    // must never double-deliver).
     restartDelivery(localId);
-    // Preserve the original reply reference on a resend.
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
-    // A resend is a send: it travels the same way and takes the same time, so it
-    // belongs in the activity panel like the first attempt did.
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
         QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending again…"),
         activePeer_);
@@ -2400,14 +2099,9 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
     }
     const QString srcPath = store_.sourcePathFor(localId);
     if (srcPath.isEmpty() || !QFileInfo::exists(srcPath)) {
-        // The original file is no longer on disk (or predates path recording): let
-        // the UI pick a file to send. The failed bubble stays as a record.
         emit resendFilePickRequested();
         return;
     }
-    // Reset to "sending" and re-upload from the saved path, reusing this bubble.
-    // Same protocol id as resendText: the inner content id is preserved so the
-    // recipient still recognises the message.
     restartDelivery(localId);
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
@@ -2422,8 +2116,6 @@ void SessionController::resendVoice(qint64 localId, const QString& e2eId)
     if (activePeer_.isEmpty()) {
         return;
     }
-    // A voice take has no file behind it: the recording lives in the account, so
-    // that is where a resend reads it from.
     const QByteArray audio = store_.media(QStringLiteral("voice:") + e2eId);
     if (audio.isEmpty()) {
         emit actionFailed(tr("this voice message is no longer on this device"));
@@ -2440,14 +2132,8 @@ void SessionController::resendVoice(qint64 localId, const QString& e2eId)
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
 {
-    // Persist the green high-water (covers paged-out rows too). Only messages
-    // known to have reached the recipient's server are carried up by a later
-    // receipt: reading one message says the earlier ones were seen, but says
-    // nothing about one that never got there, and a message still sitting in our
-    // own server's queue was turning green on the strength of the next one.
     store_.markOutgoingReadUpTo(peer, uptoId, DeliveryStatus::Delivered,
         DeliveryStatus::AtRecipientServer, DeliveryStatus::AtRecipientServer);
-    // ...and reflect it in the open window.
     if (peer == activePeer_) {
         for (const qint64 id : conversation_.markDeliveredThrough(uptoId)) {
             statusById_[id] = DeliveryStatus::Delivered;
@@ -2455,12 +2141,8 @@ void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
     }
 }
 
-
 void SessionController::markReadThroughRow(int row)
 {
-    // The user actually read up to `row` (the view is open, focused and scrolled
-    // to it): send a read receipt for the newest incoming message at or before it,
-    // advancing a per-peer high-water so we send at most one receipt per new read.
     if (activePeer_.isEmpty() || row < 0) {
         return;
     }
@@ -2470,35 +2152,18 @@ void SessionController::markReadThroughRow(int row)
     if (!conversation_.newestIncomingThrough(row, id, e2eId, sentAt)) {
         return;
     }
-    // Nothing new has been read - scrolling within what is already read, or the
-    // same row reported again. This is the first thing checked because the view
-    // calls in on every pixel of movement, and it is what keeps the database out
-    // of a scroll: the high-water is seeded from the stored mark when the
-    // conversation opens, so a mark that does not advance has nothing to write.
     const qint64 prevAcked = lastReadAckedId_.value(activePeer_, 0);
     if (id <= prevAcked) {
         return;
     }
     lastReadAckedId_[activePeer_] = id;
-    // Persist the read high-water and refresh the unread badge: the count drops as
-    // messages genuinely scroll into the focused viewport. Monotonic, so re-reading
-    // older history never lowers it.
     store_.setLastReadId(activePeer_, id);
     contacts_.setUnread(activePeer_, store_.unreadCount(activePeer_));
-    // And the account's other devices, which hold the same conversation and have
-    // no other way to learn it has been read. Held back rather than sent per
-    // message: reading a long conversation advances this mark once per bubble,
-    // and each send is an item in this account's own mailbox.
     pendingReadSync_[activePeer_] = sentAt;
     readSyncTimer_.start(kReadSyncIdleMs);
-    // Sending a read receipt is opt-in (the "send read receipts" setting). The
-    // unread high-water above is advanced regardless, so unread tracking always
-    // works even with receipts disabled - and so does reading an account that is
-    // switched off, which writes nothing at all.
     if (!sendReceipts_ || !online_) {
         return;
     }
-    // A read sends a delivery receipt so the sender's bubble greens.
     emit requestSendReceipt(activePeer_, e2eId);
 }
 
@@ -2506,9 +2171,6 @@ void SessionController::flushReadSync()
 {
     readSyncTimer_.stop();
     if (!online_) {
-        // Off is off: an account that is only being read tells its own other
-        // devices nothing, and there is nothing here worth queueing until it is
-        // switched on - the mark is already stored on this device.
         pendingReadSync_.clear();
         return;
     }
@@ -2517,7 +2179,6 @@ void SessionController::flushReadSync()
     }
     pendingReadSync_.clear();
 }
-
 
 void SessionController::onOpBegin(
     const QString& opId, const QString& kind, const QString& title, const QString& status)
@@ -2529,6 +2190,5 @@ void SessionController::onOpDone(const QString& opId, bool ok, const QString& st
 {
     finishOperation(opId, ok, status);
 }
-
 
 }  // namespace bazarish::app

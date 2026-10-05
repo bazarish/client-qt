@@ -33,8 +33,6 @@ QAudioFormat callAudioFormat()
     return format;
 }
 
-// A QIODevice that QAudioSource writes captured PCM into; the call engine pops
-// fixed-size frames. Only the ring + its lock are shared across threads.
 class QtAudioSource::CaptureDevice : public QIODevice {
 public:
     qint64 writeData(const char* data, qint64 len) override
@@ -44,7 +42,6 @@ public:
         {
             const std::lock_guard<std::mutex> lock(mutex_);
             ring_.insert(ring_.end(), samples, samples + count);
-            // Bound latency: drop the oldest audio if the reader falls far behind.
             const std::size_t cap = static_cast<std::size_t>(kCallSamplesPerFrame) * 25;
             while (ring_.size() > cap) {
                 ring_.pop_front();
@@ -56,7 +53,7 @@ public:
 
     qint64 readData(char*, qint64) override
     {
-        return 0;  // capture device is write-only from the audio backend
+        return 0;
     }
 
     bool isSequential() const override
@@ -108,13 +105,6 @@ QtAudioSource::~QtAudioSource()
 
 namespace {
 
-// The QAudio objects belong to the thread that created them and drive themselves
-// with timers that only tick there, so a start or stop made from anywhere else is
-// handed over rather than performed on the spot; without that the device opens,
-// no timer ever fires, and the call is silent both ways with nothing reported.
-// Callers are expected to open and close them from their owning thread anyway:
-// this hand-over blocks, and a thread that the owner is waiting on must never
-// make it.
 template <typename Fn>
 void onOwnerThread(QObject* const owner, Fn&& body)
 {
@@ -129,8 +119,6 @@ void onOwnerThread(QObject* const owner, Fn&& body)
 
 void QtAudioSource::start()
 {
-    // A microphone that did not open is the difference between a quiet call and a
-    // dead one, and it used to be reported by nothing at all.
     std::string failure;
     onOwnerThread(source_.get(), [this, &failure]() {
         device_->setRunning(true);
@@ -154,7 +142,7 @@ void QtAudioSource::start()
 
 void QtAudioSource::stop()
 {
-    device_->setRunning(false);  // unblock a reader waiting on popFrame
+    device_->setRunning(false);
     onOwnerThread(source_.get(), [this]() { source_->stop(); });
 }
 
@@ -163,12 +151,11 @@ std::vector<std::int16_t> QtAudioSource::readFrame()
     return device_->popFrame();
 }
 
-// A QIODevice QAudioSink pulls PCM from; the call engine pushes decoded frames.
 class QtAudioSink::PlaybackDevice : public QIODevice {
 public:
     qint64 writeData(const char*, qint64) override
     {
-        return 0;  // playback device is read-only to the audio backend
+        return 0;
     }
 
     qint64 readData(char* data, qint64 maxLen) override
@@ -183,7 +170,6 @@ public:
                 ring_.pop_front();
             }
         }
-        // Fill any shortfall with silence so the sink never stalls on underrun.
         while (produced < want) {
             out[produced++] = 0;
         }
