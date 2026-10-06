@@ -91,7 +91,7 @@ Popup {
         }
 
         Label {
-            text: qsTr("Paste a bazarish:// invite link, or enter an alias beginning with %1").arg(App.aliasSigil)
+            text: qsTr("Paste an invite link or a short alias")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

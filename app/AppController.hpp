@@ -103,7 +103,6 @@ public:
     QString dataLocation() const;
     Q_INVOKABLE void setPortable(bool on);
     Q_INVOKABLE void requestAddAccount();
-    Q_INVOKABLE void closeAccount();
     Q_INVOKABLE void copyText(const QString& text) const;
 
     Q_INVOKABLE bool clipboardHasImage() const;

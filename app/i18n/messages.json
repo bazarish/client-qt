@@ -131,12 +131,6 @@
       "zh": "I2P 路由运行在他人的主机上。它能看到你连接的所有地址。请选择你信任的一台。\n\n粘贴运营者给你的地址，或者跳过。程序将启动内置路由。",
       "ar": "يعمل موجّه I2P على مضيف آخر. وهو يرى كل العناوين التي تتصل بها. فاختر مضيفًا تثق به.\n\nالصِق عنوان المشغّل أو تخطَّ ذلك. سيشغّل التطبيق موجّهه المدمج."
     },
-    "A host runs the router. It sees every address you connect to and holds the keys of the destinations it makes for you.": {
-      "ru": "Роутер работает на чужой машине. Она видит все адреса, к которым вы обращаетесь. Она же хранит ключи созданных для вас назначений.",
-      "es": "Un servidor ajeno mantiene el router. Ve cada dirección a la que te conectas y guarda las claves de los destinos que crea para ti.",
-      "zh": "由他人的主机运行路由。它能看到你连接的每一个地址，并保管它为你创建的目的地的密钥。",
-      "ar": "يشغّل مضيفٌ الموجّه. يرى كل عنوان تتصل به، ويحتفظ بمفاتيح الوجهات التي ينشئها لك."
-    },
     "A new address is published": {
       "ru": "Новый адрес опубликован",
       "es": "Se ha publicado una dirección nueva",
@@ -383,6 +377,18 @@
       "zh": "等待运营者批准 — 在此之前没有目的地。",
       "ar": "في انتظار موافقة المشغّل — لا وجهة قبل ذلك."
     },
+    "Back": {
+      "ru": "Назад",
+      "es": "Atrás",
+      "zh": "返回",
+      "ar": "رجوع"
+    },
+    "Back up this account": {
+      "ru": "Сделать резервную копию",
+      "es": "Hacer una copia de seguridad",
+      "zh": "创建账号备份",
+      "ar": "إنشاء نسخة احتياطية"
+    },
     "Background activity": {
       "ru": "Фоновые операции",
       "es": "Actividad en segundo plano",
@@ -442,12 +448,6 @@
       "es": "Bloqueado: los mensajes y llamadas de este contacto se descartan y su pase está revocado. Un mensaje tuyo levanta el bloqueo.",
       "zh": "已屏蔽：来自该联系人的消息和来电会被丢弃，其凭据已撤销。你发出一条消息即解除屏蔽。",
       "ar": "محظورة: تُسقَط رسائل جهة الاتصال ومكالماتها، وسُحب تصريحها. ورسالة صادرة ترفع الحظر."
-    },
-    "Both the key your messages are sealed to and the capability in your invite are replaced here.": {
-      "ru": "Здесь меняется ключ для запечатывания ваших сообщений. Вместе с ним меняется разрешение из приглашения.",
-      "es": "Aquí se sustituyen tanto la clave con la que se sellan tus mensajes como el permiso de tu invitación.",
-      "zh": "此处会同时更换封装你消息的密钥和邀请中的凭据。",
-      "ar": "يُستبدل هنا المفتاح الذي تُختم به رسائلك والصلاحية التي في دعوتك معًا."
     },
     "Broken picture": {
       "ru": "Изображение повреждено",
@@ -677,11 +677,11 @@
       "zh": "正在压缩数据库",
       "ar": "جارٍ ضغط قاعدة البيانات"
     },
-    "Compare this with the site in front of you. If they differ, do not sign: someone else is being let in.": {
-      "ru": "Сверьте это с сайтом перед вами. Если расходится, не подписывайте. Вход получает кто-то другой.",
-      "es": "Compáralo con el sitio que tienes delante. Si no coincide, no firmes: están dejando entrar a otro.",
-      "zh": "请与眼前的站点核对。若不一致，就别签名：被放进去的是别人。",
-      "ar": "قارن هذا بالموقع الذي أمامك. إن اختلفا فلا توقّع: الداخل شخص آخر."
+    "Compare this with the site in front of you. If they differ, do not sign.": {
+      "ru": "Сверьте это с сайтом перед вами. Если расходится, не подписывайте.",
+      "es": "Compara esto con el sitio que tienes delante. Si no coincide, no firmes.",
+      "zh": "请与你眼前的网站核对。若不一致，就不要签名。",
+      "ar": "قارن هذا بالموقع الذي أمامك. وإن اختلفا فلا توقّع."
     },
     "Confirm passphrase": {
       "ru": "Повторите пароль",
@@ -1085,11 +1085,11 @@
       "zh": "设备数：%1",
       "ar": "الأجهزة: ⁦%1⁩"
     },
-    "Direct connections (%1)": {
-      "ru": "Прямых соединений: %1",
-      "es": "Conexiones directas (%1)",
-      "zh": "直接连接（%1）",
-      "ar": "الاتصالات المباشرة (⁦%1⁩)"
+    "Direct network connections: %1": {
+      "ru": "Прямых сетевых соединений: %1",
+      "es": "Conexiones de red directas: %1",
+      "zh": "直接网络连接：%1",
+      "ar": "اتصالات الشبكة المباشرة: ⁦%1⁩"
     },
     "Disk usage": {
       "ru": "Занято на диске",
@@ -1114,12 +1114,6 @@
       "es": "Descargando…",
       "zh": "正在下载…",
       "ar": "جارٍ التنزيل…"
-    },
-    "Each address has its own tunnels and the leasesets it has looked up.": {
-      "ru": "У каждого адреса свои туннели и свои найденные лизсеты.",
-      "es": "Cada dirección tiene sus propios túneles y los leasesets que ha consultado.",
-      "zh": "每个地址都有自己的隧道和自己查到的租约集。",
-      "ar": "لكل عنوان أنفاقه الخاصة ومجموعات العقود التي بحث عنها."
     },
     "Edit": {
       "ru": "Изменить",
@@ -1198,12 +1192,6 @@
       "es": "Todo lo guardado aquí desaparece, en este dispositivo y en todos los demás de esta cuenta.",
       "zh": "这里保存的一切都会消失——本设备如此，本账号的其他设备亦然。",
       "ar": "يذهب كل ما هو محفوظ هنا، على هذا الجهاز وعلى سائر أجهزة هذا الحساب."
-    },
-    "Export encrypted backup": {
-      "ru": "Выгрузить зашифрованную копию",
-      "es": "Exportar una copia cifrada",
-      "zh": "导出加密备份",
-      "ar": "تصدير نسخة احتياطية مشفّرة"
     },
     "Exporting your backup": {
       "ru": "Выгрузка резервной копии",
@@ -1349,11 +1337,11 @@
       "zh": "主机或地址",
       "ar": "المضيف أو العنوان"
     },
-    "How this application reaches I2P": {
-      "ru": "Как программа попадает в I2P",
-      "es": "Cómo llega esta aplicación a I2P",
-      "zh": "本程序如何接入 I2P",
-      "ar": "كيف يصل هذا التطبيق إلى I2P"
+    "How this application connects to I2P": {
+      "ru": "Как приложение подключается к I2P",
+      "es": "Cómo se conecta esta aplicación a I2P",
+      "zh": "本应用如何连接 I2P",
+      "ar": "كيف يتصل هذا التطبيق بشبكة I2P"
     },
     "I2P destination revoked": {
       "ru": "Назначение I2P отозвано",
@@ -1392,7 +1380,7 @@
       "ar": "ستمرّ I2P عبر الموجّه الخارجي المحلي."
     },
     "I2P will be carried by the private gateway.": {
-      "ru": "I2P будет работать через частный шлюз.",
+      "ru": "I2P будет работать через приватный шлюз.",
       "es": "I2P lo llevará la pasarela privada.",
       "zh": "I2P 将由私有网关承载。",
       "ar": "ستحمل I2P البوابة الخاصة."
@@ -1420,12 +1408,6 @@
       "es": "En llamada · %1",
       "zh": "通话中 · %1",
       "ar": "في مكالمة · ⁦%1⁩"
-    },
-    "In force now": {
-      "ru": "Действует сейчас",
-      "es": "En vigor ahora",
-      "zh": "当前生效",
-      "ar": "سارٍ الآن"
     },
     "Inbound tunnels": {
       "ru": "Входящие туннели",
@@ -1487,11 +1469,11 @@
       "zh": "要退出 Bazarish 吗？",
       "ar": "أتريد الخروج من Bazarish؟"
     },
-    "Let contacts pass my contact on": {
-      "ru": "Разрешить контактам передавать мой контакт",
-      "es": "Permitir que mis contactos pasen mi contacto",
-      "zh": "允许联系人把我的联系方式转给别人",
-      "ar": "السماح لجهات اتصالي بتمرير بياناتي"
+    "Let contacts share my contact": {
+      "ru": "Разрешить контактам делиться моим контактом",
+      "es": "Permitir que mis contactos compartan mi contacto",
+      "zh": "允许联系人分享我的联系方式",
+      "ar": "السماح لمراسليّ بمشاركة بطاقتي"
     },
     "Lets contacts see a green mark when you receive.": {
       "ru": "Контакты увидят зелёную отметку, когда вы получите сообщение.",
@@ -1835,11 +1817,11 @@
       "zh": "离线",
       "ar": "غير متصل"
     },
-    "On, a contact can hand you to someone else. Off, they are sent no capability and their Share button says so.": {
-      "ru": "Когда включено, контакт может передать вас другому. Когда выключено, разрешение не выдаётся. Кнопка «Поделиться» у контакта это покажет.",
-      "es": "Activado, un contacto puede pasarte a otra persona. Desactivado, no se le envía ningún permiso y su botón «Compartir» lo indica.",
-      "zh": "开启时，联系人可以把你转介给别人。关闭时，不会向其发放任何凭据，对方的“分享”按钮也会如此说明。",
-      "ar": "عند التفعيل، يمكن لجهة الاتصال أن تمرّرك إلى شخص آخر. وعند الإيقاف، لا تُمنَح أي صلاحية، ويُبيّن زر «مشاركة» لديها ذلك."
+    "On, a contact can share your contact with somebody else. Off, no capability is sent, and the Share button on their side says so.": {
+      "ru": "Когда включено, контакт может поделиться вашим контактом. Когда выключено, разрешение не выдаётся. Кнопка «Поделиться» у контакта это покажет.",
+      "es": "Activado, un contacto puede compartir tu contacto con otra persona. Desactivado, no se envía ninguna autorización. El botón «Compartir» de tu contacto lo indica.",
+      "zh": "开启后，联系人可以把你的联系方式分享给别人。关闭后不再发放授权。联系人那边的「分享」按钮会说明这一点。",
+      "ar": "عند التشغيل يمكن لجهة الاتصال أن تشارك بطاقتك مع غيرها. وعند الإيقاف لا يُمنح أي تصريح. ويوضّح زر «المشاركة» عندها ذلك."
     },
     "Online": {
       "ru": "В сети",
@@ -1907,12 +1889,6 @@
       "zh": "密码已更改",
       "ar": "تغيّرت كلمة المرور"
     },
-    "Paste a bazarish:// invite link, or enter an alias beginning with %1": {
-      "ru": "Вставьте ссылку-приглашение bazarish:// или введите алиас, начинающийся с %1",
-      "es": "Pega un enlace de invitación bazarish:// o introduce un alias que empiece por %1",
-      "zh": "粘贴 bazarish:// 邀请链接，或输入以 %1 开头的别名",
-      "ar": "الصِق رابط دعوة bazarish:// أو أدخل اسمًا مستعارًا يبدأ بـ ⁦%1⁩"
-    },
     "Paste a bazarish://server/… link": {
       "ru": "Вставьте ссылку bazarish://server/…",
       "es": "Pega un enlace bazarish://server/…",
@@ -1924,6 +1900,12 @@
       "es": "Pega un enlace de servidor, o edita las fachadas y la huella, y pulsa Conectar. Si tu clave necesita registro, regístrate en el portal del servidor y vuelve a conectar.",
       "zh": "粘贴服务器链接，或填写门面和指纹，然后点击“连接”。若密钥需要注册，请到服务器门户注册后再次连接。",
       "ar": "الصِق رابط خادم، أو حرّر الواجهات والبصمة، ثم اضغط «اتصال». وإن احتاج مفتاحك تسجيلًا، فسجّل في بوابة الخادم واتصل مرة أخرى."
+    },
+    "Paste an invite link or a short alias": {
+      "ru": "Вставьте ссылку-приглашение или короткий алиас",
+      "es": "Pega un enlace de invitación o un alias corto",
+      "zh": "粘贴邀请链接或短别名",
+      "ar": "الصِق رابط دعوة أو اسمًا مستعارًا قصيرًا"
     },
     "Paste an invite link.": {
       "ru": "Вставьте ссылку-приглашение.",
@@ -2058,7 +2040,7 @@
       "ar": "الخصوصية"
     },
     "Private gateway": {
-      "ru": "Частный шлюз",
+      "ru": "Приватный шлюз",
       "es": "Pasarela privada",
       "zh": "私有网关",
       "ar": "بوابة خاصة"
@@ -2067,7 +2049,7 @@
       "ru": "Прокси",
       "es": "Proxy",
       "zh": "代理",
-      "ar": "الوسيط"
+      "ar": "وسيط"
     },
     "Publish address": {
       "ru": "Опубликовать адрес",
@@ -2219,12 +2201,6 @@
       "zh": "重新录音",
       "ar": "سجّل مجددًا"
     },
-    "Refresh": {
-      "ru": "Обновить",
-      "es": "Actualizar",
-      "zh": "刷新",
-      "ar": "تحديث"
-    },
     "Refreshing your contact card": {
       "ru": "Обновление карточки контакта",
       "es": "Actualizando tu tarjeta de contacto",
@@ -2303,6 +2279,12 @@
       "zh": "正在移除头像",
       "ar": "جارٍ إزالة صورتك"
     },
+    "Renew": {
+      "ru": "Обновить",
+      "es": "Renovar",
+      "zh": "续期",
+      "ar": "تجديد"
+    },
     "Reply": {
       "ru": "Ответить",
       "es": "Responder",
@@ -2370,8 +2352,8 @@
       "ar": "إعادة التشغيل الآن تعيد بناء الأنفاق في دقيقة أو دقيقتين. أما الحفظ فيطبّق الإعداد عند البدء التالي."
     },
     "Restore from backup": {
-      "ru": "Восстановить из копии",
-      "es": "Restaurar desde una copia",
+      "ru": "Восстановить из резервной копии",
+      "es": "Restaurar desde una copia de seguridad",
       "zh": "从备份恢复",
       "ar": "الاستعادة من نسخة احتياطية"
     },
@@ -2398,12 +2380,6 @@
       "es": "Clic derecho para copiar y guardar",
       "zh": "右键可复制和保存",
       "ar": "بالزر الأيمن تنسخ وتحفظ"
-    },
-    "Router connections": {
-      "ru": "Соединения роутера",
-      "es": "Conexiones del router",
-      "zh": "路由的连接",
-      "ar": "اتصالات الموجّه"
     },
     "Router is starting up.": {
       "ru": "Роутер запускается.",
@@ -2633,6 +2609,12 @@
       "zh": "服务器上的占用",
       "ar": "المساحة المستخدمة على الخادم"
     },
+    "Sets how long your server keeps serving incoming mail while you are offline.": {
+      "ru": "Определяет срок, в который сервер продолжит обслуживать входящую почту без вашего онлайна.",
+      "es": "Fija cuánto tiempo seguirá tu servidor atendiendo el correo entrante mientras estés sin conexión.",
+      "zh": "决定你不在线时服务器继续接收来信的时长。",
+      "ar": "يحدّد المدة التي يستمر فيها خادمك باستلام رسائلك الواردة وأنت غير متصل."
+    },
     "Setting your avatar": {
       "ru": "Установка аватара",
       "es": "Estableciendo tu avatar",
@@ -2651,12 +2633,6 @@
       "zh": "分享已关闭",
       "ar": "المشاركة مُعطَّلة"
     },
-    "Shorter means a move to another server takes effect sooner. Longer means you stay reachable while away.": {
-      "ru": "Короткий срок — переход на другой сервер вступит в силу быстрее. Длинный — вы остаётесь доступны во время отсутствия.",
-      "es": "Un plazo corto hace que una mudanza de servidor surta efecto antes. Uno largo te mantiene localizable mientras estás fuera.",
-      "zh": "期限越短，更换服务器生效越快；越长，你不在时也仍可被找到。",
-      "ar": "المدة القصيرة تجعل الانتقال إلى خادم آخر يسري أسرع. والطويلة تُبقيك قابلًا للبلوغ أثناء غيابك."
-    },
     "Show I2P logs": {
       "ru": "Показывать логи I2P",
       "es": "Mostrar los registros de I2P",
@@ -2669,17 +2645,11 @@
       "zh": "显示通知",
       "ar": "إظهار التنبيهات"
     },
-    "Sign in with your key": {
-      "ru": "Войти своим ключом",
-      "es": "Iniciar sesión con tu clave",
-      "zh": "用你的密钥登录",
-      "ar": "سجّل الدخول بمفتاحك"
-    },
-    "Sign out": {
-      "ru": "Выйти из аккаунта",
-      "es": "Cerrar sesión",
-      "zh": "退出账号",
-      "ar": "تسجيل الخروج"
+    "Sign with the account key": {
+      "ru": "Подписать ключом аккаунта",
+      "es": "Firmar con la clave de la cuenta",
+      "zh": "用账号密钥签名",
+      "ar": "التوقيع بمفتاح الحساب"
     },
     "Signature": {
       "ru": "Подпись",
@@ -2885,12 +2855,6 @@
       "zh": "程序运行在临时目录（%1）中，该目录重启时会被清空。请先把它移到自己的文件夹。",
       "ar": "يعمل التطبيق من مجلد مؤقت (⁦%1⁩) يُفرَّغ عند إعادة التشغيل. انقله أولًا إلى مجلد خاص به."
     },
-    "The challenge is signed here; only the signature leaves.": {
-      "ru": "Запрос подписывается здесь. Наружу уходит только подпись.",
-      "es": "El reto se firma aquí. Solo sale la firma.",
-      "zh": "质询在此处签名。离开的只有签名。",
-      "ar": "يُوقَّع التحدي هنا. ولا يغادر سوى التوقيع."
-    },
     "The contact request did not finish.": {
       "ru": "Запрос на добавление не завершился.",
       "es": "La solicitud de contacto no se completó.",
@@ -2927,6 +2891,12 @@
       "zh": "该设备下次连接时会重新注册。",
       "ar": "يسجّل الجهاز نفسه من جديد في اتصاله التالي."
     },
+    "The existing key is deleted. Nobody can reach you until you create a new key and publish it. It will be a different address. Your contacts reach you again only after your first outgoing message. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.": {
+      "ru": "Существующий ключ будет удалён. Связаться с вами будет нельзя до генерации нового ключа и его публикации. Это будет другой адрес. Связь с существующими контактами восстановится только после вашего первого исходящего сообщения. Опция полезна в редких случаях борьбы со спамом. Не делайте этот шаг, если точно не понимаете, зачем он нужен.",
+      "es": "La clave actual se elimina. Nadie podrá contactarte hasta que crees una clave nueva y la publiques. Será otra dirección. Tus contactos volverán a alcanzarte solo tras tu primer mensaje saliente. Sirve en el caso poco frecuente de quitarse el spam de encima. No des este paso si no sabes con certeza para qué lo necesitas.",
+      "zh": "现有密钥将被删除。在你生成并发布新密钥之前，没有人能联系到你。地址也会变成另一个。现有联系人只有在你发出第一条消息之后才能重新找到你。此选项用于少见的摆脱垃圾消息的情形。如果你不确定为何需要它，就不要执行这一步。",
+      "ar": "يُحذف المفتاح الحالي. ولا يمكن لأحد الوصول إليك حتى تولّد مفتاحًا جديدًا وتنشره. وسيكون العنوان مختلفًا. ولا يصل إليك مراسلوك الحاليون إلا بعد رسالتك الصادرة الأولى. ويفيد هذا في حالة نادرة: التخلّص من الإزعاج. فلا تخطُ هذه الخطوة إن لم تكن واثقًا من سببها."
+    },
     "The file goes straight between you and your contact. Your contact asks for a one-time I2P tunnel. Your app has to be online to hand the file over when they ask.": {
       "ru": "Файл передаётся напрямую между вами и собеседником. Контакт запросит одноразовый туннель I2P. Ваше приложение должно быть онлайн, чтобы отдать файл в момент запроса.",
       "es": "El archivo va directo entre tú y tu contacto. Tu contacto pedirá un túnel I2P de un solo uso. Tu aplicación debe estar en línea para entregarlo en ese momento.",
@@ -2938,6 +2908,12 @@
       "es": "La primera conexión por I2P puede tardar varios minutos. No cierres la aplicación.",
       "zh": "首次通过 I2P 连接可能需要数分钟。请勿关闭程序。",
       "ar": "قد يستغرق الاتصال الأول عبر I2P دقائق عدة. لا تغلق التطبيق."
+    },
+    "The gateway takes connections over HTTPS, so this application looks like ordinary web traffic. It removes the need for a local I2P router. The gateway sees the I2P addresses you reach, so it has to be one you trust. End-to-end protection of your data is unaffected.": {
+      "ru": "Шлюз принимает подключения по протоколу HTTPS, активность приложения становится похожей на обычный веб-трафик. Его использование снимает потребность в локальном I2P-роутере. Шлюз видит адреса I2P, к которым вы обращаетесь, поэтому должен быть доверенным. Сквозная защита личных данных не страдает.",
+      "es": "La pasarela acepta conexiones por HTTPS, así que la actividad de la aplicación se parece a tráfico web corriente. Su uso quita la necesidad de un router I2P local. La pasarela ve las direcciones I2P a las que acudes, así que tiene que ser de confianza. El cifrado de extremo a extremo de tus datos no se ve afectado.",
+      "zh": "网关通过 HTTPS 接受连接，程序的活动因此看起来像普通网页流量。使用网关就不再需要本地 I2P 路由。网关能看到你访问的 I2P 地址，因此必须是你信任的。端到端加密保护不受影响。",
+      "ar": "تستقبل البوابة الاتصالات عبر HTTPS، فيبدو نشاط التطبيق كحركة ويب عادية. ويغني استخدامها عن موجّه I2P محلي. وترى البوابة عناوين I2P التي تقصدها، فلا بدّ أن تكون موثوقة. ولا يتأثر التشفير التام بين الطرفين لبياناتك."
     },
     "The key was changed. Contacts told: %1": {
       "ru": "Ключ изменён. Оповещено контактов: %1",
@@ -2956,12 +2932,6 @@
       "es": "Los últimos %1 eventos de esta cuenta, los más recientes primero.",
       "zh": "此账号最近的 %1 条事件，最新的在前。",
       "ar": "آخر ⁦%1⁩ من أحداث هذا الحساب، الأحدث أولًا."
-    },
-    "The old key is deleted. Nobody can reach you until you publish a new destination, and it would be a different address.": {
-      "ru": "Старый ключ будет удалён. Связаться с вами будет нельзя до публикации нового назначения. Это будет другой адрес.",
-      "es": "La clave antigua se borra. Nadie podrá alcanzarte hasta que publiques un destino nuevo, y será otra dirección.",
-      "zh": "旧密钥将被删除。在你发布新的目的地之前谁也找不到你，而那将是另一个地址。",
-      "ar": "يُحذف المفتاح القديم. ولن يبلغك أحد حتى تنشر وجهة جديدة، وستكون عنوانًا آخر."
     },
     "The panel on the right shows the progress.": {
       "ru": "Ход операции виден на панели справа.",
@@ -2993,29 +2963,17 @@
       "zh": "解析服务会返回该别名的描述符。",
       "ar": "يعيد المُحلِّل واصف هذا الاسم المستعار."
     },
+    "The router answered": {
+      "ru": "Роутер ответил",
+      "es": "El router ha respondido",
+      "zh": "路由已响应",
+      "ar": "استجاب الموجّه"
+    },
     "The router is at %1.": {
       "ru": "Роутер находится на %1.",
       "es": "El router está en %1.",
       "zh": "路由位于 %1。",
       "ar": "الموجّه عند ⁦%1⁩."
-    },
-    "The router is built in and shared by every account.": {
-      "ru": "Роутер встроен, общий для всех аккаунтов.",
-      "es": "El router va integrado y lo comparten todas las cuentas.",
-      "zh": "路由为内置，所有账号共用。",
-      "ar": "الموجّه مدمج، وتتشاركه كل الحسابات."
-    },
-    "The router is not running; these are what it will come up with.": {
-      "ru": "Роутер не запущен. Он стартует с этими значениями.",
-      "es": "El router no está en marcha; con estos valores arrancará.",
-      "zh": "路由尚未运行；它将以这些值启动。",
-      "ar": "الموجّه لا يعمل؛ وبهذه القيم سيقوم."
-    },
-    "The router's direct network connections": {
-      "ru": "Прямые сетевые соединения роутера",
-      "es": "Las conexiones de red directas del router",
-      "zh": "路由的直接网络连接",
-      "ar": "اتصالات الموجّه الشبكية المباشرة"
     },
     "The two do not match.": {
       "ru": "Они не совпадают.",
@@ -3306,7 +3264,7 @@
       "ar": "جارٍ الرفع…"
     },
     "Use a private gateway?": {
-      "ru": "Использовать частный шлюз?",
+      "ru": "Использовать приватный шлюз?",
       "es": "¿Usar una pasarela privada?",
       "zh": "要使用私有网关吗？",
       "ar": "أتريد استخدام بوابة خاصة؟"
@@ -3317,11 +3275,11 @@
       "zh": "使用该头像",
       "ar": "استخدام الصورة"
     },
-    "Use the local external I2P router. It holds the keys of every destination it operates, so it has to be yours.": {
-      "ru": "Использовать локальный внешний роутер I2P. Он хранит ключи всех назначений, поэтому должен быть вашим.",
-      "es": "Usar el router I2P externo local. Guarda las claves de todos los destinos que opera, así que tiene que ser tuyo.",
-      "zh": "使用本机的外部 I2P 路由。它保管着全部目的地的密钥，因此必须是你自己的。",
-      "ar": "استخدام موجّه I2P الخارجي المحلي. وهو يحتفظ بمفاتيح كل وجهة يديرها، فلا بدّ أن يكون موجّهك."
+    "Use the local external I2P router.": {
+      "ru": "Использовать локальный внешний роутер I2P.",
+      "es": "Usar el router I2P externo local.",
+      "zh": "使用本机的外部 I2P 路由。",
+      "ar": "استخدام موجّه I2P الخارجي المحلي."
     },
     "Version": {
       "ru": "Версия",
@@ -3732,10 +3690,10 @@
       "ar": "كلمة المرور"
     },
     "password the backup was saved with": {
-      "ru": "пароль, которым сохранена копия",
-      "es": "la contraseña con la que se guardó la copia",
+      "ru": "пароль, которым сохранена резервная копия",
+      "es": "la contraseña con la que se guardó la copia de seguridad",
       "zh": "保存该备份时所用的密码",
-      "ar": "كلمة المرور التي حُفظت بها النسخة"
+      "ar": "كلمة المرور التي حُفظت بها النسخة الاحتياطية"
     },
     "renews %1": {
       "ru": "продление %1",

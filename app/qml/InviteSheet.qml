@@ -249,10 +249,6 @@ Popup {
         contentItem: ColumnLayout {
             spacing: 10
             Label {
-                text: qsTr("Both the key your messages are sealed to and the capability in your invite are replaced here.")
-                color: Theme.text; wrapMode: Text.Wrap; Layout.fillWidth: true
-            }
-            Label {
                 text: qsTr("Every link you handed out stops working. Your contacts are sent the new pair; one that is offline gets it with your next message.")
                 color: Theme.warn; font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap; Layout.fillWidth: true
@@ -275,10 +271,13 @@ Popup {
                 spacing: 8
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { text: qsTr("Let contacts pass my contact on"); color: Theme.text }
                     Label {
-                        text: qsTr("On, a contact can hand you to someone else. Off, they are sent "
-                            + "no capability and their Share button says so.")
+                        text: qsTr("Let contacts share my contact")
+                        color: Theme.text
+                        wrapMode: Text.Wrap; Layout.fillWidth: true
+                    }
+                    Label {
+                        text: qsTr("On, a contact can share your contact with somebody else. Off, no capability is sent, and the Share button on their side says so.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }

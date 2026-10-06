@@ -31,6 +31,7 @@ class I2pController : public QObject {
     Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
     Q_PROPERTY(int proxyPort READ proxyPort NOTIFY proxyChanged)
     Q_PROPERTY(bool samEnabled READ samEnabled NOTIFY samChanged)
+    Q_PROPERTY(bool samChecking READ samChecking NOTIFY samChanged)
     Q_PROPERTY(QString samHost READ samHost NOTIFY samChanged)
     Q_PROPERTY(int samPort READ samPort NOTIFY samChanged)
     Q_PROPERTY(QString proxyNtcp2 READ proxyNtcp2 NOTIFY statusChanged)
@@ -56,12 +57,12 @@ public:
     QString proxyNtcp2() const { return proxyNtcp2_; }
     Q_INVOKABLE void saveProxy(const QString& host, int port, bool restartNow);
     bool samEnabled() const { return samEnabled_; }
+    bool samChecking() const { return samChecking_; }
     QString samHost() const { return samHost_; }
     int samPort() const { return samPort_; }
-    Q_INVOKABLE void saveSam(const QString& host, int port);
+    Q_INVOKABLE void checkAndSaveSam(const QString& host, int port);
     Q_INVOKABLE void useSam(bool on);
     Q_INVOKABLE void useGateway(bool on);
-    Q_INVOKABLE bool samReachable(const QString& host, int port) const;
     int floodfills() const { return floodfills_; }
     int inboundTunnels() const { return inboundTunnels_; }
     int outboundTunnels() const { return outboundTunnels_; }
@@ -93,6 +94,8 @@ signals:
     void transportChanged();
     void gatewaySaved();
     void gatewayRefused(const QString& reason);
+    void samSaved();
+    void samRefused(const QString& reason);
 
 private:
     void reconcileRouter();
@@ -109,6 +112,7 @@ private:
     bool gatewayEnabled_ = false;
     QString gatewayAddress_;
     bool gatewayChecking_ = false;
+    bool samChecking_ = false;
     bool samEnabled_ = false;
     QString transportAtStart_;
     void noteChoiceInForce();

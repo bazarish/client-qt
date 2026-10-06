@@ -1661,6 +1661,7 @@ void SessionController::setSendReceipts(const bool on)
 void SessionController::publishPersonalDest()
 {
     i2pBusy_ = true;
+    flashOnNextStatus_ = true;
     emit i2pStatusChanged();
     emit requestPublishPersonalDest();
 }
@@ -1668,6 +1669,7 @@ void SessionController::publishPersonalDest()
 void SessionController::disablePersonalDest()
 {
     i2pBusy_ = true;
+    flashOnNextStatus_ = true;
     emit i2pStatusChanged();
     emit requestDisablePersonalDest();
 }
@@ -1689,6 +1691,8 @@ void SessionController::onI2pStatus(const bool hasKey, const bool delegated, con
     const QString& serverState)
 {
     i2pBusy_ = false;
+    const bool flash = flashOnNextStatus_;
+    flashOnNextStatus_ = false;
     i2pServerState_ = serverState;
     i2pHasKey_ = hasKey;
     i2pEnabled_ = delegated;
@@ -1697,6 +1701,9 @@ void SessionController::onI2pStatus(const bool hasKey, const bool delegated, con
     i2pStatusText_ = summary;
     i2pTransientExpires_ = transientExpires;
     emit i2pStatusChanged();
+    if (flash) {
+        emit i2pAnswered();
+    }
 }
 
 void SessionController::refreshStorageUsage()
@@ -2030,12 +2037,12 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
 {
     if (connecting_) {
         connecting_ = false;
-        connectPhase_.clear();
-        connectError_ = connected ? QString() : connectionNote;
         finishOperation(kConnectOperationId, connected,
             connected ? tr("Connected") : connectionNote);
-        emit connectStateChanged();
     }
+    connectPhase_.clear();
+    connectError_ = connected ? QString() : connectionNote;
+    emit connectStateChanged();
     connected_ = connected;
     emit connectedChanged();
     if (online_ != connected) {

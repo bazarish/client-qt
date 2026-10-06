@@ -88,27 +88,45 @@ I2pController::I2pController(QObject* parent)
     refresh();
 }
 
-bool I2pController::samReachable(const QString& host, const int port) const
+void I2pController::checkAndSaveSam(const QString& host, const int port)
 {
-    try {
-        bazarish::sam::RouterAddress address;
-        address.host = host.trimmed().toStdString();
-        address.controlPort = static_cast<std::uint16_t>(port);
-        (void)bazarish::sam::probe(address);
-        return true;
-    } catch (const std::exception& error) {
-        bazarish::log::info("i2p: no SAM router at {}:{}: {}", host.toStdString(), port,
-            error.what());
-        return false;
+    if (samChecking_) {
+        return;
     }
-}
-
-void I2pController::saveSam(const QString& host, const int port)
-{
-    samHost_ = host.trimmed();
-    samPort_ = port;
-    AppSettings::instance().setSam(samEnabled_, samHost_.toStdString(), samPort_);
+    const QString wanted = host.trimmed();
+    if (wanted.isEmpty() || port <= 0) {
+        emit samRefused(tr("Give the router's address first."));
+        return;
+    }
+    samChecking_ = true;
     emit samChanged();
+    std::thread([this, wanted, port]() {
+        QString failure;
+        try {
+            bazarish::sam::RouterAddress address;
+            address.host = wanted.toStdString();
+            address.controlPort = static_cast<std::uint16_t>(port);
+            (void)bazarish::sam::probe(address);
+        } catch (const std::exception& error) {
+            failure = QString::fromUtf8(error.what());
+        }
+        QMetaObject::invokeMethod(
+            this,
+            [this, wanted, port, failure]() {
+                samChecking_ = false;
+                if (!failure.isEmpty()) {
+                    emit samChanged();
+                    emit samRefused(failure);
+                    return;
+                }
+                samHost_ = wanted;
+                samPort_ = port;
+                AppSettings::instance().setSam(samEnabled_, samHost_.toStdString(), samPort_);
+                emit samChanged();
+                emit samSaved();
+            },
+            Qt::QueuedConnection);
+    }).detach();
 }
 
 void I2pController::noteChoiceInForce()
@@ -136,7 +154,7 @@ void I2pController::useGateway(const bool on)
 void I2pController::useSam(const bool on)
 {
     if (on && samHost_.isEmpty()) {
-        emit gatewayRefused(tr("Give the router's address first."));
+        emit samRefused(tr("Give the router's address first."));
         return;
     }
     samEnabled_ = on;

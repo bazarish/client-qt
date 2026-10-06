@@ -139,7 +139,7 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
 
-                    Label { text: qsTr("How this application reaches I2P"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: qsTr("How this application connects to I2P"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
 
                     TabBar {
                         id: transportTabs
@@ -178,15 +178,46 @@ Popup {
                                     }
                                 }
                             }
-                            Label {
-                                text: qsTr("The router is built in and shared by every account.")
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
                             RowLayout {
                                 Layout.fillWidth: true
                                 Label { text: qsTr("Version"); color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
                                 Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
+                            }
+
+                            Label {
+                                Layout.topMargin: 8
+                                text: qsTr("Proxy")
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                text: qsTr("A SOCKS5 proxy the router reaches the I2P network "
+                                    + "through. Leave empty to connect straight out.")
+                                color: Theme.textFaint; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                FormField {
+                                    id: proxyHostField
+                                    Layout.fillWidth: true
+                                    placeholder: qsTr("Host or address")
+                                    text: I2p.proxyHost
+                                }
+                                FormField {
+                                    id: proxyPortField
+                                    Layout.preferredWidth: 90
+                                    placeholder: qsTr("Port")
+                                    text: I2p.proxyPort > 0 ? String(I2p.proxyPort) : ""
+                                    inputField.validator: IntValidator { bottom: 1; top: 65535 }
+                                }
+                            }
+                            MenuButton {
+                                iconName: "check"
+                                text: qsTr("Save")
+                                Layout.alignment: Qt.AlignRight
+                                onClicked: proxyRestartDialog.open()
                             }
                         }
 
@@ -200,10 +231,11 @@ Popup {
                                 Toggle {
                                     id: samToggle
                                     checked: I2p.transport === "sam"
+                                    enabled: !I2p.samChecking
                                     onToggled: {
                                         if (checked) {
-                                            I2p.saveSam(samHostField.text,
-                                                parseInt(samPortField.text || "0"))
+                                            // The address is saved by the button
+                                            // below; this only chooses it.
                                             I2p.useSam(true)
                                             checked = I2p.transport === "sam"
                                         } else {
@@ -213,7 +245,7 @@ Popup {
                                 }
                             }
                             Label {
-                                text: qsTr("Use the local external I2P router. It holds the keys of every destination it operates, so it has to be yours.")
+                                text: qsTr("Use the local external I2P router.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -234,12 +266,26 @@ Popup {
                                     inputField.validator: IntValidator { bottom: 1; top: 65535 }
                                 }
                             }
+                            Label {
+                                visible: root.samNote.length > 0
+                                text: root.samNote
+                                color: root.samAnswered ? Theme.success : Theme.danger
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
                             MenuButton {
                                 iconName: "check"
-                                text: qsTr("Save")
+                                text: I2p.samChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
-                                onClicked: I2p.saveSam(samHostField.text,
-                                    parseInt(samPortField.text || "0"))
+                                enabled: !I2p.samChecking
+                                    && samHostField.text.trim().length > 0
+                                    && (samHostField.text.trim() !== I2p.samHost
+                                        || parseInt(samPortField.text || "0") !== I2p.samPort)
+                                onClicked: {
+                                    root.samNote = ""
+                                    I2p.checkAndSaveSam(samHostField.text,
+                                        parseInt(samPortField.text || "0"))
+                                }
                             }
                         }
 
@@ -267,7 +313,7 @@ Popup {
                                 }
                             }
                             Label {
-                                text: qsTr("A host runs the router. It sees every address you connect to and holds the keys of the destinations it makes for you.")
+                                text: qsTr("The gateway takes connections over HTTPS, so this application looks like ordinary web traffic. It removes the need for a local I2P router. The gateway sees the I2P addresses you reach, so it has to be one you trust. End-to-end protection of your data is unaffected.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -319,10 +365,27 @@ Popup {
 
     // Why the last gateway address was refused, cleared when a new one is tried.
     property string gatewayProblem: ""
+    // The verdict on the SAM address: whether the router at it answered.
+    property string samNote: ""
+    property bool samAnswered: false
     Connections {
         target: I2p
         function onGatewayRefused(reason) { root.gatewayProblem = reason }
         function onGatewaySaved() { root.gatewayProblem = "" }
+        function onSamRefused(reason) {
+            root.samAnswered = false
+            root.samNote = reason
+        }
+        function onSamSaved() {
+            root.samAnswered = true
+            root.samNote = qsTr("The router answered")
+        }
+    }
+
+    ProxyRestartDialog {
+        id: proxyRestartDialog
+        onAnswered: (restartNow) => I2p.saveProxy(
+            proxyHostField.text, parseInt(proxyPortField.text || "0"), restartNow)
     }
 
     // Moving the data is not something to do on a stray tap.

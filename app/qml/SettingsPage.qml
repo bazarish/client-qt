@@ -205,7 +205,7 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             iconName: "key"
-                            text: qsTr("Sign in with your key")
+                            text: qsTr("Sign with the account key")
                             onClicked: { root.close(); root.showSignWithKey() }
                         }
                     }
@@ -448,10 +448,13 @@ Popup {
                         text: qsTr("Your account has an I2P address of its own. The key is yours, so the address survives a move to another server.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
-                    // Status block. "Refresh" re-polls the server and briefly tints
-                    // this box so the user sees the data was just updated; the
-                    // term line reads "Inactive" whenever the delegation is not
-                    // currently paid-active.
+                    // The box is tinted when the server's answer arrives, not when
+                    // the button is pressed.
+                    Connections {
+                        target: root.session
+                        ignoreUnknownSignals: true
+                        function onI2pAnswered() { i2pFlash.restart() }
+                    }
                     Rectangle {
                         id: i2pStatusBox
                         Layout.fillWidth: true
@@ -560,7 +563,7 @@ Popup {
                         visible: root.session && !root.session.i2pHasKey
                         Layout.fillWidth: true; spacing: 8
                         MenuButton { Layout.fillWidth: true; iconName: "plus"; text: qsTr("Create address")
-                            onClicked: { root.session.generatePersonalKey(); i2pFlash.restart() } }
+                            onClicked: root.session.generatePersonalKey() }
                         MenuButton { Layout.fillWidth: true; iconName: "folder"; text: qsTr("Load an existing key"); onClicked: i2pKeyDialog.open() }
                     }
                     RowLayout {
@@ -589,12 +592,16 @@ Popup {
                             enabled: root.session && !root.session.i2pBusy
                             onClicked: root.session.disablePersonalDest()
                         }
-                        // Re-poll the server status and flash the box for ~1s.
+                        // Hands the server a new delegation. The status itself is
+                        // polled while this page is open, with no button for it.
                         MenuButton {
                             Layout.fillWidth: true
                             iconName: "refresh"
-                            text: qsTr("Refresh")
-                            onClicked: { if (root.session) root.session.refreshI2pStatus(); i2pFlash.restart() }
+                            text: root.session && root.session.i2pBusy
+                                ? qsTr("Publishing…") : qsTr("Renew")
+                            enabled: root.session && root.session.connected
+                                && !root.session.i2pBusy
+                            onClicked: root.session.publishPersonalDest()
                         }
                     }
                     // Permanently drop this account's master key: nobody can reach it again
@@ -607,20 +614,6 @@ Popup {
                         danger: true
                         onClicked: deleteKeyDialog.open()
                     }
-                }
-                Hairline { }
-
-                // Backup
-                // What this account alone does. The switches above are the app's;
-                // these follow the account wherever it is opened.
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-                    Label { text: qsTr("Privacy"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    // How long this account hands its address to the server for.
-                    // It is the only thing that ties an account to a server in
-                    // time, so the user - not the operator - sets it.
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -628,7 +621,7 @@ Popup {
                             Layout.fillWidth: true
                             Label { text: qsTr("Delegation term"); color: Theme.text }
                             Label {
-                                text: qsTr("Shorter means a move to another server takes effect sooner. Longer means you stay reachable while away.")
+                                text: qsTr("Sets how long your server keeps serving incoming mail while you are offline.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -737,6 +730,17 @@ Popup {
                             }
                         }
                     }
+                }
+                Hairline { }
+
+                // Backup
+                // What this account alone does. The switches above are the app's;
+                // these follow the account wherever it is opened.
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 8
+                    Label { text: qsTr("Privacy"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     RowLayout {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -783,7 +787,7 @@ Popup {
                             passwordDialog.open()
                         }
                     }
-                    MenuButton { Layout.fillWidth: true; iconName: "save"; text: qsTr("Export encrypted backup"); onClicked: exportDialog.open() }
+                    MenuButton { Layout.fillWidth: true; iconName: "save"; text: qsTr("Back up this account"); onClicked: exportDialog.open() }
                     MenuButton {
                         Layout.fillWidth: true
                         iconName: "disk"
@@ -800,12 +804,6 @@ Popup {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
-                        MenuButton {
-                            Layout.fillWidth: true
-                            iconName: "signout"
-                            text: qsTr("Sign out")
-                            onClicked: { root.close(); App.closeAccount() }
-                        }
                         MenuButton {
                             Layout.fillWidth: true
                             // While it runs, it says so: the server has to answer
@@ -1156,7 +1154,7 @@ Popup {
         background: DialogFrame { destructive: true }
         header: Label { text: qsTr("Delete personal I2P key"); color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
-            text: qsTr("The old key is deleted. Nobody can reach you until you publish a new destination, and it would be a different address.")
+            text: qsTr("The existing key is deleted. Nobody can reach you until you create a new key and publish it. It will be a different address. Your contacts reach you again only after your first outgoing message. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.")
             color: Theme.text
             wrapMode: Text.Wrap
         }

@@ -852,12 +852,4 @@ void AppController::closeAllSessions()
     refreshAccounts();
 }
 
-void AppController::closeAccount()
-{
-    if (SessionController* ctrl = activeController()) {
-        removeSession(ctrl);
-    }
-    refreshAccountList();
-}
-
 }  // namespace bazarish::app

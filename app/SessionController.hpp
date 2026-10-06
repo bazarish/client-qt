@@ -382,6 +382,7 @@ signals:
     void acceptingContactChanged();
     void ownInviteChanged();
     void i2pStatusChanged();
+    void i2pAnswered();
     void devicesChanged();
     void voiceChanged();
     void storageChanged();
@@ -569,6 +570,7 @@ private:
     bool reachable_ = false;
     QString syncError_;
     bool i2pBusy_ = false;
+    bool flashOnNextStatus_ = false;
     bool awaitingApproval_ = false;
     QString approvalNote_;
     QString activePeer_;

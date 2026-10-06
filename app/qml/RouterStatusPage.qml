@@ -35,15 +35,6 @@ Popup {
         return qsTr("3 hops each way. Slowest to build and to answer.")
     }
 
-    // Saving is one thing and applying it is another: the transports read the
-    // proxy as they come up, so a change reaches a running router only through a
-    // restart of it. Both answers save; only one restarts.
-    ProxyRestartDialog {
-        id: proxyRestartDialog
-        onAnswered: (restartNow) => I2p.saveProxy(
-            proxyHostField.text, parseInt(proxyPortField.text || "0"), restartNow)
-    }
-
     // Poll the router diagnostics while the window is open.
     Timer {
         interval: 2000
@@ -157,12 +148,6 @@ Popup {
                     Label {
                         text: qsTr("Local destinations (%1)").arg(I2p.destinations.length)
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                    }
-                    Label {
-                        text: qsTr("Each address has its own tunnels and the leasesets it has "
-                            + "looked up.")
-                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     Label {
                         visible: I2p.destinations.length === 0
@@ -304,68 +289,6 @@ Popup {
                         }
                     }
                 }
-                Hairline { }
-
-                ColumnLayout {
-                    visible: !I2p.samEnabled && !I2p.gatewayEnabled
-                    Layout.fillWidth: true
-                    Layout.margins: 16
-                    spacing: 8
-
-                    Label { text: qsTr("Proxy"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    Label {
-                        text: qsTr("A SOCKS5 proxy the router reaches the I2P network "
-                            + "through. Leave empty to connect straight out.")
-                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap; Layout.fillWidth: true
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        FormField {
-                            id: proxyHostField
-                            Layout.fillWidth: true
-                            placeholder: qsTr("Host or address")
-                            text: I2p.proxyHost
-                        }
-                        FormField {
-                            id: proxyPortField
-                            Layout.preferredWidth: 90
-                            placeholder: qsTr("Port")
-                            text: I2p.proxyPort > 0 ? String(I2p.proxyPort) : ""
-                            inputField.validator: IntValidator { bottom: 1; top: 65535 }
-                        }
-                    }
-                    MenuButton {
-                        iconName: "check"
-                        text: qsTr("Save")
-                        Layout.alignment: Qt.AlignRight
-                        onClicked: proxyRestartDialog.open()
-                    }
-
-                    // What the engine made of it. Only when a proxy is set: with
-                    // none there is nothing here that "direct" does not already say.
-                    ColumnLayout {
-                        visible: I2p.proxyHost.length > 0
-                        Layout.fillWidth: true
-                        Layout.topMargin: 4
-                        spacing: 6
-                        Label {
-                            text: qsTr("In force now")
-                            color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                        }
-                        Label {
-                            visible: !I2p.running
-                            text: qsTr("The router is not running; these are what it will come up with.")
-                            color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap; Layout.fillWidth: true
-                        }
-                        StatRow {
-                            label: qsTr("Router connections")
-                            value: I2p.proxyNtcp2.length > 0 ? I2p.proxyNtcp2 : "direct"
-                        }
-                    }
-                }
                 Rectangle {
                     visible: I2p.running && !I2p.gatewayEnabled
                     Layout.fillWidth: true; height: 1; color: Theme.border
@@ -380,13 +303,8 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     Label {
-                        text: qsTr("Direct connections (%1)").arg(I2p.transports.length)
+                        text: qsTr("Direct network connections: %1").arg(I2p.transports.length)
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                    }
-                    Label {
-                        text: qsTr("The router's direct network connections")
-                        color: Theme.textFaint; font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     Label {
                         visible: I2p.transports.length === 0

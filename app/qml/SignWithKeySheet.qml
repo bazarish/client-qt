@@ -70,7 +70,7 @@ Popup {
             Layout.margins: 14
             IconButton { iconName: "back"; onClicked: root.back() }
             Label {
-                text: qsTr("Sign in with your key")
+                text: qsTr("Sign with the account key")
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -93,13 +93,6 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 12
-
-                    Label {
-                        text: qsTr("The challenge is signed here; only the signature leaves.")
-                        color: Theme.textDim
-                        wrapMode: Text.Wrap
-                        Layout.fillWidth: true
-                    }
 
                     // Which identity will sign: the active account's name and fingerprint.
                     Rectangle {
@@ -206,8 +199,7 @@ Popup {
                             }
                             Label {
                                 visible: root.consumer.ok
-                                text: qsTr("Compare this with the site in front of you. If they "
-                                    + "differ, do not sign: someone else is being let in.")
+                                text: qsTr("Compare this with the site in front of you. If they differ, do not sign.")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap
@@ -230,8 +222,8 @@ Popup {
 
                         MenuButton {
                             visible: root.consumer.ok
-                            iconName: "close"
-                            text: qsTr("Cancel")
+                            iconName: "back"
+                            text: qsTr("Back")
                             onClicked: {
                                 root.clear()
                                 challengeArea.forceActiveFocus()
