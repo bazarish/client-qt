@@ -107,7 +107,12 @@ public:
     bool hasMessagesBefore(const QString& peer, qint64 id) const;
     bool hasMessagesAfter(const QString& peer, qint64 id) const;
     QVector<SearchHit> searchInPeer(const QString& peer, const QString& query) const;
-    QString lastText(const QString& peer) const;
+    struct LastMessage {
+        QString text;
+        QString type;
+        QString attachment;
+    };
+    LastMessage lastMessage(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
     QStringList conversationPeers() const;
 

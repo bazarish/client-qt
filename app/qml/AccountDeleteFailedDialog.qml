@@ -30,15 +30,15 @@ Dialog {
     width: Math.min(400, parent ? parent.width - 24 : 400)
     background: DialogFrame { destructive: true }
     header: Label {
-        text: "The account was not deleted"
+        text: qsTr("The account was not deleted")
         color: Theme.neon
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Try again"
-        rejectText: "Close"
+        acceptText: qsTr("Try again")
+        rejectText: qsTr("Close")
         // Nothing about a profile that will not open changes between attempts.
         acceptEnabled: !root.profileNotOpened
         onAccepted: root.accept()
@@ -54,9 +54,9 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.text
             text: root.profileNotOpened
-                ? "This profile could not be opened, so the account on its server was "
-                  + "not ended:"
-                : "Your server did not answer, so the account was not ended:"
+                ? qsTr("This profile could not be opened, so the account on its server was "
+                  + "not ended:")
+                : qsTr("Your server did not answer, so the account was not ended:")
         }
         // The reason comes from the transport and can be any length; past a few
         // lines it would push the buttons out of a small window, and the whole of
@@ -78,10 +78,10 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.text
             text: root.profileNotOpened
-                ? "Nothing was deleted. The key that ends the account is inside this "
-                  + "profile, and this build cannot read it."
-                : "Nothing was deleted. Try again when it is reachable - this profile "
-                  + "holds the only key that can ask it to."
+                ? qsTr("Nothing was deleted. The key that ends the account is inside this "
+                  + "profile, and this build cannot read it.")
+                : qsTr("Nothing was deleted. Try again when it is reachable - this profile "
+                  + "holds the only key that can ask it to.")
         }
         Label {
             Layout.fillWidth: true
@@ -91,7 +91,7 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.danger
             font.pixelSize: Theme.fontSmall
-            text: "Remove from this device anyway"
+            text: qsTr("Remove from this device anyway")
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler {
                 onTapped: {
@@ -108,8 +108,7 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
-            text: "The account would go on existing on the server - address, mailbox and all - "
-                + "with no key left anywhere to end it."
+            text: qsTr("The account would stay on the server with no key left to end it.")
         }
     }
 }

@@ -20,17 +20,17 @@ Dialog {
     width: Math.min(420, parent ? parent.width - 24 : 420)
     background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.warn }
     header: Label {
-        text: "Your server serves another address"
+        text: qsTr("Your server serves another address")
         color: Theme.warn
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Publish this one"
-        rejectText: "Later"
+        acceptText: qsTr("Publish this one")
+        rejectText: qsTr("Later")
         showCancel: true
-        cancelText: "New address"
+        cancelText: qsTr("New address")
         onAccepted: { root.close(); if (App.session) { App.session.keepThisDeviceAddress() } }
         onCancelled: { root.close(); if (App.session) { App.session.useFreshAddress() } }
         onRejected: root.close()
@@ -42,20 +42,16 @@ Dialog {
             width: parent.width - 28
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "Your server is serving " + root.servedHost + ", and this device holds "
-                + (root.ourHost.length > 0 ? root.ourHost : "no address")
-                + ". None of your other devices answered with the keys to the served one, so "
-                + "this device cannot receive anything on it."
+            text: qsTr("Your server is serving %1; this device holds %2. No other device answered with the keys to the served one.")
+                .arg(root.servedHost)
+                .arg(root.ourHost.length > 0 ? root.ourHost : qsTr("no address"))
         }
         Label {
             width: parent.width - 28
             wrapMode: Text.Wrap
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
-            text: "Publishing this device's address (or a new one) makes your server serve it "
-                + "instead. Contacts still holding the old address cannot reach you until they "
-                + "hear from you again - which happens the next time you write to each of them. "
-                + "If another device of yours is simply offline, leave this until it is on."
+            text: qsTr("Your server will serve this address instead. Contacts holding the old one cannot write to you until your next message. If another device of yours is offline, wait until it is on.")
         }
     }
 }

@@ -27,7 +27,7 @@ Item {
 
     function copyFingerprint(fp) {
         App.copyText(fp)
-        if (typeof window !== "undefined") window.showToast("Fingerprint copied")
+        if (typeof window !== "undefined") window.showToast(qsTr("Fingerprint copied"))
     }
 
     // The application's own settings, reachable before any account is open: the
@@ -63,8 +63,9 @@ Item {
             smooth: true
         }
         Label {
-            text: App.hasOpenAccounts ? "Add or switch account"
-                : (App.hasAccounts ? "Choose an account" : "Create your first account to begin")
+            text: App.hasOpenAccounts ? qsTr("Add or switch account")
+                : (App.hasAccounts ? qsTr("Choose an account")
+                                   : qsTr("Create your first account to begin"))
             color: Theme.textDim
             Layout.alignment: Qt.AlignHCenter
         }
@@ -120,7 +121,7 @@ Item {
                                 // A locked account has no name to show: it is
                                 // inside the database nobody has opened. What is
                                 // on disk is a file named after nothing.
-                                text: model.name.length > 0 ? model.name : "Locked account"
+                                text: model.name.length > 0 ? model.name : qsTr("Locked account")
                                 color: Theme.text
                                 font.pixelSize: Theme.fontBody
                                 font.weight: Font.Medium
@@ -132,10 +133,10 @@ Item {
                             // none to show yet.
                             Label {
                                 text: goingAway
-                                    ? "Deleting…"
+                                    ? qsTr("Deleting…")
                                     : (model.fingerprint.length > 0
                                         ? model.fingerprint.substring(0, 12) + "…"
-                                        : "locked")
+                                        : qsTr("locked"))
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 Layout.fillWidth: true
@@ -168,7 +169,7 @@ Item {
 
         Button {
             Layout.fillWidth: true
-            text: "Create account"
+            text: qsTr("Create account")
             hoverEnabled: true
             onClicked: root.StackView.view.push(wizardComponent)
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
@@ -181,7 +182,7 @@ Item {
         id: passDialog
         anchors.centerIn: parent
         modal: true
-        title: "Unlock account"
+        title: qsTr("Unlock account")
         closePolicy: Popup.CloseOnEscape
         // Submitting is not closing. Dialog.accept() takes the prompt away the
         // moment the button is pressed, which is before anyone knows whether the
@@ -194,14 +195,14 @@ Item {
         onRejected: App.cancelUnlock()
         onOpened: passField.forceActiveFocus()
         background: DialogFrame { }
-        header: Label { text: "Unlock account"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
-        footer: DialogButtons { acceptText: "Unlock"; onAccepted: passDialog.submit(); onRejected: passDialog.reject() }
+        header: Label { text: qsTr("Unlock account"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        footer: DialogButtons { acceptText: qsTr("Unlock"); onAccepted: passDialog.submit(); onRejected: passDialog.reject() }
         contentItem: ColumnLayout {
             spacing: 6
             TextField {
                 id: passField
                 echoMode: TextInput.Password
-                placeholderText: "Passphrase"
+                placeholderText: qsTr("Passphrase")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 Layout.preferredWidth: 280
@@ -248,11 +249,11 @@ Item {
     ContextMenu {
         id: rowMenu
         ContextMenuItem {
-            text: "Copy fingerprint"
+            text: qsTr("Copy fingerprint")
             onTriggered: root.copyFingerprint(root.rowFingerprint)
         }
         ContextMenuItem {
-            text: "Delete account"
+            text: qsTr("Delete account")
             danger: true
             onTriggered: deleteDialog.show(root.pendingDeleteId, root.pendingDeleteName)
         }

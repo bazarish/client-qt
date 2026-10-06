@@ -27,14 +27,14 @@ Dialog {
 
     background: DialogFrame { }
     header: Label {
-        text: "Send file"
+        text: qsTr("Send file")
         color: Theme.green
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Send"
+        acceptText: qsTr("Send")
         onAccepted: root.accept()
         onRejected: root.reject()
     }
@@ -64,11 +64,9 @@ Dialog {
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Layout.bottomMargin: 12
-            text: "The file never touches a server. Your contact asks for it when they want "
-                + "it, this device answers with a one-time I2P address, and they stream it "
-                + "straight from here. What goes through the servers is an ordinary "
-                + "end-to-end encrypted message, which they cannot read. Keep the app open "
-                + "until the transfer finishes — nothing is holding the file for them."
+            text: qsTr("The file goes straight between you and your contact. Your contact asks "
+                + "for a one-time I2P tunnel. Your app has to be online to hand the file over "
+                + "when they ask.")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

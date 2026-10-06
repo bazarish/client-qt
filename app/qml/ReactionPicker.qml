@@ -75,7 +75,7 @@ Popup {
 
     contentItem: ColumnLayout {
         spacing: 10
-        Label { text: "React"; color: Theme.green; font.weight: Font.DemiBold }
+        Label { text: qsTr("React"); color: Theme.green; font.weight: Font.DemiBold }
         Flow {
             Layout.fillWidth: true
             spacing: root.kChipSpacing
@@ -149,7 +149,7 @@ Popup {
                 id: customField
                 Layout.fillWidth: true
                 maximumLength: root.kMaxChars
-                placeholderText: "Any unicode…"
+                placeholderText: qsTr("Any unicode…")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 // The brand font, and whatever it lacks is found by the engine's
@@ -167,7 +167,7 @@ Popup {
             }
             MenuButton {
                 iconName: "smile"
-                text: "React"
+                text: qsTr("React")
                 enabled: customField.text.trim().length > 0
                 onClicked: root.pick(customField.text)
             }

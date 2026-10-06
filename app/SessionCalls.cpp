@@ -120,15 +120,15 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
 
     if (state == 0) {
         if (!callOpId_.isEmpty()) {
-            finishOperation(callOpId_, true, QStringLiteral("Call ended"));
+            finishOperation(callOpId_, true, tr("Call ended"));
             callOpId_.clear();
         }
     } else {
         const QString opId = QStringLiteral("call:") + (callId.isEmpty() ? peer : callId);
-        const QString title = QStringLiteral("Call with ") + peerName(peer);
-        const QString status = state == 1 ? QStringLiteral("Calling…")
-            : state == 2                  ? QStringLiteral("Incoming call…")
-                                          : QStringLiteral("Connected");
+        const QString title = tr("Call with %1").arg(peerName(peer));
+        const QString status = state == 1 ? tr("Calling…")
+            : state == 2                  ? tr("Incoming call…")
+                                          : tr("Connected");
         if (callOpId_ != opId) {
             callOpId_ = opId;
             beginOperation(opId, QStringLiteral("call"), title, status, peer);

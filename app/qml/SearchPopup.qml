@@ -43,7 +43,7 @@ Popup {
             TextField {
                 id: field
                 Layout.fillWidth: true
-                placeholderText: "Search in conversation…"
+                placeholderText: qsTr("Search in conversation…")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 selectByMouse: true
@@ -61,8 +61,8 @@ Popup {
             Layout.fillWidth: true
             visible: field.text.length > 0
             text: popup.results.length === 0
-                ? "No matches"
-                : (popup.results.length + " match" + (popup.results.length === 1 ? "" : "es"))
+                ? qsTr("No matches")
+                : qsTr("Matches: %1").arg(popup.results.length)
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
         }

@@ -90,7 +90,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             if (activePeer_ == cleared) {
                 loadLatestWindow();
             }
-            contacts_.touch(cleared, peerName(cleared), store_.lastText(cleared),
+            contacts_.touch(cleared, peerName(cleared), chatPreview(cleared),
                 store_.lastTime(cleared), false);
             contacts_.setUnread(cleared, store_.unreadCount(cleared));
             refreshUnreadTotal();
@@ -214,7 +214,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             }
             QString preview = newText;
             if (preview.isEmpty() && !newKeyboard.isEmpty()) {
-                preview = "[interactive]";
+                preview = tr("[interactive]");
             }
             contacts_.touch(peer, peerName(peer), preview, nowMillis(), false);
         }
@@ -230,7 +230,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             if (peer == activePeer_) {
                 conversation_.removeById(localId);
             }
-            contacts_.touch(peer, peerName(peer), store_.lastText(peer), store_.lastTime(peer), false);
+            contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
         }
         return;
     }
@@ -242,8 +242,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.e2eId = incomingId;
         sys.type = QStringLiteral("system");
         sys.text = message.value("sentByUs").toBool()
-            ? QStringLiteral("You cleared the chat for everyone.")
-            : peerName(peer) + QStringLiteral(" cleared the chat.");
+            ? tr("You cleared the chat for everyone.")
+            : tr("%1 cleared the chat.").arg(peerName(peer));
         sys.ts = nowMillis();
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
@@ -262,7 +262,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.peer = peer;
         sys.e2eId = incomingId;
         sys.type = QStringLiteral("system");
-        sys.text = peerName(peer) + QStringLiteral(" accepted your contact request.");
+        sys.text = tr("%1 accepted your contact request.").arg(peerName(peer));
         sys.ts = nowMillis();
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
@@ -319,7 +319,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     }
     QString preview = m.text;
     if (preview.isEmpty() && !m.attName.isEmpty()) {
-        preview = "[" + type + "] " + m.attName;
+        preview = attachmentLabel(type) + QLatin1Char(' ') + m.attName;
     }
     contacts_.touch(peer, peerName(peer), preview, m.ts, false);
     contacts_.setUnread(peer, store_.unreadCount(peer));

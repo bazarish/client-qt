@@ -10,9 +10,9 @@ import Bazarish
 Item {
     id: root
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
-    // refresh, edit, more, plus, check, up, down, forward, forwarded, link, bang, dot,
+    // refresh, edit, more, plus, check, up, down, forward, forwarded, link, bang, dot, qr,
     // stop, send, person, people, burger, key, lock, disk, server, list, devices,
-    // broadcast, folder, block, power, signout.
+    // broadcast, camera, folder, block, power, signout.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -137,6 +137,13 @@ Item {
                                          + "M 15.2 8.8 A 4.5 4.5 0 0 1 15.2 15.2 "
                                          + "M 5.6 5.6 A 9 9 0 0 0 5.6 18.4 "
                                          + "M 18.4 5.6 A 9 9 0 0 1 18.4 18.4"
+                    case "qr":      return "M 4 4 H 9.5 V 9.5 H 4 Z M 14.5 4 H 20 V 9.5 H 14.5 Z "
+                                         + "M 4 14.5 H 9.5 V 20 H 4 Z "
+                                         + "M 14.5 14.5 V 14.6 M 20 14.5 V 14.6 M 17.2 17.2 V 17.3 "
+                                         + "M 14.5 20 V 20.1 M 20 20 V 20.1"
+                    // A body with a viewfinder bump and a lens.
+                    case "camera":  return "M 3 8 H 7.5 L 9.5 5.5 H 14.5 L 16.5 8 H 21 V 19 H 3 Z "
+                                         + "M 12 13 A 3.3 3.3 0 1 1 11.99 13"
                     case "folder":  return "M 3 19 V 5 H 10 L 12 8 H 21 V 19 Z"
                     // A ring struck through: nothing from this contact gets in.
                     case "block":   return "M 12 3 A 9 9 0 1 1 11.99 3 M 5.6 18.4 L 18.4 5.6"

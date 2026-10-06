@@ -81,9 +81,9 @@ Item {
                     ContextMenu {
                         id: narrowMenu
                         y: parent.height
-                        ContextMenuItem { text: "New chat"; onTriggered: root.newChatRequested() }
-                        ContextMenuItem { text: "Account"; onTriggered: root.settingsRequested() }
-                        ContextMenuItem { text: "Global settings"; onTriggered: root.appSettingsRequested() }
+                        ContextMenuItem { text: qsTr("New chat"); onTriggered: root.newChatRequested() }
+                        ContextMenuItem { text: qsTr("Account"); onTriggered: root.settingsRequested() }
+                        ContextMenuItem { text: qsTr("Global settings"); onTriggered: root.appSettingsRequested() }
                     }
                 }
             }
@@ -96,7 +96,7 @@ Item {
             id: chatSearch
             Layout.fillWidth: true
             Layout.margins: 8
-            placeholderText: "Search chats…"
+            placeholderText: qsTr("Search chats…")
             color: Theme.text
             placeholderTextColor: Theme.textDim
             leftPadding: 10
@@ -208,7 +208,7 @@ Item {
                 ContextMenu {
                     id: pinMenu
                     ContextMenuItem {
-                        text: model.pinned ? "Unpin chat" : "Pin to top"
+                        text: model.pinned ? qsTr("Unpin chat") : qsTr("Pin to top")
                         onTriggered: root.session.pinChat(model.fingerprint, !model.pinned)
                     }
                 }
@@ -254,8 +254,8 @@ Item {
                     Layout.fillWidth: true
                     spacing: 0
                     Label {
-                        text: connPlate.heldForApproval ? "Waiting for approval"
-                            : (connPlate.isOffline ? "Offline" : "Connecting…")
+                        text: connPlate.heldForApproval ? qsTr("Waiting for approval")
+                            : (connPlate.isOffline ? qsTr("Offline") : qsTr("Connecting\u2026"))
                         color: connPlate.isOffline ? Theme.textDim : Theme.warn
                         font.pixelSize: Theme.fontSmall
                         font.weight: Font.Medium
@@ -264,11 +264,11 @@ Item {
                         text: connPlate.heldForApproval
                             ? (root.session && root.session.approvalNote.length > 0
                                 ? root.session.approvalNote
-                                : "Your server holds this account until its operator approves it — you cannot send or receive yet")
-                            : (connPlate.isOffline ? "This account is not syncing"
+                                : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
+                            : (connPlate.isOffline ? qsTr("This account is not syncing")
                                 : (root.session && root.session.syncError.length > 0
                                     ? root.session.syncError
-                                    : "No server connection yet"))
+                                    : qsTr("No server connection yet")))
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         // A transport's complaint is a sentence, not a word:
@@ -301,12 +301,12 @@ Item {
                 spacing: 4
                 BarButton {
                     iconName: "edit"
-                    label: "New chat"
+                    label: qsTr("New chat")
                     onTapped: root.newChatRequested()
                 }
                 BarButton {
                     iconName: "person"
-                    label: "Account"
+                    label: qsTr("Account")
                     onTapped: root.settingsRequested()
                 }
             }

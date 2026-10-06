@@ -44,15 +44,14 @@ Item {
         spacing: 14
 
         Label {
-            text: "Connect to a server"
+            text: qsTr("Connect to a server")
             color: Theme.green
             font.pixelSize: 24
             font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignHCenter
         }
         Label {
-            text: "Your account needs a serving server to send and receive. "
-                + "Everything stays end-to-end encrypted; a facade is just the last mile."
+            text: qsTr("Your account needs a serving server to send and receive.")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
@@ -74,7 +73,7 @@ Item {
                 spacing: 2
                 Label {
                     text: root.session && root.session.displayName.length > 0
-                        ? root.session.displayName : "This account"
+                        ? root.session.displayName : qsTr("This account")
                     color: Theme.text
                     font.weight: Font.Medium
                 }
@@ -107,7 +106,7 @@ Item {
         // The dialog can be hidden while the connect runs; this is the way back.
         Label {
             visible: root.session && root.session.connecting && connectDialog.suppressed
-            text: "Connecting (" + (root.session ? root.session.connectPercent : 0) + "%)"
+            text: qsTr("Connecting (%1%)").arg(root.session ? root.session.connectPercent : 0)
             color: Theme.accent
             font.pixelSize: Theme.fontSmall
             Layout.alignment: Qt.AlignHCenter
@@ -131,7 +130,7 @@ Item {
     // Footer: the key is the user's sign-in to every portal and any
     // sign-in-with-key site, available with or without a server.
     Button {
-        text: "Signature"
+        text: qsTr("Signature")
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 18

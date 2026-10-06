@@ -17,6 +17,9 @@ public:
     std::string activeAccount() const;
     void setActiveAccount(const std::string& id);
 
+    std::string language() const;
+    void setLanguage(const std::string& code);
+
     std::vector<std::string> offlineAccounts() const;
     void setOfflineAccounts(std::vector<std::string> ids);
 
@@ -55,6 +58,7 @@ private:
 
     std::filesystem::path path_;
     std::string activeAccount_;
+    std::string language_;
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;
     bool backgroundTasks_ = false;

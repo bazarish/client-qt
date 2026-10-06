@@ -83,11 +83,11 @@ Popup {
         ContextMenu {
             id: pictureMenu
             ContextMenuItem {
-                text: "Copy"
+                text: qsTr("Copy")
                 onTriggered: root.session.copyPicture(root.e2eId)
             }
             ContextMenuItem {
-                text: "Save as"
+                text: qsTr("Save as")
                 onTriggered: {
                     saveDialog.currentFile
                         = root.session.defaultPictureSaveUrl(root.e2eId, root.name)
@@ -100,7 +100,7 @@ Popup {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 12
-            text: "Right-click for copy and save - click anywhere to close"
+            text: qsTr("Right-click for copy and save")
             color: Theme.textFaint
             font.pixelSize: Theme.fontSmall
         }

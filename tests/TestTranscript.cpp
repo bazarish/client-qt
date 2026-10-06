@@ -191,7 +191,7 @@ int main(int argc, char** argv)
         CHECK(ordered[3].text == "late");
         CHECK(ordered[3].ts == 500);
         CHECK(store.lastTime("dave") == 500);
-        CHECK(store.lastText("dave") == "late");
+        CHECK(store.lastMessage("dave").text == "late");
     }
 
     {
@@ -511,7 +511,7 @@ int main(int argc, char** argv)
         StoredMessage full;
         full.peer = "dana";
         full.outgoing = true;
-        full.type = "voice";
+        full.type = "audio";
         full.e2eId = "e-full";
         full.text = "body";
         full.attName = "note.opus";

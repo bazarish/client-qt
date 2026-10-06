@@ -121,7 +121,7 @@ void I2pController::noteChoiceInForce()
 void I2pController::useGateway(const bool on)
 {
     if (on && gatewayAddress_.isEmpty()) {
-        emit gatewayRefused(tr("Save a gateway address first: there is nothing to use yet."));
+        emit gatewayRefused(tr("Save a gateway address first."));
         return;
     }
     AppSettings::instance().useGateway(on);
@@ -136,7 +136,7 @@ void I2pController::useGateway(const bool on)
 void I2pController::useSam(const bool on)
 {
     if (on && samHost_.isEmpty()) {
-        emit gatewayRefused(tr("Give the router's address first: there is nothing to use yet."));
+        emit gatewayRefused(tr("Give the router's address first."));
         return;
     }
     samEnabled_ = on;

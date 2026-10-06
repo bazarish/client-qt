@@ -27,6 +27,8 @@ public:
 
     QByteArray bytes(const QString& e2eId) const;
 
+    void remove(const QString& e2eId);
+
     void clear();
 
 signals:

@@ -6,6 +6,7 @@
 #include "DesktopEntry.hpp"
 #include "Identicon.hpp"
 #include "SingleInstance.hpp"
+#include "Translations.hpp"
 #include "TrayIcon.hpp"
 
 #pragma push_macro("emit")
@@ -213,6 +214,9 @@ int main(int argc, char** argv)
     }
 
     QQmlApplicationEngine engine;
+    bazarish::app::Translations translations(engine);
+    QCoreApplication::installTranslator(&translations);
+    engine.rootContext()->setContextProperty("Tr", &translations);
     engine.addImageProvider("identicon", new bazarish::app::IdenticonProvider());
     engine.addImageProvider("avatar", new bazarish::app::AvatarProvider());
     engine.addImageProvider("picture", new bazarish::app::PictureProvider());
@@ -228,6 +232,8 @@ int main(int argc, char** argv)
     engine.rootContext()->setContextProperty("I2p", &i2pController);
     QObject::connect(&i2pController, &bazarish::app::I2pController::privacyLevelChanged,
         &controller, &bazarish::app::AppController::rebuildI2pLinks);
+    QObject::connect(&translations, &bazarish::app::Translations::languageChanged, &controller,
+        &bazarish::app::AppController::retranslate);
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,

@@ -33,10 +33,10 @@ Item {
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
         const diff = Math.round((today.getTime() - d.getTime()) / 86400000)
         if (diff === 0) {
-            return "Today"
+            return qsTr("Today")
         }
         if (diff === 1) {
-            return "Yesterday"
+            return qsTr("Yesterday")
         }
         return d.toLocaleDateString(Qt.locale(), "d MMMM yyyy")
     }
@@ -173,7 +173,7 @@ Item {
         width: Math.min(360, parent ? parent.width - 24 : 360)
         readonly property bool forEveryone: root.pendingDeleteOutgoing && root.session
         footer: DialogButtons {
-            acceptText: "Delete"
+            acceptText: qsTr("Delete")
             danger: true
             onAccepted: deleteMessageDialog.accept()
             onRejected: deleteMessageDialog.reject()
@@ -188,7 +188,7 @@ Item {
         onRejected: root.pendingDeleteId = null
         background: DialogFrame { destructive: true }
         header: Label {
-            text: "Delete message"
+            text: qsTr("Delete message")
             color: Theme.neon
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
@@ -196,9 +196,8 @@ Item {
         }
         contentItem: Label {
             text: deleteMessageDialog.forEveryone
-                ? "Delete this message for everyone? It is removed from the recipient too, "
-                    + "with no trace. This cannot be undone."
-                : "Delete this message from this device? This cannot be undone."
+                ? qsTr("Delete this message for everyone? It is removed from the recipient too, with no trace.")
+                : qsTr("Delete this message from this device? This cannot be undone.")
             color: Theme.text
             wrapMode: Text.Wrap
         }
@@ -609,7 +608,7 @@ Item {
         Layout.bottomMargin: 4
         spacing: 8
         Label {
-            text: "The request was refused - their server is busy."
+            text: qsTr("The request was refused - their server is busy.")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
@@ -617,7 +616,7 @@ Item {
         }
         MenuButton {
             iconName: "send"
-            text: "Send the request again"
+            text: qsTr("Send the request again")
             onClicked: {
                 root.session.retryContactRequest(root.retryPeer)
                 root.retryPeer = ""

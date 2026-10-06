@@ -95,7 +95,7 @@ Window {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 color: Theme.textDim
-                text: "Incoming audio call"
+                text: qsTr("Incoming audio call")
             }
 
             Item { Layout.fillHeight: true }
@@ -104,12 +104,12 @@ Window {
                 Layout.alignment: Qt.AlignHCenter
                 spacing: 20
                 CallButton {
-                    text: "Decline"
+                    text: qsTr("Decline")
                     fill: Theme.danger
                     onClicked: App.declineRinging()
                 }
                 CallButton {
-                    text: "Accept"
+                    text: qsTr("Accept")
                     fill: Theme.accent
                     label: Theme.accentInk
                     onClicked: App.answerRinging()

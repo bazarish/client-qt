@@ -12,12 +12,12 @@ Item {
     // Every dialog button is at least this wide, so short labels line up; a
     // longer label widens its own button instead of being cut short.
     readonly property int kMinButtonWidth: 104
-    property string acceptText: "OK"
-    property string rejectText: "Cancel"
+    property string acceptText: qsTr("OK")
+    property string rejectText: qsTr("Cancel")
     property bool showReject: true
     // A third answer, for a dialog where neither of the other two means "leave
     // things as they were". Off unless asked for.
-    property string cancelText: "Cancel"
+    property string cancelText: qsTr("Cancel")
     property bool showCancel: false
     // A third answer whose label does not fit beside the other two gets a line
     // of its own rather than pushing them off the dialog.

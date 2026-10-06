@@ -31,15 +31,15 @@ Dialog {
         border.width: 2
     }
     header: Label {
-        text: "Leave Bazarish?"
+        text: qsTr("Leave Bazarish?")
         color: Theme.warn
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Open"
-        rejectText: "Cancel"
+        acceptText: qsTr("Open")
+        rejectText: qsTr("Cancel")
         onRejected: root.close()
         onAccepted: {
             // Said out loud rather than assumed: a desktop with nothing
@@ -47,7 +47,7 @@ Dialog {
             if (Qt.openUrlExternally(root.address)) {
                 root.close()
             } else {
-                root.failure = "Nothing on this system opened it. Copy the address instead."
+                root.failure = qsTr("Nothing on this system opened it. Copy the address instead.")
             }
         }
     }
@@ -86,18 +86,8 @@ Dialog {
             Layout.rightMargin: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "Bazarish does not fetch this. Your browser goes to it directly over the "
-                + "ordinary internet, so the site - and whoever put the link in this message - "
-                + "sees your IP address and the moment you followed it."
-        }
-        Label {
-            Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
-            wrapMode: Text.Wrap
-            color: Theme.textDim
-            text: "Nothing about the address has been checked. It leads outside, to a resource "
-                + "that has earned no trust here."
+            text: qsTr("This is an external link. Your internet provider and the site will see "
+                + "your real address.")
         }
         Label {
             visible: root.failure.length > 0

@@ -116,7 +116,7 @@ Item {
             // padding of a button leaves less of one than the glyph needs.
             padding: 0
             ToolTip.visible: hovered
-            ToolTip.text: "Stop"
+            ToolTip.text: qsTr("Stop")
             onClicked: if (App.session) { App.session.cancelTransfer(row.cancelId) }
             background: Rectangle {
                 radius: 6
@@ -134,7 +134,7 @@ Item {
         Label {
             visible: row.state === 0
             Layout.alignment: Qt.AlignVCenter
-            text: row.elapsed + "s"
+            text: qsTr("%1s").arg(row.elapsed)
             color: row.stateColor
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold

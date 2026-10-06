@@ -5,6 +5,7 @@
 
 #include "DeliveryStatus.hpp"
 
+#include <bazarish/Address.hpp>
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
@@ -51,7 +52,7 @@ void SessionController::activateAliasServicing()
     aliasBusy_ = true;
     emit aliasChanged();
     beginOperation(kAliasOperationId, QStringLiteral("alias"),
-        QStringLiteral("Checking your aliases"), QStringLiteral("Asking the registry over I2P…"));
+        tr("Checking your aliases"), tr("Asking the registry over I2P…"));
     emit requestActivateAliasServicing();
 }
 
@@ -59,20 +60,30 @@ QString SessionController::inviteProblem(const QString& uri) const
 {
     const QString trimmed = uri.trimmed();
     if (trimmed.isEmpty()) {
-        return QStringLiteral("Paste an invite link.");
+        return tr("Paste an invite link.");
     }
     try {
         const bazarish::Descriptor descriptor = bazarish::parseDescriptor(trimmed.toStdString());
         if (descriptor.dest.empty()) {
-            return QStringLiteral("This invite carries no address to reach that account.");
+            return tr("This invite carries no address to reach that account.");
         }
     } catch (const std::exception&) {
         static const QRegularExpression fingerprint(QStringLiteral("^[a-z2-7]{52}$"));
         if (fingerprint.match(trimmed).hasMatch()) {
-            return QStringLiteral("That is a fingerprint, not an invite. An invite starts with "
-                                  "bazarish://invite? and also carries where to reach the account.");
+            return tr("That is a fingerprint, not an invite. An invite starts with "
+                      "bazarish://invite?");
         }
-        return QStringLiteral("Not a bazarish://invite link.");
+        return tr("Not a bazarish:// invite. An alias starts with !.");
+    }
+    return {};
+}
+
+QString SessionController::aliasProblem(const QString& typed) const
+{
+    try {
+        bazarish::normalizeAlias(typed.trimmed().toStdString());
+    } catch (const std::exception& error) {
+        return QString::fromUtf8(error.what());
     }
     return {};
 }
@@ -96,15 +107,15 @@ void SessionController::addByInvite(
         const QString peer = QString::fromStdString(known.fingerprint);
         if (contacts_.has(peer)) {
             openConversation(peer);
-            emit actionOk(QStringLiteral("Already in your contacts"));
+            emit actionOk(tr("Already in your contacts"));
             return;
         }
     } catch (const std::exception&) {
         // error-hiding: allowed - the link was vetted; the add below parses it and reports again.
     }
     const QString opId = QStringLiteral("contact:") + newE2eId();
-    beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding contact"),
-        QStringLiteral("Preparing…"));
+    beginOperation(opId, QStringLiteral("contact"), tr("Adding contact"),
+        tr("Preparing…"));
     try {
         const bazarish::Descriptor descriptor
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
@@ -121,7 +132,7 @@ void SessionController::addByInvite(
 void SessionController::onContactAddRateLimited(
     const QString& opId, const QString& fingerprint, const QString& requestId)
 {
-    finishOperation(opId, false, QStringLiteral("Their address is busy"));
+    finishOperation(opId, false, tr("Their address is busy"));
     contactProgressRows_.remove(opId);
     const auto found = refusedRequests_.find(fingerprint);
     if (found != refusedRequests_.end() && found->requestId.isEmpty()) {
@@ -129,13 +140,13 @@ void SessionController::onContactAddRateLimited(
     }
     if (found == refusedRequests_.end() || found->triesLeft <= 0) {
         writeConversationNote(fingerprint,
-            QStringLiteral("The request was refused - their server is busy. Try again later."));
+            tr("The request was refused: the contact's server is busy."));
         emit contactRetryExhausted(fingerprint);
         return;
     }
     --found->triesLeft;
     writeConversationNote(fingerprint,
-        QStringLiteral("Their server is busy. Trying again in %1 seconds (%2 left).")
+        tr("Their server is busy. Trying again in %1 seconds (%2 left).")
             .arg(kContactRetrySeconds)
             .arg(found->triesLeft + 1));
     const QString peer = fingerprint;
@@ -177,15 +188,15 @@ void SessionController::syncAgreeingRows()
         }
         agreeingShown_.insert(fingerprint);
         beginOperation(QStringLiteral("agreeing:") + fingerprint, QStringLiteral("contact"),
-            QStringLiteral("Agreeing to a contact request"),
-            QStringLiteral("Waiting for their server…"), fingerprint);
+            tr("Agreeing to a contact request"),
+            tr("Waiting for their server…"), fingerprint);
     }
     for (auto at = agreeingShown_.begin(); at != agreeingShown_.end();) {
         if (contactState_.value(*at).request == ContactState::eAccepting) {
             ++at;
             continue;
         }
-        finishOperation(QStringLiteral("agreeing:") + *at, true, QStringLiteral("Agreed"));
+        finishOperation(QStringLiteral("agreeing:") + *at, true, tr("Agreed"));
         at = agreeingShown_.erase(at);
     }
 }
@@ -197,7 +208,7 @@ void SessionController::retryContactAdd()
     }
     const auto found = refusedRequests_.constFind(activePeer_);
     if (found == refusedRequests_.cend()) {
-        emit actionFailed(QStringLiteral("This add cannot be tried again from here"));
+        emit actionFailed(tr("This add cannot be tried again from here"));
         return;
     }
     addByInvite(found->uri, found->intro, found->requestId);
@@ -206,8 +217,8 @@ void SessionController::retryContactAdd()
 void SessionController::addByAlias(const QString& alias, const QString& intro)
 {
     const QString opId = QStringLiteral("contact:") + newE2eId();
-    beginOperation(opId, QStringLiteral("contact"), QStringLiteral("Adding ") + alias,
-        QStringLiteral("Preparing…"));
+    beginOperation(opId, QStringLiteral("contact"), tr("Adding %1").arg(alias),
+        tr("Preparing…"));
     emit requestAddByAlias(alias, intro, opId);
 }
 
@@ -237,7 +248,7 @@ void SessionController::openContactProgress(
     StoredMessage note;
     note.peer = peer;
     note.type = QStringLiteral("system");
-    note.text = QStringLiteral("Sending a contact request…");
+    note.text = tr("Sending a contact request…");
     note.ts = nowMillis();
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Preparing;
@@ -325,17 +336,17 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
             conversation_.setTypeForId(row.value(), QStringLiteral("contact.failed"));
         }
     }
-    writeContactProgress(opId, ok ? status : QStringLiteral("Could not add: ") + status);
+    writeContactProgress(opId, ok ? status : tr("Could not add: %1").arg(status));
     contactProgressRows_.remove(opId);
 }
 
 void SessionController::onContactAlreadyKnown(const QString& opId, const QString& fingerprint)
 {
     emit requestForgetPendingAdd(opId);
-    finishOperation(opId, true, QStringLiteral("Already in your contacts"));
+    finishOperation(opId, true, tr("Already in your contacts"));
     contactProgressRows_.remove(opId);
     openConversation(fingerprint);
-    emit actionOk(QStringLiteral("Already in your contacts"));
+    emit actionOk(tr("Already in your contacts"));
 }
 
 void SessionController::onContactRequestSent(
@@ -351,7 +362,7 @@ void SessionController::onContactRequestSent(
         }
         return;
     }
-    const QString body = intro.isEmpty() ? QStringLiteral("Contact request sent.") : intro;
+    const QString body = intro.isEmpty() ? tr("Contact request sent.") : intro;
     StoredMessage m;
     m.peer = fingerprint;
     m.outgoing = true;

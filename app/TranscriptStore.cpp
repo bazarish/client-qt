@@ -437,7 +437,7 @@ StoredMessage TranscriptStore::nextVoiceAfter(const QString& peer, const qint64 
     StoredMessage found;
     Query query(db_);
     query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE peer = ? AND id > ?"
-                                 " AND type = 'voice' ORDER BY id ASC LIMIT 1")
+                                 " AND type = 'audio' ORDER BY id ASC LIMIT 1")
                       .arg(kMessageColumns));
     query.addBindValue(peer);
     query.addBindValue(afterId);
@@ -780,24 +780,19 @@ QStringList TranscriptStore::conversationPeers() const
     return peers;
 }
 
-QString TranscriptStore::lastText(const QString& peer) const
+TranscriptStore::LastMessage TranscriptStore::lastMessage(const QString& peer) const
 {
     Query query(db_);
     query.prepare("SELECT text, type, attName FROM messages WHERE peer = ?"
-                  " AND (text != '' OR type IN ('file','image','voice','audio','photo'))"
+                  " AND (text != '' OR type IN ('file','image','audio'))"
                   " ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         const QString text = query.value(0).toString();
-        const QString type = query.value(1).toString();
-        const QString attachment = query.value(2).toString();
         if (!text.isEmpty()) {
-            return text;
+            return {text, {}, {}};
         }
-        if (type == "file" || type == "image" || type == "voice" || type == "audio"
-            || type == "photo") {
-            return attachment.isEmpty() ? "[" + type + "]" : "[" + type + "] " + attachment;
-        }
+        return {{}, query.value(1).toString(), query.value(2).toString()};
     }
     return {};
 }

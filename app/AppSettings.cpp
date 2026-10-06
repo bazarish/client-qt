@@ -75,6 +75,7 @@ void AppSettings::load()
     try {
         const nlohmann::json document = nlohmann::json::parse(text);
         activeAccount_ = document.value("activeAccount", std::string());
+        language_ = document.value("language", std::string());
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
         backgroundTasks_ = document.value("backgroundTasks", false);
@@ -120,6 +121,7 @@ void AppSettings::save() const
         {"address", gatewayAddress_}, {"pin", gatewayPin_}};
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
+        {"language", language_},
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
         {"backgroundTasks", backgroundTasks_},
@@ -138,6 +140,17 @@ void AppSettings::save() const
 }
 
 std::string AppSettings::activeAccount() const { return activeAccount_; }
+
+std::string AppSettings::language() const { return language_; }
+
+void AppSettings::setLanguage(const std::string& code)
+{
+    if (language_ == code) {
+        return;
+    }
+    language_ = code;
+    save();
+}
 
 void AppSettings::setActiveAccount(const std::string& id)
 {

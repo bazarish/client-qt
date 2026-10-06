@@ -33,7 +33,8 @@ Popup {
     onOpened: challengeArea.forceActiveFocus()
     // A challenge names the place it lets its holder into, and it has no business
     // sitting in a closed window: what was pasted goes when the window does.
-    onClosed: {
+    onClosed: root.clear()
+    function clear() {
         challengeArea.text = ""
         root.consumer = ({ "ok": false, "problem": "" })
         root.copyPending = false
@@ -69,7 +70,7 @@ Popup {
             Layout.margins: 14
             IconButton { iconName: "back"; onClicked: root.back() }
             Label {
-                text: "Sign in with your key"
+                text: qsTr("Sign in with your key")
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -94,8 +95,7 @@ Popup {
                     spacing: 12
 
                     Label {
-                        text: "The challenge is signed here and only the signature leaves. "
-                            + "The key itself never goes anywhere."
+                        text: qsTr("The challenge is signed here; only the signature leaves.")
                         color: Theme.textDim
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
@@ -116,7 +116,8 @@ Popup {
                             spacing: 2
                             Label {
                                 text: root.session && root.session.displayName.length > 0
-                                    ? "Signing as " + root.session.displayName : "Signing as this account"
+                                    ? qsTr("Signing as %1").arg(root.session.displayName)
+                                    : qsTr("Signing as this account")
                                 color: Theme.text
                                 font.weight: Font.Medium
                             }
@@ -130,8 +131,14 @@ Popup {
                         }
                     }
 
-                    Label { text: "Challenge from the site"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        visible: !root.consumer.ok
+                        text: qsTr("Challenge from the site")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                    }
                     ScrollView {
+                        visible: !root.consumer.ok
                         Layout.fillWidth: true
                         Layout.preferredHeight: 96
                         // The challenge wraps, so the only scrolling that means
@@ -141,7 +148,7 @@ Popup {
                         TextArea {
                             id: challengeArea
                             wrapMode: TextArea.WrapAnywhere
-                            placeholderText: "Paste the challenge"
+                            placeholderText: qsTr("Paste the challenge")
                             color: Theme.text
                             placeholderTextColor: Theme.textDim
                             selectByMouse: true
@@ -171,8 +178,8 @@ Popup {
                             anchors.margins: 8
                             spacing: 2
                             Label {
-                                text: root.consumer.ok ? "You are signing in to"
-                                    : "This challenge cannot be signed"
+                                text: root.consumer.ok ? qsTr("You are signing in to")
+                                    : qsTr("This challenge cannot be signed")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                             }
@@ -193,14 +200,14 @@ Popup {
                             }
                             Label {
                                 visible: root.consumer.ok
-                                text: root.consumer.role ? "as " + root.consumer.role : ""
+                                text: root.consumer.role ? qsTr("as %1").arg(root.consumer.role) : ""
                                 color: Theme.textDim
                                 Layout.fillWidth: true
                             }
                             Label {
                                 visible: root.consumer.ok
-                                text: "Compare this with the site in front of you. If they "
-                                    + "differ, do not sign: someone else is being let in."
+                                text: qsTr("Compare this with the site in front of you. If they "
+                                    + "differ, do not sign: someone else is being let in.")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap
@@ -217,36 +224,51 @@ Popup {
                         }
                     }
 
-                    Button {
-                        id: copyBtn
-                        hoverEnabled: true
-                        property bool copied: false
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: copied ? "Copied" : "Copy signature"
-                        enabled: root.session && root.consumer.ok && !root.copyPending
-                        onClicked: {
-                            // Belt as well as braces: `enabled` above already
-                            // turns the button off while a signature is being
-                            // made, but a press that arrives while this handler
-                            // is still running would not have seen it.
-                            if (root.copyPending) {
-                                return
+                        spacing: 8
+
+                        MenuButton {
+                            visible: root.consumer.ok
+                            iconName: "close"
+                            text: qsTr("Cancel")
+                            onClicked: {
+                                root.clear()
+                                challengeArea.forceActiveFocus()
                             }
-                            root.copyPending = true
-                            root.session.signLogin(challengeArea.text.trim())
                         }
-                        background: Rectangle {
-                            radius: 10
-                            color: copyBtn.copied ? Theme.success
-                                : (copyBtn.enabled ? (copyBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
-                                    : Theme.surfaceAlt)
-                            Behavior on color { ColorAnimation { duration: 200 } }
+
+                        Button {
+                            id: copyBtn
+                            hoverEnabled: true
+                            property bool copied: false
+                            Layout.fillWidth: true
+                            text: copied ? qsTr("Copied") : qsTr("Copy signature")
+                            enabled: root.session && root.consumer.ok && !root.copyPending
+                            onClicked: {
+                                // Belt as well as braces: `enabled` above already
+                                // turns the button off while a signature is being
+                                // made, but a press that arrives while this handler
+                                // is still running would not have seen it.
+                                if (root.copyPending) {
+                                    return
+                                }
+                                root.copyPending = true
+                                root.session.signLogin(challengeArea.text.trim())
+                            }
+                            background: Rectangle {
+                                radius: 10
+                                color: copyBtn.copied ? Theme.success
+                                    : (copyBtn.enabled ? (copyBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
+                                        : Theme.surfaceAlt)
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                            }
+                            contentItem: IconLabel {
+                                name: "copy"
+                                color: copyBtn.enabled || copyBtn.copied ? Theme.accentText : Theme.textDim
+                            }
+                            Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
                         }
-                        contentItem: IconLabel {
-                            name: "copy"
-                            color: copyBtn.enabled || copyBtn.copied ? Theme.accentText : Theme.textDim
-                        }
-                        Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
                     }
                 }
             }

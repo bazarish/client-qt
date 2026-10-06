@@ -101,7 +101,7 @@ Popup {
             Layout.margins: 14
             IconButton { iconName: "back"; onClicked: root.back() }
             Label {
-                text: "Connection log"
+                text: qsTr("Connection log")
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -115,8 +115,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             Layout.bottomMargin: 0
-            text: "The last " + root.lines.length + " events of this account, newest first. "
-                + "Polls that brought nothing are left out. No message text is kept here."
+            text: qsTr("The last %1 events of this account, newest first.").arg(root.lines.length)
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
@@ -185,7 +184,7 @@ Popup {
                         font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: logRow.copied ? "copied" : modelData.detail
+                        text: logRow.copied ? qsTr("copied") : modelData.detail
                         color: logRow.copied ? Theme.green : Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                     }
@@ -195,7 +194,7 @@ Popup {
             Label {
                 anchors.centerIn: parent
                 visible: root.lines.length === 0
-                text: "Nothing yet."
+                text: qsTr("Nothing yet.")
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall
             }
@@ -209,7 +208,7 @@ Popup {
             MenuButton {
                 Layout.fillWidth: true
                 iconName: "copy"
-                text: root.allCopied ? "Copied" : "Copy all"
+                text: root.allCopied ? qsTr("Copied") : qsTr("Copy all")
                 positive: root.allCopied
                 onClicked: {
                     if (!root.session) {
@@ -224,7 +223,7 @@ Popup {
             MenuButton {
                 Layout.fillWidth: true
                 iconName: "trash"
-                text: "Clear"
+                text: qsTr("Clear")
                 onClicked: if (root.session) { root.session.clearConnectionLog() }
             }
         }

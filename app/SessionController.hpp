@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "Picture.hpp"
 #include "SessionWorker.hpp"
 
 namespace bazarish::app {
@@ -206,6 +207,7 @@ public:
     void goOnline();
     void goOffline();
     void rebuildI2pLinks();
+    void retranslate();
     Q_INVOKABLE void openConversation(const QString& peer);
     Q_INVOKABLE void closeConversation();
     Q_INVOKABLE void openConversationAtMessage(const QString& peer, qint64 localId);
@@ -221,7 +223,9 @@ public:
     Q_INVOKABLE void forwardMessage(const QString& e2eId, const QString& toPeer);
     Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& e2eId);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
-    Q_INVOKABLE void sendPicture(const QString& fileUrl);
+    Q_INVOKABLE void sendPictureFile(const QString& fileUrl);
+    Q_INVOKABLE void sendClipboardPicture();
+    Q_INVOKABLE void sendShot(QObject* shot);
     Q_INVOKABLE void savePictureAs(const QString& e2eId, const QString& fileUrl);
     Q_INVOKABLE void copyPicture(const QString& e2eId);
 
@@ -238,9 +242,12 @@ public:
     Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& e2eId, const QString& name) const;
     Q_INVOKABLE void resendFile(qint64 localId, const QString& e2eId);
     Q_INVOKABLE void resendVoice(qint64 localId, const QString& e2eId);
+    Q_INVOKABLE void resendPicture(qint64 localId, const QString& e2eId);
     Q_INVOKABLE QString peerName(const QString& id) const;
     QString savedPeer() const;
     static QString savedChatName();
+    static QString attachmentLabel(const QString& type);
+    QString chatPreview(const QString& peer) const;
     Q_INVOKABLE bool isSavedChat(const QString& peer) const
     {
         return !peer.isEmpty() && peer == savedPeer();
@@ -255,7 +262,7 @@ public:
     Q_INVOKABLE void setContactNotifications(const QString& peer, bool on);
     Q_INVOKABLE void setContactCalls(const QString& peer, bool allowed);
     Q_INVOKABLE QString contactName(const QString& fp) const;
-    Q_INVOKABLE void setAvatar(const QString& fileOrUrl);
+    Q_INVOKABLE void setAvatarFromGrab(QObject* grab);
     Q_PROPERTY(bool hasAvatar READ hasAvatar NOTIFY avatarChanged)
     bool hasAvatar() const;
     Q_PROPERTY(bool avatarBusy READ avatarBusy NOTIFY avatarChanged)
@@ -295,6 +302,7 @@ public:
     Q_INVOKABLE QVariantMap replyPreview(const QString& e2eId) const;
     Q_INVOKABLE void deleteMessage(qint64 localId, const QString& e2eId, bool outgoing);
     Q_INVOKABLE QString inviteProblem(const QString& uri) const;
+    Q_INVOKABLE QString aliasProblem(const QString& typed) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     void addByInvite(const QString& uri, const QString& intro, const QString& requestId);
     Q_INVOKABLE void retryContactRequest(const QString& fingerprint);
@@ -401,8 +409,8 @@ signals:
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo);
-    void requestSendPicture(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& e2eId, const QString& replyTo);
+    void requestSendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
+        const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo);
     void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
         qint64 localId, const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendReceipt(const QString& peer, const QString& refId);
@@ -416,7 +424,7 @@ signals:
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
     void requestUnsend(const QString& refId);
-    void requestSetAvatar(const QString& localPath);
+    void requestSetAvatar(const QImage& image);
     void requestClearAvatar();
     void requestSetDisplayName(const QString& name);
     void requestRenameContact(const QString& peer, const QString& name);
@@ -597,7 +605,9 @@ private:
     QHash<qint64, int> statusById_;
     void bumpStatus(qint64 localId, int status);
     void restartDelivery(qint64 localId);
-    StoredMessage beginAttachmentSend(const QString& fileUrl, const QString& type);
+    StoredMessage beginAttachmentSend(const QString& type, const QString& name, qint64 size,
+        const QString& mime, const QString& srcPath);
+    void sendPreparedPicture(const PreparedPicture& picture);
     void setAvatarBusy(bool busy);
     qint64 oldestLoadedId_ = 0;
     qint64 newestLoadedId_ = 0;

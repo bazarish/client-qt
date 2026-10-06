@@ -18,7 +18,7 @@ Label {
     property color textColor: Theme.danger
     property bool copied: false
 
-    text: root.copied ? "Copied to clipboard" : root.reason
+    text: root.copied ? qsTr("Copied to clipboard") : root.reason
     color: root.copied ? Theme.green : root.textColor
     font.pixelSize: Theme.fontSmall
     wrapMode: Text.Wrap

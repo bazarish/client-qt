@@ -12,19 +12,13 @@ Dialog {
     id: root
 
     property var session: null
-    // Where the cropped square is written before the session compresses it.
-    readonly property string kOutputName: "avatar-crop.png"
     readonly property int kViewport: 240
     readonly property real kMaxZoom: 4.0
     readonly property int kOutputSize: 512
 
-    signal cropped(string filePath)
-    // Why the crop could not be handed over. Shown in the dialog itself: a write
-    // that fails must not look like a picture that was accepted.
-    property string errorText: ""
+    signal cropped(var grab)
 
     function openFor(source) {
-        errorText = ""
         picture.source = source
         zoom.value = 1.0
         picture.x = 0
@@ -37,14 +31,14 @@ Dialog {
     width: Math.min(kViewport + 48, parent ? parent.width - 24 : kViewport + 48)
     background: DialogFrame { }
     header: Label {
-        text: "Position your avatar"
+        text: qsTr("Position your avatar")
         color: Theme.text
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Use avatar"
+        acceptText: qsTr("Use avatar")
         onAccepted: root.commit()
         onRejected: root.reject()
     }
@@ -53,21 +47,9 @@ Dialog {
     // reopens the dialog if the crop could not be written.
     onAccepted: root.commit()
 
-    // Grab exactly what the round window shows, at a size the compressor can work
-    // from, and hand the file over. The target is an absolute path in a writable
-    // place: a bare name lands next to wherever the app was started from, while
-    // the name handed back used to point into the read-only bundle - so the
-    // avatar was picked and then quietly dropped.
     function commit() {
-        const target = App.scratchFile(kOutputName)
         viewport.grabToImage(function(result) {
-            if (!result.saveToFile(target)) {
-                root.errorText = "Could not write the cropped image to " + target
-                root.open()
-                return
-            }
-            root.errorText = ""
-            root.cropped(target)
+            root.cropped(result)
             root.close()
         }, Qt.size(root.kOutputSize, root.kOutputSize))
     }
@@ -143,15 +125,6 @@ Dialog {
                 to: root.kMaxZoom
                 value: 1.0
             }
-        }
-
-        Label {
-            visible: root.errorText.length > 0
-            Layout.fillWidth: true
-            text: root.errorText
-            color: Theme.danger
-            font.pixelSize: Theme.fontSmall
-            wrapMode: Text.Wrap
         }
     }
 }

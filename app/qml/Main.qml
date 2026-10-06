@@ -10,8 +10,10 @@ ApplicationWindow {
     height: 680
     minimumWidth: 360
     minimumHeight: 480
-    title: "Bazarish"
+    title: qsTr("Bazarish")
     color: Theme.bg
+    LayoutMirroring.enabled: Tr.rightToLeft
+    LayoutMirroring.childrenInherit: true
 
     // The dim behind every modal, and the thing that makes it modal: the stock
     // overlay dims but lets a pointer handler underneath still see the press, so a
@@ -72,7 +74,6 @@ ApplicationWindow {
         // the process, so there is nothing to do here but say so and stand down.
         function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
-        function onImageRejected(reason) { window.showError(reason) }
         // The server would not end the account, so nothing was deleted anywhere.
         function onAccountDeleteFailed(id, error, profileNotOpened) {
             deleteFailedDialog.show(id, error, profileNotOpened)
@@ -152,7 +153,7 @@ ApplicationWindow {
         contentItem: ColumnLayout {
             spacing: 12
             Label {
-                text: "Start Bazarish again"
+                text: qsTr("Start Bazarish again")
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -160,12 +161,12 @@ ApplicationWindow {
             }
             Label {
                 text: (I2p.transport === "gateway"
-                        ? "I2P will be carried by the private gateway."
+                        ? qsTr("I2P will be carried by the private gateway.")
                         : (I2p.transport === "sam"
-                            ? "I2P will be carried by the router on this machine."
-                            : "I2P will be carried by the engine inside this application."))
-                    + " Which one carries it is settled when the application starts, so your"
-                    + " accounts have been closed and the choice takes effect on the next run."
+                            ? qsTr("I2P will be carried by the local external router.")
+                            : qsTr("I2P will be carried by the engine inside this application.")))
+                    + " "
+                    + qsTr("The I2P backend is chosen at startup. Your accounts are closed; restart to apply.")
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
@@ -173,7 +174,7 @@ ApplicationWindow {
             }
             MenuButton {
                 iconName: "close"
-                text: "Quit"
+                text: qsTr("Quit")
                 Layout.alignment: Qt.AlignRight
                 // The way out this application has: it lets the accounts close
                 // and ends the process itself. Qt.quit() instead unwinds the
@@ -205,7 +206,7 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 Label {
-                    text: "Something went wrong"
+                    text: qsTr("Something went wrong")
                     color: Theme.danger; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                     Layout.fillWidth: true
                 }
@@ -225,7 +226,7 @@ ApplicationWindow {
             }
             Button {
                 Layout.fillWidth: true
-                text: "Close"
+                text: qsTr("Close")
                 hoverEnabled: true
                 onClicked: errorDialog.close()
                 background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
@@ -269,7 +270,7 @@ ApplicationWindow {
         width: Math.min(360, parent ? parent.width - 24 : 360)
         background: DialogFrame { destructive: true }
         header: Label {
-            text: "Restart Bazarish"
+            text: qsTr("Restart Bazarish")
             color: Theme.neon
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
@@ -279,7 +280,7 @@ ApplicationWindow {
         // closed, and the embedded router still points at the directory that is
         // no longer there. Carrying on in this window would be pretending.
         footer: DialogButtons {
-            acceptText: "Quit"
+            acceptText: qsTr("Quit")
             showReject: false
             onAccepted: restartDialog.accept()
         }

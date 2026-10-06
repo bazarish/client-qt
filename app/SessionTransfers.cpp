@@ -53,13 +53,13 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
     const QString dest = QUrl(fileUrl).toLocalFile();
     if (dest.isEmpty()) {
         conversation_.finishDownloadForId(
-            token, false, QStringLiteral("Choose where to save the file."));
+            token, false, tr("Choose where to save the file."));
         return;
     }
     conversation_.setDownloadProgressForId(token, 0, 0);
     pendingSavePath_.insert(token, dest);
     beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
-        QFileInfo(dest).fileName(), QStringLiteral("Connecting…"), activePeer_, e2eId);
+        QFileInfo(dest).fileName(), tr("Connecting…"), activePeer_, e2eId);
     emit requestSaveAttachment(peer, e2eId, dest, token);
 }
 
@@ -77,7 +77,7 @@ void SessionController::onUploadProgress(qint64 localId, qint64 sent, qint64 tot
 {
     const double fraction = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : 0.0;
     conversation_.setUploadProgressForId(localId, fraction);
-    updateOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("Uploading…"),
+    updateOperation(QStringLiteral("send:") + QString::number(localId), tr("Uploading…"),
         humanBytes(sent) + QStringLiteral(" / ") + humanBytes(total), fraction);
 }
 
@@ -87,7 +87,7 @@ void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64
     const double fraction
         = total > 0 ? static_cast<double>(received) / static_cast<double>(total) : -1.0;
     updateOperation(QStringLiteral("download:") + QString::number(token),
-        QStringLiteral("Downloading…"),
+        tr("Downloading…"),
         total > 0 ? humanBytes(received) + QStringLiteral(" / ") + humanBytes(total) : QString(),
         fraction);
 }
@@ -106,7 +106,7 @@ void SessionController::onTransferStage(
         + QString::number(m.id);
     if (operations_.indexOf(opId) < 0) {
         beginOperation(opId, m.outgoing ? QStringLiteral("file-up") : QStringLiteral("file-down"),
-            m.attName.isEmpty() ? QStringLiteral("file") : m.attName, stage, peer, e2eId);
+            m.attName.isEmpty() ? tr("file") : m.attName, stage, peer, e2eId);
     } else {
         operations_.setCancelId(opId, e2eId);
     }
@@ -162,7 +162,7 @@ void SessionController::onServedFinished(
         if (m.id != 0) {
             finishOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
                     + QString::number(m.id),
-                ok, ok ? QStringLiteral("Transferred") : error);
+                ok, ok ? tr("Transferred") : error);
         }
         return;
     }
@@ -181,7 +181,7 @@ void SessionController::onServedFinished(
     }
     finishOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
             + QString::number(m.id),
-        ok, ok ? QStringLiteral("Transferred") : error);
+        ok, ok ? tr("Transferred") : error);
 }
 
 void SessionController::cancelTransfer(const QString& e2eId)
@@ -232,7 +232,7 @@ void SessionController::onDownloadFinished(qint64 token, bool ok, const QString&
 {
     const QString path = pendingSavePath_.take(token);
     const QString opId = QStringLiteral("download:") + QString::number(token);
-    finishOperation(opId, ok, ok ? QStringLiteral("Saved") : (QStringLiteral("Failed: ") + error));
+    finishOperation(opId, ok, ok ? tr("Saved") : tr("Failed: %1").arg(error));
     conversation_.finishDownloadForId(token, ok, error);
     if (ok && !path.isEmpty()) {
         store_.setSavedPath(token, path);

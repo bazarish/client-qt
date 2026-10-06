@@ -88,7 +88,7 @@ Item {
                         elide: Text.ElideRight
                         maximumLineCount: 2
                         visible: !root.session || root.session.activePeer.length === 0
-                        text: "Select a chat or start a new one"
+                        text: qsTr("Select a chat or start a new one")
                         color: Theme.textDim
                     }
                 }
@@ -159,9 +159,9 @@ Item {
                     if (!root.session) return ""
                     var who = root.session.callPeerName
                     switch (root.session.callState) {
-                    case "outgoing": return "Calling " + who + "…"
-                    case "incoming": return "Incoming call · " + who
-                    case "active": return "In call · " + who
+                    case "outgoing": return qsTr("Calling %1…").arg(who)
+                    case "incoming": return qsTr("Incoming call · %1").arg(who)
+                    case "active": return qsTr("In call · %1").arg(who)
                     }
                     return ""
                 }
@@ -206,7 +206,7 @@ Item {
             root.unlockId = id
             unlockField.text = ""
             unlockError.text = ""
-            unlockDialog.title = "Unlock " + name
+            unlockDialog.title = qsTr("Unlock %1").arg(name)
             unlockDialog.open()
         }
         // A wrong passphrase belongs here, on the screen where it was typed. The
@@ -241,13 +241,13 @@ Item {
         onOpened: unlockField.forceActiveFocus()
         background: DialogFrame { }
         header: Label { text: unlockDialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
-        footer: DialogButtons { acceptText: "Unlock"; onAccepted: unlockDialog.submit(); onRejected: unlockDialog.reject() }
+        footer: DialogButtons { acceptText: qsTr("Unlock"); onAccepted: unlockDialog.submit(); onRejected: unlockDialog.reject() }
         contentItem: ColumnLayout {
             spacing: 6
             TextField {
                 id: unlockField
                 echoMode: TextInput.Password
-                placeholderText: "Passphrase"
+                placeholderText: qsTr("Passphrase")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 Layout.preferredWidth: 280

@@ -15,7 +15,10 @@ Popup {
     property var session: null
 
     modal: true
-    width: 420
+    readonly property int kLeastWidth: 420
+    readonly property int kEdge: 14
+    width: Math.min(parent ? parent.width - 24 : root.kLeastWidth,
+        Math.max(root.kLeastWidth, actions.implicitWidth + 2 * root.kEdge))
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
@@ -92,7 +95,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             Label {
-                text: "Voice message"
+                text: qsTr("Voice message")
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -184,13 +187,15 @@ Popup {
         }
 
         RowLayout {
+            id: actions
             Layout.fillWidth: true
-            Layout.margins: 14
+            Layout.margins: root.kEdge
             spacing: 8
 
             MenuButton {
                 iconName: root.recording ? "stop" : "mic"
-                text: root.recording ? "Stop" : (root.takeReady ? "Record again" : "Record")
+                text: root.recording ? qsTr("Stop")
+                    : (root.takeReady ? qsTr("Record again") : qsTr("Record"))
                 onClicked: {
                     if (root.recording) {
                         root.session.stopVoiceRecording()
@@ -202,14 +207,14 @@ Popup {
             }
             MenuButton {
                 iconName: root.takePlaying ? "stop" : "play"
-                text: root.takePlaying ? "Stop" : "Listen"
+                text: root.takePlaying ? qsTr("Stop") : qsTr("Listen")
                 enabled: root.takeReady
                 onClicked: root.session.playVoiceTake()
             }
             Item { Layout.fillWidth: true }
             MenuButton {
                 iconName: "send"
-                text: "Send"
+                text: qsTr("Send")
                 enabled: root.takeReady
                 onClicked: {
                     root.session.sendVoiceTake()

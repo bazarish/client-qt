@@ -26,12 +26,12 @@ Popup {
 
     function statusText(m) {
         if (!m.open) {
-            return m.encrypted ? "🔒 Locked" : "Offline"
+            return m.encrypted ? qsTr("🔒 Locked") : qsTr("Offline")
         }
         if (!m.online) {
-            return "Offline"
+            return qsTr("Offline")
         }
-        return m.connected ? "Online" : "Connecting…"
+        return m.connected ? qsTr("Online") : qsTr("Connecting…")
     }
     function statusColor(m) {
         if (m.open && m.online && m.connected) {
@@ -49,7 +49,7 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            Label { text: "Accounts"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: qsTr("Accounts"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
         Hairline { }
@@ -168,7 +168,7 @@ Popup {
             Layout.margins: 12
             // The picker behind this button also opens, removes and imports
             // accounts, so it is not an "add" button.
-            text: "Manage"
+            text: qsTr("Manage")
             hoverEnabled: true
             onClicked: { root.close(); App.requestAddAccount() }
             background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }

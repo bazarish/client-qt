@@ -144,6 +144,22 @@ void PictureStore::evictLocked()
     }
 }
 
+void PictureStore::remove(const QString& e2eId)
+{
+    {
+        const QWriteLocker locker(&lock_);
+        const auto found = entries_.find(e2eId);
+        if (found == entries_.end()) {
+            return;
+        }
+        decodedBytes_ -= decodedSize(found->decoded);
+        storedBytes_ -= found->bytes.size();
+        entries_.erase(found);
+        ++revision_;
+    }
+    emit revisionChanged();
+}
+
 void PictureStore::clear()
 {
     {

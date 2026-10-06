@@ -46,7 +46,7 @@ Dialog {
         Layout.fillWidth: true
 
         Label {
-            text: "Connecting this account"
+            text: qsTr("Connecting this account")
             color: Theme.neon
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
@@ -83,8 +83,7 @@ Dialog {
                 }
             }
             Label {
-                text: "The first connection over I2P builds tunnels and can take several minutes. "
-                    + "You can keep the app open; it will finish on its own."
+                text: qsTr("The first connection over I2P can take several minutes. Do not close the app.")
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
@@ -97,14 +96,14 @@ Dialog {
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Label {
-                text: "Hiding keeps it running — watch it in the activity panel on the right."
+                text: qsTr("The panel on the right shows the progress.")
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
             Button {
-                text: "Hide"
+                text: qsTr("Hide")
                 leftPadding: 12
                 rightPadding: 12
                 onClicked: root.close()

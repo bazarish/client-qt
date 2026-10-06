@@ -20,7 +20,7 @@ Dialog {
     background: DialogFrame { destructive: true }
 
     header: Label {
-        text: "Use a private gateway?"
+        text: qsTr("Use a private gateway?")
         color: Theme.neon
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
@@ -28,8 +28,8 @@ Dialog {
     }
 
     footer: DialogButtons {
-        acceptText: root.busy ? "Checking..." : "OK"
-        rejectText: "Skip"
+        acceptText: root.busy ? qsTr("Checking\u2026") : qsTr("OK")
+        rejectText: qsTr("Skip")
         acceptEnabled: !root.busy && addressField.text.trim().length > 0
         onAccepted: {
             root.problem = ""
@@ -64,11 +64,7 @@ Dialog {
             bottomPadding: 0
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "A host runs the I2P router for you; this device starts none. It sees "
-                + "every address you connect to, so use one you trust. Identity keys stay on "
-                + "this device. Messages, files and calls stay encrypted end to end.\n\n"
-                + "Paste the address its operator gave you, or skip and this device runs its "
-                + "own router. Either can be changed later in settings."
+            text: qsTr("A host runs the I2P router for you. It sees every address you connect to. Use one you trust.\n\nPaste the address its operator gave you, or skip. The app will run its built-in router.")
         }
 
         FormField {
@@ -77,7 +73,7 @@ Dialog {
             Layout.leftMargin: 14
             Layout.rightMargin: 14
             enabled: !root.busy
-            label: "Address"
+            label: qsTr("Address")
             placeholder: "https://host/path#token"
             inputField.onAccepted:
                 if (!root.busy && addressField.text.trim().length > 0) {

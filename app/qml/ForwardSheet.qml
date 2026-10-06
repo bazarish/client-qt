@@ -35,7 +35,7 @@ Popup {
             spacing: 8
             Icon { name: "forward"; color: Theme.accent; size: 16 }
             Label {
-                text: "Forward to"
+                text: qsTr("Forward to")
                 color: Theme.text
                 font.pixelSize: Theme.fontTitle
                 Layout.fillWidth: true
@@ -48,7 +48,7 @@ Popup {
             Layout.fillWidth: true
             Layout.leftMargin: 14
             Layout.rightMargin: 14
-            placeholder: "Search chats"
+            placeholder: qsTr("Search chats")
         }
 
         ListView {

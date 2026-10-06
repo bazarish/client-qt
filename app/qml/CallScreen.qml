@@ -216,19 +216,19 @@ Popup {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 color: Theme.textDim
-                text: root.pending === "accepting" ? "Accepting…"
-                    : root.pending === "declining" ? "Declining…"
-                    : root.pending === "ending" ? "Ending the call…"
+                text: root.pending === "accepting" ? qsTr("Accepting\u2026")
+                    : root.pending === "declining" ? qsTr("Declining\u2026")
+                    : root.pending === "ending" ? qsTr("Ending the call\u2026")
                     : root.callState === "outgoing"
                         ? (root.session && root.session.callStage.length > 0
-                            ? root.session.callStage : "Calling…")
-                    : root.callState === "incoming" ? "Incoming audio call"
+                            ? root.session.callStage : qsTr("Calling…"))
+                    : root.callState === "incoming" ? qsTr("Incoming audio call")
                     : root.callState === "active"
                         ? (!root.connected
                             ? (root.session && root.session.callStage.length > 0
-                                ? root.session.callStage : "Opening the audio path")
+                                ? root.session.callStage : qsTr("Opening the audio path"))
                             : ((root.session && root.session.callMuted)
-                                ? "In call (muted)" : "In call"))
+                                ? qsTr("In call (muted)") : qsTr("In call")))
                     : ""
             }
             // The running time, once there is a call to time.
@@ -251,13 +251,13 @@ Popup {
                 visible: root.connected
                 spacing: 24
                 LevelMeter {
-                    caption: (root.session && root.session.callMuted) ? "You (muted)" : "You"
+                    caption: (root.session && root.session.callMuted) ? qsTr("You (muted)") : qsTr("You")
                     level: (root.session && !root.session.callMuted)
                         ? root.session.callInputLevel : 0
                     tint: (root.session && root.session.callMuted) ? Theme.warn : Theme.accent
                 }
                 LevelMeter {
-                    caption: root.session ? root.session.callPeerName : "Them"
+                    caption: root.session ? root.session.callPeerName : qsTr("Contact")
                     level: root.session ? root.session.callOutputLevel : 0
                     tint: Theme.green
                 }
@@ -275,13 +275,13 @@ Popup {
         // Incoming: decline / accept.
         CallButton {
             visible: root.callState === "incoming"
-            text: "Decline"; fill: Theme.danger
+            text: qsTr("Decline"); fill: Theme.danger
             enabled: root.pending.length === 0
             onClicked: { root.pending = "declining"; root.session.declineCall() }
         }
         CallButton {
             visible: root.callState === "incoming"
-            text: "Accept"; fill: Theme.accent; label: Theme.accentInk
+            text: qsTr("Accept"); fill: Theme.accent; label: Theme.accentInk
             enabled: root.pending.length === 0
             onClicked: { root.pending = "accepting"; root.session.acceptCall() }
         }
@@ -292,14 +292,14 @@ Popup {
             iconName: "mic"
             crossed: root.session && root.session.callMuted
             Accessible.name: (root.session && root.session.callMuted)
-                ? "Turn the microphone on" : "Turn the microphone off"
+                ? qsTr("Turn the microphone on") : qsTr("Turn the microphone off")
             ToolTip.visible: hovered
             ToolTip.text: Accessible.name
             onClicked: root.session.setCallMuted(!root.session.callMuted)
         }
         CallButton {
             visible: root.callState === "active"
-            text: "End"; fill: Theme.danger
+            text: qsTr("End"); fill: Theme.danger
             enabled: root.pending.length === 0
             onClicked: { root.pending = "ending"; root.session.endCall() }
         }
@@ -307,7 +307,7 @@ Popup {
         // Outgoing: cancel.
         CallButton {
             visible: root.callState === "outgoing"
-            text: "Cancel"; fill: Theme.danger
+            text: qsTr("Cancel"); fill: Theme.danger
             enabled: root.pending.length === 0
             onClicked: { root.pending = "ending"; root.session.endCall() }
         }

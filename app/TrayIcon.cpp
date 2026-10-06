@@ -179,7 +179,7 @@ void TrayIcon::refreshIcon()
         showingUnread_ = hasUnread;
         tray_.setIcon(hasUnread ? unreadIcon_ : idleIcon_);
     }
-    tray_.setToolTip(hasUnread ? tr("Bazarish - %n unread message(s)", nullptr, unread)
+    tray_.setToolTip(hasUnread ? tr("Bazarish - %1 unread").arg(unread)
                                : tr("Bazarish"));
 }
 

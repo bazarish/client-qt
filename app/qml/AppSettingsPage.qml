@@ -28,7 +28,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             Label {
-                text: "Global settings"
+                text: qsTr("Global settings")
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -54,20 +54,41 @@ Popup {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Interface language")
+                            color: Theme.text
+                            Layout.fillWidth: true
+                        }
+                        Dropdown {
+                            id: languageBox
+                            model: Tr.languages
+                            textRole: "name"
+                            valueRole: "code"
+                            Layout.preferredWidth: implicitWidth
+                            Component.onCompleted: currentIndex = indexOfValue(Tr.language)
+                            onActivated: Tr.language = currentValue
+                            Connections {
+                                target: Tr
+                                function onLanguageChanged() {
+                                    languageBox.currentIndex = languageBox.indexOfValue(Tr.language)
+                                }
+                            }
+                        }
+                    }
+                    Hairline { Layout.fillWidth: true }
+
+                    RowLayout {
+                        Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "Portable mode"; color: Theme.text }
+                            Label { text: qsTr("Portable mode"); color: Theme.text }
                             Label {
-                                text: "Accounts, history and the I2P router's state live in a "
-                                    + "bazarish_data folder next to the program instead of your user "
-                                    + "folder, so a copy on a stick carries everything with it. "
-                                    + "Switching moves what is already there, closes every account "
-                                    + "and needs the app started again."
+                                text: qsTr("Accounts, history and the router's state live in a bazarish_data folder next to the program. Switching moves them, closes every account and needs the app started again.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                             Label {
-                                text: "Now at: " + App.dataLocation
+                                text: qsTr("Now at: %1").arg(App.dataLocation)
                                 color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -94,13 +115,9 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "Background tasks"; color: Theme.text }
+                            Label { text: qsTr("Background tasks"); color: Theme.text }
                             Label {
-                                text: "A handle on the right edge that opens a list of what the "
-                                    + "client is doing right now - a contact being added, a message "
-                                    + "or file on its way, a call being set up - with the stage each "
-                                    + "one has reached. Off by default: it is what to look at when "
-                                    + "something seems stuck."
+                                text: qsTr("A panel on the right edge lists the background operations and the stage each one has reached. Off by default.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -122,7 +139,7 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
 
-                    Label { text: "How this application reaches I2P"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: qsTr("How this application reaches I2P"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
 
                     TabBar {
                         id: transportTabs
@@ -134,9 +151,9 @@ Popup {
                             color: Theme.surface
                             border.color: Theme.border
                         }
-                        ModeTab { text: "Embedded" }
-                        ModeTab { text: "SAM API" }
-                        ModeTab { text: "Private gateway" }
+                        ModeTab { text: qsTr("Embedded") }
+                        ModeTab { text: qsTr("SAM API") }
+                        ModeTab { text: qsTr("Private gateway") }
                     }
 
                     StackLayout {
@@ -149,7 +166,7 @@ Popup {
                             spacing: 8
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Enabled"; color: Theme.text; Layout.fillWidth: true }
+                                Label { text: qsTr("Enabled"); color: Theme.text; Layout.fillWidth: true }
                                 Toggle {
                                     checked: I2p.transport === "embedded"
                                     onToggled: {
@@ -162,16 +179,13 @@ Popup {
                                 }
                             }
                             Label {
-                                text: "A router inside this application, serving every account on "
-                                    + "it: its own tunnels, its own network database, and the "
-                                    + "addresses each account is reached at. Nothing outside this "
-                                    + "device is trusted with anything."
+                                text: qsTr("The router is built in and shared by every account.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Version"; color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
+                                Label { text: qsTr("Version"); color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
                                 Label { text: App.i2pdVersion; color: Theme.text; font.pixelSize: Theme.fontSmall }
                             }
                         }
@@ -182,7 +196,7 @@ Popup {
                             spacing: 8
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Enabled"; color: Theme.text; Layout.fillWidth: true }
+                                Label { text: qsTr("Enabled"); color: Theme.text; Layout.fillWidth: true }
                                 Toggle {
                                     id: samToggle
                                     checked: I2p.transport === "sam"
@@ -199,9 +213,7 @@ Popup {
                                 }
                             }
                             Label {
-                                text: "Use an I2P router already running on this machine instead "
-                                    + "of the one inside this application. It holds the keys of "
-                                    + "every destination it operates, so it has to be yours."
+                                text: qsTr("Use the local external I2P router. It holds the keys of every destination it operates, so it has to be yours.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -211,20 +223,20 @@ Popup {
                                 FormField {
                                     id: samHostField
                                     Layout.fillWidth: true
-                                    placeholder: "Host or address"
+                                    placeholder: qsTr("Host or address")
                                     text: I2p.samHost
                                 }
                                 FormField {
                                     id: samPortField
                                     Layout.preferredWidth: 90
-                                    placeholder: "Port"
+                                    placeholder: qsTr("Port")
                                     text: String(I2p.samPort)
                                     inputField.validator: IntValidator { bottom: 1; top: 65535 }
                                 }
                             }
                             MenuButton {
                                 iconName: "check"
-                                text: "Save"
+                                text: qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
                                 onClicked: I2p.saveSam(samHostField.text,
                                     parseInt(samPortField.text || "0"))
@@ -237,7 +249,7 @@ Popup {
                             spacing: 8
                             RowLayout {
                                 Layout.fillWidth: true
-                                Label { text: "Enabled"; color: Theme.text; Layout.fillWidth: true }
+                                Label { text: qsTr("Enabled"); color: Theme.text; Layout.fillWidth: true }
                                 Toggle {
                                     checked: I2p.transport === "gateway"
                                     enabled: !I2p.gatewayChecking
@@ -255,10 +267,7 @@ Popup {
                                 }
                             }
                             Label {
-                                text: "A host runs the router; this device starts none. It sees "
-                                    + "every address you connect to and holds the keys of the "
-                                    + "destinations it makes for you. Identity keys stay on this "
-                                    + "device. Messages, files and calls stay encrypted end to end."
+                                text: qsTr("A host runs the router. It sees every address you connect to and holds the keys of the destinations it makes for you.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -277,7 +286,7 @@ Popup {
                             }
                             MenuButton {
                                 iconName: "check"
-                                text: I2p.gatewayChecking ? "Checking…" : "Save"
+                                text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
                                 enabled: !I2p.gatewayChecking && gatewayField.text.trim().length > 0
                                 onClicked: {
@@ -292,8 +301,7 @@ Popup {
                         Layout.fillWidth: true
                         Layout.topMargin: 4
                         wrapMode: Text.Wrap
-                        text: "Which one carries the traffic is settled when this application "
-                            + "starts, so a change takes effect the next time it runs."
+                        text: qsTr("The I2P backend is chosen at startup. A restart is required.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
 
@@ -301,7 +309,7 @@ Popup {
                         Layout.fillWidth: true
                         Layout.topMargin: 8
                         iconName: "info"
-                        text: "I2P status"
+                        text: qsTr("I2P status")
                         onClicked: { root.close(); root.showRouterStatus() }
                     }
                 }
@@ -326,14 +334,14 @@ Popup {
         width: Math.min(360, parent ? parent.width - 24 : 360)
         background: DialogFrame { }
         header: Label {
-            text: portableConfirm.turningOn ? "Move data beside the app?" : "Move data back?"
+            text: portableConfirm.turningOn ? qsTr("Move data beside the app?") : qsTr("Move data back?")
             color: Theme.text
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14
         }
         footer: DialogButtons {
-            acceptText: "Move"
+            acceptText: qsTr("Move")
             onAccepted: portableConfirm.accept()
             onRejected: portableConfirm.reject()
         }
@@ -342,8 +350,7 @@ Popup {
             wrapMode: Text.Wrap
             color: Theme.textDim
             padding: 14
-            text: "Every account closes, the data is moved, and Bazarish has to be started "
-                + "again. Nothing is deleted."
+            text: qsTr("Every account closes, the data is moved, and Bazarish has to be started again.")
         }
     }
 }

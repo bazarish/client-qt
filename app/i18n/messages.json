@@ -1,0 +1,3873 @@
+{
+  "languages": [
+    {
+      "code": "en",
+      "name": "English"
+    },
+    {
+      "code": "ru",
+      "name": "Русский"
+    },
+    {
+      "code": "es",
+      "name": "Español"
+    },
+    {
+      "code": "zh",
+      "name": "中文"
+    },
+    {
+      "code": "ar",
+      "name": "العربية",
+      "rtl": true
+    }
+  ],
+  "messages": {
+    " (queue: %1)": {
+      "ru": " (в очереди: %1)",
+      "es": " (en cola: %1)",
+      "zh": "（队列：%1）",
+      "ar": " (في الطابور: ⁦%1⁩)"
+    },
+    "%1  (this device)": {
+      "ru": "%1  (это устройство)",
+      "es": "%1  (este dispositivo)",
+      "zh": "%1（本设备）",
+      "ar": "⁦%1⁩  (هذا الجهاز)"
+    },
+    "%1 accepted your contact request.": {
+      "ru": "%1 принял ваш запрос на добавление.",
+      "es": "%1 ha aceptado tu solicitud de contacto.",
+      "zh": "%1 接受了你的联系请求。",
+      "ar": "قبل ⁦%1⁩ طلب التواصل."
+    },
+    "%1 cleared the chat.": {
+      "ru": "%1 очистил переписку.",
+      "es": "%1 ha borrado el chat.",
+      "zh": "%1 清空了该聊天。",
+      "ar": "أفرغ ⁦%1⁩ المحادثة."
+    },
+    "%1 facades configured (failover)": {
+      "ru": "Настроено фасадов: %1 (с переключением при сбое)",
+      "es": "%1 fachadas configuradas (con conmutación por error)",
+      "zh": "已配置 %1 个门面（故障时自动切换）",
+      "ar": "تم إعداد ⁦%1⁩ من الواجهات (مع التبديل عند العطل)"
+    },
+    "%1 messages  ·  %2": {
+      "ru": "сообщений: %1  ·  %2",
+      "es": "%1 mensajes  ·  %2",
+      "zh": "%1 条消息  ·  %2",
+      "ar": "⁦%1⁩ رسالة  ·  ⁦%2⁩"
+    },
+    "%1 pictures and voice notes are part of that": {
+      "ru": "из них картинок и голосовых: %1",
+      "es": "de eso, %1 son imágenes y notas de voz",
+      "zh": "其中 %1 项是图片和语音",
+      "ar": "منها ⁦%1⁩ صورة ورسالة صوتية"
+    },
+    "%1 reacted %2": {
+      "ru": "%1 отреагировал %2",
+      "es": "%1 reaccionó con %2",
+      "zh": "%1 的反应：%2",
+      "ar": "تفاعل ⁦%1⁩ بـ ⁦%2⁩"
+    },
+    "%1 · tunnels %2 in / %3 out · %4 leasesets": {
+      "ru": "%1 · туннелей: %2 вх. / %3 исх. · лизсетов: %4",
+      "es": "%1 · túneles %2 de entrada / %3 de salida · %4 leasesets",
+      "zh": "%1 · 隧道 %2 入 / %3 出 · %4 个租约集",
+      "ar": "⁦%1⁩ · الأنفاق ⁦%2⁩ واردة / ⁦%3⁩ صادرة · ⁦%4⁩ مجموعة عقود"
+    },
+    "%1s": {
+      "ru": "%1 с",
+      "es": "%1 s",
+      "zh": "%1 秒",
+      "ar": "⁦%1⁩ ث"
+    },
+    "%1x": {
+      "ru": "%1×",
+      "es": "%1×",
+      "zh": "%1 倍",
+      "ar": "⁦%1⁩×"
+    },
+    "1 hop each way. The fastest and the weakest: one router carries the tunnel and learns your address.": {
+      "ru": "Один узел в каждую сторону. Самый быстрый и самый слабый вариант. Туннель идёт через один роутер, и этот роутер узнаёт ваш адрес.",
+      "es": "1 salto en cada sentido. El más rápido y el más débil: un solo router lleva el túnel y conoce tu dirección.",
+      "zh": "每个方向 1 跳。最快也最脆弱：单台路由承载隧道，并知道你的地址。",
+      "ar": "قفزة واحدة في كل اتجاه. الأسرع والأضعف: موجّه واحد يحمل النفق ويعرف عنوانك."
+    },
+    "1 or 2 hops each way, picked per tunnel.": {
+      "ru": "Один или два узла в каждую сторону, выбор для каждого туннеля.",
+      "es": "1 o 2 saltos en cada sentido, elegidos por túnel.",
+      "zh": "每个方向 1 到 2 跳，逐条隧道选择。",
+      "ar": "قفزة أو قفزتان في كل اتجاه، تُختار لكل نفق."
+    },
+    "1.5x": {
+      "ru": "1,5×",
+      "es": "1,5×",
+      "zh": "1.5 倍",
+      "ar": "‎1.5×"
+    },
+    "3 hops each way. Slowest to build and to answer.": {
+      "ru": "Три узла в каждую сторону. Дольше всех строится и отвечает.",
+      "es": "3 saltos en cada sentido. El más lento en construirse y en responder.",
+      "zh": "每个方向 3 跳。建立和响应都最慢。",
+      "ar": "ثلاث قفزات في كل اتجاه. الأبطأ في البناء والاستجابة."
+    },
+    "A SOCKS5 proxy the router reaches the I2P network through. Leave empty to connect straight out.": {
+      "ru": "Прокси SOCKS5, через который роутер подключается к сети I2P. Оставьте пустым, чтобы подключаться напрямую.",
+      "es": "Un proxy SOCKS5 por el que el router se conecta a la red I2P. Déjalo vacío para conectar directamente.",
+      "zh": "路由通过这个 SOCKS5 代理连接到 I2P 网络。留空则直接连接。",
+      "ar": "وسيط SOCKS5 يتصل الموجّه عبره بشبكة I2P. اتركه فارغًا للاتصال مباشرةً."
+    },
+    "A device that joins later starts empty: to have something on a new device, send or forward it again.": {
+      "ru": "Новое устройство начинает с пустой переписки. Чтобы на нём что-то появилось, отправьте или перешлите это заново.",
+      "es": "Un dispositivo que se suma después empieza vacío: para tener algo en uno nuevo, vuelve a enviarlo o reenviarlo.",
+      "zh": "后加入的设备从空白开始：要让新设备上也有内容，请重新发送或转发一次。",
+      "ar": "الجهاز الذي ينضم لاحقًا يبدأ فارغًا: لكي يصل شيء إلى جهاز جديد، أعِد إرساله أو إعادة توجيهه."
+    },
+    "A host runs the I2P router for you. It sees every address you connect to. Use one you trust.\n\nPaste the address its operator gave you, or skip. The app will run its built-in router.": {
+      "ru": "Роутер I2P работает на чужой машине. Она видит все адреса, к которым вы обращаетесь. Выбирайте машину, которой доверяете.\n\nВставьте адрес от оператора или пропустите. Приложение запустит встроенный роутер.",
+      "es": "Un servidor ajeno mantiene el router I2P por ti. Ve todas las direcciones a las que te conectas. Usa uno en el que confíes.\n\nPega la dirección de su operador o sáltalo. La aplicación levantará su router integrado.",
+      "zh": "I2P 路由运行在他人的主机上。它能看到你连接的所有地址。请选择你信任的一台。\n\n粘贴运营者给你的地址，或者跳过。程序将启动内置路由。",
+      "ar": "يعمل موجّه I2P على مضيف آخر. وهو يرى كل العناوين التي تتصل بها. فاختر مضيفًا تثق به.\n\nالصِق عنوان المشغّل أو تخطَّ ذلك. سيشغّل التطبيق موجّهه المدمج."
+    },
+    "A host runs the router. It sees every address you connect to and holds the keys of the destinations it makes for you.": {
+      "ru": "Роутер работает на чужой машине. Она видит все адреса, к которым вы обращаетесь. Она же хранит ключи созданных для вас назначений.",
+      "es": "Un servidor ajeno mantiene el router. Ve cada dirección a la que te conectas y guarda las claves de los destinos que crea para ti.",
+      "zh": "由他人的主机运行路由。它能看到你连接的每一个地址，并保管它为你创建的目的地的密钥。",
+      "ar": "يشغّل مضيفٌ الموجّه. يرى كل عنوان تتصل به، ويحتفظ بمفاتيح الوجهات التي ينشئها لك."
+    },
+    "A new address is published": {
+      "ru": "Новый адрес опубликован",
+      "es": "Se ha publicado una dirección nueva",
+      "zh": "新地址已发布",
+      "ar": "نُشر عنوان جديد"
+    },
+    "A panel on the right edge lists the background operations and the stage each one has reached. Off by default.": {
+      "ru": "Панель у правого края показывает фоновые операции и стадию каждой. По умолчанию выключена.",
+      "es": "Un panel en el borde derecho lista las operaciones en segundo plano y la fase de cada una. Desactivado por defecto.",
+      "zh": "右侧边缘的面板列出后台操作及各自的阶段。默认关闭。",
+      "ar": "لوحة عند الحافة اليمنى تسرد العمليات في الخلفية والمرحلة التي بلغتها كل واحدة. مُعطَّلة افتراضيًا."
+    },
+    "A reseed address must be an https URL: %1": {
+      "ru": "Адрес ресида должен быть https-ссылкой: %1",
+      "es": "La dirección de reseed debe ser una URL https: %1",
+      "zh": "Reseed 地址必须是 https 链接：%1",
+      "ar": "يجب أن يكون عنوان الريسيد رابط https: ⁦%1⁩"
+    },
+    "About %1 of it is free space compacting returns to the disk.": {
+      "ru": "Из них около %1 — свободное место. Сжатие вернёт его диску.",
+      "es": "De eso, unos %1 son espacio libre que la compactación devuelve al disco.",
+      "zh": "其中约 %1 是压缩后可归还给磁盘的空闲空间。",
+      "ar": "منها نحو ⁦%1⁩ مساحة فارغة يعيدها الضغط إلى القرص."
+    },
+    "Accept": {
+      "ru": "Принять",
+      "es": "Responder",
+      "zh": "接听",
+      "ar": "رد"
+    },
+    "Accepted by your server": {
+      "ru": "Принято вашим сервером",
+      "es": "Aceptado por tu servidor",
+      "zh": "已被你的服务器接收",
+      "ar": "قبِله خادمك"
+    },
+    "Accepting…": {
+      "ru": "Принимается…",
+      "es": "Aceptando…",
+      "zh": "正在接听…",
+      "ar": "جارٍ القبول…"
+    },
+    "Account": {
+      "ru": "Аккаунт",
+      "es": "Cuenta",
+      "zh": "账号",
+      "ar": "الحساب"
+    },
+    "Account name": {
+      "ru": "Имя аккаунта",
+      "es": "Nombre de la cuenta",
+      "zh": "账号名称",
+      "ar": "اسم الحساب"
+    },
+    "Accounts": {
+      "ru": "Аккаунты",
+      "es": "Cuentas",
+      "zh": "账号",
+      "ar": "الحسابات"
+    },
+    "Accounts, history and the router's state live in a bazarish_data folder next to the program. Switching moves them, closes every account and needs the app started again.": {
+      "ru": "Аккаунты, переписка и состояние роутера хранятся в папке bazarish_data рядом с программой. Переключение перенесёт их, закроет все аккаунты и потребует запустить программу заново.",
+      "es": "Las cuentas, el historial y el estado del router viven en una carpeta bazarish_data junto al programa. Cambiar los mueve, cierra todas las cuentas y obliga a iniciar la aplicación de nuevo.",
+      "zh": "账号、聊天记录和路由状态存放在程序旁的 bazarish_data 文件夹中。切换会迁移它们、关闭所有账号，并需要重新启动程序。",
+      "ar": "تعيش الحسابات والمحادثات وحالة الموجّه في مجلد bazarish_data بجوار البرنامج. والتبديل ينقلها، ويغلق كل الحسابات، ويتطلب تشغيل التطبيق من جديد."
+    },
+    "Add another facade": {
+      "ru": "Добавить ещё фасад",
+      "es": "Añadir otra fachada",
+      "zh": "再添加一个门面",
+      "ar": "إضافة واجهة أخرى"
+    },
+    "Add or switch account": {
+      "ru": "Добавить аккаунт или сменить",
+      "es": "Añadir o cambiar de cuenta",
+      "zh": "添加或切换账号",
+      "ar": "إضافة حساب أو التبديل"
+    },
+    "Adding %1": {
+      "ru": "Добавление: %1",
+      "es": "Añadiendo %1",
+      "zh": "正在添加 %1",
+      "ar": "جارٍ إضافة ⁦%1⁩"
+    },
+    "Adding a contact": {
+      "ru": "Добавление контакта",
+      "es": "Añadiendo un contacto",
+      "zh": "正在添加联系人",
+      "ar": "جارٍ إضافة جهة اتصال"
+    },
+    "Adding contact": {
+      "ru": "Добавление контакта",
+      "es": "Añadir contacto",
+      "zh": "添加联系人",
+      "ar": "إضافة جهة اتصال"
+    },
+    "Address": {
+      "ru": "Адрес",
+      "es": "Dirección",
+      "zh": "地址",
+      "ar": "العنوان"
+    },
+    "Agree": {
+      "ru": "Согласиться",
+      "es": "Aceptar",
+      "zh": "同意",
+      "ar": "الموافقة"
+    },
+    "Agreed": {
+      "ru": "Вы согласились",
+      "es": "Has aceptado",
+      "zh": "已同意",
+      "ar": "تمت الموافقة"
+    },
+    "Agreeing to a contact request": {
+      "ru": "Согласие на запрос контакта",
+      "es": "Aceptando una solicitud de contacto",
+      "zh": "正在同意联系人请求",
+      "ar": "جارٍ الموافقة على طلب اتصال"
+    },
+    "Agreeing…": {
+      "ru": "Подтверждение…",
+      "es": "Aceptando…",
+      "zh": "正在同意…",
+      "ar": "جارٍ الموافقة…"
+    },
+    "Allow calls": {
+      "ru": "Разрешить звонки",
+      "es": "Permitir llamadas",
+      "zh": "允许通话",
+      "ar": "السماح بالمكالمات"
+    },
+    "Allow incoming calls": {
+      "ru": "Разрешить входящие звонки",
+      "es": "Permitir llamadas entrantes",
+      "zh": "允许来电",
+      "ar": "السماح بالمكالمات الواردة"
+    },
+    "Already gone from the server": {
+      "ru": "На сервере его уже нет",
+      "es": "Ya no está en el servidor",
+      "zh": "服务器上已经没有它",
+      "ar": "لم يبق على الخادم"
+    },
+    "Already in your contacts": {
+      "ru": "Уже у вас в контактах",
+      "es": "Ya está en tus contactos",
+      "zh": "已在你的联系人中",
+      "ar": "موجود في جهات اتصالك"
+    },
+    "An invite cannot be formed before your destination is up. Publishing takes a few minutes.": {
+      "ru": "Приглашение нельзя собрать, пока назначение не опубликовано. Публикация занимает несколько минут.",
+      "es": "No se puede formar una invitación antes de que tu destino esté arriba. Publicar tarda unos minutos.",
+      "zh": "在目的地建立之前无法生成邀请。发布需要几分钟。",
+      "ar": "لا يمكن تكوين دعوة قبل أن تقوم وجهتك. والنشر يستغرق بضع دقائق."
+    },
+    "Another device of yours published it. Until the two agree, some mail reaches nobody.": {
+      "ru": "Его опубликовало другое ваше устройство. Пока адреса различаются, часть почты не доставляется.",
+      "es": "Lo publicó otro dispositivo tuyo. Hasta que ambas coincidan, parte del correo no llega.",
+      "zh": "是你的另一台设备发布了它。两者一致之前，部分邮件无法送达。",
+      "ar": "نشرها جهاز آخر لك. وإلى أن يتطابق العنوانان، لا يصل جزء من البريد."
+    },
+    "Any unicode…": {
+      "ru": "Любой символ…",
+      "es": "Cualquier carácter…",
+      "zh": "任意字符…",
+      "ar": "أي رمز…"
+    },
+    "Anyone with the link can reach you.": {
+      "ru": "Каждый, у кого есть ссылка, сможет с вами связаться.",
+      "es": "Cualquiera que tenga el enlace podrá contactarte.",
+      "zh": "任何拿到链接的人都能联系到你。",
+      "ar": "كل من لديه الرابط يستطيع الاتصال بك."
+    },
+    "Ask my other devices for contacts": {
+      "ru": "Запросить контакты у своих устройств",
+      "es": "Pedir los contactos a mis otros dispositivos",
+      "zh": "向我的其他设备索取联系人",
+      "ar": "طلب جهات الاتصال من أجهزتي الأخرى"
+    },
+    "Asked for whenever this account is opened.": {
+      "ru": "Запрашивается при каждом открытии аккаунта.",
+      "es": "Se pide cada vez que se abre esta cuenta.",
+      "zh": "每次打开此账号时都会询问。",
+      "ar": "يُطلب في كل مرة يُفتح فيها هذا الحساب."
+    },
+    "Asked your other devices for your contacts": {
+      "ru": "Контакты запрошены у ваших устройств",
+      "es": "Se han pedido los contactos a tus otros dispositivos",
+      "zh": "已向你的其他设备索取联系人",
+      "ar": "طُلبت جهات اتصالك من أجهزتك الأخرى"
+    },
+    "Asking the registry over I2P…": {
+      "ru": "Реестр опрашивается через I2P…",
+      "es": "Consultando el registro por I2P…",
+      "zh": "正在通过 I2P 询问注册服务…",
+      "ar": "جارٍ سؤال السجل عبر I2P…"
+    },
+    "Asking your other devices": {
+      "ru": "Запрос к вашим устройствам",
+      "es": "Preguntando a tus otros dispositivos",
+      "zh": "正在询问你的其他设备",
+      "ar": "جارٍ سؤال أجهزتك الأخرى"
+    },
+    "Asking your server for a new serving key": {
+      "ru": "Запрос нового обслуживающего ключа",
+      "es": "Pidiendo al servidor una nueva clave de servicio",
+      "zh": "正在向服务器申请新的服务密钥",
+      "ar": "جارٍ طلب مفتاح خدمة جديد من الخادم"
+    },
+    "Asking your server for your destination…": {
+      "ru": "Запрос назначения у сервера…",
+      "es": "Pidiendo tu destino al servidor…",
+      "zh": "正在向服务器询问你的目的地…",
+      "ar": "جارٍ سؤال الخادم عن وجهتك…"
+    },
+    "Asking your server…": {
+      "ru": "Запрос к серверу…",
+      "es": "Preguntando a tu servidor…",
+      "zh": "正在询问服务器…",
+      "ar": "جارٍ سؤال خادمك…"
+    },
+    "Asking…": {
+      "ru": "Запрашивается…",
+      "es": "Preguntando…",
+      "zh": "正在询问…",
+      "ar": "جارٍ السؤال…"
+    },
+    "Avatar removed": {
+      "ru": "Аватар убран",
+      "es": "Avatar eliminado",
+      "zh": "头像已移除",
+      "ar": "أُزيلت الصورة الرمزية"
+    },
+    "Avatar set": {
+      "ru": "Аватар установлен",
+      "es": "Avatar establecido",
+      "zh": "头像已设置",
+      "ar": "عُيّنت الصورة الرمزية"
+    },
+    "Awaiting operator approval — no destination until then.": {
+      "ru": "Ожидается одобрение оператором — до него назначения не будет.",
+      "es": "A la espera de la aprobación del operador: hasta entonces no hay destino.",
+      "zh": "等待运营者批准 — 在此之前没有目的地。",
+      "ar": "في انتظار موافقة المشغّل — لا وجهة قبل ذلك."
+    },
+    "Background activity": {
+      "ru": "Фоновые операции",
+      "es": "Actividad en segundo plano",
+      "zh": "后台活动",
+      "ar": "النشاط في الخلفية"
+    },
+    "Background tasks": {
+      "ru": "Фоновые задачи",
+      "es": "Tareas en segundo plano",
+      "zh": "后台任务",
+      "ar": "المهام في الخلفية"
+    },
+    "Backup exported": {
+      "ru": "Резервная копия сохранена",
+      "es": "Copia de seguridad exportada",
+      "zh": "备份已导出",
+      "ar": "تم تصدير النسخة الاحتياطية"
+    },
+    "Backup password": {
+      "ru": "Пароль резервной копии",
+      "es": "Contraseña de la copia",
+      "zh": "备份密码",
+      "ar": "كلمة مرور النسخة الاحتياطية"
+    },
+    "Bazarish": {
+      "ru": "Bazarish",
+      "es": "Bazarish",
+      "zh": "Bazarish",
+      "ar": "Bazarish"
+    },
+    "Bazarish - %1 unread": {
+      "ru": "Bazarish — непрочитанных: %1",
+      "es": "Bazarish: %1 sin leer",
+      "zh": "Bazarish — %1 条未读",
+      "ar": "Bazarish — ⁦%1⁩ غير مقروءة"
+    },
+    "Block": {
+      "ru": "Заблокировать",
+      "es": "Bloquear",
+      "zh": "屏蔽",
+      "ar": "حظر"
+    },
+    "Block list": {
+      "ru": "Чёрный список",
+      "es": "Lista negra",
+      "zh": "黑名单",
+      "ar": "قائمة الحظر"
+    },
+    "Block this contact?": {
+      "ru": "Заблокировать этот контакт?",
+      "es": "¿Bloquear este contacto?",
+      "zh": "要屏蔽这个联系人吗？",
+      "ar": "أتريد حظر جهة الاتصال هذه؟"
+    },
+    "Blocked: messages and calls from this contact are dropped, and its pass is revoked. An outgoing message lifts the block.": {
+      "ru": "Заблокирован. Сообщения и звонки от контакта отбрасываются, пропуск отозван. Исходящее сообщение снимает блокировку.",
+      "es": "Bloqueado: los mensajes y llamadas de este contacto se descartan y su pase está revocado. Un mensaje tuyo levanta el bloqueo.",
+      "zh": "已屏蔽：来自该联系人的消息和来电会被丢弃，其凭据已撤销。你发出一条消息即解除屏蔽。",
+      "ar": "محظورة: تُسقَط رسائل جهة الاتصال ومكالماتها، وسُحب تصريحها. ورسالة صادرة ترفع الحظر."
+    },
+    "Both the key your messages are sealed to and the capability in your invite are replaced here.": {
+      "ru": "Здесь меняется ключ для запечатывания ваших сообщений. Вместе с ним меняется разрешение из приглашения.",
+      "es": "Aquí se sustituyen tanto la clave con la que se sellan tus mensajes como el permiso de tu invitación.",
+      "zh": "此处会同时更换封装你消息的密钥和邀请中的凭据。",
+      "ar": "يُستبدل هنا المفتاح الذي تُختم به رسائلك والصلاحية التي في دعوتك معًا."
+    },
+    "Broken picture": {
+      "ru": "Изображение повреждено",
+      "es": "Imagen dañada",
+      "zh": "图片已损坏",
+      "ar": "صورة معطوبة"
+    },
+    "Building it…": {
+      "ru": "Строится…",
+      "es": "Construyéndola…",
+      "zh": "正在构建…",
+      "ar": "جارٍ البناء…"
+    },
+    "Building your I2P tunnels": {
+      "ru": "Туннели I2P строятся",
+      "es": "Construyendo tus túneles I2P",
+      "zh": "正在构建 I2P 隧道",
+      "ar": "جارٍ بناء أنفاق I2P"
+    },
+    "Call ended": {
+      "ru": "Звонок завершён",
+      "es": "Llamada terminada",
+      "zh": "通话已结束",
+      "ar": "انتهت المكالمة"
+    },
+    "Call with %1": {
+      "ru": "Звонок с %1",
+      "es": "Llamada con %1",
+      "zh": "与 %1 的通话",
+      "ar": "مكالمة مع ⁦%1⁩"
+    },
+    "Calling %1…": {
+      "ru": "Звонок %1…",
+      "es": "Llamando a %1…",
+      "zh": "正在呼叫 %1…",
+      "ar": "جارٍ الاتصال بـ ⁦%1⁩…"
+    },
+    "Calling…": {
+      "ru": "Вызов…",
+      "es": "Llamando…",
+      "zh": "正在呼叫…",
+      "ar": "جارٍ الاتصال…"
+    },
+    "Calls always use the shortest tunnel to keep latency down.": {
+      "ru": "Звонки идут всегда по туннелю минимальной длины для снижения задержек.",
+      "es": "Las llamadas usan siempre el túnel más corto para reducir la latencia.",
+      "zh": "通话始终使用最短隧道，以降低延迟。",
+      "ar": "تستخدم المكالمات دائمًا أقصر نفق لتقليل زمن التأخير."
+    },
+    "Cancel": {
+      "ru": "Отмена",
+      "es": "Cancelar",
+      "zh": "取消",
+      "ar": "إلغاء"
+    },
+    "Cannot write beside the application (%1). Move it somewhere writable and try again.": {
+      "ru": "Рядом с программой писать нельзя (%1). Перенесите её в каталог с правом записи. Затем повторите.",
+      "es": "No se puede escribir junto a la aplicación (%1). Muévela a un sitio con permiso de escritura y reinténtalo.",
+      "zh": "无法在程序旁写入（%1）。请把它移到可写的位置后重试。",
+      "ar": "تتعذّر الكتابة بجوار التطبيق (⁦%1⁩). انقله إلى موضع يسمح بالكتابة ثم أعد المحاولة."
+    },
+    "Card updated": {
+      "ru": "Карточка обновлена",
+      "es": "Tarjeta actualizada",
+      "zh": "名片已更新",
+      "ar": "حُدِّثت البطاقة"
+    },
+    "Challenge from the site": {
+      "ru": "Запрос от сайта",
+      "es": "Reto del sitio",
+      "zh": "来自站点的质询",
+      "ar": "تحدٍّ من الموقع"
+    },
+    "Change it": {
+      "ru": "Сменить",
+      "es": "Cambiarla",
+      "zh": "更改",
+      "ar": "تغييره"
+    },
+    "Change name": {
+      "ru": "Сменить имя",
+      "es": "Cambiar el nombre",
+      "zh": "更改名称",
+      "ar": "تغيير الاسم"
+    },
+    "Change password": {
+      "ru": "Сменить пароль",
+      "es": "Cambiar la contraseña",
+      "zh": "更改密码",
+      "ar": "تغيير كلمة المرور"
+    },
+    "Change the server key": {
+      "ru": "Сменить ключ сервера",
+      "es": "Cambiar la clave del servidor",
+      "zh": "更换服务器密钥",
+      "ar": "تغيير مفتاح الخادم"
+    },
+    "Check my aliases": {
+      "ru": "Проверить мои алиасы",
+      "es": "Comprobar mis alias",
+      "zh": "检查我的别名",
+      "ar": "تحقق من أسمائي المستعارة"
+    },
+    "Checking the address your server serves": {
+      "ru": "Проверка адреса, который обслуживает сервер",
+      "es": "Comprobando la dirección que sirve tu servidor",
+      "zh": "正在检查服务器所服务的地址",
+      "ar": "جارٍ فحص العنوان الذي يخدمه خادمك"
+    },
+    "Checking your aliases": {
+      "ru": "Проверка ваших алиасов",
+      "es": "Comprobando tus alias",
+      "zh": "正在检查你的别名",
+      "ar": "جارٍ التحقق من أسمائك المستعارة"
+    },
+    "Checking your destination": {
+      "ru": "Проверка назначения",
+      "es": "Comprobando tu destino",
+      "zh": "正在检查你的目的地",
+      "ar": "جارٍ فحص وجهتك"
+    },
+    "Checking your devices": {
+      "ru": "Проверка устройств",
+      "es": "Comprobando tus dispositivos",
+      "zh": "正在检查你的设备",
+      "ar": "جارٍ فحص أجهزتك"
+    },
+    "Checking your mailbox": {
+      "ru": "Проверка почтового ящика",
+      "es": "Comprobando tu buzón",
+      "zh": "正在检查你的信箱",
+      "ar": "جارٍ فحص صندوق بريدك"
+    },
+    "Checking…": {
+      "ru": "Проверка…",
+      "es": "Comprobando…",
+      "zh": "正在检查…",
+      "ar": "جارٍ التحقق…"
+    },
+    "Choose an account": {
+      "ru": "Выберите аккаунт",
+      "es": "Elige una cuenta",
+      "zh": "选择账号",
+      "ar": "اختر حسابًا"
+    },
+    "Choose where to save the file.": {
+      "ru": "Выберите, куда сохранить файл.",
+      "es": "Elige dónde guardar el archivo.",
+      "zh": "请选择文件的保存位置。",
+      "ar": "اختر مكان حفظ الملف."
+    },
+    "Clear": {
+      "ru": "Очистить",
+      "es": "Vaciar",
+      "zh": "清空",
+      "ar": "إفراغ"
+    },
+    "Clear chat": {
+      "ru": "Очистить переписку",
+      "es": "Vaciar la conversación",
+      "zh": "清空对话",
+      "ar": "إفراغ المحادثة"
+    },
+    "Clear everywhere": {
+      "ru": "Очистить везде",
+      "es": "Vaciar en todas partes",
+      "zh": "在所有地方清空",
+      "ar": "الإفراغ في كل مكان"
+    },
+    "Clear for everyone": {
+      "ru": "Очистить у всех",
+      "es": "Vaciar para todos",
+      "zh": "为所有人清空",
+      "ar": "الإفراغ لدى الجميع"
+    },
+    "Clear on all devices": {
+      "ru": "Очистить на всех устройствах",
+      "es": "Vaciar en todos los dispositivos",
+      "zh": "在所有设备上清空",
+      "ar": "الإفراغ على كل الأجهزة"
+    },
+    "Clear only for me": {
+      "ru": "Очистить только у меня",
+      "es": "Vaciar solo para mí",
+      "zh": "只为我清空",
+      "ar": "الإفراغ لديّ فقط"
+    },
+    "Clear saved messages": {
+      "ru": "Очистить избранное",
+      "es": "Vaciar los mensajes guardados",
+      "zh": "清空已保存的消息",
+      "ar": "إفراغ الرسائل المحفوظة"
+    },
+    "Clearing a chat": {
+      "ru": "Очистка переписки",
+      "es": "Borrando un chat",
+      "zh": "正在清空聊天",
+      "ar": "جارٍ إفراغ محادثة"
+    },
+    "Clearing a chat for both sides": {
+      "ru": "Очистка переписки у обеих сторон",
+      "es": "Borrando un chat en ambos lados",
+      "zh": "正在为双方清空聊天",
+      "ar": "جارٍ إفراغ محادثة عند الطرفين"
+    },
+    "Clearing a message from the mailbox": {
+      "ru": "Удаление сообщения из почтового ящика",
+      "es": "Borrando un mensaje del buzón",
+      "zh": "正在从信箱清除消息",
+      "ar": "جارٍ إزالة رسالة من صندوق البريد"
+    },
+    "Close": {
+      "ru": "Закрыть",
+      "es": "Cerrar",
+      "zh": "关闭",
+      "ar": "إغلاق"
+    },
+    "Compact the database (VACUUM)": {
+      "ru": "Сжать базу (VACUUM)",
+      "es": "Compactar la base de datos (VACUUM)",
+      "zh": "压缩数据库（VACUUM）",
+      "ar": "ضغط قاعدة البيانات (VACUUM)"
+    },
+    "Compacting the database": {
+      "ru": "Сжатие базы данных",
+      "es": "Compactando la base de datos",
+      "zh": "正在压缩数据库",
+      "ar": "جارٍ ضغط قاعدة البيانات"
+    },
+    "Compare this with the site in front of you. If they differ, do not sign: someone else is being let in.": {
+      "ru": "Сверьте это с сайтом перед вами. Если расходится, не подписывайте. Вход получает кто-то другой.",
+      "es": "Compáralo con el sitio que tienes delante. Si no coincide, no firmes: están dejando entrar a otro.",
+      "zh": "请与眼前的站点核对。若不一致，就别签名：被放进去的是别人。",
+      "ar": "قارن هذا بالموقع الذي أمامك. إن اختلفا فلا توقّع: الداخل شخص آخر."
+    },
+    "Confirm passphrase": {
+      "ru": "Повторите пароль",
+      "es": "Repite la contraseña",
+      "zh": "再次输入密码",
+      "ar": "أعد كتابة كلمة السر"
+    },
+    "Confirming a message was read": {
+      "ru": "Подтверждение прочтения",
+      "es": "Confirmando la lectura de un mensaje",
+      "zh": "正在确认消息已读",
+      "ar": "جارٍ تأكيد قراءة رسالة"
+    },
+    "Connect": {
+      "ru": "Подключиться",
+      "es": "Conectar",
+      "zh": "连接",
+      "ar": "اتصال"
+    },
+    "Connect to a server": {
+      "ru": "Подключиться к серверу",
+      "es": "Conectar con un servidor",
+      "zh": "连接到服务器",
+      "ar": "الاتصال بخادم"
+    },
+    "Connected": {
+      "ru": "Подключено",
+      "es": "Conectado",
+      "zh": "已连接",
+      "ar": "متصل"
+    },
+    "Connected to the server over I2P": {
+      "ru": "Соединение с сервером через I2P установлено",
+      "es": "Conectado al servidor por I2P",
+      "zh": "已通过 I2P 连接到服务器",
+      "ar": "تم الاتصال بالخادم عبر I2P"
+    },
+    "Connecting (%1%)": {
+      "ru": "Подключение (%1 %)",
+      "es": "Conectando (%1 %)",
+      "zh": "正在连接（%1%）",
+      "ar": "جارٍ الاتصال (⁦%1⁩٪)"
+    },
+    "Connecting over I2P — the first connection takes minutes": {
+      "ru": "Подключение через I2P — первое соединение занимает несколько минут",
+      "es": "Conectando por I2P: la primera conexión tarda varios minutos",
+      "zh": "正在通过 I2P 连接 — 首次连接需要几分钟",
+      "ar": "جارٍ الاتصال عبر I2P — يستغرق الاتصال الأول دقائق"
+    },
+    "Connecting over I2P…": {
+      "ru": "Подключение через I2P…",
+      "es": "Conectando por I2P…",
+      "zh": "正在通过 I2P 连接…",
+      "ar": "جارٍ الاتصال عبر I2P…"
+    },
+    "Connecting this account": {
+      "ru": "Подключение этого аккаунта",
+      "es": "Conectando esta cuenta",
+      "zh": "正在连接此账号",
+      "ar": "جارٍ توصيل هذا الحساب"
+    },
+    "Connecting to the server": {
+      "ru": "Подключение к серверу",
+      "es": "Conectando con el servidor",
+      "zh": "正在连接服务器",
+      "ar": "جارٍ الاتصال بالخادم"
+    },
+    "Connecting…": {
+      "ru": "Подключение…",
+      "es": "Conectando…",
+      "zh": "正在连接…",
+      "ar": "جارٍ الاتصال…"
+    },
+    "Connection log": {
+      "ru": "Журнал соединения",
+      "es": "Registro de conexión",
+      "zh": "连接日志",
+      "ar": "سجل الاتصال"
+    },
+    "Contact": {
+      "ru": "Контакт",
+      "es": "Contacto",
+      "zh": "联系人",
+      "ar": "جهة اتصال"
+    },
+    "Contact deleted": {
+      "ru": "Контакт удалён",
+      "es": "Contacto eliminado",
+      "zh": "联系人已删除",
+      "ar": "حُذفت جهة الاتصال"
+    },
+    "Contact request sent": {
+      "ru": "Запрос контакта отправлен",
+      "es": "Solicitud de contacto enviada",
+      "zh": "联系人请求已发送",
+      "ar": "أُرسل طلب الاتصال"
+    },
+    "Contact request sent.": {
+      "ru": "Запрос на добавление отправлен.",
+      "es": "Solicitud de contacto enviada.",
+      "zh": "联系请求已发送。",
+      "ar": "أُرسل طلب التواصل."
+    },
+    "Copied": {
+      "ru": "Скопировано",
+      "es": "Copiado",
+      "zh": "已复制",
+      "ar": "نُسخ"
+    },
+    "Copied to clipboard": {
+      "ru": "Скопировано в буфер обмена",
+      "es": "Copiado al portapapeles",
+      "zh": "已复制到剪贴板",
+      "ar": "نُسخ إلى الحافظة"
+    },
+    "Copy": {
+      "ru": "Копировать",
+      "es": "Copiar",
+      "zh": "复制",
+      "ar": "نسخ"
+    },
+    "Copy all": {
+      "ru": "Скопировать всё",
+      "es": "Copiar todo",
+      "zh": "全部复制",
+      "ar": "نسخ الكل"
+    },
+    "Copy contact link": {
+      "ru": "Скопировать ссылку контакта",
+      "es": "Copiar el enlace del contacto",
+      "zh": "复制联系人链接",
+      "ar": "نسخ رابط جهة الاتصال"
+    },
+    "Copy fingerprint": {
+      "ru": "Скопировать отпечаток",
+      "es": "Copiar la huella",
+      "zh": "复制指纹",
+      "ar": "نسخ البصمة"
+    },
+    "Copy link": {
+      "ru": "Скопировать ссылку",
+      "es": "Copiar el enlace",
+      "zh": "复制链接",
+      "ar": "نسخ الرابط"
+    },
+    "Copy picture": {
+      "ru": "Скопировать картинку",
+      "es": "Copiar la imagen",
+      "zh": "复制图片",
+      "ar": "نسخ الصورة"
+    },
+    "Copy signature": {
+      "ru": "Скопировать подпись",
+      "es": "Copiar la firma",
+      "zh": "复制签名",
+      "ar": "نسخ التوقيع"
+    },
+    "Could not add: %1": {
+      "ru": "Не удалось добавить: %1",
+      "es": "No se pudo añadir: %1",
+      "zh": "无法添加：%1",
+      "ar": "تعذّرت الإضافة: ⁦%1⁩"
+    },
+    "Could not move the data: %1": {
+      "ru": "Не удалось перенести данные: %1",
+      "es": "No se han podido mover los datos: %1",
+      "zh": "无法迁移数据：%1",
+      "ar": "تعذّر نقل البيانات: ⁦%1⁩"
+    },
+    "Could not read the image": {
+      "ru": "Не удалось прочитать картинку",
+      "es": "No se ha podido leer la imagen",
+      "zh": "无法读取图片",
+      "ar": "تعذّرت قراءة الصورة"
+    },
+    "Could not read the selected image.": {
+      "ru": "Выбранную картинку прочитать не удалось.",
+      "es": "No se ha podido leer la imagen elegida.",
+      "zh": "无法读取所选图片。",
+      "ar": "تعذّرت قراءة الصورة المختارة."
+    },
+    "Could not write %1": {
+      "ru": "Не удалось записать %1",
+      "es": "No se ha podido escribir %1",
+      "zh": "无法写入 %1",
+      "ar": "تعذّرت الكتابة إلى ⁦%1⁩"
+    },
+    "Create": {
+      "ru": "Создать",
+      "es": "Crear",
+      "zh": "创建",
+      "ar": "إنشاء"
+    },
+    "Create account": {
+      "ru": "Создать аккаунт",
+      "es": "Crear una cuenta",
+      "zh": "创建账号",
+      "ar": "إنشاء حساب"
+    },
+    "Create address": {
+      "ru": "Создать адрес",
+      "es": "Crear una dirección",
+      "zh": "创建地址",
+      "ar": "إنشاء عنوان"
+    },
+    "Create your first account to begin": {
+      "ru": "Создайте первый аккаунт, чтобы начать",
+      "es": "Crea tu primera cuenta para empezar",
+      "zh": "创建第一个账号即可开始",
+      "ar": "أنشئ حسابك الأول للبدء"
+    },
+    "Creating your destination key": {
+      "ru": "Создание ключа вашего назначения",
+      "es": "Creando la clave de tu destino",
+      "zh": "正在创建你的目的地密钥",
+      "ar": "جارٍ إنشاء مفتاح وجهتك"
+    },
+    "Database": {
+      "ru": "База данных",
+      "es": "Base de datos",
+      "zh": "数据库",
+      "ar": "قاعدة البيانات"
+    },
+    "Database file: %1": {
+      "ru": "Файл базы: %1",
+      "es": "Archivo de la base de datos: %1",
+      "zh": "数据库文件：%1",
+      "ar": "ملف قاعدة البيانات: ⁦%1⁩"
+    },
+    "Database password": {
+      "ru": "Пароль базы",
+      "es": "Contraseña de la base de datos",
+      "zh": "数据库密码",
+      "ar": "كلمة مرور قاعدة البيانات"
+    },
+    "Decline": {
+      "ru": "Отклонить",
+      "es": "Rechazar",
+      "zh": "拒接",
+      "ar": "رفض"
+    },
+    "Declining…": {
+      "ru": "Отклоняется…",
+      "es": "Rechazando…",
+      "zh": "正在拒接…",
+      "ar": "جارٍ الرفض…"
+    },
+    "Delegated until %1": {
+      "ru": "Делегировано до %1",
+      "es": "Delegado hasta %1",
+      "zh": "委托至 %1",
+      "ar": "مفوَّض حتى ⁦%1⁩"
+    },
+    "Delegated — your server is bringing the destination up.": {
+      "ru": "Делегировано — сервер поднимает назначение.",
+      "es": "Delegado: tu servidor está levantando el destino.",
+      "zh": "已委派 — 服务器正在启用该目的地。",
+      "ar": "تم التفويض — يعمل خادمك على تشغيل الوجهة."
+    },
+    "Delegating it to your server…": {
+      "ru": "Делегирование серверу…",
+      "es": "Delegándolo a tu servidor…",
+      "zh": "正在委派给服务器…",
+      "ar": "جارٍ تفويضها إلى خادمك…"
+    },
+    "Delegating your destination to the server": {
+      "ru": "Делегирование назначения серверу",
+      "es": "Delegando tu destino al servidor",
+      "zh": "正在把目的地委派给服务器",
+      "ar": "جارٍ تفويض وجهتك إلى الخادم"
+    },
+    "Delegation term": {
+      "ru": "Срок делегирования",
+      "es": "Plazo de la delegación",
+      "zh": "委托期限",
+      "ar": "مدة التفويض"
+    },
+    "Delete": {
+      "ru": "Удалить",
+      "es": "Eliminar",
+      "zh": "删除",
+      "ar": "حذف"
+    },
+    "Delete account": {
+      "ru": "Удалить аккаунт",
+      "es": "Eliminar la cuenta",
+      "zh": "删除账号",
+      "ar": "حذف الحساب"
+    },
+    "Delete address": {
+      "ru": "Удалить адрес",
+      "es": "Eliminar la dirección",
+      "zh": "删除地址",
+      "ar": "حذف العنوان"
+    },
+    "Delete chat": {
+      "ru": "Удалить переписку",
+      "es": "Eliminar la conversación",
+      "zh": "删除对话",
+      "ar": "حذف المحادثة"
+    },
+    "Delete contact": {
+      "ru": "Удалить контакт",
+      "es": "Eliminar el contacto",
+      "zh": "删除联系人",
+      "ar": "حذف جهة الاتصال"
+    },
+    "Delete everywhere": {
+      "ru": "Удалить везде",
+      "es": "Eliminar en todas partes",
+      "zh": "在所有地方删除",
+      "ar": "الحذف من كل مكان"
+    },
+    "Delete message": {
+      "ru": "Удалить сообщение",
+      "es": "Eliminar el mensaje",
+      "zh": "删除消息",
+      "ar": "حذف الرسالة"
+    },
+    "Delete personal I2P key": {
+      "ru": "Удалить личный ключ I2P",
+      "es": "Eliminar la clave I2P personal",
+      "zh": "删除个人 I2P 密钥",
+      "ar": "حذف مفتاح I2P الشخصي"
+    },
+    "Delete this device's copy only": {
+      "ru": "Удалить только копию на этом устройстве",
+      "es": "Eliminar solo la copia de este dispositivo",
+      "zh": "只删除本设备上的副本",
+      "ar": "حذف نسخة هذا الجهاز فقط"
+    },
+    "Delete this message for everyone? It is removed from the recipient too, with no trace.": {
+      "ru": "Удалить это сообщение у всех? Оно будет удалено и у получателя, без следа.",
+      "es": "¿Eliminar este mensaje para todos? Desaparece también del destinatario, sin rastro.",
+      "zh": "要为所有人删除这条消息吗？它也会从收件人那里消失，不留痕迹。",
+      "ar": "أتريد حذف هذه الرسالة لدى الجميع؟ ستُحذف من المستلم أيضًا دون أثر."
+    },
+    "Delete this message from this device? This cannot be undone.": {
+      "ru": "Удалить это сообщение с этого устройства? Отменить нельзя.",
+      "es": "¿Eliminar este mensaje de este dispositivo? No se puede deshacer.",
+      "zh": "要从本设备删除这条消息吗？此操作无法撤销。",
+      "ar": "أتريد حذف هذه الرسالة من هذا الجهاز؟ لا يمكن التراجع."
+    },
+    "Deleted on the server": {
+      "ru": "Удалён на сервере",
+      "es": "Eliminada en el servidor",
+      "zh": "已在服务器上删除",
+      "ar": "حُذف على الخادم"
+    },
+    "Deleting a message for both sides": {
+      "ru": "Удаление сообщения у обеих сторон",
+      "es": "Eliminando un mensaje en ambos lados",
+      "zh": "正在为双方删除消息",
+      "ar": "جارٍ حذف رسالة عند الطرفين"
+    },
+    "Deleting the account": {
+      "ru": "Удаление аккаунта",
+      "es": "Eliminando la cuenta",
+      "zh": "正在删除账号",
+      "ar": "جارٍ حذف الحساب"
+    },
+    "Deleting…": {
+      "ru": "Удаление…",
+      "es": "Eliminando…",
+      "zh": "正在删除…",
+      "ar": "جارٍ الحذف…"
+    },
+    "Delivered": {
+      "ru": "Доставлено",
+      "es": "Entregado",
+      "zh": "已送达",
+      "ar": "وصلت"
+    },
+    "Destination key ready; connect to publish it.": {
+      "ru": "Ключ назначения готов. Подключитесь, чтобы его опубликовать.",
+      "es": "La clave de destino está lista. Conéctate para publicarla.",
+      "zh": "目的地密钥已就绪。请连接以发布它。",
+      "ar": "مفتاح الوجهة جاهز. اتصل لنشره."
+    },
+    "Destination not up yet": {
+      "ru": "Назначение ещё не поднято",
+      "es": "El destino aún no está activo",
+      "zh": "目的地尚未就绪",
+      "ar": "الوجهة لم تعمل بعد"
+    },
+    "Device forgotten. Its unread mail is no longer held": {
+      "ru": "Устройство забыто. Его непрочитанная почта больше не хранится",
+      "es": "Dispositivo olvidado. Ya no se guarda su correo sin leer",
+      "zh": "设备已被忘记。不再为它保留未读邮件",
+      "ar": "نُسي الجهاز. لم يعد بريده غير المقروء محفوظًا"
+    },
+    "Devices on this account": {
+      "ru": "Устройства этого аккаунта",
+      "es": "Dispositivos de esta cuenta",
+      "zh": "此账号的设备",
+      "ar": "أجهزة هذا الحساب"
+    },
+    "Devices: %1": {
+      "ru": "Устройств: %1",
+      "es": "Dispositivos: %1",
+      "zh": "设备数：%1",
+      "ar": "الأجهزة: ⁦%1⁩"
+    },
+    "Direct connections (%1)": {
+      "ru": "Прямых соединений: %1",
+      "es": "Conexiones directas (%1)",
+      "zh": "直接连接（%1）",
+      "ar": "الاتصالات المباشرة (⁦%1⁩)"
+    },
+    "Disk usage": {
+      "ru": "Занято на диске",
+      "es": "Espacio en disco",
+      "zh": "磁盘占用",
+      "ar": "استهلاك القرص"
+    },
+    "Display name:": {
+      "ru": "Отображаемое имя:",
+      "es": "Nombre visible:",
+      "zh": "显示名称：",
+      "ar": "الاسم الظاهر:"
+    },
+    "Done": {
+      "ru": "Готово",
+      "es": "Hecho",
+      "zh": "完成",
+      "ar": "تم"
+    },
+    "Downloading…": {
+      "ru": "Загрузка…",
+      "es": "Descargando…",
+      "zh": "正在下载…",
+      "ar": "جارٍ التنزيل…"
+    },
+    "Each address has its own tunnels and the leasesets it has looked up.": {
+      "ru": "У каждого адреса свои туннели и свои найденные лизсеты.",
+      "es": "Cada dirección tiene sus propios túneles y los leasesets que ha consultado.",
+      "zh": "每个地址都有自己的隧道和自己查到的租约集。",
+      "ar": "لكل عنوان أنفاقه الخاصة ومجموعات العقود التي بحث عنها."
+    },
+    "Edit": {
+      "ru": "Изменить",
+      "es": "Editar",
+      "zh": "编辑",
+      "ar": "تحرير"
+    },
+    "Edit message…": {
+      "ru": "Правка сообщения…",
+      "es": "Editar el mensaje…",
+      "zh": "编辑消息…",
+      "ar": "تحرير الرسالة…"
+    },
+    "Editing message": {
+      "ru": "Правка сообщения",
+      "es": "Editando el mensaje",
+      "zh": "正在编辑消息",
+      "ar": "تحرير الرسالة"
+    },
+    "Embedded": {
+      "ru": "Встроенный",
+      "es": "Integrado",
+      "zh": "内置",
+      "ar": "مدمج"
+    },
+    "Empty: this account will be kept unencrypted.": {
+      "ru": "Пусто: аккаунт останется незашифрованным.",
+      "es": "Vacío: la cuenta quedará sin cifrar.",
+      "zh": "留空：该账号将不加密保存。",
+      "ar": "فارغ: سيبقى الحساب غير مشفّر."
+    },
+    "Enabled": {
+      "ru": "Включено",
+      "es": "Activado",
+      "zh": "已启用",
+      "ar": "مفعَّل"
+    },
+    "End": {
+      "ru": "Завершить",
+      "es": "Colgar",
+      "zh": "挂断",
+      "ar": "إنهاء"
+    },
+    "Ending the call…": {
+      "ru": "Звонок завершается…",
+      "es": "Terminando la llamada…",
+      "zh": "正在结束通话…",
+      "ar": "جارٍ إنهاء المكالمة…"
+    },
+    "Enter at least one facade URL": {
+      "ru": "Укажите хотя бы один адрес фасада",
+      "es": "Indica al menos una URL de fachada",
+      "zh": "请至少填写一个门面地址",
+      "ar": "أدخل عنوان واجهة واحدًا على الأقل"
+    },
+    "Enter server details manually": {
+      "ru": "Ввести данные сервера вручную",
+      "es": "Introducir los datos del servidor a mano",
+      "zh": "手动填写服务器信息",
+      "ar": "إدخال بيانات الخادم يدويًا"
+    },
+    "Every account closes, the data is moved, and Bazarish has to be started again.": {
+      "ru": "Все аккаунты будут закрыты, данные перенесены. Bazarish потребуется запустить заново.",
+      "es": "Se cierran todas las cuentas, los datos se mueven y hay que iniciar Bazarish de nuevo.",
+      "zh": "所有账号将关闭，数据将迁移，并需要重新启动 Bazarish。",
+      "ar": "تُغلق كل الحسابات، وتُنقل البيانات، ويلزم تشغيل Bazarish من جديد."
+    },
+    "Every link you handed out stops working. Your contacts are sent the new pair; one that is offline gets it with your next message.": {
+      "ru": "Все выданные вами ссылки перестанут работать. Контактам будет отправлена новая пара. Контакт не в сети получит её с вашим следующим сообщением.",
+      "es": "Todos los enlaces que has repartido dejan de funcionar. A tus contactos se les envía el nuevo par; quien esté sin conexión lo recibe con tu siguiente mensaje.",
+      "zh": "你发出的每一个链接都会失效。新的一对会发给联系人；不在线的那位随你下一条消息收到。",
+      "ar": "تتوقف كل الروابط التي وزّعتها. ويُرسَل الزوج الجديد إلى مراسليك؛ ومن كان غير متصل يأخذه مع رسالتك التالية."
+    },
+    "Everything kept here goes, on this device and on every other device of this account.": {
+      "ru": "Всё содержимое будет удалено на этом устройстве и на остальных устройствах аккаунта.",
+      "es": "Todo lo guardado aquí desaparece, en este dispositivo y en todos los demás de esta cuenta.",
+      "zh": "这里保存的一切都会消失——本设备如此，本账号的其他设备亦然。",
+      "ar": "يذهب كل ما هو محفوظ هنا، على هذا الجهاز وعلى سائر أجهزة هذا الحساب."
+    },
+    "Export encrypted backup": {
+      "ru": "Выгрузить зашифрованную копию",
+      "es": "Exportar una copia cifrada",
+      "zh": "导出加密备份",
+      "ar": "تصدير نسخة احتياطية مشفّرة"
+    },
+    "Exporting your backup": {
+      "ru": "Выгрузка резервной копии",
+      "es": "Exportando tu copia de seguridad",
+      "zh": "正在导出你的备份",
+      "ar": "جارٍ تصدير نسختك الاحتياطية"
+    },
+    "Facade URL(s) — tried in order, with failover:": {
+      "ru": "Адреса фасадов — перебираются по порядку:",
+      "es": "URL de las fachadas: se prueban en orden, con relevo",
+      "zh": "门面地址——按顺序尝试，失败则换下一个：",
+      "ar": "عناوين الواجهات — تُجرَّب بالترتيب، مع التبديل عند العطل:"
+    },
+    "Failed": {
+      "ru": "Не удалось",
+      "es": "Falló",
+      "zh": "失败",
+      "ar": "فشل"
+    },
+    "Failed to send": {
+      "ru": "Отправить не удалось",
+      "es": "No se pudo enviar",
+      "zh": "发送失败",
+      "ar": "فشل الإرسال"
+    },
+    "Failed: %1": {
+      "ru": "Не удалось: %1",
+      "es": "Ha fallado: %1",
+      "zh": "失败：%1",
+      "ar": "أخفق: ⁦%1⁩"
+    },
+    "File": {
+      "ru": "Файл",
+      "es": "Archivo",
+      "zh": "文件",
+      "ar": "ملف"
+    },
+    "Fingerprint copied": {
+      "ru": "Отпечаток скопирован",
+      "es": "Huella copiada",
+      "zh": "指纹已复制",
+      "ar": "نُسخت البصمة"
+    },
+    "Floodfills": {
+      "ru": "Floodfill-узлы",
+      "es": "Nodos floodfill",
+      "zh": "Floodfill 节点",
+      "ar": "عُقد Floodfill"
+    },
+    "Forget": {
+      "ru": "Забыть",
+      "es": "Olvidar",
+      "zh": "忘记",
+      "ar": "نسيان"
+    },
+    "Forget this device?": {
+      "ru": "Забыть это устройство?",
+      "es": "¿Olvidar este dispositivo?",
+      "zh": "要忘记这台设备吗？",
+      "ar": "أتريد نسيان هذا الجهاز؟"
+    },
+    "Forgetting a device": {
+      "ru": "Удаление устройства",
+      "es": "Olvidando un dispositivo",
+      "zh": "正在忘记设备",
+      "ar": "جارٍ نسيان جهاز"
+    },
+    "Forgotten": {
+      "ru": "Удалено",
+      "es": "Olvidado",
+      "zh": "已忘记",
+      "ar": "نُسي"
+    },
+    "Forward": {
+      "ru": "Переслать",
+      "es": "Reenviar",
+      "zh": "转发",
+      "ar": "إعادة توجيه"
+    },
+    "Forward to": {
+      "ru": "Переслать",
+      "es": "Reenviar a",
+      "zh": "转发给",
+      "ar": "إعادة التوجيه إلى"
+    },
+    "Forwarded": {
+      "ru": "Переслано",
+      "es": "Reenviado",
+      "zh": "已转发",
+      "ar": "مُعاد توجيهها"
+    },
+    "Forwarding…": {
+      "ru": "Пересылка…",
+      "es": "Reenviando…",
+      "zh": "正在转发…",
+      "ar": "جارٍ إعادة التوجيه…"
+    },
+    "Generating…": {
+      "ru": "Создаётся…",
+      "es": "Generando…",
+      "zh": "正在生成…",
+      "ar": "جارٍ التوليد…"
+    },
+    "Give somebody one of these and they can reach you. Copy link still hands over the full descriptor.": {
+      "ru": "Дайте кому-нибудь одно из них, и он сможет к вам обратиться. «Скопировать ссылку» передаёт дескриптор целиком.",
+      "es": "Dale a alguien uno de estos y podrá alcanzarte. «Copiar el enlace» sigue entregando el descriptor completo.",
+      "zh": "把其中之一给别人，对方便能联系到你。“复制链接”依旧交出完整的描述符。",
+      "ar": "أعطِ أحدهم واحدًا من هذه فيستطيع بلوغك. ولا يزال «نسخ الرابط» يسلّم الواصف كاملًا."
+    },
+    "Give the router's address first.": {
+      "ru": "Сначала укажите адрес роутера.",
+      "es": "Indica antes la dirección del router.",
+      "zh": "请先给出路由的地址。",
+      "ar": "أعطِ عنوان الموجّه أولًا."
+    },
+    "Global settings": {
+      "ru": "Общие настройки",
+      "es": "Ajustes generales",
+      "zh": "全局设置",
+      "ar": "الإعدادات العامة"
+    },
+    "Going online": {
+      "ru": "Выход в сеть",
+      "es": "Conectándose",
+      "zh": "正在上线",
+      "ar": "جارٍ الاتصال بالشبكة"
+    },
+    "Handed to the recipient's server": {
+      "ru": "Передано серверу получателя",
+      "es": "Entregado al servidor del destinatario",
+      "zh": "已交给收件人的服务器",
+      "ar": "سُلِّمت إلى خادم المستلم"
+    },
+    "Hide": {
+      "ru": "Скрыть",
+      "es": "Ocultar",
+      "zh": "隐藏",
+      "ar": "إخفاء"
+    },
+    "Host or address": {
+      "ru": "Хост или адрес",
+      "es": "Host o dirección",
+      "zh": "主机或地址",
+      "ar": "المضيف أو العنوان"
+    },
+    "How this application reaches I2P": {
+      "ru": "Как программа попадает в I2P",
+      "es": "Cómo llega esta aplicación a I2P",
+      "zh": "本程序如何接入 I2P",
+      "ar": "كيف يصل هذا التطبيق إلى I2P"
+    },
+    "I2P destination revoked": {
+      "ru": "Назначение I2P отозвано",
+      "es": "Destino I2P revocado",
+      "zh": "I2P 目的地已撤销",
+      "ar": "سُحبت وجهة I2P"
+    },
+    "I2P router": {
+      "ru": "Роутер I2P",
+      "es": "Router I2P",
+      "zh": "I2P 路由",
+      "ar": "موجّه I2P"
+    },
+    "I2P status": {
+      "ru": "Состояние I2P",
+      "es": "Estado de I2P",
+      "zh": "I2P 状态",
+      "ar": "حالة I2P"
+    },
+    "I2P tunnels are still building": {
+      "ru": "Туннели I2P ещё строятся",
+      "es": "Los túneles I2P siguen construyéndose",
+      "zh": "I2P 隧道仍在构建",
+      "ar": "لا تزال أنفاق I2P تُبنى"
+    },
+    "I2P will be carried by the engine inside this application.": {
+      "ru": "I2P будет работать через встроенный движок.",
+      "es": "I2P lo llevará el motor que hay dentro de esta aplicación.",
+      "zh": "I2P 将由本程序内部的引擎承载。",
+      "ar": "سيحمل I2P المحرّك الموجود داخل هذا التطبيق."
+    },
+    "I2P will be carried by the local external router.": {
+      "ru": "I2P будет работать через локальный внешний роутер.",
+      "es": "I2P irá por el router externo local.",
+      "zh": "I2P 将通过本机的外部路由承载。",
+      "ar": "ستمرّ I2P عبر الموجّه الخارجي المحلي."
+    },
+    "I2P will be carried by the private gateway.": {
+      "ru": "I2P будет работать через частный шлюз.",
+      "es": "I2P lo llevará la pasarela privada.",
+      "zh": "I2P 将由私有网关承载。",
+      "ar": "ستحمل I2P البوابة الخاصة."
+    },
+    "Identity fingerprint": {
+      "ru": "Отпечаток личности",
+      "es": "Huella de la identidad",
+      "zh": "身份指纹",
+      "ar": "بصمة الهوية"
+    },
+    "In call": {
+      "ru": "Разговор",
+      "es": "En llamada",
+      "zh": "通话中",
+      "ar": "في مكالمة"
+    },
+    "In call (muted)": {
+      "ru": "Разговор (микрофон выключен)",
+      "es": "En llamada (micrófono apagado)",
+      "zh": "通话中（已静音）",
+      "ar": "في مكالمة (الصوت مكتوم)"
+    },
+    "In call · %1": {
+      "ru": "Разговор · %1",
+      "es": "En llamada · %1",
+      "zh": "通话中 · %1",
+      "ar": "في مكالمة · ⁦%1⁩"
+    },
+    "In force now": {
+      "ru": "Действует сейчас",
+      "es": "En vigor ahora",
+      "zh": "当前生效",
+      "ar": "سارٍ الآن"
+    },
+    "Inbound tunnels": {
+      "ru": "Входящие туннели",
+      "es": "Túneles de entrada",
+      "zh": "入站隧道",
+      "ar": "الأنفاق الواردة"
+    },
+    "Incoming audio call": {
+      "ru": "Входящий звонок",
+      "es": "Llamada de voz entrante",
+      "zh": "语音来电",
+      "ar": "مكالمة صوتية واردة"
+    },
+    "Incoming call · %1": {
+      "ru": "Входящий звонок · %1",
+      "es": "Llamada entrante · %1",
+      "zh": "来电 · %1",
+      "ar": "مكالمة واردة · ⁦%1⁩"
+    },
+    "Incoming call…": {
+      "ru": "Входящий звонок…",
+      "es": "Llamada entrante…",
+      "zh": "来电…",
+      "ar": "مكالمة واردة…"
+    },
+    "Interface language": {
+      "ru": "Язык интерфейса",
+      "es": "Idioma de la interfaz",
+      "zh": "界面语言",
+      "ar": "لغة الواجهة"
+    },
+    "Introduction": {
+      "ru": "Представление",
+      "es": "Presentación",
+      "zh": "附言",
+      "ar": "تعريف"
+    },
+    "Keep the last %1": {
+      "ru": "Оставить последние %1",
+      "es": "Conservar los últimos %1",
+      "zh": "保留最近 %1 条",
+      "ar": "الإبقاء على آخر ⁦%1⁩"
+    },
+    "Keeps the newest messages and removes the rest with their pictures and voice notes. Only on this device, and it cannot be undone.": {
+      "ru": "Оставит новые сообщения и удалит остальные вместе с картинками и голосовыми. Только на этом устройстве, отменить нельзя.",
+      "es": "Conserva los mensajes más recientes y borra el resto con sus imágenes y notas de voz. Solo en este dispositivo, y no se puede deshacer.",
+      "zh": "保留最新的消息，其余连同图片和语音一并删除。仅限本设备，且无法撤销。",
+      "ar": "يُبقي أحدث الرسائل ويحذف ما سواها مع صورها ورسائلها الصوتية. على هذا الجهاز وحده، ولا يمكن التراجع."
+    },
+    "Later": {
+      "ru": "Позже",
+      "es": "Más tarde",
+      "zh": "以后再说",
+      "ar": "لاحقًا"
+    },
+    "Leave Bazarish?": {
+      "ru": "Выйти из Bazarish?",
+      "es": "¿Salir de Bazarish?",
+      "zh": "要退出 Bazarish 吗？",
+      "ar": "أتريد الخروج من Bazarish؟"
+    },
+    "Let contacts pass my contact on": {
+      "ru": "Разрешить контактам передавать мой контакт",
+      "es": "Permitir que mis contactos pasen mi contacto",
+      "zh": "允许联系人把我的联系方式转给别人",
+      "ar": "السماح لجهات اتصالي بتمرير بياناتي"
+    },
+    "Lets contacts see a green mark when you receive.": {
+      "ru": "Контакты увидят зелёную отметку, когда вы получите сообщение.",
+      "es": "Tus contactos verán una marca verde cuando recibas el mensaje.",
+      "zh": "联系人会在你收到消息后看到绿色标记。",
+      "ar": "سيرى مراسلوك علامة خضراء عند استلامك الرسالة."
+    },
+    "Listen": {
+      "ru": "Прослушать",
+      "es": "Escuchar",
+      "zh": "试听",
+      "ar": "استماع"
+    },
+    "Load an existing key": {
+      "ru": "Загрузить готовый ключ",
+      "es": "Cargar una clave existente",
+      "zh": "载入已有的密钥",
+      "ar": "تحميل مفتاح موجود"
+    },
+    "Local destinations (%1)": {
+      "ru": "Локальных назначений: %1",
+      "es": "Destinos locales (%1)",
+      "zh": "本地目的地（%1）",
+      "ar": "الوجهات المحلية (⁦%1⁩)"
+    },
+    "Locked account": {
+      "ru": "Запертый аккаунт",
+      "es": "Cuenta bloqueada",
+      "zh": "已上锁的账号",
+      "ar": "حساب مقفل"
+    },
+    "Looking up the server's I2P address": {
+      "ru": "Поиск адреса сервера в I2P",
+      "es": "Buscando la dirección I2P del servidor",
+      "zh": "正在查找服务器的 I2P 地址",
+      "ar": "جارٍ البحث عن عنوان I2P للخادم"
+    },
+    "Mailbox: %1 of %2": {
+      "ru": "Почтовый ящик: %1 из %2",
+      "es": "Buzón: %1 de %2",
+      "zh": "信箱：%1 / %2",
+      "ar": "صندوق البريد: ⁦%1⁩ من ⁦%2⁩"
+    },
+    "Making a new address": {
+      "ru": "Создание нового адреса",
+      "es": "Creando una dirección nueva",
+      "zh": "正在创建新地址",
+      "ar": "جارٍ إنشاء عنوان جديد"
+    },
+    "Manage": {
+      "ru": "Управление",
+      "es": "Gestionar",
+      "zh": "管理",
+      "ar": "إدارة"
+    },
+    "Marking a chat read": {
+      "ru": "Отметка переписки прочитанной",
+      "es": "Marcando un chat como leído",
+      "zh": "正在将聊天标记为已读",
+      "ar": "جارٍ تعليم محادثة كمقروءة"
+    },
+    "Matches: %1": {
+      "ru": "Совпадений: %1",
+      "es": "Coincidencias: %1",
+      "zh": "匹配：%1",
+      "ar": "المطابقات: ⁦%1⁩"
+    },
+    "Messages and calls from this contact stop arriving, and the pass it held is revoked at your server. The conversation stays. An outgoing message lifts the block.": {
+      "ru": "Сообщения и звонки от этого контакта перестанут приходить. Его пропуск будет отозван на вашем сервере. Переписка останется. Исходящее сообщение снимает блокировку.",
+      "es": "Dejan de llegar los mensajes y las llamadas de este contacto, y su pase queda revocado en tu servidor. La conversación se queda. Un mensaje tuyo levanta el bloqueo.",
+      "zh": "来自该联系人的消息和来电将不再到达，其通行凭据会在你的服务器上被撤销。对话保留。你发出一条消息即解除屏蔽。",
+      "ar": "تتوقف رسائل جهة الاتصال ومكالماتها، ويُسحب تصريحها لدى خادمك. وتبقى المحادثة. ورسالة صادرة واحدة ترفع الحظر."
+    },
+    "Message…": {
+      "ru": "Сообщение…",
+      "es": "Mensaje…",
+      "zh": "消息…",
+      "ar": "رسالة…"
+    },
+    "Move": {
+      "ru": "Перенести",
+      "es": "Mover",
+      "zh": "迁移",
+      "ar": "نقل"
+    },
+    "Move data back?": {
+      "ru": "Вернуть данные обратно?",
+      "es": "¿Devolver los datos a su sitio?",
+      "zh": "要把数据移回去吗？",
+      "ar": "أتريد إعادة البيانات؟"
+    },
+    "Move data beside the app?": {
+      "ru": "Перенести данные к программе?",
+      "es": "¿Mover los datos junto a la aplicación?",
+      "zh": "要把数据移到程序旁边吗？",
+      "ar": "أتريد نقل البيانات بجوار التطبيق؟"
+    },
+    "My invite": {
+      "ru": "Моё приглашение",
+      "es": "Mi invitación",
+      "zh": "我的邀请",
+      "ar": "دعوتي"
+    },
+    "Name updated": {
+      "ru": "Имя изменено",
+      "es": "Nombre actualizado",
+      "zh": "名称已更新",
+      "ar": "حُدّث الاسم"
+    },
+    "New account": {
+      "ru": "Новый аккаунт",
+      "es": "Cuenta nueva",
+      "zh": "新账号",
+      "ar": "حساب جديد"
+    },
+    "New address": {
+      "ru": "Новый адрес",
+      "es": "Dirección nueva",
+      "zh": "新地址",
+      "ar": "عنوان جديد"
+    },
+    "New chat": {
+      "ru": "Новый чат",
+      "es": "Conversación nueva",
+      "zh": "新对话",
+      "ar": "محادثة جديدة"
+    },
+    "New message from %1": {
+      "ru": "Новое сообщение от %1",
+      "es": "Mensaje nuevo de %1",
+      "zh": "来自 %1 的新消息",
+      "ar": "رسالة جديدة من ⁦%1⁩"
+    },
+    "No account is open.": {
+      "ru": "Ни один аккаунт не открыт.",
+      "es": "No hay ninguna cuenta abierta.",
+      "zh": "没有打开任何账号。",
+      "ar": "لا يوجد حساب مفتوح."
+    },
+    "No address held for this contact yet.": {
+      "ru": "Адреса этого контакта пока нет.",
+      "es": "Todavía no hay ninguna dirección de este contacto.",
+      "zh": "尚未持有这个联系人的地址。",
+      "ar": "لا يوجد بعدُ عنوان لجهة الاتصال هذه."
+    },
+    "No alias is registered to this account": {
+      "ru": "На этот аккаунт не зарегистрирован ни один алиас",
+      "es": "No hay ningún alias registrado en esta cuenta",
+      "zh": "该账号未注册任何别名",
+      "ar": "لا اسم مستعار مسجّل لهذا الحساب"
+    },
+    "No camera on this machine.": {
+      "ru": "На этой машине нет камеры.",
+      "es": "No hay ninguna cámara en este equipo.",
+      "zh": "本机没有摄像头。",
+      "ar": "لا توجد كاميرا في هذا الجهاز."
+    },
+    "No delegation handed to your server yet": {
+      "ru": "Делегирование серверу ещё не передано",
+      "es": "Todavía no se ha entregado ninguna delegación a tu servidor",
+      "zh": "尚未向服务器交付委托",
+      "ar": "لم يُسلَّم بعدُ أي تفويض إلى خادمك"
+    },
+    "No destination is being served. The router is starting.": {
+      "ru": "Ни одно назначение не обслуживается. Роутер запускается.",
+      "es": "No se está sirviendo ningún destino. El router está arrancando.",
+      "zh": "尚未服务任何目的地。路由正在启动。",
+      "ar": "لا تُخدَم أي وجهة. الموجّه قيد البدء."
+    },
+    "No destination key on this account yet.": {
+      "ru": "У этого аккаунта пока нет ключа назначения.",
+      "es": "Esta cuenta todavía no tiene clave de destino.",
+      "zh": "此账号尚无目的地密钥。",
+      "ar": "لا يوجد بعدُ مفتاح وجهة لهذا الحساب."
+    },
+    "No destination key yet.": {
+      "ru": "Ключа назначения пока нет.",
+      "es": "Todavía no hay clave de destino.",
+      "zh": "尚无目的地密钥。",
+      "ar": "لا مفتاح وجهة بعد."
+    },
+    "No direct transport connections yet.": {
+      "ru": "Прямых транспортных соединений пока нет.",
+      "es": "Todavía no hay conexiones de transporte directas.",
+      "zh": "尚无直接的传输连接。",
+      "ar": "لا توجد بعدُ اتصالات نقل مباشرة."
+    },
+    "No invite yet — publish your destination first.": {
+      "ru": "Приглашения пока нет — сначала опубликуйте назначение.",
+      "es": "Todavía no hay invitación: publica antes tu destino.",
+      "zh": "尚无邀请——请先发布你的目的地。",
+      "ar": "لا توجد دعوة بعد — انشر وجهتك أولًا."
+    },
+    "No invite yet: %1.": {
+      "ru": "Приглашения пока нет: %1.",
+      "es": "Todavía no hay invitación: %1.",
+      "zh": "尚无邀请：%1。",
+      "ar": "لا توجد دعوة بعد: ⁦%1⁩."
+    },
+    "No matches": {
+      "ru": "Совпадений нет",
+      "es": "Sin coincidencias",
+      "zh": "没有匹配",
+      "ar": "لا مطابقات"
+    },
+    "No network database yet. The router starts once your server hands it one, the first time an account connects.": {
+      "ru": "Базы сети пока нет. Роутер запустится после её выдачи сервером. Это произойдёт при первом подключении аккаунта.",
+      "es": "Todavía no hay base de datos de red. El router arrancará cuando tu servidor le entregue una, la primera vez que una cuenta se conecte.",
+      "zh": "尚无网络数据库。待服务器在账号首次连接时交付一份，路由便会启动。",
+      "ar": "لا توجد قاعدة بيانات للشبكة بعد. يبدأ الموجّه حين يسلّمه خادمك واحدة، عند أول اتصال لحساب."
+    },
+    "No open session": {
+      "ru": "Нет открытой сессии",
+      "es": "No hay sesión abierta",
+      "zh": "没有打开的会话",
+      "ar": "لا جلسة مفتوحة"
+    },
+    "No router answering at the address below.": {
+      "ru": "По адресу ниже роутер не отвечает.",
+      "es": "Ningún router responde en la dirección de abajo.",
+      "zh": "下面的地址没有路由应答。",
+      "ar": "لا يستجيب أي موجّه عند العنوان أدناه."
+    },
+    "No server connection yet": {
+      "ru": "Соединения с сервером ещё нет",
+      "es": "Todavía sin conexión con el servidor",
+      "zh": "尚未连接服务器",
+      "ar": "لا اتصال بالخادم بعد"
+    },
+    "Nobody. Blocking is offered in a contact's panel.": {
+      "ru": "Никого. Блокировка включается в панели контакта.",
+      "es": "Nadie. El bloqueo se activa en el panel de cada contacto.",
+      "zh": "没有人。屏蔽在联系人面板中开启。",
+      "ar": "لا أحد. يُفعَّل الحظر من لوحة جهة الاتصال."
+    },
+    "Not a bazarish:// invite. An alias starts with !.": {
+      "ru": "Это не приглашение bazarish://. Алиас начинается с «!».",
+      "es": "No es una invitación bazarish://. Un alias empieza por «!».",
+      "zh": "这不是 bazarish:// 邀请。别名以“!”开头。",
+      "ar": "هذه ليست دعوة bazarish://. يبدأ الاسم المستعار بـ «!»."
+    },
+    "Not configured": {
+      "ru": "Не настроено",
+      "es": "Sin configurar",
+      "zh": "未配置",
+      "ar": "غير مُعد"
+    },
+    "Not connected": {
+      "ru": "Подключение не установлено",
+      "es": "Conexión no establecida",
+      "zh": "尚未建立连接",
+      "ar": "الاتصال غير قائم"
+    },
+    "Not published — nobody can reach you yet.": {
+      "ru": "Не опубликовано — связаться с вами пока нельзя.",
+      "es": "Sin publicar: todavía nadie puede contactarte.",
+      "zh": "未发布 — 目前无人能联系到你。",
+      "ar": "غير منشورة — لا يمكن لأحد الوصول إليك بعد."
+    },
+    "Not sent: %1": {
+      "ru": "Не отправлено: %1",
+      "es": "No se ha enviado: %1",
+      "zh": "未发送：%1",
+      "ar": "لم تُرسَل: ⁦%1⁩"
+    },
+    "Not shareable yet": {
+      "ru": "Пока нечем делиться",
+      "es": "Todavía no se puede compartir",
+      "zh": "尚不可分享",
+      "ar": "غير قابل للمشاركة بعد"
+    },
+    "Nothing on this system opened it. Copy the address instead.": {
+      "ru": "Система не открыла ссылку. Скопируйте адрес.",
+      "es": "El sistema no abrió el enlace. Copia la dirección.",
+      "zh": "系统未能打开该链接。请复制地址。",
+      "ar": "لم يفتح النظام الرابط. انسخ العنوان."
+    },
+    "Nothing running right now.": {
+      "ru": "Сейчас ничего не выполняется.",
+      "es": "Ahora mismo no hay nada en marcha.",
+      "zh": "当前没有正在进行的事情。",
+      "ar": "لا شيء قيد التنفيذ الآن."
+    },
+    "Nothing stored yet.": {
+      "ru": "Пока ничего не хранится.",
+      "es": "Todavía no hay nada guardado.",
+      "zh": "尚未存有任何内容。",
+      "ar": "لم يُخزَّن شيء بعد."
+    },
+    "Nothing was deleted. The key that ends the account is inside this profile, and this build cannot read it.": {
+      "ru": "Ничего не удалено. Ключ для закрытия аккаунта находится в этом профиле. Эта сборка его не читает.",
+      "es": "No se ha borrado nada. La clave que cierra la cuenta está dentro de este perfil, y esta compilación no puede leerla.",
+      "zh": "什么也没有删除。终止账号的密钥在这个配置文件里，而本构建读不了它。",
+      "ar": "لم يُحذف شيء. المفتاح الذي يُنهي الحساب داخل هذا الملف الشخصي، وهذه النسخة لا تستطيع قراءته."
+    },
+    "Nothing was deleted. Try again when it is reachable - this profile holds the only key that can ask it to.": {
+      "ru": "Ничего не удалено. Повторите, когда сервер ответит. Нужный ключ есть только в этом профиле.",
+      "es": "No se ha borrado nada. Inténtalo cuando esté accesible: este perfil guarda la única clave con la que pedírselo.",
+      "zh": "什么也没有删除。待服务器可达时再试：只有这个配置文件持有可以提出该请求的密钥。",
+      "ar": "لم يُحذف شيء. أعد المحاولة حين يصبح قابلًا للبلوغ: فهذا الملف الشخصي يحمل المفتاح الوحيد الذي يطلب ذلك منه."
+    },
+    "Nothing yet - open this while connected to ask your server.": {
+      "ru": "Пока пусто. Откройте это при подключении, чтобы спросить сервер.",
+      "es": "Todavía nada. Abre esto con la conexión activa para preguntar a tu servidor.",
+      "zh": "暂无内容。在已连接时打开此处即可向服务器询问。",
+      "ar": "لا شيء بعد. افتح هذا أثناء الاتصال لتسأل خادمك."
+    },
+    "Nothing yet.": {
+      "ru": "Пока пусто.",
+      "es": "Todavía nada.",
+      "zh": "暂无内容。",
+      "ar": "لا شيء بعد."
+    },
+    "Notifications": {
+      "ru": "Уведомления",
+      "es": "Notificaciones",
+      "zh": "通知",
+      "ar": "التنبيهات"
+    },
+    "Now at: %1": {
+      "ru": "Сейчас здесь: %1",
+      "es": "Ahora en: %1",
+      "zh": "当前位置：%1",
+      "ar": "الآن في: ⁦%1⁩"
+    },
+    "OK": {
+      "ru": "ОК",
+      "es": "Aceptar",
+      "zh": "确定",
+      "ar": "حسنًا"
+    },
+    "Off, a caller is refused automatically.": {
+      "ru": "Когда выключено, звонящий автоматически получит отказ.",
+      "es": "Desactivado, quien llama recibe un rechazo automático.",
+      "zh": "关闭时，来电者会自动收到拒绝。",
+      "ar": "عند الإيقاف، يتلقى المتصل رفضًا تلقائيًا."
+    },
+    "Offline": {
+      "ru": "Не в сети",
+      "es": "Sin conexión",
+      "zh": "离线",
+      "ar": "غير متصل"
+    },
+    "On, a contact can hand you to someone else. Off, they are sent no capability and their Share button says so.": {
+      "ru": "Когда включено, контакт может передать вас другому. Когда выключено, разрешение не выдаётся. Кнопка «Поделиться» у контакта это покажет.",
+      "es": "Activado, un contacto puede pasarte a otra persona. Desactivado, no se le envía ningún permiso y su botón «Compartir» lo indica.",
+      "zh": "开启时，联系人可以把你转介给别人。关闭时，不会向其发放任何凭据，对方的“分享”按钮也会如此说明。",
+      "ar": "عند التفعيل، يمكن لجهة الاتصال أن تمرّرك إلى شخص آخر. وعند الإيقاف، لا تُمنَح أي صلاحية، ويُبيّن زر «مشاركة» لديها ذلك."
+    },
+    "Online": {
+      "ru": "В сети",
+      "es": "En línea",
+      "zh": "在线",
+      "ar": "متصل"
+    },
+    "Only updates this device and your invite link. Your contacts keep the name they gave you.": {
+      "ru": "Обновит только это устройство и вашу ссылку-приглашение. У контактов останется данное ими имя.",
+      "es": "Solo actualiza este dispositivo y tu enlace de invitación. Tus contactos conservan el nombre que te pusieron.",
+      "zh": "只更新本设备和你的邀请链接。联系人保留他们给你起的名字。",
+      "ar": "يحدّث هذا الجهاز ورابط دعوتك فقط. ويحتفظ مراسلوك بالاسم الذي أطلقوه عليك."
+    },
+    "Open": {
+      "ru": "Открыть",
+      "es": "Abrir",
+      "zh": "打开",
+      "ar": "فتح"
+    },
+    "Open one of these to register, then connect again:": {
+      "ru": "Откройте любую из них, зарегистрируйтесь и подключитесь снова:",
+      "es": "Abre una de estas para registrarte y vuelve a conectar:",
+      "zh": "打开其中之一完成注册，然后再连接一次：",
+      "ar": "افتح إحداها للتسجيل، ثم أعد الاتصال:"
+    },
+    "Opening the audio path": {
+      "ru": "Звуковой канал открывается",
+      "es": "Abriendo el canal de audio",
+      "zh": "正在打开音频通道",
+      "ar": "جارٍ فتح مسار الصوت"
+    },
+    "Opening the backup…": {
+      "ru": "Резервная копия открывается…",
+      "es": "Abriendo la copia de seguridad…",
+      "zh": "正在打开备份…",
+      "ar": "جارٍ فتح النسخة الاحتياطية…"
+    },
+    "Outbound tunnels": {
+      "ru": "Исходящие туннели",
+      "es": "Túneles de salida",
+      "zh": "出站隧道",
+      "ar": "الأنفاق الصادرة"
+    },
+    "Passphrase": {
+      "ru": "Пароль",
+      "es": "Contraseña",
+      "zh": "密码",
+      "ar": "كلمة السر"
+    },
+    "Passphrase (optional, encrypts keys at rest)": {
+      "ru": "Пароль (необязательно, шифрует ключи на диске)",
+      "es": "Contraseña (opcional, cifra las claves en disco)",
+      "zh": "密码（可选，用于加密磁盘上的密钥）",
+      "ar": "كلمة سر (اختيارية، تشفّر المفاتيح على القرص)"
+    },
+    "Passphrases do not match.": {
+      "ru": "Пароли не совпадают.",
+      "es": "Las contraseñas no coinciden.",
+      "zh": "两次输入的密码不一致。",
+      "ar": "كلمتا المرور غير متطابقتين."
+    },
+    "Password changed": {
+      "ru": "Пароль изменён",
+      "es": "Contraseña cambiada",
+      "zh": "密码已更改",
+      "ar": "تغيّرت كلمة المرور"
+    },
+    "Paste a bazarish:// invite link, or enter an alias beginning with %1": {
+      "ru": "Вставьте ссылку-приглашение bazarish:// или введите алиас, начинающийся с %1",
+      "es": "Pega un enlace de invitación bazarish:// o introduce un alias que empiece por %1",
+      "zh": "粘贴 bazarish:// 邀请链接，或输入以 %1 开头的别名",
+      "ar": "الصِق رابط دعوة bazarish:// أو أدخل اسمًا مستعارًا يبدأ بـ ⁦%1⁩"
+    },
+    "Paste a bazarish://server/… link": {
+      "ru": "Вставьте ссылку bazarish://server/…",
+      "es": "Pega un enlace bazarish://server/…",
+      "zh": "粘贴 bazarish://server/… 链接",
+      "ar": "الصِق رابط ‎bazarish://server/…‎"
+    },
+    "Paste a server link, or edit the facades and fingerprint, then Connect. If your key needs registration, register on the server's portal and Connect again.": {
+      "ru": "Вставьте ссылку на сервер или впишите фасады и отпечаток, затем нажмите «Подключиться». Если ключ требует регистрации, зарегистрируйтесь на портале сервера и подключитесь снова.",
+      "es": "Pega un enlace de servidor, o edita las fachadas y la huella, y pulsa Conectar. Si tu clave necesita registro, regístrate en el portal del servidor y vuelve a conectar.",
+      "zh": "粘贴服务器链接，或填写门面和指纹，然后点击“连接”。若密钥需要注册，请到服务器门户注册后再次连接。",
+      "ar": "الصِق رابط خادم، أو حرّر الواجهات والبصمة، ثم اضغط «اتصال». وإن احتاج مفتاحك تسجيلًا، فسجّل في بوابة الخادم واتصل مرة أخرى."
+    },
+    "Paste an invite link.": {
+      "ru": "Вставьте ссылку-приглашение.",
+      "es": "Pega un enlace de invitación.",
+      "zh": "请粘贴邀请链接。",
+      "ar": "الصِق رابط دعوة."
+    },
+    "Paste the challenge": {
+      "ru": "Вставьте запрос",
+      "es": "Pega el reto",
+      "zh": "粘贴质询",
+      "ar": "الصِق التحدي"
+    },
+    "Permanently delete this account? ": {
+      "ru": "Удалить этот аккаунт навсегда? ",
+      "es": "¿Eliminar esta cuenta para siempre? ",
+      "zh": "要永久删除这个账号吗？",
+      "ar": "أتريد حذف هذا الحساب نهائيًا؟ "
+    },
+    "Permanently delete “%1”? ": {
+      "ru": "Удалить «%1» навсегда? ",
+      "es": "¿Eliminar «%1» para siempre? ",
+      "zh": "要永久删除“%1”吗？",
+      "ar": "أتريد حذف ⁦«%1»⁩ نهائيًا؟ "
+    },
+    "Personal I2P key created": {
+      "ru": "Личный ключ I2P создан",
+      "es": "Clave I2P personal creada",
+      "zh": "个人 I2P 密钥已创建",
+      "ar": "أُنشئ مفتاح I2P الشخصي"
+    },
+    "Personal I2P key deleted": {
+      "ru": "Личный ключ I2P удалён",
+      "es": "Clave I2P personal eliminada",
+      "zh": "个人 I2P 密钥已删除",
+      "ar": "حُذف مفتاح I2P الشخصي"
+    },
+    "Personal I2P key loaded": {
+      "ru": "Личный ключ I2P загружен",
+      "es": "Clave I2P personal cargada",
+      "zh": "个人 I2P 密钥已载入",
+      "ar": "حُمّل مفتاح I2P الشخصي"
+    },
+    "Photo": {
+      "ru": "Снимок",
+      "es": "Foto",
+      "zh": "照片",
+      "ar": "صورة"
+    },
+    "Picture": {
+      "ru": "Картинка",
+      "es": "Imagen",
+      "zh": "图片",
+      "ar": "صورة من الملفات"
+    },
+    "Picture copied": {
+      "ru": "Картинка скопирована",
+      "es": "Imagen copiada",
+      "zh": "图片已复制",
+      "ar": "نُسخت الصورة"
+    },
+    "Picture saved": {
+      "ru": "Картинка сохранена",
+      "es": "Imagen guardada",
+      "zh": "图片已保存",
+      "ar": "حُفظت الصورة"
+    },
+    "Pin to top": {
+      "ru": "Закрепить сверху",
+      "es": "Fijar arriba",
+      "zh": "置顶",
+      "ar": "تثبيت في الأعلى"
+    },
+    "Pinning a chat": {
+      "ru": "Закрепление переписки",
+      "es": "Fijando un chat",
+      "zh": "正在置顶聊天",
+      "ar": "جارٍ تثبيت محادثة"
+    },
+    "Port": {
+      "ru": "Порт",
+      "es": "Puerto",
+      "zh": "端口",
+      "ar": "المنفذ"
+    },
+    "Portable mode": {
+      "ru": "Переносной режим",
+      "es": "Modo portátil",
+      "zh": "便携模式",
+      "ar": "الوضع المحمول"
+    },
+    "Position your avatar": {
+      "ru": "Расположите аватар",
+      "es": "Encuadra tu avatar",
+      "zh": "调整你的头像",
+      "ar": "اضبط موضع صورتك"
+    },
+    "Preparing": {
+      "ru": "Подготовка",
+      "es": "Preparando",
+      "zh": "正在准备",
+      "ar": "جارٍ التحضير"
+    },
+    "Preparing an address to send from…": {
+      "ru": "Адрес отправки подготавливается…",
+      "es": "Preparando una dirección desde la que enviar…",
+      "zh": "正在准备发送地址…",
+      "ar": "جارٍ تحضير عنوان الإرسال…"
+    },
+    "Preparing the image…": {
+      "ru": "Изображение подготавливается…",
+      "es": "Preparando la imagen…",
+      "zh": "正在处理图片…",
+      "ar": "جارٍ تحضير الصورة…"
+    },
+    "Preparing your invite": {
+      "ru": "Подготовка приглашения",
+      "es": "Preparando tu invitación",
+      "zh": "正在准备邀请",
+      "ar": "جارٍ تحضير دعوتك"
+    },
+    "Preparing…": {
+      "ru": "Подготовка…",
+      "es": "Preparando…",
+      "zh": "正在准备…",
+      "ar": "جارٍ التحضير…"
+    },
+    "Privacy": {
+      "ru": "Приватность",
+      "es": "Privacidad",
+      "zh": "隐私",
+      "ar": "الخصوصية"
+    },
+    "Private gateway": {
+      "ru": "Частный шлюз",
+      "es": "Pasarela privada",
+      "zh": "私有网关",
+      "ar": "بوابة خاصة"
+    },
+    "Proxy": {
+      "ru": "Прокси",
+      "es": "Proxy",
+      "zh": "代理",
+      "ar": "الوسيط"
+    },
+    "Publish address": {
+      "ru": "Опубликовать адрес",
+      "es": "Publicar la dirección",
+      "zh": "发布地址",
+      "ar": "نشر العنوان"
+    },
+    "Publish my destination": {
+      "ru": "Опубликовать моё назначение",
+      "es": "Publicar mi destino",
+      "zh": "发布我的目的地",
+      "ar": "نشر وجهتي"
+    },
+    "Publish this device's address": {
+      "ru": "Опубликовать адрес этого устройства",
+      "es": "Publicar la dirección de este dispositivo",
+      "zh": "发布本设备的地址",
+      "ar": "نشر عنوان هذا الجهاز"
+    },
+    "Publish this one": {
+      "ru": "Опубликовать этот",
+      "es": "Publicar esta",
+      "zh": "发布这一个",
+      "ar": "انشر هذا"
+    },
+    "Published": {
+      "ru": "Опубликовано",
+      "es": "Publicado",
+      "zh": "已发布",
+      "ar": "نُشرت"
+    },
+    "Published — your destination is live.": {
+      "ru": "Опубликовано — назначение работает.",
+      "es": "Publicado: tu destino está activo.",
+      "zh": "已发布 — 你的目的地已生效。",
+      "ar": "نُشرت — وجهتك تعمل."
+    },
+    "Publishing the address": {
+      "ru": "Публикация адреса",
+      "es": "Publicando la dirección",
+      "zh": "正在发布地址",
+      "ar": "جارٍ نشر العنوان"
+    },
+    "Publishing your address": {
+      "ru": "Публикация адреса",
+      "es": "Publicando tu dirección",
+      "zh": "正在发布你的地址",
+      "ar": "جارٍ نشر عنوانك"
+    },
+    "Publishing your contact card": {
+      "ru": "Публикация карточки контакта",
+      "es": "Publicando tu tarjeta de contacto",
+      "zh": "正在发布你的联系人名片",
+      "ar": "جارٍ نشر بطاقة تواصلك"
+    },
+    "Publishing your destination": {
+      "ru": "Публикация назначения",
+      "es": "Publicando tu destino",
+      "zh": "正在发布你的目的地",
+      "ar": "جارٍ نشر وجهتك"
+    },
+    "Publishing your own destination": {
+      "ru": "Публикация собственного назначения",
+      "es": "Publicando tu propio destino",
+      "zh": "正在发布你自己的目的地",
+      "ar": "جارٍ نشر وجهتك الخاصة"
+    },
+    "Publishing. This takes a few minutes": {
+      "ru": "Публикация. Занимает несколько минут",
+      "es": "Publicando. Tarda unos minutos",
+      "zh": "正在发布。需要几分钟。",
+      "ar": "جارٍ النشر. يستغرق ذلك دقائق"
+    },
+    "Publishing…": {
+      "ru": "Публикация…",
+      "es": "Publicando…",
+      "zh": "正在发布…",
+      "ar": "جارٍ النشر…"
+    },
+    "Putting the new key in force": {
+      "ru": "Новый ключ вводится в действие",
+      "es": "Poniendo en vigor la clave nueva",
+      "zh": "正在启用新密钥",
+      "ar": "جارٍ إنفاذ المفتاح الجديد"
+    },
+    "Queued…": {
+      "ru": "В очереди…",
+      "es": "En cola…",
+      "zh": "排队中…",
+      "ar": "في الطابور…"
+    },
+    "Quit": {
+      "ru": "Выйти",
+      "es": "Salir",
+      "zh": "退出",
+      "ar": "خروج"
+    },
+    "Reaching the recipient's server…": {
+      "ru": "Соединение с сервером получателя…",
+      "es": "Contactando con el servidor del destinatario…",
+      "zh": "正在联系收件人的服务器…",
+      "ar": "جارٍ الوصول إلى خادم المستلم…"
+    },
+    "React": {
+      "ru": "Реакция",
+      "es": "Reaccionar",
+      "zh": "添加反应",
+      "ar": "تفاعل"
+    },
+    "Reaction %1": {
+      "ru": "Реакция %1",
+      "es": "Reacción %1",
+      "zh": "表情回应 %1",
+      "ar": "تفاعل ⁦%1⁩"
+    },
+    "Read receipt": {
+      "ru": "Отметка о прочтении",
+      "es": "Confirmación de lectura",
+      "zh": "已读回执",
+      "ar": "إشعار القراءة"
+    },
+    "Rebuilding the I2P destinations": {
+      "ru": "Перестройка назначений I2P",
+      "es": "Reconstruyendo los destinos I2P",
+      "zh": "正在重建 I2P 目的地",
+      "ar": "جارٍ إعادة بناء وجهات I2P"
+    },
+    "Receipt not sent": {
+      "ru": "Подтверждение не отправлено",
+      "es": "No se ha enviado el acuse",
+      "zh": "回执未发送",
+      "ar": "لم يُرسَل الإشعار"
+    },
+    "Receipt sent": {
+      "ru": "Подтверждение отправлено",
+      "es": "Acuse enviado",
+      "zh": "回执已发送",
+      "ar": "أُرسل الإشعار"
+    },
+    "Record": {
+      "ru": "Записать",
+      "es": "Grabar",
+      "zh": "录音",
+      "ar": "تسجيل"
+    },
+    "Record again": {
+      "ru": "Записать заново",
+      "es": "Grabar de nuevo",
+      "zh": "重新录音",
+      "ar": "سجّل مجددًا"
+    },
+    "Refresh": {
+      "ru": "Обновить",
+      "es": "Actualizar",
+      "zh": "刷新",
+      "ar": "تحديث"
+    },
+    "Refreshing your contact card": {
+      "ru": "Обновление карточки контакта",
+      "es": "Actualizando tu tarjeta de contacto",
+      "zh": "正在刷新你的联系人名片",
+      "ar": "جارٍ تحديث بطاقة تواصلك"
+    },
+    "Registered; registering this device": {
+      "ru": "Аккаунт зарегистрирован. Регистрация устройства",
+      "es": "Cuenta registrada. Registrando este dispositivo",
+      "zh": "账号已注册。正在注册此设备",
+      "ar": "تم تسجيل الحساب. جارٍ تسجيل هذا الجهاز"
+    },
+    "Registering with this server": {
+      "ru": "Регистрация на сервере",
+      "es": "Registrándose en este servidor",
+      "zh": "正在向该服务器注册",
+      "ar": "جارٍ التسجيل في هذا الخادم"
+    },
+    "Remove": {
+      "ru": "Убрать",
+      "es": "Quitar",
+      "zh": "移除",
+      "ar": "إزالة"
+    },
+    "Remove every message in this chat. The chat itself stays.": {
+      "ru": "Удалить все сообщения этой переписки. Сама переписка останется.",
+      "es": "Borrar todos los mensajes de esta conversación. La conversación se queda.",
+      "zh": "删除此对话中的所有消息。对话本身保留。",
+      "ar": "حذف كل رسائل هذه المحادثة. تبقى المحادثة نفسها."
+    },
+    "Remove from this device anyway": {
+      "ru": "Всё равно убрать с этого устройства",
+      "es": "Quitarlo de este dispositivo de todos modos",
+      "zh": "仍要从本设备移除",
+      "ar": "أزِله من هذا الجهاز على أي حال"
+    },
+    "Remove from this device only": {
+      "ru": "Удалить только с этого устройства",
+      "es": "Quitar solo de este dispositivo",
+      "zh": "仅从此设备移除",
+      "ar": "إزالة من هذا الجهاز فقط"
+    },
+    "Remove your avatar?": {
+      "ru": "Убрать аватар?",
+      "es": "¿Quitar tu avatar?",
+      "zh": "要移除你的头像吗？",
+      "ar": "أتريد إزالة صورتك؟"
+    },
+    "Removed %1 messages and compacted the database": {
+      "ru": "Удалено сообщений: %1. База сжата",
+      "es": "Se han borrado %1 mensajes y se ha compactado la base de datos",
+      "zh": "已删除 %1 条消息并压缩了数据库",
+      "ar": "حُذفت ⁦%1⁩ رسالة وضُغطت قاعدة البيانات"
+    },
+    "Removed %1 messages, but the space has not been returned to the disk: %2. Trimming again returns it.": {
+      "ru": "Удалено сообщений: %1. Место диску не вернулось: %2. Повторная подрезка его вернёт.",
+      "es": "Se han borrado %1 mensajes, pero el espacio no ha vuelto al disco: %2. Recortar de nuevo lo devuelve.",
+      "zh": "已删除 %1 条消息，但空间未归还给磁盘：%2。再精简一次即可归还。",
+      "ar": "حُذفت ⁦%1⁩ رسالة، لكن المساحة لم تعد إلى القرص: ⁦%2⁩. والتقليم مرة أخرى يعيدها."
+    },
+    "Removes this contact and your whole history with them from this device. This cannot be undone.": {
+      "ru": "Удалит с этого устройства контакт и всю переписку с ним. Отменить нельзя.",
+      "es": "Elimina de este dispositivo el contacto y todo tu historial con él. No se puede deshacer.",
+      "zh": "将从本设备删除该联系人及与其的全部记录。此操作无法撤销。",
+      "ar": "يحذف من هذا الجهاز جهة الاتصال وكامل سجلّك معها. ولا يمكن التراجع."
+    },
+    "Removing reaction": {
+      "ru": "Удаление реакции",
+      "es": "Quitando la reacción",
+      "zh": "正在移除表情回应",
+      "ar": "جارٍ إزالة التفاعل"
+    },
+    "Removing your avatar": {
+      "ru": "Удаление аватара",
+      "es": "Quitando tu avatar",
+      "zh": "正在移除头像",
+      "ar": "جارٍ إزالة صورتك"
+    },
+    "Reply": {
+      "ru": "Ответить",
+      "es": "Responder",
+      "zh": "回复",
+      "ar": "رد"
+    },
+    "Reply to %1": {
+      "ru": "Ответ: %1",
+      "es": "Respondiendo a %1",
+      "zh": "回复 %1",
+      "ar": "ردًّا على ⁦%1⁩"
+    },
+    "Reply…": {
+      "ru": "Ответ…",
+      "es": "Respuesta…",
+      "zh": "回复…",
+      "ar": "رد…"
+    },
+    "Request sent, awaiting delivery…": {
+      "ru": "Запрос отправлен, ожидается доставка…",
+      "es": "Solicitud enviada, esperando la entrega…",
+      "zh": "请求已发出，等待送达…",
+      "ar": "أُرسل الطلب، في انتظار التسليم…"
+    },
+    "Reseed — fetched over clearnet, before I2P is up:": {
+      "ru": "Ресид — загружается по обычному интернету до запуска I2P:",
+      "es": "Reseed: se descarga por la internet ordinaria, antes de levantar I2P:",
+      "zh": "Reseed——在 I2P 启动前经由普通互联网获取：",
+      "ar": "إعادة البذر — تُجلب عبر الإنترنت العادي قبل قيام I2P:"
+    },
+    "Reseeds — fetched over clearnet, before I2P is up:": {
+      "ru": "Ресиды — загружаются по обычному интернету до запуска I2P:",
+      "es": "Reseeds: se descargan por la internet ordinaria, antes de levantar I2P:",
+      "zh": "Reseed 源——在 I2P 启动前经由普通互联网获取：",
+      "ar": "مصادر إعادة البذر — تُجلب عبر الإنترنت العادي قبل قيام I2P:"
+    },
+    "Resend": {
+      "ru": "Отправить снова",
+      "es": "Reenviar",
+      "zh": "重新发送",
+      "ar": "إعادة الإرسال"
+    },
+    "Resolving recipient over I2P…": {
+      "ru": "Получатель определяется через I2P…",
+      "es": "Resolviendo al destinatario por I2P…",
+      "zh": "正在通过 I2P 解析收件人…",
+      "ar": "جارٍ تحديد المستلم عبر I2P…"
+    },
+    "Restart Bazarish": {
+      "ru": "Перезапустить Bazarish",
+      "es": "Reiniciar Bazarish",
+      "zh": "重启 Bazarish",
+      "ar": "أعد تشغيل Bazarish"
+    },
+    "Restart the router?": {
+      "ru": "Перезапустить роутер?",
+      "es": "¿Reiniciar el router?",
+      "zh": "要重启路由吗？",
+      "ar": "أتريد إعادة تشغيل الموجّه؟"
+    },
+    "Restarting now rebuilds the tunnels, which takes a minute or two. Saving applies the setting at the next start.": {
+      "ru": "Перезапуск сейчас перестроит туннели — это минута-другая. «Только сохранить» применит настройку при следующем старте.",
+      "es": "Reiniciar ahora reconstruye los túneles, lo que lleva un par de minutos. Guardar aplica el ajuste en el próximo arranque.",
+      "zh": "此刻重启会重建隧道，需要一两分钟。仅保存则在下次启动时应用该设置。",
+      "ar": "إعادة التشغيل الآن تعيد بناء الأنفاق في دقيقة أو دقيقتين. أما الحفظ فيطبّق الإعداد عند البدء التالي."
+    },
+    "Restore from backup": {
+      "ru": "Восстановить из копии",
+      "es": "Restaurar desde una copia",
+      "zh": "从备份恢复",
+      "ar": "الاستعادة من نسخة احتياطية"
+    },
+    "Restored.": {
+      "ru": "Восстановлено.",
+      "es": "Restaurada.",
+      "zh": "已恢复。",
+      "ar": "تمت الاستعادة."
+    },
+    "Restoring your account": {
+      "ru": "Восстановление аккаунта",
+      "es": "Restaurando tu cuenta",
+      "zh": "正在恢复账号",
+      "ar": "جارٍ استعادة الحساب"
+    },
+    "Resuming after a restart…": {
+      "ru": "Продолжение после перезапуска…",
+      "es": "Retomando tras el reinicio…",
+      "zh": "重启后正在恢复…",
+      "ar": "جارٍ المتابعة بعد إعادة التشغيل…"
+    },
+    "Right-click for copy and save": {
+      "ru": "Правая кнопка — копировать и сохранить",
+      "es": "Clic derecho para copiar y guardar",
+      "zh": "右键可复制和保存",
+      "ar": "بالزر الأيمن تنسخ وتحفظ"
+    },
+    "Router connections": {
+      "ru": "Соединения роутера",
+      "es": "Conexiones del router",
+      "zh": "路由的连接",
+      "ar": "اتصالات الموجّه"
+    },
+    "Router is starting up.": {
+      "ru": "Роутер запускается.",
+      "es": "El router está arrancando.",
+      "zh": "路由正在启动。",
+      "ar": "الموجّه قيد البدء."
+    },
+    "Routers known": {
+      "ru": "Известно роутеров",
+      "es": "Routers conocidos",
+      "zh": "已知路由数",
+      "ar": "الموجّهات المعروفة"
+    },
+    "Routing published: your card now carries this destination": {
+      "ru": "Маршрут опубликован: карточка содержит это назначение",
+      "es": "Enrutado publicado: tu tarjeta ya lleva este destino",
+      "zh": "路由已发布：你的名片现在带有这个目的地",
+      "ar": "نُشر التوجيه: بطاقتك تحمل الآن هذه الوجهة"
+    },
+    "Running — tunnels are up": {
+      "ru": "Работает — туннели построены",
+      "es": "En marcha: los túneles están arriba",
+      "zh": "运行中——隧道已建立",
+      "ar": "يعمل — الأنفاق قائمة"
+    },
+    "SAM API": {
+      "ru": "SAM API",
+      "es": "API SAM",
+      "zh": "SAM 接口",
+      "ar": "واجهة SAM"
+    },
+    "Save": {
+      "ru": "Сохранить",
+      "es": "Guardar",
+      "zh": "保存",
+      "ar": "حفظ"
+    },
+    "Save a gateway address first.": {
+      "ru": "Сначала сохраните адрес шлюза.",
+      "es": "Guarda antes una dirección de pasarela.",
+      "zh": "请先保存网关地址。",
+      "ar": "احفظ عنوان بوابة أولًا."
+    },
+    "Save and restart": {
+      "ru": "Сохранить и перезапустить",
+      "es": "Guardar y reiniciar",
+      "zh": "保存并重启",
+      "ar": "حفظ وإعادة تشغيل"
+    },
+    "Save as": {
+      "ru": "Сохранить как",
+      "es": "Guardar como",
+      "zh": "另存为",
+      "ar": "حفظ باسم"
+    },
+    "Save failed: %1": {
+      "ru": "Сохранить не удалось: %1",
+      "es": "No se pudo guardar: %1",
+      "zh": "保存失败：%1",
+      "ar": "فشل الحفظ: ⁦%1⁩"
+    },
+    "Save file": {
+      "ru": "Сохранить файл",
+      "es": "Guardar el archivo",
+      "zh": "保存文件",
+      "ar": "حفظ الملف"
+    },
+    "Save only": {
+      "ru": "Только сохранить",
+      "es": "Solo guardar",
+      "zh": "仅保存",
+      "ar": "الحفظ فقط"
+    },
+    "Saved": {
+      "ru": "Сохранено",
+      "es": "Guardado",
+      "zh": "已保存",
+      "ar": "حُفظ"
+    },
+    "Saved messages": {
+      "ru": "Избранное",
+      "es": "Mensajes guardados",
+      "zh": "已保存的消息",
+      "ar": "الرسائل المحفوظة"
+    },
+    "Sealing the account…": {
+      "ru": "Аккаунт запечатывается…",
+      "es": "Sellando la cuenta…",
+      "zh": "正在封装账号…",
+      "ar": "جارٍ ختم الحساب…"
+    },
+    "Search chats": {
+      "ru": "Поиск переписки",
+      "es": "Buscar chats",
+      "zh": "搜索聊天",
+      "ar": "البحث في المحادثات"
+    },
+    "Search chats…": {
+      "ru": "Поиск по чатам…",
+      "es": "Buscar conversaciones…",
+      "zh": "搜索对话…",
+      "ar": "ابحث في المحادثات…"
+    },
+    "Search in conversation…": {
+      "ru": "Поиск в переписке…",
+      "es": "Buscar en la conversación…",
+      "zh": "在对话中搜索…",
+      "ar": "ابحث داخل المحادثة…"
+    },
+    "Select a chat or start a new one": {
+      "ru": "Выберите чат или начните новый",
+      "es": "Elige una conversación o empieza una nueva",
+      "zh": "选择一个对话，或开始新的对话",
+      "ar": "اختر محادثة أو ابدأ واحدة جديدة"
+    },
+    "Send": {
+      "ru": "Отправить",
+      "es": "Enviar",
+      "zh": "发送",
+      "ar": "إرسال"
+    },
+    "Send a picture": {
+      "ru": "Отправить картинку",
+      "es": "Enviar una imagen",
+      "zh": "发送图片",
+      "ar": "إرسال صورة"
+    },
+    "Send file": {
+      "ru": "Отправить файл",
+      "es": "Enviar un archivo",
+      "zh": "发送文件",
+      "ar": "إرسال ملف"
+    },
+    "Send read receipts": {
+      "ru": "Отправлять отметки о прочтении",
+      "es": "Enviar confirmaciones de lectura",
+      "zh": "发送已读回执",
+      "ar": "إرسال إشعارات القراءة"
+    },
+    "Send request": {
+      "ru": "Отправить запрос",
+      "es": "Enviar la solicitud",
+      "zh": "发送请求",
+      "ar": "إرسال الطلب"
+    },
+    "Send the request again": {
+      "ru": "Отправить запрос ещё раз",
+      "es": "Enviar la solicitud otra vez",
+      "zh": "再次发送请求",
+      "ar": "أرسل الطلب مجددًا"
+    },
+    "Sending a contact request…": {
+      "ru": "Запрос на добавление отправляется…",
+      "es": "Enviando la solicitud de contacto…",
+      "zh": "正在发送联系请求…",
+      "ar": "جارٍ إرسال طلب التواصل…"
+    },
+    "Sending a reaction": {
+      "ru": "Отправка реакции",
+      "es": "Enviando una reacción",
+      "zh": "正在发送表情回应",
+      "ar": "جارٍ إرسال تفاعل"
+    },
+    "Sending again…": {
+      "ru": "Повторная отправка…",
+      "es": "Enviando de nuevo…",
+      "zh": "正在重新发送…",
+      "ar": "جارٍ الإرسال مجددًا…"
+    },
+    "Sending an edit": {
+      "ru": "Отправка правки",
+      "es": "Enviando una edición",
+      "zh": "正在发送编辑",
+      "ar": "جارٍ إرسال تعديل"
+    },
+    "Sending over I2P…": {
+      "ru": "Отправка через I2P…",
+      "es": "Enviando por I2P…",
+      "zh": "正在通过 I2P 发送…",
+      "ar": "جارٍ الإرسال عبر I2P…"
+    },
+    "Sending request…": {
+      "ru": "Запрос отправляется…",
+      "es": "Enviando la solicitud…",
+      "zh": "正在发送请求…",
+      "ar": "جارٍ إرسال الطلب…"
+    },
+    "Sending to the recipient's server…": {
+      "ru": "Отправка на сервер получателя…",
+      "es": "Enviando al servidor del destinatario…",
+      "zh": "正在发送到收件人的服务器…",
+      "ar": "جارٍ الإرسال إلى خادم المستلم…"
+    },
+    "Sending to your contacts…": {
+      "ru": "Рассылка вашим контактам…",
+      "es": "Enviando a tus contactos…",
+      "zh": "正在发送给你的联系人…",
+      "ar": "جارٍ الإرسال إلى جهات اتصالك…"
+    },
+    "Sending…": {
+      "ru": "Отправка…",
+      "es": "Enviando…",
+      "zh": "正在发送…",
+      "ar": "جارٍ الإرسال…"
+    },
+    "Sent": {
+      "ru": "Отправлено",
+      "es": "Enviado",
+      "zh": "已发送",
+      "ar": "أُرسلت"
+    },
+    "Server connection": {
+      "ru": "Соединение с сервером",
+      "es": "Conexión con el servidor",
+      "zh": "服务器连接",
+      "ar": "الاتصال بالخادم"
+    },
+    "Server fingerprint": {
+      "ru": "Отпечаток сервера",
+      "es": "Huella del servidor",
+      "zh": "服务器指纹",
+      "ar": "بصمة الخادم"
+    },
+    "Server storage usage": {
+      "ru": "Занято на сервере",
+      "es": "Espacio usado en el servidor",
+      "zh": "服务器上的占用",
+      "ar": "المساحة المستخدمة على الخادم"
+    },
+    "Setting your avatar": {
+      "ru": "Установка аватара",
+      "es": "Estableciendo tu avatar",
+      "zh": "正在设置头像",
+      "ar": "جارٍ تعيين صورتك"
+    },
+    "Share contact": {
+      "ru": "Поделиться контактом",
+      "es": "Compartir el contacto",
+      "zh": "分享联系人",
+      "ar": "مشاركة جهة الاتصال"
+    },
+    "Sharing is off": {
+      "ru": "Передача выключена",
+      "es": "Compartir está desactivado",
+      "zh": "分享已关闭",
+      "ar": "المشاركة مُعطَّلة"
+    },
+    "Shorter means a move to another server takes effect sooner. Longer means you stay reachable while away.": {
+      "ru": "Короткий срок — переход на другой сервер вступит в силу быстрее. Длинный — вы остаётесь доступны во время отсутствия.",
+      "es": "Un plazo corto hace que una mudanza de servidor surta efecto antes. Uno largo te mantiene localizable mientras estás fuera.",
+      "zh": "期限越短，更换服务器生效越快；越长，你不在时也仍可被找到。",
+      "ar": "المدة القصيرة تجعل الانتقال إلى خادم آخر يسري أسرع. والطويلة تُبقيك قابلًا للبلوغ أثناء غيابك."
+    },
+    "Show I2P logs": {
+      "ru": "Показывать логи I2P",
+      "es": "Mostrar los registros de I2P",
+      "zh": "显示 I2P 日志",
+      "ar": "إظهار سجلات I2P"
+    },
+    "Show notifications": {
+      "ru": "Показывать уведомления",
+      "es": "Mostrar notificaciones",
+      "zh": "显示通知",
+      "ar": "إظهار التنبيهات"
+    },
+    "Sign in with your key": {
+      "ru": "Войти своим ключом",
+      "es": "Iniciar sesión con tu clave",
+      "zh": "用你的密钥登录",
+      "ar": "سجّل الدخول بمفتاحك"
+    },
+    "Sign out": {
+      "ru": "Выйти из аккаунта",
+      "es": "Cerrar sesión",
+      "zh": "退出账号",
+      "ar": "تسجيل الخروج"
+    },
+    "Signature": {
+      "ru": "Подпись",
+      "es": "Firma",
+      "zh": "签名",
+      "ar": "التوقيع"
+    },
+    "Signing a card over the new key": {
+      "ru": "Подпись карточки новым ключом",
+      "es": "Firmando una tarjeta con la clave nueva",
+      "zh": "正在用新密钥签署名片",
+      "ar": "جارٍ توقيع بطاقة بالمفتاح الجديد"
+    },
+    "Signing as %1": {
+      "ru": "Подпись от имени %1",
+      "es": "Firmando como %1",
+      "zh": "以 %1 的身份签名",
+      "ar": "التوقيع باسم ⁦%1⁩"
+    },
+    "Signing as this account": {
+      "ru": "Подпись этим аккаунтом",
+      "es": "Firmando con esta cuenta",
+      "zh": "以此账号签名",
+      "ar": "التوقيع بهذا الحساب"
+    },
+    "Signing in": {
+      "ru": "Вход",
+      "es": "Iniciando sesión",
+      "zh": "正在登录",
+      "ar": "جارٍ تسجيل الدخول"
+    },
+    "Skip": {
+      "ru": "Пропустить",
+      "es": "Omitir",
+      "zh": "跳过",
+      "ar": "تخطٍّ"
+    },
+    "Something went wrong": {
+      "ru": "Что-то пошло не так",
+      "es": "Algo ha salido mal",
+      "zh": "出了点问题",
+      "ar": "حدث خطأ ما"
+    },
+    "Start Bazarish again": {
+      "ru": "Запустите Bazarish заново",
+      "es": "Vuelve a iniciar Bazarish",
+      "zh": "请重新启动 Bazarish",
+      "ar": "شغّل Bazarish من جديد"
+    },
+    "Starting": {
+      "ru": "Запуск",
+      "es": "Iniciando",
+      "zh": "正在启动",
+      "ar": "جارٍ البدء"
+    },
+    "Starting the I2P router": {
+      "ru": "Роутер I2P запускается",
+      "es": "Arrancando el router I2P",
+      "zh": "正在启动 I2P 路由",
+      "ar": "جارٍ تشغيل موجّه I2P"
+    },
+    "Starting — building tunnels…": {
+      "ru": "Запускается — туннели строятся…",
+      "es": "Arrancando: construyendo túneles…",
+      "zh": "启动中——正在建立隧道…",
+      "ar": "قيد البدء — جارٍ بناء الأنفاق…"
+    },
+    "Starting…": {
+      "ru": "Запуск…",
+      "es": "Iniciando…",
+      "zh": "正在启动…",
+      "ar": "جارٍ البدء…"
+    },
+    "Status": {
+      "ru": "Состояние",
+      "es": "Estado",
+      "zh": "状态",
+      "ar": "الحالة"
+    },
+    "Stop": {
+      "ru": "Стоп",
+      "es": "Parar",
+      "zh": "停止",
+      "ar": "إيقاف"
+    },
+    "Storage": {
+      "ru": "Хранилище",
+      "es": "Almacenamiento",
+      "zh": "存储",
+      "ar": "التخزين"
+    },
+    "Surface libi2pd's own logging (debugging).": {
+      "ru": "Выводить собственные логи libi2pd (для отладки).",
+      "es": "Mostrar el registro propio de libi2pd (para depurar).",
+      "zh": "输出 libi2pd 自身的日志（用于调试）。",
+      "ar": "إظهار سجلات libi2pd نفسها (لأغراض التنقيح)."
+    },
+    "Syncing your address to your other devices": {
+      "ru": "Синхронизация адреса с вашими устройствами",
+      "es": "Sincronizando tu dirección con tus otros dispositivos",
+      "zh": "正在把地址同步到你的其他设备",
+      "ar": "جارٍ مزامنة عنوانك مع أجهزتك الأخرى"
+    },
+    "Take again": {
+      "ru": "Переснять",
+      "es": "Repetir la foto",
+      "zh": "重拍",
+      "ar": "التقِط مجددًا"
+    },
+    "Take offline": {
+      "ru": "Снять с публикации",
+      "es": "Retirar de la red",
+      "zh": "下线",
+      "ar": "سحبه من الشبكة"
+    },
+    "Take photo": {
+      "ru": "Снять",
+      "es": "Hacer la foto",
+      "zh": "拍照",
+      "ar": "التقاط صورة"
+    },
+    "Taking offline…": {
+      "ru": "Снятие с публикации…",
+      "es": "Retirando de la red…",
+      "zh": "正在下线…",
+      "ar": "جارٍ السحب…"
+    },
+    "Telling the name service": {
+      "ru": "Оповещение сервиса имён",
+      "es": "Avisando al servicio de nombres",
+      "zh": "正在通知名称服务",
+      "ar": "جارٍ إبلاغ خدمة الأسماء"
+    },
+    "Telling the name service where you are": {
+      "ru": "Оповещение сервиса имён о вашем адресе",
+      "es": "Avisando al servicio de nombres de dónde estás",
+      "zh": "正在告知名称服务你的位置",
+      "ar": "جارٍ إبلاغ خدمة الأسماء بموضعك"
+    },
+    "Telling your contacts": {
+      "ru": "Оповещение контактов",
+      "es": "Avisando a tus contactos",
+      "zh": "正在通知你的联系人",
+      "ar": "جارٍ إبلاغ مراسليك"
+    },
+    "Telling your other devices": {
+      "ru": "Оповещение ваших устройств",
+      "es": "Avisando a tus otros dispositivos",
+      "zh": "正在通知你的其他设备",
+      "ar": "جارٍ إبلاغ أجهزتك الأخرى"
+    },
+    "Telling your server…": {
+      "ru": "Сервер уведомляется…",
+      "es": "Avisando a tu servidor…",
+      "zh": "正在通知服务器…",
+      "ar": "جارٍ إبلاغ خادمك…"
+    },
+    "That is a fingerprint, not an invite. An invite starts with bazarish://invite?": {
+      "ru": "Это отпечаток, а не приглашение. Приглашение начинается с bazarish://invite?",
+      "es": "Eso es una huella, no una invitación. Una invitación empieza por bazarish://invite?",
+      "zh": "这是指纹，不是邀请。邀请以 bazarish://invite? 开头。",
+      "ar": "هذه بصمة، لا دعوة. تبدأ الدعوة بـ bazarish://invite?"
+    },
+    "That is not a gateway address. It looks like https://host/path#token.": {
+      "ru": "Это не адрес шлюза. Он выглядит так: https://host/path#token.",
+      "es": "Esa no es una dirección de pasarela. Tiene esta forma: https://host/path#token.",
+      "zh": "这不是网关地址。网关地址形如 https://host/path#token。",
+      "ar": "ليس هذا عنوان بوابة. شكله هكذا: ‎https://host/path#token‎."
+    },
+    "The I2P backend is chosen at startup. A restart is required.": {
+      "ru": "I2P бекэнд выбирается на старте. Требуется перезапуск.",
+      "es": "El backend de I2P se elige al arrancar. Hace falta reiniciar.",
+      "zh": "I2P 后端在启动时选定。需要重启。",
+      "ar": "تُختار خدمة I2P الخلفية عند بدء التشغيل. وتلزم إعادة التشغيل."
+    },
+    "The I2P backend is chosen at startup. Your accounts are closed; restart to apply.": {
+      "ru": "I2P бекэнд выбирается на старте. Аккаунты закрыты. Перезапустите приложение.",
+      "es": "El backend de I2P se elige al arrancar. Tus cuentas están cerradas. Reinicia la aplicación.",
+      "zh": "I2P 后端在启动时选定。账号已关闭。请重启应用。",
+      "ar": "تُختار خدمة I2P الخلفية عند بدء التشغيل. وقد أُغلقت حساباتك. أعد تشغيل التطبيق."
+    },
+    "The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only forgets this device: the account and its mail stay.": {
+      "ru": "Аккаунт будет закрыт на сервере и удалён с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только его. Аккаунт и его почта останутся.",
+      "es": "La cuenta se cierra en el servidor y desaparece de este dispositivo. No se puede deshacer.\n\nQuitarla de este dispositivo solo olvida este dispositivo: la cuenta y su correo se quedan.",
+      "zh": "账号将在服务器上终止，并从本设备消失。此操作无法撤销。\n\n仅从本设备移除只会忘记本设备：账号及其邮件保留。",
+      "ar": "يُنهى الحساب على الخادم ويذهب من هذا الجهاز. ولا يمكن التراجع.\n\nأما الإزالة من هذا الجهاز فتنسى هذا الجهاز وحده: يبقى الحساب وبريده."
+    },
+    "The account was not deleted": {
+      "ru": "Аккаунт не удалён",
+      "es": "La cuenta no se ha eliminado",
+      "zh": "账号未被删除",
+      "ar": "لم يُحذف الحساب"
+    },
+    "The account would stay on the server with no key left to end it.": {
+      "ru": "Аккаунт останется на сервере. Ключа для его закрытия не будет.",
+      "es": "La cuenta seguiría en el servidor sin ninguna clave con la que cerrarla.",
+      "zh": "账号会留在服务器上，而再无可以终止它的密钥。",
+      "ar": "سيبقى الحساب على الخادم بلا مفتاح يُنهيه."
+    },
+    "The application is running from a temporary directory (%1), which is cleared on reboot. Move it to a folder of its own first.": {
+      "ru": "Программа запущена из временного каталога (%1), который очищается при перезагрузке. Сначала перенесите её в собственную папку.",
+      "es": "La aplicación se ejecuta desde un directorio temporal (%1) que se vacía al reiniciar. Muévela antes a una carpeta propia.",
+      "zh": "程序运行在临时目录（%1）中，该目录重启时会被清空。请先把它移到自己的文件夹。",
+      "ar": "يعمل التطبيق من مجلد مؤقت (⁦%1⁩) يُفرَّغ عند إعادة التشغيل. انقله أولًا إلى مجلد خاص به."
+    },
+    "The challenge is signed here; only the signature leaves.": {
+      "ru": "Запрос подписывается здесь. Наружу уходит только подпись.",
+      "es": "El reto se firma aquí. Solo sale la firma.",
+      "zh": "质询在此处签名。离开的只有签名。",
+      "ar": "يُوقَّع التحدي هنا. ولا يغادر سوى التوقيع."
+    },
+    "The contact request did not finish.": {
+      "ru": "Запрос на добавление не завершился.",
+      "es": "La solicitud de contacto no se completó.",
+      "zh": "联系请求未完成。",
+      "ar": "لم يكتمل طلب التواصل."
+    },
+    "The cropped avatar could not be read.": {
+      "ru": "Обрезанный аватар прочитать не удалось.",
+      "es": "No se ha podido leer el avatar recortado.",
+      "zh": "无法读取裁剪后的头像。",
+      "ar": "تعذّرت قراءة الصورة بعد الاقتصاص."
+    },
+    "The database is compacted afterwards, and the app is busy while it happens.": {
+      "ru": "Затем база сжимается, и программа на это время занята.",
+      "es": "Después se compacta la base de datos, y la aplicación está ocupada mientras tanto.",
+      "zh": "随后数据库会被压缩，期间程序处于忙碌状态。",
+      "ar": "تُضغط قاعدة البيانات بعد ذلك، ويكون التطبيق مشغولًا أثناءها."
+    },
+    "The database was compacted. %1 came back to the disk": {
+      "ru": "База данных сжата. Диску возвращено %1",
+      "es": "Se ha compactado la base de datos. Al disco han vuelto %1",
+      "zh": "数据库已压缩。磁盘回收了 %1",
+      "ar": "ضُغطت قاعدة البيانات. عاد إلى القرص ⁦%1⁩"
+    },
+    "The database was not compacted: %1": {
+      "ru": "База не сжата: %1",
+      "es": "La base de datos no se ha compactado: %1",
+      "zh": "数据库未被压缩：%1",
+      "ar": "لم تُضغط قاعدة البيانات: ⁦%1⁩"
+    },
+    "The device registers again the next time it connects.": {
+      "ru": "Устройство зарегистрируется снова при следующем подключении.",
+      "es": "El dispositivo se registra de nuevo la próxima vez que se conecte.",
+      "zh": "该设备下次连接时会重新注册。",
+      "ar": "يسجّل الجهاز نفسه من جديد في اتصاله التالي."
+    },
+    "The file goes straight between you and your contact. Your contact asks for a one-time I2P tunnel. Your app has to be online to hand the file over when they ask.": {
+      "ru": "Файл передаётся напрямую между вами и собеседником. Контакт запросит одноразовый туннель I2P. Ваше приложение должно быть онлайн, чтобы отдать файл в момент запроса.",
+      "es": "El archivo va directo entre tú y tu contacto. Tu contacto pedirá un túnel I2P de un solo uso. Tu aplicación debe estar en línea para entregarlo en ese momento.",
+      "zh": "文件在你与联系人之间直接传输。联系人会请求一条一次性 I2P 隧道。你的程序需要在线，才能在对方请求时交付文件。",
+      "ar": "ينتقل الملف مباشرةً بينك وبين مراسلك. يطلب مراسلك نفقًا لمرة واحدة في I2P. ويجب أن يكون تطبيقك متصلًا ليسلّم الملف عند الطلب."
+    },
+    "The first connection over I2P can take several minutes. Do not close the app.": {
+      "ru": "Первое соединение через I2P может занять несколько минут. Не закрывайте приложение.",
+      "es": "La primera conexión por I2P puede tardar varios minutos. No cierres la aplicación.",
+      "zh": "首次通过 I2P 连接可能需要数分钟。请勿关闭程序。",
+      "ar": "قد يستغرق الاتصال الأول عبر I2P دقائق عدة. لا تغلق التطبيق."
+    },
+    "The key was changed. Contacts told: %1": {
+      "ru": "Ключ изменён. Оповещено контактов: %1",
+      "es": "La clave se ha cambiado. Contactos avisados: %1",
+      "zh": "密钥已更换。已通知联系人：%1",
+      "ar": "تم تغيير المفتاح. المراسلون المُبلَّغون: ⁦%1⁩"
+    },
+    "The key was changed. Told: %1, unreachable: %2": {
+      "ru": "Ключ изменён. Оповещено: %1, недоступно: %2",
+      "es": "La clave se ha cambiado. Avisados: %1, inalcanzables: %2",
+      "zh": "密钥已更换。已通知：%1，无法联系：%2",
+      "ar": "تم تغيير المفتاح. المُبلَّغون: ⁦%1⁩، وغير المتاحين: ⁦%2⁩"
+    },
+    "The last %1 events of this account, newest first.": {
+      "ru": "Последние %1 событий этого аккаунта, свежие сверху.",
+      "es": "Los últimos %1 eventos de esta cuenta, los más recientes primero.",
+      "zh": "此账号最近的 %1 条事件，最新的在前。",
+      "ar": "آخر ⁦%1⁩ من أحداث هذا الحساب، الأحدث أولًا."
+    },
+    "The old key is deleted. Nobody can reach you until you publish a new destination, and it would be a different address.": {
+      "ru": "Старый ключ будет удалён. Связаться с вами будет нельзя до публикации нового назначения. Это будет другой адрес.",
+      "es": "La clave antigua se borra. Nadie podrá alcanzarte hasta que publiques un destino nuevo, y será otra dirección.",
+      "zh": "旧密钥将被删除。在你发布新的目的地之前谁也找不到你，而那将是另一个地址。",
+      "ar": "يُحذف المفتاح القديم. ولن يبلغك أحد حتى تنشر وجهة جديدة، وستكون عنوانًا آخر."
+    },
+    "The panel on the right shows the progress.": {
+      "ru": "Ход операции виден на панели справа.",
+      "es": "El progreso se ve en el panel de la derecha.",
+      "zh": "进度显示在右侧面板。",
+      "ar": "يظهر التقدّم في اللوحة على اليمين."
+    },
+    "The registry did not take the update. It will be tried again.": {
+      "ru": "Реестр не принял обновление. Попытка повторится.",
+      "es": "El registro no aceptó la actualización. Se intentará de nuevo.",
+      "zh": "注册服务未接受此次更新。稍后会重试。",
+      "ar": "لم يقبل السجل التحديث. ستُعاد المحاولة."
+    },
+    "The request was refused - their server is busy.": {
+      "ru": "Запрос отклонён — сервер контакта занят.",
+      "es": "La solicitud ha sido rechazada: su servidor está ocupado.",
+      "zh": "请求被拒绝——对方的服务器正忙。",
+      "ar": "رُفض الطلب — خادم جهة الاتصال مشغول."
+    },
+    "The request was refused: the contact's server is busy.": {
+      "ru": "Запрос отклонён: сервер контакта занят.",
+      "es": "La solicitud ha sido rechazada: el servidor del contacto está ocupado.",
+      "zh": "请求被拒绝：联系人的服务器正忙。",
+      "ar": "رُفض الطلب: خادم جهة الاتصال مشغول."
+    },
+    "The resolver hands back the descriptor of this alias.": {
+      "ru": "Резолвер вернёт дескриптор этого алиаса.",
+      "es": "El resolutor devuelve el descriptor de este alias.",
+      "zh": "解析服务会返回该别名的描述符。",
+      "ar": "يعيد المُحلِّل واصف هذا الاسم المستعار."
+    },
+    "The router is at %1.": {
+      "ru": "Роутер находится на %1.",
+      "es": "El router está en %1.",
+      "zh": "路由位于 %1。",
+      "ar": "الموجّه عند ⁦%1⁩."
+    },
+    "The router is built in and shared by every account.": {
+      "ru": "Роутер встроен, общий для всех аккаунтов.",
+      "es": "El router va integrado y lo comparten todas las cuentas.",
+      "zh": "路由为内置，所有账号共用。",
+      "ar": "الموجّه مدمج، وتتشاركه كل الحسابات."
+    },
+    "The router is not running; these are what it will come up with.": {
+      "ru": "Роутер не запущен. Он стартует с этими значениями.",
+      "es": "El router no está en marcha; con estos valores arrancará.",
+      "zh": "路由尚未运行；它将以这些值启动。",
+      "ar": "الموجّه لا يعمل؛ وبهذه القيم سيقوم."
+    },
+    "The router's direct network connections": {
+      "ru": "Прямые сетевые соединения роутера",
+      "es": "Las conexiones de red directas del router",
+      "zh": "路由的直接网络连接",
+      "ar": "اتصالات الموجّه الشبكية المباشرة"
+    },
+    "The two do not match.": {
+      "ru": "Они не совпадают.",
+      "es": "No coinciden.",
+      "zh": "两者不一致。",
+      "ar": "الاثنان غير متطابقين."
+    },
+    "The window does not answer while this runs.": {
+      "ru": "Пока это идёт, окно не отвечает.",
+      "es": "La ventana no responde mientras esto se ejecuta.",
+      "zh": "该过程进行时窗口不会响应。",
+      "ar": "لا تستجيب النافذة أثناء تنفيذ ذلك."
+    },
+    "Their address is busy": {
+      "ru": "Адрес контакта занят",
+      "es": "Su dirección está ocupada",
+      "zh": "对方的地址正忙",
+      "ar": "عنوان جهة الاتصال مشغول"
+    },
+    "Their card: who they are and where to reach them. Whoever gets it can reach them too.": {
+      "ru": "Карточка контакта: кто это и куда обращаться. Получивший её тоже сможет связаться.",
+      "es": "Su tarjeta: quiénes son y dónde encontrarlos. Quien la reciba podrá alcanzarlos también.",
+      "zh": "他们的名片：他们是谁，以及到哪里找他们。拿到它的人同样能够联系到他们。",
+      "ar": "بطاقة جهة الاتصال: من هي وأين تُبلَغ. ومن تصله يستطيع بلوغها أيضًا."
+    },
+    "Their descriptor arrives with their next message.": {
+      "ru": "Дескриптор придёт со следующим сообщением.",
+      "es": "Su descriptor llegará con su próximo mensaje.",
+      "zh": "对方的描述符会随其下一条消息到来。",
+      "ar": "يصل الواصف مع الرسالة التالية."
+    },
+    "Their server is busy. Trying again in %1 seconds (%2 left).": {
+      "ru": "Сервер контакта занят. Повтор через %1 с (осталось попыток: %2).",
+      "es": "Su servidor está ocupado. Se reintenta en %1 s (quedan %2).",
+      "zh": "对方的服务器正忙。%1 秒后重试（还剩 %2 次）。",
+      "ar": "خادم جهة الاتصال مشغول. إعادة المحاولة بعد ⁦%1⁩ ثانية (بقي ⁦%2⁩)."
+    },
+    "There is already data at %1 - move or remove it first, so nothing is overwritten.": {
+      "ru": "По пути %1 уже есть данные. Сначала перенесите или удалите их, чтобы ничего не затереть.",
+      "es": "Ya hay datos en %1. Muévelos o bórralos antes, para no sobrescribir nada.",
+      "zh": "%1 处已有数据。请先把它移走或删除，以免覆盖。",
+      "ar": "توجد بيانات بالفعل في ⁦%1⁩. انقلها أو احذفها أولًا كي لا يُطمس شيء."
+    },
+    "There is no clipboard to copy to.": {
+      "ru": "Копировать некуда: буфера обмена нет.",
+      "es": "No hay portapapeles al que copiar.",
+      "zh": "没有可供复制的剪贴板。",
+      "ar": "لا توجد حافظة للنسخ إليها."
+    },
+    "This account": {
+      "ru": "Этот аккаунт",
+      "es": "Esta cuenta",
+      "zh": "此账号",
+      "ar": "هذا الحساب"
+    },
+    "This account is locked": {
+      "ru": "Этот аккаунт заперт",
+      "es": "Esta cuenta está bloqueada",
+      "zh": "这个账号已上锁",
+      "ar": "هذا الحساب مقفل"
+    },
+    "This account is no longer password-protected": {
+      "ru": "Этот аккаунт больше не защищён паролем",
+      "es": "Esta cuenta ya no está protegida con contraseña",
+      "zh": "这个账号不再受密码保护",
+      "ar": "لم يعد هذا الحساب محميًا بكلمة مرور"
+    },
+    "This account is not open": {
+      "ru": "Этот аккаунт не открыт",
+      "es": "Esta cuenta no está abierta",
+      "zh": "该账号未打开",
+      "ar": "هذا الحساب غير مفتوح"
+    },
+    "This account is not syncing": {
+      "ru": "Этот аккаунт не синхронизируется",
+      "es": "Esta cuenta no se está sincronizando",
+      "zh": "此账号未在同步",
+      "ar": "هذا الحساب لا يُزامن"
+    },
+    "This account is switched off — switch it on to write": {
+      "ru": "Аккаунт выключен — включите его, чтобы писать",
+      "es": "Esta cuenta está apagada: enciéndela para escribir",
+      "zh": "此账号已关闭——开启后方可书写",
+      "ar": "هذا الحساب مُطفأ — فعّله لتكتب"
+    },
+    "This add cannot be tried again from here": {
+      "ru": "Это добавление здесь уже не повторить",
+      "es": "Esta alta no se puede reintentar desde aquí",
+      "zh": "这次添加无法在此重试",
+      "ar": "لا يمكن إعادة محاولة هذه الإضافة من هنا"
+    },
+    "This challenge cannot be signed": {
+      "ru": "Этот запрос подписать нельзя",
+      "es": "Este reto no se puede firmar",
+      "zh": "这个质询无法签名",
+      "ar": "لا يمكن توقيع هذا التحدي"
+    },
+    "This contact has not allowed you to write": {
+      "ru": "Контакт не разрешил вам писать",
+      "es": "Este contacto no te ha autorizado a escribir",
+      "zh": "该联系人未允许你发消息",
+      "ar": "لم تسمح لك جهة الاتصال هذه بالكتابة"
+    },
+    "This contact has turned off being passed on.": {
+      "ru": "Этот контакт запретил передавать себя дальше.",
+      "es": "Este contacto ha desactivado que se le pase a otros.",
+      "zh": "该联系人已关闭被转介给他人。",
+      "ar": "أوقفت جهة الاتصال هذه تمريرها إلى آخرين."
+    },
+    "This invite carries no address to reach that account.": {
+      "ru": "В приглашении нет адреса для связи с этим аккаунтом.",
+      "es": "Esta invitación no trae ninguna dirección para contactar con esa cuenta.",
+      "zh": "该邀请不包含联系此账号的地址。",
+      "ar": "لا يحمل هذا الرابط عنوانًا للوصول إلى ذلك الحساب."
+    },
+    "This is an external link. Your internet provider and the site will see your real address.": {
+      "ru": "Это внешняя ссылка. Интернет-провайдер и целевой сайт увидят ваш реальный адрес.",
+      "es": "Es un enlace externo. Tu proveedor de internet y el sitio verán tu dirección real.",
+      "zh": "这是一个外部链接。你的网络服务商和目标站点会看到你的真实地址。",
+      "ar": "هذا رابط خارجي. سيرى مزوّد الإنترنت والموقع عنوانك الحقيقي."
+    },
+    "This is what the messages and their pictures take. The file on disk is larger. Trimming happens only on this device.": {
+      "ru": "Это объём самих сообщений и их картинок. Файл на диске больше. Подрезка касается только этого устройства.",
+      "es": "Esto es lo que ocupan los mensajes y sus imágenes. El archivo en disco es mayor. El recorte afecta solo a este dispositivo.",
+      "zh": "这是消息及其图片本身占用的大小。磁盘上的文件更大。精简只发生在本设备上。",
+      "ar": "هذا ما تشغله الرسائل وصورها. والملف على القرص أكبر. والتقليم يجري على هذا الجهاز وحده."
+    },
+    "This picture is not here to copy.": {
+      "ru": "Этой картинки здесь нет, копировать нечего.",
+      "es": "Esta imagen no está aquí, no hay nada que copiar.",
+      "zh": "这张图片不在此处，无从复制。",
+      "ar": "هذه الصورة ليست هنا، فلا شيء يُنسخ."
+    },
+    "This picture is not here to save.": {
+      "ru": "Этой картинки здесь нет, сохранять нечего.",
+      "es": "Esta imagen no está aquí, no hay nada que guardar.",
+      "zh": "这张图片不在此处，无从保存。",
+      "ar": "هذه الصورة ليست هنا، فلا شيء يُحفظ."
+    },
+    "This profile could not be opened, so the account on its server was not ended:": {
+      "ru": "Профиль не открылся. Аккаунт на сервере не закрыт:",
+      "es": "No se ha podido abrir este perfil, así que la cuenta en su servidor no se ha cerrado:",
+      "zh": "无法打开该配置文件，因此其服务器上的账号未被终止：",
+      "ar": "تعذّر فتح هذا الملف الشخصي، فلم يُنهَ الحساب على خادمه:"
+    },
+    "This profile could not be opened.": {
+      "ru": "Профиль не открылся.",
+      "es": "No se pudo abrir este perfil.",
+      "zh": "无法打开此配置。",
+      "ar": "لم يُفتح هذا الملف."
+    },
+    "This server needs registration": {
+      "ru": "Этот сервер требует регистрации",
+      "es": "Este servidor exige registro",
+      "zh": "这个服务器需要注册",
+      "ar": "هذا الخادم يتطلب تسجيلًا"
+    },
+    "This voice message is broken.": {
+      "ru": "Это голосовое сообщение повреждено.",
+      "es": "Este mensaje de voz está dañado.",
+      "zh": "这条语音消息已损坏。",
+      "ar": "هذه الرسالة الصوتية تالفة."
+    },
+    "To %1": {
+      "ru": "Кому: %1",
+      "es": "Para %1",
+      "zh": "发给 %1",
+      "ar": "إلى ⁦%1⁩"
+    },
+    "Today": {
+      "ru": "Сегодня",
+      "es": "Hoy",
+      "zh": "今天",
+      "ar": "اليوم"
+    },
+    "Too short to send.": {
+      "ru": "Слишком короткая запись.",
+      "es": "Demasiado corto para enviar.",
+      "zh": "录音太短，无法发送。",
+      "ar": "التسجيل أقصر من أن يُرسل."
+    },
+    "Transferred": {
+      "ru": "Передано",
+      "es": "Transferido",
+      "zh": "已传输",
+      "ar": "المنقول"
+    },
+    "Trim": {
+      "ru": "Подрезать",
+      "es": "Recortar",
+      "zh": "精简",
+      "ar": "تقليم"
+    },
+    "Trim %1": {
+      "ru": "Подрезать %1",
+      "es": "Recortar %1",
+      "zh": "精简 %1",
+      "ar": "تقليم ⁦%1⁩"
+    },
+    "Trim every chat": {
+      "ru": "Подрезать все переписки",
+      "es": "Recortar todas las conversaciones",
+      "zh": "精简所有对话",
+      "ar": "تقليم كل المحادثات"
+    },
+    "Trimming and compacting the database": {
+      "ru": "Подрезка и сжатие базы данных",
+      "es": "Recortando y compactando la base de datos",
+      "zh": "正在修剪并压缩数据库",
+      "ar": "جارٍ تقليم قاعدة البيانات وضغطها"
+    },
+    "Try again": {
+      "ru": "Повторить",
+      "es": "Reintentar",
+      "zh": "重试",
+      "ar": "أعد المحاولة"
+    },
+    "Trying again (%1 of %2)…": {
+      "ru": "Повтор (%1 из %2)…",
+      "es": "Reintentando (%1 de %2)…",
+      "zh": "重试（%1 / %2）…",
+      "ar": "إعادة المحاولة (⁦%1⁩ من ⁦%2⁩)…"
+    },
+    "Tunnel length": {
+      "ru": "Длина туннеля",
+      "es": "Longitud del túnel",
+      "zh": "隧道长度",
+      "ar": "طول النفق"
+    },
+    "Turn the microphone off": {
+      "ru": "Выключить микрофон",
+      "es": "Silenciar el micrófono",
+      "zh": "关闭麦克风",
+      "ar": "إيقاف الميكروفون"
+    },
+    "Turn the microphone on": {
+      "ru": "Включить микрофон",
+      "es": "Activar el micrófono",
+      "zh": "打开麦克风",
+      "ar": "تشغيل الميكروفون"
+    },
+    "Unblock": {
+      "ru": "Разблокировать",
+      "es": "Desbloquear",
+      "zh": "解除屏蔽",
+      "ar": "رفع الحظر"
+    },
+    "Unlock": {
+      "ru": "Отпереть",
+      "es": "Desbloquear",
+      "zh": "解锁",
+      "ar": "فتح القفل"
+    },
+    "Unlock %1": {
+      "ru": "Разблокировать %1",
+      "es": "Desbloquear %1",
+      "zh": "解锁 %1",
+      "ar": "فتح ⁦%1⁩"
+    },
+    "Unlock account": {
+      "ru": "Отпереть аккаунт",
+      "es": "Desbloquear la cuenta",
+      "zh": "解锁账号",
+      "ar": "فتح قفل الحساب"
+    },
+    "Unlock and delete": {
+      "ru": "Отпереть и удалить",
+      "es": "Desbloquear y eliminar",
+      "zh": "解锁并删除",
+      "ar": "فتح القفل والحذف"
+    },
+    "Unpin chat": {
+      "ru": "Открепить",
+      "es": "Dejar de fijar",
+      "zh": "取消置顶",
+      "ar": "إلغاء التثبيت"
+    },
+    "Unsupported message (%1) — update your app": {
+      "ru": "Сообщение не поддерживается (%1) — обновите программу",
+      "es": "Mensaje no admitido (%1): actualiza la aplicación",
+      "zh": "不支持的消息（%1）——请更新程序",
+      "ar": "رسالة غير مدعومة (⁦%1⁩) — حدِّث التطبيق"
+    },
+    "Uploading…": {
+      "ru": "Выгрузка…",
+      "es": "Subiendo…",
+      "zh": "正在上传…",
+      "ar": "جارٍ الرفع…"
+    },
+    "Use a private gateway?": {
+      "ru": "Использовать частный шлюз?",
+      "es": "¿Usar una pasarela privada?",
+      "zh": "要使用私有网关吗？",
+      "ar": "أتريد استخدام بوابة خاصة؟"
+    },
+    "Use avatar": {
+      "ru": "Поставить аватар",
+      "es": "Usar este avatar",
+      "zh": "使用该头像",
+      "ar": "استخدام الصورة"
+    },
+    "Use the local external I2P router. It holds the keys of every destination it operates, so it has to be yours.": {
+      "ru": "Использовать локальный внешний роутер I2P. Он хранит ключи всех назначений, поэтому должен быть вашим.",
+      "es": "Usar el router I2P externo local. Guarda las claves de todos los destinos que opera, así que tiene que ser tuyo.",
+      "zh": "使用本机的外部 I2P 路由。它保管着全部目的地的密钥，因此必须是你自己的。",
+      "ar": "استخدام موجّه I2P الخارجي المحلي. وهو يحتفظ بمفاتيح كل وجهة يديرها، فلا بدّ أن يكون موجّهك."
+    },
+    "Version": {
+      "ru": "Версия",
+      "es": "Versión",
+      "zh": "版本",
+      "ar": "الإصدار"
+    },
+    "Voice message": {
+      "ru": "Голосовое сообщение",
+      "es": "Mensaje de voz",
+      "zh": "语音消息",
+      "ar": "رسالة صوتية"
+    },
+    "Waiting for approval": {
+      "ru": "Ожидание одобрения",
+      "es": "Esperando aprobación",
+      "zh": "等待审核",
+      "ar": "في انتظار الموافقة"
+    },
+    "Waiting for their server…": {
+      "ru": "Ожидание сервера контакта…",
+      "es": "Esperando a su servidor…",
+      "zh": "正在等待对方的服务器…",
+      "ar": "في انتظار خادم جهة الاتصال…"
+    },
+    "Waiting for this account…": {
+      "ru": "Ожидание этого аккаунта…",
+      "es": "Esperando a esta cuenta…",
+      "zh": "正在等待此账号…",
+      "ar": "في انتظار هذا الحساب…"
+    },
+    "Waiting its turn…": {
+      "ru": "Ожидание очереди…",
+      "es": "Esperando su turno…",
+      "zh": "正在排队…",
+      "ar": "في انتظار دوره…"
+    },
+    "What you keep here reaches your other devices.": {
+      "ru": "Содержимое доходит до ваших устройств.",
+      "es": "Lo que guardas aquí llega a tus otros dispositivos.",
+      "zh": "你在这里保存的内容会同步到你的其他设备。",
+      "ar": "ما تحفظه هنا يصل إلى أجهزتك الأخرى."
+    },
+    "Withdrawing a file": {
+      "ru": "Отзыв файла",
+      "es": "Retirando un archivo",
+      "zh": "正在撤回文件",
+      "ar": "جارٍ سحب ملف"
+    },
+    "Without the passphrase nothing can be said to the server. The account would stay there with no key left to end it.": {
+      "ru": "Без пароля серверу ничего не сказать. Аккаунт останется на сервере. Ключа для его закрытия не будет.",
+      "es": "Sin la contraseña no se le puede decir nada al servidor. La cuenta seguiría allí sin ninguna clave con la que cerrarla.",
+      "zh": "没有密码就无法向服务器传达任何指令。账号会留在那里，而再无可以终止它的密钥。",
+      "ar": "من دون كلمة السر لا يمكن قول شيء للخادم. وسيبقى الحساب لديه بلا مفتاح يُنهيه."
+    },
+    "Working": {
+      "ru": "Выполняется",
+      "es": "Trabajando",
+      "zh": "处理中",
+      "ar": "جارٍ العمل"
+    },
+    "Working on it…": {
+      "ru": "Выполняется…",
+      "es": "En curso…",
+      "zh": "正在执行…",
+      "ar": "جارٍ التنفيذ…"
+    },
+    "Working…": {
+      "ru": "Обработка…",
+      "es": "Procesando…",
+      "zh": "正在处理…",
+      "ar": "جارٍ المعالجة…"
+    },
+    "Yesterday": {
+      "ru": "Вчера",
+      "es": "Ayer",
+      "zh": "昨天",
+      "ar": "أمس"
+    },
+    "You": {
+      "ru": "Вы",
+      "es": "Tú",
+      "zh": "你",
+      "ar": "أنت"
+    },
+    "You (muted)": {
+      "ru": "Вы (без звука)",
+      "es": "Tú (silenciado)",
+      "zh": "你（已静音）",
+      "ar": "أنت (صامت)"
+    },
+    "You are signing in to": {
+      "ru": "Вы входите на",
+      "es": "Estás iniciando sesión en",
+      "zh": "你正在登录",
+      "ar": "أنت تسجّل الدخول إلى"
+    },
+    "You can write to this contact": {
+      "ru": "Вы можете писать этому контакту",
+      "es": "Puedes escribir a este contacto",
+      "zh": "你可以给该联系人发消息",
+      "ar": "يمكنك الكتابة إلى جهة الاتصال هذه"
+    },
+    "You cleared the chat for everyone.": {
+      "ru": "Вы очистили переписку у всех.",
+      "es": "Has borrado el chat para todos.",
+      "zh": "你已为所有人清空该聊天。",
+      "ar": "لقد أفرغت المحادثة عند الجميع."
+    },
+    "Your I2P destination": {
+      "ru": "Ваше назначение I2P",
+      "es": "Tu destino I2P",
+      "zh": "你的 I2P 目的地",
+      "ar": "وجهتك في I2P"
+    },
+    "Your account has an I2P address of its own. The key is yours, so the address survives a move to another server.": {
+      "ru": "У аккаунта индивидуальный I2P-адрес. Ключ ваш, поэтому адрес сохранится при переходе на другой сервер.",
+      "es": "Tu cuenta tiene una dirección I2P propia. La clave es tuya, así que la dirección sobrevive a una mudanza de servidor.",
+      "zh": "你的账号拥有专属的 I2P 地址。密钥归你所有，因此更换服务器后地址依然不变。",
+      "ar": "لحسابك عنوان I2P خاص به. والمفتاح لك، فيبقى العنوان بعد الانتقال إلى خادم آخر."
+    },
+    "Your account needs a serving server to send and receive.": {
+      "ru": "Чтобы отправлять и получать, аккаунту нужен обслуживающий сервер.",
+      "es": "Para enviar y recibir, tu cuenta necesita un servidor que la sirva.",
+      "zh": "要收发消息，你的账号需要一台为它服务的服务器。",
+      "ar": "ليُرسِل حسابك ويستقبل يحتاج إلى خادم يخدمه."
+    },
+    "Your aliases are up to date": {
+      "ru": "Алиасы актуальны",
+      "es": "Tus alias están al día",
+      "zh": "你的别名已是最新",
+      "ar": "أسماؤك المستعارة محدّثة"
+    },
+    "Your aliases now point here": {
+      "ru": "Алиасы теперь указывают сюда",
+      "es": "Tus alias ahora apuntan aquí",
+      "zh": "你的别名现在指向这里",
+      "ar": "تشير أسماؤك المستعارة إلى هنا الآن"
+    },
+    "Your contacts keep the copy they already have until you set a new one.": {
+      "ru": "У контактов останется копия, которую они получили ранее. Она сменится, когда вы поставите новую.",
+      "es": "Tus contactos conservan la copia que ya tienen hasta que pongas una nueva.",
+      "zh": "在你设置新的之前，联系人保留他们手上已有的那一份。",
+      "ar": "يحتفظ مراسلوك بالنسخة التي لديهم حتى تضع واحدة جديدة."
+    },
+    "Your data moved back to your user folder. Bazarish has to be started again to use it.": {
+      "ru": "Данные вернулись в пользовательскую папку. Чтобы ими пользоваться, запустите Bazarish заново.",
+      "es": "Tus datos han vuelto a tu carpeta de usuario. Para usarlos, inicia Bazarish de nuevo.",
+      "zh": "数据已移回你的用户目录。要使用它们，请重新启动 Bazarish。",
+      "ar": "عادت بياناتك إلى مجلد المستخدم. ولاستعمالها شغّل Bazarish من جديد."
+    },
+    "Your data now lives beside the app. Bazarish has to be started again to use it.": {
+      "ru": "Данные теперь хранятся рядом с программой. Чтобы ими пользоваться, запустите Bazarish заново.",
+      "es": "Tus datos viven ahora junto a la aplicación. Para usarlos, inicia Bazarish de nuevo.",
+      "zh": "数据现在存放在程序旁边。要使用它们，请重新启动 Bazarish。",
+      "ar": "صارت بياناتك بجوار التطبيق. ولاستعمالها شغّل Bazarish من جديد."
+    },
+    "Your deposit will not cover the next renewal.": {
+      "ru": "Депозита не хватит на следующее продление.",
+      "es": "Tu saldo no cubrirá la próxima renovación.",
+      "zh": "余额不足以支付下次续期。",
+      "ar": "لن يغطي رصيدك التجديد القادم."
+    },
+    "Your identity is a key pair generated on this device.": {
+      "ru": "Ваша личность — пара ключей, созданная на этом устройстве.",
+      "es": "Tu identidad es un par de claves generado en este dispositivo.",
+      "zh": "你的身份是在本设备上生成的一对密钥。",
+      "ar": "هويتك زوج مفاتيح أُنشئ على هذا الجهاز."
+    },
+    "Your name": {
+      "ru": "Ваше имя",
+      "es": "Tu nombre",
+      "zh": "你的名字",
+      "ar": "اسمك"
+    },
+    "Your server did not answer": {
+      "ru": "Сервер не ответил",
+      "es": "Tu servidor no respondió",
+      "zh": "服务器没有响应",
+      "ar": "لم يجب خادمك"
+    },
+    "Your server did not answer, so the account was not ended:": {
+      "ru": "Сервер не ответил. Аккаунт не закрыт:",
+      "es": "Tu servidor no ha respondido, así que la cuenta no se ha cerrado:",
+      "zh": "服务器没有应答，因此账号未被终止：",
+      "ar": "لم يردّ خادمك، فلم يُنهَ الحساب:"
+    },
+    "Your server holds this account until its operator approves it — you cannot send or receive yet": {
+      "ru": "Аккаунт ожидает одобрения оператором. Отправка и приём пока недоступны",
+      "es": "Tu servidor retiene esta cuenta hasta que su operador la apruebe: todavía no puedes enviar ni recibir",
+      "zh": "服务器会扣留此账号，直到其运营者批准——你暂时无法收发",
+      "ar": "يحتفظ خادمك بهذا الحساب حتى يوافق عليه مشغّله — ولا يمكنك الإرسال أو الاستقبال بعد"
+    },
+    "Your server is serving %1; this device holds %2. No other device answered with the keys to the served one.": {
+      "ru": "Сервер обслуживает %1, это устройство хранит %2. Ни одно другое устройство не отозвалось ключами от обслуживаемого адреса.",
+      "es": "Tu servidor sirve %1; este dispositivo tiene %2. Ningún otro dispositivo ha respondido con las claves de la dirección servida.",
+      "zh": "服务器正在服务 %1，本设备持有 %2。没有其他设备交出被服务地址的密钥。",
+      "ar": "يخدم خادمك ⁦%1⁩، ويحمل هذا الجهاز ⁦%2⁩. ولم يردّ أي جهاز آخر بمفاتيح العنوان المخدوم."
+    },
+    "Your server serves another address": {
+      "ru": "Сервер обслуживает другой адрес",
+      "es": "Tu servidor sirve otra dirección",
+      "zh": "服务器正在服务另一个地址",
+      "ar": "خادمك يخدم عنوانًا آخر"
+    },
+    "Your server serves this address now": {
+      "ru": "Сервер обслуживает этот адрес",
+      "es": "Tu servidor ya sirve esta dirección",
+      "zh": "服务器现在服务该地址",
+      "ar": "يخدم خادمك هذا العنوان الآن"
+    },
+    "Your server stops keeping mail for %1 and drops the queue it holds. Anything in it that no other device collected is gone.": {
+      "ru": "Сервер перестанет хранить почту для %1 и сбросит её очередь. Не забранное другим устройством будет потеряно.",
+      "es": "Tu servidor deja de guardar correo para %1 y descarta su cola. Lo que no haya recogido otro dispositivo se pierde.",
+      "zh": "服务器将不再为 %1 保留邮件，并丢弃其队列。其中未被其他设备取走的内容都会消失。",
+      "ar": "يتوقف خادمك عن حفظ البريد لـ ⁦%1⁩ ويُسقط طابوره. وكل ما لم يسحبه جهاز آخر يضيع."
+    },
+    "Your server will serve this address instead. Contacts holding the old one cannot write to you until your next message. If another device of yours is offline, wait until it is on.": {
+      "ru": "Сервер станет обслуживать этот адрес. Контакты со старым адресом не смогут вам написать до вашего следующего сообщения. Если другое ваше устройство не в сети, дождитесь его включения.",
+      "es": "Tu servidor pasará a servir esta dirección. Los contactos con la antigua no podrán escribirte hasta tu próximo mensaje. Si otro dispositivo tuyo está sin conexión, espera a encenderlo.",
+      "zh": "服务器将改为服务这个地址。持有旧地址的联系人在你的下一条消息之前无法给你写信。若你的另一台设备不在线，请等它开机。",
+      "ar": "سيخدم خادمك هذا العنوان بدلًا من السابق. ومن لديه العنوان القديم لا يستطيع الكتابة إليك حتى رسالتك التالية. وإن كان جهاز آخر لك غير متصل، فانتظر تشغيله."
+    },
+    "[file]": {
+      "ru": "[файл]",
+      "es": "[archivo]",
+      "zh": "[文件]",
+      "ar": "[ملف]"
+    },
+    "[image]": {
+      "ru": "[изображение]",
+      "es": "[imagen]",
+      "zh": "[图片]",
+      "ar": "[صورة]"
+    },
+    "[interactive]": {
+      "ru": "[интерактивное]",
+      "es": "[interactivo]",
+      "zh": "[交互消息]",
+      "ar": "[رسالة تفاعلية]"
+    },
+    "[voice]": {
+      "ru": "[голосовое]",
+      "es": "[voz]",
+      "zh": "[语音]",
+      "ar": "[رسالة صوتية]"
+    },
+    "as %1": {
+      "ru": "как %1",
+      "es": "como %1",
+      "zh": "身份：%1",
+      "ar": "بصفة ⁦%1⁩"
+    },
+    "bazarish://invite?...  or  %1alias": {
+      "ru": "bazarish://invite?…  или  %1алиас",
+      "es": "bazarish://invite?…  o  %1alias",
+      "zh": "bazarish://invite?…  或  %1别名",
+      "ar": "‎bazarish://invite?…‎  أو  ⁦%1⁩اسم"
+    },
+    "connecting": {
+      "ru": "подключается",
+      "es": "conectando",
+      "zh": "连接中",
+      "ar": "يتصل"
+    },
+    "connecting via %1": {
+      "ru": "подключение через %1",
+      "es": "conectando por %1",
+      "zh": "正在经由 %1 连接",
+      "ar": "جارٍ الاتصال عبر ⁦%1⁩"
+    },
+    "copied": {
+      "ru": "скопировано",
+      "es": "copiado",
+      "zh": "已复制",
+      "ar": "نُسخ"
+    },
+    "days": {
+      "ru": "дней",
+      "es": "días",
+      "zh": "天",
+      "ar": "يومًا"
+    },
+    "delegation expired": {
+      "ru": "делегирование истекло",
+      "es": "la delegación ha caducado",
+      "zh": "委托已过期",
+      "ar": "انتهت صلاحية التفويض"
+    },
+    "destination coming up (minutes)": {
+      "ru": "назначение публикуется (минуты)",
+      "es": "el destino está subiendo (minutos)",
+      "zh": "目的地正在建立（需几分钟）",
+      "ar": "الوجهة قيد القيام (دقائق)"
+    },
+    "destination up": {
+      "ru": "назначение опубликовано",
+      "es": "destino activo",
+      "zh": "目的地已就绪",
+      "ar": "الوجهة قائمة"
+    },
+    "disabled": {
+      "ru": "выключен",
+      "es": "desactivado",
+      "zh": "已停用",
+      "ar": "معطَّل"
+    },
+    "e.g. Mr. Who": {
+      "ru": "например, Иван Иванов",
+      "es": "por ejemplo, Juan Pérez",
+      "zh": "例如：张三",
+      "ar": "مثلًا: فلان الفلاني"
+    },
+    "edited": {
+      "ru": "изменено",
+      "es": "editado",
+      "zh": "已编辑",
+      "ar": "مُحرَّرة"
+    },
+    "expires %1": {
+      "ru": "истекает %1",
+      "es": "expira el %1",
+      "zh": "%1 到期",
+      "ar": "ينتهي ⁦%1⁩"
+    },
+    "file": {
+      "ru": "файл",
+      "es": "archivo",
+      "zh": "文件",
+      "ar": "ملف"
+    },
+    "http[s]://host:port/secret-path": {
+      "ru": "http[s]://хост:порт/секретный-путь",
+      "es": "http[s]://host:puerto/ruta-secreta",
+      "zh": "http[s]://主机:端口/秘密路径",
+      "ar": "‎http[s]://المضيف:المنفذ/المسار-السري"
+    },
+    "image": {
+      "ru": "картинка",
+      "es": "imagen",
+      "zh": "图片",
+      "ar": "صورة"
+    },
+    "leave empty for none": {
+      "ru": "оставьте пустым, если не нужен",
+      "es": "déjalo vacío si no quieres ninguna",
+      "zh": "不需要则留空",
+      "ar": "اتركه فارغًا إن لم ترغب بها"
+    },
+    "locked": {
+      "ru": "заперт",
+      "es": "bloqueada",
+      "zh": "已上锁",
+      "ar": "مقفل"
+    },
+    "name": {
+      "ru": "имя",
+      "es": "nombre",
+      "zh": "名字",
+      "ar": "اسم"
+    },
+    "never updated": {
+      "ru": "не обновлялось",
+      "es": "sin actualizar",
+      "zh": "从未更新",
+      "ar": "لم يُحدَّث"
+    },
+    "new password": {
+      "ru": "новый пароль",
+      "es": "contraseña nueva",
+      "zh": "新密码",
+      "ar": "كلمة مرور جديدة"
+    },
+    "no account is open": {
+      "ru": "ни один аккаунт не открыт",
+      "es": "no hay ninguna cuenta abierta",
+      "zh": "没有打开任何账号",
+      "ar": "لا يوجد حساب مفتوح"
+    },
+    "no account open": {
+      "ru": "нет открытого аккаунта",
+      "es": "ninguna cuenta abierta",
+      "zh": "无已打开的账号",
+      "ar": "لا حساب مفتوح"
+    },
+    "no address": {
+      "ru": "адреса нет",
+      "es": "sin dirección",
+      "zh": "无地址",
+      "ar": "لا عنوان"
+    },
+    "no destination on the server": {
+      "ru": "на сервере нет назначения",
+      "es": "no hay destino en el servidor",
+      "zh": "服务器上没有目的地",
+      "ar": "لا توجد وجهة على الخادم"
+    },
+    "online": {
+      "ru": "в сети",
+      "es": "en línea",
+      "zh": "在线",
+      "ar": "متصل"
+    },
+    "password": {
+      "ru": "пароль",
+      "es": "contraseña",
+      "zh": "密码",
+      "ar": "كلمة المرور"
+    },
+    "password the backup was saved with": {
+      "ru": "пароль, которым сохранена копия",
+      "es": "la contraseña con la que se guardó la copia",
+      "zh": "保存该备份时所用的密码",
+      "ar": "كلمة المرور التي حُفظت بها النسخة"
+    },
+    "renews %1": {
+      "ru": "продление %1",
+      "es": "renueva el %1",
+      "zh": "%1 续期",
+      "ar": "يُجدَّد ⁦%1⁩"
+    },
+    "repeat it": {
+      "ru": "повторите его",
+      "es": "repítela",
+      "zh": "再输入一次",
+      "ar": "أعد كتابتها"
+    },
+    "save this to your device first, then it can be forwarded": {
+      "ru": "сначала сохраните это на устройство, тогда можно будет переслать",
+      "es": "guarda esto antes en tu dispositivo y entonces podrá reenviarse",
+      "zh": "请先把它保存到本设备，之后才能转发",
+      "ar": "احفظ هذا على جهازك أولًا، عندئذٍ يمكن إعادة توجيهه"
+    },
+    "server not asked yet": {
+      "ru": "сервер ещё не спрошен",
+      "es": "todavía no se ha preguntado al servidor",
+      "zh": "尚未询问服务器",
+      "ar": "لم يُسأل الخادم بعد"
+    },
+    "that file is not a picture this can send": {
+      "ru": "этот файл не картинка, отправить его нельзя",
+      "es": "ese archivo no es una imagen que se pueda enviar",
+      "zh": "该文件不是可发送的图片",
+      "ar": "هذا الملف ليس صورة يمكن إرسالها"
+    },
+    "the recipient's server could not be reached": {
+      "ru": "сервер получателя недоступен",
+      "es": "no se ha podido alcanzar el servidor del destinatario",
+      "zh": "无法联系到收件人的服务器",
+      "ar": "تعذّر بلوغ خادم المستلم"
+    },
+    "there is no photograph to send": {
+      "ru": "отправлять нечего: снимка нет",
+      "es": "no hay ninguna foto que enviar",
+      "zh": "没有可发送的照片",
+      "ar": "لا توجد صورة لإرسالها"
+    },
+    "there is no picture in the clipboard": {
+      "ru": "в буфере обмена нет картинки",
+      "es": "no hay ninguna imagen en el portapapeles",
+      "zh": "剪贴板中没有图片",
+      "ar": "لا توجد صورة في الحافظة"
+    },
+    "this account is switched off: the server connection is saved, switch the account on to connect": {
+      "ru": "аккаунт выключен. Соединение с сервером сохранено. Включите аккаунт для подключения",
+      "es": "esta cuenta está apagada: la conexión con el servidor está guardada, enciéndela para conectar",
+      "zh": "该账号已关闭：服务器连接已保存，开启账号即可连接",
+      "ar": "هذا الحساب مُطفأ: الاتصال بالخادم محفوظ، فعّل الحساب للاتصال"
+    },
+    "this picture is no longer on this device": {
+      "ru": "этой картинки на устройстве больше нет",
+      "es": "esta imagen ya no está en este dispositivo",
+      "zh": "这张图片已不在本设备上",
+      "ar": "لم تعد هذه الصورة على هذا الجهاز"
+    },
+    "this voice message is no longer on this device": {
+      "ru": "этого голосового на устройстве больше нет",
+      "es": "este mensaje de voz ya no está en este dispositivo",
+      "zh": "这条语音消息已不在本设备上",
+      "ar": "لم تعد هذه الرسالة الصوتية على هذا الجهاز"
+    },
+    "unavailable": {
+      "ru": "недоступно",
+      "es": "no disponible",
+      "zh": "不可用",
+      "ar": "غير متاح"
+    },
+    "updated %1d ago": {
+      "ru": "обновлено %1 дн назад",
+      "es": "actualizado hace %1 d",
+      "zh": "%1 天前更新",
+      "ar": "حُدِّث قبل ⁦%1⁩ يوم"
+    },
+    "updated %1h ago": {
+      "ru": "обновлено %1 ч назад",
+      "es": "actualizado hace %1 h",
+      "zh": "%1 小时前更新",
+      "ar": "حُدِّث قبل ⁦%1⁩ ساعة"
+    },
+    "updated %1m ago": {
+      "ru": "обновлено %1 мин назад",
+      "es": "actualizado hace %1 min",
+      "zh": "%1 分钟前更新",
+      "ar": "حُدِّث قبل ⁦%1⁩ دقيقة"
+    },
+    "updated %1s ago": {
+      "ru": "обновлено %1 с назад",
+      "es": "actualizado hace %1 s",
+      "zh": "%1 秒前更新",
+      "ar": "حُدِّث قبل ⁦%1⁩ ثانية"
+    },
+    "updated just now": {
+      "ru": "обновлено только что",
+      "es": "actualizado ahora mismo",
+      "zh": "刚刚更新",
+      "ar": "حُدِّث للتو"
+    },
+    "via %1": {
+      "ru": "через %1",
+      "es": "por %1",
+      "zh": "经由 %1",
+      "ar": "عبر ⁦%1⁩"
+    },
+    "wants to add you as a contact": {
+      "ru": "хочет добавить вас в контакты",
+      "es": "quiere añadirte como contacto",
+      "zh": "想把你加为联系人",
+      "ar": "يريد إضافتك إلى جهات اتصاله"
+    },
+    "“%1” is encrypted, and only the key inside can tell the server to end the account.": {
+      "ru": "«%1» зашифрован, и только ключ внутри может сказать серверу закрыть аккаунт.",
+      "es": "«%1» está cifrada, y solo la clave que hay dentro puede decirle al servidor que cierre la cuenta.",
+      "zh": "“%1”已加密，只有其中的密钥才能让服务器终止该账号。",
+      "ar": "⁦«%1»⁩ مشفّر، ولا يستطيع إبلاغ الخادم بإنهاء الحساب إلا المفتاح الذي بداخله."
+    },
+    "“For everyone” asks the other side to clear their copy too; their client clears it automatically.": {
+      "ru": "«У всех» просит собеседника очистить его копию. Его программа сделает это сама.",
+      "es": "«Para todos» pide también a la otra parte que vacíe su copia; su cliente lo hace solo.",
+      "zh": "“为所有人”也会请求对方清空其副本；对方的客户端会自动完成。",
+      "ar": "‏«لدى الجميع» يطلب من الطرف الآخر إفراغ نسخته أيضًا، ويفعل تطبيقه ذلك تلقائيًا."
+    },
+    "🔒 Locked": {
+      "ru": "🔒 Заблокирован",
+      "es": "🔒 Bloqueada",
+      "zh": "🔒 已锁定",
+      "ar": "🔒 مُقفل"
+    }
+  }
+}

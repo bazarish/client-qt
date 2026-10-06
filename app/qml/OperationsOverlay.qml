@@ -110,7 +110,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.margins: 14
                 Label {
-                    text: "Background activity"
+                    text: qsTr("Background activity")
                     color: Theme.green
                     font.pixelSize: Theme.fontTitle
                     font.weight: Font.DemiBold
@@ -127,7 +127,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.margins: 24
                 horizontalAlignment: Text.AlignHCenter
-                text: "Nothing running right now."
+                text: qsTr("Nothing running right now.")
                 color: Theme.textDim
                 wrapMode: Text.Wrap
             }

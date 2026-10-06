@@ -1,6 +1,6 @@
 # Bazarish project (c) 2026
 cmake_minimum_required(VERSION 3.20)
-project(bazarish-client-qt6 CXX)
+project(bazarish-client-qt6 C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,6 +50,18 @@ if(Qt6_FOUND)
     # Qt's QSQLITE driver: that driver links plain libsqlite3, and two SQLite
     # implementations exporting the same symbols must not meet in one process.
 
+    # Vendored QR reader (libqrencode only writes codes); not ours to lint.
+    add_library(quirc STATIC
+        third_party/quirc/quirc.c
+        third_party/quirc/decode.c
+        third_party/quirc/identify.c
+        third_party/quirc/version_db.c
+    )
+    target_include_directories(quirc SYSTEM PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/quirc)
+    target_compile_options(quirc PRIVATE -w)
+    set_target_properties(quirc PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
     qt_add_executable(bazarish-app
         app/main.cpp
         app/AppController.cpp
@@ -72,6 +84,12 @@ if(Qt6_FOUND)
         app/SessionShared.hpp
         app/Markup.cpp
         app/Markup.hpp
+        app/Picture.cpp
+        app/Picture.hpp
+        app/Translations.cpp
+        app/Translations.hpp
+        app/PhotoShot.cpp
+        app/PhotoShot.hpp
         app/Models.cpp
         app/Models.hpp
         app/TranscriptStore.cpp
@@ -92,13 +110,15 @@ if(Qt6_FOUND)
         app/TrayIcon.hpp
         app/Identicon.cpp
         app/Identicon.hpp
+        app/QrScanner.cpp
+        app/QrScanner.hpp
         app/AvatarStore.cpp
         app/PictureStore.cpp
         app/VoiceNote.cpp
         app/AvatarStore.hpp
     )
     target_link_libraries(bazarish-app PRIVATE
-        bazarish_client ${QRENCODE_LIBRARY} ${SQLCIPHER_LIBRARY}
+        bazarish_client quirc ${QRENCODE_LIBRARY} ${SQLCIPHER_LIBRARY}
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Multimedia Qt6::Widgets
         Qt6::Network)
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -135,6 +155,26 @@ if(Qt6_FOUND)
             app/fonts/TwemojiMozilla.ttf
     )
 
+    # No build gets past a string the interface would show untranslated, and none
+    # gets past a translation nothing shows any more. Required, not optional: a
+    # missing interpreter would quietly take the guarantee away.
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    add_custom_target(check-translations ALL
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check-translations.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Checking that every string shown has every language"
+        VERBATIM)
+    add_dependencies(bazarish-app check-translations)
+
+    # The message catalog. Carried in the binary: the build has already checked
+    # that every string the code shows has every language.
+    qt_add_resources(bazarish-app appi18n
+        PREFIX "/i18n"
+        BASE app/i18n
+        FILES
+            app/i18n/messages.json
+    )
+
     # The notification sound, carried rather than looked for: a system sound theme
     # is not something this application can count on being installed.
     qt_add_resources(bazarish-app appsound
@@ -163,6 +203,8 @@ if(Qt6_FOUND)
         # Said rather than left to the default, which moved in Qt 6.5: the engine
         # is handed one URL, and it has to name the same place on either version.
         RESOURCE_PREFIX "/qt/qml"
+        # QrScanner's sink is a QVideoSink, a type no QML file here imports.
+        DEPENDENCIES QtMultimedia
         QML_FILES
             app/qml/Main.qml
             app/qml/Theme.qml
@@ -182,6 +224,7 @@ if(Qt6_FOUND)
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
             app/qml/VoiceRecorder.qml
+            app/qml/PhotoCapture.qml
             app/qml/NewChatSheet.qml
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml
@@ -210,6 +253,7 @@ if(Qt6_FOUND)
             app/qml/components/Toggle.qml
             app/qml/components/ContextMenu.qml
             app/qml/components/ContextMenuItem.qml
+            app/qml/components/Dropdown.qml
             app/qml/components/UnreadBadge.qml
             app/qml/components/DialogButtons.qml
             app/qml/components/DialogFrame.qml
@@ -251,6 +295,16 @@ if(Qt6_FOUND)
     target_link_libraries(TestMarkup PRIVATE bazarish_client Qt6::Core)
     target_compile_options(TestMarkup PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestMarkup COMMAND TestMarkup)
+
+    # No camera in a test: what is checked is the reader, on an invite rendered
+    # the way this client renders one.
+    add_executable(TestQrScan tests/TestQrScan.cpp app/QrScanner.cpp)
+    target_include_directories(TestQrScan PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app ${QRENCODE_INCLUDE_DIR})
+    target_link_libraries(TestQrScan PRIVATE
+        bazarish_client quirc ${QRENCODE_LIBRARY} Qt6::Gui Qt6::Multimedia Qt6::Qml)
+    target_compile_options(TestQrScan PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestQrScan COMMAND TestQrScan)
 
     add_executable(TestTranscript tests/TestTranscript.cpp app/TranscriptStore.cpp)
     target_include_directories(TestTranscript PRIVATE

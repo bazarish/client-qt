@@ -16,15 +16,15 @@ Dialog {
     width: Math.min(400, parent ? parent.width - 24 : 400)
     background: DialogFrame { destructive: true }
     header: Label {
-        text: "Restart the router?"
+        text: qsTr("Restart the router?")
         color: Theme.neon
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Save and restart"
-        rejectText: "Save only"
+        acceptText: qsTr("Save and restart")
+        rejectText: qsTr("Save only")
         onAccepted: root.accept()
         onRejected: root.reject()
     }
@@ -34,9 +34,6 @@ Dialog {
         padding: 14
         wrapMode: Text.Wrap
         color: Theme.text
-        text: "The proxy setting is read by the embedded I2P router as it starts, so it "
-            + "takes effect when that router restarts. Restarting it now drops the tunnels "
-            + "and builds them again, which takes a minute or two; saving only leaves the "
-            + "router as it is and applies the setting the next time it starts."
+        text: qsTr("Restarting now rebuilds the tunnels, which takes a minute or two. Saving applies the setting at the next start.")
     }
 }

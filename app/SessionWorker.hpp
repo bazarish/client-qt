@@ -79,8 +79,8 @@ public slots:
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo);
-    void sendPicture(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& e2eId, const QString& replyTo);
+    void sendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
+        const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo);
     void sendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendReceipt(const QString& peer, const QString& refId);
@@ -93,7 +93,7 @@ public slots:
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
     void sendDelete(const QString& peer, const QString& refId);
     void dropSentFile(const QString& refId);
-    void setAvatar(const QString& localPath);
+    void setAvatar(const QImage& image);
     void clearAvatar();
     void setDisplayName(const QString& name);
     void renameContact(const QString& peer, const QString& name);
@@ -215,6 +215,7 @@ signals:
 
 private:
     QString beginOp(const QString& kind, const QString& title, const QString& status);
+    QString coreText(const QString& reported);
     int opSeq_ = 0;
     void startReceiving();
     void emitFacadeInfo();

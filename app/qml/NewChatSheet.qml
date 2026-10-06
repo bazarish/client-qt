@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtMultimedia
 import Bazarish
 
 Popup {
@@ -11,36 +12,36 @@ Popup {
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
     padding: 18
-    property string mode: "menu"
     property string errorText: ""
-    // An alias to start from, set by openAlias; opening without one starts at
-    // the menu as before.
     property string prefillAlias: ""
-    // What an introduction says before anybody edits it. Named here because the
-    // reset below has to put them back.
-    readonly property string kInviteGreeting: "Hi, found your invite!"
-    readonly property string kAliasGreeting: "Hi, add me?"
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    onOpened: {
-        mode = root.prefillAlias.length > 0 ? "alias" : "menu"
-        aliasField.text = root.prefillAlias
-        errorText = ""
-    }
-    // Nothing typed here outlives the window: a link, a name and an introduction
-    // are for one request, and the next one starts from a blank page.
-    onClosed: {
-        mode = "menu"
-        errorText = ""
-        inviteText.text = ""
-        inviteIntro.text = root.kInviteGreeting
-        aliasField.text = ""
-        aliasIntro.text = root.kAliasGreeting
+    property bool scanning: false
+    readonly property string kGreeting: "Hi, add me?"
+
+    readonly property string typed: targetText.text.trim()
+    readonly property bool byAlias: root.typed.startsWith(App.aliasSigil)
+    readonly property string problem: {
+        if (!root.session || root.typed.length === 0) {
+            return ""
+        }
+        return root.byAlias ? root.session.aliasProblem(root.typed)
+                            : root.session.inviteProblem(root.typed)
     }
 
-    // Opens on the add-by-alias page with the alias filled in: the request is
-    // still the user's to send.
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    onOpened: {
+        targetText.text = root.prefillAlias
+        errorText = ""
+        scanning = false
+    }
+    onClosed: {
+        errorText = ""
+        scanning = false
+        targetText.text = ""
+        intro.text = root.kGreeting
+    }
+
     function openAlias(alias) {
-        root.prefillAlias = alias
+        root.prefillAlias = App.aliasSigil + alias
         root.open()
         root.prefillAlias = ""
     }
@@ -77,9 +78,7 @@ Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            // Back to the menu page, shown left of the title while on a sub-page.
-            IconButton { iconName: "back"; visible: root.mode !== "menu"; onClicked: root.mode = "menu" }
-            Label { text: "New chat"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: qsTr("New chat"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
 
@@ -91,112 +90,112 @@ Popup {
             text: root.errorText
         }
 
-        // --- Menu ---
-        ColumnLayout {
-            visible: root.mode === "menu"
+        Label {
+            text: qsTr("Paste a bazarish:// invite link, or enter an alias beginning with %1").arg(App.aliasSigil)
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
             Layout.fillWidth: true
-            spacing: 8
-            Repeater {
-                model: [
-                    { icon: "link", t: "Add by invite link", m: "invite" },
-                    { icon: "bang", t: "Add by alias", m: "alias" }
-                ]
-                ItemDelegate {
-                    id: menuItem
-                    Layout.fillWidth: true
-                    height: 48
-                    text: modelData.t
-                    hoverEnabled: true
-                    onClicked: root.mode = modelData.m
-                    // A solid surface row that lifts on hover (surfaceAlt + neon
-                    // outline), so the choices stand out and react to the cursor.
-                    contentItem: RowLayout {
-                        spacing: 10
-                        Icon { name: modelData.icon; color: Theme.textDim; size: 17; Layout.leftMargin: 10 }
-                        Label {
-                            text: menuItem.text
-                            color: Theme.text
-                            verticalAlignment: Text.AlignVCenter
-                            Layout.fillWidth: true
-                        }
-                    }
-                    background: Rectangle {
-                        radius: Theme.radiusSmall
-                        color: menuItem.down ? Theme.border2
-                            : (menuItem.hovered ? Theme.surfaceAlt : Theme.surface)
-                        border.color: menuItem.hovered ? Theme.green : Theme.border
-                        border.width: 1
-                    }
-                }
-            }
         }
 
-        // --- Add by invite ---
-        ColumnLayout {
-            visible: root.mode === "invite"
+        RowLayout {
             Layout.fillWidth: true
             spacing: 8
-            Label { text: "Paste the bazarish:// invite link:"; color: Theme.textDim }
             ScrollView {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 90
-                TextArea { id: inviteText; wrapMode: TextArea.WrapAnywhere; color: Theme.text
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border } }
-            }
-            // Checked as it is typed: a paste that cannot work is refused here,
-            // not by a background operation that dials I2P before finding out.
-            Label {
-                id: inviteCheck
-                readonly property string problem: (root.session && inviteText.text.trim().length > 0)
-                    ? root.session.inviteProblem(inviteText.text) : ""
-                visible: problem.length > 0
-                text: problem
-                color: Theme.warn
-                font.pixelSize: Theme.fontSmall
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-            // A contact request is admitted by nothing, and the protocol caps what
-            // one may carry; the introduction is what is left over to write.
-            FormField {
-                id: inviteIntro
-                label: "Introduction"
-                text: root.kInviteGreeting
-                maximumLength: App.maxGreetingLength
-            }
-            RowLayout {
-                Layout.fillWidth: true
-                Item { Layout.fillWidth: true }
-                ActionButton {
-                    text: "Send request"
-                    enabled: inviteText.text.trim().length > 0 && inviteCheck.problem.length === 0
-                    onClicked: root.startRequest(function() {
-                        root.session.addByInvite(inviteText.text.trim(), inviteIntro.text)
-                    })
+                TextArea {
+                    id: targetText
+                    wrapMode: TextArea.WrapAnywhere
+                    color: Theme.text
+                    placeholderTextColor: Theme.textDim
+                    placeholderText: qsTr("bazarish://invite?...  or  %1alias").arg(App.aliasSigil)
+                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
                 }
+            }
+            IconButton {
+                iconName: "qr"
+                Layout.alignment: Qt.AlignTop
+                tint: root.scanning ? Theme.green : Theme.text
+                onClicked: root.scanning = !root.scanning
             }
         }
 
-        // --- Add by alias ---
-        ColumnLayout {
-            visible: root.mode === "alias"
+        Loader {
+            active: root.scanning
+            visible: root.scanning
             Layout.fillWidth: true
-            spacing: 8
-            Label { text: "The resolver hands back the descriptor this alias stands for (it is trusted for that one mapping)."; color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true }
-            FormField { id: aliasField; label: "Alias" }
-            FormField { id: aliasIntro; label: "Introduction"; text: root.kAliasGreeting }
-            RowLayout {
-                Layout.fillWidth: true
-                Item { Layout.fillWidth: true }
-                ActionButton {
-                    text: "Send request"
-                    enabled: aliasField.text.trim().length > 0
-                    onClicked: root.startRequest(function() {
-                        root.session.addByAlias(aliasField.text.trim(), aliasIntro.text)
-                    })
+            Layout.preferredHeight: 240
+            sourceComponent: VideoOutput {
+                id: preview
+                MediaDevices { id: cameras }
+                CaptureSession {
+                    camera: Camera {
+                        active: cameras.videoInputs.length > 0
+                        onErrorOccurred: function(error, errorString) {
+                            root.errorText = errorString
+                            root.scanning = false
+                        }
+                    }
+                    videoOutput: preview
+                }
+                QrScanner {
+                    sink: preview.videoSink
+                    onDecoded: function(text) {
+                        root.scanning = false
+                        targetText.text = text
+                    }
+                }
+                Label {
+                    anchors.centerIn: parent
+                    visible: cameras.videoInputs.length === 0
+                    text: qsTr("No camera on this machine.")
+                    color: Theme.textDim
                 }
             }
         }
 
+        Label {
+            visible: root.problem.length > 0
+            text: root.problem
+            color: Theme.warn
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+
+        Label {
+            visible: root.byAlias && root.problem.length === 0
+            text: qsTr("The resolver hands back the descriptor of this alias.")
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+
+        // A contact request is admitted by nothing, and the protocol caps what
+        // one may carry; the introduction is what is left over to write.
+        FormField {
+            id: intro
+            label: qsTr("Introduction")
+            text: root.kGreeting
+            maximumLength: App.maxGreetingLength
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true }
+            ActionButton {
+                text: qsTr("Send request")
+                enabled: root.typed.length > 0 && root.problem.length === 0
+                onClicked: root.startRequest(function() {
+                    if (root.byAlias) {
+                        root.session.addByAlias(root.typed, intro.text)
+                    } else {
+                        root.session.addByInvite(root.typed, intro.text)
+                    }
+                })
+            }
+        }
     }
 }

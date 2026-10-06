@@ -74,7 +74,7 @@ Item {
     // A picture is its own kind of message: its bytes are in the account, it is
     // drawn where it stands, and it never becomes a file card.
     readonly property bool isPicture: model.type === "image"
-    readonly property bool isVoice: model.type === "voice"
+    readonly property bool isVoice: model.type === "audio"
     readonly property bool voicePlaying: delegate.isVoice && delegate.session
         && delegate.session.voicePlaying === model.e2eId
     // The picture as this account holds it. The revision in the URL is what makes
@@ -87,7 +87,7 @@ Item {
     readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
     readonly property bool isAttachment: !delegate.isPicture && !delegate.isVoice
         && ((model.attName && model.attName.length > 0)
-            || (model.outgoing && (model.type === "file" || model.type === "audio")))
+            || (model.outgoing && model.type === "file"))
     readonly property bool isUnsupported: model.type === "unsupported"
     // A contact add that ended badly. It reads like a system note and carries
     // the two ways out of it, because the chat is where the person was watching.
@@ -154,13 +154,13 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             MenuButton {
                 iconName: "refresh"
-                text: "Try again"
+                text: qsTr("Try again")
                 onClicked: if (delegate.session) { delegate.session.retryContactAdd() }
             }
             MenuButton {
                 iconName: "trash"
                 danger: true
-                text: "Delete chat"
+                text: qsTr("Delete chat")
                 onClicked: if (delegate.session) { delegate.session.deleteContact() }
             }
         }
@@ -203,11 +203,11 @@ Item {
         return "transparent"                                            // preparing (hollow ring)
     }
     function statusText(s) {
-        if (s === DeliveryStatus.Delivering) return "Sending to their server…"
-        if (s === DeliveryStatus.AtRecipientServer) return "Handed to the recipient's server"
-        if (s === DeliveryStatus.Delivered) return "Delivered"
-        if (s === DeliveryStatus.Failed) return "Failed to send"
-        return "Preparing an address to send from…"
+        if (s === DeliveryStatus.Delivering) return qsTr("Sending to the recipient's server…")
+        if (s === DeliveryStatus.AtRecipientServer) return qsTr("Handed to the recipient's server")
+        if (s === DeliveryStatus.Delivered) return qsTr("Delivered")
+        if (s === DeliveryStatus.Failed) return qsTr("Failed to send")
+        return qsTr("Preparing an address to send from…")
     }
 
     Rectangle {
@@ -247,7 +247,7 @@ Item {
                 spacing: 5
                 Icon { name: "forwarded"; color: Theme.textDim; size: 13 }
                 Label {
-                    text: "Forwarded"
+                    text: qsTr("Forwarded")
                     color: Theme.textDim
                     font.pixelSize: Theme.fontSmall
                     Layout.fillWidth: true
@@ -310,8 +310,8 @@ Item {
                 spacing: 6
                 Label {
                     text: delegate.isContactRequestIncoming
-                        ? "wants to add you as a contact"
-                        : "Contact request sent"
+                        ? qsTr("wants to add you as a contact")
+                        : qsTr("Contact request sent")
                     color: Theme.green
                     font.pixelSize: Theme.fontSmall
                     font.weight: Font.Medium
@@ -340,7 +340,7 @@ Item {
                         && delegate.session.contactsRevision >= 0
                         && (delegate.session.acceptingContact === delegate.session.activePeer
                             || delegate.session.contactAgreeing(delegate.session.activePeer))
-                    text: inFlight ? "Agreeing…" : "Agree"
+                    text: inFlight ? qsTr("Agreeing\u2026") : qsTr("Agree")
                     enabled: !inFlight
                     hoverEnabled: true
                     leftPadding: 16
@@ -380,7 +380,7 @@ Item {
                     TextMetrics {
                         id: stageMetrics
                         font.pixelSize: Theme.fontSmall
-                        text: "Publishing the address"
+                        text: qsTr("Publishing the address")
                     }
 
                     ColumnLayout {
@@ -423,7 +423,7 @@ Item {
                                 padding: 0
                                 hoverEnabled: true
                                 ToolTip.visible: hovered
-                                ToolTip.text: "Stop"
+                                ToolTip.text: qsTr("Stop")
                                 onClicked: if (delegate.session) {
                                     delegate.session.cancelTransfer(model.e2eId)
                                 }
@@ -437,7 +437,8 @@ Item {
                         }
                         Label {
                             Layout.fillWidth: true
-                            text: model.transferStage.length > 0 ? model.transferStage : "Sending…"
+                            text: model.transferStage.length > 0 ? model.transferStage
+                                : qsTr("Sending\u2026")
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
                             elide: Text.ElideRight
@@ -488,7 +489,7 @@ Item {
                                 padding: 0
                                 hoverEnabled: true
                                 ToolTip.visible: hovered
-                                ToolTip.text: "Stop"
+                                ToolTip.text: qsTr("Stop")
                                 onClicked: if (delegate.session) {
                                     delegate.session.cancelTransfer(model.e2eId)
                                 }
@@ -507,7 +508,7 @@ Item {
                                     + Format.bytes(model.downloadTotal))
                                 : (model.transferStage.length > 0
                                     ? model.transferStage
-                                    : "Connecting over I2P…")
+                                    : qsTr("Connecting over I2P…"))
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
                             elide: Text.ElideRight
@@ -518,7 +519,7 @@ Item {
                     CopyableError {
                         visible: model.downloadError.length > 0
                         Layout.fillWidth: true
-                        reason: "Save failed: " + model.downloadError
+                        reason: qsTr("Save failed: %1").arg(model.downloadError)
                         session: delegate.session
                     }
                     Button {
@@ -528,7 +529,7 @@ Item {
                         // otherwise (never saved, or the file is gone) offer Save.
                         readonly property bool savedExists: model.savedPath.length > 0
                             && delegate.session && delegate.session.fileExists(model.savedPath)
-                        text: savedExists ? "Open" : "Save"
+                        text: savedExists ? qsTr("Open") : qsTr("Save")
                         onClicked: {
                             // Re-check on click so a file deleted since the last load
                             // falls back to re-saving rather than revealing a stale path.
@@ -600,7 +601,7 @@ Item {
 
                 CopyableError {
                     visible: delegate.pictureBroken || preview.status === Image.Error
-                    reason: "Broken picture"
+                    reason: qsTr("Broken picture")
                     session: delegate.session
                 }
 
@@ -692,7 +693,7 @@ Item {
                 // Playback speed, stepped through by pressing it. It belongs to
                 // the session, so the choice holds for the next one too.
                 Label {
-                    text: (delegate.session ? delegate.session.voiceSpeed : 1) + "x"
+                    text: qsTr("%1x").arg(delegate.session ? delegate.session.voiceSpeed : 1)
                     color: (delegate.session && delegate.session.voiceSpeed > 1)
                         ? Theme.accent : Theme.textDim
                     font.pixelSize: Theme.fontSmall
@@ -703,7 +704,7 @@ Item {
                     TextMetrics {
                         id: speedWidth
                         font.pixelSize: Theme.fontSmall
-                        text: "1.5x"
+                        text: qsTr("1.5x")
                     }
                     TapHandler { onTapped: delegate.session.cycleVoiceSpeed() }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -713,7 +714,7 @@ Item {
             // Unsupported type placeholder (forward compatibility).
             Label {
                 visible: delegate.isUnsupported
-                text: "Unsupported message (" + model.text + ") — update your app"
+                text: qsTr("Unsupported message (%1) \u2014 update your app").arg(model.text)
                 color: Theme.textDim
                 font.italic: true
                 wrapMode: Text.Wrap
@@ -759,7 +760,7 @@ Item {
             // screen reads as a press that did nothing.
             Label {
                 visible: delegate.copiedBlock
-                text: "Copied to clipboard"
+                text: qsTr("Copied to clipboard")
                 color: Theme.green
                 font.pixelSize: Theme.fontSmall
                 Layout.topMargin: 2
@@ -944,7 +945,7 @@ Item {
                 }
                 Label {
                     visible: model.edited === true
-                    text: "edited"
+                    text: qsTr("edited")
                     color: Theme.textDim
                     font.pixelSize: 10
                     font.italic: true
@@ -1000,15 +1001,15 @@ Item {
                 CopyableError {
                     Layout.fillWidth: true
                     reason: (model.error && model.error.length > 0)
-                        ? model.error : "Failed to send"
+                        ? model.error : qsTr("Failed to send")
                     session: delegate.session
                 }
                 // Resend covers everything this device can send again by itself.
                 Label {
                     id: resendLink
                     visible: model.type === "text" || model.type === "file"
-                        || model.type === "image" || model.type === "voice"
-                    text: "Resend"
+                        || model.type === "image" || model.type === "audio"
+                    text: qsTr("Resend")
                     color: Theme.accent
                     font.pixelSize: Theme.fontSmall
                     font.weight: Font.Medium
@@ -1018,8 +1019,10 @@ Item {
                             if (model.type === "text") {
                                 delegate.session.resendText(
                                     model.msgId, model.text, model.e2eId)
-                            } else if (model.type === "voice") {
+                            } else if (model.type === "audio") {
                                 delegate.session.resendVoice(model.msgId, model.e2eId)
+                            } else if (model.type === "image") {
+                                delegate.session.resendPicture(model.msgId, model.e2eId)
                             } else {
                                 delegate.session.resendFile(model.msgId, model.e2eId)
                             }
@@ -1058,7 +1061,7 @@ Item {
                 // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
                 // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
                 // these labels into "React_" / "React_ view".
-                text: "React"
+                text: qsTr("React")
                 iconName: "smile"
                 visible: delegate.reactable
                 height: visible ? implicitHeight : 0
@@ -1067,7 +1070,7 @@ Item {
             }
             ContextMenuItem {
                 // From the account straight to the clipboard: no file in between.
-                text: "Copy picture"
+                text: qsTr("Copy picture")
                 iconName: "copy"
                 visible: delegate.pictureUrl.length > 0
                 height: visible ? implicitHeight : 0
@@ -1076,7 +1079,7 @@ Item {
             ContextMenuItem {
                 // A picture lives in the account database; this is how it leaves
                 // it as a file.
-                text: "Save as"
+                text: qsTr("Save as")
                 iconName: "save"
                 visible: delegate.pictureUrl.length > 0
                 height: visible ? implicitHeight : 0
@@ -1088,7 +1091,7 @@ Item {
                 }
             }
             ContextMenuItem {
-                text: "Forward"
+                text: qsTr("Forward")
                 iconName: "forward"
                 // Anything a person wrote or sent can be passed on; service notices
                 // and requests cannot.
@@ -1099,7 +1102,7 @@ Item {
                 onTriggered: delegate.forwardRequested(model.e2eId)
             }
             ContextMenuItem {
-                text: "Reply"
+                text: qsTr("Reply")
                 iconName: "reply"
                 // Any real message (text or attachment) can be replied to; service
                 // notices, requests and unsupported placeholders cannot.
@@ -1115,7 +1118,7 @@ Item {
                 }
             }
             ContextMenuItem {
-                text: "Copy all"
+                text: qsTr("Copy all")
                 iconName: "copy"
                 // Only where there is text to copy: an attachment, a request, a
                 // picture and a voice message carry none.
@@ -1125,14 +1128,14 @@ Item {
                 onTriggered: App.copyText(delegate.fullText)
             }
             ContextMenuItem {
-                text: "Edit"
+                text: qsTr("Edit")
                 iconName: "edit"
                 visible: delegate.canEdit
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.session.beginEdit(model.msgId, model.e2eId, model.text)
             }
             ContextMenuItem {
-                text: "Delete"
+                text: qsTr("Delete")
                 iconName: "trash"
                 onTriggered: delegate.deleteRequested(model.msgId, model.e2eId, model.outgoing)
             }
@@ -1148,7 +1151,7 @@ Item {
         property string peer: ""
         property string e2eId: ""
         property var token: 0
-        title: "Save file"
+        title: qsTr("Save file")
         fileMode: FileDialog.SaveFile
         onAccepted: {
             if (delegate.session) {

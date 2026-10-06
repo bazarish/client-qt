@@ -173,7 +173,7 @@ void SessionController::stopVoiceRecording()
         return;
     }
     if (audio.empty() || durationMs < kMinVoiceMs) {
-        voiceError_ = QStringLiteral("Too short to send.");
+        voiceError_ = tr("Too short to send.");
         emit voiceChanged();
         return;
     }
@@ -247,7 +247,7 @@ void SessionController::sendVoiceTake()
     StoredMessage m;
     m.peer = activePeer_;
     m.outgoing = true;
-    m.type = "voice";
+    m.type = "audio";
     m.e2eId = newE2eId();
     m.replyTo = replyTo;
     m.attMime = QStringLiteral("audio/opus");
@@ -260,9 +260,9 @@ void SessionController::sendVoiceTake()
     m.id = store_.append(m);
     statusById_[m.id] = DeliveryStatus::Preparing;
     showInActiveView(m, true);
-    contacts_.touch(activePeer_, peerName(activePeer_), QStringLiteral("[voice]"), m.ts, true);
+    contacts_.touch(activePeer_, peerName(activePeer_), tr("[voice]"), m.ts, true);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-        QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending…"), activePeer_);
+        tr("To %1").arg(peerName(activePeer_)), tr("Sending…"), activePeer_);
 
     emit requestSendVoice(activePeer_, audio, durationMs, m.id, m.e2eId, replyTo);
 }
@@ -330,7 +330,7 @@ void SessionController::onVoiceLoaded(const QString& e2eId, const QByteArray& by
         voice_->play(Bytes(bytes.begin(), bytes.end()), voiceSpeed(), voiceSeekMs_);
         playbackTimer_.start();
     } catch (const std::exception& error) {
-        emit actionFailed(QStringLiteral("This voice message is broken."));
+        emit actionFailed(tr("This voice message is broken."));
         bazarish::log::warn("voice audio did not unpack: {}", error.what());
         voicePlaying_.clear();
         emit voiceChanged();

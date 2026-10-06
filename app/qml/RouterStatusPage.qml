@@ -26,14 +26,13 @@ Popup {
 
     function privacyText(level) {
         if (level === 0) {
-            return "1 hop each way. Fastest, and the weakest: one router carries "
-                + "your tunnel and learns your address. Every tunnel is rebuilt "
-                + "through a new random router every few minutes."
+            return qsTr("1 hop each way. The fastest and the weakest: one router carries "
+                + "the tunnel and learns your address.")
         }
         if (level === 1) {
-            return "1 or 2 hops each way, picked per tunnel."
+            return qsTr("1 or 2 hops each way, picked per tunnel.")
         }
-        return "3 hops each way. Slowest to build and to answer."
+        return qsTr("3 hops each way. Slowest to build and to answer.")
     }
 
     // Saving is one thing and applying it is another: the transports read the
@@ -69,7 +68,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             IconButton { iconName: "back"; onClicked: root.back() }
-            Label { text: "I2P router"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: qsTr("I2P router"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
         Hairline { }
@@ -88,18 +87,18 @@ Popup {
                     Layout.margins: 16
                     spacing: 10
 
-                    Label { text: "Status"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: qsTr("Status"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
 
                     Label {
                         visible: !I2p.running && !I2p.gatewayEnabled
                         // A router with nobody to ask cannot start the network: it
                         // is the bootstrap it waits for, not its own start-up.
                         text: I2p.samEnabled
-                            ? "No router answering at the address below."
+                            ? qsTr("No router answering at the address below.")
                             : I2p.knownRouters < I2p.minKnownRouters
-                            ? "No network database yet. The router starts once your server "
-                              + "hands it one, the first time an account connects."
-                            : "Router is starting up."
+                            ? qsTr("No network database yet. The router starts once your server "
+                              + "hands it one, the first time an account connects.")
+                            : qsTr("Router is starting up.")
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
 
@@ -110,7 +109,7 @@ Popup {
                         visible: I2p.gatewayEnabled
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: "The router is at " + I2p.gatewayHost + "."
+                        text: qsTr("The router is at %1.").arg(I2p.gatewayHost)
                         color: Theme.text
                     }
 
@@ -124,7 +123,7 @@ Popup {
                             color: I2p.ready ? Theme.success : Theme.warn
                         }
                         Label {
-                            text: I2p.ready ? "Running — tunnels are up" : "Starting — building tunnels…"
+                            text: I2p.ready ? qsTr("Running — tunnels are up") : qsTr("Starting — building tunnels…")
                             color: Theme.text; Layout.fillWidth: true
                         }
                     }
@@ -139,10 +138,10 @@ Popup {
                         visible: I2p.running && !I2p.samEnabled && !I2p.gatewayEnabled
                         Layout.fillWidth: true
                         spacing: 6
-                        StatRow { label: "Routers known"; value: I2p.knownRouters }
-                        StatRow { label: "Floodfills"; value: I2p.floodfills }
-                        StatRow { label: "Inbound tunnels"; value: I2p.inboundTunnels }
-                        StatRow { label: "Outbound tunnels"; value: I2p.outboundTunnels }
+                        StatRow { label: qsTr("Routers known"); value: I2p.knownRouters }
+                        StatRow { label: qsTr("Floodfills"); value: I2p.floodfills }
+                        StatRow { label: qsTr("Inbound tunnels"); value: I2p.inboundTunnels }
+                        StatRow { label: qsTr("Outbound tunnels"); value: I2p.outboundTunnels }
                     }
                 }
                 Hairline { }
@@ -156,18 +155,18 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     Label {
-                        text: "Local destinations (" + I2p.destinations.length + ")"
+                        text: qsTr("Local destinations (%1)").arg(I2p.destinations.length)
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: "Each address has its own tunnels and the leasesets it has "
-                            + "looked up."
+                        text: qsTr("Each address has its own tunnels and the leasesets it has "
+                            + "looked up.")
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     Label {
                         visible: I2p.destinations.length === 0
-                        text: "No destination is being served — the router is only warming up."
+                        text: qsTr("No destination is being served. The router is starting.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -209,9 +208,10 @@ Popup {
                                     // LeaseSets, not peers: one encrypted address costs two
                                     // of them, so the count is not a headcount of who is on
                                     // the other side.
-                                    text: modelData.state + " · tunnels " + modelData.tunnelsIn
-                                        + " in / " + modelData.tunnelsOut + " out · "
-                                        + modelData.leaseSets + " leasesets"
+                                    text: qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
+                                        + "%4 leasesets")
+                                        .arg(modelData.state).arg(modelData.tunnelsIn)
+                                        .arg(modelData.tunnelsOut).arg(modelData.leaseSets)
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     wrapMode: Text.Wrap; Layout.fillWidth: true
                                 }
@@ -237,7 +237,7 @@ Popup {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4
-                        Label { text: "Tunnel length"; color: Theme.text; font.weight: Font.Medium }
+                        Label { text: qsTr("Tunnel length"); color: Theme.text; font.weight: Font.Medium }
                         Slider {
                             id: privacySlider
                             Layout.fillWidth: true
@@ -281,15 +281,15 @@ Popup {
                             Layout.fillWidth: true
                             Layout.topMargin: -4
                             Label {
-                                text: "Min"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                text: "min"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
                             }
                             Label {
-                                text: "Middle"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                text: "middle"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 horizontalAlignment: Text.AlignHCenter
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: "Max"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                text: "max"; color: Theme.textDim; font.pixelSize: Theme.fontSmall
                             }
                         }
                         Label {
@@ -298,7 +298,7 @@ Popup {
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                         Label {
-                            text: "Voice calls always use Min: longer tunnels delay speech."
+                            text: qsTr("Calls always use the shortest tunnel to keep latency down.")
                             color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
@@ -306,18 +306,16 @@ Popup {
                 }
                 Hairline { }
 
-                // Everything this router does outside I2P, through a SOCKS5 proxy.
                 ColumnLayout {
                     visible: !I2p.samEnabled && !I2p.gatewayEnabled
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
 
-                    Label { text: "Proxy"; color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { text: qsTr("Proxy"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     Label {
-                        text: "A SOCKS5 proxy for what the router does outside I2P. It hides "
-                            + "that traffic from your network, and shows all of it to the "
-                            + "proxy. Leave empty to go straight out."
+                        text: qsTr("A SOCKS5 proxy the router reaches the I2P network "
+                            + "through. Leave empty to connect straight out.")
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -327,20 +325,20 @@ Popup {
                         FormField {
                             id: proxyHostField
                             Layout.fillWidth: true
-                            placeholder: "Host or address"
+                            placeholder: qsTr("Host or address")
                             text: I2p.proxyHost
                         }
                         FormField {
                             id: proxyPortField
                             Layout.preferredWidth: 90
-                            placeholder: "Port"
+                            placeholder: qsTr("Port")
                             text: I2p.proxyPort > 0 ? String(I2p.proxyPort) : ""
                             inputField.validator: IntValidator { bottom: 1; top: 65535 }
                         }
                     }
                     MenuButton {
                         iconName: "check"
-                        text: "Save"
+                        text: qsTr("Save")
                         Layout.alignment: Qt.AlignRight
                         onClicked: proxyRestartDialog.open()
                     }
@@ -353,17 +351,17 @@ Popup {
                         Layout.topMargin: 4
                         spacing: 6
                         Label {
-                            text: "In force now"
+                            text: qsTr("In force now")
                             color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         }
                         Label {
                             visible: !I2p.running
-                            text: "The router is not running; these are what it will come up with."
+                            text: qsTr("The router is not running; these are what it will come up with.")
                             color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                         StatRow {
-                            label: "Router connections"
+                            label: qsTr("Router connections")
                             value: I2p.proxyNtcp2.length > 0 ? I2p.proxyNtcp2 : "direct"
                         }
                     }
@@ -382,18 +380,17 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     Label {
-                        text: "Direct connections (" + I2p.transports.length + ")"
+                        text: qsTr("Direct connections (%1)").arg(I2p.transports.length)
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Label {
-                        text: "Routers this one is talking to directly. A session it did not "
-                            + "open is marked \"incoming\"."
+                        text: qsTr("The router's direct network connections")
                         color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
                     Label {
                         visible: I2p.transports.length === 0
-                        text: "No direct transport connections yet."
+                        text: qsTr("No direct transport connections yet.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
                     Frame {
@@ -431,9 +428,9 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: "Show I2P logs"; color: Theme.text }
+                            Label { text: qsTr("Show I2P logs"); color: Theme.text }
                             Label {
-                                text: "Surface libi2pd's own logging (debugging)."
+                                text: qsTr("Surface libi2pd's own logging (debugging).")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }

@@ -41,7 +41,7 @@ Popup {
                 Layout.fillWidth: true
                 spacing: 0
                 Label {
-                    text: "Storage"
+                    text: qsTr("Storage")
                     color: Theme.green
                     font.pixelSize: Theme.fontTitle
                     font.weight: Font.DemiBold
@@ -75,14 +75,14 @@ Popup {
                     Layout.margins: 14
                     spacing: 4
                     Label {
-                        text: "Database file: " + Format.bytes(root.info.fileBytes)
+                        text: qsTr("Database file: %1").arg(Format.bytes(root.info.fileBytes))
                         color: Theme.text
                         font.pixelSize: Theme.fontBody
                     }
                     Label {
                         visible: root.info.freeBytes > 0
-                        text: "About " + Format.bytes(root.info.freeBytes)
-                            + " of it is free space compacting returns to the disk."
+                        text: qsTr("About %1 of it is free space compacting returns to the disk.")
+                            .arg(Format.bytes(root.info.freeBytes))
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
@@ -97,14 +97,14 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             iconName: "disk"
-                            text: "Compact the database (VACUUM)"
+                            text: qsTr("Compact the database (VACUUM)")
                             enabled: !root.busy && root.session !== null
                             onClicked: root.session.compactDatabase()
                         }
                         MenuButton {
                             Layout.fillWidth: true
                             iconName: "trash"
-                            text: "Trim every chat"
+                            text: qsTr("Trim every chat")
                             danger: true
                             enabled: !root.busy && root.chats.length > 0
                             onClicked: {
@@ -121,7 +121,7 @@ Popup {
                     visible: root.chats.length === 0
                     Layout.fillWidth: true
                     Layout.margins: 14
-                    text: root.session ? "Nothing stored yet." : "No account is open."
+                    text: root.session ? qsTr("Nothing stored yet.") : qsTr("No account is open.")
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
                 }
@@ -147,22 +147,23 @@ Popup {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: chatRow.modelData.messages + " messages  ·  "
-                                    + Format.bytes(chatRow.modelData.bytes)
+                                text: qsTr("%1 messages  \u00b7  %2")
+                                    .arg(chatRow.modelData.messages)
+                                    .arg(Format.bytes(chatRow.modelData.bytes))
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                             }
                             Label {
                                 visible: chatRow.modelData.mediaCount > 0
-                                text: chatRow.modelData.mediaCount
-                                    + " pictures and voice notes are part of that"
+                                text: qsTr("%1 pictures and voice notes are part of that")
+                                    .arg(chatRow.modelData.mediaCount)
                                 color: Theme.textFaint
                                 font.pixelSize: Theme.fontSmall
                             }
                         }
                         MenuButton {
                             iconName: "trash"
-                            text: "Trim"
+                            text: qsTr("Trim")
                             enabled: !root.busy
                             onClicked: {
                                 trimDialog.peer = chatRow.modelData.peer
@@ -177,10 +178,7 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 14
                     Layout.topMargin: 4
-                    text: "These are what the messages and their pictures hold. The file on disk "
-                        + "is larger: it also carries indexes, page overhead and free space. "
-                        + "Trimming happens only on this device - your other devices keep their "
-                        + "own copies, and nothing is asked of the people you talk to."
+                    text: qsTr("This is what the messages and their pictures take. The file on disk is larger. Trimming happens only on this device.")
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
@@ -198,14 +196,14 @@ Popup {
         width: Math.min(380, parent ? parent.width - 24 : 380)
         background: DialogFrame { }
         header: Label {
-            text: "Trim " + trimDialog.who
+            text: qsTr("Trim %1").arg(trimDialog.who)
             color: Theme.green
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14
         }
         footer: DialogButtons {
-            acceptText: "Cancel"
+            acceptText: qsTr("Cancel")
             showReject: false
             onAccepted: trimDialog.close()
         }
@@ -215,20 +213,19 @@ Popup {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 color: Theme.text
-                text: "Keep the newest messages and remove the rest, with their pictures and "
-                    + "voice notes. This cannot be undone, and it happens only on this device."
+                text: qsTr("Keeps the newest messages and removes the rest with their pictures and voice notes. Only on this device, and it cannot be undone.")
             }
             MenuButton {
                 Layout.fillWidth: true
                 iconName: "trash"
-                text: "Keep the last " + (root.session ? root.session.keepRecentMessages : 0)
+                text: qsTr("Keep the last %1").arg(root.session ? root.session.keepRecentMessages : 0)
                 danger: true
                 onClicked: trimDialog.run(root.session ? root.session.keepRecentMessages : 0)
             }
             MenuButton {
                 Layout.fillWidth: true
                 iconName: "trash"
-                text: "Keep the last " + (root.session ? root.session.keepManyMessages : 0)
+                text: qsTr("Keep the last %1").arg(root.session ? root.session.keepManyMessages : 0)
                 danger: true
                 onClicked: trimDialog.run(root.session ? root.session.keepManyMessages : 0)
             }
@@ -237,9 +234,7 @@ Popup {
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: "Bazarish compacts the database afterwards so the space returns to the "
-                    + "disk, and is busy while it does: a moment on an ordinary account, "
-                    + "several seconds on one holding a hundred thousand messages."
+                text: qsTr("The database is compacted afterwards, and the app is busy while it happens.")
             }
         }
 
@@ -271,11 +266,11 @@ Popup {
         contentItem: ColumnLayout {
             spacing: 6
             Label {
-                text: (root.info.busyWhat !== undefined ? root.info.busyWhat : "Working") + "…"
+                text: (root.info.busyWhat !== undefined ? root.info.busyWhat : qsTr("Working")) + "\u2026"
                 color: Theme.text
             }
             Label {
-                text: "The window does not answer while this runs."
+                text: qsTr("The window does not answer while this runs.")
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
             }

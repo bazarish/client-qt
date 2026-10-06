@@ -42,23 +42,23 @@ Item {
         spacing: 16
 
         Label {
-            text: "New account"
+            text: qsTr("New account")
             color: Theme.green
             font.pixelSize: 24
             font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignHCenter
         }
         Label {
-            text: "Your identity is a key pair generated on this device."
+            text: qsTr("Your identity is a key pair generated on this device.")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
         }
 
-        FormField { id: nameField; label: "Account name"; placeholder: "e.g. Mr. Who"; maximumLength: 64 }
-        FormField { id: passField; label: "Passphrase (optional, encrypts keys at rest)"; echoMode: TextInput.Password; placeholder: "leave empty for none" }
-        FormField { id: confirmField; label: "Confirm passphrase"; echoMode: TextInput.Password }
+        FormField { id: nameField; label: qsTr("Account name"); placeholder: qsTr("e.g. Mr. Who"); maximumLength: 64 }
+        FormField { id: passField; label: qsTr("Passphrase (optional, encrypts keys at rest)"); echoMode: TextInput.Password; placeholder: qsTr("leave empty for none") }
+        FormField { id: confirmField; label: qsTr("Confirm passphrase"); echoMode: TextInput.Password }
 
         Label {
             id: errorLabel
@@ -71,12 +71,12 @@ Item {
         Button {
             id: createButton
             Layout.fillWidth: true
-            text: "Create"
+            text: qsTr("Create")
             hoverEnabled: true
             enabled: nameField.text.trim().length > 0
             onClicked: {
                 if (passField.text !== confirmField.text) {
-                    errorLabel.text = "Passphrases do not match."
+                    errorLabel.text = qsTr("Passphrases do not match.")
                     return
                 }
                 errorLabel.text = ""
@@ -95,11 +95,11 @@ Item {
         // required here; if one is typed it only picks the on-disk account id.
         Button {
             Layout.fillWidth: true
-            text: "Restore from backup"
+            text: qsTr("Restore from backup")
             hoverEnabled: true
             onClicked: {
                 if (passField.text !== confirmField.text) {
-                    errorLabel.text = "Passphrases do not match."
+                    errorLabel.text = qsTr("Passphrases do not match.")
                     return
                 }
                 errorLabel.text = ""
@@ -121,18 +121,18 @@ Item {
         id: backupPassDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        title: "Backup password"
+        title: qsTr("Backup password")
         // name + at-rest passphrase come from the wizard fields; this asks only
         // for the password the backup file was sealed with.
         onAccepted: App.importAccount(nameField.text.trim(), root.pendingBackupFile,
             backupPass.text, passField.text)
         background: DialogFrame { }
-        header: Label { text: "Backup password"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: qsTr("Backup password"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { onAccepted: backupPassDialog.accept(); onRejected: backupPassDialog.reject() }
         contentItem: TextField {
             id: backupPass
             echoMode: TextInput.Password
-            placeholderText: "password the backup was saved with"
+            placeholderText: qsTr("password the backup was saved with")
             color: Theme.text
             placeholderTextColor: Theme.textDim
             implicitWidth: 280

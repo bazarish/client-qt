@@ -24,19 +24,15 @@ Rectangle {
     // How far the attach menu floats above the input bar.
     readonly property int kAttachMenuGap: 8
 
-    // Prepares a picture (scale, re-encode) and sends it as an attachment. A
-    // picture that cannot be read says so instead of going out as a file.
     function sendPicture(source) {
-        const prepared = App.prepareImageForSend(source)
-        if (prepared.length > 0 && root.session) {
-            root.session.sendPicture(prepared)
+        if (root.session) {
+            root.session.sendPictureFile(source)
         }
     }
 
     function sendClipboardPicture() {
-        const prepared = App.prepareClipboardImage()
-        if (prepared.length > 0 && root.session) {
-            root.session.sendPicture(prepared)
+        if (root.session) {
+            root.session.sendClipboardPicture()
         }
     }
 
@@ -128,7 +124,7 @@ Rectangle {
             Rectangle { Layout.preferredWidth: 3; Layout.preferredHeight: 18; radius: 1; color: Theme.accent }
             Label {
                 Layout.fillWidth: true
-                text: "Editing message"
+                text: qsTr("Editing message")
                 color: Theme.accent
                 font.pixelSize: Theme.fontSmall
                 font.weight: Font.Medium
@@ -150,7 +146,7 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 0
                 Label {
-                    text: "Reply to " + (root.session ? root.session.replyingSender : "")
+                    text: qsTr("Reply to %1").arg(root.session ? root.session.replyingSender : "")
                     color: Theme.accent
                     font.pixelSize: Theme.fontSmall
                     font.weight: Font.Medium
@@ -297,9 +293,9 @@ Rectangle {
                         id: input
                         enabled: !root.switchedOff
                         placeholderText: root.switchedOff
-                            ? "This account is switched off — switch it on to write"
-                            : (root.editing ? "Edit message…"
-                                : (root.replying ? "Reply…" : "Message…"))
+                            ? qsTr("This account is switched off — switch it on to write")
+                            : (root.editing ? qsTr("Edit message…")
+                                : (root.replying ? qsTr("Reply…") : qsTr("Message…")))
                         color: Theme.text
                         placeholderTextColor: Theme.textDim
                         wrapMode: TextArea.Wrap
@@ -358,7 +354,7 @@ Rectangle {
     // sent, so a camera original does not sit in a transfer for minutes.
     FileDialog {
         id: imageDialog
-        title: "Send a picture"
+        title: qsTr("Send a picture")
         nameFilters: ["Pictures (*.png *.jpg *.jpeg)", "All files (*)"]
         onAccepted: root.sendPicture(selectedFile)
     }
@@ -370,22 +366,34 @@ Rectangle {
     ContextMenu {
         id: attachMenu
         ContextMenuItem {
-            text: "File"
+            text: qsTr("File")
             iconName: "file"
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
             // Pictures are their own thing: they are shrunk before they cross a
             // tunnel and shown in the bubble rather than listed as a file.
-            text: "Picture"
+            text: qsTr("Picture")
             iconName: "image"
             onTriggered: imageDialog.open()
         }
         ContextMenuItem {
-            text: "Voice message"
+            text: qsTr("Photo")
+            iconName: "camera"
+            onTriggered: photoSheet.open()
+        }
+        ContextMenuItem {
+            text: qsTr("Voice message")
             iconName: "mic"
             onTriggered: voiceSheet.open()
         }
+    }
+
+    PhotoCapture {
+        id: photoSheet
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        onConfirmed: function(shot) { if (root.session) { root.session.sendShot(shot) } }
     }
 
     // Recording happens in a window of its own: what the microphone hears is

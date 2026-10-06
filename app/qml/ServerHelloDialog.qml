@@ -34,7 +34,7 @@ Popup {
 
     function copyText(t) {
         App.copyText(t)
-        if (typeof window !== "undefined") window.showToast("Copied")
+        if (typeof window !== "undefined") window.showToast(qsTr("Copied"))
     }
 
     contentItem: Flickable {
@@ -52,7 +52,7 @@ Popup {
             RowLayout {
                 Layout.fillWidth: true
                 Label {
-                    text: "This server needs registration"
+                    text: qsTr("This server needs registration")
                     color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                     Layout.fillWidth: true; wrapMode: Text.Wrap
                 }
@@ -83,7 +83,7 @@ Popup {
 
             Label {
                 visible: root.links.length > 0
-                text: "Open one of these to register, then connect again:"
+                text: qsTr("Open one of these to register, then connect again:")
                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap; Layout.fillWidth: true
             }
@@ -103,7 +103,7 @@ Popup {
                     }
                     IconButton { iconName: "copy"; onClicked: root.copyText(modelData) }
                     Button {
-                        text: "Open"
+                        text: qsTr("Open")
                         leftPadding: 10
                         rightPadding: 10
                         onClicked: Qt.openUrlExternally(modelData)
@@ -115,7 +115,7 @@ Popup {
 
             Button {
                 Layout.fillWidth: true
-                text: "Close"
+                text: qsTr("Close")
                 hoverEnabled: true
                 onClicked: root.close()
                 background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }

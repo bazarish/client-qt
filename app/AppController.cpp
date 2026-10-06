@@ -539,8 +539,8 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
     OperationRow row;
     row.id = QStringLiteral("restore");
     row.kind = QStringLiteral("account");
-    row.title = QStringLiteral("Restoring your account");
-    row.status = QStringLiteral("Opening the backup…");
+    row.title = tr("Restoring your account");
+    row.status = tr("Opening the backup…");
     row.state = eOpRunning;
     row.startedAt = QDateTime::currentMSecsSinceEpoch();
     operations_.upsert(row);
@@ -559,7 +559,7 @@ void AppController::importAccount(const QString& name, const QString& fileUrl,
         QMetaObject::invokeMethod(this,
             [this, id, failure, atRestPassphrase]() {
                 operations_.update(QStringLiteral("restore"),
-                    failure.isEmpty() ? QStringLiteral("Restored.") : failure, {}, -1,
+                    failure.isEmpty() ? tr("Restored.") : failure, {}, -1,
                     failure.isEmpty() ? eOpDone : eOpFailed);
                 emit operationsChanged();
                 if (!failure.isEmpty()) {
@@ -737,30 +737,24 @@ void AppController::setPortable(const bool on)
     const fs::path to = on ? client::AccountManager::portableRoot()
                            : client::AccountManager::globalRoot();
     if (on && underTempDirectory(client::AccountManager::portableRoot())) {
-        emit createFailed(QStringLiteral("This copy of the application is running from a "
-                                         "temporary directory (")
-            + QString::fromStdString(
-                client::AccountManager::portableRoot().parent_path().string())
-            + QStringLiteral("), which is cleared on reboot. Keep the application somewhere "
-                             "of its own first - a USB stick or a folder - and turn this on "
-                             "there."));
+        emit createFailed(tr("The application is running from a temporary directory (%1), which is cleared on reboot. Move it to a folder of its own first.")
+                .arg(QString::fromStdString(
+                    client::AccountManager::portableRoot().parent_path().string())));
         return;
     }
     if (on && !directoryIsWritable(client::AccountManager::portableRoot().parent_path())) {
-        emit createFailed(QStringLiteral("Cannot write beside the application (")
-            + QString::fromStdString(
-                client::AccountManager::portableRoot().parent_path().string())
-            + QStringLiteral(") - move it somewhere writable, such as your home directory, "
-                             "and try again."));
+        emit createFailed(tr("Cannot write beside the application (%1). Move it somewhere writable and try again.")
+                .arg(QString::fromStdString(
+                    client::AccountManager::portableRoot().parent_path().string())));
         return;
     }
     closeAllSessions();
     std::error_code error;
     if (fs::exists(from, error) && !fs::is_empty(from, error)) {
         if (fs::exists(to, error) && !fs::is_empty(to, error)) {
-            emit createFailed(QStringLiteral("There is already data at ")
-                + QString::fromStdString(to.string()) + QStringLiteral(" - move or remove it "
-                    "first, so nothing is overwritten."));
+            emit createFailed(tr("There is already data at %1 - move or remove it first, so "
+                                 "nothing is overwritten.")
+                    .arg(QString::fromStdString(to.string())));
             return;
         }
         fs::create_directories(to.parent_path(), error);
@@ -769,8 +763,8 @@ void AppController::setPortable(const bool on)
             error.clear();
             fs::copy(from, to, fs::copy_options::recursive, error);
             if (error) {
-                emit createFailed(QStringLiteral("Could not move the data: ")
-                    + QString::fromStdString(error.message()));
+                emit createFailed(tr("Could not move the data: %1")
+                    .arg(QString::fromStdString(error.message())));
                 return;
             }
             fs::remove_all(from, error);
@@ -784,105 +778,16 @@ void AppController::setPortable(const bool on)
     }
     emit portableChanged();
     emit restartRequired(on
-            ? QStringLiteral("Your data now lives beside the app. Bazarish has to be started "
+            ? tr("Your data now lives beside the app. Bazarish has to be started "
                              "again to use it.")
-            : QStringLiteral("Your data moved back to your user folder. Bazarish has to be "
+            : tr("Your data moved back to your user folder. Bazarish has to be "
                              "started again to use it."));
-}
-
-namespace {
-
-constexpr int kMaxImageEdge = 1600;
-constexpr qint64 kMaxImageBytes = 256 * 1024;
-constexpr int kJpegQuality = 85;
-constexpr int kQualityStep = 10;
-constexpr int kMinJpegQuality = 45;
-constexpr double kEdgeStep = 0.75;
-constexpr int kMinImageEdge = 640;
-
-QByteArray encodedImage(QImage image, QString* format)
-{
-    if (image.width() > kMaxImageEdge || image.height() > kMaxImageEdge) {
-        image = image.scaled(kMaxImageEdge, kMaxImageEdge, Qt::KeepAspectRatio,
-            Qt::SmoothTransformation);
-    }
-    const bool transparent = image.hasAlphaChannel();
-    *format = transparent ? QStringLiteral("png") : QStringLiteral("jpg");
-    int quality = kJpegQuality;
-    for (;;) {
-        QByteArray bytes;
-        QBuffer buffer(&bytes);
-        buffer.open(QIODevice::WriteOnly);
-        if (!image.save(&buffer, transparent ? "PNG" : "JPEG", transparent ? -1 : quality)) {
-            return {};
-        }
-        if (bytes.size() <= kMaxImageBytes) {
-            return bytes;
-        }
-        if (!transparent && quality > kMinJpegQuality) {
-            quality -= kQualityStep;
-            continue;
-        }
-        const int edge = static_cast<int>(std::max(image.width(), image.height()) * kEdgeStep);
-        if (edge < kMinImageEdge) {
-            return bytes;
-        }
-        image = image.scaled(edge, edge, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    }
-}
-
-}  // namespace
-
-QString AppController::prepareImageForSend(const QString& fileUrl)
-{
-    const QString localPath = QUrl(fileUrl).isLocalFile() ? QUrl(fileUrl).toLocalFile() : fileUrl;
-    QImage image(localPath);
-    if (image.isNull()) {
-        emit imageRejected(QStringLiteral("That file is not a picture this can read."));
-        return {};
-    }
-    return writePreparedImage(image, QFileInfo(localPath).completeBaseName());
 }
 
 bool AppController::clipboardHasImage() const
 {
     const QClipboard* const clipboard = QGuiApplication::clipboard();
     return clipboard != nullptr && !clipboard->image().isNull();
-}
-
-QString AppController::prepareClipboardImage()
-{
-    const QClipboard* const clipboard = QGuiApplication::clipboard();
-    const QImage image = clipboard == nullptr ? QImage() : clipboard->image();
-    if (image.isNull()) {
-        emit imageRejected(QStringLiteral("There is no picture in the clipboard."));
-        return {};
-    }
-    return writePreparedImage(image, QStringLiteral("pasted"));
-}
-
-QString AppController::writePreparedImage(const QImage& image, const QString& baseName)
-{
-    QString format;
-    const QByteArray bytes = encodedImage(image, &format);
-    if (bytes.isEmpty()) {
-        emit imageRejected(QStringLiteral("That picture could not be encoded."));
-        return {};
-    }
-    const QString name = (baseName.isEmpty() ? QStringLiteral("image") : baseName) + "-"
-        + QString::number(QDateTime::currentMSecsSinceEpoch()) + "." + format;
-    const QString path = scratchFile(name);
-    QFile out(path);
-    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        emit imageRejected(QStringLiteral("Could not write the prepared picture."));
-        return {};
-    }
-    if (out.write(bytes) != bytes.size()) {
-        emit imageRejected(QStringLiteral("Could not write the prepared picture."));
-        return {};
-    }
-    out.close();
-    return QUrl::fromLocalFile(path).toString();
 }
 
 QString AppController::markupHtml(const QString& text, const QColor& actionColor,
@@ -905,9 +810,13 @@ void AppController::copyText(const QString& text) const
     }
 }
 
-QString AppController::scratchFile(const QString& name) const
+void AppController::retranslate()
 {
-    return QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath(name);
+    for (SessionController* const session : sessions_) {
+        if (session != nullptr) {
+            session->retranslate();
+        }
+    }
 }
 
 void AppController::rebuildI2pLinks()

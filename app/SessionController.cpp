@@ -13,6 +13,7 @@
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
 #include "DeliveryStatus.hpp"
+#include "PhotoShot.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -33,7 +34,7 @@
 #include <QSet>
 #include <QImage>
 #include <QMimeDatabase>
-#include <QStandardPaths>
+#include <QQuickItemGrabResult>
 #include <chrono>
 #include <QTimer>
 #include <cstring>
@@ -119,20 +120,20 @@ bool isRetryPhase(const QString& phase)
 QString humanDeliveryPhase(const QString& phase)
 {
     if (phase == QLatin1StringView(bazarish::client::kPhasePreparing)) {
-        return QStringLiteral("Preparing an address to send from…");
+        return SessionController::tr("Preparing an address to send from…");
     }
     if (phase == QLatin1StringView(bazarish::client::kPhaseDialing)) {
-        return QStringLiteral("Reaching the recipient's server…");
+        return SessionController::tr("Reaching the recipient's server…");
     }
     if (phase == QLatin1StringView(bazarish::client::kPhaseSending)) {
-        return QStringLiteral("Sending over I2P…");
+        return SessionController::tr("Sending over I2P…");
     }
     if (isRetryPhase(phase)) {
         const QLatin1StringView prefix(bazarish::client::kPhaseRetryPrefix);
         const QStringList parts = phase.sliced(prefix.size()).trimmed().split(QChar('/'));
         if (parts.size() == 2) {
-            return QStringLiteral("Trying again (") + parts.at(0) + QStringLiteral(" of ")
-                + parts.at(1) + QStringLiteral(")…");
+            return SessionController::tr("Trying again (%1 of %2)…")
+                .arg(parts.at(0), parts.at(1));
         }
     }
     return phase;
@@ -394,7 +395,7 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
     connect(worker_, &SessionWorker::botActionDone, this,
         [this](const QString& opId, const bool ok, const QString& error) {
-            finishOperation(opId, ok, ok ? QStringLiteral("Sent") : error);
+            finishOperation(opId, ok, ok ? tr("Sent") : error);
         });
     connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
         setAvatarBusy(false);
@@ -471,27 +472,27 @@ namespace {
 
 QString commandTitle(const QByteArray& signalName)
 {
-    static const QHash<QByteArray, QString> kNamed = {
-        {"requestSendReceipt", QStringLiteral("Confirming a message was read")},
-        {"requestAckPending", QStringLiteral("Clearing a message from the mailbox")},
-        {"requestSendReaction", QStringLiteral("Sending a reaction")},
-        {"requestSendEdit", QStringLiteral("Sending an edit")},
-        {"requestSendDelete", QStringLiteral("Deleting a message for both sides")},
-        {"requestUnsend", QStringLiteral("Withdrawing a file")},
-        {"requestAcceptContact", QStringLiteral("Agreeing to a contact request")},
-        {"requestEmitSettings", QStringLiteral("Telling your other devices")},
-        {"requestSyncRead", QStringLiteral("Marking a chat read")},
-        {"requestSyncChatPin", QStringLiteral("Pinning a chat")},
-        {"requestSyncChatClear", QStringLiteral("Clearing a chat")},
-        {"requestClearChatForEveryone", QStringLiteral("Clearing a chat for both sides")},
-        {"requestContactsFromDevices", QStringLiteral("Asking your other devices")},
-        {"requestSetSync", QStringLiteral("Going online")},
-        {"requestRebuildI2p", QStringLiteral("Rebuilding the I2P destinations")},
-        {"requestInviteSig", QStringLiteral("Preparing your invite")},
-        {"requestSignLoginSig", QStringLiteral("Signing in")},
+    static const QHash<QByteArray, const char*> kNamed = {
+        {"requestSendReceipt", QT_TR_NOOP("Confirming a message was read")},
+        {"requestAckPending", QT_TR_NOOP("Clearing a message from the mailbox")},
+        {"requestSendReaction", QT_TR_NOOP("Sending a reaction")},
+        {"requestSendEdit", QT_TR_NOOP("Sending an edit")},
+        {"requestSendDelete", QT_TR_NOOP("Deleting a message for both sides")},
+        {"requestUnsend", QT_TR_NOOP("Withdrawing a file")},
+        {"requestAcceptContact", QT_TR_NOOP("Agreeing to a contact request")},
+        {"requestEmitSettings", QT_TR_NOOP("Telling your other devices")},
+        {"requestSyncRead", QT_TR_NOOP("Marking a chat read")},
+        {"requestSyncChatPin", QT_TR_NOOP("Pinning a chat")},
+        {"requestSyncChatClear", QT_TR_NOOP("Clearing a chat")},
+        {"requestClearChatForEveryone", QT_TR_NOOP("Clearing a chat for both sides")},
+        {"requestContactsFromDevices", QT_TR_NOOP("Asking your other devices")},
+        {"requestSetSync", QT_TR_NOOP("Going online")},
+        {"requestRebuildI2p", QT_TR_NOOP("Rebuilding the I2P destinations")},
+        {"requestInviteSig", QT_TR_NOOP("Preparing your invite")},
+        {"requestSignLoginSig", QT_TR_NOOP("Signing in")},
     };
     if (const auto found = kNamed.constFind(signalName); found != kNamed.cend()) {
-        return found.value();
+        return SessionController::tr(found.value());
     }
     QString words;
     for (int at = static_cast<int>(strlen("request")); at < signalName.size(); ++at) {
@@ -533,8 +534,7 @@ void SessionController::showSlowCommands()
         if (now - command.queuedAtMs < kCommandVisibleAfterMs) {
             continue;
         }
-        const QString status = at == 0 ? QStringLiteral("Working on it…")
-                                       : QStringLiteral("Waiting its turn…");
+        const QString status = at == 0 ? tr("Working on it…") : tr("Waiting its turn…");
         if (!command.shown) {
             command.shown = true;
             beginOperation(command.id, QStringLiteral("command"), command.title, status);
@@ -552,7 +552,7 @@ void SessionController::onCommandFinished()
     }
     const QueuedCommand command = commandQueue_.takeFirst();
     if (command.shown) {
-        finishOperation(command.id, true, QStringLiteral("Done"));
+        finishOperation(command.id, true, tr("Done"));
     }
     if (commandQueue_.isEmpty()) {
         commandTimer_.stop();
@@ -583,7 +583,6 @@ void SessionController::beginShutdown()
         emit closed();
         return;
     }
-    client::stopFacadeLinkFor(accountId_.toStdString());
     emit requestShutdown();
 }
 
@@ -615,7 +614,7 @@ void SessionController::open(const QString& file, const QString& accountId,
     accountPath_ = file;
     accountPassphrase_ = passphrase;
     if (!store_.open(accountId, file, passphrase)) {
-        emit openFailed(QStringLiteral("This profile could not be opened."));
+        emit openFailed(tr("This profile could not be opened."));
         return;
     }
     const QJsonDocument recents = QJsonDocument::fromJson(
@@ -634,7 +633,7 @@ void SessionController::open(const QString& file, const QString& accountId,
     store_.failUnsentOnLoad(
         DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed);
     store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
-        DeliveryStatus::Received, QStringLiteral("The contact request did not finish."));
+        DeliveryStatus::Received, tr("The contact request did not finish."));
     emit requestOpen(file, passphrase, startOnline);
 }
 
@@ -643,10 +642,10 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
 {
     connecting_ = true;
     connectPercent_ = 0;
-    connectPhase_ = QStringLiteral("Starting…");
+    connectPhase_ = tr("Starting…");
     connectError_.clear();
     beginOperation(kConnectOperationId, QStringLiteral("connect"),
-        QStringLiteral("Connecting this account"), connectPhase_);
+        tr("Connecting this account"), connectPhase_);
     emit connectStateChanged();
     emit requestConnect(facadeUrls, serverFp, reseedUrls);
 }
@@ -886,7 +885,7 @@ QVariantList SessionController::searchMessages(const QString& query)
         row["text"] = hit.text;
         row["time"] = hit.ts;
         row["outgoing"] = hit.outgoing;
-        row["author"] = hit.outgoing ? QStringLiteral("You") : peerName(activePeer_);
+        row["author"] = hit.outgoing ? tr("You") : peerName(activePeer_);
         results.push_back(row);
     }
     return results;
@@ -897,14 +896,14 @@ void SessionController::rebuildChatList()
     QVector<ContactRow> rows;
     QSet<QString> known;
     if (!savedPeer().isEmpty()) {
-        ContactRow saved{savedPeer(), savedChatName(), store_.lastText(savedPeer()),
+        ContactRow saved{savedPeer(), savedChatName(), chatPreview(savedPeer()),
             store_.lastTime(savedPeer()), 0, store_.isPinned(savedPeer())};
         saved.saved = true;
         rows.push_back(saved);
         known.insert(savedPeer());
     }
     for (const QString& fp : contactFps_) {
-        rows.push_back(ContactRow{fp, peerName(fp), store_.lastText(fp), store_.lastTime(fp),
+        rows.push_back(ContactRow{fp, peerName(fp), chatPreview(fp), store_.lastTime(fp),
             store_.unreadCount(fp), store_.isPinned(fp)});
         known.insert(fp);
     }
@@ -912,7 +911,7 @@ void SessionController::rebuildChatList()
         if (peer.isEmpty() || known.contains(peer)) {
             continue;
         }
-        rows.push_back(ContactRow{peer, peerName(peer), store_.lastText(peer),
+        rows.push_back(ContactRow{peer, peerName(peer), chatPreview(peer),
             store_.lastTime(peer), store_.unreadCount(peer), store_.isPinned(peer)});
     }
     contacts_.setContacts(std::move(rows));
@@ -925,7 +924,38 @@ QString SessionController::savedPeer() const
 
 QString SessionController::savedChatName()
 {
-    return QString::fromLatin1(client::kSavedChatName);
+    return tr("Saved messages");
+}
+
+void SessionController::retranslate()
+{
+    rebuildChatList();
+}
+
+QString SessionController::attachmentLabel(const QString& type)
+{
+    if (type == QStringLiteral("audio")) {
+        return tr("[voice]");
+    }
+    if (type == QStringLiteral("image")) {
+        return tr("[image]");
+    }
+    return tr("[file]");
+}
+
+QString SessionController::chatPreview(const QString& peer) const
+{
+    const TranscriptStore::LastMessage last = store_.lastMessage(peer);
+    if (!last.text.isEmpty()) {
+        return last.text;
+    }
+    if (last.type.isEmpty()) {
+        return {};
+    }
+    if (last.attachment.isEmpty()) {
+        return attachmentLabel(last.type);
+    }
+    return attachmentLabel(last.type) + QLatin1Char(' ') + last.attachment;
 }
 
 QString SessionController::peerName(const QString& id) const
@@ -945,16 +975,15 @@ QString SessionController::contactName(const QString& fp) const
     return contactState_.value(fp).name;
 }
 
-void SessionController::setAvatar(const QString& fileOrUrl)
+void SessionController::setAvatarFromGrab(QObject* const grab)
 {
-    const QUrl url(fileOrUrl);
-    const QString localPath = url.isLocalFile() ? url.toLocalFile() : fileOrUrl;
-    if (localPath.isEmpty() || !QFileInfo::exists(localPath)) {
-        emit actionFailed(QStringLiteral("Could not read the image at ") + fileOrUrl);
+    auto* const grabbed = qobject_cast<QQuickItemGrabResult*>(grab);
+    if (grabbed == nullptr || grabbed->image().isNull()) {
+        emit actionFailed(tr("The cropped avatar could not be read."));
         return;
     }
     setAvatarBusy(true);
-    emit requestSetAvatar(localPath);
+    emit requestSetAvatar(grabbed->image());
 }
 
 void SessionController::setAvatarBusy(const bool busy)
@@ -1023,14 +1052,14 @@ void SessionController::clearChat(bool forEveryone)
         StoredMessage sys;
         sys.peer = peer;
         sys.type = QStringLiteral("system");
-        sys.text = QStringLiteral("You cleared the chat for everyone.");
+        sys.text = tr("You cleared the chat for everyone.");
         sys.ts = nowMillis();
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
     }
     loadLatestWindow();
-    contacts_.touch(peer, peerName(peer), store_.lastText(peer), store_.lastTime(peer), false);
+    contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
     refreshUnreadTotal();
 }
 
@@ -1173,22 +1202,19 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     contacts_.touch(activePeer_, saved ? savedChatName() : QString(), text, m.ts, false);
     if (!saved) {
         beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-            QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending…"),
+            tr("To %1").arg(peerName(activePeer_)), tr("Sending…"),
             activePeer_);
     }
     emit requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
 }
 
-StoredMessage SessionController::beginAttachmentSend(const QString& fileUrl, const QString& type)
+StoredMessage SessionController::beginAttachmentSend(const QString& type, const QString& name,
+    const qint64 size, const QString& mime, const QString& srcPath)
 {
     if (activePeer_.isEmpty()) {
         return {};
     }
     unblockBeforeWriting(activePeer_);
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (localPath.isEmpty()) {
-        return {};
-    }
     const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
         cancelReply();
@@ -1199,45 +1225,87 @@ StoredMessage SessionController::beginAttachmentSend(const QString& fileUrl, con
     m.type = type;
     m.e2eId = newE2eId();
     m.replyTo = replyTo;
-    m.attName = QUrl(fileUrl).fileName();
-    const QFileInfo info(localPath);
-    m.attSize = info.size();
-    m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
-    m.attSrcPath = localPath;
+    m.attName = name;
+    m.attSize = size;
+    m.attMime = mime;
+    m.attSrcPath = srcPath;
     m.ts = nowMillis();
     m.orderKey = m.ts;
     m.status = DeliveryStatus::Preparing;
     m.id = store_.append(m);
     statusById_[m.id] = DeliveryStatus::Preparing;
     showInActiveView(m, true);
-    contacts_.touch(activePeer_, {}, "[" + m.type + "] " + m.attName, m.ts, false);
+    contacts_.touch(
+        activePeer_, {}, attachmentLabel(m.type) + QLatin1Char(' ') + m.attName, m.ts, false);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
-        m.attName, QStringLiteral("Sending…"), activePeer_);
+        m.attName, tr("Sending…"), activePeer_);
     return m;
 }
 
 void SessionController::sendFile(const QString& fileUrl)
 {
-    const StoredMessage m = beginAttachmentSend(fileUrl, QStringLiteral("file"));
+    const QString localPath = QUrl(fileUrl).toLocalFile();
+    if (localPath.isEmpty()) {
+        return;
+    }
+    const QFileInfo info(localPath);
+    const StoredMessage m = beginAttachmentSend(QStringLiteral("file"), info.fileName(),
+        info.size(), QMimeDatabase().mimeTypeForFile(info).name(), localPath);
     if (m.id == 0) {
         return;
     }
     emit requestSendFile(activePeer_, m.attSrcPath, m.id, m.e2eId, m.replyTo);
 }
 
-void SessionController::sendPicture(const QString& fileUrl)
+void SessionController::sendPictureFile(const QString& fileUrl)
 {
-    const StoredMessage m = beginAttachmentSend(fileUrl, QStringLiteral("image"));
+    const QUrl url(fileUrl);
+    const QString localPath = url.isLocalFile() ? url.toLocalFile() : fileUrl;
+    const PreparedPicture picture
+        = preparePicture(QImage(localPath), QFileInfo(localPath).completeBaseName());
+    if (picture.isEmpty()) {
+        emit actionFailed(tr("that file is not a picture this can send"));
+        return;
+    }
+    sendPreparedPicture(picture);
+}
+
+void SessionController::sendClipboardPicture()
+{
+    const QClipboard* const clipboard = QGuiApplication::clipboard();
+    const PreparedPicture picture = preparePicture(
+        clipboard == nullptr ? QImage() : clipboard->image(), QStringLiteral("pasted"));
+    if (picture.isEmpty()) {
+        emit actionFailed(tr("there is no picture in the clipboard"));
+        return;
+    }
+    sendPreparedPicture(picture);
+}
+
+void SessionController::sendShot(QObject* const shot)
+{
+    auto* const held = qobject_cast<PhotoShot*>(shot);
+    if (held == nullptr || held->picture().isEmpty()) {
+        emit actionFailed(tr("there is no photograph to send"));
+        return;
+    }
+    sendPreparedPicture(held->picture());
+    held->discard();
+}
+
+void SessionController::sendPreparedPicture(const PreparedPicture& picture)
+{
+    const StoredMessage m = beginAttachmentSend(QStringLiteral("image"), picture.name,
+        picture.bytes.size(), picture.mime, QString());
     if (m.id == 0) {
         return;
     }
     pictureOwners_.insert(m.e2eId, m.id);
-    QFile prepared(m.attSrcPath);
-    const bool drawable = prepared.open(QIODevice::ReadOnly)
-        && PictureStore::instance().put(m.e2eId, prepared.readAll());
+    const bool drawable = PictureStore::instance().put(m.e2eId, picture.bytes);
     store_.setHasPicture(m.id, drawable);
     conversation_.setPictureReadyForId(m.id, drawable);
-    emit requestSendPicture(activePeer_, m.attSrcPath, m.id, m.e2eId, m.replyTo);
+    emit requestSendPicture(
+        activePeer_, picture.bytes, picture.name, picture.mime, m.id, m.e2eId, m.replyTo);
 }
 
 void SessionController::sendCallback(
@@ -1249,7 +1317,7 @@ void SessionController::sendCallback(
     const QString opId = QStringLiteral("bot:") + refMsgId + QStringLiteral(":") + data;
     beginOperation(opId, QStringLiteral("bot"),
         (label.isEmpty() ? data : label) + QStringLiteral(" → ") + peerName(activePeer_),
-        QStringLiteral("Sending…"), activePeer_);
+        tr("Sending…"), activePeer_);
     emit requestSendCallback(opId, activePeer_, data, refMsgId);
 }
 
@@ -1263,7 +1331,7 @@ void SessionController::sendCommand(
     beginOperation(opId, QStringLiteral("bot"),
         (label.isEmpty() ? QStringLiteral("/") + command : label) + QStringLiteral(" → ")
             + peerName(activePeer_),
-        QStringLiteral("Sending…"), activePeer_);
+        tr("Sending…"), activePeer_);
     emit requestSendCommand(opId, activePeer_, command, args);
 }
 
@@ -1375,7 +1443,7 @@ void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool
     store_.removeById(localId);
     conversation_.removeById(localId);
     statusById_.remove(localId);
-    contacts_.touch(activePeer_, {}, store_.lastText(activePeer_), store_.lastTime(activePeer_),
+    contacts_.touch(activePeer_, {}, chatPreview(activePeer_), store_.lastTime(activePeer_),
         false);
     if (outgoing && !e2eId.isEmpty()) {
         emit requestSendDelete(activePeer_, e2eId);
@@ -1449,7 +1517,7 @@ void SessionController::rotateServingKey()
         return;
     }
     servingKeyBusy_ = true;
-    servingKeyStage_ = QStringLiteral("Starting");
+    servingKeyStage_ = tr("Starting");
     emit servingKeyChanged();
     emit requestRotateServingKey();
 }
@@ -1477,7 +1545,7 @@ void SessionController::exportAccount(const QString& fileUrl, const QString& pas
         return;
     }
     beginOperation(QStringLiteral("export"), QStringLiteral("account"),
-        QStringLiteral("Exporting your backup"), QStringLiteral("Waiting for this account…"));
+        tr("Exporting your backup"), tr("Waiting for this account…"));
     emit requestExport(localPath, password);
 }
 
@@ -1542,7 +1610,7 @@ void SessionController::finishOperation(const QString& id, bool ok, const QStrin
 void SessionController::generatePersonalKey()
 {
     beginOperation(QStringLiteral("dest-key"), QStringLiteral("dest"),
-        QStringLiteral("Creating your destination key"), QStringLiteral("Queued…"));
+        tr("Creating your destination key"), tr("Queued…"));
     emit requestGeneratePersonalKey();
 }
 
@@ -1672,7 +1740,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     m.orderKey = m.ts;
     m.status = DeliveryStatus::Preparing;
 
-    if (source.type == QStringLiteral("voice")) {
+    if (source.type == QStringLiteral("audio")) {
         const QByteArray audio = store_.media(QStringLiteral("voice:") + source.e2eId);
         if (audio.isEmpty()) {
             emit actionFailed(tr("this voice message is no longer on this device"));
@@ -1683,7 +1751,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
         m.attDurationMs = source.attDurationMs;
         m.attWave = source.attWave;
         m.id = store_.append(m);
-        forwardShown(m, toPeer, QStringLiteral("[voice]"));
+        forwardShown(m, toPeer, tr("[voice]"));
         emit requestSendVoice(toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
         return;
     }
@@ -1693,35 +1761,35 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
         emit requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
         return;
     }
-    QString path = source.savedPath;
+    m.attName = source.attName;
+    m.attMime = source.attMime;
+    m.attSize = source.attSize;
     if (source.type == QStringLiteral("image")) {
-        const QByteArray picture = store_.media(QStringLiteral("picture:") + source.e2eId);
-        if (!picture.isEmpty()) {
-            const QString scratch = QStandardPaths::writableLocation(QStandardPaths::TempLocation)
-                + QStringLiteral("/bazarish-forward-") + m.e2eId + QStringLiteral(".bin");
-            QFile out(scratch);
-            if (out.open(QIODevice::WriteOnly | QIODevice::Truncate)
-                && out.write(picture) == picture.size()) {
-                out.close();
-                path = scratch;
+        QByteArray picture = store_.media(QStringLiteral("picture:") + source.e2eId);
+        if (picture.isEmpty() && !source.savedPath.isEmpty()) {
+            QFile saved(source.savedPath);
+            if (saved.open(QIODevice::ReadOnly)) {
+                picture = saved.readAll();
             }
         }
+        if (picture.isEmpty()) {
+            emit actionFailed(tr("save this to your device first, then it can be forwarded"));
+            return;
+        }
+        m.id = store_.append(m);
+        forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[image]") : m.attName);
+        emit requestSendPicture(toPeer, picture, m.attName, m.attMime, m.id, m.e2eId, QString());
+        return;
     }
+    const QString path = source.savedPath;
     if (path.isEmpty() || !QFileInfo::exists(path)) {
         emit actionFailed(tr("save this to your device first, then it can be forwarded"));
         return;
     }
-    m.attName = source.attName;
-    m.attMime = source.attMime;
-    m.attSize = source.attSize;
     m.attSrcPath = path;
     m.id = store_.append(m);
-    forwardShown(m, toPeer, source.attName.isEmpty() ? QStringLiteral("[file]") : source.attName);
-    if (source.type == QStringLiteral("image")) {
-        emit requestSendPicture(toPeer, path, m.id, m.e2eId, QString());
-    } else {
-        emit requestSendFile(toPeer, path, m.id, m.e2eId, QString());
-    }
+    forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[file]") : m.attName);
+    emit requestSendFile(toPeer, path, m.id, m.e2eId, QString());
 }
 
 void SessionController::forwardShown(
@@ -1738,7 +1806,7 @@ void SessionController::forwardShown(
     contacts_.touch(toPeer, saved ? savedChatName() : peerName(toPeer), preview, m.ts, false);
     if (!saved) {
         beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-            QStringLiteral("To ") + peerName(toPeer), QStringLiteral("Forwarding…"), toPeer);
+            tr("To %1").arg(peerName(toPeer)), tr("Forwarding…"), toPeer);
     }
 }
 
@@ -1770,31 +1838,31 @@ void SessionController::savePictureAs(const QString& e2eId, const QString& fileU
     const QString path = QUrl(fileUrl).toLocalFile();
     const QByteArray bytes = PictureStore::instance().bytes(e2eId);
     if (path.isEmpty() || bytes.isEmpty()) {
-        emit actionFailed(QStringLiteral("This picture is not here to save."));
+        emit actionFailed(tr("This picture is not here to save."));
         return;
     }
     QFile out(path);
     if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate) || out.write(bytes) != bytes.size()) {
-        emit actionFailed(QStringLiteral("Could not write ") + path);
+        emit actionFailed(tr("Could not write %1").arg(path));
         return;
     }
-    emit actionOk(QStringLiteral("Picture saved"));
+    emit actionOk(tr("Picture saved"));
 }
 
 void SessionController::copyPicture(const QString& e2eId)
 {
     const QImage picture = PictureStore::instance().image(e2eId);
     if (picture.isNull()) {
-        emit actionFailed(QStringLiteral("This picture is not here to copy."));
+        emit actionFailed(tr("This picture is not here to copy."));
         return;
     }
     QClipboard* const clipboard = QGuiApplication::clipboard();
     if (clipboard == nullptr) {
-        emit actionFailed(QStringLiteral("There is no clipboard to copy to."));
+        emit actionFailed(tr("There is no clipboard to copy to."));
         return;
     }
     clipboard->setImage(picture);
-    emit actionOk(QStringLiteral("Picture copied"));
+    emit actionOk(tr("Picture copied"));
 }
 
 QUrl SessionController::defaultPictureSaveUrl(const QString& e2eId, const QString& name) const
@@ -1896,19 +1964,18 @@ void SessionController::compactDatabase()
     if (deviceStorageBusy_) {
         return;
     }
-    beginStorageWork(QStringLiteral("Compacting the database"), [this]() {
+    beginStorageWork(tr("Compacting the database"), [this]() {
         QString reason;
         const bool rebuilt = store_.rebuild(reason);
         const qint64 before = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
         endStorageWork();
         if (!rebuilt) {
-            emit actionFailed(QStringLiteral("The database was not compacted: ") + reason);
+            emit actionFailed(tr("The database was not compacted: %1").arg(reason));
             return;
         }
         const qint64 after = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
-        emit actionOk(QStringLiteral("The database was compacted; ")
-            + humanBytes(std::max<qint64>(0, before - after))
-            + QStringLiteral(" came back to the disk"));
+        emit actionOk(tr("The database was compacted. %1 came back to the disk")
+                          .arg(humanBytes(std::max<qint64>(0, before - after))));
     });
 }
 
@@ -1917,7 +1984,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
     if (deviceStorageBusy_) {
         return;
     }
-    beginStorageWork(QStringLiteral("Trimming and compacting the database"),
+    beginStorageWork(tr("Trimming and compacting the database"),
         [this, peer, keep]() {
             qint64 removed = 0;
             try {
@@ -1935,13 +2002,13 @@ void SessionController::runTrim(const QString& peer, const int keep)
             refreshUnreadTotal();
             endStorageWork();
             if (rebuilt) {
-                emit actionOk(QStringLiteral("Removed ") + QString::number(removed)
-                    + QStringLiteral(" messages and compacted the database"));
+                emit actionOk(tr("Removed %1 messages and compacted the database")
+                        .arg(removed));
                 return;
             }
-            emit actionFailed(QStringLiteral("Removed ") + QString::number(removed)
-                + QStringLiteral(" messages, but the space has not been returned to the disk: ")
-                + reason + QStringLiteral(". Trimming again returns it."));
+            emit actionFailed(tr("Removed %1 messages, but the space has not been returned to "
+                                 "the disk: %2. Trimming again returns it.")
+                    .arg(removed).arg(reason));
         });
 }
 
@@ -1966,7 +2033,7 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
         connectPhase_.clear();
         connectError_ = connected ? QString() : connectionNote;
         finishOperation(kConnectOperationId, connected,
-            connected ? QStringLiteral("Connected") : connectionNote);
+            connected ? tr("Connected") : connectionNote);
         emit connectStateChanged();
     }
     connected_ = connected;
@@ -2046,10 +2113,15 @@ void SessionController::bumpStatus(qint64 localId, int status)
 
 void SessionController::onSendProgress(qint64 localId, int state)
 {
+    if (state == DeliveryStatus::AtRecipientServer && savedSends_.contains(localId)) {
+        bumpStatus(localId, DeliveryStatus::Delivered);
+        finishOperation(QStringLiteral("send:") + QString::number(localId), true, tr("Saved"));
+        return;
+    }
     bumpStatus(localId, state);
     if (state == DeliveryStatus::AtRecipientServer) {
         finishOperation(QStringLiteral("send:") + QString::number(localId), true,
-            QStringLiteral("Handed to the recipient's server"));
+            tr("Handed to the recipient's server"));
     }
 }
 
@@ -2066,7 +2138,7 @@ void SessionController::onSendResult(qint64 localId, bool ok, const QString& err
     bumpStatus(localId, DeliveryStatus::Failed);
     conversation_.setErrorForId(localId, error);
     finishOperation(QStringLiteral("send:") + QString::number(localId), false,
-        QStringLiteral("Failed: ") + error);
+        tr("Failed: %1").arg(error));
 }
 
 void SessionController::onSendPhase(qint64 localId, const QString& phase)
@@ -2086,7 +2158,7 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     restartDelivery(localId);
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
-        QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending again…"),
+        tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
         activePeer_);
     emit requestSendText(activePeer_, text, localId, e2eId, replyTo);
 }
@@ -2105,8 +2177,8 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
     const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
-        stored.attName.isEmpty() ? QStringLiteral("file") : stored.attName,
-        QStringLiteral("Sending again…"), activePeer_);
+        stored.attName.isEmpty() ? tr("file") : stored.attName,
+        tr("Sending again…"), activePeer_);
     emit requestSendFile(activePeer_, srcPath, localId, e2eId, replyTo);
 }
 
@@ -2123,10 +2195,29 @@ void SessionController::resendVoice(qint64 localId, const QString& e2eId)
     const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
     restartDelivery(localId);
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
-        QStringLiteral("To ") + peerName(activePeer_), QStringLiteral("Sending again…"),
+        tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
         activePeer_);
     emit requestSendVoice(
         activePeer_, audio, stored.attDurationMs, localId, e2eId, stored.replyTo, stored.forwarded);
+}
+
+void SessionController::resendPicture(qint64 localId, const QString& e2eId)
+{
+    if (activePeer_.isEmpty()) {
+        return;
+    }
+    const QByteArray picture = store_.media(QStringLiteral("picture:") + e2eId);
+    if (picture.isEmpty()) {
+        emit actionFailed(tr("this picture is no longer on this device"));
+        return;
+    }
+    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
+    restartDelivery(localId);
+    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
+        stored.attName.isEmpty() ? tr("image") : stored.attName,
+        tr("Sending again…"), activePeer_);
+    emit requestSendPicture(activePeer_, picture, stored.attName, stored.attMime, localId, e2eId,
+        stored.replyTo);
 }
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)

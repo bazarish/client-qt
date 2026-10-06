@@ -6,6 +6,7 @@
 #include "Ringtone.hpp"
 #include "SessionController.hpp"
 
+#include <bazarish/Address.hpp>
 #include <bazarish/Limits.hpp>
 
 #include <QList>
@@ -32,6 +33,7 @@ class AppController : public QObject {
     Q_PROPERTY(bool hasOpenAccounts READ hasOpenAccounts NOTIFY accountsChanged)
     Q_PROPERTY(int unreadElsewhere READ unreadElsewhere NOTIFY accountsChanged)
     Q_PROPERTY(int maxGreetingLength READ maxGreetingLength CONSTANT)
+    Q_PROPERTY(QString aliasSigil READ aliasSigil CONSTANT)
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled
             NOTIFY notificationsEnabledChanged)
     Q_PROPERTY(bool backgroundTasksVisible READ backgroundTasksVisible
@@ -50,6 +52,7 @@ public:
     QObject* accounts() { return &accounts_; }
     int unreadElsewhere() const;
     static int maxGreetingLength() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
+    static QString aliasSigil() { return QString(QChar(bazarish::kAliasSigil)); }
     QObject* session();
     bool hasAccounts() const { return haveAccounts_; }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }
@@ -92,6 +95,7 @@ public:
     static QString soundFolder();
     QVector<AccountRow> accountStatuses() const { return accountStatuses_; }
     void rebuildI2pLinks();
+    void retranslate();
 
     Q_PROPERTY(bool portable READ portable NOTIFY portableChanged)
     bool portable() const;
@@ -100,25 +104,16 @@ public:
     Q_INVOKABLE void setPortable(bool on);
     Q_INVOKABLE void requestAddAccount();
     Q_INVOKABLE void closeAccount();
-    Q_INVOKABLE QString scratchFile(const QString& name) const;
     Q_INVOKABLE void copyText(const QString& text) const;
 
-    Q_INVOKABLE QString prepareImageForSend(const QString& fileUrl);
     Q_INVOKABLE bool clipboardHasImage() const;
-    Q_INVOKABLE QString prepareClipboardImage();
 
     Q_INVOKABLE QString markupHtml(const QString& text, const QColor& actionColor,
         const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const;
     Q_INVOKABLE QString markupPlain(const QString& text) const;
 
-private:
-    QString writePreparedImage(const QImage& image, const QString& baseName);
-
-public:
-
 signals:
     void operationsChanged();
-    void imageRejected(const QString& reason);
     void portableChanged();
     void restartRequired(const QString& message);
     void accountListChanged();

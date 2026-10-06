@@ -56,14 +56,14 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             IconButton { iconName: "back"; onClicked: root.back() }
-            Label { text: "My invite"; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            Label { text: qsTr("My invite"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
         Label {
             text: root.hasAliases
-                ? "Give somebody one of these and they can reach you. Copy link still hands "
-                    + "over the full descriptor."
-                : "Anyone with this can verify and reach you with no trust in any server."
+                ? qsTr("Give somebody one of these and they can reach you. Copy link still hands "
+                    + "over the full descriptor.")
+                : qsTr("Anyone with the link can reach you.")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
@@ -75,24 +75,22 @@ Popup {
             Layout.fillWidth: true
             spacing: 8
             Label {
-                text: "No invite yet: " + root.unavailable + "."
+                text: qsTr("No invite yet: %1.").arg(root.unavailable)
                 color: Theme.warn
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
             Label {
-                text: "An invite carries where to reach you and the key your server answers card "
-                    + "fetches with, so it cannot be formed before your destination is up. "
-                    + "Publishing hands your server a time-boxed delegation; it takes a few minutes."
+                text: qsTr("An invite cannot be formed before your destination is up. Publishing takes a few minutes.")
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
             Button {
-                text: "Publish my destination"
+                text: qsTr("Publish my destination")
                 Layout.fillWidth: true
-                onClicked: if (root.session) { root.session.publishPersonalDest(); root.unavailable = "Publishing — this can take a few minutes" }
+                onClicked: if (root.session) { root.session.publishPersonalDest(); root.unavailable = qsTr("Publishing. This takes a few minutes") }
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.green }
                 contentItem: IconLabel { name: "broadcast"; color: Theme.green }
             }
@@ -133,7 +131,7 @@ Popup {
                         }
                     }
                     Label {
-                        text: aliasRow.copied ? "Copied to clipboard" : aliasRow.modelData.term
+                        text: aliasRow.copied ? qsTr("Copied to clipboard") : aliasRow.modelData.term
                         color: aliasRow.copied ? Theme.green : Theme.textDim
                         font.pixelSize: Theme.fontSmall
                     }
@@ -167,7 +165,7 @@ Popup {
                 readOnly: true
                 wrapMode: TextArea.WrapAnywhere
                 text: root.uri
-                placeholderText: "No invite yet — publish your destination first."
+                placeholderText: qsTr("No invite yet — publish your destination first.")
                 color: Theme.text
                 selectByMouse: true
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
@@ -181,7 +179,7 @@ Popup {
                 hoverEnabled: true
                 property bool copied: false
                 Layout.fillWidth: true
-                text: copied ? "Copied" : "Copy link"
+                text: copied ? qsTr("Copied") : qsTr("Copy link")
                 enabled: root.hasInvite
                 // Copied from what the sheet holds, not from the box: the box is
                 // not on screen once there are aliases to show instead.
@@ -206,8 +204,8 @@ Popup {
             MenuButton {
                 iconName: "bang"
                 text: root.session && root.session.aliasBusy
-                    ? "Asking…"
-                    : "Check my aliases"
+                    ? qsTr("Asking…")
+                    : qsTr("Check my aliases")
                 enabled: root.session && root.session.connected && !root.session.aliasBusy
                 onClicked: root.session.activateAliasServicing()
             }
@@ -221,7 +219,7 @@ Popup {
         MenuButton {
             Layout.fillWidth: true
             iconName: "key"
-            text: "Change the server key"
+            text: qsTr("Change the server key")
             danger: true
             enabled: root.session && root.session.connected && !root.session.servingKeyBusy
             onClicked: rotateDialog.open()
@@ -237,12 +235,12 @@ Popup {
             ? Popup.NoAutoClose : Popup.CloseOnEscape
         background: DialogFrame { }
         header: Label {
-            text: "Change the server key"
+            text: qsTr("Change the server key")
             color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
             padding: 14
         }
         footer: DialogButtons {
-            acceptText: "Change it"
+            acceptText: qsTr("Change it")
             danger: true
             acceptEnabled: root.session && !root.session.servingKeyBusy
             onAccepted: root.session.rotateServingKey()
@@ -251,16 +249,11 @@ Popup {
         contentItem: ColumnLayout {
             spacing: 10
             Label {
-                text: "Your server holds a key that every message to you is sealed to, and "
-                    + "your invite carries the capability that reads your card. Both are "
-                    + "replaced here."
+                text: qsTr("Both the key your messages are sealed to and the capability in your invite are replaced here.")
                 color: Theme.text; wrapMode: Text.Wrap; Layout.fillWidth: true
             }
             Label {
-                text: "Every link you have handed out stops working, and anyone holding your "
-                    + "old card can no longer deliver to you. Your current contacts are sent "
-                    + "the new pair straight away; one that is offline picks it up from your "
-                    + "next message to them."
+                text: qsTr("Every link you handed out stops working. Your contacts are sent the new pair; one that is offline gets it with your next message.")
                 color: Theme.warn; font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap; Layout.fillWidth: true
             }
@@ -282,10 +275,10 @@ Popup {
                 spacing: 8
                 ColumnLayout {
                     Layout.fillWidth: true
-                    Label { text: "Let contacts pass my contact on"; color: Theme.text }
+                    Label { text: qsTr("Let contacts pass my contact on"); color: Theme.text }
                     Label {
-                        text: "On, a contact can hand you to someone else. Off, they are sent "
-                            + "no capability and their Share button says so."
+                        text: qsTr("On, a contact can hand you to someone else. Off, they are sent "
+                            + "no capability and their Share button says so.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }

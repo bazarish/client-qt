@@ -21,15 +21,15 @@ Dialog {
     width: Math.min(400, parent ? parent.width - 24 : 400)
     background: DialogFrame { destructive: true }
     header: Label {
-        text: "This account is locked"
+        text: qsTr("This account is locked")
         color: Theme.neon
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: "Unlock and delete"
-        rejectText: "Cancel"
+        acceptText: qsTr("Unlock and delete")
+        rejectText: qsTr("Cancel")
         onAccepted: root.accept()
         onRejected: root.reject()
     }
@@ -42,9 +42,7 @@ Dialog {
             Layout.bottomMargin: 0
             wrapMode: Text.Wrap
             color: Theme.text
-            text: "\"" + root.accountName + "\" is encrypted, and the key inside it is the only "
-                + "thing that can tell its server to end the account. Unlock it and the account "
-                + "is deleted everywhere."
+            text: qsTr("\u201c%1\u201d is encrypted, and only the key inside can tell the server to end the account.").arg(root.accountName)
         }
         Label {
             Layout.fillWidth: true
@@ -54,7 +52,7 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.danger
             font.pixelSize: Theme.fontSmall
-            text: "Delete this device's copy only"
+            text: qsTr("Delete this device's copy only")
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             TapHandler {
                 onTapped: {
@@ -71,9 +69,7 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
-            text: "Without the passphrase nothing can be said to the server. If it still holds "
-                + "this account, it keeps it - address, mailbox and all - and there will be no "
-                + "key left to end it."
+            text: qsTr("Without the passphrase nothing can be said to the server. The account would stay there with no key left to end it.")
         }
     }
 }

@@ -64,6 +64,27 @@ using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
+const char* const kCoreProgress[] = {
+    QT_TR_NOOP("Starting the I2P router"),
+    QT_TR_NOOP("Building your I2P tunnels"),
+    QT_TR_NOOP("I2P tunnels are still building"),
+    QT_TR_NOOP("Looking up the server's I2P address"),
+    QT_TR_NOOP("Connected to the server over I2P"),
+    QT_TR_NOOP("Registering with this server"),
+    QT_TR_NOOP("Registered; registering this device"),
+    QT_TR_NOOP("Checking the address your server serves"),
+    QT_TR_NOOP("Publishing your own destination"),
+    QT_TR_NOOP("Delegating your destination to the server"),
+    QT_TR_NOOP("Publishing your contact card"),
+    QT_TR_NOOP("Syncing your address to your other devices"),
+    QT_TR_NOOP("Telling the name service where you are"),
+    QT_TR_NOOP("Asking your server for a new serving key"),
+    QT_TR_NOOP("Signing a card over the new key"),
+    QT_TR_NOOP("Putting the new key in force"),
+    QT_TR_NOOP("Telling the name service"),
+    QT_TR_NOOP("Telling your contacts"),
+};
+
 namespace {
 constexpr std::size_t kContactRequestIdBytes = 8;
 
@@ -95,7 +116,7 @@ private:
     SessionWorker* const worker_;
     const QString id_;
     bool ok_ = false;
-    QString status_ = QStringLiteral("Failed");
+    QString status_ = SessionWorker::tr("Failed");
 };
 
 constexpr std::chrono::milliseconds kSlowPass{400};
@@ -129,10 +150,11 @@ QVariantList aliasHoldingRows(const std::vector<bazarish::client::Session::Alias
         }
         QVariantMap row;
         row[QStringLiteral("alias")] = QString::fromStdString(holding.alias);
-        row[QStringLiteral("term")]
-            = (holding.autoRenew ? QStringLiteral("renews ") : QStringLiteral("expires "))
-            + QDateTime::fromSecsSinceEpoch(holding.notAfter).date().toString(
-                QStringLiteral("yyyy-MM-dd"));
+        const QString when = QDateTime::fromSecsSinceEpoch(holding.notAfter).date().toString(
+            QStringLiteral("yyyy-MM-dd"));
+        row[QStringLiteral("term")] = holding.autoRenew
+            ? SessionWorker::tr("renews %1").arg(when)
+            : SessionWorker::tr("expires %1").arg(when);
         rows << row;
     }
     return rows;
@@ -143,7 +165,7 @@ QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
     if (rows.isEmpty() || depositCovers) {
         return QString();
     }
-    return QStringLiteral("Your deposit will not cover the next renewal.");
+    return SessionWorker::tr("Your deposit will not cover the next renewal.");
 }
 
 bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint64 localId)
@@ -164,16 +186,15 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
                   return;
               }
               emit worker->sendResult(localId, false,
-                  QString::fromStdString(outcome.errorMessage.empty()
-                          ? std::string("the recipient's server could not be reached")
-                          : outcome.errorMessage));
+                  outcome.errorMessage.empty()
+                      ? SessionWorker::tr("the recipient's server could not be reached")
+                      : QString::fromStdString(outcome.errorMessage));
           };
     return watch;
 }
 
-QByteArray compressAvatarJpeg(const QString& localPath)
+QByteArray compressAvatarJpeg(const QImage& img)
 {
-    const QImage img(localPath);
     if (img.isNull()) {
         return {};
     }
@@ -538,14 +559,14 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
     const QStringList& reseedUrls)
 {
     if (!session_) {
-        emit actionFailed("no account is open");
+        emit actionFailed(tr("no account is open"));
         return;
     }
     try {
-        emit connectProgress(5, "Preparing");
+        emit connectProgress(5, tr("Preparing"));
         bazarish::client::setConnectProgressSink(
             [this](const int percent, const std::string& text) {
-                emit connectProgress(percent, QString::fromStdString(text));
+                emit connectProgress(percent, coreText(QString::fromStdString(text)));
             });
         bazarish::client::setBootstrapNoticeSink([this](const std::string& text) {
             emit actionFailed(QString::fromStdString(text));
@@ -565,21 +586,21 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
                 continue;
             }
             if (!trimmed.startsWith(QStringLiteral("https://"))) {
-                throw std::runtime_error("a reseed address must be an https URL: "
-                    + trimmed.toStdString());
+                throw std::runtime_error(
+                    tr("A reseed address must be an https URL: %1").arg(trimmed).toStdString());
             }
             endpoint.reseeds.push_back(trimmed.toStdString());
         }
         if (endpoint.facades.empty()) {
-            throw std::runtime_error("enter at least one facade URL");
+            throw std::runtime_error(tr("Enter at least one facade URL").toStdString());
         }
         session_->connectServer(endpoint);
         emitFacadeInfo();
         // Registering publishes this account's card, which a switched-off account must not do.
         if (session_->switchedOff()) {
             bazarish::client::setConnectProgressSink({});
-            emit actionFailed("this account is switched off: the server connection is saved, "
-                              "switch the account on to connect");
+            emit actionFailed(tr("this account is switched off: the server connection is saved, "
+                                 "switch the account on to connect"));
             return;
         }
         const bool overI2p = std::any_of(endpoint.facades.begin(), endpoint.facades.end(),
@@ -587,8 +608,8 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
                 return f.host.size() > 8 && f.host.rfind(".b32.i2p") == f.host.size() - 8;
             });
         emit connectProgress(overI2p ? 8 : 20,
-            overI2p ? "Connecting over I2P — the first call builds tunnels, this takes minutes"
-                    : "Connecting to the server");
+            overI2p ? tr("Connecting over I2P — the first connection takes minutes")
+                    : tr("Connecting to the server"));
         session_->registerAccount();
     } catch (const std::exception& e) {
         bazarish::client::setConnectProgressSink({});
@@ -610,10 +631,10 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
         emit actionFailed(reason);
         return;
     }
-    emit connectProgress(100, "Connected");
+    emit connectProgress(100, tr("Connected"));
     bazarish::client::setConnectProgressSink({});
     emit connectionChanged(true, "active");
-    emit actionOk("Connected");
+    emit actionOk(tr("Connected"));
     emitFacadeInfo();
     startReceiving();
     sync();
@@ -715,7 +736,7 @@ void SessionWorker::drainMailbox()
         map["attMime"] = QString::fromStdString(m.attachmentMime);
         map["attSize"] = static_cast<qint64>(m.attachmentSize);
         map["attDurationMs"] = static_cast<qint64>(m.attachmentDurationMs);
-        if (m.contentType == "voice") {
+        if (m.contentType == "audio") {
             const std::optional<Bytes> audio = session_->voice(m.e2eId);
             if (audio.has_value()) {
                 map["attWave"] = waveformHex(*audio);
@@ -939,12 +960,14 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
     }
 }
 
-void SessionWorker::sendPicture(const QString& peer, const QString& localPath, qint64 localId,
-    const QString& e2eId, const QString& replyTo)
+void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
+    const QString& name, const QString& mime, qint64 localId, const QString& e2eId,
+    const QString& replyTo)
 {
     try {
-        session_->sendPicture(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
-            watchFor(this, localId), replyTo.toStdString());
+        session_->sendPicture(peer.toStdString(),
+            bazarish::Bytes(bytes.begin(), bytes.end()), name.toStdString(), mime.toStdString(),
+            e2eId.toStdString(), watchFor(this, localId), replyTo.toStdString());
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
@@ -953,12 +976,12 @@ void SessionWorker::sendPicture(const QString& peer, const QString& localPath, q
 void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
 {
     const QString op = beginOp(
-        QStringLiteral("service"), QStringLiteral("Read receipt"), QStringLiteral("Sending…"));
+        QStringLiteral("service"), tr("Read receipt"), tr("Sending…"));
     try {
         session_->sendReceipt(peer.toStdString(), refId.toStdString());
-        emit opDone(op, true, QStringLiteral("Receipt sent"));
+        emit opDone(op, true, tr("Receipt sent"));
     } catch (const std::exception&) {
-        emit opDone(op, false, QStringLiteral("Receipt not sent"));
+        emit opDone(op, false, tr("Receipt not sent"));
     }
 }
 
@@ -990,14 +1013,14 @@ void SessionWorker::ackPending(const QString& pendingId)
 void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
 {
     const QString op = beginOp(QStringLiteral("service"),
-        emoji.isEmpty() ? QStringLiteral("Removing reaction") : (QStringLiteral("Reaction ") + emoji),
-        QStringLiteral("Sending…"));
+        emoji.isEmpty() ? tr("Removing reaction") : tr("Reaction %1").arg(emoji),
+        tr("Sending…"));
     try {
         session_->sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
-        emit opDone(op, true, QStringLiteral("Accepted by your server"));
+        emit opDone(op, true, tr("Accepted by your server"));
     } catch (const std::exception& error) {
         bazarish::log::warn("reaction not sent: {}", error.what());
-        emit opDone(op, false, QStringLiteral("Not sent: ") + QString::fromUtf8(error.what()));
+        emit opDone(op, false, tr("Not sent: %1").arg(QString::fromUtf8(error.what())));
     }
 }
 
@@ -1057,6 +1080,16 @@ void SessionWorker::sendDelete(const QString& peer, const QString& refId)
     }
 }
 
+QString SessionWorker::coreText(const QString& reported)
+{
+    for (const char* const known : kCoreProgress) {
+        if (reported == QLatin1StringView(known)) {
+            return tr(known);
+        }
+    }
+    return reported;
+}
+
 QString SessionWorker::beginOp(const QString& kind, const QString& title, const QString& status)
 {
     const QString opId = QStringLiteral("op:") + QString::number(++opSeq_);
@@ -1079,8 +1112,8 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     const QString& intro, const QString& opId, const QString& requestId)
 {
     if (!session_) {
-        emit contactAddDone(opId, false, QStringLiteral("no account open"));
-        emit actionFailed(QStringLiteral("no account open"));
+        emit contactAddDone(opId, false, tr("no account open"));
+        emit actionFailed(tr("no account open"));
         return;
     }
     bazarish::client::Session::ContactFetchContext context;
@@ -1103,7 +1136,7 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     } catch (const std::exception& e) {
         bazarish::log::warn("contact-add not recorded: {}", e.what());
     }
-    emit contactAddStage(opId, QStringLiteral("Resolving recipient over I2P…"));
+    emit contactAddStage(opId, tr("Resolving recipient over I2P…"));
 
     if (!resolvedAdds_) {
         resolvedAdds_ = std::make_shared<ResolvedContactAddQueue>();
@@ -1144,8 +1177,8 @@ void SessionWorker::resumePendingAdds()
     for (const bazarish::client::Session::PendingContactAdd& pending :
         session_->pendingContactAdds()) {
         const QString opId = QString::fromStdString(pending.opId);
-        emit opBegin(opId, QStringLiteral("contact"), QStringLiteral("Adding a contact"),
-            QStringLiteral("Resuming after a restart…"));
+        emit opBegin(opId, QStringLiteral("contact"), tr("Adding a contact"),
+            tr("Resuming after a restart…"));
         startContactAdd(pending.request.byAlias,
             QString::fromStdString(pending.request.uriOrAlias),
             QString::fromStdString(pending.request.introText), opId,
@@ -1181,14 +1214,14 @@ void SessionWorker::drainResolvedAdds()
             continue;
         }
         try {
-            emit contactAddStage(entry.opId, QStringLiteral("Sending request…"));
+            emit contactAddStage(entry.opId, tr("Sending request…"));
             const std::string fingerprint = session_->commitContactAdd(resolved);
-            emit actionOk(QStringLiteral("Contact request sent"));
+            emit actionOk(tr("Contact request sent"));
             emit contactRequestSent(QString::fromStdString(fingerprint),
                 QString::fromStdString(resolved.introText),
                 QString::fromStdString(resolved.requestId));
             emit contactAddDone(
-                entry.opId, true, QStringLiteral("Request sent, awaiting delivery…"));
+                entry.opId, true, tr("Request sent, awaiting delivery…"));
         } catch (const bazarish::client::ApiError& e) {
             if (e.code == bazarish::ErrorCode::eContactRateLimited) {
                 emit contactAddRateLimited(entry.opId,
@@ -1213,10 +1246,10 @@ void SessionWorker::noteCommandDone()
 void SessionWorker::acceptContact(const QString& peer)
 {
     WorkerOp op(this, QStringLiteral("accept:") + peer, QStringLiteral("contact"),
-        QStringLiteral("Agreeing to a contact request"), QStringLiteral("Telling your server…"));
+        tr("Agreeing to a contact request"), tr("Telling your server…"));
     try {
         session_->acceptContactRequest(peer.toStdString());
-        op.succeed(QStringLiteral("Agreed"));
+        op.succeed(tr("Agreed"));
         emit contactAccepted(peer, true, {});
         emitContacts();
         sync();
@@ -1232,11 +1265,11 @@ void SessionWorker::requestInvite()
     try {
         if (!session_->hasOwnRouting()) {
             WorkerOp op(this, QStringLiteral("refresh-card"), QStringLiteral("dest"),
-                QStringLiteral("Refreshing your contact card"),
-                QStringLiteral("Asking your server for your destination…"));
+                tr("Refreshing your contact card"),
+                tr("Asking your server for your destination…"));
             session_->refreshOwnCard();
-            op.succeed(session_->hasOwnRouting() ? QStringLiteral("Card updated")
-                                                 : QStringLiteral("Destination not up yet"));
+            op.succeed(session_->hasOwnRouting() ? tr("Card updated")
+                                                 : tr("Destination not up yet"));
         }
         emit inviteReady(QString::fromStdString(session_->inviteUri()));
     } catch (const std::exception& e) {
@@ -1244,24 +1277,24 @@ void SessionWorker::requestInvite()
     }
 }
 
-void SessionWorker::setAvatar(const QString& localPath)
+void SessionWorker::setAvatar(const QImage& image)
 {
     if (!session_) {
         return;
     }
-    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Setting your avatar"),
-        QStringLiteral("Preparing the image…"));
+    const QString op = beginOp(
+        QStringLiteral("service"), tr("Setting your avatar"), tr("Preparing the image…"));
     try {
-        const QByteArray bytes = compressAvatarJpeg(localPath);
+        const QByteArray bytes = compressAvatarJpeg(image);
         if (bytes.isEmpty()) {
-            emit opDone(op, false, QStringLiteral("Could not read the image"));
-            emit actionFailed(QStringLiteral("Could not read the selected image."));
+            emit opDone(op, false, tr("Could not read the image"));
+            emit actionFailed(tr("Could not read the selected image."));
             return;
         }
-        emit opProgress(op, QStringLiteral("Sending to your contacts…"));
+        emit opProgress(op, tr("Sending to your contacts…"));
         session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
         emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
-        emit opDone(op, true, QStringLiteral("Avatar set"));
+        emit opDone(op, true, tr("Avatar set"));
     } catch (const std::exception& e) {
         emit opDone(op, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1273,12 +1306,12 @@ void SessionWorker::clearAvatar()
     if (!session_) {
         return;
     }
-    const QString op = beginOp(QStringLiteral("service"), QStringLiteral("Removing your avatar"),
-        QStringLiteral("Working…"));
+    const QString op
+        = beginOp(QStringLiteral("service"), tr("Removing your avatar"), tr("Working…"));
     try {
         session_->setAvatar({}, {});
         emit avatarReady(QString::fromStdString(session_->fingerprint()), {});
-        emit opDone(op, true, QStringLiteral("Avatar removed"));
+        emit opDone(op, true, tr("Avatar removed"));
     } catch (const std::exception& e) {
         emit opDone(op, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1290,7 +1323,7 @@ void SessionWorker::setDisplayName(const QString& name)
     withSession([&] {
         session_->setDisplayName(name.toStdString());
         emit renamed(QString::fromStdString(session_->displayName()));
-        emit actionOk(QStringLiteral("Name updated"));
+        emit actionOk(tr("Name updated"));
     });
 }
 
@@ -1385,7 +1418,7 @@ void SessionWorker::removeContact(const QString& peer)
         session_->removeContactEverywhere(peer.toStdString());
         emit avatarReady(peer, QByteArray());
         emitContacts();
-        emit actionOk(QStringLiteral("Contact deleted"));
+        emit actionOk(tr("Contact deleted"));
     });
 }
 
@@ -1407,6 +1440,9 @@ void SessionWorker::shutdown()
         callTimer_->stop();
     }
     downloadsCancelled_.store(true);
+    if (session_) {
+        session_->releaseI2pLinks();
+    }
     session_.reset();
     emit stopped();
 }
@@ -1415,7 +1451,7 @@ void SessionWorker::askDevicesForContacts()
 {
     withSession([&] {
         session_->askDevicesForContacts();
-        emit actionOk(QStringLiteral("Asked your other devices for your contacts"));
+        emit actionOk(tr("Asked your other devices for your contacts"));
     });
 }
 
@@ -1449,7 +1485,7 @@ void SessionWorker::clearConnectionLog()
 void SessionWorker::signLogin(const QString& challenge)
 {
     if (!session_) {
-        emit actionFailed(QStringLiteral("no account open"));
+        emit actionFailed(tr("no account open"));
         return;
     }
     try {
@@ -1465,10 +1501,10 @@ void SessionWorker::publishThisDeviceAddress()
         return;
     }
     WorkerOp op(this, QStringLiteral("i2p-address"), QStringLiteral("status"),
-        QStringLiteral("Publishing your address"), QStringLiteral("Telling your server…"));
+        tr("Publishing your address"), tr("Telling your server…"));
     try {
         session_->publishThisDeviceAddress();
-        op.succeed(QStringLiteral("Your server serves this address now"));
+        op.succeed(tr("Your server serves this address now"));
     } catch (const std::exception& error) {
         op.fail(QString::fromUtf8(error.what()));
         emit actionFailed(QString::fromUtf8(error.what()));
@@ -1482,10 +1518,10 @@ void SessionWorker::publishFreshAddress()
         return;
     }
     WorkerOp op(this, QStringLiteral("i2p-address"), QStringLiteral("status"),
-        QStringLiteral("Making a new address"), QStringLiteral("Building it…"));
+        tr("Making a new address"), tr("Building it…"));
     try {
         session_->publishFreshAddress();
-        op.succeed(QStringLiteral("A new address is published"));
+        op.succeed(tr("A new address is published"));
     } catch (const std::exception& error) {
         op.fail(QString::fromUtf8(error.what()));
         emit actionFailed(QString::fromUtf8(error.what()));
@@ -1510,7 +1546,7 @@ void SessionWorker::refreshI2pStatus()
         = hasKey ? QString::fromStdString(session_->i2pAddress()) : QString();
     emit i2pKeyState(hasKey, address);
     WorkerOp op(this, QStringLiteral("i2p-status"), QStringLiteral("status"),
-        QStringLiteral("Checking your destination"), QStringLiteral("Asking your server…"));
+        tr("Checking your destination"), tr("Asking your server…"));
     bool delegated = false;
     bool live = false;
     qint64 transientExpires = 0;
@@ -1529,22 +1565,22 @@ void SessionWorker::refreshI2pStatus()
         delegated = transientExpires != 0;
         live = s.approved() && delegated;
         if (live && serverState == QStringLiteral("building")) {
-            summary = QStringLiteral("Delegated — your server is bringing the destination up.");
+            summary = tr("Delegated — your server is bringing the destination up.");
         } else if (live) {
-            summary = QStringLiteral("Published — your destination is live.");
+            summary = tr("Published — your destination is live.");
         } else if (s.approval == "pending") {
             summary = s.registrationMessage.empty()
-                ? QStringLiteral("Awaiting operator approval — no destination until then.")
+                ? tr("Awaiting operator approval — no destination until then.")
                 : QString::fromStdString(s.registrationMessage);
         } else if (hasKey) {
-            summary = QStringLiteral("Not published — nobody can reach you yet.");
+            summary = tr("Not published — nobody can reach you yet.");
         } else {
-            summary = QStringLiteral("No destination key yet.");
+            summary = tr("No destination key yet.");
         }
     } catch (const std::exception& error) {
         bazarish::log::warn("destination status poll failed: {}", error.what());
-        summary = hasKey ? QStringLiteral("Destination key ready; connect to publish it.")
-                         : QStringLiteral("No destination key yet.");
+        summary = hasKey ? tr("Destination key ready; connect to publish it.")
+                         : tr("No destination key yet.");
     }
     op.succeed(summary);
     const Session::ApprovalState approval = session_->approvalState();
@@ -1558,13 +1594,14 @@ void SessionWorker::refreshStorageUsage()
         return;
     }
     WorkerOp op(this, QStringLiteral("storage-usage"), QStringLiteral("status"),
-        QStringLiteral("Checking your mailbox"), QStringLiteral("Asking your server…"));
+        tr("Checking your mailbox"), tr("Asking your server…"));
     const bazarish::client::StorageUsage u = session_->storageUsage();
     if (u.mailboxOk) {
-        op.succeed(QStringLiteral("Mailbox: ") + humanBytes(static_cast<qint64>(u.mailboxUsedBytes))
-            + QStringLiteral(" of ") + humanBytes(static_cast<qint64>(u.mailboxQuotaBytes)));
+        op.succeed(tr("Mailbox: %1 of %2")
+                       .arg(humanBytes(static_cast<qint64>(u.mailboxUsedBytes)),
+                           humanBytes(static_cast<qint64>(u.mailboxQuotaBytes))));
     } else {
-        op.fail(QStringLiteral("Your server did not answer"));
+        op.fail(tr("Your server did not answer"));
     }
     emit storageUsageReady(u.mailboxOk, static_cast<qulonglong>(u.mailboxUsedBytes),
         static_cast<qulonglong>(u.mailboxQuotaBytes));
@@ -1576,7 +1613,7 @@ void SessionWorker::refreshDevices()
         return;
     }
     WorkerOp op(this, QStringLiteral("devices"), QStringLiteral("status"),
-        QStringLiteral("Checking your devices"), QStringLiteral("Asking your server…"));
+        tr("Checking your devices"), tr("Asking your server…"));
     try {
         QVariantList devices;
         for (const bazarish::client::Client::DeviceEntry& device : session_->devices()) {
@@ -1586,7 +1623,7 @@ void SessionWorker::refreshDevices()
                 {QStringLiteral("queue"), static_cast<qulonglong>(device.queued)},
             });
         }
-        op.succeed(QString::number(devices.size()) + QStringLiteral(" device(s)"));
+        op.succeed(tr("Devices: %1").arg(devices.size()));
         emit devicesReady(devices);
     } catch (const std::exception& error) {
         op.fail(QString::fromUtf8(error.what()));
@@ -1601,11 +1638,11 @@ void SessionWorker::forgetDevice(const QString& clientId)
     }
     {
         WorkerOp op(this, QStringLiteral("device-forget"), QStringLiteral("status"),
-            QStringLiteral("Forgetting a device"), QStringLiteral("Telling your server…"));
+            tr("Forgetting a device"), tr("Telling your server…"));
         try {
             session_->retireDevice(clientId.toStdString());
-            op.succeed(QStringLiteral("Forgotten"));
-            emit actionOk(QStringLiteral("Device forgotten. Its unread mail is no longer held"));
+            op.succeed(tr("Forgotten"));
+            emit actionOk(tr("Device forgotten. Its unread mail is no longer held"));
         } catch (const std::exception& error) {
             op.fail(QString::fromUtf8(error.what()));
             emit actionFailed(QString::fromUtf8(error.what()));
@@ -1617,14 +1654,14 @@ void SessionWorker::forgetDevice(const QString& clientId)
 void SessionWorker::closeAccountOnServer()
 {
     if (!session_) {
-        emit accountClosed(false, QStringLiteral("this account is not open"));
+        emit accountClosed(false, tr("This account is not open"));
         return;
     }
     WorkerOp op(this, QStringLiteral("account-close"), QStringLiteral("status"),
-        QStringLiteral("Deleting the account"), QStringLiteral("Telling your server…"));
+        tr("Deleting the account"), tr("Telling your server…"));
     try {
         session_->closeAccountOnServer();
-        op.succeed(QStringLiteral("Deleted on the server"));
+        op.succeed(tr("Deleted on the server"));
         emit accountClosed(true, {});
     } catch (const bazarish::client::ApiError& error) {
         constexpr int kFirstServerErrorStatus = 500;
@@ -1632,7 +1669,7 @@ void SessionWorker::closeAccountOnServer()
             bazarish::log::info("the server has no account of ours to end ({}); only this "
                                 "device's copy goes",
                 error.what());
-            op.succeed(QStringLiteral("Already gone from the server"));
+            op.succeed(tr("Already gone from the server"));
             emit accountClosed(true, {});
             return;
         }
@@ -1651,12 +1688,12 @@ void SessionWorker::generatePersonalKey()
     }
     {
         WorkerOp op(this, QStringLiteral("dest-key"), QStringLiteral("dest"),
-            QStringLiteral("Creating your destination key"), QStringLiteral("Generating…"));
+            tr("Creating your destination key"), tr("Generating…"));
         try {
             const QString address = QString::fromStdString(session_->ensureI2pDestination());
             emit i2pKeyState(true, address);
             op.succeed(address);
-            emit actionOk("Personal I2P key created");
+            emit actionOk(tr("Personal I2P key created"));
         } catch (const std::exception& e) {
             op.fail(QString::fromUtf8(e.what()));
             emit actionFailed(QString::fromUtf8(e.what()));
@@ -1678,7 +1715,7 @@ void SessionWorker::loadPersonalKey(const QString& path)
         const bazarish::Bytes dat(
             (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
         session_->loadI2pDestination(dat);
-        emit actionOk("Personal I2P key loaded");
+        emit actionOk(tr("Personal I2P key loaded"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1692,7 +1729,7 @@ void SessionWorker::deletePersonalKey()
     }
     try {
         session_->deleteI2pDestination();
-        emit actionOk("Personal I2P key deleted");
+        emit actionOk(tr("Personal I2P key deleted"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1735,12 +1772,11 @@ void SessionWorker::publishPersonalDest()
     }
     {
         WorkerOp op(this, QStringLiteral("publish-dest"), QStringLiteral("dest"),
-            QStringLiteral("Publishing your destination"),
-            QStringLiteral("Delegating it to your server…"));
+            tr("Publishing your destination"), tr("Delegating it to your server…"));
         try {
             session_->publishRouting();
-            op.succeed(QStringLiteral("Published"));
-            emit actionOk("Routing published: your card now carries this destination");
+            op.succeed(tr("Published"));
+            emit actionOk(tr("Routing published: your card now carries this destination"));
         } catch (const std::exception& e) {
             op.fail(QString::fromUtf8(e.what()));
             emit actionFailed(QString::fromUtf8(e.what()));
@@ -1756,7 +1792,7 @@ void SessionWorker::disablePersonalDest()
     }
     try {
         session_->disableI2pDest();
-        emit actionOk("I2P destination revoked");
+        emit actionOk(tr("I2P destination revoked"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1768,7 +1804,7 @@ void SessionWorker::saveAttachment(
 {
     Session* const session = session_.get();
     if (session == nullptr) {
-        emit downloadFinished(token, false, QStringLiteral("no open session"));
+        emit downloadFinished(token, false, tr("No open session"));
         return;
     }
     const std::string e2eIdStd = e2eId.toStdString();
@@ -1788,11 +1824,11 @@ void SessionWorker::saveAttachment(
 void SessionWorker::exportAccount(const QString& path, const QString& password)
 {
     WorkerOp op(this, QStringLiteral("export"), QStringLiteral("account"),
-        QStringLiteral("Exporting your backup"), QStringLiteral("Sealing the account…"));
+        tr("Exporting your backup"), tr("Sealing the account…"));
     try {
         session_->exportAccount(path.toStdString(), password.toStdString());
-        op.succeed(QStringLiteral("Backup exported"));
-        emit actionOk("Backup exported");
+        op.succeed(tr("Backup exported"));
+        emit actionOk(tr("Backup exported"));
     } catch (const std::exception& e) {
         op.fail(QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1802,10 +1838,16 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
 void SessionWorker::rotateServingKey()
 {
     try {
-        session_->rotateServingKey([this](const std::string& stage) {
-            emit servingKeyStage(QString::fromStdString(stage));
-        });
-        emit servingKeyDone(true, QStringLiteral("The key was changed"));
+        const Session::RoutingPushResult pushed
+            = session_->rotateServingKey([this](const std::string& stage) {
+                  emit servingKeyStage(coreText(QString::fromStdString(stage)));
+              });
+        emit servingKeyDone(true,
+            pushed.failed == 0
+                ? tr("The key was changed. Contacts told: %1").arg(pushed.told)
+                : tr("The key was changed. Told: %1, unreachable: %2")
+                      .arg(pushed.told)
+                      .arg(pushed.failed));
         emitContacts();
     } catch (const std::exception& e) {
         emit servingKeyDone(false, QString::fromUtf8(e.what()));
@@ -1821,7 +1863,7 @@ void SessionWorker::startAliasErrand(const bool byHand)
 {
     if (session_ == nullptr) {
         if (byHand) {
-            emit aliasActivationDone(false, QStringLiteral("No account is open."));
+            emit aliasActivationDone(false, tr("No account is open."));
         }
         return;
     }
@@ -1891,15 +1933,14 @@ void SessionWorker::drainAliasErrands()
             continue;
         }
         if (held.empty()) {
-            emit aliasActivationDone(true, QStringLiteral("No alias is registered to this "
-                                                          "account"));
+            emit aliasActivationDone(true, tr("No alias is registered to this account"));
         } else if (result.pointed) {
-            emit aliasActivationDone(true, QStringLiteral("Your aliases now point here"));
+            emit aliasActivationDone(true, tr("Your aliases now point here"));
         } else if (session_->aliasUpdatePending()) {
-            emit aliasActivationDone(false, QStringLiteral("The registry did not take the "
-                                                           "update. It will be tried again."));
+            emit aliasActivationDone(
+                false, tr("The registry did not take the update. It will be tried again."));
         } else {
-            emit aliasActivationDone(true, QStringLiteral("Your aliases are up to date"));
+            emit aliasActivationDone(true, tr("Your aliases are up to date"));
         }
     }
 }
@@ -1919,8 +1960,8 @@ void SessionWorker::changePassphrase(const QString& passphrase)
 {
     try {
         session_->changePassphrase(passphrase.toStdString());
-        emit actionOk(passphrase.isEmpty() ? "This account is no longer password-protected"
-                                           : "Password changed");
+        emit actionOk(passphrase.isEmpty() ? tr("This account is no longer password-protected")
+                                           : tr("Password changed"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }

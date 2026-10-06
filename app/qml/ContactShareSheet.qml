@@ -38,7 +38,7 @@ Popup {
             Layout.margins: 14
             IconButton { iconName: "back"; onClicked: root.back() }
             Label {
-                text: "Share contact"
+                text: qsTr("Share contact")
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -73,8 +73,8 @@ Popup {
                     Layout.fillWidth: true
                     Layout.leftMargin: 16
                     Layout.rightMargin: 16
-                    text: "Their card: who they are and where to reach them. "
-                        + "Whoever gets it can reach them too."
+                    text: qsTr("Their card: who they are and where to reach them. "
+                        + "Whoever gets it can reach them too.")
                     color: Theme.textDim
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
@@ -94,7 +94,7 @@ Popup {
                         readOnly: true
                         wrapMode: TextArea.WrapAnywhere
                         text: root.link
-                        placeholderText: "No address held for this contact yet."
+                        placeholderText: qsTr("No address held for this contact yet.")
                         color: Theme.text
                         font.pixelSize: Theme.fontSmall
                         selectByMouse: true
@@ -108,7 +108,7 @@ Popup {
                     Layout.bottomMargin: 14
                     enabled: root.link.length > 0
                     iconName: "copy"
-                    text: root.copied ? "Copied" : "Copy contact link"
+                    text: root.copied ? qsTr("Copied") : qsTr("Copy contact link")
                     onClicked: {
                         linkArea.selectAll(); linkArea.copy(); linkArea.deselect()
                         root.copied = true

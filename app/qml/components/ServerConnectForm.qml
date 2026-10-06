@@ -116,7 +116,7 @@ ColumnLayout {
     TextField {
         id: linkField
         Layout.fillWidth: true
-        placeholderText: "Paste a bazarish://server/… link"
+        placeholderText: qsTr("Paste a bazarish://server/… link")
         color: Theme.text
         placeholderTextColor: Theme.textDim
         selectByMouse: true
@@ -135,7 +135,7 @@ ColumnLayout {
     // Opt into the per-field form when there is no link to paste.
     Label {
         visible: !form.showManual
-        text: "Enter server details manually"
+        text: qsTr("Enter server details manually")
         color: Theme.accent
         font.pixelSize: Theme.fontSmall
         font.underline: manualMa.containsMouse
@@ -156,7 +156,7 @@ ColumnLayout {
         visible: form.showManual
 
         Label {
-            text: "Facade URL(s) — tried in order, with failover:"
+            text: qsTr("Facade URL(s) — tried in order, with failover:")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
         }
@@ -168,7 +168,7 @@ ColumnLayout {
                 TextField {
                     Layout.fillWidth: true
                     text: model.url
-                    placeholderText: "http[s]://host:port/secret-path"
+                    placeholderText: qsTr("http[s]://host:port/secret-path")
                     color: Theme.text
                     placeholderTextColor: Theme.textDim
                     selectByMouse: true
@@ -185,7 +185,7 @@ ColumnLayout {
         MenuButton {
             Layout.fillWidth: true
             iconName: "plus"
-            text: "Add another facade"
+            text: qsTr("Add another facade")
             onClicked: facadeModel.append({ url: "" })
         }
 
@@ -200,8 +200,8 @@ ColumnLayout {
 
             Label {
                 text: form.reseedUrls.length === 1
-                    ? "Reseed — fetched over clearnet, before I2P is up:"
-                    : "Reseeds — fetched over clearnet, before I2P is up:"
+                    ? qsTr("Reseed — fetched over clearnet, before I2P is up:")
+                    : qsTr("Reseeds — fetched over clearnet, before I2P is up:")
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
@@ -219,12 +219,13 @@ ColumnLayout {
             }
         }
 
-        FormField { id: fpField; label: "Server fingerprint" }
+        FormField { id: fpField; label: qsTr("Server fingerprint") }
 
         Button {
             id: actionButton
             Layout.fillWidth: true
-            text: (form.session && form.session.connecting) ? "Connecting…" : form.actionText
+            text: (form.session && form.session.connecting) ? qsTr("Connecting\u2026")
+                : form.actionText
             hoverEnabled: true
             enabled: form.session && !form.session.connecting
                 && form.facadeList().length > 0 && fpField.text.trim().length > 0
