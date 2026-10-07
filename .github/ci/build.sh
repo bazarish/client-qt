@@ -1,11 +1,14 @@
 #!/bin/bash
 # Bazarish project (c) 2026
-# Configure, build and test, with everything the step printed kept for the
-# reporter beside it. One recipe for every platform the client ships to.
+# One recipe for every platform the client ships to, in the three stages a
+# workflow reports separately: what each one cost is then visible without the log.
 set -eu -o pipefail
 
 readonly kJobs=4
+readonly kTestSeconds=300
 readonly kLog=ci.log
+
+stage=${1:?usage: build.sh configure|build|test}
 
 configure=(-S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release)
 if [ "$(uname)" = "Darwin" ]; then
@@ -19,7 +22,10 @@ if [ "$(uname)" = "Darwin" ]; then
 fi
 
 {
-    cmake "${configure[@]}"
-    cmake --build build -j "$kJobs"
-    ctest --test-dir build -j "$kJobs" --output-on-failure
-} 2>&1 | tee "$kLog"
+    case "$stage" in
+    configure) cmake "${configure[@]}" ;;
+    build) cmake --build build -j "$kJobs" ;;
+    test) ctest --test-dir build -j "$kJobs" --output-on-failure --timeout "$kTestSeconds" ;;
+    *) echo "no such stage: $stage" >&2; exit 2 ;;
+    esac
+} 2>&1 | tee -a "$kLog"

@@ -42,8 +42,12 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-      - name: Build and test
-        run: .github/ci/build.sh
+      - name: Configure
+        run: .github/ci/build.sh configure
+      - name: Build
+        run: .github/ci/build.sh build
+      - name: Test
+        run: .github/ci/build.sh test
       - name: Say what broke
         if: failure()
         run: .github/ci/report.sh
@@ -89,8 +93,12 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-      - name: Build and test
-        run: .github/ci/build.sh
+      - name: Configure
+        run: .github/ci/build.sh configure
+      - name: Build
+        run: .github/ci/build.sh build
+      - name: Test
+        run: .github/ci/build.sh test
       - name: Say what broke
         if: failure()
         run: .github/ci/report.sh
@@ -115,8 +123,12 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-      - name: Build and test
-        run: .github/ci/build.sh
+      - name: Configure
+        run: .github/ci/build.sh configure
+      - name: Build
+        run: .github/ci/build.sh build
+      - name: Test
+        run: .github/ci/build.sh test
       - name: Say what broke
         if: failure()
         run: .github/ci/report.sh
