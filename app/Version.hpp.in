@@ -1,0 +1,8 @@
+// Bazarish project (c) 2026
+#pragma once
+
+namespace bazarish::app {
+
+inline constexpr char kAppVersion[] = "@BAZARISH_APP_VERSION@";
+
+}  // namespace bazarish::app

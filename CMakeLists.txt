@@ -123,6 +123,7 @@ if(Qt6_FOUND)
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Multimedia Qt6::Widgets
         Qt6::Network)
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
+        ${CMAKE_CURRENT_BINARY_DIR}
         ${QRENCODE_INCLUDE_DIR} ${SQLCIPHER_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 
@@ -166,6 +167,18 @@ if(Qt6_FOUND)
         COMMENT "Checking that every string shown has every language"
         VERBATIM)
     add_dependencies(bazarish-app check-translations)
+
+    # Stamped on every build and not at configure time: a tag made or a commit
+    # written after this build directory was configured still reaches the window.
+    add_custom_target(stamp-version ALL
+        COMMAND ${CMAKE_COMMAND}
+            -DBAZARISH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+            -DBAZARISH_VERSION_HEADER=${CMAKE_CURRENT_BINARY_DIR}/Version.hpp
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/StampVersion.cmake
+        BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/Version.hpp
+        COMMENT "Stamping the version from the git tag"
+        VERBATIM)
+    add_dependencies(bazarish-app stamp-version)
 
     # The message catalog. Carried in the binary: the build has already checked
     # that every string the code shows has every language.

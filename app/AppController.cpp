@@ -5,6 +5,7 @@
 #include "AppSettings.hpp"
 #include "I2pRouter.hpp"
 #include "Markup.hpp"
+#include "Version.hpp"
 
 #include <bazarish/I2p.hpp>
 
@@ -192,6 +193,11 @@ void AppController::declineRinging()
 QString AppController::i2pdVersion() const
 {
     return QString::fromStdString(bazarish::i2p::routerVersion());
+}
+
+QString AppController::appVersion() const
+{
+    return QString::fromLatin1(kAppVersion);
 }
 
 void AppController::loadOfflineSet()

@@ -46,6 +46,7 @@ class AppController : public QObject {
             WRITE setBackgroundTasksVisible NOTIFY backgroundTasksVisibleChanged)
     // The embedded upstream i2pd engine version (e.g.
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
     Q_PROPERTY(QString ringingPeer READ ringingPeer NOTIFY ringingChanged)
     Q_PROPERTY(QString ringingPeerFingerprint READ ringingPeerFingerprint NOTIFY ringingChanged)
@@ -63,6 +64,7 @@ public:
     bool hasAccounts() const { return haveAccounts_; }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }
     QString i2pdVersion() const;
+    QString appVersion() const;
 
     Q_INVOKABLE void refreshAccountList();
     Q_INVOKABLE void createAccount(const QString& name, const QString& passphrase);
