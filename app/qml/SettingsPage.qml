@@ -491,16 +491,16 @@ Popup {
                                         ? qsTr("Delegated until %1").arg(Qt.formatDate(
                                             new Date(root.session.i2pTransientExpires * 1000),
                                             "yyyy-MM-dd"))
-                                        : qsTr("No delegation handed to your server yet"))
+                                        : qsTr("Not delegated"))
                                     + " \u00b7 " + (serverState === "active"
-                                        ? qsTr("destination up")
+                                        ? qsTr("published")
                                         : (serverState === "building"
-                                            ? qsTr("destination coming up (minutes)")
+                                            ? qsTr("publishing")
                                             : (serverState === "expired"
-                                                ? qsTr("delegation expired")
+                                                ? qsTr("expired")
                                                 : (serverState.length > 0
-                                                    ? qsTr("no destination on the server")
-                                                    : qsTr("server not asked yet")))))
+                                                    ? qsTr("nothing on the server")
+                                                    : qsTr("no answer from the server")))))
                                 color: serverState === "active" ? Theme.success : Theme.warn
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap

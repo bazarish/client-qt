@@ -1661,12 +1661,6 @@
       "zh": "本机没有摄像头。",
       "ar": "لا توجد كاميرا في هذا الجهاز."
     },
-    "No delegation handed to your server yet": {
-      "ru": "Делегирование серверу ещё не передано",
-      "es": "Todavía no se ha entregado ninguna delegación a tu servidor",
-      "zh": "尚未向服务器交付委托",
-      "ar": "لم يُسلَّم بعدُ أي تفويض إلى خادمك"
-    },
     "No destination is being served. The router is starting.": {
       "ru": "Ни одно назначение не обслуживается. Роутер запускается.",
       "es": "No se está sirviendo ningún destino. El router está arrancando.",
@@ -1762,6 +1756,12 @@
       "es": "Conexión no establecida",
       "zh": "尚未建立连接",
       "ar": "الاتصال غير قائم"
+    },
+    "Not delegated": {
+      "ru": "Не делегировано",
+      "es": "No delegado",
+      "zh": "未委派",
+      "ar": "غير مُفوَّض"
     },
     "Not published — nobody can reach you yet.": {
       "ru": "Не опубликовано — связаться с вами пока нельзя.",
@@ -3707,24 +3707,6 @@
       "zh": "天",
       "ar": "يومًا"
     },
-    "delegation expired": {
-      "ru": "делегирование истекло",
-      "es": "la delegación ha caducado",
-      "zh": "委托已过期",
-      "ar": "انتهت صلاحية التفويض"
-    },
-    "destination coming up (minutes)": {
-      "ru": "назначение публикуется (минуты)",
-      "es": "el destino está subiendo (minutos)",
-      "zh": "目的地正在建立（需几分钟）",
-      "ar": "الوجهة قيد القيام (دقائق)"
-    },
-    "destination up": {
-      "ru": "назначение опубликовано",
-      "es": "destino activo",
-      "zh": "目的地已就绪",
-      "ar": "الوجهة قائمة"
-    },
     "disabled": {
       "ru": "выключен",
       "es": "desactivado",
@@ -3742,6 +3724,12 @@
       "es": "editado",
       "zh": "已编辑",
       "ar": "مُحرَّرة"
+    },
+    "expired": {
+      "ru": "истекло",
+      "es": "caducado",
+      "zh": "已过期",
+      "ar": "انتهت صلاحيته"
     },
     "expires %1": {
       "ru": "истекает %1",
@@ -3815,11 +3803,17 @@
       "zh": "无地址",
       "ar": "لا عنوان"
     },
-    "no destination on the server": {
-      "ru": "на сервере нет назначения",
-      "es": "no hay destino en el servidor",
-      "zh": "服务器上没有目的地",
-      "ar": "لا توجد وجهة على الخادم"
+    "no answer from the server": {
+      "ru": "ответа сервера нет",
+      "es": "sin respuesta del servidor",
+      "zh": "服务器没有应答",
+      "ar": "لا جواب من الخادم"
+    },
+    "nothing on the server": {
+      "ru": "на сервере ничего нет",
+      "es": "nada en el servidor",
+      "zh": "服务器上没有内容",
+      "ar": "لا شيء على الخادم"
     },
     "online": {
       "ru": "в сети",
@@ -3839,6 +3833,18 @@
       "zh": "保存该备份时所用的密码",
       "ar": "كلمة المرور التي حُفظت بها النسخة الاحتياطية"
     },
+    "published": {
+      "ru": "опубликовано",
+      "es": "publicado",
+      "zh": "已发布",
+      "ar": "منشور"
+    },
+    "publishing": {
+      "ru": "публикуется",
+      "es": "publicando",
+      "zh": "正在发布",
+      "ar": "جارٍ النشر"
+    },
     "renews %1": {
       "ru": "продление %1",
       "es": "renueva el %1",
@@ -3856,12 +3862,6 @@
       "es": "guarda esto antes en tu dispositivo y entonces podrá reenviarse",
       "zh": "请先把它保存到本设备，之后才能转发",
       "ar": "احفظ هذا على جهازك أولًا، عندئذٍ يمكن إعادة توجيهه"
-    },
-    "server not asked yet": {
-      "ru": "сервер ещё не спрошен",
-      "es": "todavía no se ha preguntado al servidor",
-      "zh": "尚未询问服务器",
-      "ar": "لم يُسأل الخادم بعد"
     },
     "that file is not a picture this can send": {
       "ru": "этот файл не картинка, отправить его нельзя",
