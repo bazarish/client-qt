@@ -257,7 +257,7 @@ SessionWorker::~SessionWorker()
     stopErrands();
 }
 
-void SessionWorker::startReceiving()
+void SessionWorker::startMaintenance()
 {
     if (maintenanceTimer_ == nullptr) {
         maintenanceTimer_ = new QTimer(this);
@@ -267,6 +267,11 @@ void SessionWorker::startReceiving()
     if (!maintenanceTimer_->isActive()) {
         maintenanceTimer_->start();
     }
+}
+
+void SessionWorker::startReceiving()
+{
+    startMaintenance();
     startEventWaiter();
 }
 
@@ -517,6 +522,9 @@ void SessionWorker::openAccount(
             ? QString::fromStdString(session_->i2pAddress())
             : QString());
     session_->setSwitchedOff(!startOnline);
+    if (startOnline) {
+        startMaintenance();
+    }
     if (connected && startOnline) {
         startReceiving();
         sync();
@@ -790,21 +798,25 @@ void SessionWorker::refreshCalls()
 
 void SessionWorker::maintain()
 {
-    if (!session_ || !session_->isConnected()) {
+    if (!session_) {
         return;
     }
     const bazarish::log::Slow timed("the maintenance pass", kSlowPass);
-    drainResolvedAdds();
-    drainAliasErrands();
-    {
-        const bazarish::log::Slow timedCalls("keeping the calls current", kSlowStretch);
-        refreshCalls();
-    }
     try {
         const bazarish::log::Slow timedEchoes("telling our own devices", kSlowStretch);
         session_->flushPendingEchoes();
     } catch (const std::exception& error) {
         bazarish::log::warn("self-sync of our own sends failed: {}", error.what());
+    }
+    emitContacts();
+    if (!session_->isConnected()) {
+        return;
+    }
+    drainResolvedAdds();
+    drainAliasErrands();
+    {
+        const bazarish::log::Slow timedCalls("keeping the calls current", kSlowStretch);
+        refreshCalls();
     }
     if (session_->approvalState().pending
         && nowMillis() - lastApprovalCheckMs_ >= kApprovalCheckIntervalMs) {

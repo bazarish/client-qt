@@ -225,6 +225,7 @@ private:
     QString coreText(const QString& reported);
     void reportPairing(const bazarish::client::Session::PairingEvent& event);
     int opSeq_ = 0;
+    void startMaintenance();
     void startReceiving();
     void emitFacadeInfo();
     void emitContacts();
