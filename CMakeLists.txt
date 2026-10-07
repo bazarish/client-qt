@@ -128,6 +128,9 @@ if(Qt6_FOUND)
         ${CMAKE_CURRENT_BINARY_DIR}
         ${QRENCODE_INCLUDE_DIR} ${SQLCIPHER_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
+    if(NOT QT6_IS_SHARED_LIBS_BUILD)
+        target_compile_definitions(bazarish-app PRIVATE BAZARISH_STATIC_QT)
+    endif()
 
     if(APPLE)
         # The bundle's own property list: what carries the bazarish:// scheme here,

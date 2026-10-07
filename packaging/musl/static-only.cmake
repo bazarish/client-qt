@@ -21,4 +21,4 @@ set(PKG_CONFIG_ARGN --static)
 # Appended at the end of every link line, which is the only place a static
 # library's own dependency can sit: the linker reads the line once, left to
 # right. fontconfig names expat, and the platform plugin names xcb-aux.
-set(CMAKE_CXX_STANDARD_LIBRARIES "-L$ENV{BAZARISH_PREFIX}/lib -lxcb-util -lexpat")
+set(CMAKE_CXX_STANDARD_LIBRARIES "-L/out/prefix/lib -lxcb-util -lexpat")

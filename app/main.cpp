@@ -187,6 +187,12 @@ int main(int argc, char** argv)
         }
     }
 
+#ifdef BAZARISH_STATIC_QT
+    // A statically linked musl binary has no dlopen, so no graphics driver can
+    // be loaded and the scene graph has to be drawn on the processor. Left to
+    // choose, it picks the one that cannot work here and the window stays empty.
+    qputenv("QT_QUICK_BACKEND", "software");
+#endif
     QApplication app(argc, argv);
     LinkCatcher links;
     app.installEventFilter(&links);

@@ -23,8 +23,6 @@ readonly kQtMirror=https://download.qt.io/archive/qt/6.8/6.8.2/submodules
 
 mkdir -p "$kPrefix" "$kQt" "$kWork"
 export PKG_CONFIG_PATH="$kPrefix/lib/pkgconfig"
-# Read by static-only.cmake, which names what a static library needs beside it.
-export BAZARISH_PREFIX="$kPrefix"
 export PATH="$kPrefix/bin:$PATH"
 
 step() {
@@ -223,7 +221,7 @@ if step app; then
         -DOPENSSL_ROOT_DIR="$kPrefix" \
         -DSQLCIPHER_LIBRARY="$kPrefix/lib/libsqlcipher.a" \
         -DSQLCIPHER_INCLUDE_DIR="$kPrefix/include" \
-        -DCMAKE_EXE_LINKER_FLAGS="-static -lexpat"
+        -DCMAKE_EXE_LINKER_FLAGS="-static -lexpat -Wl,-z,stack-size=8388608"
     cmake --build /out/build -j"$kJobs" --target bazarish-app
     # A static Qt carries a great deal of debug information into the binary.
     strip /out/build/bazarish-app
