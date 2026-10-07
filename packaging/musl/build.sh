@@ -64,7 +64,8 @@ if step opus; then
     fetch "https://downloads.xiph.org/releases/opus/opus-$kOpus.tar.gz" "opus-$kOpus.tar.gz"
     cd "$kWork" && rm -rf "opus-$kOpus" && tar xf "opus-$kOpus.tar.gz" && cd "opus-$kOpus"
     ./configure --prefix="$kPrefix" --enable-static --disable-shared --disable-doc
-    make -j"$kJobs" && make install
+    make -j"$kJobs"
+    make install
     cd "$kWork" && rm -rf "opus-$kOpus"
     done_with opus
 fi
@@ -93,7 +94,8 @@ if step sqlcipher; then
         --enable-tempstore=yes \
         CFLAGS="-DSQLITE_HAS_CODEC -I$kPrefix/include" \
         LDFLAGS="-L$kPrefix/lib" LIBS="-lcrypto"
-    make -j"$kJobs" && make install
+    make -j"$kJobs"
+    make install
     cd "$kWork" && rm -rf "sqlcipher-$kSqlCipher"
     done_with sqlcipher
 fi
@@ -106,7 +108,8 @@ if step alsa; then
     cd "$kWork" && rm -rf "alsa-lib-$kAlsa" && tar xf "alsa-lib-$kAlsa.tar.bz2"
     cd "alsa-lib-$kAlsa"
     ./configure --prefix="$kPrefix" --enable-static --disable-shared --disable-python
-    make -j"$kJobs" && make install
+    make -j"$kJobs"
+    make install
     cd "$kWork" && rm -rf "alsa-lib-$kAlsa"
     done_with alsa
 fi
