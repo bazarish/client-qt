@@ -15,12 +15,16 @@ readonly kSqlCipher=4.6.1
 readonly kOpus=1.5.2
 readonly kQrencode=4.1.1
 readonly kAlsa=1.2.12
+readonly kHarfbuzz=14.2.1
+readonly kXcbUtil=0.4.1
 readonly kXau=1.0.12
 readonly kX11=1.8.12
 readonly kQtMirror=https://download.qt.io/archive/qt/6.8/6.8.2/submodules
 
 mkdir -p "$kPrefix" "$kQt" "$kWork"
 export PKG_CONFIG_PATH="$kPrefix/lib/pkgconfig"
+# Read by static-only.cmake, which names what a static library needs beside it.
+export BAZARISH_PREFIX="$kPrefix"
 export PATH="$kPrefix/bin:$PATH"
 
 step() {
@@ -118,6 +122,39 @@ fi
 
 # Qt takes longer than any one sitting, so each module keeps its source and its
 # build directory until it is installed: a build that was cut short carries on.
+# The distribution's harfbuzz is built against glib, which it then needs on the
+# link line, and of glib, libintl and pcre2 Alpine has no static library at all.
+# Qt asks harfbuzz for shaping and nothing else, so the dependency goes rather
+# than three more builds. The version matches the one Qt was compiled against.
+if step harfbuzz; then
+    fetch "https://github.com/harfbuzz/harfbuzz/releases/download/$kHarfbuzz/harfbuzz-$kHarfbuzz.tar.xz" \
+        "harfbuzz-$kHarfbuzz.tar.xz"
+    cd "$kWork" && rm -rf "harfbuzz-$kHarfbuzz" && tar xf "harfbuzz-$kHarfbuzz.tar.xz"
+    cd "harfbuzz-$kHarfbuzz"
+    meson setup build --prefix="$kPrefix" --default-library=static --buildtype=release \
+        -Dglib=disabled -Dgobject=disabled -Dicu=disabled -Dcairo=disabled \
+        -Dchafa=disabled -Dgraphite=disabled -Dtests=disabled -Ddocs=disabled \
+        -Dutilities=disabled -Dfreetype=enabled
+    meson compile -C build -j "$kJobs"
+    meson install -C build
+    cd "$kWork" && rm -rf "harfbuzz-$kHarfbuzz"
+    done_with harfbuzz
+fi
+
+# The platform plugin calls into xcb-aux, which lives in xcb-util, and that one
+# Alpine ships shared only.
+if step xcbutil; then
+    fetch "https://xcb.freedesktop.org/dist/xcb-util-$kXcbUtil.tar.xz" \
+        "xcb-util-$kXcbUtil.tar.xz"
+    cd "$kWork" && rm -rf "xcb-util-$kXcbUtil" && tar xf "xcb-util-$kXcbUtil.tar.xz"
+    cd "xcb-util-$kXcbUtil"
+    ./configure --prefix="$kPrefix" --enable-static --disable-shared
+    make -j"$kJobs"
+    make install
+    cd "$kWork" && rm -rf "xcb-util-$kXcbUtil"
+    done_with xcbutil
+fi
+
 # Alpine ships these two shared only, and the xcb platform plugin needs both,
 # so they are built here like everything else the binary must carry.
 if step x11; then
@@ -186,8 +223,10 @@ if step app; then
         -DOPENSSL_ROOT_DIR="$kPrefix" \
         -DSQLCIPHER_LIBRARY="$kPrefix/lib/libsqlcipher.a" \
         -DSQLCIPHER_INCLUDE_DIR="$kPrefix/include" \
-        -DCMAKE_EXE_LINKER_FLAGS="-static"
+        -DCMAKE_EXE_LINKER_FLAGS="-static -lexpat"
     cmake --build /out/build -j"$kJobs" --target bazarish-app
+    # A static Qt carries a great deal of debug information into the binary.
+    strip /out/build/bazarish-app
     done_with app
 fi
 
