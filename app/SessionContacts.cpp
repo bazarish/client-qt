@@ -2,6 +2,7 @@
 #include "SessionController.hpp"
 
 #include "SessionShared.hpp"
+#include "SystemNotes.hpp"
 
 #include "DeliveryStatus.hpp"
 
@@ -140,15 +141,14 @@ void SessionController::onContactAddRateLimited(
     }
     if (found == refusedRequests_.end() || found->triesLeft <= 0) {
         writeConversationNote(fingerprint,
-            tr("The request was refused: the contact's server is busy."));
+            encodeSystemNote(QT_TR_NOOP("The request was refused: the contact's server is busy.")));
         emit contactRetryExhausted(fingerprint);
         return;
     }
     --found->triesLeft;
     writeConversationNote(fingerprint,
-        tr("Their server is busy. Trying again in %1 seconds (%2 left).")
-            .arg(kContactRetrySeconds)
-            .arg(found->triesLeft + 1));
+        encodeSystemNote(QT_TR_NOOP("Their server is busy. Trying again in %1 seconds (%2 left)."),
+            {QString::number(kContactRetrySeconds), QString::number(found->triesLeft + 1)}));
     const QString peer = fingerprint;
     QTimer::singleShot(kContactRetrySeconds * kMillisecondsPerSecond, this,
         [this, peer]() { retryContactRequest(peer); });
@@ -235,7 +235,7 @@ void SessionController::writeConversationNote(const QString& peer, const QString
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Received;
     note.id = store_.append(note);
-    contacts_.touch(peer, peerName(peer), text, note.ts, false);
+    contacts_.touch(peer, peerName(peer), systemNoteText(text), note.ts, false);
     showInActiveView(note, true);
 }
 
@@ -248,13 +248,13 @@ void SessionController::openContactProgress(
     StoredMessage note;
     note.peer = peer;
     note.type = QStringLiteral("system");
-    note.text = tr("Sending a contact request…");
+    note.text = encodeSystemNote(QT_TR_NOOP("Sending a contact request…"));
     note.ts = nowMillis();
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Preparing;
     note.id = store_.append(note);
     contactProgressRows_[opId] = note.id;
-    contacts_.touch(peer, name, note.text, note.ts, false);
+    contacts_.touch(peer, name, systemNoteText(note.text), note.ts, false);
     if (activePeer_ == peer) {
         showInActiveView(note, true);
         return;
@@ -304,7 +304,7 @@ void SessionController::requestInvite()
 
 void SessionController::onContactAddStage(const QString& opId, const QString& status)
 {
-    updateOperation(opId, status);
+    updateOperation(opId, systemNoteText(status));
     writeContactProgress(opId, status);
 }
 
@@ -327,7 +327,7 @@ void SessionController::onContactAccepted(const QString& peer, const bool ok,
 void SessionController::onContactAddDone(const QString& opId, bool ok, const QString& status)
 {
     emit requestForgetPendingAdd(opId);
-    finishOperation(opId, ok, status);
+    finishOperation(opId, ok, systemNoteText(status));
     const auto row = contactProgressRows_.constFind(opId);
     if (row != contactProgressRows_.cend()) {
         store_.updateStatus(row.value(), DeliveryStatus::Received);
@@ -336,7 +336,8 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
             conversation_.setTypeForId(row.value(), QStringLiteral("contact.failed"));
         }
     }
-    writeContactProgress(opId, ok ? status : tr("Could not add: %1").arg(status));
+    writeContactProgress(opId,
+        ok ? status : encodeSystemNote(QT_TR_NOOP("Could not add: %1"), {systemNoteText(status)}));
     contactProgressRows_.remove(opId);
 }
 

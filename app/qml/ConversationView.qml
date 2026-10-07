@@ -23,7 +23,7 @@ Item {
     property bool pendingDeleteOutgoing: false
 
     // Humanises a "yyyy-MM-dd" day key into a date-separator label.
-    function formatDaySection(iso) {
+    function formatDaySection(iso, language) {
         if (!iso || iso.length < 10) {
             return ""
         }
@@ -38,7 +38,7 @@ Item {
         if (diff === 1) {
             return qsTr("Yesterday")
         }
-        return d.toLocaleDateString(Qt.locale(), "d MMMM yyyy")
+        return d.toLocaleDateString(Qt.locale(language), "d MMMM yyyy")
     }
 
     function confirmDeleteMessage(msgId, e2eId, outgoing) {
@@ -349,7 +349,7 @@ Item {
                         Label {
                             id: dayLabel
                             anchors.centerIn: parent
-                            text: root.formatDaySection(sectionRoot.section)
+                            text: root.formatDaySection(sectionRoot.section, Tr.language)
                             color: Theme.textDim
                             font.pixelSize: Theme.fontSmall
                         }

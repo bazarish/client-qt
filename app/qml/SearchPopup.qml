@@ -97,7 +97,8 @@ Popup {
                         }
                         Label {
                             text: modelData.time
-                                ? new Date(modelData.time).toLocaleString(Qt.locale(), "dd MMM hh:mm")
+                                ? new Date(modelData.time).toLocaleString(
+                                    Qt.locale(Tr.language), "dd MMM hh:mm")
                                 : ""
                             color: Theme.textDim
                             font.pixelSize: 10

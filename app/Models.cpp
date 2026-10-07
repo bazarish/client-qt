@@ -2,6 +2,7 @@
 #include "Models.hpp"
 
 #include "DeliveryStatus.hpp"
+#include "SystemNotes.hpp"
 
 #include <QDateTime>
 
@@ -183,7 +184,7 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     switch (role) {
     case OutgoingRole: return m.outgoing;
     case TypeRole: return m.type;
-    case TextRole: return m.text;
+    case TextRole: return isServiceMessage(m.type) ? systemNoteText(m.text) : m.text;
     case AttNameRole: return m.attName;
     case AttMimeRole: return m.attMime;
     case AttSizeRole: return m.attSize;
@@ -237,6 +238,14 @@ void ConversationModel::setMessages(QVector<StoredMessage> messages)
     messages_ = std::move(messages);
     live_.clear();
     endResetModel();
+}
+
+void ConversationModel::retranslate()
+{
+    if (messages_.isEmpty()) {
+        return;
+    }
+    emit dataChanged(index(0), index(messages_.size() - 1), {TextRole});
 }
 
 int ConversationModel::appendMessage(const StoredMessage& message)

@@ -437,6 +437,12 @@
       "zh": "图片已损坏",
       "ar": "صورة معطوبة"
     },
+    "Building a destination to ask from…": {
+      "ru": "Создание назначения для запроса…",
+      "es": "Creando un destino para preguntar…",
+      "zh": "正在创建用于询问的目的地…",
+      "ar": "جارٍ إنشاء وجهة للسؤال منها…"
+    },
     "Building it…": {
       "ru": "Строится…",
       "es": "Construyéndola…",
@@ -1661,6 +1667,12 @@
       "zh": "该账号未注册任何别名",
       "ar": "لا اسم مستعار مسجّل لهذا الحساب"
     },
+    "No answer; asking again…": {
+      "ru": "Ответа нет. Повторный запрос…",
+      "es": "Sin respuesta; preguntando otra vez…",
+      "zh": "没有应答，正在重试…",
+      "ar": "لا جواب؛ إعادة السؤال…"
+    },
     "No camera on this machine.": {
       "ru": "На этой машине нет камеры.",
       "es": "No hay ninguna cámara en este equipo.",
@@ -2218,6 +2230,12 @@
       "es": "Contactando con el servidor del destinatario…",
       "zh": "正在联系收件人的服务器…",
       "ar": "جارٍ الوصول إلى خادم المستلم…"
+    },
+    "Reaching their server…": {
+      "ru": "Соединение с сервером контакта…",
+      "es": "Contactando con su servidor…",
+      "zh": "正在联系对方的服务器…",
+      "ar": "جارٍ الوصول إلى خادم جهة الاتصال…"
     },
     "React": {
       "ru": "Реакция",
@@ -2867,6 +2885,12 @@
       "zh": "拍照",
       "ar": "التقاط صورة"
     },
+    "Taking a destination to ask from…": {
+      "ru": "Выбор назначения для запроса…",
+      "es": "Tomando un destino para preguntar…",
+      "zh": "正在取用用于询问的目的地…",
+      "ar": "جارٍ أخذ وجهة للسؤال منها…"
+    },
     "Taking offline…": {
       "ru": "Снятие с публикации…",
       "es": "Retirando de la red…",
@@ -3442,6 +3466,12 @@
       "es": "Esperando el nuevo dispositivo",
       "zh": "等待新设备",
       "ar": "في انتظار الجهاز الجديد"
+    },
+    "Waiting for their answer…": {
+      "ru": "Ожидание ответа…",
+      "es": "Esperando su respuesta…",
+      "zh": "正在等待对方的答复…",
+      "ar": "في انتظار ردّ جهة الاتصال…"
     },
     "Waiting for their server…": {
       "ru": "Ожидание сервера контакта…",

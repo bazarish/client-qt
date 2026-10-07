@@ -47,6 +47,16 @@ adds whose card was resolved off-thread, call ring and answer timeouts, the
 echoes of this device's own sends to the account's other devices, and - each on
 its own longer guard - the approval and delegation checks.
 
+## Service messages
+
+A conversation also holds rows that are not mail: the contact request with the
+stages it goes through, a chat cleared on either side, a request the
+correspondent agreed to. Such a row is stored as the sentence it names plus the
+values that go into it - a correspondent's name, a count of attempts - and the
+sentence is put together when the row is drawn. A conversation therefore reads in
+the interface language in force, including the rows written before that language
+was chosen, and so do the dates the conversation is divided by.
+
 ## Order and time
 
 A conversation is ordered by the `sentAt` inside the sealed envelope, and by

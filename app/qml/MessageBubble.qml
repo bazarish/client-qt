@@ -959,7 +959,8 @@ Item {
                     HoverHandler { id: timeHover }
                     ToolTip.visible: timeHover.hovered && model.time > 0
                     ToolTip.text: model.time
-                        ? new Date(model.time).toLocaleString(Qt.locale(), "dddd, d MMMM yyyy, hh:mm:ss")
+                        ? new Date(model.time).toLocaleString(Qt.locale(Tr.language),
+                            "dddd, d MMMM yyyy, hh:mm:ss")
                         : ""
                 }
                 Rectangle {

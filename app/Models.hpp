@@ -100,6 +100,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void setMessages(QVector<StoredMessage> messages);
+    void retranslate();
     int appendMessage(const StoredMessage& message);
     void prependMessages(const QVector<StoredMessage>& messages);
     void appendMessages(const QVector<StoredMessage>& messages);

@@ -204,7 +204,8 @@ def check_cpp(path, text, problems):
     check_returns(path, text, problems, "tr()")
     for match in CPP_CALL.finditer(text):
         arguments = match.group(1)
-        without = re.sub(r'\btr\s*\(\s*' + JOINED + r'\s*(?:,\s*' + STRING + r'\s*)?\)',
+        without = re.sub(
+            r'\b(?:tr|QT_TR_NOOP)\s*\(\s*' + JOINED + r'\s*(?:,\s*' + STRING + r'\s*)?\)',
             "", arguments)
         for literal in BARE_STRING.findall(without):
             if is_prose(literal):

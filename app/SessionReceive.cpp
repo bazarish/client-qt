@@ -2,6 +2,7 @@
 #include "SessionController.hpp"
 
 #include "SessionShared.hpp"
+#include "SystemNotes.hpp"
 
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
@@ -242,8 +243,8 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.e2eId = incomingId;
         sys.type = QStringLiteral("system");
         sys.text = message.value("sentByUs").toBool()
-            ? tr("You cleared the chat for everyone.")
-            : tr("%1 cleared the chat.").arg(peerName(peer));
+            ? encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone."))
+            : encodeSystemNote(QT_TR_NOOP("%1 cleared the chat."), {peerName(peer)});
         sys.ts = nowMillis();
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
@@ -251,7 +252,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         if (peer == activePeer_) {
             loadLatestWindow();
         }
-        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, false);
+        contacts_.touch(peer, peerName(peer), systemNoteText(sys.text), sys.ts, false);
         contacts_.setUnread(peer, store_.unreadCount(peer));
         refreshUnreadTotal();
         return;
@@ -262,13 +263,14 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.peer = peer;
         sys.e2eId = incomingId;
         sys.type = QStringLiteral("system");
-        sys.text = tr("%1 accepted your contact request.").arg(peerName(peer));
+        sys.text = encodeSystemNote(
+            QT_TR_NOOP("%1 accepted your contact request."), {peerName(peer)});
         sys.ts = nowMillis();
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
         showInActiveView(sys, false);
-        contacts_.touch(peer, peerName(peer), sys.text, sys.ts, false);
+        contacts_.touch(peer, peerName(peer), systemNoteText(sys.text), sys.ts, false);
         contacts_.setUnread(peer, store_.unreadCount(peer));
         return;
     }

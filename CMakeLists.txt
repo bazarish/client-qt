@@ -83,6 +83,8 @@ if(Qt6_FOUND)
         app/DeliveryStatus.hpp
         app/SessionShared.cpp
         app/SessionShared.hpp
+        app/SystemNotes.cpp
+        app/SystemNotes.hpp
         app/Markup.cpp
         app/Markup.hpp
         app/Picture.cpp
@@ -322,7 +324,8 @@ if(Qt6_FOUND)
     target_compile_options(TestQrScan PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestQrScan COMMAND TestQrScan)
 
-    add_executable(TestTranscript tests/TestTranscript.cpp app/TranscriptStore.cpp)
+    add_executable(TestTranscript tests/TestTranscript.cpp app/TranscriptStore.cpp
+        app/SystemNotes.cpp)
     target_include_directories(TestTranscript PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLCIPHER_INCLUDE_DIR})
     target_link_libraries(TestTranscript PRIVATE

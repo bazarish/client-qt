@@ -8,6 +8,7 @@
 #include "FederationFetch.hpp"
 
 #include "DeliveryStatus.hpp"
+#include "SystemNotes.hpp"
 #include "DevicePairing.hpp"
 #include "Session.hpp"
 
@@ -36,6 +37,7 @@
 #include <array>
 #include <ctime>
 #include <exception>
+#include <stdexcept>
 #include <fstream>
 #include <iterator>
 #include <memory>
@@ -89,6 +91,23 @@ const char* const kCoreProgress[] = {
 
 namespace {
 constexpr std::size_t kContactRequestIdBytes = 8;
+
+QString noteForFetchStage(const bazarish::client::FetchStage stage)
+{
+    switch (stage) {
+    case bazarish::client::FetchStage::eTakingDest:
+        return encodeSystemNote(QT_TR_NOOP("Taking a destination to ask from…"));
+    case bazarish::client::FetchStage::eBuildingDest:
+        return encodeSystemNote(QT_TR_NOOP("Building a destination to ask from…"));
+    case bazarish::client::FetchStage::eReaching:
+        return encodeSystemNote(QT_TR_NOOP("Reaching their server…"));
+    case bazarish::client::FetchStage::eWaiting:
+        return encodeSystemNote(QT_TR_NOOP("Waiting for their answer…"));
+    case bazarish::client::FetchStage::eAskingAgain:
+        return encodeSystemNote(QT_TR_NOOP("No answer; asking again…"));
+    }
+    throw std::logic_error("no note for this contact-card fetch stage");
+}
 
 class WorkerOp {
 public:
@@ -1114,7 +1133,7 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     const QString& intro, const QString& opId, const QString& requestId)
 {
     if (!session_) {
-        emit contactAddDone(opId, false, tr("no account open"));
+        emit contactAddDone(opId, false, encodeSystemNote(QT_TR_NOOP("no account open")));
         emit actionFailed(tr("no account open"));
         return;
     }
@@ -1138,7 +1157,7 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     } catch (const std::exception& e) {
         bazarish::log::warn("contact-add not recorded: {}", e.what());
     }
-    emit contactAddStage(opId, tr("Resolving recipient over I2P…"));
+    emit contactAddStage(opId, encodeSystemNote(QT_TR_NOOP("Resolving recipient over I2P…")));
 
     if (!resolvedAdds_) {
         resolvedAdds_ = std::make_shared<ResolvedContactAddQueue>();
@@ -1147,10 +1166,11 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     try {
         std::thread([context = std::move(context), request = std::move(request),
                         queue = std::move(queue), opId]() {
-            bazarish::client::tellFetchStages([queue, opId](const std::string& stage) {
-                const std::lock_guard<std::mutex> lock(queue->mutex);
-                queue->stages.push_back({opId, QString::fromStdString(stage) + QStringLiteral("…")});
-            });
+            bazarish::client::tellFetchStages(
+                [queue, opId](const bazarish::client::FetchStage stage) {
+                    const std::lock_guard<std::mutex> lock(queue->mutex);
+                    queue->stages.push_back({opId, noteForFetchStage(stage)});
+                });
             bazarish::client::Session::ContactCardResolved resolved
                 = bazarish::client::Session::resolveContactCard(context, request);
             bazarish::client::tellFetchStages(nullptr);
@@ -1216,14 +1236,14 @@ void SessionWorker::drainResolvedAdds()
             continue;
         }
         try {
-            emit contactAddStage(entry.opId, tr("Sending request…"));
+            emit contactAddStage(entry.opId, encodeSystemNote(QT_TR_NOOP("Sending request…")));
             const std::string fingerprint = session_->commitContactAdd(resolved);
             emit actionOk(tr("Contact request sent"));
             emit contactRequestSent(QString::fromStdString(fingerprint),
                 QString::fromStdString(resolved.introText),
                 QString::fromStdString(resolved.requestId));
-            emit contactAddDone(
-                entry.opId, true, tr("Request sent, awaiting delivery…"));
+            emit contactAddDone(entry.opId, true,
+                encodeSystemNote(QT_TR_NOOP("Request sent, awaiting delivery…")));
         } catch (const bazarish::client::ApiError& e) {
             if (e.code == bazarish::ErrorCode::eContactRateLimited) {
                 emit contactAddRateLimited(entry.opId,

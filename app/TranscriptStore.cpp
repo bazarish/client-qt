@@ -2,6 +2,7 @@
 #include "TranscriptStore.hpp"
 
 #include "AccountKey.hpp"
+#include "SystemNotes.hpp"
 
 #include <bazarish/Bytes.hpp>
 #pragma push_macro("emit")
@@ -493,7 +494,7 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
         return hits;
     }
     Query sql(db_);
-    sql.prepare("SELECT id, ts, text, outgoing, attName FROM messages"
+    sql.prepare("SELECT id, ts, text, outgoing, attName, type FROM messages"
                 " WHERE peer = ? AND (text <> '' OR attName <> '') ORDER BY id DESC");
     sql.addBindValue(peer);
     if (!sql.exec()) {
@@ -501,7 +502,10 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
     }
     constexpr int kMaxHits = 500;
     while (sql.next() && hits.size() < kMaxHits) {
-        const QString text = sql.value(2).toString();
+        const QString stored = sql.value(2).toString();
+        const QString text = isServiceMessage(sql.value(5).toString())
+            ? systemNoteText(stored)
+            : stored;
         const QString attName = sql.value(4).toString();
         if (!text.contains(query, Qt::CaseInsensitive)
             && !attName.contains(query, Qt::CaseInsensitive)) {

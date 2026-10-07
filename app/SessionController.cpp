@@ -2,6 +2,7 @@
 #include "SessionController.hpp"
 
 #include "SessionShared.hpp"
+#include "SystemNotes.hpp"
 
 #include "I2pRouter.hpp"
 #include "Invite.hpp"
@@ -639,7 +640,8 @@ void SessionController::open(const QString& file, const QString& accountId,
     store_.failUnsentOnLoad(
         DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed);
     store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
-        DeliveryStatus::Received, tr("The contact request did not finish."));
+        DeliveryStatus::Received,
+        encodeSystemNote(QT_TR_NOOP("The contact request did not finish.")));
     emit requestOpen(file, passphrase, startOnline);
 }
 
@@ -936,6 +938,7 @@ QString SessionController::savedChatName()
 void SessionController::retranslate()
 {
     rebuildChatList();
+    conversation_.retranslate();
 }
 
 QString SessionController::attachmentLabel(const QString& type)
@@ -953,7 +956,7 @@ QString SessionController::chatPreview(const QString& peer) const
 {
     const TranscriptStore::LastMessage last = store_.lastMessage(peer);
     if (!last.text.isEmpty()) {
-        return last.text;
+        return isServiceMessage(last.type) ? systemNoteText(last.text) : last.text;
     }
     if (last.type.isEmpty()) {
         return {};
@@ -1058,7 +1061,7 @@ void SessionController::clearChat(bool forEveryone)
         StoredMessage sys;
         sys.peer = peer;
         sys.type = QStringLiteral("system");
-        sys.text = tr("You cleared the chat for everyone.");
+        sys.text = encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone."));
         sys.ts = nowMillis();
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
