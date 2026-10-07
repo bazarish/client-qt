@@ -1,0 +1,18 @@
+# Bazarish project (c) 2026
+# The environment the static client is built in: musl, a toolchain, and the
+# system libraries Qt links statically. What is built from source lives in
+# build.sh, because its flags are what make the result portable.
+FROM docker.io/library/alpine:edge
+
+RUN apk add --no-cache \
+        build-base cmake samurai perl python3 git wget tar xz \
+        linux-headers autoconf automake libtool pkgconf \
+        zlib-dev zlib-static boost-dev boost1.84-static \
+        libxcb-dev libxcb-static libxkbcommon-dev libxkbcommon-static \
+        xcb-util-dev xcb-util-image-dev xcb-util-keysyms-dev xcb-util-wm-dev \
+        xcb-util-renderutil-dev xcb-util-cursor-dev \
+        freetype-dev freetype-static fontconfig-dev fontconfig-static \
+        libpng-dev libpng-static libjpeg-turbo-dev libjpeg-turbo-static \
+        harfbuzz-dev harfbuzz-static brotli-dev brotli-static \
+        expat-dev expat-static graphite2-dev graphite2-static \
+        zstd-dev zstd-static bzip2-dev bzip2-static
