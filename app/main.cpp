@@ -31,6 +31,8 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QApplication>
+#include <QFileOpenEvent>
+#include <QEvent>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QImage>
@@ -57,6 +59,7 @@ namespace {
 
 constexpr const char* kConsoleFlag = "--console";
 
+
 void attachConsole()
 {
     if (::AttachConsole(ATTACH_PARENT_PROCESS) == 0 && ::AllocConsole() == 0) {
@@ -73,6 +76,40 @@ void attachConsole()
 #endif
 
 namespace {
+// macOS does not pass a bazarish:// link on the command line: it hands it to the
+// running application as an event, and starts no second copy to do it.
+class LinkCatcher : public QObject {
+public:
+    void handOverTo(bazarish::app::AppController& controller)
+    {
+        controller_ = &controller;
+        if (waiting_.isEmpty()) {
+            return;
+        }
+        const QString link = waiting_;
+        waiting_.clear();
+        controller_->openLink(link);
+    }
+
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        if (event->type() != QEvent::FileOpen) {
+            return QObject::eventFilter(watched, event);
+        }
+        const QString link = static_cast<QFileOpenEvent*>(event)->url().toString();
+        if (controller_ == nullptr) {
+            waiting_ = link;
+            return true;
+        }
+        controller_->openLink(link);
+        return true;
+    }
+
+private:
+    bazarish::app::AppController* controller_ = nullptr;
+    QString waiting_;
+};
 
 constexpr const char* kBrandCanvas = "#16191c";
 constexpr const char* kBrandSurface = "#1b2026";
@@ -151,6 +188,8 @@ int main(int argc, char** argv)
     }
 
     QApplication app(argc, argv);
+    LinkCatcher links;
+    app.installEventFilter(&links);
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--allow-facade-without-i2p-for-dev-purposes") == 0) {
             bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);
@@ -274,6 +313,7 @@ int main(int argc, char** argv)
     QObject::connect(&instance, &bazarish::app::SingleInstance::showRequested, &app, raiseWindow);
     QObject::connect(&instance, &bazarish::app::SingleInstance::linkRequested, &controller,
         &bazarish::app::AppController::openLink);
+    links.handOverTo(controller);
     if (!link.isEmpty()) {
         controller.openLink(link);
     }

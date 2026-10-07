@@ -57,3 +57,27 @@ command line. Two flags exist, both for cases that are not the normal one:
 
 `BAZARISH_ACCOUNTS_DIR` overrides the accounts directory, which is how a second
 copy runs beside the first.
+
+## bazarish:// links
+
+The client registers itself as the handler for the scheme and is given the link
+the way each desktop gives one: as an argument on Linux and Windows, as an open
+event on macOS, which starts no second copy. A copy that finds the account folder
+already claimed hands the link to the one holding it and exits.
+
+What the link carries decides where it opens:
+
+| Link | Where it goes |
+|---|---|
+| `bazarish://invite?…` | the add-contact sheet, with the invite in it |
+| `bazarish://server?…` | the connect form, with the server in it |
+| `bazarish://pair?…` | the wizard that enrols this device, with the link in it |
+
+The first two act on an open account, so a link that arrives before one is open
+waits for it rather than going nowhere. A link of any other shape is refused on
+screen and written to the log.
+
+The association is registered where each desktop keeps it: the desktop entry
+carries `MimeType=x-scheme-handler/bazarish` on Linux, the bundle's property list
+carries `CFBundleURLSchemes` on macOS, and the registry carries the scheme under
+`HKEY_CURRENT_USER\Software\Classes` on Windows.

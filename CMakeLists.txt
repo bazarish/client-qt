@@ -129,6 +129,18 @@ if(Qt6_FOUND)
         ${QRENCODE_INCLUDE_DIR} ${SQLCIPHER_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
 
+    if(APPLE)
+        # The bundle's own property list: what carries the bazarish:// scheme here,
+        # and the two sentences macOS shows before it lets the client at the
+        # microphone and the camera.
+        set_target_properties(bazarish-app PROPERTIES
+            MACOSX_BUNDLE_INFO_PLIST
+                ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in
+            MACOSX_BUNDLE_GUI_IDENTIFIER org.bazarish.client
+            MACOSX_BUNDLE_BUNDLE_NAME Bazarish
+            MACOSX_BUNDLE_EXECUTABLE_NAME bazarish-app)
+    endif()
+
     if(WIN32)
         # A GUI binary: started from the shell it opens no console window, and
         # --console is what attaches one when the log has to be read. The icon
