@@ -104,16 +104,10 @@ jobs:
         run: .github/ci/report.sh
 
   macos:
-    name: macOS ${{ matrix.arch }}
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: arm64
-            runner: macos-15
-          - arch: x86_64
-            runner: macos-13
+    name: macOS arm64
+    # Only the arm64 runners are to be had: an x86_64 job waits for a machine
+    # that does not come.
+    runs-on: macos-15
     steps:
       - name: Install the dependencies
         run: |
