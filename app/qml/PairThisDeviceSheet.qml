@@ -162,7 +162,7 @@ Popup {
             spacing: 8
             MenuButton {
                 visible: root.live
-                iconName: "stop"
+                iconName: "close"
                 text: qsTr("Cancel")
                 onClicked: App.cancelPairing()
             }

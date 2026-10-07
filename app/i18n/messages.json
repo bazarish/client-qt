@@ -485,6 +485,12 @@
       "zh": "取消",
       "ar": "إلغاء"
     },
+    "Cannot reach the other device.": {
+      "ru": "Другое устройство недоступно.",
+      "es": "No se puede contactar con el otro dispositivo.",
+      "zh": "无法连接另一台设备。",
+      "ar": "لا يمكن الوصول إلى الجهاز الآخر."
+    },
     "Cannot write beside the application (%1). Move it somewhere writable and try again.": {
       "ru": "Рядом с программой писать нельзя (%1). Перенесите её в каталог с правом записи. Затем повторите.",
       "es": "No se puede escribir junto a la aplicación (%1). Muévela a un sitio con permiso de escritura y reinténtalo.",
@@ -2200,6 +2206,12 @@
       "es": "Salir",
       "zh": "退出",
       "ar": "خروج"
+    },
+    "Reaching the other device": {
+      "ru": "Дозвон до другого устройства",
+      "es": "Contactando con el otro dispositivo",
+      "zh": "正在连接另一台设备",
+      "ar": "جارٍ الوصول إلى الجهاز الآخر"
     },
     "Reaching the recipient's server…": {
       "ru": "Соединение с сервером получателя…",

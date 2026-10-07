@@ -577,36 +577,54 @@ void AppController::startPairing(const QString& link, const QString& atRestPassp
     pairing_ = true;
     pairNeedsCode_ = false;
     pairProgress_ = kProgressUnknown;
-    pairStatus_ = tr("Starting the I2P router");
+    pairStatus_ = client::sharedI2pRouterIfRunning() == nullptr
+        ? tr("Starting the I2P router")
+        : tr("Building your I2P tunnels");
     emit pairingChanged();
 
     const std::vector<std::string> reseeds = parsed.reseeds;
+    const std::string dest = pairDest_.toStdString();
     const std::shared_ptr<std::atomic<bool>> cancel = pairCancel_;
-    std::thread([this, reseeds, cancel]() {
+    std::thread([this, reseeds, dest, cancel]() {
         QString failure;
         std::shared_ptr<bazarish::i2p::Endpoint> endpoint;
-        try {
-            const bool reseeding = client::applyLinkReseed(i2pRoot(), reseeds);
+        const auto say = [this, cancel](const QString& stage) {
             QMetaObject::invokeMethod(
                 this,
-                [this, cancel, reseeding]() {
+                [this, cancel, stage]() {
                     if (pairCancel_ != cancel) {
                         return;
                     }
-                    pairStatus_ = reseeding ? tr("Reseeding from the link")
-                                            : tr("Starting the I2P router");
+                    pairStatus_ = stage;
                     emit pairingChanged();
                 },
                 Qt::QueuedConnection);
+        };
+        try {
+            if (client::applyLinkReseed(i2pRoot(), reseeds)) {
+                say(tr("Reseeding from the link"));
+            }
             if (client::bootstrapI2pRouter(i2pRoot()) == client::I2pBootstrap::eEmpty) {
                 failure = tr("No reseed answered. This device has no network database.");
             } else {
+                say(tr("Building your I2P tunnels"));
                 endpoint = client::openPairLink(client::sharedI2pRouter(i2pRoot()),
                     client::tunnelPrivacy(), client::kPairingOwner);
                 if (!endpoint->waitReady(
                         std::chrono::seconds(client::kPairOwnTunnelsSeconds))) {
                     endpoint.reset();
                     failure = tr("This device could not build I2P tunnels.");
+                }
+            }
+            if (endpoint) {
+                say(tr("Reaching the other device"));
+                const std::unique_ptr<bazarish::i2p::Stream> reached
+                    = endpoint->connect(dest, std::chrono::seconds(client::kPairDialSeconds));
+                if (!reached) {
+                    endpoint.reset();
+                    failure = tr("Cannot reach the other device.");
+                } else {
+                    reached->close();
                 }
             }
         } catch (const std::exception& error) {
