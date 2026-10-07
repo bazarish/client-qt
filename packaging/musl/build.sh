@@ -15,6 +15,8 @@ readonly kSqlCipher=4.6.1
 readonly kOpus=1.5.2
 readonly kQrencode=4.1.1
 readonly kAlsa=1.2.12
+readonly kXau=1.0.12
+readonly kX11=1.8.12
 readonly kQtMirror=https://download.qt.io/archive/qt/6.8/6.8.2/submodules
 
 mkdir -p "$kPrefix" "$kQt" "$kWork"
@@ -116,6 +118,28 @@ fi
 
 # Qt takes longer than any one sitting, so each module keeps its source and its
 # build directory until it is installed: a build that was cut short carries on.
+# Alpine ships these two shared only, and the xcb platform plugin needs both,
+# so they are built here like everything else the binary must carry.
+if step x11; then
+    fetch "https://www.x.org/releases/individual/lib/libXau-$kXau.tar.xz" "libXau-$kXau.tar.xz"
+    cd "$kWork" && rm -rf "libXau-$kXau" && tar xf "libXau-$kXau.tar.xz"
+    cd "libXau-$kXau"
+    ./configure --prefix="$kPrefix" --enable-static --disable-shared
+    make -j"$kJobs"
+    make install
+    cd "$kWork" && rm -rf "libXau-$kXau"
+
+    fetch "https://www.x.org/releases/individual/lib/libX11-$kX11.tar.xz" "libX11-$kX11.tar.xz"
+    cd "$kWork" && rm -rf "libX11-$kX11" && tar xf "libX11-$kX11.tar.xz"
+    cd "libX11-$kX11"
+    ./configure --prefix="$kPrefix" --enable-static --disable-shared --disable-specs \
+        --without-xmlto --without-fop --without-xsltproc
+    make -j"$kJobs"
+    make install
+    cd "$kWork" && rm -rf "libX11-$kX11"
+    done_with x11
+fi
+
 qt_module() {
     name=$1
     if ! step "qt-$name"; then
@@ -156,11 +180,8 @@ qt_module qtsvg
 
 if step app; then
     rm -rf /out/build
-    # Nothing shared may creep in: the suffix list is what find_library looks
-    # for, and a dependency found as a .so would refuse to link into this.
     cmake -S /host -B /out/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
-        -DOPENSSL_USE_STATIC_LIBS=ON -DBoost_USE_STATIC_LIBS=ON \
+        -DCMAKE_PROJECT_INCLUDE=/host/packaging/musl/static-only.cmake \
         -DCMAKE_PREFIX_PATH="$kQt;$kPrefix" \
         -DOPENSSL_ROOT_DIR="$kPrefix" \
         -DSQLCIPHER_LIBRARY="$kPrefix/lib/libsqlcipher.a" \

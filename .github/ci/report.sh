@@ -15,8 +15,9 @@ fi
 
 # In the order that tells the most: a failed check or a compiler error names the
 # place, and a test run names the tests it failed.
-said=$(grep -aE 'CHECK failed|error:|error [A-Z][0-9]|FAILED:|CMake Error' "$kLog" \
-    | tail -n "$kLines")
+# Two lines of context: a CMake message says what it is about on the next line.
+said=$(grep -aE -A 2 'CHECK failed|error:|error [A-Z][0-9]|FAILED:|CMake Error' "$kLog" \
+    | grep -v '^--$' | tail -n "$kLines")
 failures=$(sed -n '/The following tests FAILED/,$p' "$kLog")
 if [ -n "$failures" ]; then
     said=$(printf '%s\n%s' "$said" "$failures")
