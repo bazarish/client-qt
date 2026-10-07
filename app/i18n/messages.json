@@ -89,29 +89,11 @@
       "zh": "%1 倍",
       "ar": "⁦%1⁩×"
     },
-    "1 hop each way. The fastest and the weakest: one router carries the tunnel and learns your address.": {
-      "ru": "Один узел в каждую сторону. Самый быстрый и самый слабый вариант. Туннель идёт через один роутер, и этот роутер узнаёт ваш адрес.",
-      "es": "1 salto en cada sentido. El más rápido y el más débil: un solo router lleva el túnel y conoce tu dirección.",
-      "zh": "每个方向 1 跳。最快也最脆弱：单台路由承载隧道，并知道你的地址。",
-      "ar": "قفزة واحدة في كل اتجاه. الأسرع والأضعف: موجّه واحد يحمل النفق ويعرف عنوانك."
-    },
-    "1 or 2 hops each way, picked per tunnel.": {
-      "ru": "Один или два узла в каждую сторону, выбор для каждого туннеля.",
-      "es": "1 o 2 saltos en cada sentido, elegidos por túnel.",
-      "zh": "每个方向 1 到 2 跳，逐条隧道选择。",
-      "ar": "قفزة أو قفزتان في كل اتجاه، تُختار لكل نفق."
-    },
     "1.5x": {
       "ru": "1,5×",
       "es": "1,5×",
       "zh": "1.5 倍",
       "ar": "‎1.5×"
-    },
-    "3 hops each way. Slowest to build and to answer.": {
-      "ru": "Три узла в каждую сторону. Дольше всех строится и отвечает.",
-      "es": "3 saltos en cada sentido. El más lento en construirse y en responder.",
-      "zh": "每个方向 3 跳。建立和响应都最慢。",
-      "ar": "ثلاث قفزات في كل اتجاه. الأبطأ في البناء والاستجابة."
     },
     "A SOCKS5 proxy the router reaches the I2P network through. Leave empty to connect straight out.": {
       "ru": "Прокси SOCKS5, через который роутер подключается к сети I2P. Оставьте пустым, чтобы подключаться напрямую.",
@@ -1877,6 +1859,18 @@
       "zh": "开启后，联系人可以把你的联系方式分享给别人。关闭后不再发放授权。联系人那边的「分享」按钮会说明这一点。",
       "ar": "عند التشغيل يمكن لجهة الاتصال أن تشارك بطاقتك مع غيرها. وعند الإيقاف لا يُمنح أي تصريح. ويوضّح زر «المشاركة» عندها ذلك."
     },
+    "One or two transit routers, chosen at random.": {
+      "ru": "Один или два транзитных узла, случайным образом.",
+      "es": "Uno o dos routers de tránsito, elegidos al azar.",
+      "zh": "一个或两个中转路由，随机选择。",
+      "ar": "موجّه عابر واحد أو موجّهان، يُختاران عشوائيًا."
+    },
+    "One transit router in the tunnel between you and the rest of the network. The fastest.": {
+      "ru": "Один транзитный узел в туннеле между вами и остальной сетью. Самый быстрый вариант.",
+      "es": "Un router de tránsito en el túnel entre tú y el resto de la red. El más rápido.",
+      "zh": "隧道中只有一个中转路由，位于你与网络其余部分之间。最快。",
+      "ar": "موجّه عابر واحد في النفق بينك وبين بقية الشبكة. الأسرع."
+    },
     "Online": {
       "ru": "В сети",
       "es": "En línea",
@@ -3256,6 +3250,12 @@
       "es": "Este mensaje de voz está dañado.",
       "zh": "这条语音消息已损坏。",
       "ar": "هذه الرسالة الصوتية تالفة."
+    },
+    "Three transit routers in the tunnels, the I2P default. The highest latency.": {
+      "ru": "Три транзитных узла в туннелях, стандарт I2P. Самая большая задержка.",
+      "es": "Tres routers de tránsito en los túneles, el valor predeterminado de I2P. La mayor latencia.",
+      "zh": "隧道中三个中转路由，I2P 的默认值。延迟最高。",
+      "ar": "ثلاثة موجّهات عابرة في الأنفاق، وهو إعداد I2P الافتراضي. أعلى زمن استجابة."
     },
     "To %1": {
       "ru": "Кому: %1",

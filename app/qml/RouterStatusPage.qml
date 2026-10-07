@@ -26,13 +26,13 @@ Popup {
 
     function privacyText(level) {
         if (level === 0) {
-            return qsTr("1 hop each way. The fastest and the weakest: one router carries "
-                + "the tunnel and learns your address.")
+            return qsTr("One transit router in the tunnel between you and the rest of the "
+                + "network. The fastest.")
         }
         if (level === 1) {
-            return qsTr("1 or 2 hops each way, picked per tunnel.")
+            return qsTr("One or two transit routers, chosen at random.")
         }
-        return qsTr("3 hops each way. Slowest to build and to answer.")
+        return qsTr("Three transit routers in the tunnels, the I2P default. The highest latency.")
     }
 
     // Poll the router diagnostics while the window is open.
@@ -211,12 +211,10 @@ Popup {
                 }
                 Hairline { }
 
-                // Tunnel hop length. Each hop is another router that has to be
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                // subverted to trace a connection, and another leg of latency.
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4
