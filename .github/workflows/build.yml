@@ -38,7 +38,7 @@ jobs:
             qt6-base-dev qt6-declarative-dev qt6-multimedia-dev \
             libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
             libboost-dev libboost-program-options-dev libgl-dev libxkbcommon-dev
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 0
@@ -85,7 +85,7 @@ jobs:
             ${{ matrix.package }}-qt6-declarative
             ${{ matrix.package }}-qt6-multimedia
             ${{ matrix.package }}-python
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 0
@@ -111,7 +111,7 @@ jobs:
         run: |
           brew update --quiet
           brew install --quiet ninja qt openssl@3 sqlcipher opus qrencode boost
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 0
