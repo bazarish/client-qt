@@ -85,6 +85,7 @@ jobs:
             ${{ matrix.package }}-qt6-base
             ${{ matrix.package }}-qt6-declarative
             ${{ matrix.package }}-qt6-multimedia
+            ${{ matrix.package }}-qt6-tools
             ${{ matrix.package }}-python
       - uses: actions/checkout@v5
         with:
