@@ -366,10 +366,10 @@
       "ar": "رجوع"
     },
     "Back up this account": {
-      "ru": "Сделать резервную копию",
-      "es": "Hacer una copia de seguridad",
+      "ru": "Сделать резервную копию аккаунта",
+      "es": "Hacer una copia de seguridad de la cuenta",
       "zh": "创建账号备份",
-      "ar": "إنشاء نسخة احتياطية"
+      "ar": "إنشاء نسخة احتياطية للحساب"
     },
     "Background activity": {
       "ru": "Фоновые операции",
@@ -1324,12 +1324,6 @@
       "es": "Generando…",
       "zh": "正在生成…",
       "ar": "جارٍ التوليد…"
-    },
-    "Give somebody one of these and they can reach you. Copy link still hands over the full descriptor.": {
-      "ru": "Дайте кому-нибудь одно из них, и он сможет к вам обратиться. «Скопировать ссылку» передаёт дескриптор целиком.",
-      "es": "Dale a alguien uno de estos y podrá alcanzarte. «Copiar el enlace» sigue entregando el descriptor completo.",
-      "zh": "把其中之一给别人，对方便能联系到你。“复制链接”依旧交出完整的描述符。",
-      "ar": "أعطِ أحدهم واحدًا من هذه فيستطيع بلوغك. ولا يزال «نسخ الرابط» يسلّم الواصف كاملًا."
     },
     "Give the router's address first.": {
       "ru": "Сначала укажите адрес роутера.",
@@ -3562,6 +3556,12 @@
       "es": "Estás iniciando sesión en",
       "zh": "你正在登录",
       "ar": "أنت تسجّل الدخول إلى"
+    },
+    "You can be added as a contact by alias or by the full descriptor.": {
+      "ru": "Вас можно добавить в контакты по алиасу или по полному дескриптору.",
+      "es": "Se te puede añadir como contacto por alias o por el descriptor completo.",
+      "zh": "别人可以通过别名或完整描述符把你加为联系人。",
+      "ar": "يمكن إضافتك كجهة اتصال عبر اسم مستعار أو عبر الواصف الكامل."
     },
     "You can write to this contact": {
       "ru": "Вы можете писать этому контакту",

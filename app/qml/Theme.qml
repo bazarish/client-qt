@@ -66,6 +66,7 @@ QtObject {
 
     readonly property int fontSmall: 12
     readonly property int fontBody: 14
+    readonly property int fontLarge: 16
     readonly property int fontTitle: 17
 
     // Monospace everywhere (Roboto Mono, bundled; falls back to the system mono).

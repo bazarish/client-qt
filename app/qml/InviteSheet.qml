@@ -16,6 +16,7 @@ Popup {
     readonly property var aliasRows: session ? session.aliasHoldings : []
     readonly property string aliasNote: session ? session.aliasNote : ""
     readonly property bool hasAliases: aliasRows.length > 0
+    property bool showQr: false
     // Return to the page this opened from (Settings); the close button exits.
     signal back()
 
@@ -27,6 +28,7 @@ Popup {
         // Straight from what this account stores - no request, works offline.
         uri = session ? session.ownInvite : ""
         unavailable = ""
+        showQr = false
         // Only when there is nothing stored is anything asked of the server: that
         // means the card never picked up the serving key.
         if (session && uri.length === 0) {
@@ -57,12 +59,17 @@ Popup {
             Layout.fillWidth: true
             IconButton { iconName: "back"; onClicked: root.back() }
             Label { text: qsTr("My invite"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; Layout.fillWidth: true }
+            IconButton {
+                iconName: "qr"
+                visible: root.hasAliases && root.hasInvite
+                tint: root.showQr ? Theme.accent : Theme.textDim
+                onClicked: root.showQr = !root.showQr
+            }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
         Label {
             text: root.hasAliases
-                ? qsTr("Give somebody one of these and they can reach you. Copy link still hands "
-                    + "over the full descriptor.")
+                ? qsTr("You can be added as a contact by alias or by the full descriptor.")
                 : qsTr("Anyone with the link can reach you.")
             color: Theme.textDim
             wrapMode: Text.Wrap
@@ -101,7 +108,7 @@ Popup {
         // that is meant to be handed over is copied. Only names that point at
         // this identity are here; the rest reach nobody.
         ColumnLayout {
-            visible: root.hasAliases
+            visible: root.hasAliases && !root.showQr
             Layout.fillWidth: true
             spacing: 4
             Repeater {
@@ -113,11 +120,9 @@ Popup {
                     Layout.fillWidth: true
                     spacing: 8
                     Timer { id: aliasCopied; interval: 1500; onTriggered: aliasRow.copied = false }
-                    Label {
-                        text: "!" + aliasRow.modelData.alias
-                        color: aliasRow.copied ? Theme.green : Theme.text
-                        elide: Text.ElideRight
+                    RowLayout {
                         Layout.fillWidth: true
+                        spacing: 0
                         HoverHandler { cursorShape: Qt.PointingHandCursor }
                         TapHandler {
                             onTapped: {
@@ -129,6 +134,18 @@ Popup {
                                 aliasCopied.restart()
                             }
                         }
+                        Label {
+                            text: "!"
+                            color: Theme.textFaint
+                            font.pixelSize: Theme.fontLarge
+                        }
+                        Label {
+                            text: aliasRow.modelData.alias
+                            color: aliasRow.copied ? Theme.green : Theme.text
+                            font.pixelSize: Theme.fontLarge
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
                     }
                     Label {
                         text: aliasRow.copied ? qsTr("Copied to clipboard") : aliasRow.modelData.term
@@ -139,7 +156,7 @@ Popup {
             }
         }
         Label {
-            visible: root.hasAliases && root.aliasNote.length > 0
+            visible: root.hasAliases && !root.showQr && root.aliasNote.length > 0
             Layout.fillWidth: true
             text: root.aliasNote
             color: Theme.warn
@@ -151,7 +168,7 @@ Popup {
         // and the link side by side (scan or copy).
         QrView {
             Layout.alignment: Qt.AlignHCenter
-            visible: root.hasInvite && !root.hasAliases
+            visible: root.hasInvite && (!root.hasAliases || root.showQr)
             text: root.uri
         }
         // The box stays even with nothing in it: an invite that is not ready yet
