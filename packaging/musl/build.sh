@@ -133,7 +133,10 @@ qt_module() {
                 -system-libjpeg -fontconfig -xcb -openssl-linked \
                 -- -DOPENSSL_ROOT_DIR="$kPrefix" -DCMAKE_PREFIX_PATH="$kPrefix"
         else
-            "$kQt/bin/qt-configure-module" "$source" -- -DCMAKE_PREFIX_PATH="$kPrefix"
+            # glslang, bundled in qtshadertools, names uint32_t without including
+            # <cstdint>, which compiles only where another header drags it in.
+            "$kQt/bin/qt-configure-module" "$source" -- \
+                -DCMAKE_PREFIX_PATH="$kPrefix" -DCMAKE_CXX_FLAGS="-include cstdint"
         fi
     fi
     cmake --build . --parallel "$kJobs"
