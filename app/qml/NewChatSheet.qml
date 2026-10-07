@@ -16,6 +16,11 @@ Popup {
     property string prefillTarget: ""
     property bool scanning: false
     readonly property string kGreeting: "Hi, add me?"
+    readonly property int kInputLine: 38
+    readonly property int kInputLimit: 120
+    readonly property int kInputPadding: 18
+    readonly property int inputHeight: Math.min(kInputLimit,
+        Math.max(kInputLine, Math.ceil(targetText.contentHeight) + kInputPadding))
 
     readonly property string typed: targetText.text.trim()
     readonly property bool byAlias: root.typed.startsWith(App.aliasSigil)
@@ -59,6 +64,19 @@ Popup {
     // to opens right away and the progress is written into it, so this sheet has
     // nothing left to wait for: it fires the request and closes.
     function startRequest(fn) { errorText = ""; fn(); close() }
+
+    function submit() {
+        if (root.typed.length === 0 || root.problem.length > 0) {
+            return
+        }
+        root.startRequest(function() {
+            if (root.byAlias) {
+                root.session.addByAlias(root.typed, intro.text)
+            } else {
+                root.session.addByInvite(root.typed, intro.text)
+            }
+        })
+    }
 
     // Primary action button: near-white accent fill, darker on hover/press, so it
     // reads clearly against the dark popup (the default Basic Button blends in).
@@ -109,7 +127,7 @@ Popup {
             spacing: 8
             ScrollView {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 90
+                Layout.preferredHeight: root.inputHeight
                 TextArea {
                     id: targetText
                     wrapMode: TextArea.WrapAnywhere
@@ -117,6 +135,8 @@ Popup {
                     placeholderTextColor: Theme.textDim
                     placeholderText: qsTr("bazarish://invite?...  or  %1alias").arg(App.aliasSigil)
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                    Keys.onReturnPressed: function(event) { root.submit(); event.accepted = true }
+                    Keys.onEnterPressed: function(event) { root.submit(); event.accepted = true }
                 }
             }
             IconButton {
@@ -194,13 +214,7 @@ Popup {
             ActionButton {
                 text: qsTr("Send request")
                 enabled: root.typed.length > 0 && root.problem.length === 0
-                onClicked: root.startRequest(function() {
-                    if (root.byAlias) {
-                        root.session.addByAlias(root.typed, intro.text)
-                    } else {
-                        root.session.addByInvite(root.typed, intro.text)
-                    }
-                })
+                onClicked: root.submit()
             }
         }
     }
