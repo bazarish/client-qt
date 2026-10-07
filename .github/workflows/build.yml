@@ -64,8 +64,10 @@ jobs:
         include:
           - arch: amd64
             runner: windows-latest
-            msystem: MINGW64
-            package: mingw-w64-x86_64
+            # UCRT64 rather than the deprecated MINGW64: the C runtime is the one
+            # Windows ships, and it is what the arm64 environment uses too.
+            msystem: UCRT64
+            package: mingw-w64-ucrt-x86_64
           - arch: arm64
             runner: windows-11-arm
             msystem: CLANGARM64
