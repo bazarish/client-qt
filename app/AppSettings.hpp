@@ -9,6 +9,7 @@ namespace bazarish::app {
 
 std::filesystem::path accountsRoot();
 std::filesystem::path appRoot();
+std::filesystem::path i2pRoot();
 
 class AppSettings {
 public:

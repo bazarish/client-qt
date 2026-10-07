@@ -28,7 +28,25 @@ What this client settles, where the protocol leaves it open:
 
 ## Starting a second device
 
-A device starts from a backup of the account (`AccountStorage.md`). Restoring is
+A device starts from the same account bundle either way: a file the user carries,
+or a transfer over I2P with no file at all. The protocol side of the second route
+is in `DeviceSync.md`; the choices this client makes are here.
+
+**Over I2P.** The account block of the settings offers it, and so does the screen
+that creates an account. The device that has the account publishes a one-shot
+blinded destination, shows the link and a four-digit code, and waits. The code is
+not in the link: it is asked for before the bundle is built, so the link can be
+copied anywhere, and ten wrong codes close the address. The bundle is held in
+memory on both sides and sealed with the code the user typed, so a correct code
+cannot then fail to open it. The new device keeps the link, its tunnels and its
+connection across a wrong code - only the user cancelling ends it.
+
+The receiving device may have no network database yet, which is the one thing it
+cannot fix by itself. A reseed address in the link covers that: it is used to
+start the router, and only when the router has not started yet and the database
+is empty. A router that is already running has a database and is left alone.
+
+**From a file.** Restoring is
 slow enough to be worth watching - the bundle is unsealed, a keyed database is
 written, and the account is laid out - so it runs off the interface thread and is
 listed in the background-activity panel while it does, like every other slow

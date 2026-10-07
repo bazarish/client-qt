@@ -244,6 +244,12 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::downloadFinished, this,
         &SessionController::onDownloadFinished);
     connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportAccount);
+    connect(this, &SessionController::requestStartPairing, worker_,
+        &SessionWorker::startPairing);
+    connect(this, &SessionController::requestStopPairing, worker_, &SessionWorker::stopPairing);
+    connect(worker_, &SessionWorker::pairOfferReady, this, &SessionController::onPairOfferReady);
+    connect(worker_, &SessionWorker::pairStage, this, &SessionController::onPairStage);
+    connect(worker_, &SessionWorker::pairFinished, this, &SessionController::onPairFinished);
     connect(this, &SessionController::requestChangePassphrase, worker_,
         &SessionWorker::changePassphrase);
     connect(this, &SessionController::requestRotateServingKey, worker_,
@@ -1536,6 +1542,59 @@ void SessionController::changePassphrase(const QString& passphrase)
 {
     accountPassphrase_ = passphrase;
     emit requestChangePassphrase(passphrase);
+}
+
+void SessionController::startPairing()
+{
+    pairUri_.clear();
+    pairCode_.clear();
+    pairStatus_ = tr("Making an address");
+    pairProgress_ = kProgressUnknown;
+    pairing_ = true;
+    emit pairingChanged();
+    emit requestStartPairing();
+}
+
+void SessionController::stopPairing()
+{
+    pairing_ = false;
+    pairUri_.clear();
+    pairCode_.clear();
+    pairStatus_.clear();
+    pairProgress_ = kProgressUnknown;
+    emit pairingChanged();
+    emit requestStopPairing();
+}
+
+void SessionController::onPairOfferReady(const QString& uri, const QString& code)
+{
+    pairUri_ = uri;
+    pairCode_ = code;
+    emit pairingChanged();
+}
+
+void SessionController::onPairStage(const QString& status, const double progress)
+{
+    if (!pairing_) {
+        return;
+    }
+    pairStatus_ = status;
+    pairProgress_ = progress;
+    emit pairingChanged();
+}
+
+void SessionController::onPairFinished(const bool ok, const QString& status)
+{
+    if (!pairing_) {
+        return;
+    }
+    pairing_ = false;
+    pairUri_.clear();
+    pairCode_.clear();
+    pairStatus_ = status;
+    pairProgress_ = kProgressUnknown;
+    emit pairingChanged();
+    emit pairingFinished(ok);
 }
 
 void SessionController::exportAccount(const QString& fileUrl, const QString& password)

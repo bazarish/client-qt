@@ -6,6 +6,8 @@
 #include "Ringtone.hpp"
 #include "SessionController.hpp"
 
+#include "DevicePairing.hpp"
+
 #include <bazarish/Address.hpp>
 #include <bazarish/Limits.hpp>
 
@@ -25,6 +27,10 @@ namespace bazarish::app {
 class AppController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QObject* operations READ operations CONSTANT)
+    Q_PROPERTY(QString pairStatus READ pairStatus NOTIFY pairingChanged)
+    Q_PROPERTY(double pairProgress READ pairProgress NOTIFY pairingChanged)
+    Q_PROPERTY(bool pairNeedsCode READ pairNeedsCode NOTIFY pairingChanged)
+    Q_PROPERTY(bool pairing READ pairing NOTIFY pairingChanged)
     Q_PROPERTY(int activeOperations READ activeOperations NOTIFY operationsChanged)
     Q_PROPERTY(QObject* accountList READ accountList CONSTANT)
     Q_PROPERTY(QObject* accounts READ accounts CONSTANT)
@@ -67,6 +73,14 @@ public:
 
     Q_INVOKABLE void importAccount(const QString& name, const QString& fileUrl,
         const QString& password, const QString& atRestPassphrase);
+    Q_INVOKABLE QString pairLinkProblem(const QString& link) const;
+    Q_INVOKABLE void startPairing(const QString& link, const QString& atRestPassphrase);
+    Q_INVOKABLE void submitPairCode(const QString& code);
+    Q_INVOKABLE void cancelPairing();
+    QString pairStatus() const { return pairStatus_; }
+    double pairProgress() const { return pairProgress_; }
+    bool pairNeedsCode() const { return pairNeedsCode_; }
+    bool pairing() const { return pairing_; }
     Q_INVOKABLE void prepareForExit();
     Q_INVOKABLE void closeAllSessions();
 
@@ -113,6 +127,8 @@ public:
 
 signals:
     void operationsChanged();
+    void pairingChanged();
+    void pairingFinished(bool ok);
     void portableChanged();
     void restartRequired(const QString& message);
     void accountListChanged();
@@ -162,6 +178,15 @@ private:
     void persistSettings() const;
 
     std::unique_ptr<client::AccountManager> manager_;
+    void failPairing(const QString& reason);
+    QString pairStatus_;
+    double pairProgress_ = kProgressUnknown;
+    bool pairNeedsCode_ = false;
+    bool pairing_ = false;
+    QString pairDest_;
+    QString pairAtRest_;
+    std::shared_ptr<std::atomic<bool>> pairCancel_;
+    std::shared_ptr<bazarish::i2p::Endpoint> pairEndpoint_;
     AccountListModel accountList_;
     QVector<AccountListRow> accountRows_;
     QString notificationTitle(const SessionController* ctrl) const;

@@ -82,14 +82,12 @@ Popup {
 
                     Label {
                         visible: !I2p.running && !I2p.gatewayEnabled
-                        // A router with nobody to ask cannot start the network: it
-                        // is the bootstrap it waits for, not its own start-up.
                         text: I2p.samEnabled
                             ? qsTr("No router answering at the address below.")
                             : I2p.knownRouters < I2p.minKnownRouters
                             ? qsTr("No network database yet. The router starts once your server "
                               + "hands it one, the first time an account connects.")
-                            : qsTr("Router is starting up.")
+                            : qsTr("The router starts when an account connects.")
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
 

@@ -26,7 +26,7 @@ QML_TEXT_CALLS = ("showError", "showToast", "showInfo")
 
 # Members and variables whose value is read out as prose later.
 CPP_TEXT_FIELDS = ("title", "status", "text", "summary", "connectPhase_", "servingKeyStage_",
-    "status_", "preview")
+    "status_", "preview", "pairStatus_")
 
 # Signals and helpers whose argument reaches the user as prose.
 CPP_TEXT_CALLS = (
@@ -35,7 +35,7 @@ CPP_TEXT_CALLS = (
     "updateOperation", "finishOperation", "sendResult", "contactAddDone", "openFailed",
     "accountClosed", "servingKeyDone", "servingKeyStage", "aliasActivationDone",
     "contactAddStage", "downloadFinished", "connectProgress", "beginOp", "succeed", "fail",
-    "beginStorageWork", "settleUnfinishedNotes", "writeContactProgress", "aliasHoldings",
+    "beginStorageWork", "settleUnfinishedNotes", "writeContactProgress", "aliasHoldings", "pairStage", "pairFinished",
 )
 
 STRING = r'"(?:[^"\\]|\\.)*"'

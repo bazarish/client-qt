@@ -108,6 +108,27 @@ Item {
             background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
             contentItem: IconLabel { name: "folder"; color: Theme.accent }
         }
+
+        Button {
+            Layout.fillWidth: true
+            text: qsTr("Connect this device online")
+            hoverEnabled: true
+            onClicked: {
+                if (passField.text !== confirmField.text) {
+                    errorLabel.text = qsTr("Passphrases do not match.")
+                    return
+                }
+                errorLabel.text = ""
+                pairThisDeviceSheet.open()
+            }
+            background: Rectangle { radius: 10; color: Theme.surface; border.color: Theme.border }
+            contentItem: IconLabel { name: "devices"; color: Theme.accent }
+        }
+    }
+
+    PairThisDeviceSheet {
+        id: pairThisDeviceSheet
+        atRestPassphrase: passField.text
     }
 
     FileDialog {

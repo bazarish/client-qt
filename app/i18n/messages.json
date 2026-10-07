@@ -665,6 +665,18 @@
       "zh": "关闭",
       "ar": "إغلاق"
     },
+    "Code": {
+      "ru": "Код",
+      "es": "Código",
+      "zh": "验证码",
+      "ar": "الرمز"
+    },
+    "Code for the new device": {
+      "ru": "Код для нового устройства",
+      "es": "Código para el nuevo dispositivo",
+      "zh": "新设备的验证码",
+      "ar": "رمز الجهاز الجديد"
+    },
     "Compact the database (VACUUM)": {
       "ru": "Сжать базу (VACUUM)",
       "es": "Compactar la base de datos (VACUUM)",
@@ -700,6 +712,24 @@
       "es": "Conectar",
       "zh": "连接",
       "ar": "اتصال"
+    },
+    "Connect a new device online": {
+      "ru": "Подключить новое устройство онлайн",
+      "es": "Conectar un nuevo dispositivo en línea",
+      "zh": "在线连接新设备",
+      "ar": "توصيل جهاز جديد عبر الشبكة"
+    },
+    "Connect this device": {
+      "ru": "Подключение устройства",
+      "es": "Conectar este dispositivo",
+      "zh": "连接本设备",
+      "ar": "توصيل هذا الجهاز"
+    },
+    "Connect this device online": {
+      "ru": "Подключить это устройство онлайн",
+      "es": "Conectar este dispositivo en línea",
+      "zh": "在线连接本设备",
+      "ar": "توصيل هذا الجهاز عبر الشبكة"
     },
     "Connect to a server": {
       "ru": "Подключиться к серверу",
@@ -1175,6 +1205,12 @@
       "zh": "手动填写服务器信息",
       "ar": "إدخال بيانات الخادم يدويًا"
     },
+    "Enter the code shown on the other device": {
+      "ru": "Введите код с другого устройства",
+      "es": "Introduzca el código del otro dispositivo",
+      "zh": "输入另一台设备上显示的验证码",
+      "ar": "أدخل الرمز الظاهر على الجهاز الآخر"
+    },
     "Every account closes, the data is moved, and Bazarish has to be started again.": {
       "ru": "Все аккаунты будут закрыты, данные перенесены. Bazarish потребуется запустить заново.",
       "es": "Se cierran todas las cuentas, los datos se mueven y hay que iniciar Bazarish de nuevo.",
@@ -1523,6 +1559,12 @@
       "zh": "正在创建新地址",
       "ar": "جارٍ إنشاء عنوان جديد"
     },
+    "Making an address": {
+      "ru": "Создание адреса",
+      "es": "Creando una dirección",
+      "zh": "正在创建地址",
+      "ar": "جارٍ إنشاء عنوان"
+    },
     "Manage": {
       "ru": "Управление",
       "es": "Gestionar",
@@ -1600,6 +1642,12 @@
       "es": "Conversación nueva",
       "zh": "新对话",
       "ar": "محادثة جديدة"
+    },
+    "New device": {
+      "ru": "Новое устройство",
+      "es": "Nuevo dispositivo",
+      "zh": "新设备",
+      "ar": "جهاز جديد"
     },
     "New message from %1": {
       "ru": "Новое сообщение от %1",
@@ -1690,6 +1738,12 @@
       "es": "No hay sesión abierta",
       "zh": "没有打开的会话",
       "ar": "لا جلسة مفتوحة"
+    },
+    "No reseed answered. This device has no network database.": {
+      "ru": "Ни один ресид не ответил. У этого устройства нет базы сети.",
+      "es": "Ningún resembrado respondió. Este dispositivo no tiene base de datos de red.",
+      "zh": "没有引导地址应答。本设备没有网络数据库。",
+      "ar": "لم يُجب أي عنوان تهيئة. لا توجد قاعدة بيانات شبكة على هذا الجهاز."
     },
     "No router answering at the address below.": {
       "ru": "По адресу ниже роутер не отвечает.",
@@ -1918,6 +1972,12 @@
       "es": "Pega el reto",
       "zh": "粘贴质询",
       "ar": "الصِق التحدي"
+    },
+    "Paste the pairing link, or scan it from the other device.": {
+      "ru": "Вставьте ссылку подключения или отсканируйте её с другого устройства.",
+      "es": "Pega el enlace de vinculación o escanéalo desde el otro dispositivo.",
+      "zh": "粘贴配对链接，或从另一台设备扫描。",
+      "ar": "الصِق رابط الاقتران أو امسحه من الجهاز الآخر."
     },
     "Permanently delete this account? ": {
       "ru": "Удалить этот аккаунт навсегда? ",
@@ -2189,6 +2249,18 @@
       "zh": "回执已发送",
       "ar": "أُرسل الإشعار"
     },
+    "Receive": {
+      "ru": "Принять",
+      "es": "Recibir",
+      "zh": "接收",
+      "ar": "استلام"
+    },
+    "Receiving the account": {
+      "ru": "Приём аккаунта",
+      "es": "Recibiendo la cuenta",
+      "zh": "正在接收账号",
+      "ar": "جارٍ استلام الحساب"
+    },
     "Record": {
       "ru": "Записать",
       "es": "Grabar",
@@ -2315,6 +2387,12 @@
       "zh": "Reseed——在 I2P 启动前经由普通互联网获取：",
       "ar": "إعادة البذر — تُجلب عبر الإنترنت العادي قبل قيام I2P:"
     },
+    "Reseeding from the link": {
+      "ru": "Ресид по адресу из ссылки",
+      "es": "Resembrando desde el enlace",
+      "zh": "正在按链接中的地址引导",
+      "ar": "تهيئة من العنوان في الرابط"
+    },
     "Reseeds — fetched over clearnet, before I2P is up:": {
       "ru": "Ресиды — загружаются по обычному интернету до запуска I2P:",
       "es": "Reseeds: se descargan por la internet ordinaria, antes de levantar I2P:",
@@ -2380,12 +2458,6 @@
       "es": "Clic derecho para copiar y guardar",
       "zh": "右键可复制和保存",
       "ar": "بالزر الأيمن تنسخ وتحفظ"
-    },
-    "Router is starting up.": {
-      "ru": "Роутер запускается.",
-      "es": "El router está arrancando.",
-      "zh": "路由正在启动。",
-      "ar": "الموجّه قيد البدء."
     },
     "Routers known": {
       "ru": "Известно роутеров",
@@ -2464,6 +2536,12 @@
       "es": "Mensajes guardados",
       "zh": "已保存的消息",
       "ar": "الرسائل المحفوظة"
+    },
+    "Scan this code on the new device, or paste the link there.": {
+      "ru": "Отсканируйте код на новом устройстве или вставьте туда ссылку.",
+      "es": "Escanea este código en el nuevo dispositivo, o pega allí el enlace.",
+      "zh": "在新设备上扫描此码，或在那里粘贴链接。",
+      "ar": "امسح هذا الرمز على الجهاز الجديد أو الصِق الرابط هناك."
     },
     "Sealing the account…": {
       "ru": "Аккаунт запечатывается…",
@@ -2566,6 +2644,12 @@
       "es": "Enviando la solicitud…",
       "zh": "正在发送请求…",
       "ar": "جارٍ إرسال الطلب…"
+    },
+    "Sending the account": {
+      "ru": "Передача аккаунта",
+      "es": "Enviando la cuenta",
+      "zh": "正在发送账号",
+      "ar": "جارٍ إرسال الحساب"
     },
     "Sending to the recipient's server…": {
       "ru": "Отправка на сервер получателя…",
@@ -2711,6 +2795,12 @@
       "zh": "正在启动 I2P 路由",
       "ar": "جارٍ تشغيل موجّه I2P"
     },
+    "Starting with the built-in reseeds": {
+      "ru": "Запуск со встроенными ресидами",
+      "es": "Iniciando con los resembrados integrados",
+      "zh": "改用内置引导地址启动",
+      "ar": "البدء بعناوين التهيئة المدمجة"
+    },
     "Starting — building tunnels…": {
       "ru": "Запускается — туннели строятся…",
       "es": "Arrancando: construyendo túneles…",
@@ -2837,6 +2927,12 @@
       "zh": "账号将在服务器上终止，并从本设备消失。此操作无法撤销。\n\n仅从本设备移除只会忘记本设备：账号及其邮件保留。",
       "ar": "يُنهى الحساب على الخادم ويذهب من هذا الجهاز. ولا يمكن التراجع.\n\nأما الإزالة من هذا الجهاز فتنسى هذا الجهاز وحده: يبقى الحساب وبريده."
     },
+    "The account is on this device": {
+      "ru": "Аккаунт на этом устройстве",
+      "es": "La cuenta está en este dispositivo",
+      "zh": "账号已在本设备上",
+      "ar": "الحساب على هذا الجهاز"
+    },
     "The account was not deleted": {
       "ru": "Аккаунт не удалён",
       "es": "La cuenta no se ha eliminado",
@@ -2933,6 +3029,12 @@
       "zh": "此账号最近的 %1 条事件，最新的在前。",
       "ar": "آخر ⁦%1⁩ من أحداث هذا الحساب، الأحدث أولًا."
     },
+    "The new device has the account": {
+      "ru": "Новое устройство получило аккаунт",
+      "es": "El nuevo dispositivo tiene la cuenta",
+      "zh": "新设备已获得账号",
+      "ar": "الجهاز الجديد لديه الحساب"
+    },
     "The panel on the right shows the progress.": {
       "ru": "Ход операции виден на панели справа.",
       "es": "El progreso se ve en el panel de la derecha.",
@@ -2974,6 +3076,12 @@
       "es": "El router está en %1.",
       "zh": "路由位于 %1。",
       "ar": "الموجّه عند ⁦%1⁩."
+    },
+    "The router starts when an account connects.": {
+      "ru": "Роутер запускается при подключении аккаунта.",
+      "es": "El router se inicia cuando una cuenta se conecta.",
+      "zh": "账号连接时路由器启动。",
+      "ar": "يبدأ الموجّه عند اتصال حساب."
     },
     "The two do not match.": {
       "ru": "Они не совпадают.",
@@ -3083,6 +3191,12 @@
       "zh": "该联系人已关闭被转介给他人。",
       "ar": "أوقفت جهة الاتصال هذه تمريرها إلى آخرين."
     },
+    "This device could not build I2P tunnels.": {
+      "ru": "Это устройство не построило туннели I2P.",
+      "es": "Este dispositivo no pudo construir túneles I2P.",
+      "zh": "本设备未能建立 I2P 隧道。",
+      "ar": "لم يتمكن هذا الجهاز من بناء أنفاق I2P."
+    },
     "This invite carries no address to reach that account.": {
       "ru": "В приглашении нет адреса для связи с этим аккаунтом.",
       "es": "Esta invitación no trae ninguna dirección para contactar con esa cuenta.",
@@ -3094,6 +3208,12 @@
       "es": "Es un enlace externo. Tu proveedor de internet y el sitio verán tu dirección real.",
       "zh": "这是一个外部链接。你的网络服务商和目标站点会看到你的真实地址。",
       "ar": "هذا رابط خارجي. سيرى مزوّد الإنترنت والموقع عنوانك الحقيقي."
+    },
+    "This is not a pairing link.": {
+      "ru": "Это не ссылка подключения.",
+      "es": "Este no es un enlace de vinculación.",
+      "zh": "这不是配对链接。",
+      "ar": "هذا ليس رابط اقتران."
     },
     "This is what the messages and their pictures take. The file on disk is larger. Trimming happens only on this device.": {
       "ru": "Это объём самих сообщений и их картинок. Файл на диске больше. Подрезка касается только этого устройства.",
@@ -3299,6 +3419,12 @@
       "zh": "等待审核",
       "ar": "في انتظار الموافقة"
     },
+    "Waiting for the new device": {
+      "ru": "Ожидание нового устройства",
+      "es": "Esperando el nuevo dispositivo",
+      "zh": "等待新设备",
+      "ar": "في انتظار الجهاز الجديد"
+    },
     "Waiting for their server…": {
       "ru": "Ожидание сервера контакта…",
       "es": "Esperando a su servidor…",
@@ -3352,6 +3478,18 @@
       "es": "Procesando…",
       "zh": "正在处理…",
       "ar": "جارٍ المعالجة…"
+    },
+    "Wrong code %1 times. The address is closed.": {
+      "ru": "Неверный код %1 раз. Адрес закрыт.",
+      "es": "Código incorrecto %1 veces. La dirección está cerrada.",
+      "zh": "验证码错误 %1 次。地址已关闭。",
+      "ar": "رمز غير صحيح ⁦%1⁩ مرات. العنوان مغلق."
+    },
+    "Wrong code. %1 tries left": {
+      "ru": "Неверный код. Осталось попыток: %1",
+      "es": "Código incorrecto. Intentos restantes: %1",
+      "zh": "验证码错误。剩余尝试次数：%1",
+      "ar": "رمز غير صحيح. المحاولات المتبقية: ⁦%1⁩"
     },
     "Yesterday": {
       "ru": "Вчера",
@@ -3538,6 +3676,12 @@
       "es": "bazarish://invite?…  o  %1alias",
       "zh": "bazarish://invite?…  或  %1别名",
       "ar": "‎bazarish://invite?…‎  أو  ⁦%1⁩اسم"
+    },
+    "bazarish://pair?...": {
+      "ru": "bazarish://pair?…",
+      "es": "bazarish://pair?…",
+      "zh": "bazarish://pair?…",
+      "ar": "‎bazarish://pair?…‎"
     },
     "connecting": {
       "ru": "подключается",

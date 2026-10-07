@@ -532,6 +532,199 @@ void AppController::cancelUnlock()
     refreshAccounts();
 }
 
+QString AppController::pairLinkProblem(const QString& link) const
+{
+    const QString typed = link.trimmed();
+    if (typed.isEmpty()) {
+        return {};
+    }
+    try {
+        (void)bazarish::parsePairLink(typed.toStdString());
+    } catch (const std::exception&) {
+        return tr("This is not a pairing link.");
+    }
+    return {};
+}
+
+void AppController::failPairing(const QString& reason)
+{
+    pairing_ = false;
+    pairNeedsCode_ = false;
+    pairCancel_.reset();
+    pairEndpoint_.reset();
+    pairStatus_ = reason;
+    pairProgress_ = kProgressUnknown;
+    emit pairingChanged();
+    emit pairingFinished(false);
+}
+
+void AppController::startPairing(const QString& link, const QString& atRestPassphrase)
+{
+    if (pairing_) {
+        return;
+    }
+    bazarish::PairLink parsed;
+    try {
+        parsed = bazarish::parsePairLink(link.trimmed().toStdString());
+    } catch (const std::exception& error) {
+        failPairing(QString::fromUtf8(error.what()));
+        return;
+    }
+
+    pairDest_ = QString::fromStdString(parsed.dest);
+    pairAtRest_ = atRestPassphrase;
+    pairCancel_ = std::make_shared<std::atomic<bool>>(false);
+    pairing_ = true;
+    pairNeedsCode_ = false;
+    pairProgress_ = kProgressUnknown;
+    pairStatus_ = tr("Starting the I2P router");
+    emit pairingChanged();
+
+    const std::vector<std::string> reseeds = parsed.reseeds;
+    const std::shared_ptr<std::atomic<bool>> cancel = pairCancel_;
+    std::thread([this, reseeds, cancel]() {
+        QString failure;
+        std::shared_ptr<bazarish::i2p::Endpoint> endpoint;
+        try {
+            const bool reseeding = client::applyLinkReseed(i2pRoot(), reseeds);
+            QMetaObject::invokeMethod(
+                this,
+                [this, cancel, reseeding]() {
+                    if (pairCancel_ != cancel) {
+                        return;
+                    }
+                    pairStatus_ = reseeding ? tr("Reseeding from the link")
+                                            : tr("Starting the I2P router");
+                    emit pairingChanged();
+                },
+                Qt::QueuedConnection);
+            if (client::bootstrapI2pRouter(i2pRoot()) == client::I2pBootstrap::eEmpty) {
+                failure = tr("No reseed answered. This device has no network database.");
+            } else {
+                endpoint = client::openPairLink(client::sharedI2pRouter(i2pRoot()),
+                    client::tunnelPrivacy(), client::kPairingOwner);
+                if (!endpoint->waitReady(
+                        std::chrono::seconds(client::kPairOwnTunnelsSeconds))) {
+                    endpoint.reset();
+                    failure = tr("This device could not build I2P tunnels.");
+                }
+            }
+        } catch (const std::exception& error) {
+            failure = QString::fromUtf8(error.what());
+        }
+        QMetaObject::invokeMethod(
+            this,
+            [this, cancel, endpoint, failure]() {
+                if (pairCancel_ != cancel) {
+                    return;
+                }
+                if (!failure.isEmpty()) {
+                    failPairing(failure);
+                    return;
+                }
+                pairEndpoint_ = endpoint;
+                pairNeedsCode_ = true;
+                pairStatus_ = tr("Enter the code shown on the other device");
+                emit pairingChanged();
+            },
+            Qt::QueuedConnection);
+    }).detach();
+}
+
+void AppController::submitPairCode(const QString& code)
+{
+    if (!pairNeedsCode_ || !pairEndpoint_ || !client::isPairCode(code.toStdString())) {
+        return;
+    }
+    pairNeedsCode_ = false;
+    pairProgress_ = kProgressUnknown;
+    pairStatus_ = tr("Receiving the account");
+    emit pairingChanged();
+
+    const std::shared_ptr<bazarish::i2p::Endpoint> endpoint = pairEndpoint_;
+    const std::shared_ptr<std::atomic<bool>> cancel = pairCancel_;
+    const std::string dest = pairDest_.toStdString();
+    const std::string want = code.toStdString();
+    const QString atRest = pairAtRest_;
+    std::thread([this, endpoint, cancel, dest, want, atRest]() {
+        QString failure;
+        bool wrongCode = false;
+        int triesLeft = 0;
+        std::string id;
+        try {
+            const client::PairProgressFn onProgress
+                = [this, cancel](const std::uint64_t done, const std::uint64_t total) {
+                      QMetaObject::invokeMethod(
+                          this,
+                          [this, cancel, done, total]() {
+                              if (pairCancel_ != cancel) {
+                                  return;
+                              }
+                              pairProgress_ = total > 0 ? static_cast<double>(done)
+                                      / static_cast<double>(total)
+                                                        : kProgressUnknown;
+                              emit pairingChanged();
+                          },
+                          Qt::QueuedConnection);
+                  };
+            const client::PairFetchResult got
+                = client::fetchPairBundle(*endpoint, dest, want, onProgress, *cancel);
+            if (got.wrongCode) {
+                wrongCode = true;
+                triesLeft = got.triesLeft;
+            } else {
+                id = manager_->import(std::string{}, got.bundle, want, atRest.toStdString()).id;
+            }
+        } catch (const std::exception& error) {
+            failure = QString::fromUtf8(error.what());
+        }
+        QMetaObject::invokeMethod(
+            this,
+            [this, cancel, failure, wrongCode, triesLeft, id, atRest]() {
+                if (pairCancel_ != cancel) {
+                    return;
+                }
+                if (wrongCode) {
+                    pairNeedsCode_ = true;
+                    pairStatus_ = tr("Wrong code. %1 tries left").arg(triesLeft);
+                    emit pairingChanged();
+                    return;
+                }
+                if (!failure.isEmpty()) {
+                    failPairing(failure);
+                    return;
+                }
+                pairing_ = false;
+                pairCancel_.reset();
+                pairEndpoint_.reset();
+                pairProgress_ = 1.0;
+                pairStatus_ = tr("The account is on this device");
+                emit pairingChanged();
+                emit pairingFinished(true);
+                refreshAccountList();
+                openSession(QString::fromStdString(id), atRest, /*makeActive=*/true);
+            },
+            Qt::QueuedConnection);
+    }).detach();
+}
+
+void AppController::cancelPairing()
+{
+    if (!pairing_) {
+        return;
+    }
+    if (pairCancel_) {
+        pairCancel_->store(true);
+    }
+    pairCancel_.reset();
+    pairEndpoint_.reset();
+    pairing_ = false;
+    pairNeedsCode_ = false;
+    pairStatus_.clear();
+    pairProgress_ = kProgressUnknown;
+    emit pairingChanged();
+}
+
 void AppController::importAccount(const QString& name, const QString& fileUrl,
     const QString& password, const QString& atRestPassphrase)
 {

@@ -98,7 +98,6 @@ signals:
     void samRefused(const QString& reason);
 
 private:
-    void reconcileRouter();
 
     bool loggingEnabled_ = false;
     int privacyLevel_ = kMinimalPrivacyLevel;

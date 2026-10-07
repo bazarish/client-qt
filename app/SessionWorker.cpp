@@ -8,6 +8,7 @@
 #include "FederationFetch.hpp"
 
 #include "DeliveryStatus.hpp"
+#include "DevicePairing.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -66,6 +67,7 @@ using bazarish::client::Session;
 
 const char* const kCoreProgress[] = {
     QT_TR_NOOP("Starting the I2P router"),
+    QT_TR_NOOP("Starting with the built-in reseeds"),
     QT_TR_NOOP("Building your I2P tunnels"),
     QT_TR_NOOP("I2P tunnels are still building"),
     QT_TR_NOOP("Looking up the server's I2P address"),
@@ -1819,6 +1821,65 @@ void SessionWorker::saveAttachment(
             }
         }
     });
+}
+
+void SessionWorker::reportPairing(const bazarish::client::Session::PairingEvent& event)
+{
+    using Stage = bazarish::client::Session::PairingStage;
+    switch (event.stage) {
+    case Stage::ePublishing:
+        emit pairStage(tr("Publishing the address"), kProgressUnknown);
+        break;
+    case Stage::eWaiting:
+        emit pairStage(tr("Waiting for the new device"), kProgressUnknown);
+        break;
+    case Stage::eWrongCode:
+        emit pairStage(
+            tr("Wrong code. %1 tries left").arg(bazarish::client::kMaxWrongCodes
+                - event.wrongCodes),
+            kProgressUnknown);
+        break;
+    case Stage::eSending:
+        emit pairStage(tr("Sending the account"),
+            event.total > 0 ? static_cast<double>(event.done) / static_cast<double>(event.total)
+                            : kProgressUnknown);
+        break;
+    case Stage::eDone:
+        emit pairFinished(true, tr("The new device has the account"));
+        break;
+    case Stage::eRefused:
+        emit pairFinished(false,
+            tr("Wrong code %1 times. The address is closed.").arg(event.wrongCodes));
+        break;
+    case Stage::eFailed:
+        emit pairFinished(false, QString::fromStdString(event.error));
+        break;
+    }
+}
+
+void SessionWorker::startPairing()
+{
+    if (!session_) {
+        return;
+    }
+    try {
+        const bazarish::client::Session::PairingOffer offer = session_->startPairing(
+            [this](const bazarish::client::Session::PairingEvent& event) {
+                reportPairing(event);
+            });
+        emit pairOfferReady(
+            QString::fromStdString(offer.uri), QString::fromStdString(offer.code));
+    } catch (const std::exception& e) {
+        emit pairFinished(false, QString::fromUtf8(e.what()));
+    }
+}
+
+void SessionWorker::stopPairing()
+{
+    if (!session_) {
+        return;
+    }
+    session_->stopPairing();
 }
 
 void SessionWorker::exportAccount(const QString& path, const QString& password)

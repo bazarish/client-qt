@@ -226,6 +226,8 @@ if(Qt6_FOUND)
             app/qml/VoiceRecorder.qml
             app/qml/PhotoCapture.qml
             app/qml/NewChatSheet.qml
+        app/qml/PairDeviceSheet.qml
+        app/qml/PairThisDeviceSheet.qml
             app/qml/InviteSheet.qml
             app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml

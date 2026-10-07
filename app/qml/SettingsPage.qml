@@ -790,6 +790,12 @@ Popup {
                     MenuButton { Layout.fillWidth: true; iconName: "save"; text: qsTr("Back up this account"); onClicked: exportDialog.open() }
                     MenuButton {
                         Layout.fillWidth: true
+                        iconName: "devices"
+                        text: qsTr("Connect a new device online")
+                        onClicked: pairDeviceSheet.open()
+                    }
+                    MenuButton {
+                        Layout.fillWidth: true
                         iconName: "disk"
                         text: qsTr("Disk usage")
                         onClicked: { root.close(); root.showStorage() }
@@ -1158,5 +1164,10 @@ Popup {
             color: Theme.text
             wrapMode: Text.Wrap
         }
+    }
+
+    PairDeviceSheet {
+        id: pairDeviceSheet
+        session: root.session
     }
 }

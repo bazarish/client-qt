@@ -28,11 +28,6 @@
 namespace bazarish::app {
 
 namespace {
-std::filesystem::path i2pRoot()
-{
-    return appRoot() / "i2p";
-}
-
 bazarish::i2p::Privacy privacyForLevel(const int level)
 {
     switch (level) {
@@ -84,7 +79,6 @@ I2pController::I2pController(QObject* parent)
     client::setI2pEnabled(true);
     bazarish::i2p::setI2pLogging(loggingEnabled_);
     client::setTunnelPrivacy(privacyForLevel(privacyLevel_));
-    reconcileRouter();
     refresh();
 }
 
@@ -180,12 +174,6 @@ void I2pController::saveProxy(const QString& host, const int port, const bool re
         std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
     }
     refresh();
-}
-
-void I2pController::reconcileRouter()
-{
-    const std::filesystem::path dir = i2pRoot();
-    std::thread([dir]() { client::reconcileI2pRouter(dir); }).detach();
 }
 
 void I2pController::setLoggingEnabled(bool on)

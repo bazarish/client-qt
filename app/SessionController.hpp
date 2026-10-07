@@ -37,6 +37,11 @@ class SessionController : public QObject {
     Q_PROPERTY(QString connectPhase READ connectPhase NOTIFY connectStateChanged)
     Q_PROPERTY(int connectPercent READ connectPercent NOTIFY connectStateChanged)
     Q_PROPERTY(QString connectError READ connectError NOTIFY connectStateChanged)
+    Q_PROPERTY(QString pairUri READ pairUri NOTIFY pairingChanged)
+    Q_PROPERTY(QString pairCode READ pairCode NOTIFY pairingChanged)
+    Q_PROPERTY(QString pairStatus READ pairStatus NOTIFY pairingChanged)
+    Q_PROPERTY(double pairProgress READ pairProgress NOTIFY pairingChanged)
+    Q_PROPERTY(bool pairing READ pairing NOTIFY pairingChanged)
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredReseeds READ configuredReseeds NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
@@ -324,6 +329,13 @@ public:
     Q_INVOKABLE bool fileExists(const QString& path) const;
     Q_INVOKABLE void showInFolder(const QString& path) const;
     Q_INVOKABLE void exportAccount(const QString& fileUrl, const QString& password);
+    Q_INVOKABLE void startPairing();
+    Q_INVOKABLE void stopPairing();
+    QString pairUri() const { return pairUri_; }
+    QString pairCode() const { return pairCode_; }
+    QString pairStatus() const { return pairStatus_; }
+    double pairProgress() const { return pairProgress_; }
+    bool pairing() const { return pairing_; }
     Q_INVOKABLE void changePassphrase(const QString& passphrase);
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     Q_INVOKABLE void generatePersonalKey();
@@ -452,6 +464,10 @@ signals:
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
         qint64 token);
     void requestExport(const QString& path, const QString& password);
+    void requestStartPairing();
+    void requestStopPairing();
+    void pairingChanged();
+    void pairingFinished(bool ok);
     void requestChangePassphrase(const QString& passphrase);
     void requestRotateServingKey();
     void requestActivateAliasServicing();
@@ -512,6 +528,9 @@ private slots:
     void onServedFinished(const QString& peer, const QString& e2eId, bool ok,
         const QString& error);
     void onDownloadFinished(qint64 token, bool ok, const QString& error);
+    void onPairOfferReady(const QString& uri, const QString& code);
+    void onPairStage(const QString& status, double progress);
+    void onPairFinished(bool ok, const QString& status);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSendPhase(qint64 localId, const QString& phase);
     void onContactRequestSent(
@@ -668,6 +687,11 @@ private:
     QString connectPhase_;
     int connectPercent_ = 0;
     QString connectError_;
+    QString pairUri_;
+    QString pairCode_;
+    QString pairStatus_;
+    double pairProgress_ = kProgressUnknown;
+    bool pairing_ = false;
     bool i2pHasKey_ = false;
     bool i2pEnabled_ = false;
     bool i2pActive_ = false;

@@ -45,6 +45,11 @@ std::filesystem::path appRoot()
     return accountsRoot().parent_path();
 }
 
+std::filesystem::path i2pRoot()
+{
+    return appRoot() / "i2p";
+}
+
 AppSettings& AppSettings::instance()
 {
     static AppSettings settings;

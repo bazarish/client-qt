@@ -32,6 +32,8 @@ class QTimer;
 
 namespace bazarish::app {
 
+inline constexpr double kProgressUnknown = -1.0;
+
 struct ContactState {
     enum Request { eAnswered, eWaiting, eAccepting };
 
@@ -121,6 +123,8 @@ public slots:
     void shutdown();
     void saveAttachment(const QString& peer, const QString& e2eId, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
+    void startPairing();
+    void stopPairing();
     void changePassphrase(const QString& passphrase);
     void rotateServingKey();
     void activateAliasServicing();
@@ -156,6 +160,9 @@ signals:
         const QString& status);
     void opDone(const QString& opId, bool ok, const QString& status);
     void opProgress(const QString& opId, const QString& status);
+    void pairOfferReady(const QString& uri, const QString& code);
+    void pairStage(const QString& status, double progress);
+    void pairFinished(bool ok, const QString& status);
     void accountClosed(bool ok, const QString& error);
     void accountSettings(bool acceptCalls, bool sendReceipts, bool sharingAllowed);
     void servingKeyStage(const QString& stage);
@@ -216,6 +223,7 @@ signals:
 private:
     QString beginOp(const QString& kind, const QString& title, const QString& status);
     QString coreText(const QString& reported);
+    void reportPairing(const bazarish::client::Session::PairingEvent& event);
     int opSeq_ = 0;
     void startReceiving();
     void emitFacadeInfo();
