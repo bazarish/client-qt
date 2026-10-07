@@ -1,0 +1,126 @@
+# Bazarish project (c) 2026
+name: Build
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BAZARISH_JOBS: 4
+
+jobs:
+  linux:
+    name: Linux ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    container: debian:trixie
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Install the toolchain and the dependencies
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends \
+            build-essential cmake ninja-build git ca-certificates pkg-config python3 \
+            qt6-base-dev qt6-declarative-dev qt6-multimedia-dev \
+            libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
+            libboost-dev libboost-program-options-dev libgl-dev libxkbcommon-dev
+          openssl version
+          cmake --version | head -1
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j ${{ env.BAZARISH_JOBS }}
+      - name: Test
+        run: ctest --test-dir build -j ${{ env.BAZARISH_JOBS }} --output-on-failure
+
+  windows:
+    name: Windows ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: windows-latest
+            msystem: MINGW64
+            package: mingw-w64-x86_64
+          - arch: arm64
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            package: mingw-w64-clang-aarch64
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: >-
+            git
+            ${{ matrix.package }}-toolchain
+            ${{ matrix.package }}-cmake
+            ${{ matrix.package }}-ninja
+            ${{ matrix.package }}-openssl
+            ${{ matrix.package }}-sqlcipher
+            ${{ matrix.package }}-opus
+            ${{ matrix.package }}-qrencode
+            ${{ matrix.package }}-boost
+            ${{ matrix.package }}-qt6-base
+            ${{ matrix.package }}-qt6-declarative
+            ${{ matrix.package }}-qt6-multimedia
+            ${{ matrix.package }}-python
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build -j ${{ env.BAZARISH_JOBS }}
+      - name: Test
+        run: ctest --test-dir build -j ${{ env.BAZARISH_JOBS }} --output-on-failure
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x86_64
+            runner: macos-13
+    steps:
+      - name: Install the dependencies
+        run: |
+          brew update --quiet
+          brew install --quiet ninja qt@6 openssl@3 sqlcipher opus qrencode boost
+          "$(brew --prefix openssl@3)/bin/openssl" version
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$(brew --prefix qt@6);$(brew --prefix opus);$(brew --prefix qrencode);$(brew --prefix boost)" \
+            -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
+            -DSQLCIPHER_LIBRARY="$(brew --prefix sqlcipher)/lib/libsqlcipher.dylib" \
+            -DSQLCIPHER_INCLUDE_DIR="$(brew --prefix sqlcipher)/include"
+      - name: Build
+        run: cmake --build build -j ${{ env.BAZARISH_JOBS }}
+      - name: Test
+        run: ctest --test-dir build -j ${{ env.BAZARISH_JOBS }} --output-on-failure
