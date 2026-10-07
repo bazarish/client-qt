@@ -66,6 +66,9 @@ public:
     QString i2pdVersion() const;
     QString appVersion() const;
 
+    // A bazarish:// link handed over by the desktop or by a second copy.
+    Q_INVOKABLE void openLink(const QString& link);
+
     Q_INVOKABLE void refreshAccountList();
     Q_INVOKABLE void createAccount(const QString& name, const QString& passphrase);
     Q_INVOKABLE void openAccount(const QString& id, const QString& passphrase);
@@ -156,6 +159,10 @@ signals:
     void accountDeleteNeedsUnlock(const QString& id, const QString& name);
     void unlockFailed(const QString& error);
     void accountUnlocked(const QString& id);
+    void inviteLinkOpened(const QString& link);
+    void serverLinkOpened(const QString& link);
+    void pairLinkOpened(const QString& link);
+    void linkRefused(const QString& reason);
 
 private:
     SessionController* sessionFor(const QString& id) const;
@@ -172,6 +179,7 @@ private:
     QString readLastActive() const;
     void writeLastActive(const QString& id) const;
 
+    void applyPendingLink();
     void loadOfflineSet();
     void persistOfflineSet() const;
     void setAccountOffline(const QString& id, bool offline);
@@ -208,6 +216,8 @@ private:
     QList<SessionController*> sessions_;
     QString activeId_;
     bool haveAccounts_ = false;
+    // A link that arrived before any account was open waits for one.
+    QString pendingLink_;
     QSet<QString> offline_;
     QString unlockingId_;
     QString pendingDeleteId_;

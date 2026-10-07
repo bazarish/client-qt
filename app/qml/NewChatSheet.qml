@@ -13,7 +13,7 @@ Popup {
     width: Math.min(460, parent ? parent.width - 24 : 460)
     padding: 18
     property string errorText: ""
-    property string prefillAlias: ""
+    property string prefillTarget: ""
     property bool scanning: false
     readonly property string kGreeting: "Hi, add me?"
 
@@ -29,7 +29,7 @@ Popup {
 
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     onOpened: {
-        targetText.text = root.prefillAlias
+        targetText.text = root.prefillTarget
         errorText = ""
         scanning = false
     }
@@ -41,9 +41,15 @@ Popup {
     }
 
     function openAlias(alias) {
-        root.prefillAlias = App.aliasSigil + alias
+        root.prefillTarget = App.aliasSigil + alias
         root.open()
-        root.prefillAlias = ""
+        root.prefillTarget = ""
+    }
+
+    function openInvite(uri) {
+        root.prefillTarget = uri
+        root.open()
+        root.prefillTarget = ""
     }
 
     background: DialogFrame { }

@@ -9,6 +9,10 @@ Item {
 
     Component { id: wizardComponent; CreateAccountWizard {} }
 
+    function openPairing(link) {
+        root.StackView.view.push(wizardComponent).pairLink = link
+    }
+
     property string pendingId: ""
     property string pendingDeleteId: ""
     property string pendingDeleteName: ""

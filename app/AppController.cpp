@@ -8,6 +8,7 @@
 #include "Version.hpp"
 
 #include <bazarish/I2p.hpp>
+#include <bazarish/Links.hpp>
 
 #pragma push_macro("emit")
 #undef emit
@@ -200,6 +201,44 @@ QString AppController::appVersion() const
     return QString::fromLatin1(kAppVersion);
 }
 
+void AppController::applyPendingLink()
+{
+    if (pendingLink_.isEmpty()) {
+        return;
+    }
+    const QString link = pendingLink_;
+    pendingLink_.clear();
+    openLink(link);
+}
+
+void AppController::openLink(const QString& link)
+{
+    const QString uri = link.trimmed();
+    if (uri.startsWith(QLatin1String(bazarish::kPairUri))) {
+        emit raiseRequested();
+        emit pairLinkOpened(uri);
+        return;
+    }
+    const bool invite = uri.startsWith(QLatin1String(bazarish::kInviteUri));
+    if (!invite && !uri.startsWith(QLatin1String(bazarish::kServerUri))) {
+        bazarish::log::warn("asked to open a link this client does not know");
+        emit linkRefused(tr("This link is not one Bazarish knows."));
+        return;
+    }
+    emit raiseRequested();
+    // Both of these act on an open account, so a link that arrives before one is
+    // open waits for it rather than going nowhere.
+    if (sessions_.isEmpty()) {
+        pendingLink_ = uri;
+        return;
+    }
+    if (invite) {
+        emit inviteLinkOpened(uri);
+        return;
+    }
+    emit serverLinkOpened(uri);
+}
+
 void AppController::loadOfflineSet()
 {
     offline_.clear();
@@ -350,6 +389,7 @@ void AppController::openSession(const QString& id, const QString& passphrase,
         if (makeActive) {
             setActive(id);
             emit accountOpened();
+            applyPendingLink();
         }
         return;
     }
@@ -377,6 +417,7 @@ void AppController::openSession(const QString& id, const QString& passphrase,
             refreshAccounts();
             if (makeActive && ctrl->accountId() == activeId_) {
                 emit accountOpened();
+                applyPendingLink();
             }
         }
     });

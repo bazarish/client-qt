@@ -3161,6 +3161,12 @@
       "zh": "此账号",
       "ar": "هذا الحساب"
     },
+    "This account already has a server.": {
+      "ru": "У этого аккаунта уже есть сервер.",
+      "es": "Esta cuenta ya tiene un servidor.",
+      "zh": "该账号已经有服务器。",
+      "ar": "هذا الحساب لديه خادم بالفعل."
+    },
     "This account is locked": {
       "ru": "Этот аккаунт заперт",
       "es": "Esta cuenta está bloqueada",
@@ -3244,6 +3250,12 @@
       "es": "Esto es lo que ocupan los mensajes y sus imágenes. El archivo en disco es mayor. El recorte afecta solo a este dispositivo.",
       "zh": "这是消息及其图片本身占用的大小。磁盘上的文件更大。精简只发生在本设备上。",
       "ar": "هذا ما تشغله الرسائل وصورها. والملف على القرص أكبر. والتقليم يجري على هذا الجهاز وحده."
+    },
+    "This link is not one Bazarish knows.": {
+      "ru": "Такие ссылки Bazarish не открывает.",
+      "es": "Bazarish no abre enlaces de este tipo.",
+      "zh": "Bazarish 无法打开这种链接。",
+      "ar": "لا يفتح Bazarish هذا النوع من الروابط."
     },
     "This picture is not here to copy.": {
       "ru": "Этой картинки здесь нет, копировать нечего.",

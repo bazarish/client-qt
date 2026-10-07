@@ -137,6 +137,9 @@ if(Qt6_FOUND)
         target_sources(bazarish-app PRIVATE app/icon/bazarish.rc)
         set_source_files_properties(app/icon/bazarish.rc PROPERTIES
             COMPILE_OPTIONS "-I${CMAKE_CURRENT_SOURCE_DIR}/app/icon")
+        # The bazarish:// association lives in the registry here; a desktop entry
+        # carries it everywhere else.
+        target_sources(bazarish-app PRIVATE app/UrlScheme.cpp app/UrlScheme.hpp)
     endif()
 
     # Reveal-in-file-manager (FileManager1 over D-Bus) when the optional module is

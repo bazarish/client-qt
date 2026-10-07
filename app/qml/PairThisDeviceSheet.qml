@@ -7,6 +7,7 @@ import Bazarish
 Popup {
     id: root
     property string atRestPassphrase: ""
+    property string prefillLink: ""
     property bool scanning: false
     property bool refused: false
 
@@ -20,7 +21,12 @@ Popup {
     padding: 18
     closePolicy: Popup.CloseOnEscape
 
-    onOpened: { linkField.text = ""; codeField.text = ""; root.scanning = false; root.refused = false }
+    onOpened: {
+        linkField.text = root.prefillLink
+        codeField.text = ""
+        root.scanning = false
+        root.refused = false
+    }
     onClosed: { root.scanning = false; App.cancelPairing() }
 
     background: DialogFrame { }

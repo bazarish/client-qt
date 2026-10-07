@@ -7,6 +7,10 @@ Item {
     id: root
     property var session: null
 
+    function takeLink(uri) {
+        connectForm.takeLink(uri)
+    }
+
     // Back to the account list (no server needed to switch/create an account).
     IconButton {
         iconName: "back"

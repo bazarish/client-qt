@@ -8,6 +8,9 @@ Item {
     id: root
     objectName: "createWizard"
 
+    // A pair link the desktop handed over, waiting for the passphrase above it.
+    property string pairLink: ""
+
     // The chosen .bazarish file while the backup password is being entered.
     property string pendingBackupFile: ""
 
@@ -129,6 +132,7 @@ Item {
     PairThisDeviceSheet {
         id: pairThisDeviceSheet
         atRestPassphrase: passField.text
+        prefillLink: root.pairLink
     }
 
     FileDialog {

@@ -4,6 +4,9 @@
 #include "PictureStore.hpp"
 #include "I2pController.hpp"
 #include "DesktopEntry.hpp"
+#ifdef Q_OS_WIN
+#include "UrlScheme.hpp"
+#endif
 #include "Identicon.hpp"
 #include "SingleInstance.hpp"
 #include "Translations.hpp"
@@ -17,6 +20,7 @@
 #include <windows.h>
 #endif
 
+#include <bazarish/Links.hpp>
 #include <bazarish/Log.hpp>
 #include <bazarish/ServerDescriptor.hpp>
 #pragma pop_macro("emit")
@@ -184,6 +188,9 @@ int main(int argc, char** argv)
     QGuiApplication::setDesktopFileName("bazarish");
     try {
         bazarish::app::ensureDesktopEntry();
+#ifdef Q_OS_WIN
+        bazarish::app::ensureUrlScheme();
+#endif
     } catch (const std::exception& error) {
         bazarish::log::warn("desktop entry not installed: {}", error.what());
     }
@@ -203,11 +210,21 @@ int main(int argc, char** argv)
     palette.setColor(QPalette::ToolTipText, QColor(kBrandText));
     QGuiApplication::setPalette(palette);
 
+    QString link;
+    const QString scheme = QString::fromLatin1(bazarish::kUriScheme) + QStringLiteral("://");
+    for (int i = 1; i < argc; ++i) {
+        const QString argument = QString::fromLocal8Bit(argv[i]);
+        if (argument.startsWith(scheme)) {
+            link = argument;
+            break;
+        }
+    }
+
     const std::filesystem::path accounts = bazarish::app::AppController::accountsFolder();
     std::filesystem::create_directories(accounts);
     bazarish::app::SingleInstance instance(QString::fromStdString(accounts.string()));
     if (!instance.claim()) {
-        const bool handed = instance.handOver();
+        const bool handed = instance.handOver(link);
         bazarish::log::info("another Bazarish already has this account folder; {}",
             handed ? "brought its window forward" : "it is not answering");
         return handed ? 0 : 1;
@@ -255,6 +272,11 @@ int main(int argc, char** argv)
         window->requestActivate();
     };
     QObject::connect(&instance, &bazarish::app::SingleInstance::showRequested, &app, raiseWindow);
+    QObject::connect(&instance, &bazarish::app::SingleInstance::linkRequested, &controller,
+        &bazarish::app::AppController::openLink);
+    if (!link.isEmpty()) {
+        controller.openLink(link);
+    }
     QObject::connect(&controller, &bazarish::app::AppController::raiseRequested, &app, raiseWindow);
 
     std::unique_ptr<bazarish::app::TrayIcon> tray;

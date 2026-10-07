@@ -56,19 +56,33 @@ bool SingleInstance::claim()
     }
     connect(server_.get(), &QLocalServer::newConnection, this, [this]() {
         while (QLocalSocket* const client = server_->nextPendingConnection()) {
-            client->deleteLater();
+            // What it sent stays readable after it hangs up, so one read is enough.
+            connect(client, &QLocalSocket::disconnected, this, [this, client]() {
+                const QString link = QString::fromUtf8(client->readAll()).trimmed();
+                client->deleteLater();
+                if (!link.isEmpty()) {
+                    emit linkRequested(link);
+                }
+            });
             emit showRequested();
         }
     });
     return true;
 }
 
-bool SingleInstance::handOver()
+bool SingleInstance::handOver(const QString& link)
 {
     QLocalSocket socket;
     socket.connectToServer(socketName());
     if (!socket.waitForConnected(kHandoverWaitMs)) {
         return false;
+    }
+    if (!link.isEmpty()) {
+        socket.write(link.toUtf8());
+        if (!socket.waitForBytesWritten(kHandoverWaitMs)) {
+            bazarish::log::warn("the running copy was reached but not told what to open");
+            return false;
+        }
     }
     socket.disconnectFromServer();
     return true;

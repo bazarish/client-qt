@@ -17,8 +17,21 @@ Item {
     }
 
     Loader {
+        id: pageLoader
         anchors.fill: parent
         sourceComponent: (root.session && root.session.connected) ? chatComponent : connectComponent
+    }
+
+    Connections {
+        target: App
+        function onInviteLinkOpened(link) { newChat.openInvite(link) }
+        function onServerLinkOpened(link) {
+            if (root.session && root.session.connected) {
+                window.showToast(qsTr("This account already has a server."))
+                return
+            }
+            pageLoader.item.takeLink(link)
+        }
     }
 
     Component {

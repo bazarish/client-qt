@@ -80,6 +80,19 @@ ApplicationWindow {
         }
         // The profile is locked, and its key is what ends the account on the server.
         function onAccountDeleteNeedsUnlock(id, name) { deleteLockedDialog.show(id, name) }
+        // A pair link makes a new account, so it goes to the wizard that does.
+        function onPairLinkOpened(link) {
+            let page = stack.currentItem
+            if (page && page.objectName === "createWizard") {
+                page.pairLink = link
+                return
+            }
+            if (!page || page.objectName !== "accountPicker") {
+                page = stack.push(pickerComponent)
+            }
+            page.openPairing(link)
+        }
+        function onLinkRefused(reason) { window.showToast(reason) }
         // "Add account": show the picker over the running session(s).
         function onShowPicker() {
             if (stack.currentItem && stack.currentItem.objectName !== "accountPicker") {

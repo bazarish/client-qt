@@ -3,12 +3,15 @@
 
 #pragma push_macro("emit")
 #undef emit
+#include <bazarish/Links.hpp>
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QImage>
+#include <QProcess>
 #include <QStandardPaths>
 #include <QString>
 
@@ -43,10 +46,11 @@ bool writeIfChanged(const QString& path, const QByteArray& content)
 
 void ensureDesktopEntry()
 {
+    // An AppImage is launched through a path of the runtime's making, so it says
+    // where it really is; anything else stands where it stands.
     const QByteArray image = qgetenv("APPIMAGE");
-    if (image.isEmpty()) {
-        return;
-    }
+    const QString binary = image.isEmpty() ? QCoreApplication::applicationFilePath()
+                                           : QString::fromLocal8Bit(image);
     const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
     if (dataDir.isEmpty()) {
         return;
@@ -74,15 +78,21 @@ void ensureDesktopEntry()
         "Type=Application\n"
         "Name=Bazarish\n"
         "Comment=I2P messenger\n"
-        "Exec=\"%1\"\n"
+        "Exec=\"%1\" %u\n"
         "Icon=%2\n"
         "Categories=Network;InstantMessaging;\n"
+        "MimeType=x-scheme-handler/%4;\n"
         "Terminal=false\n"
         "StartupWMClass=%3\n")
-                              .arg(QString::fromLocal8Bit(image), QLatin1String(kEntryName),
-                                  QLatin1String(kWmClass));
+                              .arg(binary, QLatin1String(kEntryName),
+                                  QLatin1String(kWmClass), QLatin1String(bazarish::kUriScheme));
     if (writeIfChanged(entryPath, entry.toUtf8())) {
         bazarish::log::info("desktop entry written to {}", entryPath.toStdString());
+        // Until the database is rebuilt the desktop hands bazarish:// to nobody.
+        if (!QProcess::startDetached(QStringLiteral("update-desktop-database"), {appsDir})) {
+            bazarish::log::warn("update-desktop-database did not run; bazarish:// links"
+                                " reach this client after the next login");
+        }
     }
 }
 

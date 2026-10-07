@@ -81,6 +81,11 @@ ColumnLayout {
 
     // Parses the link field; on success fills the inputs and reveals them, on a
     // non-empty failure just flashes red (the fields are left untouched).
+    function takeLink(uri) {
+        linkField.text = uri
+        form.parseLink()
+    }
+
     function parseLink() {
         var t = linkField.text.trim()
         if (t.length === 0) {

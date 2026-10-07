@@ -18,10 +18,11 @@ public:
     ~SingleInstance() override;
 
     bool claim();
-    bool handOver();
+    bool handOver(const QString& link);
 
 signals:
     void showRequested();
+    void linkRequested(const QString& link);
 
 private:
     QString socketName() const;
