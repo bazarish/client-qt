@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   linux:
-    name: AppImage ${{ matrix.arch }}
+    name: Linux ${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -25,9 +25,18 @@ jobs:
           - arch: amd64
             runner: ubuntu-24.04
             deploy: x86_64
+            image: debian:12
+            recipe: packaging/appimage-build.sh
+            package: out/*.AppImage
+          # No AppImage here: Qt publishes no host tools for this architecture,
+          # so Qt comes from a distribution new enough to build with - and that
+          # one is newer than an AppImage's reach is worth.
           - arch: arm64
             runner: ubuntu-24.04-arm
             deploy: aarch64
+            image: debian:trixie
+            recipe: packaging/linux-tarball.sh
+            package: out/*.tar.gz
     steps:
       - uses: actions/checkout@v5
         with:
@@ -41,16 +50,16 @@ jobs:
           curl -fsSL -o "tools/linuxdeploy-plugin-qt-${{ matrix.deploy }}.AppImage" \
             "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-${{ matrix.deploy }}.AppImage"
           chmod +x tools/*.AppImage
-      - name: Build the AppImage
+      - name: Build the package
         run: |
           set -o pipefail
           docker run --rm \
             -v "$PWD:/host:ro" -v "$PWD/tools:/tools:ro" -v "$PWD/out:/out" \
-            debian:12 bash /host/packaging/appimage-build.sh 2>&1 | tee -a ci.log
+            "${{ matrix.image }}" bash "/host/${{ matrix.recipe }}" 2>&1 | tee -a ci.log
       - uses: actions/upload-artifact@v4
         with:
-          name: appimage-${{ matrix.arch }}
-          path: out/*.AppImage
+          name: linux-${{ matrix.arch }}
+          path: ${{ matrix.package }}
           if-no-files-found: error
       - name: Say what broke
         if: failure()

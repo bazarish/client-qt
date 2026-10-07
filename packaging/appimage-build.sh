@@ -10,20 +10,14 @@ export APPIMAGE_EXTRACT_AND_RUN=1
 # A build that scales to the host starves the desktop it runs beside.
 readonly kJobs=4
 
-# The same recipe on either architecture: what differs is the name Qt and
-# linuxdeploy give their builds.
-case "$(uname -m)" in
-    x86_64)
-        readonly kQtHost=linux kQtArch=linux_gcc_64 kQtDir=gcc_64 kDeploy=x86_64
-        ;;
-    aarch64)
-        readonly kQtHost=linux_arm64 kQtArch=linux_gcc_arm64 kQtDir=gcc_arm64 kDeploy=aarch64
-        ;;
-    *)
-        echo "no AppImage recipe for $(uname -m)" >&2
-        exit 1
-        ;;
-esac
+# x86_64 only, and the reason is not this script: the arm64 Qt packages carry no
+# host tools, so nothing can be built with them here. arm64 is served by
+# linux-tarball.sh, which takes Qt from the distribution instead.
+if [ "$(uname -m)" != "x86_64" ]; then
+    echo "this recipe builds the x86_64 AppImage; arm64 goes through linux-tarball.sh" >&2
+    exit 1
+fi
+readonly kQtHost=linux kQtArch=linux_gcc_64 kQtDir=gcc_64 kDeploy=x86_64
 
 apt-get update -qq
 # qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
