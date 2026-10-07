@@ -61,6 +61,32 @@ QImage IdenticonProvider::requestImage(
     return renderIdenticon(id, dim);
 }
 
+namespace {
+
+// The shape every avatar in this application is. It is cut here rather than in
+// the scene graph because a mask there is a shader effect, and the software
+// renderer - the only one a statically linked build has - draws none.
+QImage circled(const QImage& square)
+{
+    QImage mask(square.size(), QImage::Format_ARGB32_Premultiplied);
+    mask.fill(Qt::transparent);
+    QPainter cut(&mask);
+    cut.setRenderHint(QPainter::Antialiasing, true);
+    cut.setPen(Qt::NoPen);
+    cut.setBrush(Qt::black);
+    cut.drawEllipse(QRectF(QPointF(0, 0), QSizeF(square.size())));
+    cut.end();
+
+    QImage rounded = square.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QPainter keep(&rounded);
+    keep.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    keep.drawImage(0, 0, mask);
+    keep.end();
+    return rounded;
+}
+
+}  // namespace
+
 AvatarProvider::AvatarProvider()
     : QQuickImageProvider(QQuickImageProvider::Image, QQuickImageProvider::ForceAsynchronousImageLoading)
 {
@@ -71,6 +97,8 @@ QImage AvatarProvider::requestImage(
 {
     const int dim = requestedSize.width() > 0 ? requestedSize.width() : 96;
     const QString fingerprint = id.section('?', 0, 0);
+    // The viewer shows the whole picture; a face in the interface is a circle.
+    const bool round = id.section('?', 1).contains(QLatin1String("round=1"));
 
     const QImage stored = AvatarStore::instance().image(fingerprint);
     if (!stored.isNull()) {
@@ -82,13 +110,14 @@ QImage AvatarProvider::requestImage(
         if (size != nullptr) {
             *size = QSize(dim, dim);
         }
-        return scaled;
+        return round ? circled(scaled) : scaled;
     }
 
     if (size != nullptr) {
         *size = QSize(dim, dim);
     }
-    return renderIdenticon(fingerprint, dim);
+    const QImage identicon = renderIdenticon(fingerprint, dim);
+    return round ? circled(identicon) : identicon;
 }
 
 QrImageProvider::QrImageProvider()
