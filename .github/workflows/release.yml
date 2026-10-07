@@ -2,11 +2,14 @@
 name: Release
 
 on:
+  # Every push walks the whole path while the packaging is being settled; only
+  # the publishing below waits for a tag.
   push:
-    tags:
-      - '*'
-  # The same build without a tag, for proving the packaging without releasing.
   workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -102,6 +105,8 @@ jobs:
         run: .github/ci/report.sh
       - name: The portable folder
         run: |
+          objdump -h "build/bazarish-app.exe" | grep -q '\.rsrc' \
+            || { echo "::error::the binary carries no resources, so no icon"; exit 1; }
           packaging/windows-portable.sh "Bazarish-${{ matrix.arch }}"
           zip -qr "Bazarish-windows-${{ matrix.arch }}.zip" "Bazarish-${{ matrix.arch }}"
       - uses: actions/upload-artifact@v4
@@ -111,8 +116,16 @@ jobs:
           if-no-files-found: error
 
   macos:
-    name: macOS arm64
-    runs-on: macos-15
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x86_64
+            runner: macos-15-intel
     steps:
       - name: Install the dependencies
         run: |
@@ -134,16 +147,43 @@ jobs:
       - name: The bundle
         run: |
           packaging/macos-app.sh
-          tar -czf macos-arm64.tar.gz -C build bazarish-app.app
+          tar -czf "macos-${{ matrix.arch }}.tar.gz" -C build bazarish-app.app
       - uses: actions/upload-artifact@v4
         with:
+          name: macos-${{ matrix.arch }}
+          path: macos-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+
+  macos-universal:
+    name: macOS universal
+    needs: macos
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
           name: macos-arm64
-          path: macos-arm64.tar.gz
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-x86_64
+          path: .
+      - name: One bundle for both architectures
+        run: |
+          mkdir arm64 x86_64
+          tar -xzf macos-arm64.tar.gz -C arm64
+          tar -xzf macos-x86_64.tar.gz -C x86_64
+          packaging/macos-universal.sh arm64/bazarish-app.app x86_64/bazarish-app.app Bazarish.app
+          hdiutil create -volname Bazarish -srcfolder Bazarish.app -ov -format UDZO Bazarish.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: Bazarish.dmg
           if-no-files-found: error
 
   publish:
     name: Publish
-    needs: [linux, windows, macos]
+    needs: [linux, windows, macos-universal]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     steps:

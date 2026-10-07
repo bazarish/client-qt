@@ -142,6 +142,9 @@ if(Qt6_FOUND)
     endif()
 
     if(WIN32)
+        # Without the language enabled the resource file is not compiled at all,
+        # and the shell draws its default icon for the binary.
+        enable_language(RC)
         # A GUI binary: started from the shell it opens no console window, and
         # --console is what attaches one when the log has to be read. The icon
         # the shell draws is the resource compiled in here.

@@ -156,7 +156,11 @@ qt_module qtsvg
 
 if step app; then
     rm -rf /out/build
+    # Nothing shared may creep in: the suffix list is what find_library looks
+    # for, and a dependency found as a .so would refuse to link into this.
     cmake -S /host -B /out/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+        -DOPENSSL_USE_STATIC_LIBS=ON -DBoost_USE_STATIC_LIBS=ON \
         -DCMAKE_PREFIX_PATH="$kQt;$kPrefix" \
         -DOPENSSL_ROOT_DIR="$kPrefix" \
         -DSQLCIPHER_LIBRARY="$kPrefix/lib/libsqlcipher.a" \
