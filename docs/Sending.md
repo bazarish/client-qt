@@ -149,6 +149,21 @@ is in the air, and goes only when the correspondent's server has confirmed it
 holds the batch the acceptance carries. An acceptance that never lands brings the
 button back rather than leaving a contact that looks answered on this side alone.
 
+## What rides inside a message
+
+A picture and a voice message travel inside the message rather than beside it:
+nothing is announced and nothing is fetched, so they arrive with the message even
+if the sender goes offline the moment after sending it. Both are made to fit the
+protocol's 512 KiB payload.
+
+| Attachment | What the client does with it |
+|---|---|
+| Picture | Scaled to a long edge of 1600 and re-encoded - JPEG at quality 85, or PNG when the image has an alpha channel. Quality and then the long edge are stepped down, to quality 45 and an edge of 640, until the result is at most 256 KiB |
+| Voice message | Opus at the call format - 48 kHz mono, 20 ms frames, each length-prefixed - at most two minutes long, and bounded by the payload limit less an 8 KiB envelope reserve |
+
+A file is not made to fit. It is transferred directly between the two clients
+(`docs-main/api/FileTransfer.md`).
+
 ## Outbound addresses
 
 One destination is held per recipient destination for the term stated above, then
