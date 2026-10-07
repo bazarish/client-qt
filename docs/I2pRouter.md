@@ -26,8 +26,8 @@ Turning a switch on asks the address whether anything is there and reports the
 answer in the same dialog that says the application has to be restarted. The
 change takes effect at the next start: the in-process engine can be started only
 once in a process, and the engines cannot swap places while one is running - the
-dialog offers to close the application there and then. Settings -> I2P router
-then reports whichever transport is in force.
+dialog offers to close the application there and then. The router window then
+reports whichever transport is in force.
 
 On a first run, before any engine is up, the application asks once whether a
 private gateway should be used. Skipping the question leaves the embedded engine
@@ -47,9 +47,11 @@ where one router serves every process. An external router answers none of the
 diagnostics below, and neither the proxy setting nor the private reseed applies
 to it - both belong to whoever operates it.
 
-The settings are presented in Settings -> I2P router, which also reports the
-engine's live diagnostics (network database size, floodfills, tunnel counts,
-local destinations, active transport sessions).
+The proxy belongs to the in-process engine, so it is set on that engine's own
+tab in Global settings and can be set before the engine runs. The router window
+carries the tunnel length and reports the engine's live diagnostics (network
+database size, floodfills, tunnel counts, local destinations, active transport
+sessions); it sets nothing else.
 
 ## Bootstrap
 

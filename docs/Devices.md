@@ -46,6 +46,13 @@ cannot fix by itself. A reseed address in the link covers that: it is used to
 start the router, and only when the router has not started yet and the database
 is empty. A router that is already running has a database and is left alone.
 
+Getting there takes minutes, so the receiving device names the stage it is in -
+starting the router, reseeding from the link, building its tunnels, reaching the
+other device - rather than showing one unchanging line through all of them. The
+address in the link is dialled on that last stage, **before** the code is asked
+for, so a link that leads nowhere is refused there and not after four digits have
+been typed.
+
 **From a file.** Restoring is
 slow enough to be worth watching - the bundle is unsealed, a keyed database is
 written, and the account is laid out - so it runs off the interface thread and is
