@@ -1,0 +1,188 @@
+# Bazarish project (c) 2026
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+  # The same build without a tag, for proving the packaging without releasing.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: AppImage ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            deploy: x86_64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            deploy: aarch64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Take the deploy tools
+        run: |
+          mkdir -p tools out
+          curl -fsSL -o "tools/linuxdeploy-${{ matrix.deploy }}.AppImage" \
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${{ matrix.deploy }}.AppImage"
+          curl -fsSL -o "tools/linuxdeploy-plugin-qt-${{ matrix.deploy }}.AppImage" \
+            "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-${{ matrix.deploy }}.AppImage"
+          chmod +x tools/*.AppImage
+      - name: Build the AppImage
+        run: |
+          docker run --rm \
+            -v "$PWD:/host:ro" -v "$PWD/tools:/tools:ro" -v "$PWD/out:/out" \
+            debian:12 bash /host/packaging/appimage-build.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appimage-${{ matrix.arch }}
+          path: out/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    name: Windows ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: msys2 {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: windows-latest
+            msystem: MINGW64
+            package: mingw-w64-x86_64
+          - arch: arm64
+            runner: windows-11-arm
+            msystem: CLANGARM64
+            package: mingw-w64-clang-aarch64
+    steps:
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          update: true
+          install: >-
+            git zip
+            ${{ matrix.package }}-toolchain
+            ${{ matrix.package }}-cmake
+            ${{ matrix.package }}-ninja
+            ${{ matrix.package }}-openssl
+            ${{ matrix.package }}-sqlcipher
+            ${{ matrix.package }}-opus
+            ${{ matrix.package }}-qrencode
+            ${{ matrix.package }}-boost
+            ${{ matrix.package }}-qt6-base
+            ${{ matrix.package }}-qt6-declarative
+            ${{ matrix.package }}-qt6-multimedia
+            ${{ matrix.package }}-python
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build and test
+        run: .github/ci/build.sh
+      - name: Say what broke
+        if: failure()
+        run: .github/ci/report.sh
+      - name: The portable folder
+        run: |
+          packaging/windows-portable.sh "Bazarish-${{ matrix.arch }}"
+          zip -qr "Bazarish-windows-${{ matrix.arch }}.zip" "Bazarish-${{ matrix.arch }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}
+          path: Bazarish-windows-${{ matrix.arch }}.zip
+          if-no-files-found: error
+
+  macos:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x86_64
+            runner: macos-13
+    steps:
+      - name: Install the dependencies
+        run: |
+          brew update --quiet
+          brew install --quiet ninja qt openssl@3 sqlcipher opus qrencode boost
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build and test
+        run: .github/ci/build.sh
+      - name: Say what broke
+        if: failure()
+        run: .github/ci/report.sh
+      - name: The bundle
+        run: |
+          packaging/macos-app.sh
+          tar -czf "macos-${{ matrix.arch }}.tar.gz" -C build bazarish-app.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: macos-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+
+  macos-universal:
+    name: macOS universal
+    needs: macos
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64
+          path: .
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-x86_64
+          path: .
+      - name: Merge the two bundles
+        run: |
+          mkdir arm64 x86_64
+          tar -xzf macos-arm64.tar.gz -C arm64
+          tar -xzf macos-x86_64.tar.gz -C x86_64
+          packaging/macos-universal.sh arm64/bazarish-app.app x86_64/bazarish-app.app Bazarish.app
+          hdiutil create -volname Bazarish -srcfolder Bazarish.app -ov -format UDZO Bazarish.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-universal
+          path: Bazarish.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Publish
+    needs: [linux, windows, macos-universal]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Hand the packages to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          packages=()
+          while IFS= read -r file; do packages+=("$file"); done < <(find packages -type f)
+          printf '%s\n' "${packages[@]}"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" --generate-notes "${packages[@]}"

@@ -10,6 +10,21 @@ export APPIMAGE_EXTRACT_AND_RUN=1
 # A build that scales to the host starves the desktop it runs beside.
 readonly kJobs=4
 
+# The same recipe on either architecture: what differs is the name Qt and
+# linuxdeploy give their builds.
+case "$(uname -m)" in
+    x86_64)
+        readonly kQtHost=linux kQtArch=linux_gcc_64 kQtDir=gcc_64 kDeploy=x86_64
+        ;;
+    aarch64)
+        readonly kQtHost=linux_arm64 kQtArch=linux_gcc_arm64 kQtDir=gcc_arm64 kDeploy=aarch64
+        ;;
+    *)
+        echo "no AppImage recipe for $(uname -m)" >&2
+        exit 1
+        ;;
+esac
+
 apt-get update -qq
 # qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
 # fontconfig, audio); the build itself uses the Qt under /opt.
@@ -25,10 +40,10 @@ apt-get install -y -qq --no-install-recommends \
   libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 libasound2 libpulse0 libsndfile1
 
 # Qt 6.8's own Linux binaries are built for glibc 2.28+, so they run on this base.
-QTDIR=/opt/Qt/6.8.2/gcc_64
+QTDIR="/opt/Qt/6.8.2/$kQtDir"
 if [ ! -x "$QTDIR/bin/qmake" ]; then
     pip install --break-system-packages -q aqtinstall
-    aqt install-qt linux desktop 6.8.2 linux_gcc_64 \
+    aqt install-qt "$kQtHost" desktop 6.8.2 "$kQtArch" \
         -m qtmultimedia qtshadertools -O /opt/Qt
 fi
 test -x "$QTDIR/bin/qmake"
@@ -110,8 +125,8 @@ DESKTOP
 
 mkdir -p /work
 cd /work
-cp /tools/linuxdeploy-x86_64.AppImage /tools/linuxdeploy-plugin-qt-x86_64.AppImage .
-chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+cp "/tools/linuxdeploy-$kDeploy.AppImage" "/tools/linuxdeploy-plugin-qt-$kDeploy.AppImage" .
+chmod +x "linuxdeploy-$kDeploy.AppImage" "linuxdeploy-plugin-qt-$kDeploy.AppImage"
 
 export QML_SOURCES_PATHS=/src/app/qml
 export QMAKE="$QTDIR/bin/qmake"
@@ -125,7 +140,7 @@ export EXTRA_QT_MODULES="multimedia"
 # libxcb-glx belongs to the host's graphics stack, not to this bundle: carried
 # along from an older base it is loaded next to the host's own libxcb, and GLX
 # then fails to initialize on a newer system ("Could not initialize GLX").
-./linuxdeploy-x86_64.AppImage --appdir "$APPDIR" \
+"./linuxdeploy-$kDeploy.AppImage" --appdir "$APPDIR" \
   -e "$APPDIR/usr/bin/bazarish-app" \
   -d "$APPDIR/usr/share/applications/bazarish.desktop" \
   -i "$APPDIR/usr/share/icons/hicolor/512x512/apps/bazarish.png" \
