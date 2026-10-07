@@ -43,14 +43,18 @@ jobs:
           chmod +x tools/*.AppImage
       - name: Build the AppImage
         run: |
+          set -o pipefail
           docker run --rm \
             -v "$PWD:/host:ro" -v "$PWD/tools:/tools:ro" -v "$PWD/out:/out" \
-            debian:12 bash /host/packaging/appimage-build.sh
+            debian:12 bash /host/packaging/appimage-build.sh 2>&1 | tee -a ci.log
       - uses: actions/upload-artifact@v4
         with:
           name: appimage-${{ matrix.arch }}
           path: out/*.AppImage
           if-no-files-found: error
+      - name: Say what broke
+        if: failure()
+        run: .github/ci/report.sh
 
   windows:
     name: Windows ${{ matrix.arch }}
@@ -100,20 +104,23 @@ jobs:
         run: .github/ci/build.sh build
       - name: Test
         run: .github/ci/build.sh test
-      - name: Say what broke
-        if: failure()
-        run: .github/ci/report.sh
       - name: The portable folder
         run: |
+          set -o pipefail
           objdump -h "build/bazarish-app.exe" | grep -q '\.rsrc' \
             || { echo "::error::the binary carries no resources, so no icon"; exit 1; }
-          packaging/windows-portable.sh "Bazarish-${{ matrix.arch }}"
-          zip -qr "Bazarish-windows-${{ matrix.arch }}.zip" "Bazarish-${{ matrix.arch }}"
+          {
+              packaging/windows-portable.sh "Bazarish-${{ matrix.arch }}"
+              zip -qr "Bazarish-windows-${{ matrix.arch }}.zip" "Bazarish-${{ matrix.arch }}"
+          } 2>&1 | tee -a ci.log
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.arch }}
           path: Bazarish-windows-${{ matrix.arch }}.zip
           if-no-files-found: error
+      - name: Say what broke
+        if: failure()
+        run: .github/ci/report.sh
 
   macos:
     name: macOS ${{ matrix.arch }}
@@ -141,18 +148,21 @@ jobs:
         run: .github/ci/build.sh build
       - name: Test
         run: .github/ci/build.sh test
-      - name: Say what broke
-        if: failure()
-        run: .github/ci/report.sh
       - name: The bundle
         run: |
-          packaging/macos-app.sh
-          tar -czf "macos-${{ matrix.arch }}.tar.gz" -C build bazarish-app.app
+          set -o pipefail
+          {
+              packaging/macos-app.sh
+              tar -czf "macos-${{ matrix.arch }}.tar.gz" -C build bazarish-app.app
+          } 2>&1 | tee -a ci.log
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
           path: macos-${{ matrix.arch }}.tar.gz
           if-no-files-found: error
+      - name: Say what broke
+        if: failure()
+        run: .github/ci/report.sh
 
   macos-universal:
     name: macOS universal
@@ -170,11 +180,19 @@ jobs:
           path: .
       - name: One bundle for both architectures
         run: |
-          mkdir arm64 x86_64
-          tar -xzf macos-arm64.tar.gz -C arm64
-          tar -xzf macos-x86_64.tar.gz -C x86_64
-          packaging/macos-universal.sh arm64/bazarish-app.app x86_64/bazarish-app.app Bazarish.app
-          hdiutil create -volname Bazarish -srcfolder Bazarish.app -ov -format UDZO Bazarish.dmg
+          set -o pipefail
+          {
+              mkdir arm64 x86_64
+              tar -xzf macos-arm64.tar.gz -C arm64
+              tar -xzf macos-x86_64.tar.gz -C x86_64
+              packaging/macos-universal.sh arm64/bazarish-app.app x86_64/bazarish-app.app \
+                  Bazarish.app
+              hdiutil create -volname Bazarish -srcfolder Bazarish.app -ov -format UDZO \
+                  Bazarish.dmg
+          } 2>&1 | tee -a ci.log
+      - name: Say what broke
+        if: failure()
+        run: .github/ci/report.sh
       - uses: actions/upload-artifact@v4
         with:
           name: macos-universal
