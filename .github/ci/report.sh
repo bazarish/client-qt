@@ -13,8 +13,12 @@ if [ ! -f "$kLog" ]; then
     exit 0
 fi
 
-said=$(grep -aE 'error:|error [A-Z][0-9]|FAILED:|CMake Error|The following tests FAILED' \
-    "$kLog" | tail -n "$kLines")
+# A failed test run names the tests after saying that some failed, so that part
+# of the log is taken whole; otherwise the compiler's own lines are what matter.
+said=$(sed -n '/The following tests FAILED/,$p' "$kLog")
+if [ -z "$said" ]; then
+    said=$(grep -aE 'error:|error [A-Z][0-9]|FAILED:|CMake Error' "$kLog" | tail -n "$kLines")
+fi
 if [ -z "$said" ]; then
     said=$(tail -n "$kLines" "$kLog")
 fi
