@@ -41,7 +41,6 @@ struct ContactState {
     QString name;
     QString invite;
     bool writable = false;
-    bool sharingRefused = false;
     bool notifications = true;
     bool calls = true;
     Request request = eAnswered;
@@ -126,9 +125,7 @@ public slots:
     void startPairing();
     void stopPairing();
     void changePassphrase(const QString& passphrase);
-    void rotateServingKey();
     void activateAliasServicing();
-    void setSharingAllowed(bool allowed);
     void generatePersonalKey();
     void loadPersonalKey(const QString& path);
     void deletePersonalKey();
@@ -164,9 +161,7 @@ signals:
     void pairStage(const QString& status, double progress);
     void pairFinished(bool ok, const QString& status);
     void accountClosed(bool ok, const QString& error);
-    void accountSettings(bool acceptCalls, bool sendReceipts, bool sharingAllowed);
-    void servingKeyStage(const QString& stage);
-    void servingKeyDone(bool ok, const QString& text);
+    void accountSettings(bool acceptCalls, bool sendReceipts);
     void aliasHoldings(const QVariantList& rows, const QString& note);
     void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected);

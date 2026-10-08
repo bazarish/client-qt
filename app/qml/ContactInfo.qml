@@ -16,8 +16,6 @@ Popup {
     // another device shows here too.
     readonly property bool blocked: session !== null && session.contactsRevision >= 0
         && session.isBlocked(session.activePeer)
-    readonly property bool sharingRefused: session && session.activePeer.length > 0
-        && session.contactSharingRefused(session.activePeer)
     signal shareRequested()
 
     modal: true
@@ -227,16 +225,14 @@ Popup {
             iconName: "link"
             text: root.shareLink.length > 0
                 ? qsTr("Share contact")
-                : (root.sharingRefused ? qsTr("Sharing is off") : qsTr("Not shareable yet"))
+                : qsTr("Not shareable yet")
             onClicked: { root.close(); root.shareRequested() }
         }
         // Said under the button, not on it: the reason is a sentence, and a
         // button wearing one cuts it off in the middle.
         Label {
             visible: !root.saved && root.shareLink.length === 0
-            text: root.sharingRefused
-                ? qsTr("This contact has turned off being passed on.")
-                : qsTr("Their descriptor arrives with their next message.")
+            text: qsTr("Their descriptor arrives with their next message.")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

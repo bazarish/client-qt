@@ -461,8 +461,7 @@ void SessionWorker::openAccount(
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected);
-    emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
-        session_->sharingAllowed());
+    emit accountSettings(session_->acceptCalls(), session_->sendReceipts());
     {
         const QVariantList rows = aliasHoldingRows(session_->aliasNames());
         if (!rows.isEmpty()) {
@@ -547,7 +546,6 @@ void SessionWorker::emitContacts()
         } else {
             contact.request = ContactState::eWaiting;
         }
-        contact.sharingRefused = session_->contactSharingRefused(fp);
         try {
             contact.invite = QString::fromStdString(session_->contactInviteUri(fp));
         } catch (const std::exception& error) {
@@ -1374,8 +1372,7 @@ void SessionWorker::emitSettings()
     if (!session_) {
         return;
     }
-    emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
-        session_->sharingAllowed());
+    emit accountSettings(session_->acceptCalls(), session_->sendReceipts());
 }
 
 void SessionWorker::syncChatClear(const QString& peer)
@@ -1928,25 +1925,6 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
     }
 }
 
-void SessionWorker::rotateServingKey()
-{
-    try {
-        const Session::RoutingPushResult pushed
-            = session_->rotateServingKey([this](const std::string& stage) {
-                  emit servingKeyStage(coreText(QString::fromStdString(stage)));
-              });
-        emit servingKeyDone(true,
-            pushed.failed == 0
-                ? tr("The key was changed. Contacts told: %1").arg(pushed.told)
-                : tr("The key was changed. Told: %1, unreachable: %2")
-                      .arg(pushed.told)
-                      .arg(pushed.failed));
-        emitContacts();
-    } catch (const std::exception& e) {
-        emit servingKeyDone(false, QString::fromUtf8(e.what()));
-    }
-}
-
 void SessionWorker::activateAliasServicing()
 {
     startAliasErrand(/*byHand=*/true);
@@ -2035,17 +2013,6 @@ void SessionWorker::drainAliasErrands()
         } else {
             emit aliasActivationDone(true, tr("Your aliases are up to date"));
         }
-    }
-}
-
-void SessionWorker::setSharingAllowed(const bool allowed)
-{
-    try {
-        session_->setSharingAllowed(allowed);
-        emit accountSettings(session_->acceptCalls(), session_->sendReceipts(),
-            session_->sharingAllowed());
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
     }
 }
 

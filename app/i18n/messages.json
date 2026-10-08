@@ -515,12 +515,6 @@
       "zh": "来自站点的质询",
       "ar": "تحدٍّ من الموقع"
     },
-    "Change it": {
-      "ru": "Сменить",
-      "es": "Cambiarla",
-      "zh": "更改",
-      "ar": "تغييره"
-    },
     "Change name": {
       "ru": "Сменить имя",
       "es": "Cambiar el nombre",
@@ -532,12 +526,6 @@
       "es": "Cambiar la contraseña",
       "zh": "更改密码",
       "ar": "تغيير كلمة المرور"
-    },
-    "Change the server key": {
-      "ru": "Сменить ключ сервера",
-      "es": "Cambiar la clave del servidor",
-      "zh": "更换服务器密钥",
-      "ar": "تغيير مفتاح الخادم"
     },
     "Check my aliases": {
       "ru": "Проверить мои алиасы",
@@ -1211,12 +1199,6 @@
       "zh": "所有账号将关闭，数据将迁移，并需要重新启动 Bazarish。",
       "ar": "تُغلق كل الحسابات، وتُنقل البيانات، ويلزم تشغيل Bazarish من جديد."
     },
-    "Every link you handed out stops working. Your contacts are sent the new pair; one that is offline gets it with your next message.": {
-      "ru": "Все выданные вами ссылки перестанут работать. Контактам будет отправлена новая пара. Контакт не в сети получит её с вашим следующим сообщением.",
-      "es": "Todos los enlaces que has repartido dejan de funcionar. A tus contactos se les envía el nuevo par; quien esté sin conexión lo recibe con tu siguiente mensaje.",
-      "zh": "你发出的每一个链接都会失效。新的一对会发给联系人；不在线的那位随你下一条消息收到。",
-      "ar": "تتوقف كل الروابط التي وزّعتها. ويُرسَل الزوج الجديد إلى مراسليك؛ ومن كان غير متصل يأخذه مع رسالتك التالية."
-    },
     "Everything kept here goes, on this device and on every other device of this account.": {
       "ru": "Всё содержимое будет удалено на этом устройстве и на остальных устройствах аккаунта.",
       "es": "Todo lo guardado aquí desaparece, en este dispositivo y en todos los demás de esta cuenta.",
@@ -1492,12 +1474,6 @@
       "es": "¿Salir de Bazarish?",
       "zh": "要退出 Bazarish 吗？",
       "ar": "أتريد الخروج من Bazarish؟"
-    },
-    "Let contacts share my contact": {
-      "ru": "Разрешить контактам делиться моим контактом",
-      "es": "Permitir que mis contactos compartan mi contacto",
-      "zh": "允许联系人分享我的联系方式",
-      "ar": "السماح لمراسليّ بمشاركة بطاقتي"
     },
     "Lets contacts see a green mark when you receive.": {
       "ru": "Контакты увидят зелёную отметку, когда вы получите сообщение.",
@@ -1864,12 +1840,6 @@
       "es": "Sin conexión",
       "zh": "离线",
       "ar": "غير متصل"
-    },
-    "On, a contact can share your contact with somebody else. Off, no capability is sent, and the Share button on their side says so.": {
-      "ru": "Когда включено, контакт может поделиться вашим контактом. Когда выключено, разрешение не выдаётся. Кнопка «Поделиться» у контакта это покажет.",
-      "es": "Activado, un contacto puede compartir tu contacto con otra persona. Desactivado, no se envía ninguna autorización. El botón «Compartir» de tu contacto lo indica.",
-      "zh": "开启后，联系人可以把你的联系方式分享给别人。关闭后不再发放授权。联系人那边的「分享」按钮会说明这一点。",
-      "ar": "عند التشغيل يمكن لجهة الاتصال أن تشارك بطاقتك مع غيرها. وعند الإيقاف لا يُمنح أي تصريح. ويوضّح زر «المشاركة» عندها ذلك."
     },
     "One or two transit routers, chosen at random.": {
       "ru": "Один или два транзитных узла, случайным образом.",
@@ -2729,12 +2699,6 @@
       "zh": "分享联系人",
       "ar": "مشاركة جهة الاتصال"
     },
-    "Sharing is off": {
-      "ru": "Передача выключена",
-      "es": "Compartir está desactivado",
-      "zh": "分享已关闭",
-      "ar": "المشاركة مُعطَّلة"
-    },
     "Show I2P logs": {
       "ru": "Показывать логи I2P",
       "es": "Mostrar los registros de I2P",
@@ -2800,12 +2764,6 @@
       "es": "Vuelve a iniciar Bazarish",
       "zh": "请重新启动 Bazarish",
       "ar": "شغّل Bazarish من جديد"
-    },
-    "Starting": {
-      "ru": "Запуск",
-      "es": "Iniciando",
-      "zh": "正在启动",
-      "ar": "جارٍ البدء"
     },
     "Starting the I2P router": {
       "ru": "Роутер I2P запускается",
@@ -3029,18 +2987,6 @@
       "zh": "网关通过 HTTPS 接受连接，程序的活动因此看起来像普通网页流量。使用网关就不再需要本地 I2P 路由。网关能看到你访问的 I2P 地址，因此必须是你信任的。端到端加密保护不受影响。",
       "ar": "تستقبل البوابة الاتصالات عبر HTTPS، فيبدو نشاط التطبيق كحركة ويب عادية. ويغني استخدامها عن موجّه I2P محلي. وترى البوابة عناوين I2P التي تقصدها، فلا بدّ أن تكون موثوقة. ولا يتأثر التشفير التام بين الطرفين لبياناتك."
     },
-    "The key was changed. Contacts told: %1": {
-      "ru": "Ключ изменён. Оповещено контактов: %1",
-      "es": "La clave se ha cambiado. Contactos avisados: %1",
-      "zh": "密钥已更换。已通知联系人：%1",
-      "ar": "تم تغيير المفتاح. المراسلون المُبلَّغون: ⁦%1⁩"
-    },
-    "The key was changed. Told: %1, unreachable: %2": {
-      "ru": "Ключ изменён. Оповещено: %1, недоступно: %2",
-      "es": "La clave se ha cambiado. Avisados: %1, inalcanzables: %2",
-      "zh": "密钥已更换。已通知：%1，无法联系：%2",
-      "ar": "تم تغيير المفتاح. المُبلَّغون: ⁦%1⁩، وغير المتاحين: ⁦%2⁩"
-    },
     "The last %1 events of this account, newest first.": {
       "ru": "Последние %1 событий этого аккаунта, свежие сверху.",
       "es": "Los últimos %1 eventos de esta cuenta, los más recientes primero.",
@@ -3208,12 +3154,6 @@
       "es": "Este contacto no te ha autorizado a escribir",
       "zh": "该联系人未允许你发消息",
       "ar": "لم تسمح لك جهة الاتصال هذه بالكتابة"
-    },
-    "This contact has turned off being passed on.": {
-      "ru": "Этот контакт запретил передавать себя дальше.",
-      "es": "Este contacto ha desactivado que se le pase a otros.",
-      "zh": "该联系人已关闭被转介给他人。",
-      "ar": "أوقفت جهة الاتصال هذه تمريرها إلى آخرين."
     },
     "This device could not build I2P tunnels.": {
       "ru": "Это устройство не построило туннели I2P.",

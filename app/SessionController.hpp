@@ -57,10 +57,6 @@ class SessionController : public QObject {
     Q_PROPERTY(int activeOperations READ activeOperations NOTIFY operationsChanged)
     Q_PROPERTY(bool sendReceipts READ sendReceipts WRITE setSendReceipts NOTIFY sendReceiptsChanged)
     Q_PROPERTY(bool acceptCalls READ acceptCalls WRITE setAcceptCalls NOTIFY acceptCallsChanged)
-    Q_PROPERTY(bool sharingAllowed READ sharingAllowed WRITE setSharingAllowed
-            NOTIFY sharingAllowedChanged)
-    Q_PROPERTY(QString servingKeyStage READ servingKeyStage NOTIFY servingKeyChanged)
-    Q_PROPERTY(bool servingKeyBusy READ servingKeyBusy NOTIFY servingKeyChanged)
     Q_PROPERTY(QVariantList aliasHoldings READ aliasHoldings NOTIFY aliasChanged)
     Q_PROPERTY(QString aliasNote READ aliasNote NOTIFY aliasChanged)
     Q_PROPERTY(bool aliasBusy READ aliasBusy NOTIFY aliasChanged)
@@ -153,11 +149,6 @@ public:
     QObject* operations() { return &operations_; }
     int activeOperations() const { return operations_.runningCount(); }
     bool acceptCalls() const { return acceptCalls_; }
-    bool sharingAllowed() const { return sharingAllowed_; }
-    void setSharingAllowed(bool allowed);
-    QString servingKeyStage() const { return servingKeyStage_; }
-    bool servingKeyBusy() const { return servingKeyBusy_; }
-    Q_INVOKABLE void rotateServingKey();
     QVariantList aliasHoldings() const { return aliasHoldings_; }
     QString aliasNote() const { return aliasNote_; }
     bool aliasBusy() const { return aliasBusy_; }
@@ -284,10 +275,6 @@ public:
     Q_INVOKABLE QVariantList reactionSummary(const QString& e2eId) const;
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
-    Q_INVOKABLE bool contactSharingRefused(const QString& fp) const
-    {
-        return contactState_.value(fp).sharingRefused;
-    }
     Q_INVOKABLE bool canWriteTo(const QString& fp) const;
     Q_PROPERTY(QString ownInvite READ ownInvite NOTIFY ownInviteChanged)
     QString ownInvite() const { return ownInvite_; }
@@ -469,11 +456,7 @@ signals:
     void pairingChanged();
     void pairingFinished(bool ok);
     void requestChangePassphrase(const QString& passphrase);
-    void requestRotateServingKey();
     void requestActivateAliasServicing();
-    void requestSharingAllowed(bool allowed);
-    void sharingAllowedChanged();
-    void servingKeyChanged();
     void aliasChanged();
     void requestOpen(const QString& dir, const QString& passphrase, bool startOnline);
     void requestSetSync(bool on);
@@ -600,12 +583,9 @@ private:
     QString serverFp_;
     bool sendReceipts_ = true;
     bool acceptCalls_ = true;
-    bool sharingAllowed_ = true;
-    QString servingKeyStage_;
     QVariantList aliasHoldings_;
     QString aliasNote_;
     bool aliasBusy_ = false;
-    bool servingKeyBusy_ = false;
     int delegationDays_ = static_cast<int>(bazarish::kDefaultDelegationDays);
     bool editing_ = false;
     qint64 editingLocalId_ = 0;

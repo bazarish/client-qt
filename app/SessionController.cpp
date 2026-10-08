@@ -253,8 +253,6 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::pairFinished, this, &SessionController::onPairFinished);
     connect(this, &SessionController::requestChangePassphrase, worker_,
         &SessionWorker::changePassphrase);
-    connect(this, &SessionController::requestRotateServingKey, worker_,
-        &SessionWorker::rotateServingKey);
     connect(this, &SessionController::requestActivateAliasServicing, worker_,
         &SessionWorker::activateAliasServicing);
     connect(worker_, &SessionWorker::aliasHoldings, this,
@@ -268,23 +266,6 @@ SessionController::SessionController(QObject* parent)
         aliasBusy_ = false;
         emit aliasChanged();
         finishOperation(kAliasOperationId, ok, text);
-        if (ok) {
-            emit actionOk(text);
-        } else {
-            emit actionFailed(text);
-        }
-    });
-    connect(this, &SessionController::requestSharingAllowed, worker_,
-        &SessionWorker::setSharingAllowed);
-    connect(worker_, &SessionWorker::servingKeyStage, this, [this](const QString& stage) {
-        servingKeyStage_ = stage;
-        emit servingKeyChanged();
-    });
-    connect(worker_, &SessionWorker::servingKeyDone, this, [this](const bool ok,
-                                                              const QString& text) {
-        servingKeyBusy_ = false;
-        servingKeyStage_ = text;
-        emit servingKeyChanged();
         if (ok) {
             emit actionOk(text);
         } else {
@@ -323,14 +304,10 @@ SessionController::SessionController(QObject* parent)
 
     connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
     connect(worker_, &SessionWorker::accountSettings, this,
-        [this](const bool acceptCalls, const bool sendReceipts, const bool sharingAllowed) {
+        [this](const bool acceptCalls, const bool sendReceipts) {
             if (sendReceipts_ != sendReceipts) {
                 sendReceipts_ = sendReceipts;
                 emit sendReceiptsChanged();
-            }
-            if (sharingAllowed_ != sharingAllowed) {
-                sharingAllowed_ = sharingAllowed;
-                emit sharingAllowedChanged();
             }
             if (acceptCalls_ != acceptCalls) {
                 acceptCalls_ = acceptCalls;
@@ -1518,27 +1495,6 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
         described["problem"] = QString::fromUtf8(error.what());
     }
     return described;
-}
-
-void SessionController::rotateServingKey()
-{
-    if (servingKeyBusy_) {
-        return;
-    }
-    servingKeyBusy_ = true;
-    servingKeyStage_ = tr("Starting");
-    emit servingKeyChanged();
-    emit requestRotateServingKey();
-}
-
-void SessionController::setSharingAllowed(const bool allowed)
-{
-    if (sharingAllowed_ == allowed) {
-        return;
-    }
-    sharingAllowed_ = allowed;
-    emit sharingAllowedChanged();
-    emit requestSharingAllowed(allowed);
 }
 
 void SessionController::changePassphrase(const QString& passphrase)
