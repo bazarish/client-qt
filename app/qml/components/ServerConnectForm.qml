@@ -173,7 +173,7 @@ ColumnLayout {
                 TextField {
                     Layout.fillWidth: true
                     text: model.url
-                    placeholderText: qsTr("http[s]://host:port/secret-path")
+                    placeholderText: "http://<dest>.b32.i2p/secret-path"
                     color: Theme.text
                     placeholderTextColor: Theme.textDim
                     selectByMouse: true

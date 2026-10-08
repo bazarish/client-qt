@@ -3803,12 +3803,6 @@
       "zh": "文件",
       "ar": "ملف"
     },
-    "http[s]://host:port/secret-path": {
-      "ru": "http[s]://хост:порт/секретный-путь",
-      "es": "http[s]://host:puerto/ruta-secreta",
-      "zh": "http[s]://主机:端口/秘密路径",
-      "ar": "‎http[s]://المضيف:المنفذ/المسار-السري"
-    },
     "image": {
       "ru": "картинка",
       "es": "imagen",
