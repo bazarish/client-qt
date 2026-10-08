@@ -81,7 +81,6 @@ const char* const kCoreProgress[] = {
     QT_TR_NOOP("Delegating your destination to the server"),
     QT_TR_NOOP("Publishing your contact card"),
     QT_TR_NOOP("Syncing your address to your other devices"),
-    QT_TR_NOOP("Telling the name service where you are"),
     QT_TR_NOOP("Asking your server for a new serving key"),
     QT_TR_NOOP("Signing a card over the new key"),
     QT_TR_NOOP("Putting the new key in force"),
@@ -663,6 +662,7 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
     emit connectProgress(100, tr("Connected"));
     bazarish::client::setConnectProgressSink({});
     emit connectionChanged(true, "active");
+    startAliasErrand(/*byHand=*/false);
     emit actionOk(tr("Connected"));
     emitFacadeInfo();
     startReceiving();

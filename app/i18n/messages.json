@@ -2897,12 +2897,6 @@
       "zh": "正在通知名称服务",
       "ar": "جارٍ إبلاغ خدمة الأسماء"
     },
-    "Telling the name service where you are": {
-      "ru": "Оповещение сервиса имён о вашем адресе",
-      "es": "Avisando al servicio de nombres de dónde estás",
-      "zh": "正在告知名称服务你的位置",
-      "ar": "جارٍ إبلاغ خدمة الأسماء بموضعك"
-    },
     "Telling your contacts": {
       "ru": "Оповещение контактов",
       "es": "Avisando a tus contactos",
