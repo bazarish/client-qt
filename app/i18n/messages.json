@@ -3245,12 +3245,6 @@
       "zh": "这不是配对链接。",
       "ar": "هذا ليس رابط اقتران."
     },
-    "This is what the messages and their pictures take. The file on disk is larger. Trimming happens only on this device.": {
-      "ru": "Это объём самих сообщений и их картинок. Файл на диске больше. Подрезка касается только этого устройства.",
-      "es": "Esto es lo que ocupan los mensajes y sus imágenes. El archivo en disco es mayor. El recorte afecta solo a este dispositivo.",
-      "zh": "这是消息及其图片本身占用的大小。磁盘上的文件更大。精简只发生在本设备上。",
-      "ar": "هذا ما تشغله الرسائل وصورها. والملف على القرص أكبر. والتقليم يجري على هذا الجهاز وحده."
-    },
     "This link is not one Bazarish knows.": {
       "ru": "Такие ссылки Bazarish не открывает.",
       "es": "Bazarish no abre enlaces de este tipo.",
@@ -3346,6 +3340,12 @@
       "es": "Recortando y compactando la base de datos",
       "zh": "正在修剪并压缩数据库",
       "ar": "جارٍ تقليم قاعدة البيانات وضغطها"
+    },
+    "Trimming happens only on this device.": {
+      "ru": "Подрезка касается только этого устройства.",
+      "es": "El recorte afecta solo a este dispositivo.",
+      "zh": "精简只发生在本设备上。",
+      "ar": "التقليم يجري على هذا الجهاز وحده."
     },
     "Try again": {
       "ru": "Повторить",

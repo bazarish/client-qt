@@ -178,7 +178,7 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 14
                     Layout.topMargin: 4
-                    text: qsTr("This is what the messages and their pictures take. The file on disk is larger. Trimming happens only on this device.")
+                    text: qsTr("Trimming happens only on this device.")
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
