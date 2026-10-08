@@ -14,7 +14,7 @@ Item {
     id: overlay
     anchors.fill: parent
     // Off unless the user asks for it (Global settings), except while a connect
-    // runs: the connect dialog sends the user here when it is hidden.
+    // runs: the handle is there to be opened, and opening it stays the user's move.
     visible: App.backgroundTasksVisible || overlay.connecting
 
     property bool open: false
@@ -39,9 +39,7 @@ Item {
     Connections {
         target: App.session
         function onConnectStateChanged() {
-            if (overlay.connecting) {
-                overlay.open = true
-            } else if (!App.backgroundTasksVisible) {
+            if (!overlay.connecting && !App.backgroundTasksVisible) {
                 overlay.open = false
             }
         }
