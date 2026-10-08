@@ -13,11 +13,12 @@ import Bazarish
 Item {
     id: overlay
     anchors.fill: parent
-    // Off unless the user asks for it (Global settings). The handle is the only
-    // way into the panel, so hiding the overlay hides the whole thing.
-    visible: App.backgroundTasksVisible
+    // Off unless the user asks for it (Global settings), except while a connect
+    // runs: the connect dialog sends the user here when it is hidden.
+    visible: App.backgroundTasksVisible || overlay.connecting
 
     property bool open: false
+    readonly property bool connecting: App.session ? App.session.connecting : false
     // Account-level work - restoring a backup - has no session behind it and
     // still belongs here, so the panel lists both and the handle counts both.
     readonly property int active: (App.session ? App.session.activeOperations : 0)
@@ -29,7 +30,18 @@ Item {
         target: App
         function onSessionChanged() { overlay.open = false }
         function onBackgroundTasksVisibleChanged() {
-            if (!App.backgroundTasksVisible) {
+            if (!App.backgroundTasksVisible && !overlay.connecting) {
+                overlay.open = false
+            }
+        }
+    }
+
+    Connections {
+        target: App.session
+        function onConnectStateChanged() {
+            if (overlay.connecting) {
+                overlay.open = true
+            } else if (!App.backgroundTasksVisible) {
                 overlay.open = false
             }
         }
