@@ -57,7 +57,7 @@ I2pController::I2pController(QObject* parent)
         proxyHost_ = QString::fromStdString(AppSettings::instance().i2pProxyHost());
         proxyPort_ = AppSettings::instance().i2pProxyPort();
         client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
-        if (!proxyHost_.isEmpty()) {
+        if (!proxyHost_.isEmpty() && transportAtStart_ == QLatin1String("embedded")) {
             bazarish::log::info("i2p: clearnet side goes through socks://{}:{}",
                 proxyHost_.toStdString(), proxyPort_);
         }
