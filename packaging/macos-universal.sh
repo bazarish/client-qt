@@ -8,7 +8,12 @@ readonly kArm=${1:?usage: macos-universal.sh <arm64.app> <x86_64.app> <out.app>}
 readonly kIntel=${2:?}
 readonly kOut=${3:?}
 
-test -d "$kArm" && test -d "$kIntel"
+for bundle in "$kArm" "$kIntel"; do
+    if [ ! -d "$bundle" ]; then
+        echo "there is no bundle at $bundle" >&2
+        exit 1
+    fi
+done
 rm -rf "$kOut"
 cp -R "$kArm" "$kOut"
 

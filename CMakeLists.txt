@@ -133,10 +133,12 @@ if(Qt6_FOUND)
     endif()
 
     if(APPLE)
-        # The bundle's own property list: what carries the bazarish:// scheme here,
-        # and the two sentences macOS shows before it lets the client at the
-        # microphone and the camera.
+        # An app bundle, which qt_add_executable does not make on its own: the
+        # properties below apply to nothing until it is one. The property list
+        # carries the bazarish:// scheme and the two sentences macOS shows before
+        # it lets the client at the microphone and the camera.
         set_target_properties(bazarish-app PROPERTIES
+            MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST
                 ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in
             MACOSX_BUNDLE_GUI_IDENTIFIER org.bazarish.client

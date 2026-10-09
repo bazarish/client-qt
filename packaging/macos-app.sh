@@ -7,5 +7,8 @@ set -eu
 readonly kBuild=${1:-build}
 readonly kApp="$kBuild/bazarish-app.app"
 
-test -d "$kApp"
+if [ ! -d "$kApp" ]; then
+    echo "there is no bundle at $kApp" >&2
+    exit 1
+fi
 "$(brew --prefix qt)/bin/macdeployqt" "$kApp" -qmldir=app/qml
