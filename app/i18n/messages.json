@@ -2951,6 +2951,12 @@
       "zh": "联系请求未完成。",
       "ar": "لم يكتمل طلب التواصل."
     },
+    "The contact's server did not confirm the request.": {
+      "ru": "Сервер контакта не подтвердил запрос.",
+      "es": "El servidor del contacto no ha confirmado la solicitud.",
+      "zh": "联系人的服务器未确认该请求。",
+      "ar": "لم يؤكد خادم جهة الاتصال الطلب."
+    },
     "The cropped avatar could not be read.": {
       "ru": "Обрезанный аватар прочитать не удалось.",
       "es": "No se ha podido leer el avatar recortado.",

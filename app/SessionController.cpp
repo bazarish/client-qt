@@ -365,6 +365,10 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::routingTold, this, &SessionController::onRoutingTold);
     connect(worker_, &SessionWorker::contactAlreadyKnown, this,
         &SessionController::onContactAlreadyKnown);
+    connect(worker_, &SessionWorker::contactRequestUnconfirmed, this,
+        &SessionController::onContactRequestUnconfirmed);
+    connect(worker_, &SessionWorker::contactAddResumed, this,
+        &SessionController::onContactAddResumed);
     connect(worker_, &SessionWorker::contactAddRateLimited, this,
         &SessionController::onContactAddRateLimited);
     connect(worker_, &SessionWorker::contactAccepted, this,

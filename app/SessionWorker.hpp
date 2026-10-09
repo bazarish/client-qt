@@ -196,6 +196,9 @@ signals:
         const QString& opId, const QString& fingerprint, const QString& requestId);
     void contactAddDone(const QString& opId, bool ok, const QString& status);
     void contactAlreadyKnown(const QString& opId, const QString& fingerprint);
+    void contactRequestUnconfirmed(const QString& opId);
+    void contactAddResumed(
+        const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
@@ -233,6 +236,13 @@ private:
     void startContactAdd(bool byAlias, const QString& uriOrAlias, const QString& intro,
         const QString& opId, const QString& requestId = {});
     void resumePendingAdds();
+    bool addsResumed_ = false;
+    bazarish::client::DeliveryWatch contactRequestWatch(const QString& opId,
+        const QString& fingerprint, const QString& intro, const QString& requestId,
+        bool recordedHere);
+    void finishContactRequest(const QString& opId, const QString& fingerprint,
+        const QString& intro, const QString& requestId, bool recordedHere,
+        const bazarish::client::OutboundCourier::Outcome& outcome);
     void drainMailbox();
     void maintain();
     void refreshCalls();

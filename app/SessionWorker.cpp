@@ -42,6 +42,7 @@
 #include <iterator>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -474,9 +475,7 @@ void SessionWorker::openAccount(
         }
     }
     emitContacts();
-    if (startOnline) {
-        resumePendingAdds();
-    }
+    addsResumed_ = false;
     {
         const bazarish::Bytes& own = session_->avatar();
         if (!own.empty()) {
@@ -733,6 +732,10 @@ void SessionWorker::drainMailbox()
         bazarish::log::warn("sync failed: {}", error.what());
         emit syncReachable(false);
         return;
+    }
+    if (!addsResumed_) {
+        addsResumed_ = true;
+        resumePendingAdds();
     }
     drainResolvedAdds();
     for (const IncomingMessage& m : messages) {
@@ -1221,12 +1224,16 @@ void SessionWorker::resumePendingAdds()
     for (const bazarish::client::Session::PendingContactAdd& pending :
         session_->pendingContactAdds()) {
         const QString opId = QString::fromStdString(pending.opId);
-        emit opBegin(opId, QStringLiteral("contact"), tr("Adding a contact"),
-            tr("Resuming after a restart…"));
-        startContactAdd(pending.request.byAlias,
-            QString::fromStdString(pending.request.uriOrAlias),
-            QString::fromStdString(pending.request.introText), opId,
-            QString::fromStdString(pending.request.requestId));
+        const QString what = QString::fromStdString(pending.request.uriOrAlias);
+        const QString intro = QString::fromStdString(pending.request.introText);
+        const QString requestId = QString::fromStdString(pending.request.requestId);
+        if (pending.request.byAlias) {
+            emit opBegin(opId, QStringLiteral("contact"), tr("Adding a contact"),
+                tr("Resuming after a restart…"));
+        } else {
+            emit contactAddResumed(opId, what, intro, requestId);
+        }
+        startContactAdd(pending.request.byAlias, what, intro, opId, requestId);
     }
 }
 
@@ -1252,34 +1259,83 @@ void SessionWorker::drainResolvedAdds()
             emit actionFailed(QString::fromStdString(resolved.error));
             continue;
         }
-        if (session_->hasContact(resolved.fingerprint)) {
-            emit contactAlreadyKnown(
-                entry.opId, QString::fromStdString(resolved.fingerprint));
+        const QString fingerprint = QString::fromStdString(resolved.fingerprint);
+        const bool resending = session_->contactAwaitsAnswer(resolved.fingerprint);
+        if (!resending && session_->hasContact(resolved.fingerprint)) {
+            emit contactAlreadyKnown(entry.opId, fingerprint);
             continue;
         }
+        const bazarish::client::DeliveryWatch watch = contactRequestWatch(entry.opId,
+            fingerprint, QString::fromStdString(resolved.introText),
+            QString::fromStdString(resolved.requestId), !resending);
         try {
             emit contactAddStage(entry.opId, encodeSystemNote(QT_TR_NOOP("Sending request…")));
-            const std::string fingerprint = session_->commitContactAdd(resolved);
-            emit actionOk(tr("Contact request sent"));
-            emit contactRequestSent(QString::fromStdString(fingerprint),
-                QString::fromStdString(resolved.introText),
-                QString::fromStdString(resolved.requestId));
-            emit contactAddDone(entry.opId, true,
-                encodeSystemNote(QT_TR_NOOP("Request sent.")));
-        } catch (const bazarish::client::ApiError& e) {
-            if (e.code == bazarish::ErrorCode::eContactRateLimited) {
-                emit contactAddRateLimited(entry.opId,
-                    QString::fromStdString(resolved.fingerprint),
-                    QString::fromStdString(resolved.requestId));
-                continue;
+            if (resending) {
+                session_->sendContactRequest(resolved.fingerprint, resolved.requestId,
+                    resolved.introText, watch, /*waitForOutcome=*/false);
+            } else {
+                session_->commitContactAdd(resolved, watch);
+                emitContacts();
             }
-            emit contactAddDone(entry.opId, false, QString::fromUtf8(e.what()));
-            emit actionFailed(QString::fromUtf8(e.what()));
         } catch (const std::exception& e) {
+            if (!resending) {
+                session_->forgetUnansweredContact(resolved.fingerprint);
+                emitContacts();
+            }
             emit contactAddDone(entry.opId, false, QString::fromUtf8(e.what()));
             emit actionFailed(QString::fromUtf8(e.what()));
         }
     }
+}
+
+bazarish::client::DeliveryWatch SessionWorker::contactRequestWatch(const QString& opId,
+    const QString& fingerprint, const QString& intro, const QString& requestId,
+    const bool recordedHere)
+{
+    bazarish::client::DeliveryWatch watch;
+    watch.onOutcome = [this, opId, fingerprint, intro, requestId, recordedHere](
+                          const bazarish::client::OutboundCourier::Outcome& outcome) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opId, fingerprint, intro, requestId, recordedHere, outcome]() {
+                finishContactRequest(opId, fingerprint, intro, requestId, recordedHere, outcome);
+            },
+            Qt::QueuedConnection);
+    };
+    return watch;
+}
+
+void SessionWorker::finishContactRequest(const QString& opId, const QString& fingerprint,
+    const QString& intro, const QString& requestId, const bool recordedHere,
+    const bazarish::client::OutboundCourier::Outcome& outcome)
+{
+    if (outcome.stored) {
+        emit actionOk(tr("Contact request sent"));
+        emit contactRequestSent(fingerprint, intro, requestId);
+        emit contactAddDone(opId, true, encodeSystemNote(QT_TR_NOOP("Request sent.")));
+        return;
+    }
+    const std::optional<bazarish::ErrorCode> code
+        = bazarish::errorCodeFromString(outcome.errorCode);
+    const QString reason = QString::fromStdString(
+        outcome.errorMessage.empty() ? outcome.errorCode : outcome.errorMessage);
+    if (code == bazarish::ErrorCode::eRecipientServerUnreachable) {
+        bazarish::log::warn("contact request to {} not confirmed: {}",
+            bazarish::log::redact(fingerprint.toStdString()), reason.toStdString());
+        emit contactRequestUnconfirmed(opId);
+        emit actionFailed(tr("The contact's server did not confirm the request."));
+        return;
+    }
+    if (session_ && recordedHere) {
+        session_->forgetUnansweredContact(fingerprint.toStdString());
+        emitContacts();
+    }
+    if (code == bazarish::ErrorCode::eContactRateLimited) {
+        emit contactAddRateLimited(opId, fingerprint, requestId);
+        return;
+    }
+    emit contactAddDone(opId, false, reason);
+    emit actionFailed(reason);
 }
 
 void SessionWorker::noteCommandDone()

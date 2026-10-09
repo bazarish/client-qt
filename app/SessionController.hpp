@@ -496,6 +496,13 @@ private slots:
     void openContactProgress(const QString& peer, const QString& opId);
     void writeContactProgress(const QString& opId, const QString& text);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
+    void onContactRequestUnconfirmed(const QString& opId);
+    void settleContactAdd(const QString& opId, bool ok, const QString& note);
+    void onContactAddResumed(
+        const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
+    void sendContactAdd(const QString& uri, const QString& intro, const QString& requestId);
+    void trackContactAdd(
+        const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
     void onContactAlreadyKnown(const QString& opId, const QString& fingerprint);
     void writeConversationNote(const QString& peer, const QString& text);
     void onContactAddRateLimited(

@@ -106,7 +106,8 @@ void SessionController::addByInvite(
         const bazarish::Descriptor known
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
         const QString peer = QString::fromStdString(known.fingerprint);
-        if (contacts_.has(peer)) {
+        if (const auto contact = contactState_.constFind(peer);
+            contact != contactState_.cend() && contact->writable) {
             openConversation(peer);
             emit actionOk(tr("Already in your contacts"));
             return;
@@ -114,9 +115,30 @@ void SessionController::addByInvite(
     } catch (const std::exception&) {
         // error-hiding: allowed - the link was vetted; the add below parses it and reports again.
     }
+    sendContactAdd(uri, intro, requestId.isEmpty() ? newE2eId() : requestId);
+}
+
+void SessionController::sendContactAdd(
+    const QString& uri, const QString& intro, const QString& requestId)
+{
     const QString opId = QStringLiteral("contact:") + newE2eId();
     beginOperation(opId, QStringLiteral("contact"), tr("Adding contact"),
         tr("Preparing…"));
+    trackContactAdd(opId, uri, intro, requestId);
+    emit requestAddByInvite(uri, intro, opId, requestId);
+}
+
+void SessionController::onContactAddResumed(
+    const QString& opId, const QString& uri, const QString& intro, const QString& requestId)
+{
+    beginOperation(opId, QStringLiteral("contact"), tr("Adding a contact"),
+        tr("Resuming after a restart…"));
+    trackContactAdd(opId, uri, intro, requestId);
+}
+
+void SessionController::trackContactAdd(
+    const QString& opId, const QString& uri, const QString& intro, const QString& requestId)
+{
     try {
         const bazarish::Descriptor descriptor
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
@@ -131,12 +153,12 @@ void SessionController::addByInvite(
     } catch (const std::exception& error) {
         bazarish::log::warn("invite parsed for the chat but not for its peer: {}", error.what());
     }
-    emit requestAddByInvite(uri, intro, opId, requestId);
 }
 
 void SessionController::onContactAddRateLimited(
     const QString& opId, const QString& fingerprint, const QString& requestId)
 {
+    emit requestForgetPendingAdd(opId);
     finishOperation(opId, false, tr("Their address is busy"));
     contactProgressRows_.remove(opId);
     const auto found = refusedRequests_.find(fingerprint);
@@ -165,7 +187,7 @@ void SessionController::retryContactRequest(const QString& fingerprint)
         return;
     }
     const PendingContactRequest pending = *found;
-    addByInvite(pending.uri, pending.intro, pending.requestId);
+    sendContactAdd(pending.uri, pending.intro, pending.requestId);
     if (const auto again = refusedRequests_.find(fingerprint); again != refusedRequests_.end()) {
         again->triesLeft = pending.triesLeft;
         again->requestId = pending.requestId;
@@ -215,7 +237,8 @@ void SessionController::retryContactAdd()
         emit actionFailed(tr("This add cannot be tried again from here"));
         return;
     }
-    addByInvite(found->uri, found->intro, found->requestId);
+    const PendingContactRequest pending = *found;
+    sendContactAdd(pending.uri, pending.intro, pending.requestId);
 }
 
 void SessionController::addByAlias(const QString& alias, const QString& intro)
@@ -358,10 +381,22 @@ void SessionController::onContactAccepted(const QString& peer, const bool ok,
     emit contactsRevisionChanged();
 }
 
-void SessionController::onContactAddDone(const QString& opId, bool ok, const QString& status)
+void SessionController::onContactAddDone(const QString& opId, const bool ok, const QString& status)
+{
+    settleContactAdd(opId, ok,
+        ok ? status : encodeSystemNote(QT_TR_NOOP("Could not add: %1"), {systemNoteText(status)}));
+}
+
+void SessionController::onContactRequestUnconfirmed(const QString& opId)
+{
+    settleContactAdd(opId, false,
+        encodeSystemNote(QT_TR_NOOP("The contact's server did not confirm the request.")));
+}
+
+void SessionController::settleContactAdd(const QString& opId, const bool ok, const QString& note)
 {
     emit requestForgetPendingAdd(opId);
-    finishOperation(opId, ok, systemNoteText(status));
+    finishOperation(opId, ok, systemNoteText(note));
     const auto row = contactProgressRows_.constFind(opId);
     if (row != contactProgressRows_.cend()) {
         store_.updateStatus(row->id, DeliveryStatus::Received);
@@ -370,8 +405,7 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
             conversation_.setTypeForId(row->id, QStringLiteral("contact.failed"));
         }
     }
-    writeContactProgress(opId,
-        ok ? status : encodeSystemNote(QT_TR_NOOP("Could not add: %1"), {systemNoteText(status)}));
+    writeContactProgress(opId, note);
     contactProgressRows_.remove(opId);
 }
 
