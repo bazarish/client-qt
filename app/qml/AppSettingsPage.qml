@@ -184,6 +184,13 @@ Popup {
                                     }
                                 }
                             }
+                            Label {
+                                visible: I2p.transport !== "embedded"
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            }
                             RowLayout {
                                 Layout.fillWidth: true
                                 Label { text: qsTr("Version"); color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
@@ -223,6 +230,10 @@ Popup {
                                 iconName: "check"
                                 text: qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
+                                // An empty proxy is a setting of its own, so what
+                                // enables this is a change, not a filled field.
+                                enabled: proxyHostField.text.trim() !== I2p.proxyHost
+                                    || parseInt(proxyPortField.text || "0") !== I2p.proxyPort
                                 onClicked: proxyRestartDialog.open()
                             }
                         }
@@ -249,6 +260,13 @@ Popup {
                                         }
                                     }
                                 }
+                            }
+                            Label {
+                                visible: I2p.transport !== "sam"
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
                             }
                             Label {
                                 text: qsTr("Use the local external I2P router.")
@@ -319,6 +337,13 @@ Popup {
                                 }
                             }
                             Label {
+                                visible: I2p.transport !== "gateway"
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
                                 text: qsTr("The gateway takes connections over HTTPS, so this application looks like ordinary web traffic. It removes the need for a local I2P router. The gateway sees the I2P addresses you reach, so it has to be one you trust. End-to-end protection of your data is unaffected.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
@@ -340,21 +365,15 @@ Popup {
                                 iconName: "check"
                                 text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
-                                enabled: !I2p.gatewayChecking && gatewayField.text.trim().length > 0
+                                enabled: !I2p.gatewayChecking
+                                    && gatewayField.text.trim().length > 0
+                                    && gatewayField.text.trim() !== I2p.gatewayAddress
                                 onClicked: {
                                     root.gatewayProblem = ""
                                     I2p.checkAndSaveGateway(gatewayField.text)
                                 }
                             }
                         }
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        Layout.topMargin: 4
-                        wrapMode: Text.Wrap
-                        text: qsTr("The I2P backend is chosen at startup. A restart is required.")
-                        color: Theme.textDim; font.pixelSize: Theme.fontSmall
                     }
 
                     MenuButton {

@@ -154,7 +154,7 @@ void TrayIcon::rebuildMenu()
         menu_.addSeparator();
     }
 
-    notificationsAction_ = menu_.addAction(tr("Show notifications"));
+    notificationsAction_ = menu_.addAction(tr("Notifications"));
     notificationsAction_->setCheckable(true);
     notificationsAction_->setChecked(app_.notificationsEnabled());
     connect(notificationsAction_, &QAction::toggled, this,
