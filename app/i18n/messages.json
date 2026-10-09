@@ -2927,6 +2927,12 @@
       "zh": "I2P 后端在启动时选定。账号已关闭。请重启应用。",
       "ar": "تُختار خدمة I2P الخلفية عند بدء التشغيل. وقد أُغلقت حساباتك. أعد تشغيل التطبيق."
     },
+    "The I2P tunnels are being rebuilt": {
+      "ru": "Туннели I2P перестраиваются",
+      "es": "Se están reconstruyendo los túneles I2P",
+      "zh": "正在重建 I2P 隧道",
+      "ar": "يُعاد بناء أنفاق I2P"
+    },
     "The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only forgets this device: the account and its mail stay.": {
       "ru": "Аккаунт будет закрыт на сервере и удалён с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только его. Аккаунт и его почта останутся.",
       "es": "La cuenta se cierra en el servidor y desaparece de este dispositivo. No se puede deshacer.\n\nQuitarla de este dispositivo solo olvida este dispositivo: la cuenta y su correo se quedan.",

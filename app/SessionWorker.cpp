@@ -699,6 +699,7 @@ void SessionWorker::rebuildI2pLinks()
     if (session_) {
         session_->releaseI2pLinks();
     }
+    emit syncReachable(false, tr("The I2P tunnels are being rebuilt"));
     if (maintenanceTimer_ != nullptr && maintenanceTimer_->isActive()) {
         startEventWaiter();
     }

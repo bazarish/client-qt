@@ -20,6 +20,14 @@ did before this was settled.
 The same request is also what the account's connection state is drawn from: an
 answer means the server is there, an error means it is not.
 
+It reports failures, not absences, so **whatever stops that loop on purpose has
+to report the loss itself**. Rebuilding the I2P links - which is what moving the
+tunnel-length slider does - tears the loop down, releases the links and starts a
+new loop that cannot answer until fresh tunnels are up; the state is set to
+unreachable at the moment the links go, and the first answer from the new loop
+puts it back. Without that the plate kept the last answer's verdict and claimed
+a connection that no longer existed.
+
 ## Procedure
 
 1. A loop of its own, on its own outbound destination, holds the wait. The
