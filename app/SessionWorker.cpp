@@ -229,7 +229,7 @@ QByteArray compressAvatarJpeg(const QImage& img)
     if (square.width() > kDim) {
         square = square.scaled(kDim, kDim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
     }
-    constexpr int kCap = 500 * 1024;
+    constexpr int kCap = static_cast<int>(bazarish::kAvatarMaxBytes);
     const auto encode = [&square](int quality) {
         QByteArray out;
         QBuffer buffer(&out);
