@@ -411,20 +411,30 @@ Popup {
                     // Full descriptor editor (link / facades / fingerprint), the
                     // same flow as first connect: lets the user re-point the server
                     // or, after registering on the portal, Connect again to finish.
-                    MenuButton {
+                    RowLayout {
                         Layout.fillWidth: true
-                        iconName: "server"
-                        text: qsTr("Server connection")
-                        onClicked: connectionDialog.open()
-                    }
-                    // What the account actually did on the wire: the one
-                    // place that shows a refusal, a delivery nobody signed
-                    // for, or a device sync that never left.
-                    MenuButton {
-                        Layout.fillWidth: true
-                        iconName: "list"
-                        text: qsTr("Connection log")
-                        onClicked: { root.close(); root.showConnectionLog() }
+                        spacing: 8
+                        MenuButton {
+                            id: serverConnectionButton
+                            Layout.fillWidth: true
+                            iconName: "server"
+                            text: qsTr("Server connection")
+                            onClicked: connectionDialog.open()
+                        }
+                        // What the account actually did on the wire: the one
+                        // place that shows a refusal, a delivery nobody signed
+                        // for, or a device sync that never left.
+                        MenuButton {
+                            Layout.preferredWidth: serverConnectionButton.height
+                            Layout.preferredHeight: serverConnectionButton.height
+                            leftPadding: 0
+                            rightPadding: 0
+                            iconName: "list"
+                            Accessible.name: qsTr("Connection log")
+                            ToolTip.visible: hovered
+                            ToolTip.text: Accessible.name
+                            onClicked: { root.close(); root.showConnectionLog() }
+                        }
                     }
                     // A device asks for the address book once, on its first sync.
                     // If no other device was online to answer, this asks again.
