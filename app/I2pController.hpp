@@ -25,6 +25,7 @@ class I2pController : public QObject {
     Q_PROPERTY(int privacyLevel READ privacyLevel WRITE setPrivacyLevel NOTIFY privacyLevelChanged)
     Q_PROPERTY(bool running READ running NOTIFY statusChanged)
     Q_PROPERTY(bool ready READ ready NOTIFY statusChanged)
+    Q_PROPERTY(bool tunnelsBuilding READ tunnelsBuilding NOTIFY statusChanged)
     Q_PROPERTY(int knownRouters READ knownRouters NOTIFY statusChanged)
     Q_PROPERTY(int minKnownRouters READ minKnownRouters CONSTANT)
     Q_PROPERTY(int floodfills READ floodfills NOTIFY statusChanged)
@@ -54,6 +55,8 @@ public:
     void setLoggingEnabled(bool on);
     bool running() const { return running_; }
     bool ready() const { return ready_; }
+    // No destination can carry anything yet, and one is being raised.
+    bool tunnelsBuilding() const;
     int knownRouters() const { return knownRouters_; }
     int minKnownRouters() const;
     QString proxyHost() const { return proxyHost_; }

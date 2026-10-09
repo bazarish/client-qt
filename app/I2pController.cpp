@@ -289,6 +289,20 @@ void I2pController::clearGateway()
     emit transportChanged();
 }
 
+bool I2pController::tunnelsBuilding() const
+{
+    if (!running_) {
+        return true;
+    }
+    for (const QVariant& entry : destinations_) {
+        if (entry.toMap().value(QStringLiteral("state")).toString()
+            == QLatin1String("building")) {
+            return true;
+        }
+    }
+    return destinations_.isEmpty();
+}
+
 void I2pController::refresh()
 {
     bazarish::i2p::Router* const router = client::sharedI2pRouterIfRunning();

@@ -230,6 +230,11 @@ Item {
             // The server took the account and serves nothing until an operator
             // approves it: connected, reachable, and unusable.
             property bool heldForApproval: root.session && root.session.awaitingApproval
+            // The gateway is only to blame when it is the part that is silent.
+            readonly property string whyNotReachable: (I2p.gatewayEnabled && !I2p.ready)
+                ? qsTr("No connection to the HTTPS gateway")
+                : (I2p.tunnelsBuilding ? qsTr("The I2P tunnels are being built")
+                                       : qsTr("No tunnel to the server"))
             visible: connPlate.isOffline || connPlate.isConnecting
                 || connPlate.heldForApproval
             implicitHeight: plateRow.implicitHeight + 16
@@ -266,9 +271,7 @@ Item {
                                 ? root.session.approvalNote
                                 : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
                             : (connPlate.isOffline ? qsTr("This account is not syncing")
-                                : (I2p.gatewayEnabled
-                                    ? qsTr("No connection to the gateway")
-                                    : qsTr("No tunnel to the server")))
+                                : connPlate.whyNotReachable)
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
