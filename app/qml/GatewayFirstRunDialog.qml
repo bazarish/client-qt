@@ -64,7 +64,7 @@ Dialog {
             bottomPadding: 0
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("A host runs the I2P router for you. It sees every address you connect to. Use one you trust.\n\nPaste the address its operator gave you, or skip. The app will run its built-in router.")
+            text: qsTr("Paste the address its operator gave you, or skip. The app will run its built-in router.")
         }
 
         FormField {

@@ -107,12 +107,6 @@
       "zh": "后加入的设备从空白开始：要让新设备上也有内容，请重新发送或转发一次。",
       "ar": "الجهاز الذي ينضم لاحقًا يبدأ فارغًا: لكي يصل شيء إلى جهاز جديد، أعِد إرساله أو إعادة توجيهه."
     },
-    "A host runs the I2P router for you. It sees every address you connect to. Use one you trust.\n\nPaste the address its operator gave you, or skip. The app will run its built-in router.": {
-      "ru": "Роутер I2P работает на чужой машине. Она видит все адреса, к которым вы обращаетесь. Выбирайте машину, которой доверяете.\n\nВставьте адрес от оператора или пропустите. Приложение запустит встроенный роутер.",
-      "es": "Un servidor ajeno mantiene el router I2P por ti. Ve todas las direcciones a las que te conectas. Usa uno en el que confíes.\n\nPega la dirección de su operador o sáltalo. La aplicación levantará su router integrado.",
-      "zh": "I2P 路由运行在他人的主机上。它能看到你连接的所有地址。请选择你信任的一台。\n\n粘贴运营者给你的地址，或者跳过。程序将启动内置路由。",
-      "ar": "يعمل موجّه I2P على مضيف آخر. وهو يرى كل العناوين التي تتصل بها. فاختر مضيفًا تثق به.\n\nالصِق عنوان المشغّل أو تخطَّ ذلك. سيشغّل التطبيق موجّهه المدمج."
-    },
     "A new address is published": {
       "ru": "Новый адрес опубликован",
       "es": "Se ha publicado una dirección nueva",
@@ -1972,6 +1966,12 @@
       "es": "Pega un enlace de invitación.",
       "zh": "请粘贴邀请链接。",
       "ar": "الصِق رابط دعوة."
+    },
+    "Paste the address its operator gave you, or skip. The app will run its built-in router.": {
+      "ru": "Вставьте адрес от оператора или пропустите. Приложение запустит встроенный роутер.",
+      "es": "Pega la dirección de su operador o sáltalo. La aplicación levantará su router integrado.",
+      "zh": "粘贴运营者给你的地址，或者跳过。程序将启动内置路由。",
+      "ar": "الصِق عنوان المشغّل أو تخطَّ ذلك. سيشغّل التطبيق موجّهه المدمج."
     },
     "Paste the challenge": {
       "ru": "Вставьте запрос",
