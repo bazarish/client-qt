@@ -683,11 +683,11 @@
       "zh": "正在压缩数据库",
       "ar": "جارٍ ضغط قاعدة البيانات"
     },
-    "Compare this with the site in front of you. If they differ, do not sign.": {
-      "ru": "Сверьте это с сайтом перед вами. Если расходится, не подписывайте.",
-      "es": "Compara esto con el sitio que tienes delante. Si no coincide, no firmes.",
-      "zh": "请与你眼前的网站核对。若不一致，就不要签名。",
-      "ar": "قارن هذا بالموقع الذي أمامك. وإن اختلفا فلا توقّع."
+    "Compare this with where you got it. If they differ, do not sign.": {
+      "ru": "Сверьте это с источником. Если расходится, не подписывайте.",
+      "es": "Compara esto con el lugar del que lo obtuviste. Si no coincide, no firmes.",
+      "zh": "请与你取得它的来源核对。若不一致，就不要签名。",
+      "ar": "قارن هذا بالمصدر الذي أخذته منه. وإن اختلفا فلا توقّع."
     },
     "Confirm passphrase": {
       "ru": "Повторите пароль",
@@ -1667,11 +1667,11 @@
       "zh": "本机没有摄像头。",
       "ar": "لا توجد كاميرا في هذا الجهاز."
     },
-    "No connection to the gateway": {
-      "ru": "Нет подключения к гейтвею",
-      "es": "Sin conexión con la pasarela",
-      "zh": "未连接到网关",
-      "ar": "لا اتصال بالبوابة"
+    "No connection to the HTTPS gateway": {
+      "ru": "Нет подключения к HTTPS-шлюзу",
+      "es": "Sin conexión con la pasarela HTTPS",
+      "zh": "未连接到 HTTPS 网关",
+      "ar": "لا اتصال ببوابة HTTPS"
     },
     "No destination is being served. The router is starting.": {
       "ru": "Ни одно назначение не обслуживается. Роутер запускается.",
@@ -2932,6 +2932,12 @@
       "es": "El backend de I2P se elige al arrancar. Tus cuentas están cerradas. Reinicia la aplicación.",
       "zh": "I2P 后端在启动时选定。账号已关闭。请重启应用。",
       "ar": "تُختار خدمة I2P الخلفية عند بدء التشغيل. وقد أُغلقت حساباتك. أعد تشغيل التطبيق."
+    },
+    "The I2P tunnels are being built": {
+      "ru": "Строятся туннели I2P",
+      "es": "Se están construyendo los túneles I2P",
+      "zh": "正在建立 I2P 隧道",
+      "ar": "يجري بناء أنفاق I2P"
     },
     "The account ends on the server and goes from this device. This cannot be undone.\n\nRemoving from this device only forgets this device: the account and its mail stay.": {
       "ru": "Аккаунт будет закрыт на сервере и удалён с этого устройства. Отменить нельзя.\n\nПри удалении с устройства сервер забудет только его. Аккаунт и его почта останутся.",

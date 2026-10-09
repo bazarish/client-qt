@@ -157,7 +157,7 @@ Popup {
 
                     // Who the signature is for. The signature is bound to this,
                     // and a place can only put its own words here, so comparing
-                    // them with the site in front of you is the whole check.
+                    // them with where the challenge came from is the whole check.
                     Rectangle {
                         visible: challengeArea.text.trim().length > 0
                         Layout.fillWidth: true
@@ -204,7 +204,7 @@ Popup {
                                 visible: root.consumer.ok
                                 text: (root.consumer.place && root.consumer.place.length > 1)
                                     ? qsTr("If the address you came to is not in the list, do not sign.")
-                                    : qsTr("Compare this with the site in front of you. If they differ, do not sign.")
+                                    : qsTr("Compare this with where you got it. If they differ, do not sign.")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap
