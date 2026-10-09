@@ -17,6 +17,7 @@ Popup {
     readonly property string aliasNote: session ? session.aliasNote : ""
     readonly property bool hasAliases: aliasRows.length > 0
     property bool showQr: false
+    readonly property int kLinkLines: 4
     // Return to the page this opened from (Settings); the close button exits.
     signal back()
 
@@ -186,21 +187,34 @@ Popup {
             visible: root.hasInvite && (!root.hasAliases || root.showQr)
             text: root.uri
         }
+        FontMetrics { id: linkMetrics; font: linkArea.font }
         // The box stays even with nothing in it: an invite that is not ready yet
         // is a state to explain, not a control to make disappear.
         ScrollView {
             visible: !root.hasAliases
             Layout.fillWidth: true
-            Layout.preferredHeight: root.hasInvite ? 110 : 56
+            Layout.preferredHeight: root.hasInvite
+                ? linkArea.topPadding + linkArea.bottomPadding
+                    + root.kLinkLines * Math.ceil(linkMetrics.lineSpacing)
+                : 56
             TextArea {
                 id: linkArea
                 readOnly: true
                 wrapMode: TextArea.WrapAnywhere
                 text: root.uri
-                placeholderText: qsTr("No invite yet — publish your destination first.")
                 color: Theme.text
                 selectByMouse: true
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                Label {
+                    anchors.fill: parent
+                    anchors.leftMargin: linkArea.leftPadding
+                    anchors.rightMargin: linkArea.rightPadding
+                    anchors.topMargin: linkArea.topPadding
+                    visible: linkArea.length === 0
+                    text: qsTr("No invite yet — publish your destination first.")
+                    color: linkArea.placeholderTextColor
+                    wrapMode: Text.Wrap
+                }
             }
         }
         RowLayout {
