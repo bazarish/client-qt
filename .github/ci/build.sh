@@ -6,9 +6,11 @@ set -eu -o pipefail
 
 readonly kJobs=4
 readonly kTestSeconds=300
-readonly kLog=ci.log
 
 stage=${1:?usage: build.sh configure|build|test}
+# One log per stage: the reporter reads the newest, so it never explains a
+# failure with the step before it.
+readonly kLog=ci-$stage.log
 
 configure=(-S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release)
 if [ "$(uname)" = "Darwin" ]; then
