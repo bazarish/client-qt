@@ -869,6 +869,12 @@
       "zh": "无法添加：%1",
       "ar": "تعذّرت الإضافة: ⁦%1⁩"
     },
+    "Could not connect to this address.": {
+      "ru": "Не удалось подключиться к этому адресу.",
+      "es": "No se ha podido conectar con esta dirección.",
+      "zh": "无法连接到此地址。",
+      "ar": "تعذّر الاتصال بهذا العنوان."
+    },
     "Could not move the data: %1": {
       "ru": "Не удалось перенести данные: %1",
       "es": "No se han podido mover los datos: %1",
@@ -2447,18 +2453,6 @@
       "zh": "重启 Bazarish",
       "ar": "أعد تشغيل Bazarish"
     },
-    "Restart the router?": {
-      "ru": "Перезапустить роутер?",
-      "es": "¿Reiniciar el router?",
-      "zh": "要重启路由吗？",
-      "ar": "أتريد إعادة تشغيل الموجّه؟"
-    },
-    "Restarting now rebuilds the tunnels, which takes a minute or two. Saving applies the setting at the next start.": {
-      "ru": "Перезапуск сейчас перестроит туннели — это минута-другая. «Только сохранить» применит настройку при следующем старте.",
-      "es": "Reiniciar ahora reconstruye los túneles, lo que lleva un par de minutos. Guardar aplica el ajuste en el próximo arranque.",
-      "zh": "此刻重启会重建隧道，需要一两分钟。仅保存则在下次启动时应用该设置。",
-      "ar": "إعادة التشغيل الآن تعيد بناء الأنفاق في دقيقة أو دقيقتين. أما الحفظ فيطبّق الإعداد عند البدء التالي."
-    },
     "Restore from backup": {
       "ru": "Восстановить из резервной копии",
       "es": "Restaurar desde una copia de seguridad",
@@ -2525,12 +2519,6 @@
       "zh": "请先保存网关地址。",
       "ar": "احفظ عنوان بوابة أولًا."
     },
-    "Save and restart": {
-      "ru": "Сохранить и перезапустить",
-      "es": "Guardar y reiniciar",
-      "zh": "保存并重启",
-      "ar": "حفظ وإعادة تشغيل"
-    },
     "Save as": {
       "ru": "Сохранить как",
       "es": "Guardar como",
@@ -2548,12 +2536,6 @@
       "es": "Guardar el archivo",
       "zh": "保存文件",
       "ar": "حفظ الملف"
-    },
-    "Save only": {
-      "ru": "Только сохранить",
-      "es": "Solo guardar",
-      "zh": "仅保存",
-      "ar": "الحفظ فقط"
     },
     "Saved": {
       "ru": "Сохранено",
@@ -3041,6 +3023,12 @@
       "zh": "进度显示在右侧面板。",
       "ar": "يظهر التقدّم في اللوحة على اليمين."
     },
+    "The proxy requires authentication.": {
+      "ru": "Прокси требует аутентификации.",
+      "es": "El proxy requiere autenticación.",
+      "zh": "该代理需要身份验证。",
+      "ar": "يتطلّب الوسيط مصادقة."
+    },
     "The registry did not take the update. It will be tried again.": {
       "ru": "Реестр не принял обновление. Попытка повторится.",
       "es": "El registro no aceptó la actualización. Se intentará de nuevo.",
@@ -3208,6 +3196,12 @@
       "es": "Es un enlace externo. Tu proveedor de internet y el sitio verán tu dirección real.",
       "zh": "这是一个外部链接。你的网络服务商和目标站点会看到你的真实地址。",
       "ar": "هذا رابط خارجي. سيرى مزوّد الإنترنت والموقع عنوانك الحقيقي."
+    },
+    "This is not a SOCKS5 proxy.": {
+      "ru": "Это не прокси SOCKS5.",
+      "es": "Esto no es un proxy SOCKS5.",
+      "zh": "这不是 SOCKS5 代理。",
+      "ar": "هذا ليس وسيط SOCKS5."
     },
     "This is not a pairing link.": {
       "ru": "Это не ссылка подключения.",

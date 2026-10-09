@@ -226,13 +226,25 @@ Popup {
                                     inputField.validator: IntValidator { bottom: 1; top: 65535 }
                                 }
                             }
+                            Label {
+                                visible: root.proxyProblem.length > 0
+                                text: root.proxyProblem
+                                color: Theme.danger
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
                             MenuButton {
                                 iconName: "check"
-                                text: qsTr("Save")
+                                text: I2p.proxyChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
-                                enabled: proxyHostField.text.trim() !== I2p.proxyHost
-                                    || parseInt(proxyPortField.text || "0") !== I2p.proxyPort
-                                onClicked: proxyRestartDialog.open()
+                                enabled: !I2p.proxyChecking
+                                    && (proxyHostField.text.trim() !== I2p.proxyHost
+                                        || parseInt(proxyPortField.text || "0") !== I2p.proxyPort)
+                                onClicked: {
+                                    root.proxyProblem = ""
+                                    I2p.checkAndSaveProxy(proxyHostField.text,
+                                        parseInt(proxyPortField.text || "0"))
+                                }
                             }
                         }
 
@@ -388,6 +400,7 @@ Popup {
 
     // Why the last gateway address was refused, cleared when a new one is tried.
     property string gatewayProblem: ""
+    property string proxyProblem: ""
     // The verdict on the SAM address: whether the router at it answered.
     property string samNote: ""
     property bool samAnswered: false
@@ -395,6 +408,7 @@ Popup {
         target: I2p
         function onGatewayRefused(reason) { root.gatewayProblem = reason }
         function onGatewaySaved() { root.gatewayProblem = "" }
+        function onProxyRefused(reason) { root.proxyProblem = reason }
         function onSamRefused(reason) {
             root.samAnswered = false
             root.samNote = reason
@@ -403,12 +417,6 @@ Popup {
             root.samAnswered = true
             root.samNote = qsTr("The router answered")
         }
-    }
-
-    ProxyRestartDialog {
-        id: proxyRestartDialog
-        onAnswered: (restartNow) => I2p.saveProxy(
-            proxyHostField.text, parseInt(proxyPortField.text || "0"), restartNow)
     }
 
     // Moving the data is not something to do on a stray tap.

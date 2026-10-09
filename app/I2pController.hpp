@@ -35,6 +35,7 @@ class I2pController : public QObject {
     Q_PROPERTY(QVariantList destinations READ destinations NOTIFY statusChanged)
     Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
     Q_PROPERTY(int proxyPort READ proxyPort NOTIFY proxyChanged)
+    Q_PROPERTY(bool proxyChecking READ proxyChecking NOTIFY proxyCheckingChanged)
     Q_PROPERTY(bool samEnabled READ samEnabled NOTIFY samChanged)
     Q_PROPERTY(bool samChecking READ samChecking NOTIFY samChanged)
     Q_PROPERTY(QString samHost READ samHost NOTIFY samChanged)
@@ -62,7 +63,8 @@ public:
     QString proxyHost() const { return proxyHost_; }
     int proxyPort() const { return proxyPort_; }
     QString proxyNtcp2() const { return proxyNtcp2_; }
-    Q_INVOKABLE void saveProxy(const QString& host, int port, bool restartNow);
+    bool proxyChecking() const { return proxyChecking_; }
+    Q_INVOKABLE void checkAndSaveProxy(const QString& host, int port);
     bool samEnabled() const { return samEnabled_; }
     bool samChecking() const { return samChecking_; }
     QString samHost() const { return samHost_; }
@@ -97,6 +99,8 @@ signals:
     void tunnelsNeedRebuild();
     void statusChanged();
     void proxyChanged();
+    void proxyCheckingChanged();
+    void proxyRefused(const QString& reason);
     void samChanged();
     void gatewayChanged();
     void transportChanged();
@@ -115,6 +119,8 @@ private:
     int knownRouters_ = 0;
     QString proxyHost_;
     int proxyPort_ = 0;
+    bool proxyChecking_ = false;
+    void saveProxy(const QString& host, int port);
     QString proxyNtcp2_;
     bool gatewayAsked_ = false;
     bool gatewayEnabled_ = false;

@@ -5,6 +5,7 @@
 
 #include "GatewayAddress.hpp"
 #include "I2pRouter.hpp"
+#include "SocksProxy.hpp"
 #include "AccountManager.hpp"
 #include "AppSettings.hpp"
 
@@ -163,19 +164,53 @@ void I2pController::useSam(const bool on)
     emit transportChanged();
 }
 
-void I2pController::saveProxy(const QString& host, const int port, const bool restartNow)
+void I2pController::checkAndSaveProxy(const QString& host, const int port)
 {
+    if (proxyChecking_) {
+        return;
+    }
     const QString wantedHost = host.trimmed();
-    const bool clearing = wantedHost.isEmpty() || port <= 0;
-    proxyHost_ = clearing ? QString() : wantedHost;
-    proxyPort_ = clearing ? 0 : port;
+    if (wantedHost.isEmpty() || port <= 0) {
+        saveProxy(QString(), 0);
+        return;
+    }
+    proxyChecking_ = true;
+    emit proxyCheckingChanged();
+    std::thread([this, wantedHost, port]() {
+        const client::SocksCheck check
+            = client::checkSocksProxy(wantedHost.toStdString(), port);
+        QMetaObject::invokeMethod(
+            this,
+            [this, wantedHost, port, check]() {
+                proxyChecking_ = false;
+                emit proxyCheckingChanged();
+                if (check.answer != client::SocksAnswer::eAccepted) {
+                    if (!check.error.empty()) {
+                        bazarish::log::warn("i2p: socks proxy {}:{}: {}",
+                            wantedHost.toStdString(), port, check.error);
+                    }
+                    emit proxyRefused(check.answer == client::SocksAnswer::eUnreachable
+                            ? tr("Could not connect to this address.")
+                            : check.answer == client::SocksAnswer::eNeedsAuthentication
+                            ? tr("The proxy requires authentication.")
+                            : tr("This is not a SOCKS5 proxy."));
+                    return;
+                }
+                saveProxy(wantedHost, port);
+            },
+            Qt::QueuedConnection);
+    }).detach();
+}
+
+void I2pController::saveProxy(const QString& host, const int port)
+{
+    proxyHost_ = host;
+    proxyPort_ = port;
     AppSettings::instance().setI2pProxy(proxyHost_.toStdString(), proxyPort_);
     client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
     emit proxyChanged();
-    if (restartNow) {
-        const std::filesystem::path dataDir = i2pRoot();
-        std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
-    }
+    const std::filesystem::path dataDir = i2pRoot();
+    std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
     refresh();
 }
 
@@ -229,8 +264,9 @@ void I2pController::checkAndSaveGateway(const QString& address)
             [this, parsed, check]() {
                 gatewayChecking_ = false;
                 if (!check.ok) {
+                    bazarish::log::warn("i2p: gateway check: {}", check.error);
                     emit gatewayChanged();
-                    emit gatewayRefused(QString::fromStdString(check.error));
+                    emit gatewayRefused(tr("Could not connect to this address."));
                     return;
                 }
                 AppSettings::instance().rememberGateway(parsed->toString(), check.pin);
