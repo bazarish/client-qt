@@ -37,7 +37,7 @@ window() {
 # error that follows it out of frame.
 failures=$(sed -n '/The following tests FAILED/,$p' "$log")
 if [ -n "$failures" ]; then
-    said=$(printf '%s\n%s' "$(window '\*\*\*(Timeout|Failed|Exception)' 4 1)" "$failures")
+    said=$(printf '%s\n%s' "$(window '\*\*\*(Timeout|Failed|Exception)' 6 1)" "$failures")
 else
     said=$(window 'CHECK failed|error:|error [A-Z]+[0-9]+|CMake Error' 6 3)
 fi
