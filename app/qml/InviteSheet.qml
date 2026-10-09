@@ -210,9 +210,9 @@ Popup {
                     anchors.leftMargin: linkArea.leftPadding
                     anchors.rightMargin: linkArea.rightPadding
                     anchors.topMargin: linkArea.topPadding
-                    visible: linkArea.length === 0
-                    text: qsTr("No invite yet — publish your destination first.")
-                    color: linkArea.placeholderTextColor
+                    visible: linkArea.length === 0 && root.unavailable.length === 0
+                    text: qsTr("Waiting for the server…")
+                    color: Theme.textDim
                     wrapMode: Text.Wrap
                 }
             }

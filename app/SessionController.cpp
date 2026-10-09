@@ -963,7 +963,8 @@ QString SessionController::peerName(const QString& id) const
     if (!id.isEmpty() && id == fingerprint_) {
         return savedChatName();
     }
-    const QString name = contactState_.value(id).name;
+    const QString name = contactState_.contains(id) ? contactState_.value(id).name
+                                                    : pendingContactNames_.value(id);
     if (!name.isEmpty()) {
         return name;
     }

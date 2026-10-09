@@ -493,7 +493,7 @@ private slots:
     void ackAfterReceive(const QVariantMap& message);
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onContactAddStage(const QString& opId, const QString& status);
-    void openContactProgress(const QString& peer, const QString& opId, const QString& name);
+    void openContactProgress(const QString& peer, const QString& opId);
     void writeContactProgress(const QString& opId, const QString& text);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
     void onContactAlreadyKnown(const QString& opId, const QString& fingerprint);
@@ -636,7 +636,12 @@ private:
     QStringList blocked_;
     QStringList recentReactions_;
     QString accountPath_;
-    QHash<QString, qint64> contactProgressRows_;
+    struct ContactProgressRow {
+        qint64 id = 0;
+        QString peer;
+    };
+    QHash<QString, ContactProgressRow> contactProgressRows_;
+    QHash<QString, QString> pendingContactNames_;
     struct PendingContactRequest {
         QString uri;
         QString intro;

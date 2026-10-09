@@ -1265,7 +1265,7 @@ void SessionWorker::drainResolvedAdds()
                 QString::fromStdString(resolved.introText),
                 QString::fromStdString(resolved.requestId));
             emit contactAddDone(entry.opId, true,
-                encodeSystemNote(QT_TR_NOOP("Request sent, awaiting delivery…")));
+                encodeSystemNote(QT_TR_NOOP("Request sent.")));
         } catch (const bazarish::client::ApiError& e) {
             if (e.code == bazarish::ErrorCode::eContactRateLimited) {
                 emit contactAddRateLimited(entry.opId,

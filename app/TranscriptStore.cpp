@@ -794,7 +794,7 @@ TranscriptStore::LastMessage TranscriptStore::lastMessage(const QString& peer) c
     if (query.exec() && query.next()) {
         const QString text = query.value(0).toString();
         if (!text.isEmpty()) {
-            return {text, {}, {}};
+            return {text, query.value(1).toString(), {}};
         }
         return {{}, query.value(1).toString(), query.value(2).toString()};
     }

@@ -120,9 +120,13 @@ void SessionController::addByInvite(
     try {
         const bazarish::Descriptor descriptor
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
-        openContactProgress(QString::fromStdString(descriptor.fingerprint), opId,
-            QString::fromStdString(descriptor.name));
-        refusedRequests_.insert(QString::fromStdString(descriptor.fingerprint),
+        const QString peer = QString::fromStdString(descriptor.fingerprint);
+        if (!descriptor.name.empty()) {
+            pendingContactNames_.insert(peer,
+                QString::fromStdString(bazarish::client::safeContactName(descriptor.name)));
+        }
+        openContactProgress(peer, opId);
+        refusedRequests_.insert(peer,
             PendingContactRequest{uri, intro, kContactRetryAttempts, requestId});
     } catch (const std::exception& error) {
         bazarish::log::warn("invite parsed for the chat but not for its peer: {}", error.what());
@@ -269,8 +273,7 @@ void SessionController::onRoutingTold(const QString& peer, const bool delivered)
     showInActiveView(note, true);
 }
 
-void SessionController::openContactProgress(
-    const QString& peer, const QString& opId, const QString& name)
+void SessionController::openContactProgress(const QString& peer, const QString& opId)
 {
     if (peer.isEmpty()) {
         return;
@@ -283,8 +286,8 @@ void SessionController::openContactProgress(
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Preparing;
     note.id = store_.append(note);
-    contactProgressRows_[opId] = note.id;
-    contacts_.touch(peer, name, systemNoteText(note.text), note.ts, false);
+    contactProgressRows_[opId] = ContactProgressRow{note.id, peer};
+    contacts_.touch(peer, peerName(peer), systemNoteText(note.text), note.ts, false);
     if (activePeer_ == peer) {
         showInActiveView(note, true);
         return;
@@ -298,8 +301,9 @@ void SessionController::writeContactProgress(const QString& opId, const QString&
     if (found == contactProgressRows_.cend()) {
         return;
     }
-    store_.editContent(found.value(), text, QString());
-    conversation_.setTextForId(found.value(), text);
+    store_.editContent(found->id, text, QString());
+    conversation_.setTextForId(found->id, text);
+    contacts_.touch(found->peer, peerName(found->peer), chatPreview(found->peer), 0, false);
 }
 
 void SessionController::acceptContact()
@@ -360,10 +364,10 @@ void SessionController::onContactAddDone(const QString& opId, bool ok, const QSt
     finishOperation(opId, ok, systemNoteText(status));
     const auto row = contactProgressRows_.constFind(opId);
     if (row != contactProgressRows_.cend()) {
-        store_.updateStatus(row.value(), DeliveryStatus::Received);
+        store_.updateStatus(row->id, DeliveryStatus::Received);
         if (!ok) {
-            store_.setType(row.value(), QStringLiteral("contact.failed"));
-            conversation_.setTypeForId(row.value(), QStringLiteral("contact.failed"));
+            store_.setType(row->id, QStringLiteral("contact.failed"));
+            conversation_.setTypeForId(row->id, QStringLiteral("contact.failed"));
         }
     }
     writeContactProgress(opId,

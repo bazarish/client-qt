@@ -1697,12 +1697,6 @@
       "zh": "尚无直接的传输连接。",
       "ar": "لا توجد بعدُ اتصالات نقل مباشرة."
     },
-    "No invite yet — publish your destination first.": {
-      "ru": "Приглашения пока нет — сначала опубликуйте назначение.",
-      "es": "Todavía no hay invitación: publica antes tu destino.",
-      "zh": "尚无邀请——请先发布你的目的地。",
-      "ar": "لا توجد دعوة بعد — انشر وجهتك أولًا."
-    },
     "No invite yet: %1.": {
       "ru": "Приглашения пока нет: %1.",
       "es": "Todavía no hay invitación: %1.",
@@ -2417,11 +2411,11 @@
       "zh": "回复…",
       "ar": "رد…"
     },
-    "Request sent, awaiting delivery…": {
-      "ru": "Запрос отправлен, ожидается доставка…",
-      "es": "Solicitud enviada, esperando la entrega…",
-      "zh": "请求已发出，等待送达…",
-      "ar": "أُرسل الطلب، في انتظار التسليم…"
+    "Request sent.": {
+      "ru": "Запрос отправлен.",
+      "es": "Solicitud enviada.",
+      "zh": "请求已发送。",
+      "ar": "أُرسل الطلب."
     },
     "Reseeding from the link": {
       "ru": "Ресид по адресу из ссылки",
@@ -3442,6 +3436,12 @@
       "es": "Esperando el nuevo dispositivo",
       "zh": "等待新设备",
       "ar": "في انتظار الجهاز الجديد"
+    },
+    "Waiting for the server…": {
+      "ru": "Ожидание ответа сервера…",
+      "es": "Esperando al servidor…",
+      "zh": "正在等待服务器…",
+      "ar": "في انتظار الخادم…"
     },
     "Waiting for their answer…": {
       "ru": "Ожидание ответа…",

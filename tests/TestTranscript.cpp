@@ -2,6 +2,7 @@
 #include "TranscriptStore.hpp"
 
 #include "AccountDb.hpp"
+#include "SystemNotes.hpp"
 
 #include <bazarish/Bytes.hpp>
 
@@ -592,6 +593,22 @@ int main(int argc, char** argv)
         store.forgetPeer("carol");
         CHECK(!store.isPinned("carol"));
         CHECK(store.pinnedPeers().isEmpty());
+    }
+
+    {
+        const QString ndb = QString::fromStdString((dir / "notes.db").string());
+        TranscriptStore store;
+        CHECK(store.open("nt", ndb, ""));
+        StoredMessage note;
+        note.peer = "dave";
+        note.type = "system";
+        note.text = encodeSystemNote(QStringLiteral("Request sent, awaiting delivery…"));
+        note.ts = 300;
+        note.orderKey = note.ts;
+        CHECK(store.append(note) > 0);
+        const TranscriptStore::LastMessage last = store.lastMessage("dave");
+        CHECK(isServiceMessage(last.type));
+        CHECK(systemNoteText(last.text) == QStringLiteral("Request sent."));
     }
 
     fs::remove_all(dir);
