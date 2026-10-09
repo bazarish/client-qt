@@ -217,8 +217,13 @@ Item {
         if (s === DeliveryStatus.Failed) return Theme.danger            // red
         return "transparent"                                            // preparing (hollow ring)
     }
+    readonly property bool toSelf: delegate.session !== null
+        && delegate.session.isSavedChat(delegate.session.activePeer)
     function statusText(s) {
-        if (s === DeliveryStatus.Delivering) return qsTr("Sending to the recipient's server…")
+        if (s === DeliveryStatus.Delivering) {
+            return delegate.toSelf ? qsTr("Sending…")
+                                   : qsTr("Sending to the recipient's server…")
+        }
         if (s === DeliveryStatus.AtRecipientServer) return qsTr("Handed to the recipient's server")
         if (s === DeliveryStatus.Delivered) return qsTr("Delivered")
         if (s === DeliveryStatus.Failed) return qsTr("Failed to send")

@@ -256,9 +256,10 @@ void SessionController::sendVoiceTake()
     m.attWave = wave;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = DeliveryStatus::Preparing;
+    m.status = isSavedChat(activePeer_) ? DeliveryStatus::Delivering
+                                        : DeliveryStatus::Preparing;
     m.id = store_.append(m);
-    statusById_[m.id] = DeliveryStatus::Preparing;
+    statusById_[m.id] = m.status;
     showInActiveView(m, true);
     contacts_.touch(activePeer_, peerName(activePeer_), tr("[voice]"), m.ts, true);
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
