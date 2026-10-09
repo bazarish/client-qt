@@ -114,7 +114,12 @@ jobs:
       - name: Install the dependencies
         run: |
           brew update --quiet
-          brew install --quiet ninja qt openssl@3 sqlcipher opus qrencode boost
+          # One formula per call, and the openssl kegs before what links them: a
+          # list is installed concurrently, and sqlcipher built from source reads
+          # a keg that another install of the same command is still unpacking.
+          for formula in openssl@3 openssl@4 ninja qt sqlcipher opus qrencode boost; do
+              brew install --quiet "$formula"
+          done
       - uses: actions/checkout@v5
         with:
           submodules: recursive
