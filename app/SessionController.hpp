@@ -408,9 +408,10 @@ signals:
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& e2eId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
-        const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo);
+        const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo,
+        bool forwarded = false);
     void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
         qint64 localId, const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendReceipt(const QString& peer, const QString& refId);

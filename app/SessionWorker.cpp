@@ -983,11 +983,11 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
 }
 
 void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint64 localId,
-    const QString& e2eId, const QString& replyTo)
+    const QString& e2eId, const QString& replyTo, const bool forwarded)
 {
     try {
         session_->sendFile(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
-            watchFor(this, localId), replyTo.toStdString());
+            watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }
@@ -1008,12 +1008,12 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
 
 void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
     const QString& name, const QString& mime, qint64 localId, const QString& e2eId,
-    const QString& replyTo)
+    const QString& replyTo, const bool forwarded)
 {
     try {
         session_->sendPicture(peer.toStdString(),
             bazarish::Bytes(bytes.begin(), bytes.end()), name.toStdString(), mime.toStdString(),
-            e2eId.toStdString(), watchFor(this, localId), replyTo.toStdString());
+            e2eId.toStdString(), watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
     }

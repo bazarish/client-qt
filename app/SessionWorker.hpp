@@ -79,9 +79,10 @@ public slots:
     void sendText(const QString& peer, const QString& text, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& e2eId, const QString& replyTo);
+        const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
-        const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo);
+        const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo,
+        bool forwarded = false);
     void sendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendReceipt(const QString& peer, const QString& refId);

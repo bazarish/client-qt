@@ -1837,7 +1837,8 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
         }
         m.id = store_.append(m);
         forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[image]") : m.attName);
-        emit requestSendPicture(toPeer, picture, m.attName, m.attMime, m.id, m.e2eId, QString());
+        emit requestSendPicture(
+            toPeer, picture, m.attName, m.attMime, m.id, m.e2eId, QString(), true);
         return;
     }
     const QString path = source.savedPath;
@@ -1848,7 +1849,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     m.attSrcPath = path;
     m.id = store_.append(m);
     forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[file]") : m.attName);
-    emit requestSendFile(toPeer, path, m.id, m.e2eId, QString());
+    emit requestSendFile(toPeer, path, m.id, m.e2eId, QString(), true);
 }
 
 void SessionController::forwardShown(
@@ -2222,11 +2223,11 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
         return;
     }
     restartDelivery(localId);
-    const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
+    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
         tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
         activePeer_);
-    emit requestSendText(activePeer_, text, localId, e2eId, replyTo);
+    emit requestSendText(activePeer_, text, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendFile(qint64 localId, const QString& e2eId)
@@ -2240,12 +2241,11 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
         return;
     }
     restartDelivery(localId);
-    const QString replyTo = store_.messageByE2e(e2eId, activePeer_).replyTo;
     const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
         stored.attName.isEmpty() ? tr("file") : stored.attName,
         tr("Sending again…"), activePeer_);
-    emit requestSendFile(activePeer_, srcPath, localId, e2eId, replyTo);
+    emit requestSendFile(activePeer_, srcPath, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendVoice(qint64 localId, const QString& e2eId)
@@ -2283,7 +2283,7 @@ void SessionController::resendPicture(qint64 localId, const QString& e2eId)
         stored.attName.isEmpty() ? tr("image") : stored.attName,
         tr("Sending again…"), activePeer_);
     emit requestSendPicture(activePeer_, picture, stored.attName, stored.attMime, localId, e2eId,
-        stored.replyTo);
+        stored.replyTo, stored.forwarded);
 }
 
 void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
