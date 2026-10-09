@@ -444,10 +444,6 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
                     Label { text: qsTr("Your I2P destination"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    Label {
-                        text: qsTr("Your account has an I2P address of its own. The key is yours, so the address survives a move to another server.")
-                        color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
-                    }
                     // The box is tinted when the server's answer arrives, not when
                     // the button is pressed.
                     Connections {

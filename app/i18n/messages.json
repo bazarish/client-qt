@@ -179,11 +179,17 @@
       "zh": "账号、聊天记录和路由状态存放在程序旁的 bazarish_data 文件夹中。切换会迁移它们、关闭所有账号，并需要重新启动程序。",
       "ar": "تعيش الحسابات والمحادثات وحالة الموجّه في مجلد bazarish_data بجوار البرنامج. والتبديل ينقلها، ويغلق كل الحسابات، ويتطلب تشغيل التطبيق من جديد."
     },
-    "Add another facade": {
-      "ru": "Добавить ещё фасад",
-      "es": "Añadir otra fachada",
-      "zh": "再添加一个门面",
-      "ar": "إضافة واجهة أخرى"
+    "Add a facade": {
+      "ru": "Добавить фасад",
+      "es": "Añadir una fachada",
+      "zh": "添加门面",
+      "ar": "إضافة واجهة"
+    },
+    "Add a reseed": {
+      "ru": "Добавить ресид",
+      "es": "Añadir un reseed",
+      "zh": "添加 reseed",
+      "ar": "إضافة مصدر بذر"
     },
     "Add or switch account": {
       "ru": "Добавить аккаунт или сменить",
@@ -2405,12 +2411,6 @@
       "zh": "请求已发出，等待送达…",
       "ar": "أُرسل الطلب، في انتظار التسليم…"
     },
-    "Reseed — fetched over clearnet, before I2P is up:": {
-      "ru": "Ресид — загружается по обычному интернету до запуска I2P:",
-      "es": "Reseed: se descarga por la internet ordinaria, antes de levantar I2P:",
-      "zh": "Reseed——在 I2P 启动前经由普通互联网获取：",
-      "ar": "إعادة البذر — تُجلب عبر الإنترنت العادي قبل قيام I2P:"
-    },
     "Reseeding from the link": {
       "ru": "Ресид по адресу из ссылки",
       "es": "Resembrando desde el enlace",
@@ -3556,12 +3556,6 @@
       "es": "Tu destino I2P",
       "zh": "你的 I2P 目的地",
       "ar": "وجهتك في I2P"
-    },
-    "Your account has an I2P address of its own. The key is yours, so the address survives a move to another server.": {
-      "ru": "У аккаунта индивидуальный I2P-адрес. Ключ ваш, поэтому адрес сохранится при переходе на другой сервер.",
-      "es": "Tu cuenta tiene una dirección I2P propia. La clave es tuya, así que la dirección sobrevive a una mudanza de servidor.",
-      "zh": "你的账号拥有专属的 I2P 地址。密钥归你所有，因此更换服务器后地址依然不变。",
-      "ar": "لحسابك عنوان I2P خاص به. والمفتاح لك، فيبقى العنوان بعد الانتقال إلى خادم آخر."
     },
     "Your account needs a serving server to send and receive.": {
       "ru": "Чтобы отправлять и получать, аккаунту нужен обслуживающий сервер.",
