@@ -1503,7 +1503,11 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
             = bazarish::service::readLoginConsumer(challenge.trimmed().toStdString());
         described["ok"] = true;
         described["name"] = QString::fromStdString(consumer.name);
-        described["place"] = QString::fromStdString(consumer.place);
+        QStringList places;
+        for (const std::string& place : consumer.place) {
+            places << QString::fromStdString(place);
+        }
+        described["place"] = places;
         described["role"] = QString::fromStdString(consumer.role);
     } catch (const std::exception& error) {
         described["ok"] = false;

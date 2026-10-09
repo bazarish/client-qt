@@ -184,12 +184,15 @@ Popup {
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
-                            Label {
-                                visible: root.consumer.ok
-                                text: root.consumer.place ? root.consumer.place : ""
-                                color: Theme.green
-                                wrapMode: Text.WrapAnywhere
-                                Layout.fillWidth: true
+                            Repeater {
+                                model: root.consumer.ok && root.consumer.place
+                                    ? root.consumer.place : []
+                                Label {
+                                    text: modelData
+                                    color: Theme.green
+                                    wrapMode: Text.WrapAnywhere
+                                    Layout.fillWidth: true
+                                }
                             }
                             Label {
                                 visible: root.consumer.ok
@@ -199,7 +202,9 @@ Popup {
                             }
                             Label {
                                 visible: root.consumer.ok
-                                text: qsTr("Compare this with the site in front of you. If they differ, do not sign.")
+                                text: (root.consumer.place && root.consumer.place.length > 1)
+                                    ? qsTr("If the address you came to is not in the list, do not sign.")
+                                    : qsTr("Compare this with the site in front of you. If they differ, do not sign.")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap

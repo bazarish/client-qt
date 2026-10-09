@@ -1397,6 +1397,12 @@
       "zh": "身份指纹",
       "ar": "بصمة الهوية"
     },
+    "If the address you came to is not in the list, do not sign.": {
+      "ru": "Если не видите в списке адрес, на который зашли, не подписывайте.",
+      "es": "Si la dirección por la que entraste no está en la lista, no firmes.",
+      "zh": "如果你进入时用的地址不在列表里，请不要签名。",
+      "ar": "إن لم يكن العنوان الذي دخلت منه في القائمة، فلا توقّع."
+    },
     "In call": {
       "ru": "Разговор",
       "es": "En llamada",
