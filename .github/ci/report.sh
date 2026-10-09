@@ -25,21 +25,25 @@ fi
 # asked for it, and for a test the lines above it are what the test itself
 # printed before it stopped.
 window() {
-    local pattern=$1 before=$2 after=$3
+    local pattern=$1 before=$2 after=$3 text=$4
     local at
-    at=$(grep -naE "$pattern" "$log" | head -n 1 | cut -d: -f1)
+    at=$(printf '%s\n' "$text" | grep -naE "$pattern" | head -n 1 | cut -d: -f1)
     if [ -n "$at" ]; then
-        sed -n "$((at > before ? at - before : 1)),$((at + after))p" "$log"
+        printf '%s\n' "$text" | sed -n "$((at > before ? at - before : 1)),$((at + after))p"
     fi
 }
 
 # Ninja's own "FAILED:" line is not a mark: it comes first and would push the
 # error that follows it out of frame.
+whole=$(cat "$log")
 failures=$(sed -n '/The following tests FAILED/,$p' "$log")
 if [ -n "$failures" ]; then
-    said=$(printf '%s\n%s' "$(window '\*\*\*(Timeout|Failed|Exception)' 6 1)" "$failures")
+    spoken=$(printf '%s\n' "$whole" \
+        | grep -avE '^[[:space:]]*[0-9]+/[0-9]+ Test .*Passed|^[[:space:]]*Start [0-9]+:')
+    said=$(printf '%s\n%s' \
+        "$(window '\*\*\*(Timeout|Failed|Exception)' 6 1 "$spoken")" "$failures")
 else
-    said=$(window 'CHECK failed|error:|error [A-Z]+[0-9]+|CMake Error' 6 3)
+    said=$(window 'CHECK failed|error:|error [A-Z]+[0-9]+|CMake Error' 6 3 "$whole")
 fi
 if [ -z "${said//[[:space:]]/}" ]; then
     said=$(tail -n "$kLines" "$log")
