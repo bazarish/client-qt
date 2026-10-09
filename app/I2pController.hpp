@@ -15,8 +15,7 @@ inline constexpr int kMinimalPrivacyLevel = 0;
 inline constexpr int kMiddlePrivacyLevel = 1;
 inline constexpr int kMaxPrivacyLevel = 2;
 
-// A slider dragged from one end to the other passes through every notch; the
-// tunnels are rebuilt for where it came to rest, not for what it went past.
+// The slider passes through notches on its way: rebuild for where it stopped.
 inline constexpr int kTunnelRebuildDelayMs = 1000;
 
 class I2pController : public QObject {

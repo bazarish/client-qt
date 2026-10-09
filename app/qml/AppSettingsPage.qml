@@ -230,8 +230,6 @@ Popup {
                                 iconName: "check"
                                 text: qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
-                                // An empty proxy is a setting of its own, so what
-                                // enables this is a change, not a filled field.
                                 enabled: proxyHostField.text.trim() !== I2p.proxyHost
                                     || parseInt(proxyPortField.text || "0") !== I2p.proxyPort
                                 onClicked: proxyRestartDialog.open()

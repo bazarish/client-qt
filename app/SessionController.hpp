@@ -572,8 +572,6 @@ private:
     bool online_ = false;
     bool startOnline_ = true;
     bool reachable_ = false;
-    // A rebuild this client asked for is not news until it lasts: the plate is
-    // held for one grace period so a sub-second reconnect never flashes.
     bool linksRebuilding_ = false;
     QTimer rebuildGrace_;
     bool i2pBusy_ = false;

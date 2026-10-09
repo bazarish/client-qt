@@ -96,9 +96,7 @@ QString facadeHost(const QString& url)
 
 constexpr int kCommandTickMs = 200;
 
-// How long a rebuild this client asked for may take before the plate says the
-// server is out of reach. Through a gateway the stream comes back well inside
-// it, so the ordinary case shows nothing at all.
+// A reconnect this client asked for is not reported before this much of it.
 constexpr int kLinkRebuildGraceMs = 1500;
 
 constexpr qint64 kCommandVisibleAfterMs = 400;
@@ -1194,8 +1192,6 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     m.ts = nowMillis();
     m.orderKey = m.ts;
     const bool saved = isSavedChat(activePeer_);
-    // Nothing is dialled for the saved chat: it goes to this account's own
-    // mailbox over the facade, so there is no address to prepare.
     m.status = saved ? DeliveryStatus::Delivering : DeliveryStatus::Preparing;
     m.id = store_.append(m);
     statusById_[m.id] = m.status;
