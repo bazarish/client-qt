@@ -23,11 +23,6 @@ ColumnLayout {
     // Reveal the per-field inputs straight away (true when editing) or keep the
     // link field as the only surface until a link parses or manual entry is asked.
     property bool showManual: false
-    // Where a router with no peers can ask for a slice of netdb: taken from the
-    // pasted descriptor or from the connection being edited, never typed by hand -
-    // a user has no way to know them. The action submits this list, so a form that
-    // did not load the stored ones would erase them.
-    property var reseedUrls: []
     // Emitted right after the action runs, so a host dialog can close.
     signal submitted()
 
@@ -39,32 +34,41 @@ ColumnLayout {
 
     Component.onCompleted: reset()
 
-    // (Re)loads the fields from initialFacades/initialFingerprint. The host calls
-    // this when reopening the editor so it always reflects the current endpoint.
     function reset() {
-        facadeModel.clear()
-        for (var i = 0; i < initialFacades.length; ++i) {
-            facadeModel.append({ url: initialFacades[i] })
-        }
-        if (facadeModel.count === 0) {
-            facadeModel.append({ url: "" })
-        }
-        fpField.text = initialFingerprint
-        form.reseedUrls = initialReseeds
+        fillFrom(initialFacades, initialFingerprint, initialReseeds)
         linkField.text = ""
         form.showManual = initialFingerprint.length > 0
         flashRevert.stop()
         form.linkBorderColor = Theme.border
     }
 
-    function facadeList() {
+    function fillFrom(facades, fingerprint, reseeds) {
+        fillModel(facadeModel, facades)
+        fillModel(reseedModel, reseeds)
+        fpField.text = fingerprint
+    }
+
+    function fillModel(model, urls) {
+        model.clear()
+        for (var i = 0; i < urls.length; ++i) {
+            model.append({ url: urls[i] })
+        }
+        if (model.count === 0) {
+            model.append({ url: "" })
+        }
+    }
+
+    function listOf(model) {
         var urls = []
-        for (var i = 0; i < facadeModel.count; ++i) {
-            var u = facadeModel.get(i).url.trim()
+        for (var i = 0; i < model.count; ++i) {
+            var u = model.get(i).url.trim()
             if (u.length > 0) urls.push(u)
         }
         return urls
     }
+
+    function facadeList() { return listOf(facadeModel) }
+    function reseedList() { return listOf(reseedModel) }
 
     function flashRed() {
         flashRevert.stop()
@@ -95,15 +99,7 @@ ColumnLayout {
         }
         var info = form.session ? form.session.parseServerLink(t) : null
         if (info && info.serverFp && info.serverFp.length > 0) {
-            form.reseedUrls = info.reseeds || []
-            facadeModel.clear()
-            for (var i = 0; i < info.facades.length; ++i) {
-                facadeModel.append({ url: info.facades[i] })
-            }
-            if (facadeModel.count === 0) {
-                facadeModel.append({ url: "" })
-            }
-            fpField.text = info.serverFp
+            form.fillFrom(info.facades || [], info.serverFp, info.reseeds || [])
             form.showManual = true
             flashGreen()
         } else {
@@ -115,6 +111,7 @@ ColumnLayout {
     Timer { id: flashRevert; onTriggered: form.linkBorderColor = Theme.border }
 
     ListModel { id: facadeModel }
+    ListModel { id: reseedModel }
 
     // One-link import: paste a bazarish://server/... link; it parses automatically
     // and fills everything below.
@@ -190,38 +187,44 @@ ColumnLayout {
         MenuButton {
             Layout.fillWidth: true
             iconName: "plus"
-            text: qsTr("Add another facade")
+            text: qsTr("Add a facade")
             onClicked: facadeModel.append({ url: "" })
         }
 
-        // What the connection carries besides the facades. A reseed is a clearnet
-        // address this client will fetch from before it has any I2P at all, so it
-        // is the one thing in a pasted link worth reading before agreeing to it -
-        // and it used to be applied without ever being shown.
-        ColumnLayout {
+        Label {
+            text: qsTr("Reseeds — fetched over clearnet, before I2P is up:")
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
             Layout.fillWidth: true
-            spacing: 4
-            visible: form.reseedUrls.length > 0
-
-            Label {
-                text: form.reseedUrls.length === 1
-                    ? qsTr("Reseed — fetched over clearnet, before I2P is up:")
-                    : qsTr("Reseeds — fetched over clearnet, before I2P is up:")
-                color: Theme.textDim
-                font.pixelSize: Theme.fontSmall
-                wrapMode: Text.Wrap
+        }
+        Repeater {
+            model: reseedModel
+            RowLayout {
                 Layout.fillWidth: true
-            }
-            Repeater {
-                model: form.reseedUrls
-                Label {
-                    text: modelData
-                    color: Theme.text
-                    font.pixelSize: Theme.fontSmall
-                    elide: Text.ElideMiddle
+                spacing: 6
+                TextField {
                     Layout.fillWidth: true
+                    text: model.url
+                    placeholderText: "https://host/"
+                    color: Theme.text
+                    placeholderTextColor: Theme.textDim
+                    selectByMouse: true
+                    onTextChanged: reseedModel.setProperty(index, "url", text)
+                    background: Rectangle { radius: 8; color: Theme.surface; border.color: parent.activeFocus ? Theme.accent : Theme.border }
+                }
+                IconButton {
+                    iconName: "close"
+                    visible: reseedModel.count > 1
+                    onClicked: reseedModel.remove(index)
                 }
             }
+        }
+        MenuButton {
+            Layout.fillWidth: true
+            iconName: "plus"
+            text: qsTr("Add a reseed")
+            onClicked: reseedModel.append({ url: "" })
         }
 
         FormField { id: fpField; label: qsTr("Server fingerprint") }
@@ -236,7 +239,7 @@ ColumnLayout {
                 && form.facadeList().length > 0 && fpField.text.trim().length > 0
             onClicked: {
                 form.session.connectServer(form.facadeList(), fpField.text.trim(),
-                    form.reseedUrls)
+                    form.reseedList())
                 form.submitted()
             }
             background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
