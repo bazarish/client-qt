@@ -305,6 +305,12 @@
       "zh": "已向你的其他设备索取联系人",
       "ar": "طُلبت جهات اتصالك من أجهزتك الأخرى"
     },
+    "Asking the alias registry…": {
+      "ru": "Запрос к реестру алиасов…",
+      "es": "Consultando el registro de alias…",
+      "zh": "正在询问别名登记处…",
+      "ar": "جارٍ سؤال سجل الأسماء…"
+    },
     "Asking the registry over I2P…": {
       "ru": "Реестр опрашивается через I2P…",
       "es": "Consultando el registro por I2P…",
@@ -983,12 +989,6 @@
       "zh": "删除账号",
       "ar": "حذف الحساب"
     },
-    "Delete address": {
-      "ru": "Удалить адрес",
-      "es": "Eliminar la dirección",
-      "zh": "删除地址",
-      "ar": "حذف العنوان"
-    },
     "Delete chat": {
       "ru": "Удалить переписку",
       "es": "Eliminar la conversación",
@@ -1012,12 +1012,6 @@
       "es": "Eliminar el mensaje",
       "zh": "删除消息",
       "ar": "حذف الرسالة"
-    },
-    "Delete personal I2P key": {
-      "ru": "Удалить личный ключ I2P",
-      "es": "Eliminar la clave I2P personal",
-      "zh": "删除个人 I2P 密钥",
-      "ar": "حذف مفتاح I2P الشخصي"
     },
     "Delete this device's copy only": {
       "ru": "Удалить только копию на этом устройстве",
@@ -1601,6 +1595,12 @@
       "zh": "新地址",
       "ar": "عنوان جديد"
     },
+    "New address published; your contacts are being told": {
+      "ru": "Новый адрес опубликован, контактам рассылаются новые данные",
+      "es": "Nueva dirección publicada; se está avisando a tus contactos",
+      "zh": "新地址已发布，正在通知你的联系人",
+      "ar": "نُشر العنوان الجديد، ويجري إبلاغ جهات اتصالك"
+    },
     "New chat": {
       "ru": "Новый чат",
       "es": "Conversación nueva",
@@ -1612,6 +1612,12 @@
       "es": "Nuevo dispositivo",
       "zh": "新设备",
       "ar": "جهاز جديد"
+    },
+    "New key": {
+      "ru": "Новый ключ",
+      "es": "Clave nueva",
+      "zh": "新密钥",
+      "ar": "مفتاح جديد"
     },
     "New message from %1": {
       "ru": "Новое сообщение от %1",
@@ -1973,12 +1979,6 @@
       "zh": "个人 I2P 密钥已创建",
       "ar": "أُنشئ مفتاح I2P الشخصي"
     },
-    "Personal I2P key deleted": {
-      "ru": "Личный ключ I2P удалён",
-      "es": "Clave I2P personal eliminada",
-      "zh": "个人 I2P 密钥已删除",
-      "ar": "حُذف مفتاح I2P الشخصي"
-    },
     "Personal I2P key loaded": {
       "ru": "Личный ключ I2P загружен",
       "es": "Clave I2P personal cargada",
@@ -2020,6 +2020,24 @@
       "es": "Fijando un chat",
       "zh": "正在置顶聊天",
       "ar": "جارٍ تثبيت محادثة"
+    },
+    "Pointing %1 here": {
+      "ru": "Привязка %1 к этому аккаунту",
+      "es": "Apuntando %1 aquí",
+      "zh": "正在把 %1 指向这里",
+      "ar": "جارٍ ربط ⁦%1⁩ بهنا"
+    },
+    "Points here": {
+      "ru": "Указывает сюда",
+      "es": "Apunta aquí",
+      "zh": "已指向这里",
+      "ar": "يشير إلى هنا"
+    },
+    "Points nowhere": {
+      "ru": "Никуда не указывает",
+      "es": "No apunta a nada",
+      "zh": "未指向任何地方",
+      "ar": "لا يشير إلى شيء"
     },
     "Port": {
       "ru": "Порт",
@@ -2182,6 +2200,18 @@
       "es": "Salir",
       "zh": "退出",
       "ar": "خروج"
+    },
+    "Raised": {
+      "ru": "Поднят",
+      "es": "Levantada",
+      "zh": "已建立",
+      "ar": "أُنشئ"
+    },
+    "Raising a new address": {
+      "ru": "Поднятие нового адреса",
+      "es": "Levantando una dirección nueva",
+      "zh": "正在建立新地址",
+      "ar": "جارٍ إنشاء عنوان جديد"
     },
     "Reaching the other device": {
       "ru": "Дозвон до другого устройства",
@@ -2963,12 +2993,6 @@
       "zh": "该设备下次连接时会重新注册。",
       "ar": "يسجّل الجهاز نفسه من جديد في اتصاله التالي."
     },
-    "The existing key is deleted. Nobody can reach you until you create a new key and publish it. It will be a different address. Your contacts reach you again only after your first outgoing message. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.": {
-      "ru": "Существующий ключ будет удалён. Связаться с вами будет нельзя до генерации нового ключа и его публикации. Это будет другой адрес. Связь с существующими контактами восстановится только после вашего первого исходящего сообщения. Опция полезна в редких случаях борьбы со спамом. Не делайте этот шаг, если точно не понимаете, зачем он нужен.",
-      "es": "La clave actual se elimina. Nadie podrá contactarte hasta que crees una clave nueva y la publiques. Será otra dirección. Tus contactos volverán a alcanzarte solo tras tu primer mensaje saliente. Sirve en el caso poco frecuente de quitarse el spam de encima. No des este paso si no sabes con certeza para qué lo necesitas.",
-      "zh": "现有密钥将被删除。在你生成并发布新密钥之前，没有人能联系到你。地址也会变成另一个。现有联系人只有在你发出第一条消息之后才能重新找到你。此选项用于少见的摆脱垃圾消息的情形。如果你不确定为何需要它，就不要执行这一步。",
-      "ar": "يُحذف المفتاح الحالي. ولا يمكن لأحد الوصول إليك حتى تولّد مفتاحًا جديدًا وتنشره. وسيكون العنوان مختلفًا. ولا يصل إليك مراسلوك الحاليون إلا بعد رسالتك الصادرة الأولى. ويفيد هذا في حالة نادرة: التخلّص من الإزعاج. فلا تخطُ هذه الخطوة إن لم تكن واثقًا من سببها."
-    },
     "The file goes straight between you and your contact. Your contact asks for a one-time I2P tunnel. Your app has to be online to hand the file over when they ask.": {
       "ru": "Файл передаётся напрямую между вами и собеседником. Контакт запросит одноразовый туннель I2P. Ваше приложение должно быть онлайн, чтобы отдать файл в момент запроса.",
       "es": "El archivo va directo entre tú y tu contacto. Tu contacto pedirá un túnel I2P de un solo uso. Tu aplicación debe estar en línea para entregarlo en ese momento.",
@@ -3347,6 +3371,12 @@
       "zh": "取消置顶",
       "ar": "إلغاء التثبيت"
     },
+    "Unpointing %1": {
+      "ru": "Отвязка %1",
+      "es": "Desapuntando %1",
+      "zh": "正在取消 %1 的指向",
+      "ar": "جارٍ إلغاء ربط ⁦%1⁩"
+    },
     "Unsupported message (%1) — update your app": {
       "ru": "Сообщение не поддерживается (%1) — обновите программу",
       "es": "Mensaje no admitido (%1): actualiza la aplicación",
@@ -3539,6 +3569,12 @@
       "zh": "要收发消息，你的账号需要一台为它服务的服务器。",
       "ar": "ليُرسِل حسابك ويستقبل يحتاج إلى خادم يخدمه."
     },
+    "Your address changes. Every invite link you have handed out stops working and the old address stops answering at once. Your contacts are sent the new details automatically, and your aliases are repointed by themselves. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.": {
+      "ru": "Адрес изменится. Все выданные ссылки-приглашения перестанут работать, а старый адрес сразу перестанет отвечать. Контактам новые данные разошлются автоматически, алиасы переназначатся сами. Это помогает в редком случае, когда нужно избавиться от спама. Не делайте этого, если не уверены, зачем.",
+      "es": "Tu dirección cambia. Todos los enlaces de invitación que hayas repartido dejan de funcionar y la dirección anterior deja de responder de inmediato. Tus contactos reciben los datos nuevos automáticamente y tus alias se reapuntan por sí solos. Esto ayuda en el caso poco frecuente de quitarse el spam de encima. No lo hagas si no tienes claro para qué.",
+      "zh": "你的地址会改变。已经发出的邀请链接全部失效，旧地址立即停止回应。新的联系资料会自动发给你的联系人，别名也会自行重新指向。这在少见的摆脱垃圾请求的情况下有用。若不清楚为何需要，请不要这样做。",
+      "ar": "سيتغيّر عنوانك. تتوقف كل روابط الدعوة التي وزّعتها عن العمل، ويتوقف العنوان القديم عن الإجابة فورًا. تُرسل بياناتك الجديدة إلى جهات اتصالك تلقائيًا، وتُعاد أسماؤك المستعارة إلى العنوان الجديد من تلقاء نفسها. هذا يفيد في الحالة النادرة للتخلص من المزعجين. لا تفعل ذلك إن لم تكن واثقًا من سببه."
+    },
     "Your aliases are up to date": {
       "ru": "Алиасы актуальны",
       "es": "Tus alias están al día",
@@ -3586,6 +3622,12 @@
       "es": "Tu nombre",
       "zh": "你的名字",
       "ar": "اسمك"
+    },
+    "Your new contact details did not reach them.": {
+      "ru": "Новые контактные данные до них не дошли.",
+      "es": "Tus datos de contacto nuevos no les llegaron.",
+      "zh": "你的新联系资料没有送到对方。",
+      "ar": "لم تصل بيانات تواصلك الجديدة إليهم."
     },
     "Your server did not answer": {
       "ru": "Сервер не ответил",
@@ -3658,6 +3700,12 @@
       "es": "[voz]",
       "zh": "[语音]",
       "ar": "[رسالة صوتية]"
+    },
+    "answers nobody": {
+      "ru": "никому не отвечает",
+      "es": "no responde a nadie",
+      "zh": "不回应任何人",
+      "ar": "لا يجيب أحدًا"
     },
     "as %1": {
       "ru": "как %1",
@@ -3820,6 +3868,12 @@
       "es": "la contraseña con la que se guardó la copia de seguridad",
       "zh": "保存该备份时所用的密码",
       "ar": "كلمة المرور التي حُفظت بها النسخة الاحتياطية"
+    },
+    "pointing it here…": {
+      "ru": "привязывается…",
+      "es": "apuntándolo aquí…",
+      "zh": "正在指向这里…",
+      "ar": "جارٍ ربطه بهنا…"
     },
     "published": {
       "ru": "опубликовано",

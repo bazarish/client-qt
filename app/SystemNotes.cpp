@@ -18,7 +18,8 @@ const char* const kNoteContext = "SystemNote";
 
 bool isServiceMessage(const QString& type)
 {
-    return type == QStringLiteral("system") || type == QStringLiteral("contact.failed");
+    return type == QStringLiteral("system") || type == QStringLiteral("contact.failed")
+        || type == QStringLiteral("routing.failed");
 }
 
 QString encodeSystemNote(const QString& sourceText, const QStringList& args)

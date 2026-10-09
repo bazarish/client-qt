@@ -128,7 +128,9 @@ public slots:
     void activateAliasServicing();
     void generatePersonalKey();
     void loadPersonalKey(const QString& path);
-    void deletePersonalKey();
+    void replacePersonalKey();
+    void setAliasBinding(const QString& alias, bool on);
+    void retryRoutingTo(const QString& peer);
     void setAcceptCalls(bool accept);
     void setSendReceipts(bool on);
     void setDelegationDays(int days);
@@ -163,6 +165,7 @@ signals:
     void accountClosed(bool ok, const QString& error);
     void accountSettings(bool acceptCalls, bool sendReceipts);
     void aliasHoldings(const QVariantList& rows, const QString& note);
+    void routingTold(const QString& peer, bool delivered);
     void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected);
     void renamed(const QString& newName);
@@ -241,6 +244,7 @@ private:
     std::shared_ptr<AliasErrandQueue> aliasErrands_;
     bool aliasErrandRunning_ = false;
     bool aliasErrandByHand_ = false;
+    bool routingFanoutTried_ = false;
     QTimer* maintenanceTimer_ = nullptr;
     QTimer* callTimer_ = nullptr;
     std::thread eventWaiter_;

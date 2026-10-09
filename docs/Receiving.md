@@ -51,7 +51,11 @@ its own longer guard - the approval and delegation checks.
 
 A conversation also holds rows that are not mail: the contact request with the
 stages it goes through, a chat cleared on either side, a request the
-correspondent agreed to. Such a row is stored as the sentence it names plus the
+correspondent agreed to, and - after this account has changed its address - a
+notice that its new contact details did not reach this correspondent, with a
+**Try again** beside it. That one is written per correspondent, in their own
+chat, and is removed when the update lands; the queue behind it survives a
+restart and is also tried on its own whenever the account comes back online. Such a row is stored as the sentence it names plus the
 values that go into it - a correspondent's name, a count of attempts - and the
 sentence is put together when the row is drawn. A conversation therefore reads in
 the interface language in force, including the rows written before that language

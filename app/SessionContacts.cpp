@@ -239,6 +239,36 @@ void SessionController::writeConversationNote(const QString& peer, const QString
     showInActiveView(note, true);
 }
 
+void SessionController::onRoutingTold(const QString& peer, const bool delivered)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    const QString kind = QStringLiteral("routing.failed");
+    const qint64 told = store_.oldestOfType(peer, kind, /*outgoing=*/false);
+    if (delivered) {
+        if (told > 0) {
+            store_.removeById(told);
+            conversation_.removeById(told);
+        }
+        return;
+    }
+    if (told > 0) {
+        return;
+    }
+    StoredMessage note;
+    note.peer = peer;
+    note.type = kind;
+    note.text = encodeSystemNote(
+        QT_TR_NOOP("Your new contact details did not reach them."));
+    note.ts = nowMillis();
+    note.orderKey = note.ts;
+    note.status = DeliveryStatus::Received;
+    note.id = store_.append(note);
+    contacts_.touch(peer, peerName(peer), systemNoteText(note.text), note.ts, false);
+    showInActiveView(note, true);
+}
+
 void SessionController::openContactProgress(
     const QString& peer, const QString& opId, const QString& name)
 {

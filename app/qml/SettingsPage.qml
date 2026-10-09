@@ -604,15 +604,15 @@ Popup {
                             onClicked: root.session.publishPersonalDest()
                         }
                     }
-                    // Permanently drop this account's master key: nobody can reach it again
-                    // until a fresh destination is published.
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey
                         Layout.fillWidth: true
-                        iconName: "trash"
-                        text: qsTr("Delete address")
+                        iconName: "refresh"
+                        text: qsTr("New key")
                         danger: true
-                        onClicked: deleteKeyDialog.open()
+                        enabled: root.session && root.session.connected
+                            && !root.session.i2pBusy
+                        onClicked: newKeyDialog.open()
                     }
                     RowLayout {
                         Layout.fillWidth: true
@@ -1150,17 +1150,17 @@ Popup {
     }
 
     Dialog {
-        id: deleteKeyDialog
+        id: newKeyDialog
         anchors.centerIn: Overlay.overlay
         modal: true
         width: 360
-        title: qsTr("Delete personal I2P key")
-        footer: DialogButtons { acceptText: qsTr("Delete"); danger: true; onAccepted: deleteKeyDialog.accept(); onRejected: deleteKeyDialog.reject() }
-        onAccepted: if (root.session) root.session.deletePersonalKey()
+        title: qsTr("New key")
+        footer: DialogButtons { acceptText: qsTr("New key"); danger: true; onAccepted: newKeyDialog.accept(); onRejected: newKeyDialog.reject() }
+        onAccepted: if (root.session) root.session.replacePersonalKey()
         background: DialogFrame { destructive: true }
-        header: Label { text: qsTr("Delete personal I2P key"); color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
+        header: Label { text: qsTr("New key"); color: Theme.neon; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         contentItem: Label {
-            text: qsTr("The existing key is deleted. Nobody can reach you until you create a new key and publish it. It will be a different address. Your contacts reach you again only after your first outgoing message. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.")
+            text: qsTr("Your address changes. Every invite link you have handed out stops working and the old address stops answering at once. Your contacts are sent the new details automatically, and your aliases are repointed by themselves. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.")
             color: Theme.text
             wrapMode: Text.Wrap
         }

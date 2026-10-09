@@ -151,6 +151,8 @@ constexpr qint64 kRegisterRetryIntervalMs = 60 * 1000;
 
 constexpr qint64 kAliasServiceIntervalMs = 60 * 1000;
 
+constexpr qint64 kRegistryRetryIntervalMs = 10 * 1000;
+
 constexpr qint64 kTransientRenewLeadSeconds = 5 * 24 * 3600;
 
 constexpr qint64 kTransientJitterSeconds = 6 * 3600;
@@ -165,11 +167,13 @@ QVariantList aliasHoldingRows(const std::vector<bazarish::client::Session::Alias
 {
     QVariantList rows;
     for (const bazarish::client::Session::AliasHolding& holding : held) {
-        if (!holding.bindingWanted) {
+        if (!holding.inApp) {
             continue;
         }
         QVariantMap row;
         row[QStringLiteral("alias")] = QString::fromStdString(holding.alias);
+        row[QStringLiteral("resolving")] = holding.bindingWanted;
+        row[QStringLiteral("live")] = holding.bindingWanted && holding.bound;
         const QString when = QDateTime::fromSecsSinceEpoch(holding.notAfter).date().toString(
             QStringLiteral("yyyy-MM-dd"));
         row[QStringLiteral("term")] = holding.autoRenew
@@ -457,6 +461,9 @@ void SessionWorker::openAccount(
     emit loginSignerReady(session_->loginSigner());
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
         emit addressMismatch(QString::fromStdString(served), QString::fromStdString(ours));
+    });
+    session_->setRoutingFanoutSink([this](const std::string& peer, const bool delivered) {
+        emit routingTold(QString::fromStdString(peer), delivered);
     });
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
@@ -808,7 +815,12 @@ void SessionWorker::maintain()
     }
     emitContacts();
     if (!session_->isConnected()) {
+        routingFanoutTried_ = false;
         return;
+    }
+    if (!routingFanoutTried_) {
+        routingFanoutTried_ = true;
+        session_->runRoutingFanout();
     }
     drainResolvedAdds();
     drainAliasErrands();
@@ -845,8 +857,10 @@ void SessionWorker::maintain()
             bazarish::log::warn("delegation renewal check failed: {}", error.what());
         }
     }
-    if (nowMillis() - lastAliasServiceMs_ >= kAliasServiceIntervalMs
-        && session_->aliasServicingDue()) {
+    const qint64 aliasEvery = session_->routingFanout().registry
+        ? kRegistryRetryIntervalMs
+        : kAliasServiceIntervalMs;
+    if (nowMillis() - lastAliasServiceMs_ >= aliasEvery && session_->aliasServicingDue()) {
         lastAliasServiceMs_ = nowMillis();
         startAliasErrand(/*byHand=*/false);
     }
@@ -1753,18 +1767,54 @@ void SessionWorker::loadPersonalKey(const QString& path)
     refreshI2pStatus();
 }
 
-void SessionWorker::deletePersonalKey()
+void SessionWorker::replacePersonalKey()
 {
     if (!session_) {
         return;
     }
-    try {
-        session_->deleteI2pDestination();
-        emit actionOk(tr("Personal I2P key deleted"));
-    } catch (const std::exception& e) {
-        emit actionFailed(QString::fromUtf8(e.what()));
+    {
+        WorkerOp op(this, QStringLiteral("new-dest-key"), QStringLiteral("dest"),
+            tr("Raising a new address"), tr("Delegating it to your server…"));
+        try {
+            session_->replaceOwnAddress();
+            emit i2pKeyState(true, QString::fromStdString(session_->i2pAddress()));
+            op.succeed(tr("Raised"));
+            emit actionOk(tr("New address published; your contacts are being told"));
+        } catch (const std::exception& e) {
+            op.fail(QString::fromUtf8(e.what()));
+            emit actionFailed(QString::fromUtf8(e.what()));
+        }
     }
     refreshI2pStatus();
+}
+
+void SessionWorker::setAliasBinding(const QString& alias, const bool on)
+{
+    if (!session_) {
+        return;
+    }
+    {
+        WorkerOp op(this, QStringLiteral("alias-binding-") + alias, QStringLiteral("alias"),
+            on ? tr("Pointing %1 here").arg(alias) : tr("Unpointing %1").arg(alias),
+            tr("Asking the alias registry…"));
+        try {
+            session_->setAliasBinding(alias.toStdString(), on);
+            op.succeed(on ? tr("Points here") : tr("Points nowhere"));
+        } catch (const std::exception& e) {
+            op.fail(QString::fromUtf8(e.what()));
+            emit actionFailed(QString::fromUtf8(e.what()));
+        }
+    }
+    const QVariantList rows = aliasHoldingRows(session_->aliasNames());
+    emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+}
+
+void SessionWorker::retryRoutingTo(const QString& peer)
+{
+    if (!session_) {
+        return;
+    }
+    session_->retryRoutingTo(peer.toStdString());
 }
 
 void SessionWorker::setDelegationDays(const int days)

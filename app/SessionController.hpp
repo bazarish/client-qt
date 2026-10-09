@@ -327,7 +327,9 @@ public:
     Q_INVOKABLE QString shortFingerprint(const QString& fp) const;
     Q_INVOKABLE void generatePersonalKey();
     Q_INVOKABLE void loadPersonalKey(const QString& fileUrl);
-    Q_INVOKABLE void deletePersonalKey();
+    Q_INVOKABLE void replacePersonalKey();
+    Q_INVOKABLE void setAliasBinding(const QString& alias, bool on);
+    Q_INVOKABLE void retryRoutingTo(const QString& peer);
     Q_INVOKABLE void cancelTransfer(const QString& e2eId);
     Q_INVOKABLE void publishPersonalDest();
     Q_INVOKABLE void disablePersonalDest();
@@ -464,7 +466,9 @@ signals:
     void requestCancelTransfer(const QString& e2eId);
     void requestGeneratePersonalKey();
     void requestLoadPersonalKey(const QString& path);
-    void requestDeletePersonalKey();
+    void requestReplacePersonalKey();
+    void requestSetAliasBinding(const QString& alias, bool on);
+    void requestRetryRoutingTo(const QString& peer);
     void requestSetAcceptCalls(bool accept);
     void requestSetSendReceipts(bool on);
     void requestSetDelegationDays(int days);
@@ -621,6 +625,7 @@ private:
     void loadLatestWindow();
     void openWindowAtUnread(const QString& peer, qint64 firstUnread);
     void showInActiveView(const StoredMessage& m, bool isOwn);
+    void onRoutingTold(const QString& peer, bool delivered);
     void markOutgoingRead(const QString& peer, qint64 uptoId);
     QHash<QString, qint64> lastReadAckedId_;
     QHash<QString, qint64> pendingReadSync_;

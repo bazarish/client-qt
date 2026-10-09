@@ -92,7 +92,9 @@ Item {
     // A contact add that ended badly. It reads like a system note and carries
     // the two ways out of it, because the chat is where the person was watching.
     readonly property bool isAddFailed: model.type === "contact.failed"
+    readonly property bool isRoutingFailed: model.type === "routing.failed"
     readonly property bool isSystem: model.type === "system" || delegate.isAddFailed
+        || delegate.isRoutingFailed
     // A contact request. Incoming ones render green with an "Agree" button; our own
     // outgoing one is a "request sent" note.
     readonly property bool isContactRequest: model.type === "contact.request"
@@ -141,12 +143,25 @@ Item {
         Label {
             id: sysLabel
             text: model.text
-            color: delegate.isAddFailed ? Theme.danger : Theme.textDim
+            color: (delegate.isAddFailed || delegate.isRoutingFailed)
+                ? Theme.danger : Theme.textDim
             font.pixelSize: Theme.fontSmall
-            font.italic: !delegate.isAddFailed
+            font.italic: !delegate.isAddFailed && !delegate.isRoutingFailed
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
             Layout.fillWidth: true
+        }
+        RowLayout {
+            visible: delegate.isRoutingFailed
+            spacing: 8
+            Layout.alignment: Qt.AlignHCenter
+            MenuButton {
+                iconName: "refresh"
+                text: qsTr("Try again")
+                onClicked: if (delegate.session) {
+                    delegate.session.retryRoutingTo(delegate.session.activePeer)
+                }
+            }
         }
         RowLayout {
             visible: delegate.isAddFailed

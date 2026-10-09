@@ -106,7 +106,7 @@ const QSet<QByteArray> kSelfDescribingCommands = {
     "requestPublishThisDeviceAddress", "requestPublishFreshAddress", "requestRefreshI2pStatus",
     "requestRefreshStorageUsage", "requestRefreshDevices", "requestForgetDevice",
     "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
-    "requestDeletePersonalKey", "requestPublishPersonalDest",
+    "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
 };
 
 const QString kConnectOperationId = QStringLiteral("connect");
@@ -280,8 +280,12 @@ SessionController::SessionController(QObject* parent)
         &SessionWorker::generatePersonalKey);
     connect(this, &SessionController::requestLoadPersonalKey, worker_,
         &SessionWorker::loadPersonalKey);
-    connect(this, &SessionController::requestDeletePersonalKey, worker_,
-        &SessionWorker::deletePersonalKey);
+    connect(this, &SessionController::requestReplacePersonalKey, worker_,
+        &SessionWorker::replacePersonalKey);
+    connect(this, &SessionController::requestSetAliasBinding, worker_,
+        &SessionWorker::setAliasBinding);
+    connect(this, &SessionController::requestRetryRoutingTo, worker_,
+        &SessionWorker::retryRoutingTo);
     connect(this, &SessionController::requestPublishPersonalDest, worker_,
         &SessionWorker::publishPersonalDest);
     connect(this, &SessionController::requestSetDelegationDays, worker_,
@@ -355,6 +359,7 @@ SessionController::SessionController(QObject* parent)
     connect(this, &SessionController::requestForgetPendingAdd, worker_,
         &SessionWorker::forgetPendingAdd);
     connect(worker_, &SessionWorker::contactAddDone, this, &SessionController::onContactAddDone);
+    connect(worker_, &SessionWorker::routingTold, this, &SessionController::onRoutingTold);
     connect(worker_, &SessionWorker::contactAlreadyKnown, this,
         &SessionController::onContactAlreadyKnown);
     connect(worker_, &SessionWorker::contactAddRateLimited, this,
@@ -1640,9 +1645,19 @@ void SessionController::loadPersonalKey(const QString& fileUrl)
     }
 }
 
-void SessionController::deletePersonalKey()
+void SessionController::replacePersonalKey()
 {
-    emit requestDeletePersonalKey();
+    emit requestReplacePersonalKey();
+}
+
+void SessionController::setAliasBinding(const QString& alias, const bool on)
+{
+    emit requestSetAliasBinding(alias, on);
+}
+
+void SessionController::retryRoutingTo(const QString& peer)
+{
+    emit requestRetryRoutingTo(peer);
 }
 
 void SessionController::setDelegationDays(const int days)

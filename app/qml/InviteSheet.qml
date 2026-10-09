@@ -103,10 +103,10 @@ Popup {
             }
         }
 
-        // One alias per row: the name, and the day it runs out at the far edge.
-        // A tap puts the name on the clipboard, the way every other thing here
-        // that is meant to be handed over is copied. Only names that point at
-        // this identity are here; the rest reach nobody.
+        // One alias per row: the name, the day it runs out, and a switch that
+        // decides whether it answers at all. A tap on the name puts it on the
+        // clipboard, the way every other thing here that is meant to be handed
+        // over is copied. Which names are listed is settled on the website.
         ColumnLayout {
             visible: root.hasAliases && !root.showQr
             Layout.fillWidth: true
@@ -141,16 +141,31 @@ Popup {
                         }
                         Label {
                             text: aliasRow.modelData.alias
-                            color: aliasRow.copied ? Theme.green : Theme.text
+                            color: aliasRow.copied
+                                ? Theme.green
+                                : (aliasRow.modelData.resolving ? Theme.text : Theme.textDim)
                             font.pixelSize: Theme.fontLarge
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
                     }
                     Label {
-                        text: aliasRow.copied ? qsTr("Copied to clipboard") : aliasRow.modelData.term
+                        text: aliasRow.copied
+                            ? qsTr("Copied to clipboard")
+                            : (aliasRow.modelData.resolving
+                                ? (aliasRow.modelData.live
+                                    ? aliasRow.modelData.term
+                                    : qsTr("pointing it here…"))
+                                : qsTr("answers nobody"))
                         color: aliasRow.copied ? Theme.green : Theme.textDim
                         font.pixelSize: Theme.fontSmall
+                    }
+                    Toggle {
+                        checked: aliasRow.modelData.resolving
+                        enabled: root.session !== null && root.session.connected
+                            && !root.session.aliasBusy
+                        onToggled: root.session.setAliasBinding(
+                            aliasRow.modelData.alias, checked)
                     }
                 }
             }
