@@ -13,7 +13,6 @@ class SessionController : public QObject {
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
     Q_PROPERTY(bool online READ online NOTIFY onlineChanged)
     Q_PROPERTY(bool reachable READ reachable NOTIFY reachableChanged)
-    Q_PROPERTY(QString syncError READ syncError NOTIFY reachableChanged)
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
@@ -105,7 +104,6 @@ public:
     bool connected() const { return connected_; }
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
-    QString syncError() const { return syncError_; }
     bool i2pBusy() const { return i2pBusy_; }
     QVariantList devices() const { return devices_; }
     bool voiceRecording() const { return voiceRecording_; }
@@ -522,7 +520,7 @@ private slots:
     void onSendPhase(qint64 localId, const QString& phase);
     void onContactRequestSent(
         const QString& fingerprint, const QString& intro, const QString& requestId);
-    void onSyncReachable(bool ok, const QString& reason);
+    void onSyncReachable(bool ok);
     void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(const QString& activeUrl, const QStringList& configured,
@@ -574,7 +572,10 @@ private:
     bool online_ = false;
     bool startOnline_ = true;
     bool reachable_ = false;
-    QString syncError_;
+    // A rebuild this client asked for is not news until it lasts: the plate is
+    // held for one grace period so a sub-second reconnect never flashes.
+    bool linksRebuilding_ = false;
+    QTimer rebuildGrace_;
     bool i2pBusy_ = false;
     bool flashOnNextStatus_ = false;
     bool awaitingApproval_ = false;

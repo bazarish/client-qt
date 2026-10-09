@@ -361,10 +361,8 @@ void SessionWorker::startEventWaiter()
                 }
                 waiting = bazarish::client::Session::waitForMail(*waiter, kEventWaitSeconds);
             } catch (const std::exception& error) {
-                const QString reason = QString::fromUtf8(error.what());
                 QMetaObject::invokeMethod(
-                    this, [this, reason]() { emit syncReachable(false, reason); },
-                    Qt::QueuedConnection);
+                    this, [this]() { emit syncReachable(false); }, Qt::QueuedConnection);
                 bazarish::log::info("mail wait failed, asking again: {}", error.what());
                 continue;
             }
@@ -372,7 +370,7 @@ void SessionWorker::startEventWaiter()
                 return;
             }
             QMetaObject::invokeMethod(
-                this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
+                this, [this]() { emit syncReachable(true); }, Qt::QueuedConnection);
             if (waiting.empty()) {
                 continue;
             }
@@ -448,7 +446,7 @@ void SessionWorker::openAccount(
     session_->setAudioBackend(
         []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<QtAudioSource>(); },
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<QtAudioSink>(); });
-    session_->onServerAnswered([this]() { emit syncReachable(true, {}); });
+    session_->onServerAnswered([this]() { emit syncReachable(true); });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     session_->setSelfSendSink(
         [this](std::string deliveryId, bazarish::Bytes sealed, std::string kind) {
@@ -699,7 +697,6 @@ void SessionWorker::rebuildI2pLinks()
     if (session_) {
         session_->releaseI2pLinks();
     }
-    emit syncReachable(false, tr("The I2P tunnels are being rebuilt"));
     if (maintenanceTimer_ != nullptr && maintenanceTimer_->isActive()) {
         startEventWaiter();
     }
@@ -731,10 +728,10 @@ void SessionWorker::drainMailbox()
             session_->registerAccount();
             messages = session_->sync(false, Session::kPendingItemsPerPass);
         }
-        emit syncReachable(true, {});
+        emit syncReachable(true);
     } catch (const std::exception& error) {
         bazarish::log::warn("sync failed: {}", error.what());
-        emit syncReachable(false, QString::fromUtf8(error.what()));
+        emit syncReachable(false);
         return;
     }
     drainResolvedAdds();

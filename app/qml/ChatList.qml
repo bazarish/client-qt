@@ -266,13 +266,11 @@ Item {
                                 ? root.session.approvalNote
                                 : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
                             : (connPlate.isOffline ? qsTr("This account is not syncing")
-                                : (root.session && root.session.syncError.length > 0
-                                    ? root.session.syncError
-                                    : qsTr("No server connection yet")))
+                                : (I2p.gatewayEnabled
+                                    ? qsTr("No connection to the gateway")
+                                    : qsTr("No tunnel to the server")))
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
-                        // A transport's complaint is a sentence, not a word:
-                        // elided on one line it said nothing useful.
                         wrapMode: Text.Wrap
                         maximumLineCount: 3
                         elide: Text.ElideRight

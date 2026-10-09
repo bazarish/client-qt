@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QStringList>
+#include <QTimer>
 #include <QVariantList>
 
 #include <filesystem>
@@ -13,6 +14,10 @@ namespace bazarish::app {
 inline constexpr int kMinimalPrivacyLevel = 0;
 inline constexpr int kMiddlePrivacyLevel = 1;
 inline constexpr int kMaxPrivacyLevel = 2;
+
+// A slider dragged from one end to the other passes through every notch; the
+// tunnels are rebuilt for where it came to rest, not for what it went past.
+inline constexpr int kTunnelRebuildDelayMs = 1000;
 
 class I2pController : public QObject {
     Q_OBJECT
@@ -87,6 +92,7 @@ public:
 signals:
     void loggingChanged();
     void privacyLevelChanged();
+    void tunnelsNeedRebuild();
     void statusChanged();
     void proxyChanged();
     void samChanged();
@@ -99,6 +105,7 @@ signals:
 
 private:
 
+    QTimer rebuildDelay_;
     bool loggingEnabled_ = false;
     int privacyLevel_ = kMinimalPrivacyLevel;
     bool running_ = false;

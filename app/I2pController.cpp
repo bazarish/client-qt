@@ -41,6 +41,9 @@ bazarish::i2p::Privacy privacyForLevel(const int level)
 I2pController::I2pController(QObject* parent)
     : QObject(parent)
 {
+    rebuildDelay_.setSingleShot(true);
+    rebuildDelay_.setInterval(kTunnelRebuildDelayMs);
+    connect(&rebuildDelay_, &QTimer::timeout, this, &I2pController::tunnelsNeedRebuild);
     transportAtStart_ = AppSettings::instance().gatewayEnabled()
         ? QStringLiteral("gateway")
         : (AppSettings::instance().samEnabled() ? QStringLiteral("sam")
@@ -197,6 +200,7 @@ void I2pController::setPrivacyLevel(const int level)
     client::setTunnelPrivacy(privacyForLevel(wanted));
     AppSettings::instance().setI2pTunnelLength(wanted);
     emit privacyLevelChanged();
+    rebuildDelay_.start();
 }
 
 int I2pController::minKnownRouters() const

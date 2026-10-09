@@ -292,7 +292,7 @@ int main(int argc, char** argv)
 
     bazarish::app::I2pController i2pController;
     engine.rootContext()->setContextProperty("I2p", &i2pController);
-    QObject::connect(&i2pController, &bazarish::app::I2pController::privacyLevelChanged,
+    QObject::connect(&i2pController, &bazarish::app::I2pController::tunnelsNeedRebuild,
         &controller, &bazarish::app::AppController::rebuildI2pLinks);
     QObject::connect(&translations, &bazarish::app::Translations::languageChanged, &controller,
         &bazarish::app::AppController::retranslate);

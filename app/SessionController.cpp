@@ -96,6 +96,11 @@ QString facadeHost(const QString& url)
 
 constexpr int kCommandTickMs = 200;
 
+// How long a rebuild this client asked for may take before the plate says the
+// server is out of reach. Through a gateway the stream comes back well inside
+// it, so the ordinary case shows nothing at all.
+constexpr int kLinkRebuildGraceMs = 1500;
+
 constexpr qint64 kCommandVisibleAfterMs = 400;
 
 const QSet<QByteArray> kSelfDescribingCommands = {
@@ -453,6 +458,12 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onCommandFinished);
     commandTimer_.setInterval(kCommandTickMs);
     connect(&commandTimer_, &QTimer::timeout, this, &SessionController::showSlowCommands);
+    rebuildGrace_.setSingleShot(true);
+    rebuildGrace_.setInterval(kLinkRebuildGraceMs);
+    connect(&rebuildGrace_, &QTimer::timeout, this, [this]() {
+        linksRebuilding_ = false;
+        onSyncReachable(false);
+    });
 
     thread_.start();
 }
@@ -1183,7 +1194,9 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     m.ts = nowMillis();
     m.orderKey = m.ts;
     const bool saved = isSavedChat(activePeer_);
-    m.status = DeliveryStatus::Preparing;
+    // Nothing is dialled for the saved chat: it goes to this account's own
+    // mailbox over the facade, so there is no address to prepare.
+    m.status = saved ? DeliveryStatus::Delivering : DeliveryStatus::Preparing;
     m.id = store_.append(m);
     statusById_[m.id] = m.status;
     if (saved) {
@@ -1222,9 +1235,10 @@ StoredMessage SessionController::beginAttachmentSend(const QString& type, const 
     m.attSrcPath = srcPath;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = DeliveryStatus::Preparing;
+    m.status = isSavedChat(activePeer_) ? DeliveryStatus::Delivering
+                                        : DeliveryStatus::Preparing;
     m.id = store_.append(m);
-    statusById_[m.id] = DeliveryStatus::Preparing;
+    statusById_[m.id] = m.status;
     showInActiveView(m, true);
     contacts_.touch(
         activePeer_, {}, attachmentLabel(m.type) + QLatin1Char(' ') + m.attName, m.ts, false);
@@ -2096,6 +2110,8 @@ void SessionController::goOnline()
 
 void SessionController::rebuildI2pLinks()
 {
+    linksRebuilding_ = true;
+    rebuildGrace_.start();
     emit requestRebuildI2p();
 }
 
@@ -2112,14 +2128,19 @@ void SessionController::goOffline()
     emit requestSetSync(false);
 }
 
-void SessionController::onSyncReachable(const bool ok, const QString& reason)
+void SessionController::onSyncReachable(const bool ok)
 {
-    const QString error = ok ? QString() : reason;
-    if (reachable_ != ok || syncError_ != error) {
-        reachable_ = ok;
-        syncError_ = error;
-        emit reachableChanged();
+    if (ok) {
+        linksRebuilding_ = false;
+        rebuildGrace_.stop();
+    } else if (linksRebuilding_) {
+        return;
     }
+    if (reachable_ == ok) {
+        return;
+    }
+    reachable_ = ok;
+    emit reachableChanged();
 }
 
 void SessionController::onApprovalState(const bool pending, const QString& note)
