@@ -392,6 +392,7 @@ void I2pController::refresh()
             row[QStringLiteral("tunnelsIn")] = dest.inboundTunnels;
             row[QStringLiteral("tunnelsOut")] = dest.outboundTunnels;
             row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;
+            row[QStringLiteral("localRoute")] = dest.localRoute;
             row[QStringLiteral("countsKnown")] = router->capabilities().destinationCounters;
             destinations << row;
         }

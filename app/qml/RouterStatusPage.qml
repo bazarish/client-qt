@@ -191,10 +191,15 @@ Popup {
                                     // LeaseSets, not peers: one encrypted address costs two
                                     // of them, so the count is not a headcount of who is on
                                     // the other side.
-                                    text: qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
-                                        + "%4 leasesets")
-                                        .arg(modelData.state).arg(modelData.tunnelsIn)
-                                        .arg(modelData.tunnelsOut).arg(modelData.leaseSets)
+                                    text: modelData.localRoute
+                                        ? qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
+                                            + "gateway routing")
+                                            .arg(modelData.state).arg(modelData.tunnelsIn)
+                                            .arg(modelData.tunnelsOut)
+                                        : qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
+                                            + "%4 leasesets")
+                                            .arg(modelData.state).arg(modelData.tunnelsIn)
+                                            .arg(modelData.tunnelsOut).arg(modelData.leaseSets)
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     wrapMode: Text.Wrap; Layout.fillWidth: true
                                 }
@@ -212,6 +217,7 @@ Popup {
                 Hairline { }
 
                 ColumnLayout {
+                    visible: !I2p.gatewayEnabled
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8

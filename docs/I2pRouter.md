@@ -35,8 +35,13 @@ in place and it is not asked again.
 
 While an external router carries the traffic, what belongs to it rather than to
 this application is not shown: the network-database counters, the transport
-peers and the clearnet proxy. Tunnel length still applies - it is sent with every
-destination this client opens - and so does the list of local destinations.
+peers and the clearnet proxy. The list of local destinations still applies. Under
+SAM the tunnel length is sent with every destination this client opens; a gateway
+sets the tunnels itself, the same for all its clients, so under a gateway the
+router window carries no tunnel length at all and the client keeps no warm
+reserve - the gateway keeps one for everybody. A destination the gateway joined
+without I2P (a direct route to its operator's server, or two of its clients
+meeting inside it) reads "gateway routing" instead of a LeaseSet count.
 
 The transport is a facade over three engines. The desktop uses the in-process one,
 for the reasons this document sets out: the network database comes from the
@@ -112,7 +117,8 @@ port of zero is stored as "no proxy": neither half is retained on its own.
 
 ## Tunnel length
 
-Applies to every destination the application builds:
+Applies to every destination the application builds on its own engine or over
+SAM; a gateway decides it for its clients:
 
 | Level | Hops per direction | Variance |
 |---|---|---|
