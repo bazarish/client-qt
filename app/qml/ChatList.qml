@@ -235,10 +235,20 @@ Item {
                 ? qsTr("No connection to the HTTPS gateway")
                 : (I2p.tunnelsBuilding ? qsTr("The I2P tunnels are being built")
                                        : qsTr("No tunnel to the server"))
+            readonly property int transportPollMs: 2000
             visible: connPlate.isOffline || connPlate.isConnecting
                 || connPlate.heldForApproval
             implicitHeight: plateRow.implicitHeight + 16
             color: Theme.surface
+
+            // The router reports nothing by itself: I2p holds what the last refresh read.
+            Timer {
+                interval: connPlate.transportPollMs
+                repeat: true
+                running: connPlate.isConnecting
+                triggeredOnStart: true
+                onTriggered: I2p.refresh()
+            }
 
             Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.border }
 
