@@ -12,10 +12,8 @@ Item {
     width: size
     height: size
 
-    // The plate behind a face that has not loaded yet, and the shape every avatar
-    // in this application is: a circle. `clip` cannot do it - it clips to the
-    // bounding box, not to the radius, which is why a square identicon used to
-    // sit inside a round plate - so the picture is drawn through a mask.
+    // `clip` cuts to the bounding box, not to the radius, so the picture is drawn
+    // through a mask.
     Rectangle {
         anchors.fill: parent
         radius: width / 2

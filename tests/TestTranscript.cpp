@@ -267,14 +267,14 @@ int main(int argc, char** argv)
     }
 
     {
-        const QString sdb = QString::fromStdString((dir / "versioned.db").string());
+        const QString sdb = QString::fromStdString((dir / "reopened.db").string());
         {
             TranscriptStore fresh;
             CHECK(fresh.open("ver", sdb, QString()));
             StoredMessage m;
             m.peer = "heidi";
             m.type = "text";
-            m.text = "written at version 1";
+            m.text = "kept across a reopen";
             m.ts = 500;
             m.orderKey = m.ts;
             CHECK(fresh.append(m) > 0);

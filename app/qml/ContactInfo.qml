@@ -21,9 +21,6 @@ Popup {
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
-    // As tall as it needs, capped by the screen, and scrolling inside that cap -
-    // it used to size past the bottom of a short screen with no way to reach the
-    // rest.
     height: Math.min(parent ? parent.height - 40 : 620, body.implicitHeight + 36)
     padding: 18
 

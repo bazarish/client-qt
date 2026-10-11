@@ -230,27 +230,6 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     path_ = dbPath;
 
     Query query(db_);
-    Query version(db_);
-    std::int64_t schema = 0;
-    if (version.exec("PRAGMA user_version") && version.next()) {
-        schema = version.value(0).toLongLong();
-    }
-    Query written(db_);
-    const bool hasTables
-        = written.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'messages'")
-        && written.next();
-    if (hasTables) {
-        Query columns(db_);
-        if (!columns.exec(QStringLiteral("SELECT %1 FROM messages LIMIT 1").arg(kMessageColumns))) {
-            throw std::runtime_error(
-                "this account was written against a different set of columns and cannot be read;"
-                " create it again");
-        }
-    }
-    if (hasTables && schema != kAccountSchemaVersion) {
-        throw std::runtime_error("this account is schema version " + std::to_string(schema)
-            + ", and this build reads version " + std::to_string(kAccountSchemaVersion));
-    }
     if (!query.exec(
             "CREATE TABLE IF NOT EXISTS messages ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -272,32 +251,14 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
                     " PRIMARY KEY (peer, target, reactor))")) {
         return false;
     }
-    if (!hasTables
-        && !query.exec(
-            "PRAGMA user_version = " + QString::number(kAccountSchemaVersion))) {
-        return false;
-    }
     if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
         return false;
     }
-    if (!query.exec("DELETE FROM messages WHERE type = 'system' AND ("
-                    "text LIKE 'Incoming call%' OR text LIKE 'Outgoing call%'"
-                    " OR text = 'Missed call')")) {
-        bazarish::log::warn("transcript: the call lines could not be cleared");
-    }
-    if (!query.exec("DELETE FROM messages WHERE e2eId != '' AND id NOT IN ("
-                    "SELECT MIN(id) FROM messages WHERE e2eId != ''"
-                    " GROUP BY peer, e2eId, outgoing)")) {
-        bazarish::log::warn("transcript: the duplicate rows could not be cleared");
-    }
     if (!query.exec("CREATE UNIQUE INDEX IF NOT EXISTS messages_by_e2e"
                     " ON messages (peer, e2eId, outgoing) WHERE e2eId != ''")) {
-        bazarish::log::warn("transcript: one message per row is not enforced here");
+        return false;
     }
-    if (!query.exec("CREATE INDEX IF NOT EXISTS messages_by_peer_id ON messages (peer, id)")) {
-        bazarish::log::warn("transcript: conversations are read without an index");
-    }
-    return true;
+    return query.exec("CREATE INDEX IF NOT EXISTS messages_by_peer_id ON messages (peer, id)");
 }
 
 qint64 TranscriptStore::append(const StoredMessage& message)
@@ -1204,20 +1165,6 @@ bool TranscriptStore::rebuild(QString& reason)
         reason = QString::fromUtf8(sqlite3_errmsg(db_));
         return false;
     }
-    qint64 stamped = 0;
-    Query version(db_);
-    if (version.exec("PRAGMA user_version") && version.next()) {
-        stamped = version.value(0).toLongLong();
-    }
-    if (stamped == kAccountSchemaVersion) {
-        return true;
-    }
-    Query restore(db_);
-    if (!restore.exec("PRAGMA user_version = " + QString::number(kAccountSchemaVersion))) {
-        reason = QStringLiteral("the database was rewritten but its schema mark was lost");
-        return false;
-    }
-    bazarish::log::warn("transcript: the schema mark was written again after a rebuild");
     return true;
 }
 

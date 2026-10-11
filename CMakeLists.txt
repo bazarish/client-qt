@@ -317,8 +317,7 @@ endif()
 
 enable_testing()
 
-# The core's own tests moved into common with it; what is tested here is the
-# application. The settings document is plain JSON on disk, so it needs no Qt.
+# The settings document is plain JSON on disk, so it needs no Qt.
 add_executable(TestAppSettings tests/TestAppSettings.cpp app/AppSettings.cpp)
 target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(TestAppSettings PRIVATE bazarish_client)

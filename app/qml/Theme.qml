@@ -32,8 +32,8 @@ QtObject {
     // conversation/account name, and exceptional or destructive dialogs (e.g.
     // delete account). Used sparingly - never as a fill on text.
     readonly property color neon:      "#39ff14"
-    // Accent - primary buttons / interactive emphasis are a near-white (the
-    // formerly-neon buttons are now white); dark ink sits on the white fill.
+    // Accent - primary buttons / interactive emphasis are a near-white; dark ink
+    // sits on the white fill.
     readonly property color accentInk: "#11151a"   // dark ink on a near-white fill
     readonly property color accent:    "#f2f4f2"
     readonly property color accentText: accentInk

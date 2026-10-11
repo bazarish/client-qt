@@ -92,9 +92,7 @@ Popup {
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
         }
-        // A block exactly as tall as the tallest bar can be. The bars rise and
-        // fall inside it, so a voice no longer moves everything else in the window
-        // up and down with it.
+        // As tall as the tallest bar, so the bars never move the rest of the window.
         Item {
             Layout.alignment: Qt.AlignHCenter
             implicitWidth: meter.bars * meter.barWidth + (meter.bars - 1) * meter.barGap

@@ -49,8 +49,6 @@ struct Reaction {
     QString emoji;
 };
 
-inline constexpr int kAccountSchemaVersion = 1;
-
 inline constexpr int kKeepRecentMessages = 100;
 inline constexpr int kKeepManyMessages = 1000;
 

@@ -85,10 +85,8 @@ Dialog {
                 }
             }
 
-            // The round window this dialog has always talked about, now drawn: a
-            // scrim over the square with a circular hole in it, so what is chosen
-            // is what will be seen. The grab underneath stays square - the picture
-            // is stored as it was cropped, and the circle is how it is shown.
+            // The grab underneath stays square: the picture is stored as cropped, and
+            // the circle is only how it is shown.
             Canvas {
                 anchors.fill: parent
                 onPaint: {

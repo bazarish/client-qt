@@ -17,8 +17,6 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    // Fits the window it is shown in: on a narrow screen the panel used to keep
-    // its 460 and hang off both edges.
     width: Math.min(460, parent ? parent.width - 24 : 460)
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
@@ -818,9 +816,6 @@ Popup {
                         spacing: 8
                         MenuButton {
                             Layout.fillWidth: true
-                            // While it runs, it says so: the server has to answer
-                            // and the session has to let go of its files. A second
-                            // press used to start the whole conversation again.
                             enabled: App.deletingId.length === 0
                             iconName: "trash"
                             text: App.deletingId.length > 0 ? qsTr("Deleting…") : qsTr("Delete account")

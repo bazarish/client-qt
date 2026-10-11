@@ -56,8 +56,6 @@ Item {
                     id: chatList
                     session: root.session
                     visible: !panes.narrow || !panes.chatOpen
-                    // Never wider than its share: the conversation used to be
-                    // squeezed narrower than the list it sits beside.
                     Layout.preferredWidth: panes.narrow
                         ? panes.width
                         : Math.min(320, Math.round(panes.width * 0.38))
