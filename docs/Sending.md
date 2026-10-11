@@ -33,8 +33,16 @@ local condition, not a property of the recipient.
 | Upper bound on one delivery run | 104 s (the four dials, the three waits, and one reply grace) |
 | Grace a reply may add past that bound | 30 s |
 | Upper bound on preparing the outbound destination | 180 s |
-| Outbound destination term, per correspondent | 600 s |
+| Outbound destination, per correspondent: longest life | 3600 s |
+| Outbound destination, per correspondent: closed after no delivery for | 600 s |
 | Warm destination pool | 2 destinations, 3 tunnels each |
+
+An outbound destination is replaced at least hourly, so no long-lived set of
+tunnels carries one correspondence, and one that has carried nothing for ten
+minutes is closed before then rather than held open for the next message. A
+contact request is the exception: its address is dropped as soon as the request
+is settled, so every request leaves from an address of its own - the recipient's
+server admits one contact request per sending address a day and refuses the next.
 
 The bound on a run is the sum of what the run may spend, not a number chosen
 beside it: an attempt is made only when the budget can pay for its wait and for
