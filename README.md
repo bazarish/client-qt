@@ -6,7 +6,7 @@ messenger: a Qt6 Quick application, `bazarish-app`, over the client core library
 The core - the API transport, the typed endpoints, and the session that holds the
 identity, the contacts, the mailbox sync, calls and file transfer - is shared
 with the other implementations through the `common` submodule. Headless use is
-not this repository's job: a bot or a scripted account is `client-daemon`, which
+not this repository's job: a bot or a scripted account is `bazarish-bot`, which
 runs the same core without an interface.
 
 ## Documentation
