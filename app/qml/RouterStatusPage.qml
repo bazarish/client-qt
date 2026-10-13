@@ -133,7 +133,7 @@ Popup {
                         StatRow { label: qsTr("Outbound tunnels"); value: I2p.outboundTunnels }
                     }
                 }
-                Hairline { }
+                Hairline { visible: I2p.running }
 
                 // The destinations this router serves right now. The tunnel counts
                 // above are router-wide, so without this it is impossible to tell
@@ -214,7 +214,7 @@ Popup {
                         }
                     }
                 }
-                Hairline { }
+                Hairline { visible: !I2p.gatewayEnabled }
 
                 ColumnLayout {
                     visible: !I2p.gatewayEnabled
@@ -336,7 +336,7 @@ Popup {
                         }
                     }
                 }
-                Hairline { }
+                Hairline { visible: !I2p.samEnabled && !I2p.gatewayEnabled }
 
                 // libi2pd's own logging - off by default, on demand for debugging.
                 ColumnLayout {
