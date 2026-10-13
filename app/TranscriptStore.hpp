@@ -2,10 +2,12 @@
 #pragma once
 
 #include <QByteArray>
+#include <QMap>
 #include <QString>
 #include <QVector>
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 struct sqlite3;
@@ -35,6 +37,8 @@ struct StoredMessage {
     qint64 ts = 0;
     qint64 orderKey = 0;
     int status = 0;
+    QString author;
+    bool contactable = false;
 };
 
 struct SearchHit {
@@ -47,6 +51,14 @@ struct SearchHit {
 struct Reaction {
     QString reactor;
     QString emoji;
+};
+
+struct GroupState {
+    QString kind;
+    qint64 members = 0;
+    bool write = false;
+    bool admin = false;
+    qint64 at = 0;
 };
 
 inline constexpr int kKeepRecentMessages = 100;
@@ -127,6 +139,13 @@ public:
     void setReaction(
         const QString& peer, const QString& target, const QString& reactor, const QString& emoji);
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
+
+    void setGroupState(const QString& peer, const GroupState& state);
+    std::optional<GroupState> groupState(const QString& peer) const;
+    void dropGroupState(const QString& peer);
+    void setGroupReactionCounts(
+        const QString& peer, const QString& target, const QMap<QString, qint64>& counts);
+    QMap<QString, qint64> groupReactionCounts(const QString& peer, const QString& target) const;
 
     QVector<ChatWeight> chatWeights() const;
     DatabaseFootprint footprint() const;

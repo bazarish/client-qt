@@ -163,6 +163,47 @@ Item {
     // One warning for the whole conversation: every web address in it is followed
     // through here.
     LinkWarningDialog { id: linkWarning }
+    Dialog {
+        id: groupActionDialog
+        property string command: ""
+        property string postId: ""
+        property string author: ""
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(360, parent ? parent.width - 24 : 360)
+        footer: DialogButtons {
+            acceptText: groupActionDialog.command === "exclude" ? qsTr("Exclude") : qsTr("Delete")
+            danger: true
+            onAccepted: groupActionDialog.accept()
+            onRejected: groupActionDialog.reject()
+        }
+        onAccepted: {
+            if (root.session) {
+                root.session.sendCommand(groupActionDialog.command, groupActionDialog.postId,
+                    groupActionDialog.command === "exclude"
+                        ? qsTr("Exclude %1").arg(groupActionDialog.author)
+                        : qsTr("Delete for everyone"))
+            }
+        }
+        background: DialogFrame { destructive: true }
+        header: Label {
+            text: groupActionDialog.command === "exclude"
+                ? qsTr("Exclude %1?").arg(groupActionDialog.author)
+                : qsTr("Delete for everyone?")
+            color: Theme.neon
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            wrapMode: Text.Wrap
+            padding: 14
+        }
+        contentItem: Label {
+            text: groupActionDialog.command === "exclude"
+                ? qsTr("They cannot come back.")
+                : qsTr("The post is removed for every member.")
+            color: Theme.text
+            wrapMode: Text.Wrap
+        }
+    }
     ForwardSheet { id: forwardSheet; session: root.session }
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
@@ -250,17 +291,31 @@ Item {
                 }
                 // The name alone: the identity behind it is one tap away, under
                 // the info button, where it can be read and copied properly.
-                Label {
-                    text: root.session ? root.session.activePeerName : ""
-                    color: Theme.text
-                    font.weight: Font.Medium
-                    elide: Text.ElideRight
+                ColumnLayout {
+                    spacing: 0
                     Layout.fillWidth: true
+                    Label {
+                        text: root.session ? root.session.activePeerName : ""
+                        color: Theme.text
+                        font.weight: Font.Medium
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    Label {
+                        visible: root.session !== null && root.session.activeIsGroup
+                        text: root.session && root.session.activeIsChannel
+                            ? qsTr("Subscribers: %1").arg(root.session.activeGroupMembers)
+                            : qsTr("Members: %1").arg(root.session ? root.session.activeGroupMembers : 0)
+                        color: Theme.textFaint
+                        font.pixelSize: Theme.fontSmall
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
                 }
                 IconButton { iconName: "search"; onClicked: searchPopup.openSearch() }
-                // There is nobody to call in the saved chat.
+                // There is nobody to call in the saved chat or in a group.
                 IconButton {
-                    visible: !root.savedChat
+                    visible: !root.savedChat && !(root.session && root.session.activeIsGroup)
                     iconName: "call"
                     onClicked: root.callRequested()
                 }
@@ -317,6 +372,12 @@ Item {
                                 && model.msgId >= ListView.view.unreadFlashFromId))
                     onDeleteRequested: function(msgId, e2eId, outgoing) {
                         root.confirmDeleteMessage(msgId, e2eId, outgoing)
+                    }
+                    onGroupActionRequested: function(command, postId, author) {
+                        groupActionDialog.command = command
+                        groupActionDialog.postId = postId
+                        groupActionDialog.author = author
+                        groupActionDialog.open()
                     }
                     onReactRequested: function(e2eId, sceneX, sceneY) {
                         reactionPicker.openAt(e2eId, sceneX, sceneY)
@@ -624,6 +685,9 @@ Item {
         }
     }
 
-    Composer { session: root.session }
+    Composer {
+        session: root.session
+        visible: !root.session || root.session.activeGroupWrite
+    }
     }
 }

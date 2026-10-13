@@ -208,6 +208,8 @@ QVariant ConversationModel::data(const QModelIndex& index, int role) const
     case DurationRole: return m.attDurationMs;
     case WaveRole: return m.attWave;
     case ReplyToRole: return m.replyTo;
+    case AuthorRole: return m.author;
+    case ContactableRole: return m.contactable;
     case DayRole:
         return m.ts > 0
             ? QDateTime::fromMSecsSinceEpoch(m.ts).date().toString(QStringLiteral("yyyy-MM-dd"))
@@ -229,7 +231,7 @@ QHash<int, QByteArray> ConversationModel::roleNames() const
         {SavedPathRole, "savedPath"}, {PictureRole, "hasPicture"},
         {DurationRole, "attDurationMs"}, {WaveRole, "attWave"},
         {TransferStageRole, "transferStage"},
-        {ReplyToRole, "replyTo"}};
+        {ReplyToRole, "replyTo"}, {AuthorRole, "author"}, {ContactableRole, "contactable"}};
 }
 
 void ConversationModel::setMessages(QVector<StoredMessage> messages)

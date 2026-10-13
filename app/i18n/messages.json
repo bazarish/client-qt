@@ -4024,6 +4024,84 @@
       "es": "🔒 Bloqueada",
       "zh": "🔒 已锁定",
       "ar": "🔒 مُقفل"
+    },
+    "%1: %2": {
+      "ru": "%1: %2",
+      "es": "%1: %2",
+      "zh": "%1：%2",
+      "ar": "⁦%1⁩: ⁦%2⁩"
+    },
+    "Delete for everyone": {
+      "ru": "Удалить у всех",
+      "es": "Eliminar para todos",
+      "zh": "为所有人删除",
+      "ar": "حذف لدى الجميع"
+    },
+    "Delete for everyone?": {
+      "ru": "Удалить у всех?",
+      "es": "¿Eliminar para todos?",
+      "zh": "为所有人删除？",
+      "ar": "حذف لدى الجميع؟"
+    },
+    "Exclude": {
+      "ru": "Исключить",
+      "es": "Excluir",
+      "zh": "移出",
+      "ar": "استبعاد"
+    },
+    "Exclude %1": {
+      "ru": "Исключить %1",
+      "es": "Excluir a %1",
+      "zh": "移出 %1",
+      "ar": "استبعاد ⁦%1⁩"
+    },
+    "Exclude %1?": {
+      "ru": "Исключить %1?",
+      "es": "¿Excluir a %1?",
+      "zh": "移出 %1？",
+      "ar": "استبعاد ⁦%1⁩؟"
+    },
+    "Members: %1": {
+      "ru": "Участников: %1",
+      "es": "Miembros: %1",
+      "zh": "成员：%1",
+      "ar": "الأعضاء: ⁦%1⁩"
+    },
+    "Only you": {
+      "ru": "Только вам",
+      "es": "Solo para ti",
+      "zh": "仅你可见",
+      "ar": "لك وحدك"
+    },
+    "Request contact": {
+      "ru": "Запросить контакт",
+      "es": "Pedir contacto",
+      "zh": "请求联系",
+      "ar": "طلب التواصل"
+    },
+    "Subscribers: %1": {
+      "ru": "Подписчиков: %1",
+      "es": "Suscriptores: %1",
+      "zh": "订阅者：%1",
+      "ar": "المشتركون: ⁦%1⁩"
+    },
+    "The post is removed for every member.": {
+      "ru": "Пост исчезнет у всех участников.",
+      "es": "La publicación desaparece para todos los miembros.",
+      "zh": "这条帖子会从所有成员那里删除。",
+      "ar": "يُزال المنشور لدى جميع الأعضاء."
+    },
+    "They cannot come back.": {
+      "ru": "Вернуться не получится.",
+      "es": "No podrá volver.",
+      "zh": "对方将无法回来。",
+      "ar": "لن يتمكن من العودة."
+    },
+    "Write": {
+      "ru": "Написать",
+      "es": "Escribir",
+      "zh": "写信",
+      "ar": "مراسلة"
     }
   }
 }

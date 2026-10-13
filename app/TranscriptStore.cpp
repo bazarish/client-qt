@@ -124,7 +124,11 @@ private:
 const char* const kMessageColumns = "id, peer, outgoing, type, e2eId, text, attName,"
                                     " attMime, attSize, attRef, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, replyTo,"
-                                    " hasPicture, attDurationMs, attWave, forwarded";
+                                    " hasPicture, attDurationMs, attWave, forwarded,"
+                                    " (SELECT author FROM group_posts g"
+                                    " WHERE g.peer = messages.peer AND g.e2eId = messages.e2eId),"
+                                    " (SELECT contactable FROM group_posts g"
+                                    " WHERE g.peer = messages.peer AND g.e2eId = messages.e2eId)";
 
 void sortByOrder(QVector<StoredMessage>& rows)
 {
@@ -161,6 +165,8 @@ StoredMessage readMessageRow(const Query& query)
     m.attDurationMs = query.value(19).toLongLong();
     m.attWave = query.value(20).toString();
     m.forwarded = query.value(21).toInt() != 0;
+    m.author = query.value(22).toString();
+    m.contactable = query.value(23).toInt() != 0;
     return m;
 }
 
@@ -254,6 +260,21 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     if (!query.exec("CREATE TABLE IF NOT EXISTS pinned_chats (peer TEXT PRIMARY KEY)")) {
         return false;
     }
+    if (!query.exec("CREATE TABLE IF NOT EXISTS group_posts ("
+                    "peer TEXT, e2eId TEXT, author TEXT, contactable INTEGER,"
+                    " PRIMARY KEY (peer, e2eId))")) {
+        return false;
+    }
+    if (!query.exec("CREATE TABLE IF NOT EXISTS group_reaction_counts ("
+                    "peer TEXT, target TEXT, emoji TEXT, count INTEGER,"
+                    " PRIMARY KEY (peer, target, emoji))")) {
+        return false;
+    }
+    if (!query.exec("CREATE TABLE IF NOT EXISTS group_state ("
+                    "peer TEXT PRIMARY KEY, kind TEXT, members INTEGER, write INTEGER,"
+                    " admin INTEGER, at INTEGER)")) {
+        return false;
+    }
     if (!query.exec("CREATE UNIQUE INDEX IF NOT EXISTS messages_by_e2e"
                     " ON messages (peer, e2eId, outgoing) WHERE e2eId != ''")) {
         return false;
@@ -307,6 +328,18 @@ qint64 TranscriptStore::append(const StoredMessage& message)
         return existing;
     }
     const qint64 id = query.lastInsertId();
+    if (!message.author.isEmpty()) {
+        Query post(db_);
+        post.prepare("INSERT OR REPLACE INTO group_posts (peer, e2eId, author, contactable)"
+                     " VALUES (?, ?, ?, ?)");
+        post.addBindValue(message.peer);
+        post.addBindValue(message.e2eId);
+        post.addBindValue(message.author);
+        post.addBindValue(message.contactable ? 1 : 0);
+        if (!post.exec()) {
+            bazarish::log::warn("transcript: the author of a group post could not be stored");
+        }
+    }
     return id;
 }
 
@@ -690,11 +723,15 @@ void TranscriptStore::removeById(qint64 id)
         bazarish::log::warn("transcript: the picture or voice note of a deleted message stayed");
     }
     if (!named.isEmpty()) {
-        Query emoji(db_);
-        emoji.prepare("DELETE FROM reactions WHERE target = ?");
-        emoji.addBindValue(named);
-        if (!emoji.exec()) {
-            bazarish::log::warn("transcript: the reactions of a deleted message stayed");
+        for (const char* statement : {"DELETE FROM reactions WHERE target = ?",
+                 "DELETE FROM group_reaction_counts WHERE target = ?",
+                 "DELETE FROM group_posts WHERE e2eId = ?"}) {
+            Query side(db_);
+            side.prepare(QString::fromUtf8(statement));
+            side.addBindValue(named);
+            if (!side.exec()) {
+                bazarish::log::warn("transcript: something of a deleted message stayed");
+            }
         }
     }
     Query query(db_);
@@ -716,8 +753,9 @@ void TranscriptStore::clearPeer(const QString& peer)
     if (!query.exec()) {
         bazarish::log::warn("transcript: a conversation could not be cleared");
     }
-    for (const char* statement :
-        {"DELETE FROM reactions WHERE peer = ?", "DELETE FROM read_state WHERE peer = ?"}) {
+    for (const char* statement : {"DELETE FROM reactions WHERE peer = ?",
+             "DELETE FROM read_state WHERE peer = ?", "DELETE FROM group_posts WHERE peer = ?",
+             "DELETE FROM group_reaction_counts WHERE peer = ?"}) {
         Query side(db_);
         side.prepare(QString::fromUtf8(statement));
         side.addBindValue(peer);
@@ -731,6 +769,87 @@ void TranscriptStore::forgetPeer(const QString& peer)
 {
     clearPeer(peer);
     setPinned(peer, false);
+    dropGroupState(peer);
+}
+
+void TranscriptStore::setGroupState(const QString& peer, const GroupState& state)
+{
+    Query query(db_);
+    query.prepare("INSERT OR REPLACE INTO group_state (peer, kind, members, write, admin, at)"
+                  " VALUES (?, ?, ?, ?, ?, ?)");
+    query.addBindValue(peer);
+    query.addBindValue(state.kind);
+    query.addBindValue(state.members);
+    query.addBindValue(state.write ? 1 : 0);
+    query.addBindValue(state.admin ? 1 : 0);
+    query.addBindValue(state.at);
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the group state could not be stored");
+    }
+}
+
+std::optional<GroupState> TranscriptStore::groupState(const QString& peer) const
+{
+    Query query(db_);
+    query.prepare("SELECT kind, members, write, admin, at FROM group_state WHERE peer = ?");
+    query.addBindValue(peer);
+    if (!query.exec() || !query.next()) {
+        return std::nullopt;
+    }
+    return GroupState{query.value(0).toString(), query.value(1).toLongLong(),
+        query.value(2).toInt() != 0, query.value(3).toInt() != 0, query.value(4).toLongLong()};
+}
+
+void TranscriptStore::dropGroupState(const QString& peer)
+{
+    Query query(db_);
+    query.prepare("DELETE FROM group_state WHERE peer = ?");
+    query.addBindValue(peer);
+    if (!query.exec()) {
+        bazarish::log::warn("transcript: the group state could not be dropped");
+    }
+}
+
+void TranscriptStore::setGroupReactionCounts(
+    const QString& peer, const QString& target, const QMap<QString, qint64>& counts)
+{
+    Query clear(db_);
+    clear.prepare("DELETE FROM group_reaction_counts WHERE peer = ? AND target = ?");
+    clear.addBindValue(peer);
+    clear.addBindValue(target);
+    if (!clear.exec()) {
+        bazarish::log::warn("transcript: group reaction counts could not be replaced");
+        return;
+    }
+    for (auto it = counts.cbegin(); it != counts.cend(); ++it) {
+        Query insert(db_);
+        insert.prepare("INSERT INTO group_reaction_counts (peer, target, emoji, count)"
+                       " VALUES (?, ?, ?, ?)");
+        insert.addBindValue(peer);
+        insert.addBindValue(target);
+        insert.addBindValue(it.key());
+        insert.addBindValue(it.value());
+        if (!insert.exec()) {
+            bazarish::log::warn("transcript: a group reaction count could not be stored");
+        }
+    }
+}
+
+QMap<QString, qint64> TranscriptStore::groupReactionCounts(
+    const QString& peer, const QString& target) const
+{
+    QMap<QString, qint64> counts;
+    Query query(db_);
+    query.prepare("SELECT emoji, count FROM group_reaction_counts WHERE peer = ? AND target = ?");
+    query.addBindValue(peer);
+    query.addBindValue(target);
+    if (!query.exec()) {
+        return counts;
+    }
+    while (query.next()) {
+        counts.insert(query.value(0).toString(), query.value(1).toLongLong());
+    }
+    return counts;
 }
 
 QStringList TranscriptStore::conversationPeers() const

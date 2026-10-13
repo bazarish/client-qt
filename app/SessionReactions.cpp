@@ -172,7 +172,17 @@ QVariantList SessionController::reactionSummary(const QString& e2eId) const
     QStringList order;
     QHash<QString, int> counts;
     QString mine;
+    if (activeGroup_) {
+        const QMap<QString, qint64> theirs = store_.groupReactionCounts(activePeer_, e2eId);
+        for (auto it = theirs.cbegin(); it != theirs.cend(); ++it) {
+            order << it.key();
+            counts[it.key()] = static_cast<int>(it.value());
+        }
+    }
     for (const Reaction& r : store_.reactionsFor(activePeer_, e2eId)) {
+        if (activeGroup_ && r.reactor != fingerprint_) {
+            continue;
+        }
         if (!counts.contains(r.emoji)) {
             order << r.emoji;
         }

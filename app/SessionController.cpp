@@ -14,6 +14,7 @@
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
 #include "DeliveryStatus.hpp"
+#include "LetterAvatar.hpp"
 #include "PhotoShot.hpp"
 #include "Session.hpp"
 
@@ -39,6 +40,7 @@
 #include <chrono>
 #include <QTimer>
 #include <cstring>
+#include <QRegularExpression>
 #include <QUrl>
 
 #if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
@@ -708,7 +710,53 @@ void SessionController::activateConversation(const QString& peer)
     activePeer_ = peer;
     emit activePeerChanged();
     emit activePeerNameChanged();
+    refreshActiveGroup();
     lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
+}
+
+void SessionController::refreshActiveGroup()
+{
+    activeGroup_ = activePeer_.isEmpty() ? std::nullopt : store_.groupState(activePeer_);
+    emit activeGroupChanged();
+}
+
+QString SessionController::letterOf(const QString& name) const
+{
+    return bazarish::app::letterOf(name);
+}
+
+QColor SessionController::letterFill(const QString& name) const
+{
+    return bazarish::app::letterFill(name);
+}
+
+QVariantList SessionController::invitesIn(const QString& text) const
+{
+    QVariantList found;
+    static const QRegularExpression kInvite(QStringLiteral("bazarish://invite\\?\\S+"));
+    for (QRegularExpressionMatchIterator it = kInvite.globalMatch(text); it.hasNext();) {
+        const QString uri = it.next().captured(0);
+        try {
+            const bazarish::Descriptor descriptor = bazarish::parseDescriptor(uri.toStdString());
+            QVariantMap plate;
+            plate[QStringLiteral("uri")] = uri;
+            plate[QStringLiteral("name")] = QString::fromStdString(descriptor.name);
+            plate[QStringLiteral("fingerprint")] = QString::fromStdString(descriptor.fingerprint);
+            found << plate;
+        } catch (const std::exception&) {
+            continue;
+        }
+    }
+    return found;
+}
+
+QString SessionController::withoutInvites(const QString& text) const
+{
+    QString rest = text;
+    for (const QVariant& plate : invitesIn(text)) {
+        rest.remove(plate.toMap().value(QStringLiteral("uri")).toString());
+    }
+    return rest.trimmed();
 }
 
 void SessionController::loadLatestWindow()
@@ -1404,6 +1452,8 @@ QVariantMap SessionController::replyPreview(const QString& e2eId) const
     info[QStringLiteral("text")] = preview;
     if (m.outgoing) {
         info[QStringLiteral("sender")] = QStringLiteral("You");
+    } else if (!m.author.isEmpty()) {
+        info[QStringLiteral("sender")] = m.author;
     } else {
         info[QStringLiteral("sender")] = peerName(activePeer_);
     }

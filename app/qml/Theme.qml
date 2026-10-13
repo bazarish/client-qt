@@ -48,6 +48,7 @@ QtObject {
     // the neon accent), incoming is the plain surface.
     readonly property color bubbleOut: "#13261a"
     readonly property color bubbleIn:  "#1b2026"
+    readonly property color authorName: "#7fd36f"
 
     readonly property int spacing: 12
     readonly property int radius: 10

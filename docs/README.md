@@ -28,6 +28,7 @@ this client performs before reporting failure is not.
 | [Sounds.md](Sounds.md) | The notification sound and the ringtone: where a recording of the user's own goes, what the ringtone has to be, and what the call window's pulse follows |
 | [BackgroundActivity.md](BackgroundActivity.md) | The activity panel: what is reported there while it runs, and what a row says |
 | [Formatting.md](Formatting.md) | Message formatting: the markers a body may carry, what a press on one does, and where a body is shown without them |
+| [Groups.md](Groups.md) | Groups and channels: what makes a chat one, the author line and letter circle, reaction counts, the admin actions and the descriptor plate |
 
 ## Not documented yet
 

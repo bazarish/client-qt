@@ -13,6 +13,7 @@ Item {
     // Asks the view to confirm and delete this message (irreversible; for one's
     // own one-to-one message it is removed at the recipient too).
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
+    signal groupActionRequested(string command, string postId, string author)
     // Asks the view to open the emoji picker for this message (handled by a single
     // shared popup, not one per bubble).
     signal imageRequested(url source, string e2eId, string name)
@@ -219,6 +220,14 @@ Item {
     }
     readonly property bool toSelf: delegate.session !== null
         && delegate.session.isSavedChat(delegate.session.activePeer)
+    readonly property bool inGroup: delegate.session !== null && delegate.session.activeIsGroup
+        && !model.outgoing && !delegate.isSystem
+    readonly property bool fromMember: delegate.inGroup && (model.author || "").length > 0
+    readonly property bool onlyForMe: delegate.inGroup && !delegate.fromMember
+    readonly property int letterSize: 30
+    readonly property int letterGap: 8
+    readonly property var invitePlates: delegate.session && model.text
+        ? delegate.session.invitesIn(model.text) : []
     function statusText(s) {
         if (s === DeliveryStatus.Delivering) {
             return delegate.toSelf ? qsTr("Sending…")
@@ -231,11 +240,29 @@ Item {
     }
 
     Rectangle {
+        visible: delegate.fromMember
+        width: delegate.letterSize
+        height: delegate.letterSize
+        radius: width / 2
+        anchors.left: parent.left
+        anchors.leftMargin: 12
+        anchors.bottom: bubble.bottom
+        color: delegate.fromMember ? delegate.session.letterFill(model.author) : "transparent"
+        Label {
+            anchors.centerIn: parent
+            text: delegate.fromMember ? delegate.session.letterOf(model.author) : ""
+            color: Theme.text
+            font.pixelSize: Theme.fontSmall + 1
+            font.weight: Font.DemiBold
+        }
+    }
+
+    Rectangle {
         id: bubble
         visible: !delegate.isSystem
         anchors.left: model.outgoing ? undefined : parent.left
         anchors.right: model.outgoing ? parent.right : undefined
-        anchors.leftMargin: 12
+        anchors.leftMargin: delegate.inGroup ? 12 + delegate.letterSize + delegate.letterGap : 12
         anchors.rightMargin: 12
         width: Math.min(Math.max(content.implicitWidth + 20, 80), delegate.width * 0.72)
         height: content.implicitHeight + 14
@@ -255,6 +282,23 @@ Item {
             y: 7
             width: parent.width - 20
             spacing: 4
+
+            Label {
+                visible: delegate.fromMember
+                text: model.author || ""
+                color: Theme.authorName
+                font.pixelSize: Theme.fontSmall
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
+            Label {
+                visible: delegate.onlyForMe
+                text: qsTr("Only you")
+                color: Theme.textFaint
+                font.pixelSize: Theme.fontSmall
+                Layout.fillWidth: true
+            }
 
             // Passed on, not written here - said before the content rather than
             // after it, because it is what the content should be read in the
@@ -750,12 +794,56 @@ Item {
             // correspondent name a picture in it, and the picture would be
             // fetched - from this machine, over the ordinary internet - as the
             // bubble drew.
+            Repeater {
+                model: delegate.invitePlates
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitWidth: plateRow.implicitWidth + 16
+                    implicitHeight: plateRow.implicitHeight + 16
+                    radius: Theme.radiusSmall
+                    color: Theme.surfaceAlt
+                    border.color: Theme.border2
+                    RowLayout {
+                        id: plateRow
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 8
+                        ColumnLayout {
+                            spacing: 0
+                            Layout.fillWidth: true
+                            Label {
+                                text: modelData.name || qsTr("Contact")
+                                color: Theme.text
+                                font.weight: Font.DemiBold
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: modelData.fingerprint.slice(0, 16) + "…"
+                                color: Theme.textFaint
+                                font.pixelSize: Theme.fontSmall
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                        }
+                        MenuButton {
+                            iconName: "person"
+                            text: qsTr("Write")
+                            onClicked: App.openLink(modelData.uri)
+                        }
+                    }
+                }
+            }
+
             TextEdit {
                 id: bodyText
                 visible: !delegate.isAttachment && !delegate.isUnsupported
                     && !delegate.isContactRequest && model.text.length > 0
-                text: App.markupHtml(model.text, Theme.accent, Theme.surfaceAlt,
-                    Theme.bg, Theme.text)
+                    && (delegate.invitePlates.length === 0
+                        || delegate.session.withoutInvites(model.text).length > 0)
+                text: App.markupHtml(delegate.invitePlates.length > 0
+                        ? delegate.session.withoutInvites(model.text) : model.text,
+                    Theme.accent, Theme.surfaceAlt, Theme.bg, Theme.text)
                 color: Theme.text
                 readOnly: true
                 selectByMouse: true
@@ -1134,7 +1222,8 @@ Item {
                 onTriggered: {
                     var preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
                     var who = model.outgoing ? "You"
-                        : (delegate.session ? delegate.session.activePeerName : "")
+                        : (model.author ? model.author
+                            : (delegate.session ? delegate.session.activePeerName : ""))
                     delegate.session.beginReply(model.e2eId, preview, who)
                 }
             }
@@ -1154,6 +1243,27 @@ Item {
                 visible: delegate.canEdit
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.session.beginEdit(model.msgId, model.e2eId, model.text)
+            }
+            ContextMenuItem {
+                text: qsTr("Request contact")
+                iconName: "person"
+                visible: delegate.fromMember && model.contactable === true
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.session.sendCommand("contact", model.e2eId, text)
+            }
+            ContextMenuItem {
+                text: qsTr("Exclude")
+                iconName: "block"
+                visible: delegate.fromMember && delegate.session.activeGroupAdmin
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.groupActionRequested("exclude", model.e2eId, model.author)
+            }
+            ContextMenuItem {
+                text: qsTr("Delete for everyone")
+                iconName: "trash"
+                visible: delegate.fromMember && delegate.session.activeGroupAdmin
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.groupActionRequested("delete", model.e2eId, model.author)
             }
             ContextMenuItem {
                 text: qsTr("Delete")

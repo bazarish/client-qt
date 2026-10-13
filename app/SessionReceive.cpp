@@ -13,6 +13,10 @@
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -74,6 +78,17 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     }
 
     if (type.startsWith(QStringLiteral("call."))) {
+        return;
+    }
+
+    if (!message.value("sentByUs").toBool()) {
+        noteGroupBlock(peer, message);
+    }
+    if (type == QStringLiteral("group.state")) {
+        return;
+    }
+    if (type == QStringLiteral("group.reactions")) {
+        applyGroupReactions(peer, message.value("groupReactions").toString());
         return;
     }
 
@@ -299,6 +314,10 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     m.attWave = message.value("attWave").toString();
     m.attRef = message.value("attRef").toString();
     m.keyboard = message.value("keyboard").toString();
+    if (message.contains(QStringLiteral("group"))) {
+        m.author = message.value("author").toString();
+        m.contactable = message.value("contactable").toBool();
+    }
     const Placement placement = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
     m.ts = placement.displayTs;
     m.orderKey = placement.orderKey;
@@ -323,11 +342,58 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (preview.isEmpty() && !m.attName.isEmpty()) {
         preview = attachmentLabel(type) + QLatin1Char(' ') + m.attName;
     }
+    if (!m.author.isEmpty()) {
+        preview = tr("%1: %2").arg(m.author, preview);
+    }
     contacts_.touch(peer, peerName(peer), preview, m.ts, false);
     contacts_.setUnread(peer, store_.unreadCount(peer));
     if (!m.outgoing && contactNotifications(peer)) {
         emit messageNotification(peer, peerName(peer));
     }
+}
+
+void SessionController::noteGroupBlock(const QString& peer, const QVariantMap& message)
+{
+    const std::optional<GroupState> held = store_.groupState(peer);
+    if (!message.contains(QStringLiteral("group"))) {
+        if (held && message.value("sentAt").toLongLong() > held->at) {
+            store_.dropGroupState(peer);
+            if (peer == activePeer_) {
+                refreshActiveGroup();
+            }
+        }
+        return;
+    }
+    const QVariantMap block = message.value("group").toMap();
+    GroupState state;
+    state.kind = block.value("kind").toString();
+    state.members = block.value("members").toLongLong();
+    state.write = block.value("write").toBool();
+    state.admin = block.value("admin").toBool();
+    state.at = block.value("at").toLongLong();
+    if (held && held->at > state.at) {
+        return;
+    }
+    store_.setGroupState(peer, state);
+    if (peer == activePeer_) {
+        refreshActiveGroup();
+    }
+}
+
+void SessionController::applyGroupReactions(const QString& peer, const QString& json)
+{
+    const QJsonArray entries = QJsonDocument::fromJson(json.toUtf8()).array();
+    for (const QJsonValue& entry : entries) {
+        const QJsonObject item = entry.toObject();
+        QMap<QString, qint64> counts;
+        const QJsonObject given = item.value(QStringLiteral("counts")).toObject();
+        for (auto it = given.begin(); it != given.end(); ++it) {
+            counts.insert(it.key(), it.value().toInteger());
+        }
+        store_.setGroupReactionCounts(peer, item.value(QStringLiteral("ref")).toString(), counts);
+    }
+    ++reactionsRevision_;
+    emit reactionsRevisionChanged();
 }
 
 void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)

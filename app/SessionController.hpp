@@ -4,6 +4,8 @@
 #include "Picture.hpp"
 #include "SessionWorker.hpp"
 
+#include <QColor>
+
 namespace bazarish::app {
 
 class SessionController : public QObject {
@@ -45,6 +47,11 @@ class SessionController : public QObject {
     Q_PROPERTY(QStringList configuredReseeds READ configuredReseeds NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     Q_PROPERTY(QString activePeerName READ activePeerName NOTIFY activePeerNameChanged)
+    Q_PROPERTY(bool activeIsGroup READ activeIsGroup NOTIFY activeGroupChanged)
+    Q_PROPERTY(bool activeIsChannel READ activeIsChannel NOTIFY activeGroupChanged)
+    Q_PROPERTY(qint64 activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
+    Q_PROPERTY(bool activeGroupWrite READ activeGroupWrite NOTIFY activeGroupChanged)
+    Q_PROPERTY(bool activeGroupAdmin READ activeGroupAdmin NOTIFY activeGroupChanged)
     Q_PROPERTY(bool atNewest READ atNewest NOTIFY pagingChanged)
     Q_PROPERTY(bool hasMoreOlder READ hasMoreOlder NOTIFY pagingChanged)
     Q_PROPERTY(QString accountId READ accountId CONSTANT)
@@ -165,6 +172,18 @@ public:
     QString replyingSender() const { return replyingSender_; }
     int contactsRevision() const { return contactsRevision_; }
     int reactionsRevision() const { return reactionsRevision_; }
+    bool activeIsGroup() const { return activeGroup_.has_value(); }
+    bool activeIsChannel() const
+    {
+        return activeGroup_ && activeGroup_->kind == QStringLiteral("channel");
+    }
+    qint64 activeGroupMembers() const { return activeGroup_ ? activeGroup_->members : 0; }
+    bool activeGroupWrite() const { return !activeGroup_ || activeGroup_->write; }
+    bool activeGroupAdmin() const { return activeGroup_ && activeGroup_->admin; }
+    Q_INVOKABLE QString letterOf(const QString& name) const;
+    Q_INVOKABLE QColor letterFill(const QString& name) const;
+    Q_INVOKABLE QVariantList invitesIn(const QString& text) const;
+    Q_INVOKABLE QString withoutInvites(const QString& text) const;
     bool i2pHasKey() const { return i2pHasKey_; }
     bool i2pEnabled() const { return i2pEnabled_; }
     bool i2pActive() const { return i2pActive_; }
@@ -355,6 +374,7 @@ signals:
     void connectedChanged();
     void activePeerChanged();
     void activePeerNameChanged();
+    void activeGroupChanged();
     void pagingChanged();
     void scrollToMessage(qint64 localId);
     void scrollToUnread(qint64 firstUnreadId);
@@ -594,6 +614,7 @@ private:
     QString serverFp_;
     bool sendReceipts_ = true;
     bool acceptCalls_ = true;
+    std::optional<GroupState> activeGroup_;
     QVariantList aliasHoldings_;
     QString aliasNote_;
     bool aliasBusy_ = false;
@@ -629,6 +650,9 @@ private:
     int scrollAnchorRow_ = -1;
     bool scrollStick_ = true;
     void activateConversation(const QString& peer);
+    void refreshActiveGroup();
+    void noteGroupBlock(const QString& peer, const QVariantMap& message);
+    void applyGroupReactions(const QString& peer, const QString& json);
     void loadLatestWindow();
     void openWindowAtUnread(const QString& peer, qint64 firstUnread);
     void showInActiveView(const StoredMessage& m, bool isOwn);

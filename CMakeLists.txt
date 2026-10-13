@@ -113,6 +113,8 @@ if(Qt6_FOUND)
         app/TrayIcon.hpp
         app/Identicon.cpp
         app/Identicon.hpp
+        app/LetterAvatar.cpp
+        app/LetterAvatar.hpp
         app/QrScanner.cpp
         app/QrScanner.hpp
         app/AvatarStore.cpp
@@ -343,6 +345,12 @@ if(Qt6_FOUND)
         bazarish_client quirc ${QRENCODE_LIBRARY} Qt6::Gui Qt6::Multimedia Qt6::Qml)
     target_compile_options(TestQrScan PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestQrScan COMMAND TestQrScan)
+
+    add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)
+    target_include_directories(TestLetterAvatar PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestLetterAvatar PRIVATE Qt6::Gui)
+    target_compile_options(TestLetterAvatar PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestLetterAvatar COMMAND TestLetterAvatar)
 
     add_executable(TestTranscript tests/TestTranscript.cpp app/TranscriptStore.cpp
         app/SystemNotes.cpp)

@@ -611,6 +611,57 @@ int main(int argc, char** argv)
         CHECK(systemNoteText(last.text) == QStringLiteral("Request sent."));
     }
 
+    {
+        const QString gdb = QString::fromStdString((dir / "group.db").string());
+        TranscriptStore store;
+        CHECK(store.open("gr", gdb, ""));
+        StoredMessage post;
+        post.peer = "club";
+        post.type = "text";
+        post.e2eId = "g-one";
+        post.text = "hello";
+        post.author = "Ann";
+        post.contactable = true;
+        post.ts = 400;
+        post.orderKey = post.ts;
+        CHECK(store.append(post) > 0);
+        StoredMessage notice = post;
+        notice.e2eId = "g-two";
+        notice.author.clear();
+        notice.contactable = false;
+        CHECK(store.append(notice) > 0);
+        const QVector<StoredMessage> rows = store.latestMessages("club", 10);
+        CHECK(rows.size() == 2);
+        CHECK(rows[0].author == QStringLiteral("Ann"));
+        CHECK(rows[0].contactable);
+        CHECK(rows[1].author.isEmpty());
+        CHECK(store.messageByE2e("g-one", "club").author == QStringLiteral("Ann"));
+
+        CHECK(!store.groupState("club").has_value());
+        store.setGroupState("club", GroupState{QStringLiteral("channel"), 12, false, true, 500});
+        const std::optional<GroupState> state = store.groupState("club");
+        CHECK(state.has_value());
+        CHECK(state->kind == QStringLiteral("channel"));
+        CHECK(state->members == 12);
+        CHECK(!state->write);
+        CHECK(state->admin);
+        CHECK(state->at == 500);
+
+        store.setGroupReactionCounts("club", "g-one", {{QStringLiteral("+"), 3}});
+        CHECK(store.groupReactionCounts("club", "g-one").value(QStringLiteral("+")) == 3);
+        store.setGroupReactionCounts("club", "g-one", {});
+        CHECK(store.groupReactionCounts("club", "g-one").isEmpty());
+
+        store.setGroupReactionCounts("club", "g-one", {{QStringLiteral("+"), 1}});
+        store.clearPeer("club");
+        CHECK(store.groupReactionCounts("club", "g-one").isEmpty());
+        CHECK(store.groupState("club").has_value());
+        CHECK(store.append(post) > 0);
+        CHECK(store.latestMessages("club", 10)[0].author == QStringLiteral("Ann"));
+        store.forgetPeer("club");
+        CHECK(!store.groupState("club").has_value());
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;

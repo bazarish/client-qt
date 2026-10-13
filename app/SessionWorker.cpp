@@ -785,6 +785,20 @@ void SessionWorker::drainMailbox()
         map["replyTo"] = QString::fromStdString(m.replyTo);
         map["sentAt"] = static_cast<qint64>(m.sentAt);
         map["pendingId"] = QString::fromStdString(m.pendingId);
+        if (m.group) {
+            QVariantMap group;
+            group["kind"] = m.group->kind == bazarish::client::GroupKind::eChannel
+                ? QStringLiteral("channel")
+                : QStringLiteral("group");
+            group["members"] = static_cast<qint64>(m.group->members);
+            group["write"] = m.group->write;
+            group["admin"] = m.group->admin;
+            group["at"] = static_cast<qint64>(m.group->at);
+            map["group"] = group;
+            map["author"] = QString::fromStdString(m.author);
+            map["contactable"] = m.contactable;
+            map["groupReactions"] = QString::fromStdString(m.groupReactionsJson);
+        }
         emit messageReceived(map);
     }
     emitContacts();
