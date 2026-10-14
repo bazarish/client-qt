@@ -6,8 +6,8 @@ import Bazarish
 Popup {
     id: root
     property var session: null
-    readonly property string shareLink: (session && session.activePeer.length > 0)
-        ? session.contactInvite(session.activePeer) : ""
+    readonly property string shareLink: (session && session.activePeer.length > 0
+        && session.contactsRevision >= 0) ? session.contactInvite(session.activePeer) : ""
     // Whether the contact said no, rather than simply not having told us yet.
     // The saved chat is not a contact: this panel says what it is and offers the
     // one thing that can be done to it.
