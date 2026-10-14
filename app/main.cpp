@@ -10,6 +10,7 @@
 #include "Identicon.hpp"
 #include "SingleInstance.hpp"
 #include "Translations.hpp"
+#include "Notifier.hpp"
 #include "TrayIcon.hpp"
 
 #pragma push_macro("emit")
@@ -325,9 +326,10 @@ int main(int argc, char** argv)
     }
     QObject::connect(&controller, &bazarish::app::AppController::raiseRequested, &app, raiseWindow);
 
+    bazarish::app::Notifier notifier(controller);
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {
-        tray = std::make_unique<bazarish::app::TrayIcon>(controller);
+        tray = std::make_unique<bazarish::app::TrayIcon>(controller, notifier);
         QApplication::setQuitOnLastWindowClosed(false);
         tray->attachWindow(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));
         QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &controller,

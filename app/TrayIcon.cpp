@@ -2,6 +2,7 @@
 #include "TrayIcon.hpp"
 
 #include "AppController.hpp"
+#include "Notifier.hpp"
 
 #pragma push_macro("emit")
 #undef emit
@@ -9,7 +10,6 @@
 #pragma pop_macro("emit")
 
 #include <QAction>
-#include <QApplication>
 #include <QImage>
 #include <QPainter>
 #include <QPixmap>
@@ -24,9 +24,6 @@ namespace {
 constexpr std::array<int, 5> kTraySizes{16, 22, 24, 32, 48};
 constexpr int kUnreadTintAlpha = 140;
 constexpr int kPopupMs = 6000;
-constexpr int kSoundSpacingNumerator = 3;
-constexpr int kSoundSpacingDenominator = 2;
-constexpr int kAssumedSoundMs = 1000;
 constexpr int kRecentlyActiveMs = 400;
 
 QIcon iconFromMaster(const QImage& master, const QColor& tint)
@@ -60,11 +57,9 @@ bool TrayIcon::available()
     return QSystemTrayIcon::isSystemTrayAvailable();
 }
 
-TrayIcon::TrayIcon(AppController& app, QObject* const parent)
+TrayIcon::TrayIcon(AppController& app, Notifier& notifier, QObject* const parent)
     : QObject(parent)
     , app_(app)
-    , sound_(app.soundFolder(), QStringLiteral("notify.wav"))
-    , reactionSound_(app.soundFolder(), QStringLiteral("reaction.wav"))
 {
     const QImage master(QStringLiteral(":/icon/bazarish.png"));
     idleIcon_ = iconFromMaster(master, QColor(Qt::transparent));
@@ -86,9 +81,7 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
         });
     connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::openNotified);
     connect(&app_, &AppController::accountsChanged, this, &TrayIcon::refreshIcon);
-    connect(&app_, &AppController::notificationRequested, this, &TrayIcon::notify);
-    connect(&app_, &AppController::reactionNotificationRequested, this,
-        &TrayIcon::notifyReaction);
+    connect(&notifier, &Notifier::announced, this, &TrayIcon::showNotice);
 }
 
 void TrayIcon::attachWindow(QWindow* const window)
@@ -172,27 +165,12 @@ void TrayIcon::refreshIcon()
         unread += account.unread;
     }
     const bool hasUnread = unread > 0;
-    if (!hasUnread) {
-        announcedWasRead_ = true;
-    }
     if (hasUnread != showingUnread_) {
         showingUnread_ = hasUnread;
         tray_.setIcon(hasUnread ? unreadIcon_ : idleIcon_);
     }
     tray_.setToolTip(hasUnread ? tr("Bazarish - %1 unread").arg(unread)
                                : tr("Bazarish"));
-}
-
-void TrayIcon::notify(const QString& accountId, const QString& peer, const QString& title,
-    const QString& body)
-{
-    announce(accountId, peer, title, body, sound_, sinceSound_);
-}
-
-void TrayIcon::notifyReaction(
-    const QString& accountId, const QString& peer, const QString& title, const QString& body)
-{
-    announce(accountId, peer, title, body, reactionSound_, sinceReactionSound_);
 }
 
 void TrayIcon::openNotified()
@@ -203,30 +181,12 @@ void TrayIcon::openNotified()
     showWindow();
 }
 
-void TrayIcon::announce(const QString& accountId, const QString& peer, const QString& title,
-    const QString& body, NotifySound& sound, QElapsedTimer& since)
+void TrayIcon::showNotice(const QString& accountId, const QString& peer, const QString& title,
+    const QString& body)
 {
-    if (!app_.notificationsEnabled()) {
-        return;
-    }
-    if (QApplication::applicationState() == Qt::ApplicationActive) {
-        return;
-    }
-    if (!app_.ringingPeer().isEmpty()) {
-        return;
-    }
     notifiedAccount_ = accountId;
     notifiedPeer_ = peer;
     tray_.showMessage(title, body, idleIcon_, kPopupMs);
-    const qint64 length = sound.durationMs() > 0 ? sound.durationMs() : kAssumedSoundMs;
-    const qint64 spacing = length * kSoundSpacingNumerator / kSoundSpacingDenominator;
-    const bool quiet = !announcedWasRead_ && since.isValid() && since.elapsed() < spacing;
-    if (quiet) {
-        return;
-    }
-    announcedWasRead_ = false;
-    since.start();
-    sound.play();
 }
 
 }  // namespace bazarish::app

@@ -105,6 +105,8 @@ if(Qt6_FOUND)
         app/DesktopEntry.hpp
         app/SingleInstance.cpp
         app/SingleInstance.hpp
+        app/Notifier.cpp
+        app/Notifier.hpp
         app/NotifySound.cpp
         app/NotifySound.hpp
         app/Ringtone.cpp
