@@ -213,27 +213,12 @@ Popup {
         }
 
 
-        // The label stays short in every state - a button is not the place for a
-        // sentence; the reason is written under it.
         MenuButton {
-            visible: !root.saved
+            visible: !root.saved && root.shareLink.length > 0
             Layout.fillWidth: true
-            enabled: root.shareLink.length > 0
             iconName: "link"
-            text: root.shareLink.length > 0
-                ? qsTr("Share contact")
-                : qsTr("Not shareable yet")
+            text: qsTr("Share contact")
             onClicked: { root.close(); root.shareRequested() }
-        }
-        // Said under the button, not on it: the reason is a sentence, and a
-        // button wearing one cuts it off in the middle.
-        Label {
-            visible: !root.saved && root.shareLink.length === 0
-            text: qsTr("Their descriptor arrives with their next message.")
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
         }
 
         Label {

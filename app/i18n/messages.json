@@ -23,18 +23,6 @@
     }
   ],
   "messages": {
-    "Not shareable yet": {
-      "ru": "Пока нечем делиться",
-      "es": "Todavía no se puede compartir",
-      "zh": "尚不可分享",
-      "ar": "غير قابل للمشاركة بعد"
-    },
-    "Their descriptor arrives with their next message.": {
-      "ru": "Дескриптор придёт со следующим сообщением.",
-      "es": "Su descriptor llegará con su próximo mensaje.",
-      "zh": "对方的描述符会随其下一条消息到来。",
-      "ar": "يصل الواصف مع الرسالة التالية."
-    },
     " (queue: %1)": {
       "ru": " (в очереди: %1)",
       "es": " (en cola: %1)",
