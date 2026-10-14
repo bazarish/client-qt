@@ -376,6 +376,7 @@ void SessionWorker::startEventWaiter()
         std::unique_ptr<bazarish::client::Client> waiter;
         while (running->load()) {
             std::vector<bazarish::client::PendingEntry> waiting;
+            const auto askedAt = std::chrono::steady_clock::now();
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
@@ -385,6 +386,9 @@ void SessionWorker::startEventWaiter()
                 QMetaObject::invokeMethod(
                     this, [this]() { emit syncReachable(false); }, Qt::QueuedConnection);
                 bazarish::log::info("mail wait failed, asking again: {}", error.what());
+                std::unique_lock<std::mutex> lock(drainMutex_);
+                drainDone_.wait_until(lock, askedAt + std::chrono::seconds(kEventWaitSeconds),
+                    [&running]() { return !running->load(); });
                 continue;
             }
             if (!running->load()) {
@@ -427,6 +431,7 @@ void SessionWorker::startEventWaiter()
 void SessionWorker::stopEventWaiter()
 {
     if (eventWaiterRunning_) {
+        const std::lock_guard<std::mutex> lock(drainMutex_);
         eventWaiterRunning_->store(false);
     }
     drainDone_.notify_all();
