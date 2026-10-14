@@ -191,8 +191,8 @@ signals:
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     void botActionDone(const QString& opId, bool ok, const QString& error);
-    void contactRequestSent(
-        const QString& fingerprint, const QString& intro, const QString& requestId);
+    void contactRequestSent(const QString& fingerprint, const QString& intro,
+        const QString& requestId, qint64 sentAtMs);
     void contactAddStage(const QString& opId, const QString& status);
     void contactAddRateLimited(
         const QString& opId, const QString& fingerprint, const QString& requestId);
@@ -245,7 +245,7 @@ private:
         const QString& fingerprint, const QString& intro, const QString& requestId,
         bool recordedHere);
     void finishContactRequest(const QString& opId, const QString& fingerprint,
-        const QString& intro, const QString& requestId, bool recordedHere,
+        const QString& intro, const QString& requestId, bool recordedHere, qint64 sentAtMs,
         const bazarish::client::OutboundCourier::Outcome& outcome);
     void drainMailbox();
     void maintain();

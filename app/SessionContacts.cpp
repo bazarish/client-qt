@@ -500,8 +500,8 @@ void SessionController::onContactAddResolved(const QString& opId, const QString&
     }
 }
 
-void SessionController::onContactRequestSent(
-    const QString& fingerprint, const QString& intro, const QString& requestId)
+void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro,
+    const QString& requestId, const qint64 sentAtMs)
 {
     if (fingerprint.isEmpty()) {
         return;
@@ -520,7 +520,7 @@ void SessionController::onContactRequestSent(
     m.type = "contact.request";
     m.e2eId = requestId.isEmpty() ? newE2eId() : requestId;
     m.text = body;
-    m.ts = nowMillis();
+    m.ts = sentAtMs;
     m.orderKey = m.ts;
     const auto known = contactState_.constFind(fingerprint);
     const bool answered

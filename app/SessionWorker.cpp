@@ -1336,12 +1336,14 @@ bazarish::client::DeliveryWatch SessionWorker::contactRequestWatch(const QString
     const bool recordedHere)
 {
     bazarish::client::DeliveryWatch watch;
-    watch.onOutcome = [this, opId, fingerprint, intro, requestId, recordedHere](
+    watch.onOutcome = [this, opId, fingerprint, intro, requestId, recordedHere,
+                          sentAtMs = nowMillis()](
                           const bazarish::client::OutboundCourier::Outcome& outcome) {
         QMetaObject::invokeMethod(
             this,
-            [this, opId, fingerprint, intro, requestId, recordedHere, outcome]() {
-                finishContactRequest(opId, fingerprint, intro, requestId, recordedHere, outcome);
+            [this, opId, fingerprint, intro, requestId, recordedHere, sentAtMs, outcome]() {
+                finishContactRequest(
+                    opId, fingerprint, intro, requestId, recordedHere, sentAtMs, outcome);
             },
             Qt::QueuedConnection);
     };
@@ -1350,11 +1352,12 @@ bazarish::client::DeliveryWatch SessionWorker::contactRequestWatch(const QString
 
 void SessionWorker::finishContactRequest(const QString& opId, const QString& fingerprint,
     const QString& intro, const QString& requestId, const bool recordedHere,
+    const qint64 sentAtMs,
     const bazarish::client::OutboundCourier::Outcome& outcome)
 {
     if (outcome.stored) {
         emit actionOk(tr("Contact request sent"));
-        emit contactRequestSent(fingerprint, intro, requestId);
+        emit contactRequestSent(fingerprint, intro, requestId, sentAtMs);
         emit contactAddDone(opId, true, encodeSystemNote(QT_TR_NOOP("Request sent.")));
         return;
     }

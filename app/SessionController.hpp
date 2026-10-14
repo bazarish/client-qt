@@ -557,8 +557,8 @@ private slots:
     void onPairFinished(bool ok, const QString& status);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSendPhase(qint64 localId, const QString& phase);
-    void onContactRequestSent(
-        const QString& fingerprint, const QString& intro, const QString& requestId);
+    void onContactRequestSent(const QString& fingerprint, const QString& intro,
+        const QString& requestId, qint64 sentAtMs);
     void onSyncReachable(bool ok);
     void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
