@@ -151,6 +151,19 @@ constexpr int kBusyPaintDelayMs = 32;
 
 constexpr int kReadSyncIdleMs = 4000;
 
+// A page is chosen by id and shown by order key, so its bounds are its lowest and highest id.
+qint64 lowestId(const QVector<StoredMessage>& rows)
+{
+    return std::min_element(rows.begin(), rows.end(),
+        [](const StoredMessage& a, const StoredMessage& b) { return a.id < b.id; })->id;
+}
+
+qint64 highestId(const QVector<StoredMessage>& rows)
+{
+    return std::max_element(rows.begin(), rows.end(),
+        [](const StoredMessage& a, const StoredMessage& b) { return a.id < b.id; })->id;
+}
+
 }  // namespace
 
 // Both travel through a queued signal from the worker, so Qt has to know them by name.
@@ -766,8 +779,8 @@ QString SessionController::withoutInvites(const QString& text) const
 void SessionController::loadLatestWindow()
 {
     const QVector<StoredMessage> msgs = store_.latestMessages(activePeer_, kPageSize);
-    oldestLoadedId_ = msgs.isEmpty() ? 0 : msgs.front().id;
-    newestLoadedId_ = msgs.isEmpty() ? 0 : msgs.back().id;
+    oldestLoadedId_ = msgs.isEmpty() ? 0 : lowestId(msgs);
+    newestLoadedId_ = msgs.isEmpty() ? 0 : highestId(msgs);
     hasMoreOlder_ = !msgs.isEmpty() && store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
     hasMoreNewer_ = false;
     conversation_.setMessages(msgs);
@@ -824,8 +837,8 @@ void SessionController::openWindowAtUnread(const QString& peer, qint64 firstUnre
         loadLatestWindow();
         return;
     }
-    oldestLoadedId_ = win.front().id;
-    newestLoadedId_ = win.back().id;
+    oldestLoadedId_ = lowestId(win);
+    newestLoadedId_ = highestId(win);
     hasMoreOlder_ = store_.hasMessagesBefore(peer, oldestLoadedId_);
     hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
     conversation_.setMessages(win);
@@ -856,8 +869,8 @@ void SessionController::openConversationAtMessage(const QString& peer, qint64 lo
 {
     activateConversation(peer);
     const QVector<StoredMessage> win = store_.olderMessages(peer, localId + 1, kPageSize);
-    oldestLoadedId_ = win.isEmpty() ? 0 : win.front().id;
-    newestLoadedId_ = win.isEmpty() ? 0 : win.back().id;
+    oldestLoadedId_ = win.isEmpty() ? 0 : lowestId(win);
+    newestLoadedId_ = win.isEmpty() ? 0 : highestId(win);
     hasMoreOlder_ = !win.isEmpty() && store_.hasMessagesBefore(peer, oldestLoadedId_);
     hasMoreNewer_ = store_.hasMessagesAfter(peer, newestLoadedId_);
     conversation_.setMessages(win);
@@ -879,7 +892,7 @@ int SessionController::loadOlderMessages()
         emit pagingChanged();
         return 0;
     }
-    oldestLoadedId_ = older.front().id;
+    oldestLoadedId_ = lowestId(older);
     hasMoreOlder_ = store_.hasMessagesBefore(activePeer_, oldestLoadedId_);
     conversation_.prependMessages(older);
     requestPicturesFor(older);
@@ -899,7 +912,7 @@ int SessionController::loadNewerMessages()
         emit pagingChanged();
         return 0;
     }
-    newestLoadedId_ = newer.back().id;
+    newestLoadedId_ = highestId(newer);
     hasMoreNewer_ = store_.hasMessagesAfter(activePeer_, newestLoadedId_);
     conversation_.appendMessages(newer);
     requestPicturesFor(newer);
