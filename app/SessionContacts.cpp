@@ -247,6 +247,14 @@ void SessionController::retryContactAdd()
 
 void SessionController::repeatContactAdd(const QString& chat, const PendingContactRequest& pending)
 {
+    const QString failed = QStringLiteral("contact.failed");
+    qint64 removed = 0;
+    for (qint64 row = store_.oldestOfType(chat, failed, /*outgoing=*/false);
+         row != 0 && row != removed; row = store_.oldestOfType(chat, failed, /*outgoing=*/false)) {
+        store_.removeById(row);
+        conversation_.removeById(row);
+        removed = row;
+    }
     if (hasAliasSigil(pending.uri)) {
         startAliasAdd(pending.uri, pending.intro, pending.requestId, chat);
         return;
