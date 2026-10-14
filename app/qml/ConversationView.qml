@@ -14,6 +14,7 @@ Item {
     // The chat with ourselves: no face, no call, and its own panel behind the i.
     readonly property bool savedChat: root.session !== null
         && root.session.isSavedChat(root.session.activePeer)
+    readonly property bool lookingUp: root.session !== null && root.session.activeAliasLookup
     // An alias tapped in a message: the window offers the add-a-contact form.
     signal addByNameRequested(string alias)
 
@@ -312,14 +313,23 @@ Item {
                         Layout.fillWidth: true
                     }
                 }
-                IconButton { iconName: "search"; onClicked: searchPopup.openSearch() }
+                IconButton {
+                    visible: !root.lookingUp
+                    iconName: "search"
+                    onClicked: searchPopup.openSearch()
+                }
                 // There is nobody to call in the saved chat or in a group.
                 IconButton {
-                    visible: !root.savedChat && !(root.session && root.session.activeIsGroup)
+                    visible: !root.savedChat && !root.lookingUp
+                        && !(root.session && root.session.activeIsGroup)
                     iconName: "call"
                     onClicked: root.callRequested()
                 }
-                IconButton { iconName: "info"; onClicked: root.contactInfoRequested() }
+                IconButton {
+                    visible: !root.lookingUp
+                    iconName: "info"
+                    onClicked: root.contactInfoRequested()
+                }
             }
         }
         Hairline { }
@@ -687,7 +697,7 @@ Item {
 
     Composer {
         session: root.session
-        visible: !root.session || root.session.activeGroupWrite
+        visible: !root.session || (root.session.activeGroupWrite && !root.lookingUp)
     }
     }
 }

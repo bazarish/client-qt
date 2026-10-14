@@ -23,6 +23,18 @@
     }
   ],
   "messages": {
+    "Not shareable yet": {
+      "ru": "Пока нечем делиться",
+      "es": "Todavía no se puede compartir",
+      "zh": "尚不可分享",
+      "ar": "غير قابل للمشاركة بعد"
+    },
+    "Their descriptor arrives with their next message.": {
+      "ru": "Дескриптор придёт со следующим сообщением.",
+      "es": "Su descriptor llegará con su próximo mensaje.",
+      "zh": "对方的描述符会随其下一条消息到来。",
+      "ar": "يصل الواصف مع الرسالة التالية."
+    },
     " (queue: %1)": {
       "ru": " (в очереди: %1)",
       "es": " (en cola: %1)",
@@ -1787,12 +1799,6 @@
       "zh": "未发送：%1",
       "ar": "لم تُرسَل: ⁦%1⁩"
     },
-    "Not shareable yet": {
-      "ru": "Пока нечем делиться",
-      "es": "Todavía no se puede compartir",
-      "zh": "尚不可分享",
-      "ar": "غير قابل للمشاركة بعد"
-    },
     "Nothing on this system opened it. Copy the address instead.": {
       "ru": "Система не открыла ссылку. Скопируйте адрес.",
       "es": "El sistema no abrió el enlace. Copia la dirección.",
@@ -2248,12 +2254,6 @@
       "es": "Contactando con el servidor del destinatario…",
       "zh": "正在联系收件人的服务器…",
       "ar": "جارٍ الوصول إلى خادم المستلم…"
-    },
-    "Reaching their server…": {
-      "ru": "Соединение с сервером контакта…",
-      "es": "Contactando con su servidor…",
-      "zh": "正在联系对方的服务器…",
-      "ar": "جارٍ الوصول إلى خادم جهة الاتصال…"
     },
     "React": {
       "ru": "Реакция",
@@ -3101,12 +3101,6 @@
       "zh": "他们的名片：他们是谁，以及到哪里找他们。拿到它的人同样能够联系到他们。",
       "ar": "بطاقة جهة الاتصال: من هي وأين تُبلَغ. ومن تصله يستطيع بلوغها أيضًا."
     },
-    "Their descriptor arrives with their next message.": {
-      "ru": "Дескриптор придёт со следующим сообщением.",
-      "es": "Su descriptor llegará con su próximo mensaje.",
-      "zh": "对方的描述符会随其下一条消息到来。",
-      "ar": "يصل الواصف مع الرسالة التالية."
-    },
     "Their server is busy. Trying again in %1 seconds (%2 left).": {
       "ru": "Сервер контакта занят. Повтор через %1 с (осталось попыток: %2).",
       "es": "Su servidor está ocupado. Se reintenta en %1 s (quedan %2).",
@@ -3454,12 +3448,6 @@
       "es": "Esperando al servidor…",
       "zh": "正在等待服务器…",
       "ar": "في انتظار الخادم…"
-    },
-    "Waiting for their answer…": {
-      "ru": "Ожидание ответа…",
-      "es": "Esperando su respuesta…",
-      "zh": "正在等待对方的答复…",
-      "ar": "في انتظار ردّ جهة الاتصال…"
     },
     "Waiting for their server…": {
       "ru": "Ожидание сервера контакта…",
@@ -4102,6 +4090,18 @@
       "es": "Escribir",
       "zh": "写信",
       "ar": "مراسلة"
+    },
+    "Waiting for an answer…": {
+      "ru": "Ожидание ответа…",
+      "es": "Esperando respuesta…",
+      "zh": "正在等待答复…",
+      "ar": "في انتظار الرد…"
+    },
+    "No such alias.": {
+      "ru": "Такого алиаса нет.",
+      "es": "Ese alias no existe.",
+      "zh": "没有这个别名。",
+      "ar": "لا يوجد هذا الاسم المستعار."
     }
   }
 }

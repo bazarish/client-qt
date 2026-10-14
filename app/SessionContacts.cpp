@@ -133,6 +133,10 @@ void SessionController::onContactAddResumed(
 {
     beginOperation(opId, QStringLiteral("contact"), tr("Adding a contact"),
         tr("Resuming after a restart…"));
+    if (hasAliasSigil(uri)) {
+        trackAliasAdd(opId, uri, intro, requestId, aliasChatPeer(uri));
+        return;
+    }
     trackContactAdd(opId, uri, intro, requestId);
 }
 
@@ -187,7 +191,7 @@ void SessionController::retryContactRequest(const QString& fingerprint)
         return;
     }
     const PendingContactRequest pending = *found;
-    sendContactAdd(pending.uri, pending.intro, pending.requestId);
+    repeatContactAdd(fingerprint, pending);
     if (const auto again = refusedRequests_.find(fingerprint); again != refusedRequests_.end()) {
         again->triesLeft = pending.triesLeft;
         again->requestId = pending.requestId;
@@ -238,15 +242,47 @@ void SessionController::retryContactAdd()
         return;
     }
     const PendingContactRequest pending = *found;
+    repeatContactAdd(activePeer_, pending);
+}
+
+void SessionController::repeatContactAdd(const QString& chat, const PendingContactRequest& pending)
+{
+    if (hasAliasSigil(pending.uri)) {
+        startAliasAdd(pending.uri, pending.intro, pending.requestId, chat);
+        return;
+    }
     sendContactAdd(pending.uri, pending.intro, pending.requestId);
 }
 
 void SessionController::addByAlias(const QString& alias, const QString& intro)
 {
+    const QString problem = aliasProblem(alias);
+    if (!problem.isEmpty()) {
+        emit actionFailed(problem);
+        return;
+    }
+    startAliasAdd(alias, intro, newE2eId(), aliasChatPeer(alias));
+}
+
+void SessionController::startAliasAdd(
+    const QString& alias, const QString& intro, const QString& requestId, const QString& chat)
+{
     const QString opId = QStringLiteral("contact:") + newE2eId();
     beginOperation(opId, QStringLiteral("contact"), tr("Adding %1").arg(alias),
         tr("Preparing…"));
-    emit requestAddByAlias(alias, intro, opId);
+    trackAliasAdd(opId, alias, intro, requestId, chat);
+    emit requestAddByAlias(alias, intro, opId, requestId);
+}
+
+void SessionController::trackAliasAdd(const QString& opId, const QString& alias,
+    const QString& intro, const QString& requestId, const QString& chat)
+{
+    if (hasAliasSigil(chat)) {
+        aliasChats_.insert(opId, chat);
+    }
+    openContactProgress(chat, opId);
+    refusedRequests_.insert(chat,
+        PendingContactRequest{alias, intro, kContactRetryAttempts, requestId});
 }
 
 void SessionController::writeConversationNote(const QString& peer, const QString& text)
@@ -301,6 +337,14 @@ void SessionController::openContactProgress(const QString& peer, const QString& 
     if (peer.isEmpty()) {
         return;
     }
+    noteContactProgress(peer, opId);
+    if (activePeer_ != peer) {
+        openConversation(peer);
+    }
+}
+
+void SessionController::noteContactProgress(const QString& peer, const QString& opId)
+{
     StoredMessage note;
     note.peer = peer;
     note.type = QStringLiteral("system");
@@ -313,9 +357,7 @@ void SessionController::openContactProgress(const QString& peer, const QString& 
     contacts_.touch(peer, peerName(peer), systemNoteText(note.text), note.ts, false);
     if (activePeer_ == peer) {
         showInActiveView(note, true);
-        return;
     }
-    openConversation(peer);
 }
 
 void SessionController::writeContactProgress(const QString& opId, const QString& text)
@@ -395,6 +437,7 @@ void SessionController::onContactRequestUnconfirmed(const QString& opId)
 
 void SessionController::settleContactAdd(const QString& opId, const bool ok, const QString& note)
 {
+    aliasChats_.remove(opId);
     emit requestForgetPendingAdd(opId);
     finishOperation(opId, ok, systemNoteText(note));
     const auto row = contactProgressRows_.constFind(opId);
@@ -414,8 +457,47 @@ void SessionController::onContactAlreadyKnown(const QString& opId, const QString
     emit requestForgetPendingAdd(opId);
     finishOperation(opId, true, tr("Already in your contacts"));
     contactProgressRows_.remove(opId);
+    if (const QString chat = aliasChats_.take(opId); !chat.isEmpty()) {
+        refusedRequests_.remove(chat);
+        dropChat(chat);
+    }
     openConversation(fingerprint);
     emit actionOk(tr("Already in your contacts"));
+}
+
+void SessionController::onContactAliasUnknown(const QString& opId, const QString& status)
+{
+    const QString chat = aliasChats_.take(opId);
+    if (chat.isEmpty()) {
+        onContactAddDone(opId, false, status);
+        return;
+    }
+    emit requestForgetPendingAdd(opId);
+    finishOperation(opId, false, status);
+    contactProgressRows_.remove(opId);
+    refusedRequests_.remove(chat);
+    dropChat(chat);
+}
+
+void SessionController::onContactAddResolved(const QString& opId, const QString& fingerprint)
+{
+    const QString chat = aliasChats_.take(opId);
+    if (chat.isEmpty()) {
+        return;
+    }
+    const bool shown = activePeer_ == chat;
+    if (const auto found = refusedRequests_.constFind(chat); found != refusedRequests_.cend()) {
+        const PendingContactRequest pending = *found;
+        refusedRequests_.remove(chat);
+        refusedRequests_.insert(fingerprint, pending);
+    }
+    contactProgressRows_.remove(opId);
+    dropChat(chat);
+    if (shown) {
+        openContactProgress(fingerprint, opId);
+    } else {
+        noteContactProgress(fingerprint, opId);
+    }
 }
 
 void SessionController::onContactRequestSent(

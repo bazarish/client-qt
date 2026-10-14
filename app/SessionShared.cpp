@@ -3,6 +3,8 @@
 
 #include "AudioCodec.hpp"
 
+#include <bazarish/Address.hpp>
+
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -65,6 +67,17 @@ QString waveformHex(const Bytes& opus)
 QString newE2eId()
 {
     return QString::number(QRandomGenerator::global()->generate64(), 16);
+}
+
+QString aliasChatPeer(const QString& alias)
+{
+    return QChar::fromLatin1(bazarish::kAliasSigil)
+        + QString::fromStdString(bazarish::normalizeAlias(alias.trimmed().toStdString()));
+}
+
+bool hasAliasSigil(const QString& text)
+{
+    return text.startsWith(QChar::fromLatin1(bazarish::kAliasSigil));
 }
 
 }  // namespace bazarish::app

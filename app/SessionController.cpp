@@ -367,6 +367,10 @@ SessionController::SessionController(QObject* parent)
     connect(worker_, &SessionWorker::routingTold, this, &SessionController::onRoutingTold);
     connect(worker_, &SessionWorker::contactAlreadyKnown, this,
         &SessionController::onContactAlreadyKnown);
+    connect(worker_, &SessionWorker::contactAliasUnknown, this,
+        &SessionController::onContactAliasUnknown);
+    connect(worker_, &SessionWorker::contactAddResolved, this,
+        &SessionController::onContactAddResolved);
     connect(worker_, &SessionWorker::contactRequestUnconfirmed, this,
         &SessionController::onContactRequestUnconfirmed);
     connect(worker_, &SessionWorker::contactAddResumed, this,
@@ -1010,6 +1014,11 @@ QString SessionController::chatPreview(const QString& peer) const
     return attachmentLabel(last.type) + QLatin1Char(' ') + last.attachment;
 }
 
+bool SessionController::activeAliasLookup() const
+{
+    return hasAliasSigil(activePeer_);
+}
+
 QString SessionController::peerName(const QString& id) const
 {
     if (!id.isEmpty() && id == fingerprint_) {
@@ -1019,6 +1028,9 @@ QString SessionController::peerName(const QString& id) const
                                                     : pendingContactNames_.value(id);
     if (!name.isEmpty()) {
         return name;
+    }
+    if (hasAliasSigil(id)) {
+        return id;
     }
     return shortFingerprint(id);
 }
@@ -1122,13 +1134,22 @@ void SessionController::deleteContact()
         return;
     }
     const QString peer = activePeer_;
-    store_.forgetPeer(peer);
     contactFps_.removeAll(peer);
     contactState_.remove(peer);
-    openConversation({});
+    dropChat(peer);
+    if (!hasAliasSigil(peer)) {
+        emit requestRemoveContact(peer);
+    }
+}
+
+void SessionController::dropChat(const QString& peer)
+{
+    store_.forgetPeer(peer);
+    if (activePeer_ == peer) {
+        openConversation({});
+    }
     rebuildChatList();
     refreshUnreadTotal();
-    emit requestRemoveContact(peer);
 }
 
 void SessionController::clearSavedEverywhere()

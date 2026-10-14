@@ -111,7 +111,8 @@ public slots:
     void clearChatForEveryone(const QString& peer);
     void addByInvite(const QString& uri, const QString& intro, const QString& opId,
         const QString& requestId);
-    void addByAlias(const QString& alias, const QString& intro, const QString& opId);
+    void addByAlias(const QString& alias, const QString& intro, const QString& opId,
+        const QString& requestId);
     void acceptContact(const QString& peer);
     void requestInvite();
     void signLogin(const QString& challenge);
@@ -196,6 +197,8 @@ signals:
     void contactAddRateLimited(
         const QString& opId, const QString& fingerprint, const QString& requestId);
     void contactAddDone(const QString& opId, bool ok, const QString& status);
+    void contactAliasUnknown(const QString& opId, const QString& status);
+    void contactAddResolved(const QString& opId, const QString& fingerprint);
     void contactAlreadyKnown(const QString& opId, const QString& fingerprint);
     void contactRequestUnconfirmed(const QString& opId);
     void contactAddResumed(

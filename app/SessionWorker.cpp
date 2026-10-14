@@ -100,9 +100,9 @@ QString noteForFetchStage(const bazarish::client::FetchStage stage)
     case bazarish::client::FetchStage::eBuildingDest:
         return encodeSystemNote(QT_TR_NOOP("Building a destination to ask from…"));
     case bazarish::client::FetchStage::eReaching:
-        return encodeSystemNote(QT_TR_NOOP("Reaching their server…"));
+        return encodeSystemNote(QT_TR_NOOP("Connecting over I2P…"));
     case bazarish::client::FetchStage::eWaiting:
-        return encodeSystemNote(QT_TR_NOOP("Waiting for their answer…"));
+        return encodeSystemNote(QT_TR_NOOP("Waiting for an answer…"));
     case bazarish::client::FetchStage::eAskingAgain:
         return encodeSystemNote(QT_TR_NOOP("No answer; asking again…"));
     }
@@ -1163,9 +1163,10 @@ void SessionWorker::addByInvite(const QString& uri, const QString& intro, const 
     startContactAdd(/*byAlias=*/false, uri, intro, opId, requestId);
 }
 
-void SessionWorker::addByAlias(const QString& alias, const QString& intro, const QString& opId)
+void SessionWorker::addByAlias(const QString& alias, const QString& intro, const QString& opId,
+    const QString& requestId)
 {
-    startContactAdd(/*byAlias=*/true, alias, intro, opId);
+    startContactAdd(/*byAlias=*/true, alias, intro, opId, requestId);
 }
 
 void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlias,
@@ -1241,12 +1242,7 @@ void SessionWorker::resumePendingAdds()
         const QString what = QString::fromStdString(pending.request.uriOrAlias);
         const QString intro = QString::fromStdString(pending.request.introText);
         const QString requestId = QString::fromStdString(pending.request.requestId);
-        if (pending.request.byAlias) {
-            emit opBegin(opId, QStringLiteral("contact"), tr("Adding a contact"),
-                tr("Resuming after a restart…"));
-        } else {
-            emit contactAddResumed(opId, what, intro, requestId);
-        }
+        emit contactAddResumed(opId, what, intro, requestId);
         startContactAdd(pending.request.byAlias, what, intro, opId, requestId);
     }
 }
@@ -1269,8 +1265,15 @@ void SessionWorker::drainResolvedAdds()
     for (const ResolvedContactAddQueue::Entry& entry : ready) {
         const bazarish::client::Session::ContactCardResolved& resolved = entry.resolved;
         if (!resolved.ok) {
-            emit contactAddDone(entry.opId, false, QString::fromStdString(resolved.error));
-            emit actionFailed(QString::fromStdString(resolved.error));
+            const QString error = resolved.aliasUnknown
+                ? tr("No such alias.")
+                : QString::fromStdString(resolved.error);
+            if (resolved.aliasUnknown) {
+                emit contactAliasUnknown(entry.opId, error);
+            } else {
+                emit contactAddDone(entry.opId, false, error);
+            }
+            emit actionFailed(error);
             continue;
         }
         const QString fingerprint = QString::fromStdString(resolved.fingerprint);
@@ -1291,6 +1294,7 @@ void SessionWorker::drainResolvedAdds()
                 session_->commitContactAdd(resolved, watch);
                 emitContacts();
             }
+            emit contactAddResolved(entry.opId, fingerprint);
         } catch (const std::exception& e) {
             if (!resending) {
                 session_->forgetUnansweredContact(resolved.fingerprint);

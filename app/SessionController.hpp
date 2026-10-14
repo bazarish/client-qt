@@ -48,6 +48,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     Q_PROPERTY(QString activePeerName READ activePeerName NOTIFY activePeerNameChanged)
     Q_PROPERTY(bool activeIsGroup READ activeIsGroup NOTIFY activeGroupChanged)
+    Q_PROPERTY(bool activeAliasLookup READ activeAliasLookup NOTIFY activePeerChanged)
     Q_PROPERTY(bool activeIsChannel READ activeIsChannel NOTIFY activeGroupChanged)
     Q_PROPERTY(qint64 activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
     Q_PROPERTY(bool activeGroupWrite READ activeGroupWrite NOTIFY activeGroupChanged)
@@ -173,6 +174,7 @@ public:
     int contactsRevision() const { return contactsRevision_; }
     int reactionsRevision() const { return reactionsRevision_; }
     bool activeIsGroup() const { return activeGroup_.has_value(); }
+    bool activeAliasLookup() const;
     bool activeIsChannel() const
     {
         return activeGroup_ && activeGroup_->kind == QStringLiteral("channel");
@@ -461,7 +463,8 @@ signals:
     void requestClearChatForEveryone(const QString& peer);
     void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId,
         const QString& requestId);
-    void requestAddByAlias(const QString& alias, const QString& intro, const QString& opId);
+    void requestAddByAlias(const QString& alias, const QString& intro, const QString& opId,
+        const QString& requestId);
     void requestAcceptContact(const QString& peer);
     void requestInviteSig();
     void requestSignLoginSig(const QString& challenge);
@@ -515,6 +518,7 @@ private slots:
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onContactAddStage(const QString& opId, const QString& status);
     void openContactProgress(const QString& peer, const QString& opId);
+    void noteContactProgress(const QString& peer, const QString& opId);
     void writeContactProgress(const QString& opId, const QString& text);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
     void onContactRequestUnconfirmed(const QString& opId);
@@ -525,6 +529,13 @@ private slots:
     void trackContactAdd(
         const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
     void onContactAlreadyKnown(const QString& opId, const QString& fingerprint);
+    void onContactAliasUnknown(const QString& opId, const QString& status);
+    void onContactAddResolved(const QString& opId, const QString& fingerprint);
+    void startAliasAdd(const QString& alias, const QString& intro, const QString& requestId,
+        const QString& chat);
+    void trackAliasAdd(const QString& opId, const QString& alias, const QString& intro,
+        const QString& requestId, const QString& chat);
+    void dropChat(const QString& peer);
     void writeConversationNote(const QString& peer, const QString& text);
     void onContactAddRateLimited(
         const QString& opId, const QString& fingerprint, const QString& requestId);
@@ -673,6 +684,7 @@ private:
         QString peer;
     };
     QHash<QString, ContactProgressRow> contactProgressRows_;
+    QHash<QString, QString> aliasChats_;
     QHash<QString, QString> pendingContactNames_;
     struct PendingContactRequest {
         QString uri;
@@ -681,6 +693,7 @@ private:
         QString requestId;
     };
     QHash<QString, PendingContactRequest> refusedRequests_;
+    void repeatContactAdd(const QString& chat, const PendingContactRequest& pending);
     QString accountPassphrase_;
     std::unique_ptr<client::AccountDb> accountDb_;
     client::AccountDb& accountDb();
