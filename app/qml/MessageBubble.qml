@@ -269,11 +269,13 @@ Item {
         radius: 12
         color: model.outgoing ? Theme.bubbleOut : Theme.bubbleIn
         // Search-jump flash: a brief accent outline on the targeted message. An
-        // incoming contact request keeps a permanent thin green outline, so it
-        // stands apart.
+        // incoming contact request keeps a permanent thin green outline, and a
+        // group message meant for this member alone a white one, so they stand
+        // apart.
         border.width: delegate.highlighted ? 2
-            : (delegate.isContactRequestIncoming ? 1 : 0)
-        border.color: delegate.isContactRequestIncoming ? Theme.green : Theme.accent
+            : (delegate.isContactRequestIncoming || delegate.onlyForMe ? 1 : 0)
+        border.color: delegate.isContactRequestIncoming ? Theme.green
+            : (delegate.onlyForMe && !delegate.highlighted ? Theme.text : Theme.accent)
         Behavior on border.width { NumberAnimation { duration: 220 } }
 
         ColumnLayout {
