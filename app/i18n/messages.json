@@ -1679,6 +1679,12 @@
       "zh": "没有应答，正在重试…",
       "ar": "لا جواب؛ إعادة السؤال…"
     },
+    "No audio output device.": {
+      "ru": "Нет устройства вывода звука.",
+      "es": "No hay dispositivo de salida de audio.",
+      "zh": "没有音频输出设备。",
+      "ar": "لا يوجد جهاز لإخراج الصوت."
+    },
     "No camera on this machine.": {
       "ru": "На этой машине нет камеры.",
       "es": "No hay ninguna cámara en este equipo.",

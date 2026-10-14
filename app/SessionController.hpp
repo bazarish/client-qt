@@ -574,6 +574,7 @@ private slots:
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
         float outputLevel);
+    bool speakerPresent();
     void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
 private:

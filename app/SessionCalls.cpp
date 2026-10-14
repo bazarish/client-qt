@@ -16,6 +16,9 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QAudioDevice>
+#include <QMediaDevices>
+
 #include <chrono>
 #include <cstring>
 
@@ -40,10 +43,19 @@ using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
+bool SessionController::speakerPresent()
+{
+    if (QMediaDevices::defaultAudioOutput().isNull()) {
+        emit actionFailed(tr("No audio output device."));
+        return false;
+    }
+    return true;
+}
+
 void SessionController::startCall(const QString& peer)
 {
     const QString target = peer.isEmpty() ? activePeer_ : peer;
-    if (target.isEmpty()) {
+    if (target.isEmpty() || !speakerPresent()) {
         return;
     }
     emit requestStartCall(target);
@@ -51,6 +63,9 @@ void SessionController::startCall(const QString& peer)
 
 void SessionController::acceptCall()
 {
+    if (!speakerPresent()) {
+        return;
+    }
     emit requestAcceptCall(callId_);
 }
 
