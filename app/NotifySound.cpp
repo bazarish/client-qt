@@ -2,11 +2,10 @@
 #include "NotifySound.hpp"
 
 #include <QAudioDevice>
-#include <QAudioOutput>
 #include <QDir>
 #include <QFileInfo>
 #include <QMediaDevices>
-#include <QMediaPlayer>
+#include <QSoundEffect>
 #include <QUrl>
 
 #pragma push_macro("emit")
@@ -44,7 +43,7 @@ QUrl NotifySound::source() const
 
 qint64 NotifySound::durationMs() const
 {
-    return player_ ? player_->duration() : 0;
+    return durationMs_;
 }
 
 void NotifySound::play()
@@ -52,22 +51,27 @@ void NotifySound::play()
     if (QMediaDevices::defaultAudioOutput().isNull()) {
         return;
     }
-    if (!player_) {
-        player_ = std::make_unique<QMediaPlayer>();
-        output_ = std::make_unique<QAudioOutput>();
-        player_->setAudioOutput(output_.get());
-        connect(player_.get(), &QMediaPlayer::errorOccurred, this,
-            [this](QMediaPlayer::Error, const QString& text) {
-                bazarish::log::warn("notification sound: {} ({})", text.toStdString(),
-                    player_->source().toString().toStdString());
-            });
+    if (!effect_) {
+        effect_ = std::make_unique<QSoundEffect>();
+        connect(effect_.get(), &QSoundEffect::statusChanged, this, [this]() {
+            if (effect_->status() == QSoundEffect::Error) {
+                bazarish::log::warn("notification sound: {} did not load",
+                    effect_->source().toString().toStdString());
+            }
+        });
+        connect(effect_.get(), &QSoundEffect::playingChanged, this, [this]() {
+            if (effect_->isPlaying()) {
+                playing_.start();
+            } else {
+                durationMs_ = playing_.elapsed();
+            }
+        });
     }
     const QUrl wanted = source();
-    if (player_->source() != wanted) {
-        player_->setSource(wanted);
+    if (effect_->source() != wanted) {
+        effect_->setSource(wanted);
     }
-    player_->stop();
-    player_->play();
+    effect_->play();
 }
 
 }  // namespace bazarish::app

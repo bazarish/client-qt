@@ -1,14 +1,14 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QString>
 #include <QUrl>
 
 #include <memory>
 
-class QAudioOutput;
-class QMediaPlayer;
+class QSoundEffect;
 
 namespace bazarish::app {
 
@@ -25,8 +25,9 @@ private:
 
     const QString folder_;
     const QString fileName_;
-    std::unique_ptr<QMediaPlayer> player_;
-    std::unique_ptr<QAudioOutput> output_;
+    std::unique_ptr<QSoundEffect> effect_;
+    QElapsedTimer playing_;
+    qint64 durationMs_ = 0;
 };
 
 }  // namespace bazarish::app
