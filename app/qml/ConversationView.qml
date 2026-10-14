@@ -173,7 +173,8 @@ Item {
         modal: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
         footer: DialogButtons {
-            acceptText: groupActionDialog.command === "exclude" ? qsTr("Exclude") : qsTr("Delete")
+            acceptText: groupActionDialog.command === "exclude" ? qsTr("Exclude")
+                : groupActionDialog.command === "block" ? qsTr("Block") : qsTr("Delete")
             danger: true
             onAccepted: groupActionDialog.accept()
             onRejected: groupActionDialog.reject()
@@ -183,14 +184,18 @@ Item {
                 root.session.sendCommand(groupActionDialog.command, groupActionDialog.postId,
                     groupActionDialog.command === "exclude"
                         ? qsTr("Exclude %1").arg(groupActionDialog.author)
-                        : qsTr("Delete for everyone"))
+                        : groupActionDialog.command === "block"
+                            ? qsTr("Block %1").arg(groupActionDialog.author)
+                            : qsTr("Delete for everyone"))
             }
         }
         background: DialogFrame { destructive: true }
         header: Label {
             text: groupActionDialog.command === "exclude"
                 ? qsTr("Exclude %1?").arg(groupActionDialog.author)
-                : qsTr("Delete for everyone?")
+                : groupActionDialog.command === "block"
+                    ? qsTr("Block %1?").arg(groupActionDialog.author)
+                    : qsTr("Delete for everyone?")
             color: Theme.neon
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
@@ -199,8 +204,10 @@ Item {
         }
         contentItem: Label {
             text: groupActionDialog.command === "exclude"
-                ? qsTr("They cannot come back.")
-                : qsTr("The post is removed for every member.")
+                ? qsTr("They can join again.")
+                : groupActionDialog.command === "block"
+                    ? qsTr("They cannot come back.")
+                    : qsTr("The post is removed for every member.")
             color: Theme.text
             wrapMode: Text.Wrap
         }

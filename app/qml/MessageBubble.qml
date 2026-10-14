@@ -1253,10 +1253,17 @@ Item {
             }
             ContextMenuItem {
                 text: qsTr("Exclude")
-                iconName: "block"
+                iconName: "signout"
                 visible: delegate.fromMember && delegate.session.activeGroupAdmin
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.groupActionRequested("exclude", model.e2eId, model.author)
+            }
+            ContextMenuItem {
+                text: qsTr("Block")
+                iconName: "block"
+                visible: delegate.fromMember && delegate.session.activeGroupAdmin
+                height: visible ? implicitHeight : 0
+                onTriggered: delegate.groupActionRequested("block", model.e2eId, model.author)
             }
             ContextMenuItem {
                 text: qsTr("Delete for everyone")

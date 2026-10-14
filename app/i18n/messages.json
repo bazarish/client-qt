@@ -4079,6 +4079,24 @@
       "zh": "写信",
       "ar": "مراسلة"
     },
+    "Block %1?": {
+      "ru": "Заблокировать %1?",
+      "es": "¿Bloquear a %1?",
+      "zh": "屏蔽 %1？",
+      "ar": "حظر ⁦%1⁩؟"
+    },
+    "Block %1": {
+      "ru": "Заблокировать %1",
+      "es": "Bloquear a %1",
+      "zh": "屏蔽 %1",
+      "ar": "حظر ⁦%1⁩"
+    },
+    "They can join again.": {
+      "ru": "Вернуться можно.",
+      "es": "Puede volver a unirse.",
+      "zh": "对方可以重新加入。",
+      "ar": "يمكنه الانضمام مجددًا."
+    },
     "Waiting for an answer…": {
       "ru": "Ожидание ответа…",
       "es": "Esperando respuesta…",
