@@ -318,6 +318,9 @@ Item {
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight
                         Layout.fillWidth: true
+                        HoverHandler { id: countHover }
+                        ToolTip.visible: countHover.hovered
+                        ToolTip.text: qsTr("Updated from time to time; the server sets the count.")
                     }
                 }
                 IconButton {

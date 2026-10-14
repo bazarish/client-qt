@@ -4097,6 +4097,12 @@
       "zh": "对方可以重新加入。",
       "ar": "يمكنه الانضمام مجددًا."
     },
+    "Updated from time to time; the server sets the count.": {
+      "ru": "Обновляется периодически, счётчик задаётся сервером.",
+      "es": "Se actualiza de vez en cuando; el servidor fija la cifra.",
+      "zh": "定期更新，人数由服务器设定。",
+      "ar": "يُحدَّث من حين لآخر، والخادم يحدد العدد."
+    },
     "Waiting for an answer…": {
       "ru": "Ожидание ответа…",
       "es": "Esperando respuesta…",

@@ -12,6 +12,7 @@ Popup {
     // The saved chat is not a contact: this panel says what it is and offers the
     // one thing that can be done to it.
     readonly property bool saved: session !== null && session.isSavedChat(session.activePeer)
+    readonly property bool inGroup: session !== null && session.activeIsGroup
     // Re-read whenever anything about the contacts changes, so a switch flipped on
     // another device shows here too.
     readonly property bool blocked: session !== null && session.contactsRevision >= 0
@@ -191,11 +192,13 @@ Popup {
             }
             Item { Layout.fillWidth: true }
             Label {
+                visible: !root.inGroup
                 text: qsTr("Allow calls")
                 color: Theme.text
                 font.pixelSize: Theme.fontSmall
             }
             Toggle {
+                visible: !root.inGroup
                 checked: root.session !== null && root.session.contactsRevision >= 0
                     && root.session.contactCalls(root.session.activePeer)
                 onToggled: root.session.setContactCalls(root.session.activePeer, checked)
