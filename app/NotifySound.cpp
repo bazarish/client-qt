@@ -1,10 +1,11 @@
 // Bazarish project (c) 2026
 #include "NotifySound.hpp"
 
+#include "AudioRoute.hpp"
+
 #include <QAudioDevice>
 #include <QDir>
 #include <QFileInfo>
-#include <QMediaDevices>
 #include <QSoundEffect>
 #include <QUrl>
 
@@ -48,7 +49,8 @@ qint64 NotifySound::durationMs() const
 
 void NotifySound::play()
 {
-    if (QMediaDevices::defaultAudioOutput().isNull()) {
+    const QAudioDevice output = AudioRoute::instance().output();
+    if (output.isNull()) {
         return;
     }
     if (!effect_) {
@@ -71,6 +73,7 @@ void NotifySound::play()
     if (effect_->source() != wanted) {
         effect_->setSource(wanted);
     }
+    effect_->setAudioDevice(output);
     effect_->play();
 }
 

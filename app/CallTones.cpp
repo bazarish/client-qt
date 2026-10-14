@@ -2,11 +2,11 @@
 #include "CallTones.hpp"
 
 #include "AudioCodec.hpp"
+#include "AudioRoute.hpp"
 #include "QtAudioIo.hpp"
 
 #include <QAudioSink>
 #include <QIODevice>
-#include <QMediaDevices>
 #include <QTimer>
 
 #include <algorithm>
@@ -127,12 +127,13 @@ void CallTones::play(const int onMs, const int offMs, const int bursts)
         return;
     }
     stop();
-    if (QMediaDevices::defaultAudioOutput().isNull()) {
+    const QAudioDevice output = AudioRoute::instance().output();
+    if (output.isNull()) {
         return;
     }
     voice_ = std::make_unique<Voice>(onMs, offMs, bursts);
     voice_->open(QIODevice::ReadOnly);
-    sink_ = std::make_unique<QAudioSink>(QMediaDevices::defaultAudioOutput(), callAudioFormat());
+    sink_ = std::make_unique<QAudioSink>(output, callAudioFormat());
     sink_->start(voice_.get());
     if (bursts != kForever) {
         QTimer::singleShot(voice_->durationMs(), this, [this]() { stop(); });

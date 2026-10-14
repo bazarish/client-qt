@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
+#include "AudioRoute.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
 
@@ -17,7 +18,6 @@
 #pragma pop_macro("emit")
 
 #include <QAudioDevice>
-#include <QMediaDevices>
 
 #include <chrono>
 #include <cstring>
@@ -45,7 +45,7 @@ using bazarish::client::Session;
 
 bool SessionController::speakerPresent()
 {
-    if (QMediaDevices::defaultAudioOutput().isNull()) {
+    if (AudioRoute::instance().output().isNull()) {
         emit actionFailed(tr("No audio output device."));
         return false;
     }

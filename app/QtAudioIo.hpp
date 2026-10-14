@@ -28,6 +28,8 @@ public:
 
 private:
     class CaptureDevice;
+    void open();
+    void follow();
     std::unique_ptr<QAudioSource> source_;
     std::unique_ptr<CaptureDevice> device_;
 };
@@ -44,6 +46,8 @@ public:
 
 private:
     class PlaybackDevice;
+    void open();
+    void follow();
     std::unique_ptr<QAudioSink> sink_;
     std::unique_ptr<PlaybackDevice> device_;
 };

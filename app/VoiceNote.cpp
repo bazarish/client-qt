@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "VoiceNote.hpp"
 
+#include "AudioRoute.hpp"
 #include "QtAudioIo.hpp"
 
 #pragma push_macro("emit")
@@ -10,7 +11,6 @@
 
 #include <QDateTime>
 #include <QAudioDevice>
-#include <QMediaDevices>
 
 #include <algorithm>
 #include <chrono>
@@ -88,7 +88,7 @@ void VoiceNote::begin(const bool monitorOnly)
         const std::lock_guard<std::mutex> lock(pcmMutex_);
         pcm_.clear();
     }
-    if (QMediaDevices::defaultAudioInput().isNull()) {
+    if (AudioRoute::instance().input().isNull()) {
         throw std::runtime_error("no microphone to record from");
     }
     inputLevel_.store(0.0F);

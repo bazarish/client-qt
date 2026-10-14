@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Ringtone.hpp"
 
+#include "AudioRoute.hpp"
+
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
@@ -8,7 +10,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QIODevice>
-#include <QMediaDevices>
 #include <QTimer>
 #include <QtEndian>
 
@@ -222,7 +223,7 @@ void Ringtone::start()
     if (!loadTrack()) {
         return;
     }
-    const QAudioDevice device = QMediaDevices::defaultAudioOutput();
+    const QAudioDevice device = AudioRoute::instance().output();
     if (device.isNull()) {
         return;
     }

@@ -84,6 +84,9 @@ void AppSettings::load()
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
         backgroundTasks_ = document.value("backgroundTasks", false);
+        const nlohmann::json audio = document.value("audio", nlohmann::json::object());
+        audioInput_ = audio.value("input", std::string());
+        audioOutput_ = audio.value("output", std::string());
         const nlohmann::json i2p = document.value("i2p", nlohmann::json::object());
         i2pLogging_ = i2p.value("logging", false);
         i2pTunnelLength_
@@ -130,6 +133,7 @@ void AppSettings::save() const
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
         {"backgroundTasks", backgroundTasks_},
+        {"audio", {{"input", audioInput_}, {"output", audioOutput_}}},
         {"i2p", i2p},
     };
     const std::filesystem::path scratch = path_.string() + ".new";
@@ -196,6 +200,28 @@ void AppSettings::setBackgroundTasks(const bool on)
         return;
     }
     backgroundTasks_ = on;
+    save();
+}
+
+std::string AppSettings::audioInput() const { return audioInput_; }
+
+void AppSettings::setAudioInput(const std::string& id)
+{
+    if (audioInput_ == id) {
+        return;
+    }
+    audioInput_ = id;
+    save();
+}
+
+std::string AppSettings::audioOutput() const { return audioOutput_; }
+
+void AppSettings::setAudioOutput(const std::string& id)
+{
+    if (audioOutput_ == id) {
+        return;
+    }
+    audioOutput_ = id;
     save();
 }
 

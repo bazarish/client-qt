@@ -10,6 +10,7 @@
 #include "Identicon.hpp"
 #include "SingleInstance.hpp"
 #include "Translations.hpp"
+#include "AudioRoute.hpp"
 #include "Notifier.hpp"
 #include "TrayIcon.hpp"
 
@@ -288,6 +289,7 @@ int main(int argc, char** argv)
     bazarish::app::AppController controller;
     engine.rootContext()->setContextProperty("App", &controller);
     engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
+    engine.rootContext()->setContextProperty("Audio", &bazarish::app::AudioRoute::instance());
     engine.rootContext()->setContextProperty(
         "Pictures", &bazarish::app::PictureStore::instance());
 

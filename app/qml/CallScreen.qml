@@ -266,6 +266,22 @@ Popup {
 
     }
 
+    component DeviceCaption: RowLayout {
+        property alias icon: glyph.name
+        property alias text: caption.text
+        spacing: 6
+        Icon {
+            id: glyph
+            size: Theme.iconInline
+            color: Theme.textDim
+        }
+        Label {
+            id: caption
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+        }
+    }
+
     // Shared control row, state-driven; used by both layouts.
     component CallControls: RowLayout {
         spacing: 20
@@ -284,7 +300,62 @@ Popup {
             onClicked: { root.pending = "accepting"; root.session.acceptCall() }
         }
 
-        // Active: mute, end.
+        // Active: devices, mute, end.
+        CallIconButton {
+            id: gear
+            visible: root.callState === "active"
+            iconName: "gear"
+            Accessible.name: qsTr("Audio devices")
+            ToolTip.visible: hovered && !devicePicker.visible
+            ToolTip.text: Accessible.name
+            onClicked: devicePicker.visible ? devicePicker.close() : devicePicker.open()
+
+            Popup {
+                id: devicePicker
+                readonly property int kGap: 10
+                property var inputs: []
+                property var outputs: []
+                width: root.availableWidth
+                y: -devicePicker.height - devicePicker.kGap
+                padding: 14
+                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+                background: DialogFrame { }
+                onAboutToShow: {
+                    devicePicker.x = Math.round(gear.mapFromItem(root.contentItem, 0, 0).x)
+                    devicePicker.inputs = Audio.inputs()
+                    devicePicker.outputs = Audio.outputs()
+                }
+
+                contentItem: ColumnLayout {
+                    spacing: 4
+                    DeviceCaption {
+                        icon: "mic"
+                        text: qsTr("Input device")
+                    }
+                    Dropdown {
+                        Layout.fillWidth: true
+                        model: devicePicker.inputs
+                        textRole: "name"
+                        valueRole: "id"
+                        currentIndex: devicePicker.inputs.findIndex(device => device.chosen)
+                        onActivated: Audio.chooseInput(currentValue)
+                    }
+                    DeviceCaption {
+                        Layout.topMargin: 10
+                        icon: "speaker"
+                        text: qsTr("Output device")
+                    }
+                    Dropdown {
+                        Layout.fillWidth: true
+                        model: devicePicker.outputs
+                        textRole: "name"
+                        valueRole: "id"
+                        currentIndex: devicePicker.outputs.findIndex(device => device.chosen)
+                        onActivated: Audio.chooseOutput(currentValue)
+                    }
+                }
+            }
+        }
         CallIconButton {
             visible: root.callState === "active"
             iconName: "mic"

@@ -353,6 +353,12 @@
       "zh": "正在询问…",
       "ar": "جارٍ السؤال…"
     },
+    "Audio devices": {
+      "ru": "Звуковые устройства",
+      "es": "Dispositivos de audio",
+      "zh": "音频设备",
+      "ar": "أجهزة الصوت"
+    },
     "Avatar removed": {
       "ru": "Аватар убран",
       "es": "Avatar eliminado",
@@ -1457,6 +1463,12 @@
       "zh": "来电…",
       "ar": "مكالمة واردة…"
     },
+    "Input device": {
+      "ru": "Устройство ввода",
+      "es": "Dispositivo de entrada",
+      "zh": "输入设备",
+      "ar": "جهاز الإدخال"
+    },
     "Interface language": {
       "ru": "Язык интерфейса",
       "es": "Idioma de la interfaz",
@@ -1930,6 +1942,12 @@
       "es": "Túneles de salida",
       "zh": "出站隧道",
       "ar": "الأنفاق الصادرة"
+    },
+    "Output device": {
+      "ru": "Устройство вывода",
+      "es": "Dispositivo de salida",
+      "zh": "输出设备",
+      "ar": "جهاز الإخراج"
     },
     "Passphrase": {
       "ru": "Пароль",

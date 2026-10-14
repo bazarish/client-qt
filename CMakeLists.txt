@@ -99,6 +99,8 @@ if(Qt6_FOUND)
         app/TranscriptStore.hpp
         app/QtAudioIo.cpp
         app/QtAudioIo.hpp
+        app/AudioRoute.cpp
+        app/AudioRoute.hpp
         app/CallTones.cpp
         app/CallTones.hpp
         app/DesktopEntry.cpp

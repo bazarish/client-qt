@@ -30,6 +30,11 @@ public:
     bool backgroundTasks() const;
     void setBackgroundTasks(bool on);
 
+    std::string audioInput() const;
+    void setAudioInput(const std::string& id);
+    std::string audioOutput() const;
+    void setAudioOutput(const std::string& id);
+
     bool i2pLogging() const;
     void setI2pLogging(bool on);
     int i2pTunnelLength() const;
@@ -63,6 +68,8 @@ private:
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;
     bool backgroundTasks_ = false;
+    std::string audioInput_;
+    std::string audioOutput_;
     bool i2pLogging_ = false;
     int i2pTunnelLength_ = 0;
     std::string i2pProxyHost_;
