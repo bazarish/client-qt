@@ -37,6 +37,7 @@ Popup {
         targetText.text = root.prefillTarget
         errorText = ""
         scanning = false
+        targetText.forceActiveFocus()
     }
     onClosed: {
         errorText = ""
