@@ -1073,6 +1073,12 @@
       "zh": "已送达",
       "ar": "وصلت"
     },
+    "Delivering the invitation": {
+      "ru": "Приглашение доставляется",
+      "es": "Entregando la invitación",
+      "zh": "正在送达邀请",
+      "ar": "جارٍ إيصال الدعوة"
+    },
     "Destination key ready; connect to publish it.": {
       "ru": "Ключ назначения готов. Подключитесь, чтобы его опубликовать.",
       "es": "La clave de destino está lista. Conéctate para publicarla.",
@@ -1462,6 +1468,12 @@
       "es": "Presentación",
       "zh": "附言",
       "ar": "تعريف"
+    },
+    "Invitation delivered": {
+      "ru": "Приглашение доставлено",
+      "es": "Invitación entregada",
+      "zh": "邀请已送达",
+      "ar": "تم إيصال الدعوة"
     },
     "Keep the last %1": {
       "ru": "Оставить последние %1",
@@ -2092,6 +2104,12 @@
       "es": "Preparando la imagen…",
       "zh": "正在处理图片…",
       "ar": "جارٍ تحضير الصورة…"
+    },
+    "Preparing your call address": {
+      "ru": "Адрес для звонка готовится",
+      "es": "Preparando tu dirección de llamada",
+      "zh": "正在准备通话地址",
+      "ar": "جارٍ تجهيز عنوان المكالمة"
     },
     "Preparing your invite": {
       "ru": "Подготовка приглашения",
@@ -3088,6 +3106,12 @@
       "es": "Su tarjeta: quiénes son y dónde encontrarlos. Quien la reciba podrá alcanzarlos también.",
       "zh": "他们的名片：他们是谁，以及到哪里找他们。拿到它的人同样能够联系到他们。",
       "ar": "بطاقة جهة الاتصال: من هي وأين تُبلَغ. ومن تصله يستطيع بلوغها أيضًا."
+    },
+    "Their device is ringing": {
+      "ru": "У собеседника звонит",
+      "es": "Está sonando en su dispositivo",
+      "zh": "对方设备正在响铃",
+      "ar": "جهاز الطرف الآخر يرنّ"
     },
     "Their server is busy. Trying again in %1 seconds (%2 left).": {
       "ru": "Сервер контакта занят. Повтор через %1 с (осталось попыток: %2).",

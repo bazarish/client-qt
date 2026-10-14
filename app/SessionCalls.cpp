@@ -2,6 +2,7 @@
 #include "SessionController.hpp"
 
 #include "SessionShared.hpp"
+#include "SystemNotes.hpp"
 
 #include "Session.hpp"
 
@@ -51,6 +52,11 @@ void SessionController::startCall(const QString& peer)
 void SessionController::acceptCall()
 {
     emit requestAcceptCall(callId_);
+}
+
+QString SessionController::callStage() const
+{
+    return systemNoteText(callStage_);
 }
 
 void SessionController::declineCall()

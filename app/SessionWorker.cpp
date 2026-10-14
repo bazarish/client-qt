@@ -109,6 +109,26 @@ QString noteForFetchStage(const bazarish::client::FetchStage stage)
     throw std::logic_error("no note for this contact-card fetch stage");
 }
 
+QString noteForCallStage(const bazarish::client::Session::CallStage stage)
+{
+    using bazarish::client::Session;
+    switch (stage) {
+    case Session::CallStage::eNone:
+        return QString();
+    case Session::CallStage::ePreparing:
+        return encodeSystemNote(QT_TR_NOOP("Preparing your call address"));
+    case Session::CallStage::eDelivering:
+        return encodeSystemNote(QT_TR_NOOP("Delivering the invitation"));
+    case Session::CallStage::eDelivered:
+        return encodeSystemNote(QT_TR_NOOP("Invitation delivered"));
+    case Session::CallStage::eRinging:
+        return encodeSystemNote(QT_TR_NOOP("Their device is ringing"));
+    case Session::CallStage::eOpening:
+        return encodeSystemNote(QT_TR_NOOP("Opening the audio path"));
+    }
+    throw std::logic_error("no note for this call stage");
+}
+
 class WorkerOp {
 public:
     WorkerOp(SessionWorker* const worker, const QString& id, const QString& kind,
@@ -888,7 +908,7 @@ void SessionWorker::emitCallState()
     }
     const Session::CallInfo call = session_->currentCall();
     emit callStateChanged(static_cast<int>(call.state), QString::fromStdString(call.peerFingerprint),
-        QString::fromStdString(call.callId), call.muted, QString::fromStdString(call.stage),
+        QString::fromStdString(call.callId), call.muted, noteForCallStage(call.stage),
         call.peerRinging, static_cast<qint64>(call.connectedAtMs), call.inputLevel,
         call.outputLevel);
     reconcileCallTimer();

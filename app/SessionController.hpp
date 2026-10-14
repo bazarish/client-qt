@@ -205,7 +205,7 @@ public:
     int keepManyMessages() const { return kKeepManyMessages; }
     qint64 i2pTransientExpires() const { return i2pTransientExpires_; }
     QString callState() const { return callState_; }
-    QString callStage() const { return callStage_; }
+    QString callStage() const;
     qint64 callConnectedAtMs() const { return callConnectedAtMs_; }
     qreal callInputLevel() const { return callInputLevel_; }
     qreal callOutputLevel() const { return callOutputLevel_; }
