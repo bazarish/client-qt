@@ -14,7 +14,7 @@ readonly kQtVersion=6.8.2
 readonly kSqlCipher=4.6.1
 readonly kOpus=1.5.2
 readonly kQrencode=4.1.1
-readonly kAlsa=1.2.12
+readonly kPulseAudio=17.0
 readonly kHarfbuzz=14.2.1
 readonly kXcbUtil=0.4.1
 readonly kXau=1.0.12
@@ -104,18 +104,33 @@ if step sqlcipher; then
     done_with sqlcipher
 fi
 
-# Audio reaches the host through ALSA: a static process cannot load the host's
-# PulseAudio client library, which is glibc's.
-if step alsa; then
-    fetch "https://www.alsa-project.org/files/pub/lib/alsa-lib-$kAlsa.tar.bz2" \
-        "alsa-lib-$kAlsa.tar.bz2"
-    cd "$kWork" && rm -rf "alsa-lib-$kAlsa" && tar xf "alsa-lib-$kAlsa.tar.bz2"
-    cd "alsa-lib-$kAlsa"
-    ./configure --prefix="$kPrefix" --enable-static --disable-shared --disable-python
-    make -j"$kJobs"
-    make install
-    cd "$kWork" && rm -rf "alsa-lib-$kAlsa"
-    done_with alsa
+# Audio reaches the host's sound server over the PulseAudio protocol, which
+# PipeWire speaks as well. PulseAudio builds its client library shared only, so
+# the archive is made from the objects of that build. The paths stay the host's,
+# where the library looks for client.conf; its own messages are not translated.
+if step pulseaudio; then
+    fetch "https://www.freedesktop.org/software/pulseaudio/releases/pulseaudio-$kPulseAudio.tar.xz" \
+        "pulseaudio-$kPulseAudio.tar.xz"
+    cd "$kWork" && rm -rf "pulseaudio-$kPulseAudio" && tar xf "pulseaudio-$kPulseAudio.tar.xz"
+    cd "pulseaudio-$kPulseAudio"
+    meson setup build --prefix=/usr --sysconfdir=/etc --localstatedir=/var --buildtype=release \
+        -Ddaemon=false -Ddoxygen=false -Dman=false -Dtests=false \
+        -Dbashcompletiondir=no -Dzshcompletiondir=no -Ddbus=disabled -Dx11=disabled \
+        -Dasyncns=disabled -Dglib=disabled -Dsystemd=disabled -Dvalgrind=disabled
+    sed -i '/#define ENABLE_NLS/d' build/config.h
+    meson compile -C build -j "$kJobs" src/pulse/pulse
+    rm -f "$kPrefix/lib/libpulse.a"
+    ar rcs "$kPrefix/lib/libpulse.a" build/src/pulse/libpulse.so.*.p/*.o \
+        build/src/libpulsecommon-*.so.p/*.o
+    mkdir -p "$kPrefix/include/pulse" "$kPrefix/lib/cmake/PulseAudio"
+    cp src/pulse/*.h build/src/pulse/version.h "$kPrefix/include/pulse/"
+    cat > "$kPrefix/lib/cmake/PulseAudio/PulseAudioConfig.cmake" <<EOF
+set(PULSEAUDIO_FOUND TRUE)
+find_path(PULSEAUDIO_INCLUDE_DIR pulse/pulseaudio.h HINTS "$kPrefix/include")
+find_library(PULSEAUDIO_LIBRARY NAMES libpulse.a HINTS "$kPrefix/lib")
+EOF
+    cd "$kWork" && rm -rf "pulseaudio-$kPulseAudio"
+    done_with pulseaudio
 fi
 
 # Qt takes longer than any one sitting, so each module keeps its source and its

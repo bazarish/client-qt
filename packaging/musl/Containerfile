@@ -16,3 +16,5 @@ RUN apk add --no-cache \
         harfbuzz-dev harfbuzz-static brotli-dev brotli-static \
         expat-dev expat-static graphite2-dev graphite2-static \
         zstd-dev zstd-static bzip2-dev bzip2-static
+# PulseAudio's build asks for both even when it makes nothing but the client library.
+RUN apk add --no-cache libsndfile-dev m4
