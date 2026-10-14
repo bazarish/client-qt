@@ -522,7 +522,10 @@ void SessionController::onContactRequestSent(
     m.text = body;
     m.ts = nowMillis();
     m.orderKey = m.ts;
-    m.status = DeliveryStatus::AtRecipientServer;
+    const auto known = contactState_.constFind(fingerprint);
+    const bool answered
+        = known != contactState_.constEnd() && known->request == ContactState::eAnswered;
+    m.status = answered ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer;
     m.id = store_.append(m);
     statusById_[m.id] = m.status;
     contacts_.touch(fingerprint, {}, body, m.ts, false);

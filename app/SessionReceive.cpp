@@ -287,6 +287,11 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         showInActiveView(sys, false);
         contacts_.touch(peer, peerName(peer), systemNoteText(sys.text), sys.ts, false);
         contacts_.setUnread(peer, store_.unreadCount(peer));
+        const qint64 request
+            = store_.oldestOfType(peer, QStringLiteral("contact.request"), /*outgoing=*/true);
+        if (request != 0) {
+            markOutgoingRead(peer, request);
+        }
         return;
     }
 
