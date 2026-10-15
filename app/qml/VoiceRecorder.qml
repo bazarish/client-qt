@@ -200,27 +200,87 @@ Popup {
             Layout.margins: root.kEdge
             spacing: 8
 
-            MenuButton {
-                iconName: root.recording ? "stop" : "mic"
-                text: root.recording ? qsTr("Stop")
-                    : (root.takeReady ? qsTr("Record again") : qsTr("Record"))
-                onClicked: {
-                    if (root.recording) {
-                        root.session.stopVoiceRecording()
-                    } else {
-                        root.clearLevels()
-                        voiceMicrophone.whenGranted(() => root.session.startVoiceRecording())
+            // Where to press first: the light under it breathes until a take exists.
+            Item {
+                id: recordSpot
+                readonly property int kDiameter: sendButton.height
+                readonly property int kDot: 14
+                readonly property int kStopCorner: 2
+                readonly property int kBreathMs: 900
+                readonly property real kBreathLevel: 1
+                readonly property int kGlowReach: 12
+                Layout.preferredWidth: recordSpot.kDiameter
+                Layout.preferredHeight: recordSpot.kDiameter
+                CallGlow {
+                    id: recordGlow
+                    anchors.centerIn: parent
+                    avatarSize: recordSpot.kDiameter + recordSpot.kGlowReach
+                    SequentialAnimation on level {
+                        running: root.opened && !root.recording && !root.takeReady
+                        loops: Animation.Infinite
+                        onRunningChanged: if (!running) { recordGlow.level = 0 }
+                        NumberAnimation {
+                            to: recordSpot.kBreathLevel
+                            duration: recordSpot.kBreathMs
+                            easing.type: Easing.InOutSine
+                        }
+                        NumberAnimation {
+                            to: 0
+                            duration: recordSpot.kBreathMs
+                            easing.type: Easing.InOutSine
+                        }
+                    }
+                }
+                Button {
+                    id: recordButton
+                    anchors.fill: parent
+                    padding: 0
+                    hoverEnabled: true
+                    Accessible.name: root.recording ? qsTr("Stop")
+                        : (root.takeReady ? qsTr("Record again") : qsTr("Record"))
+                    ToolTip.visible: hovered
+                    ToolTip.text: Accessible.name
+                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    background: Rectangle {
+                        radius: width / 2
+                        color: recordButton.down ? Theme.border2
+                            : (recordButton.hovered ? Theme.surfaceAlt : Theme.surface)
+                        border.color: recordButton.hovered ? Theme.danger : Theme.border
+                    }
+                    contentItem: Item {
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: recordSpot.kDot
+                            height: width
+                            radius: root.recording ? recordSpot.kStopCorner : width / 2
+                            color: Theme.danger
+                        }
+                    }
+                    onClicked: {
+                        if (root.recording) {
+                            root.session.stopVoiceRecording()
+                        } else {
+                            root.clearLevels()
+                            voiceMicrophone.whenGranted(() => root.session.startVoiceRecording())
+                        }
                     }
                 }
             }
             MenuButton {
                 iconName: root.takePlaying ? "stop" : "play"
-                text: root.takePlaying ? qsTr("Stop") : qsTr("Listen")
+                Accessible.name: root.takePlaying ? qsTr("Stop") : qsTr("Listen")
+                ToolTip.visible: hovered
+                ToolTip.text: Accessible.name
                 enabled: root.takeReady
+                leftPadding: 0
+                rightPadding: 0
+                Layout.preferredWidth: sendButton.height
+                Layout.preferredHeight: sendButton.height
                 onClicked: root.session.playVoiceTake()
             }
             Item { Layout.fillWidth: true }
             MenuButton {
+                id: sendButton
                 iconName: "send"
                 text: qsTr("Send")
                 enabled: root.takeReady
