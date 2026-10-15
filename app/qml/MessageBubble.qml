@@ -1154,9 +1154,10 @@ Item {
             }
         }
         TapHandler {
+            id: holdHandler
             acceptedButtons: Qt.LeftButton
-            onLongPressed: function(point) {
-                delegate.menuAt = Qt.point(point.scenePosition.x, point.scenePosition.y)
+            onLongPressed: {
+                delegate.menuAt = holdHandler.point.scenePosition
                 contextMenu.popup()
             }
         }
