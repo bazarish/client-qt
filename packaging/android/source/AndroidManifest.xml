@@ -5,6 +5,11 @@
     android:versionCode="-- %%INSERT_VERSION_CODE%% --"
     android:versionName="-- %%INSERT_VERSION_NAME%% --">
     <!-- %%INSERT_PERMISSIONS -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- %%INSERT_FEATURES -->
     <supports-screens
         android:anyDensity="true"
@@ -21,7 +26,7 @@
         android:allowBackup="true"
         android:fullBackupOnly="false">
         <activity
-            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:name="sh.bazari.client.BazarishActivity"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"
@@ -40,6 +45,11 @@
                 android:name="android.app.arguments"
                 android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
         </activity>
+
+        <service
+            android:name="sh.bazari.client.BazarishService"
+            android:exported="false"
+            android:foregroundServiceType="remoteMessaging" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -4174,6 +4174,54 @@
       "es": "Ese alias no existe.",
       "zh": "没有这个别名。",
       "ar": "لا يوجد هذا الاسم المستعار."
+    },
+    "Allow unrestricted background work to get notifications.": {
+      "ru": "Разрешите работу в фоне без ограничения, чтобы получать уведомления.",
+      "es": "Permite el trabajo en segundo plano sin restricciones para recibir notificaciones.",
+      "zh": "允许不受限制地在后台运行，以便接收通知。",
+      "ar": "اسمح بالعمل في الخلفية دون قيود لتلقي الإشعارات."
+    },
+    "Settings": {
+      "ru": "Настройки",
+      "es": "Ajustes",
+      "zh": "设置",
+      "ar": "الإعدادات"
+    },
+    "Background work": {
+      "ru": "Работа в фоне",
+      "es": "Trabajo en segundo plano",
+      "zh": "后台运行",
+      "ar": "العمل في الخلفية"
+    },
+    "Messages": {
+      "ru": "Сообщения",
+      "es": "Mensajes",
+      "zh": "消息",
+      "ar": "الرسائل"
+    },
+    "Reactions": {
+      "ru": "Реакции",
+      "es": "Reacciones",
+      "zh": "表情回应",
+      "ar": "التفاعلات"
+    },
+    "Calls": {
+      "ru": "Звонки",
+      "es": "Llamadas",
+      "zh": "通话",
+      "ar": "المكالمات"
+    },
+    "Turn off notifications": {
+      "ru": "Выключить уведомления",
+      "es": "Desactivar notificaciones",
+      "zh": "关闭通知",
+      "ar": "إيقاف الإشعارات"
+    },
+    "Turn on notifications": {
+      "ru": "Включить уведомления",
+      "es": "Activar notificaciones",
+      "zh": "开启通知",
+      "ar": "تشغيل الإشعارات"
     }
   }
 }

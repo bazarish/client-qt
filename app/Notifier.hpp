@@ -18,11 +18,11 @@ public:
 
 signals:
     void announced(const QString& accountId, const QString& peer, const QString& title,
-        const QString& body);
+        const QString& body, bool reaction);
 
 private:
     void announce(const QString& accountId, const QString& peer, const QString& title,
-        const QString& body, NotifySound& sound, QElapsedTimer& since);
+        const QString& body, bool reaction, NotifySound& sound, QElapsedTimer& since);
     void noteUnread();
 
     AppController& app_;

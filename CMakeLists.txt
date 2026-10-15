@@ -156,6 +156,7 @@ if(Qt6_FOUND)
         # bundle carries, and the manifest beside it names the app and its icon.
         set(kAndroidMinSdk 28)
         set(kAndroidTargetSdk 34)
+        target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp)
         set_target_properties(bazarish-app PROPERTIES
             QT_ANDROID_PACKAGE_NAME sh.bazari.client
             QT_ANDROID_MIN_SDK_VERSION ${kAndroidMinSdk}
@@ -306,9 +307,9 @@ if(Qt6_FOUND)
             app/qml/components/Avatar.qml
             app/qml/components/AvatarViewer.qml
             app/qml/components/QrView.qml
-            app/qml/components/AvatarCropDialog.qml
             app/qml/components/QrScanBox.qml
             app/qml/components/QrScanButton.qml
+            app/qml/components/AvatarCropDialog.qml
             app/qml/components/Toggle.qml
             app/qml/components/ContextMenu.qml
             app/qml/components/ContextMenuItem.qml

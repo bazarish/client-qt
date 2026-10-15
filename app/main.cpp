@@ -13,6 +13,9 @@
 #include "AudioRoute.hpp"
 #include "Notifier.hpp"
 #include "TrayIcon.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidShade.hpp"
+#endif
 
 #pragma push_macro("emit")
 #undef emit
@@ -331,6 +334,11 @@ int main(int argc, char** argv)
     QObject::connect(&controller, &bazarish::app::AppController::raiseRequested, &app, raiseWindow);
 
     bazarish::app::Notifier notifier(controller);
+#ifdef Q_OS_ANDROID
+    bazarish::app::AndroidShade shade(controller, notifier, translations);
+    QObject::connect(&controller, &bazarish::app::AppController::readyToExit, &shade,
+        &bazarish::app::AndroidShade::stop);
+#endif
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {
         tray = std::make_unique<bazarish::app::TrayIcon>(controller, notifier);
@@ -338,12 +346,12 @@ int main(int argc, char** argv)
         tray->attachWindow(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));
         QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &controller,
             &bazarish::app::AppController::prepareForExit);
-        QObject::connect(&controller, &bazarish::app::AppController::readyToExit, &app, []() {
-            std::fflush(nullptr);
-            std::_Exit(0);
-        });
     } else {
         bazarish::log::info("tray: this desktop offers none; the window is the only way in");
     }
+    QObject::connect(&controller, &bazarish::app::AppController::readyToExit, &app, []() {
+        std::fflush(nullptr);
+        std::_Exit(0);
+    });
     return app.exec();
 }

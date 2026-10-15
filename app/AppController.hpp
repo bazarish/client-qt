@@ -114,6 +114,7 @@ public:
     void setBackgroundTasksVisible(bool on);
 
     qreal ringLevel() const { return ringLevel_; }
+    QString ringingAccount() const { return ringingAccount_; }
     QString ringingPeer() const { return ringingPeer_; }
     QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
     QString ringingAccountName() const { return ringingAccountName_; }
@@ -127,6 +128,10 @@ public:
 
     Q_PROPERTY(bool portable READ portable NOTIFY portableChanged)
     bool portable() const;
+    Q_PROPERTY(bool backgroundRestricted READ backgroundRestricted
+            NOTIFY backgroundRestrictedChanged)
+    bool backgroundRestricted() const;
+    Q_INVOKABLE void openBackgroundSettings() const;
     Q_PROPERTY(QString dataLocation READ dataLocation NOTIFY portableChanged)
     QString dataLocation() const;
     Q_INVOKABLE void setPortable(bool on);
@@ -144,6 +149,7 @@ signals:
     void pairingChanged();
     void pairingFinished(bool ok);
     void portableChanged();
+    void backgroundRestrictedChanged();
     void restartRequired(const QString& message);
     void accountListChanged();
     void accountsChanged();

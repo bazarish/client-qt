@@ -143,7 +143,55 @@ ApplicationWindow {
         id: gatewayFirstRun
         z: 1100
     }
-    Component.onCompleted: if (!I2p.gatewayAsked) gatewayFirstRun.open()
+    Component.onCompleted: {
+        if (!I2p.gatewayAsked) {
+            gatewayFirstRun.open()
+        }
+        if (App.backgroundRestricted) {
+            backgroundAsk.open()
+        }
+    }
+
+    Popup {
+        id: backgroundAsk
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        z: 1050
+        width: Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 32)
+        padding: 14
+        background: DialogFrame { }
+        Connections {
+            target: App
+            function onBackgroundRestrictedChanged() {
+                if (!App.backgroundRestricted) {
+                    backgroundAsk.close()
+                }
+            }
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            RowLayout {
+                Layout.fillWidth: true
+                Label {
+                    text: qsTr("Allow unrestricted background work to get notifications.")
+                    color: Theme.text
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                IconButton {
+                    iconName: "close"
+                    Layout.alignment: Qt.AlignTop
+                    onClicked: backgroundAsk.close()
+                }
+            }
+            MenuButton {
+                text: qsTr("Settings")
+                Layout.alignment: Qt.AlignRight
+                onClicked: App.openBackgroundSettings()
+            }
+        }
+    }
 
     // The engine that carries I2P is settled when this application starts, so a
     // different one is a different run. Nothing is left half-switched: every

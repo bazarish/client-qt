@@ -6,6 +6,9 @@
 #include "I2pRouter.hpp"
 #include "Markup.hpp"
 #include "Version.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidShade.hpp"
+#endif
 
 #include <bazarish/I2p.hpp>
 #include <bazarish/Links.hpp>
@@ -45,6 +48,9 @@ AppController::AppController(QObject* parent)
         ringLevel_ = level;
         emit ringLevelChanged();
     });
+    // Coming back from the system settings is when the answer may have changed.
+    connect(qApp, &QGuiApplication::applicationStateChanged, this,
+        &AppController::backgroundRestrictedChanged);
     refreshAccountList();
     loadSettings();
     loadOfflineSet();
@@ -947,6 +953,22 @@ void AppController::setOnline(const QString& id, bool on)
 bool AppController::portable() const
 {
     return client::AccountManager::portable();
+}
+
+bool AppController::backgroundRestricted() const
+{
+#ifdef Q_OS_ANDROID
+    return AndroidShade::backgroundRestricted();
+#else
+    return false;
+#endif
+}
+
+void AppController::openBackgroundSettings() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidShade::openBackgroundSettings();
+#endif
 }
 
 QString AppController::dataLocation() const
