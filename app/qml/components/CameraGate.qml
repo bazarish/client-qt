@@ -7,9 +7,8 @@ CameraPermission {
     id: gate
     readonly property bool granted: gate.status === Qt.PermissionStatus.Granted
     readonly property bool refused: gate.status === Qt.PermissionStatus.Denied
+    // Asked even when granted: the answer is what refreshes a status read before the grant.
     function ask() {
-        if (gate.status === Qt.PermissionStatus.Undetermined) {
-            gate.request()
-        }
+        gate.request()
     }
 }

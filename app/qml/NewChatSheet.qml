@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtMultimedia
 import Bazarish
 
 Popup {
@@ -14,7 +13,6 @@ Popup {
     padding: 18
     property string errorText: ""
     property string prefillTarget: ""
-    property bool scanning: false
     readonly property string kGreeting: "Hi, add me?"
     readonly property int kInputLine: 38
     readonly property int kInputLimit: 120
@@ -36,12 +34,12 @@ Popup {
     onOpened: {
         targetText.text = root.prefillTarget
         errorText = ""
-        scanning = false
+        scanBox.scanning = false
         targetText.forceActiveFocus()
     }
     onClosed: {
         errorText = ""
-        scanning = false
+        scanBox.scanning = false
         targetText.text = ""
         intro.text = root.kGreeting
     }
@@ -140,59 +138,16 @@ Popup {
                     Keys.onEnterPressed: function(event) { root.submit(); event.accepted = true }
                 }
             }
-            IconButton {
-                iconName: "qr"
+            QrScanButton {
+                box: scanBox
                 Layout.alignment: Qt.AlignTop
-                tint: root.scanning ? Theme.green : Theme.text
-                onClicked: {
-                    root.scanning = !root.scanning
-                    if (root.scanning) {
-                        cameraGate.ask()
-                    }
-                }
             }
         }
 
-        CameraGate { id: cameraGate }
-        Label {
-            visible: root.scanning && cameraGate.refused
-            text: qsTr("No access to the camera.")
-            color: Theme.textDim
-            Layout.fillWidth: true
-        }
-
-        Loader {
-            active: root.scanning && cameraGate.granted
-            visible: active
-            Layout.fillWidth: true
-            Layout.preferredHeight: 240
-            sourceComponent: VideoOutput {
-                id: preview
-                MediaDevices { id: cameras }
-                CaptureSession {
-                    camera: Camera {
-                        active: cameras.videoInputs.length > 0
-                        onErrorOccurred: function(error, errorString) {
-                            root.errorText = errorString
-                            root.scanning = false
-                        }
-                    }
-                    videoOutput: preview
-                }
-                QrScanner {
-                    sink: preview.videoSink
-                    onDecoded: function(text) {
-                        root.scanning = false
-                        targetText.text = text
-                    }
-                }
-                Label {
-                    anchors.centerIn: parent
-                    visible: cameras.videoInputs.length === 0
-                    text: qsTr("No camera on this machine.")
-                    color: Theme.textDim
-                }
-            }
+        QrScanBox {
+            id: scanBox
+            onDecoded: function(text) { targetText.text = text }
+            onFailed: function(reason) { root.errorText = reason }
         }
 
         Label {

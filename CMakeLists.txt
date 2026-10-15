@@ -307,6 +307,8 @@ if(Qt6_FOUND)
             app/qml/components/AvatarViewer.qml
             app/qml/components/QrView.qml
             app/qml/components/AvatarCropDialog.qml
+            app/qml/components/QrScanBox.qml
+            app/qml/components/QrScanButton.qml
             app/qml/components/Toggle.qml
             app/qml/components/ContextMenu.qml
             app/qml/components/ContextMenuItem.qml

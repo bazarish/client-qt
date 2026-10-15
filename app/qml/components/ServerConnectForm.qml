@@ -115,23 +115,31 @@ ColumnLayout {
 
     // One-link import: paste a bazarish://server/... link; it parses automatically
     // and fills everything below.
-    TextField {
-        id: linkField
+    RowLayout {
         Layout.fillWidth: true
-        placeholderText: qsTr("Paste a bazarish://server/… link")
-        color: Theme.text
-        placeholderTextColor: Theme.textDim
-        selectByMouse: true
-        onTextChanged: parseTimer.restart()
-        background: Rectangle {
-            radius: 8
-            color: Theme.surface
-            border.color: Qt.colorEqual(form.linkBorderColor, Theme.border)
-                ? (linkField.activeFocus ? Theme.accent : Theme.border)
-                : form.linkBorderColor
-            border.width: 1
-            Behavior on border.color { ColorAnimation { duration: 300 } }
+        TextField {
+            id: linkField
+            Layout.fillWidth: true
+            placeholderText: qsTr("Paste a bazarish://server/… link")
+            color: Theme.text
+            placeholderTextColor: Theme.textDim
+            selectByMouse: true
+            onTextChanged: parseTimer.restart()
+            background: Rectangle {
+                radius: 8
+                color: Theme.surface
+                border.color: Qt.colorEqual(form.linkBorderColor, Theme.border)
+                    ? (linkField.activeFocus ? Theme.accent : Theme.border)
+                    : form.linkBorderColor
+                border.width: 1
+                Behavior on border.color { ColorAnimation { duration: 300 } }
+            }
         }
+        QrScanButton { box: linkScan }
+    }
+    QrScanBox {
+        id: linkScan
+        onDecoded: function(text) { linkField.text = text }
     }
 
     // Opt into the per-field form when there is no link to paste.

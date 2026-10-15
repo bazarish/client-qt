@@ -67,18 +67,32 @@ Dialog {
             text: qsTr("Paste the address its operator gave you, or skip. The app will run its built-in router.")
         }
 
-        FormField {
-            id: addressField
+        RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 14
             Layout.rightMargin: 14
-            enabled: !root.busy
-            label: qsTr("Address")
-            placeholder: "https://host/path#token"
-            inputField.onAccepted:
-                if (!root.busy && addressField.text.trim().length > 0) {
-                    I2p.checkAndSaveGateway(addressField.text)
-                }
+            FormField {
+                id: addressField
+                Layout.fillWidth: true
+                enabled: !root.busy
+                label: qsTr("Address")
+                placeholder: "https://host/path#token"
+                inputField.onAccepted:
+                    if (!root.busy && addressField.text.trim().length > 0) {
+                        I2p.checkAndSaveGateway(addressField.text)
+                    }
+            }
+            QrScanButton {
+                box: addressScan
+                enabled: !root.busy
+                Layout.alignment: Qt.AlignBottom
+            }
+        }
+        QrScanBox {
+            id: addressScan
+            Layout.leftMargin: 14
+            Layout.rightMargin: 14
+            onDecoded: function(text) { addressField.text = text }
         }
 
         // Why it was refused. An address that does not answer is not saved:

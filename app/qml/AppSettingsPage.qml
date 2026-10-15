@@ -359,11 +359,22 @@ Popup {
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
-                            FormField {
-                                id: gatewayField
+                            RowLayout {
                                 Layout.fillWidth: true
-                                placeholder: "https://host/path#token"
-                                text: I2p.gatewayAddress
+                                FormField {
+                                    id: gatewayField
+                                    Layout.fillWidth: true
+                                    placeholder: "https://host/path#token"
+                                    text: I2p.gatewayAddress
+                                }
+                                QrScanButton {
+                                    box: gatewayScan
+                                    Layout.alignment: Qt.AlignBottom
+                                }
+                            }
+                            QrScanBox {
+                                id: gatewayScan
+                                onDecoded: function(text) { gatewayField.text = text }
                             }
                             Label {
                                 visible: root.gatewayProblem.length > 0
