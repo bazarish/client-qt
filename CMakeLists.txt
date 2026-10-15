@@ -146,7 +146,7 @@ if(Qt6_FOUND)
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST
                 ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in
-            MACOSX_BUNDLE_GUI_IDENTIFIER org.bazarish.client
+            MACOSX_BUNDLE_GUI_IDENTIFIER sh.bazari.client
             MACOSX_BUNDLE_BUNDLE_NAME Bazarish
             MACOSX_BUNDLE_EXECUTABLE_NAME bazarish-app)
     endif()
@@ -157,7 +157,7 @@ if(Qt6_FOUND)
         set(kAndroidMinSdk 28)
         set(kAndroidTargetSdk 34)
         set_target_properties(bazarish-app PROPERTIES
-            QT_ANDROID_PACKAGE_NAME org.bazarish.client
+            QT_ANDROID_PACKAGE_NAME sh.bazari.client
             QT_ANDROID_MIN_SDK_VERSION ${kAndroidMinSdk}
             QT_ANDROID_TARGET_SDK_VERSION ${kAndroidTargetSdk}
             QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/packaging/android/source)
