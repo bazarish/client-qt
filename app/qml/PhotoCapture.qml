@@ -11,8 +11,12 @@ import Bazarish
 Popup {
     id: root
 
+    readonly property int kEdge: 24
     modal: true
-    width: Math.min(420, parent ? parent.width - 24 : 420)
+    // On a phone the window is the screen, so the viewfinder stands as the camera does.
+    width: App.mobile && parent ? parent.width - root.kEdge
+                               : Math.min(420, parent ? parent.width - root.kEdge : 420)
+    height: App.mobile && parent ? parent.height - root.kEdge : implicitHeight
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
@@ -49,8 +53,9 @@ Popup {
 
         Rectangle {
             Layout.fillWidth: true
+            Layout.fillHeight: App.mobile
             Layout.margins: 14
-            Layout.preferredHeight: 300
+            Layout.preferredHeight: App.mobile ? -1 : 300
             radius: Theme.radiusSmall
             color: Theme.deep
             border.color: Theme.border
