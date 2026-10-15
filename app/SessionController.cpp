@@ -1043,7 +1043,7 @@ QString SessionController::peerName(const QString& id) const
         return name;
     }
     if (hasAliasSigil(id)) {
-        return id;
+        return id.mid(1);
     }
     return shortFingerprint(id);
 }
