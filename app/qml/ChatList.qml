@@ -121,6 +121,7 @@ Item {
                 height: 66
                 highlighted: root.session && root.session.activePeer === model.fingerprint
                 onClicked: root.session.openConversation(model.fingerprint)
+                onPressAndHold: pinMenu.popup()
                 // The default highlight paints a solid near-white fill that breaks
                 // the dark look; mark the active chat with a white outline instead
                 // (the name turns neon below), and keep a subtle hover tint only.
@@ -199,11 +200,11 @@ Item {
                 // Pin/unpin via right-click or long-press (a left tap still opens the
                 // chat). Pin state syncs to the account's other devices, and the
                 // saved chat is pinned like any other.
-                TapHandler { acceptedButtons: Qt.RightButton; onTapped: pinMenu.popup() }
                 TapHandler {
-                    acceptedButtons: Qt.LeftButton
-                    longPressThreshold: 0.5
-                    onLongPressed: pinMenu.popup()
+                    // A touch carries no button, so a right-button handler would take every tap.
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    acceptedButtons: Qt.RightButton
+                    onTapped: pinMenu.popup()
                 }
                 ContextMenu {
                     id: pinMenu

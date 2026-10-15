@@ -258,6 +258,39 @@ Item {
         }
     }
 
+    // Right-click or long-press anywhere along the row opens the message's menu.
+    TapHandler {
+        enabled: !delegate.isSystem
+        // A touch carries no button, so a right-button handler would take every tap.
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        acceptedButtons: Qt.RightButton
+        onTapped: function(point) {
+            delegate.menuAt = Qt.point(point.scenePosition.x, point.scenePosition.y)
+            contextMenu.popup()
+        }
+    }
+    TapHandler {
+        id: holdHandler
+        enabled: !delegate.isSystem
+        acceptedButtons: Qt.LeftButton
+        onLongPressed: {
+            delegate.menuAt = holdHandler.point.scenePosition
+            contextMenu.popup()
+        }
+    }
+    // On a phone the text takes no touch, so a hold on it reaches the row; its links are followed here.
+    TapHandler {
+        enabled: App.mobile && bodyText.visible
+        acceptedButtons: Qt.LeftButton
+        onTapped: function(point) {
+            const at = bodyText.mapFromItem(null, point.scenePosition.x, point.scenePosition.y)
+            const link = bodyText.linkAt(at.x, at.y)
+            if (link.length > 0) {
+                delegate.activateLink(link)
+            }
+        }
+    }
+
     Rectangle {
         id: bubble
         visible: !delegate.isSystem
@@ -848,6 +881,7 @@ Item {
                         ? delegate.session.withoutInvites(model.text) : model.text,
                     Theme.accent, Theme.surfaceAlt, Theme.bg, Theme.text)
                 color: Theme.text
+                enabled: !App.mobile
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.WrapAtWordBoundaryOrAnywhere
@@ -1144,23 +1178,6 @@ Item {
             }
         }
 
-        // Right-click or long-press a message to open its context menu (copy /
-        // edit own text / delete).
-        TapHandler {
-            acceptedButtons: Qt.RightButton
-            onTapped: function(point) {
-                delegate.menuAt = Qt.point(point.scenePosition.x, point.scenePosition.y)
-                contextMenu.popup()
-            }
-        }
-        TapHandler {
-            id: holdHandler
-            acceptedButtons: Qt.LeftButton
-            onLongPressed: {
-                delegate.menuAt = holdHandler.point.scenePosition
-                contextMenu.popup()
-            }
-        }
         FileDialog {
             id: pictureSaveDialog
             property string e2eId
