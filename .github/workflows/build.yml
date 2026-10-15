@@ -99,11 +99,6 @@ jobs:
         run: .github/ci/build.sh configure
       - name: Build
         run: .github/ci/build.sh build
-      - name: Stacks of a test that does not end
-        if: matrix.arch == 'amd64'
-        run: |
-          pacman -S --noconfirm --needed ${{ matrix.package }}-gdb
-          .github/ci/stacks.sh
       - name: Test
         run: .github/ci/build.sh test
       - name: Say what broke
