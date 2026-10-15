@@ -290,8 +290,9 @@ void SessionController::cycleVoiceSpeed()
     emit voiceChanged();
     if (!voicePlaying_.isEmpty()) {
         const QString playing = voicePlaying_;
+        const qint64 at = voice_->playbackPositionMs();
         stopVoice();
-        playVoice(playing);
+        playVoice(playing, at);
     }
 }
 
