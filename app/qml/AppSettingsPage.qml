@@ -15,7 +15,7 @@ Popup {
 
     modal: true
     anchors.centerIn: Overlay.overlay
-    width: 460
+    width: Math.min(460, parent ? parent.width - 24 : 460)
     // As tall as what it holds, not a fixed box: there are two settings here.
     height: Math.min(parent ? parent.height - 40 : 520, body.implicitHeight + 60)
     padding: 0

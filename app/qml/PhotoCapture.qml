@@ -12,7 +12,7 @@ Popup {
     id: root
 
     modal: true
-    width: 420
+    width: Math.min(420, parent ? parent.width - 24 : 420)
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
