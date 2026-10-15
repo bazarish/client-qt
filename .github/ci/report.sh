@@ -9,6 +9,7 @@ set -u
 # goes out as one annotation, its lines joined by the escape a workflow command
 # reads as a line break.
 readonly kLines=120
+readonly kTailLines=40
 
 # Each step writes its own log, so the newest one is the step that just failed.
 log=$(ls -t ci-*.log 2>/dev/null | head -n 1)
@@ -39,10 +40,15 @@ window() {
 whole=$(cat "$log")
 failures=$(sed -n '/The following tests FAILED/,$p' "$log")
 if [ -n "$failures" ]; then
-    spoken=$(sed '/The following tests FAILED/,$d' "$log" \
-        | grep -avE '^[[:space:]]*[0-9]+/[0-9]+ Test .*Passed|^[[:space:]]*Start +[0-9]+:')
-    said=$(printf '%s\n%s' \
-        "$(window '\*\*\*(Timeout|Failed|Exception)' 6 80 "$spoken")" "$failures")
+    # A test that hung is read by how its output ends, so each failed test gives
+    # its result line and the last lines it printed.
+    told=$(sed '/The following tests FAILED/,$d' "$log" | grep -avE '^[[:space:]]*Start +[0-9]+:' \
+        | awk -v keep="$kTailLines" '
+            function flush() { if (head != "") { print head; for (i = n - keep + 1; i <= n; ++i) if (i > 0) print lines[i] } head = ""; n = 0 }
+            / Test +#[0-9]+: / { flush(); if ($0 ~ /\*\*\*(Timeout|Failed|Exception)/) head = $0; next }
+            head != "" { lines[++n] = $0 }
+            END { flush() }')
+    said=$(printf '%s\n%s' "$told" "$failures")
 else
     said=$(window 'CHECK failed|error:|error [A-Z]+[0-9]+|CMake Error' 6 3 "$whole")
 fi
