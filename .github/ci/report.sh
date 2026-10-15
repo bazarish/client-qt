@@ -5,9 +5,10 @@
 # read the repository itself.
 set -u
 
-# GitHub keeps ten error annotations of a step and drops the rest, so what is
-# printed has to be the ten lines that name the failure.
-readonly kLines=9
+# GitHub keeps ten error annotations of a step and drops the rest, so all of it
+# goes out as one annotation, its lines joined by the escape a workflow command
+# reads as a line break.
+readonly kLines=120
 
 # Each step writes its own log, so the newest one is the step that just failed.
 log=$(ls -t ci-*.log 2>/dev/null | head -n 1)
@@ -38,10 +39,10 @@ window() {
 whole=$(cat "$log")
 failures=$(sed -n '/The following tests FAILED/,$p' "$log")
 if [ -n "$failures" ]; then
-    spoken=$(printf '%s\n' "$whole" \
-        | grep -avE '^[[:space:]]*[0-9]+/[0-9]+ Test .*Passed|^[[:space:]]*Start [0-9]+:')
+    spoken=$(sed '/The following tests FAILED/,$d' "$log" \
+        | grep -avE '^[[:space:]]*[0-9]+/[0-9]+ Test .*Passed|^[[:space:]]*Start +[0-9]+:')
     said=$(printf '%s\n%s' \
-        "$(window '\*\*\*(Timeout|Failed|Exception)' 6 1 "$spoken")" "$failures")
+        "$(window '\*\*\*(Timeout|Failed|Exception)' 6 80 "$spoken")" "$failures")
 else
     said=$(window 'CHECK failed|error:|error [A-Z]+[0-9]+|CMake Error' 6 3 "$whole")
 fi
@@ -49,5 +50,8 @@ if [ -z "${said//[[:space:]]/}" ]; then
     said=$(tail -n "$kLines" "$log")
 fi
 
-printf '::error::%s said:\n' "$log"
-printf '%s\n' "$said" | grep -v '^[[:space:]]*$' | head -n "$kLines" | sed 's/^/::error::/'
+body=$(printf '%s\n' "$said" | grep -v '^[[:space:]]*$' | head -n "$kLines")
+body=${body//%/%25}
+body=${body//$'\r'/%0D}
+body=${body//$'\n'/%0A}
+printf '::error::%s said:%%0A%s\n' "$log" "$body"
