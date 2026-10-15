@@ -91,7 +91,7 @@ public:
         TimeRole, StatusRole, MsgIdRole, ErrorRole, UploadProgressRole, DayRole,
         DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole, SavedPathRole,
         TransferStageRole, ReplyToRole, PictureRole,
-        DurationRole, WaveRole, AuthorRole, ContactableRole
+        DurationRole, WaveRole, AuthorRole, ContactableRole, FromHostRole
     };
     using QAbstractListModel::QAbstractListModel;
 

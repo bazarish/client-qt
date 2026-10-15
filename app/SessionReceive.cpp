@@ -322,6 +322,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (message.contains(QStringLiteral("group"))) {
         m.author = message.value("author").toString();
         m.contactable = message.value("contactable").toBool();
+        m.fromHost = message.value("fromHost").toBool();
     }
     const Placement placement = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
     m.ts = placement.displayTs;

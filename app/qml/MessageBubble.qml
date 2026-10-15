@@ -223,7 +223,8 @@ Item {
     readonly property bool inGroup: delegate.session !== null && delegate.session.activeIsGroup
         && !model.outgoing && !delegate.isSystem
     readonly property bool fromMember: delegate.inGroup && (model.author || "").length > 0
-    readonly property bool onlyForMe: delegate.inGroup && !delegate.fromMember
+    readonly property bool fromHost: delegate.inGroup && model.fromHost === true
+    readonly property bool onlyForMe: delegate.inGroup && !delegate.fromMember && !delegate.fromHost
     readonly property int letterSize: 30
     readonly property int letterGap: 8
     readonly property var invitePlates: delegate.session && model.text
@@ -1270,7 +1271,7 @@ Item {
             ContextMenuItem {
                 text: qsTr("Delete for everyone")
                 iconName: "trash"
-                visible: delegate.fromMember && delegate.session.activeGroupAdmin
+                visible: (delegate.fromMember || delegate.fromHost) && delegate.session.activeGroupAdmin
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.groupActionRequested("delete", model.e2eId, model.author)
             }

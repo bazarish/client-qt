@@ -630,11 +630,21 @@ int main(int argc, char** argv)
         notice.author.clear();
         notice.contactable = false;
         CHECK(store.append(notice) > 0);
+        StoredMessage hosted = notice;
+        hosted.e2eId = "g-three";
+        hosted.fromHost = true;
+        hosted.ts = post.ts + 1;
+        hosted.orderKey = hosted.ts;
+        CHECK(store.append(hosted) > 0);
         const QVector<StoredMessage> rows = store.latestMessages("club", 10);
-        CHECK(rows.size() == 2);
+        CHECK(rows.size() == 3);
         CHECK(rows[0].author == QStringLiteral("Ann"));
         CHECK(rows[0].contactable);
+        CHECK(!rows[0].fromHost);
         CHECK(rows[1].author.isEmpty());
+        CHECK(!rows[1].fromHost);
+        CHECK(rows[2].author.isEmpty());
+        CHECK(rows[2].fromHost);
         CHECK(store.messageByE2e("g-one", "club").author == QStringLiteral("Ann"));
 
         CHECK(!store.groupState("club").has_value());

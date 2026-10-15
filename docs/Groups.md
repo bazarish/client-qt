@@ -28,13 +28,15 @@ newest block, by its `at`, is kept per contact in the conversation database
 - Beside it is a circle with the first letter of the name. Its fill is one of
   eight muted colours, chosen by the SHA-256 of the name in NFC; each fill keeps
   the letter at 4.5:1 or better, which `TestLetterAvatar` checks.
-- A message from the host without `author` is the host speaking to this member
-  alone and is marked "Only you".
+- A post with `fromHost` is the group itself speaking to everyone: no author
+  line, no circle, no mark.
+- A message from the host with neither `author` nor `fromHost` is the host
+  speaking to this member alone and is marked "Only you".
 - A reply quote and the chat list name the author, not the group.
 
 The author and the post's `contactable` flag are stored beside the message
 (`group_posts`), keyed by the post id, which is the author's own id for every
-member.
+member. A host's post is a row with an empty author; no row at all is "Only you".
 
 ## Reactions
 

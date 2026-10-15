@@ -167,6 +167,8 @@ StoredMessage readMessageRow(const Query& query)
     m.forwarded = query.value(21).toInt() != 0;
     m.author = query.value(22).toString();
     m.contactable = query.value(23).toInt() != 0;
+    const bool groupPost = !query.value(22).isNull();
+    m.fromHost = groupPost && m.author.isEmpty();
     return m;
 }
 
@@ -328,7 +330,7 @@ qint64 TranscriptStore::append(const StoredMessage& message)
         return existing;
     }
     const qint64 id = query.lastInsertId();
-    if (!message.author.isEmpty()) {
+    if (!message.author.isEmpty() || message.fromHost) {
         Query post(db_);
         post.prepare("INSERT OR REPLACE INTO group_posts (peer, e2eId, author, contactable)"
                      " VALUES (?, ?, ?, ?)");

@@ -822,6 +822,7 @@ void SessionWorker::drainMailbox()
             map["group"] = group;
             map["author"] = QString::fromStdString(m.author);
             map["contactable"] = m.contactable;
+            map["fromHost"] = m.fromHost;
             map["groupReactions"] = QString::fromStdString(m.groupReactionsJson);
         }
         emit messageReceived(map);

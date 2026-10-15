@@ -39,6 +39,7 @@ struct StoredMessage {
     int status = 0;
     QString author;
     bool contactable = false;
+    bool fromHost = false;
 };
 
 struct SearchHit {
