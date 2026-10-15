@@ -151,6 +151,18 @@ if(Qt6_FOUND)
             MACOSX_BUNDLE_EXECUTABLE_NAME bazarish-app)
     endif()
 
+    if(ANDROID)
+        # Qt 6.8 runs on Android 9 and newer; the package name is the one the Mac
+        # bundle carries, and the manifest beside it names the app and its icon.
+        set(kAndroidMinSdk 28)
+        set(kAndroidTargetSdk 34)
+        set_target_properties(bazarish-app PROPERTIES
+            QT_ANDROID_PACKAGE_NAME org.bazarish.client
+            QT_ANDROID_MIN_SDK_VERSION ${kAndroidMinSdk}
+            QT_ANDROID_TARGET_SDK_VERSION ${kAndroidTargetSdk}
+            QT_ANDROID_PACKAGE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/packaging/android/source)
+    endif()
+
     if(WIN32)
         # Without the language enabled the resource file is not compiled at all,
         # and the shell draws its default icon for the binary.

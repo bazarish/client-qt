@@ -233,6 +233,7 @@ int main(int argc, char** argv)
     }
     QGuiApplication::setWindowIcon(appIcon);
     QGuiApplication::setDesktopFileName("bazarish");
+#ifndef Q_OS_ANDROID
     try {
         bazarish::app::ensureDesktopEntry();
 #ifdef Q_OS_WIN
@@ -241,6 +242,7 @@ int main(int argc, char** argv)
     } catch (const std::exception& error) {
         bazarish::log::warn("desktop entry not installed: {}", error.what());
     }
+#endif
 
     QPalette palette;
     palette.setColor(QPalette::Window, QColor(kBrandCanvas));

@@ -176,9 +176,65 @@ jobs:
         if: failure()
         run: .github/ci/report.sh
 
+  android:
+    name: Android arm64
+    runs-on: ubuntu-24.04
+    env:
+      QT_VERSION: 6.8.3
+      # NDK r26b, the one Qt 6.8 names, keeps std::format behind an experimental
+      # switch; r27c has it, and its libc++ runs Qt's libraries unchanged.
+      NDK_VERSION: 27.2.12479018
+      ANDROID_BUILD_TOOLS: 34.0.0
+      ANDROID_PLATFORM: android-34
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Install the host tools, the NDK and Qt
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ninja-build
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            "ndk;$NDK_VERSION" "platforms;$ANDROID_PLATFORM" "build-tools;$ANDROID_BUILD_TOOLS" > /dev/null
+          pipx run --spec aqtinstall==3.3.0 aqt install-qt linux desktop "$QT_VERSION" \
+            linux_gcc_64 -m qtshadertools qtmultimedia --outputdir "$HOME/Qt"
+          pipx run --spec aqtinstall==3.3.0 aqt install-qt all_os android "$QT_VERSION" \
+            android_arm64_v8a -m qtmultimedia qtshadertools --outputdir "$HOME/Qt"
+      - uses: actions/cache@v4
+        with:
+          path: ~/android-out/prefix
+          key: android-arm64-${{ env.NDK_VERSION }}-${{ hashFiles('packaging/android/deps.sh') }}
+      # Signed with a key made for this run: the package installs for testing, and
+      # the next build's key will not update it.
+      - name: Build the package
+        run: |
+          set -o pipefail
+          BAZARISH_ANDROID_KEY_PASS=$(openssl rand -hex 16)
+          export BAZARISH_ANDROID_KEY_PASS
+          keytool -genkeypair -keystore "$RUNNER_TEMP/test.keystore" -alias bazarish \
+            -keyalg RSA -keysize 3072 -validity 365 -storepass "$BAZARISH_ANDROID_KEY_PASS" \
+            -dname "CN=Bazarish test build" > /dev/null
+          JAVA_HOME="$JAVA_HOME_17_X64" \
+          ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" \
+          QT_ANDROID_ROOT="$HOME/Qt/$QT_VERSION/android_arm64_v8a" \
+          QT_HOST_ROOT="$HOME/Qt/$QT_VERSION/gcc_64" \
+          BAZARISH_ANDROID_KEYSTORE="$RUNNER_TEMP/test.keystore" \
+          BAZARISH_ANDROID_KEY_ALIAS=bazarish \
+            packaging/android/build.sh "$HOME/android-out" 2>&1 | tee -a ci-package.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-arm64
+          path: ~/android-out/Bazarish-android-arm64.apk
+          if-no-files-found: error
+      - name: Say what broke
+        if: failure()
+        run: .github/ci/report.sh
+
   publish:
     name: Publish
-    needs: [linux, windows, macos]
+    needs: [linux, windows, macos, android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     steps:
