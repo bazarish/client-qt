@@ -81,9 +81,10 @@ Popup {
                             }
                         }
                     }
-                    Hairline { Layout.fillWidth: true }
+                    Hairline { Layout.fillWidth: true; visible: !App.mobile }
 
                     RowLayout {
+                        visible: !App.mobile
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
