@@ -70,9 +70,6 @@ Popup {
         readonly property int barWidth: 3
         readonly property int barGap: 2
         readonly property int sampleMs: 100
-        // Speech sits low in the range a level meter can show, so what is drawn is
-        // lifted to where the eye reads it.
-        readonly property real gain: 4
         property var history: []
         spacing: 2
 
@@ -108,7 +105,7 @@ Popup {
                         // empty until enough has been heard to fill them.
                         readonly property real value: {
                             const at = index - (meter.bars - meter.history.length)
-                            return at >= 0 ? Math.min(1, meter.history[at] * meter.gain) : 0
+                            return at >= 0 ? Math.min(1, meter.history[at] * Theme.speechGain) : 0
                         }
                         width: meter.barWidth
                         height: Math.max(2, value * meter.barHeight)

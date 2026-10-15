@@ -57,6 +57,9 @@ QtObject {
     // The action bar under the chat list and the composer beside it are one
     // horizontal line across the window, so they share a resting height.
     readonly property int barHeight: 48
+    // Speech sits low in the range a level can show, so what is drawn is lifted to
+    // where the eye reads it.
+    readonly property real speechGain: 4
     // Below this the two panes cannot both be useful, so the actions collapse
     // into one menu and the window shows a single pane.
     readonly property int narrowWidth: 560

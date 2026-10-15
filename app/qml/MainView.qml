@@ -143,48 +143,64 @@ Item {
         }
     }
 
-    // Minimized-call pill: a live call collapsed to a compact bar so the rest of the
-    // app stays usable. Tap the text to return to the call; the x ends/cancels it.
-    Rectangle {
-        id: callBanner
-        visible: root.session && root.session.callState !== "idle" && root.callMinimized
-        anchors.top: parent.top
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.topMargin: 10
+    Item {
+        id: callBadge
+        readonly property int kDiameter: 52
+        readonly property int kMargin: 16
+        readonly property int kIconSize: 24
+        visible: !!root.session && root.session.callState !== "idle" && root.callMinimized
+        anchors.left: parent.left
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: kMargin
+        anchors.bottomMargin: Theme.barHeight + kMargin
+        width: kDiameter
+        height: kDiameter
         z: 1000
-        radius: 20
-        height: 40
-        width: bannerRow.implicitWidth + 24
-        color: Theme.surface
-        border.color: Theme.neon  // a live call: the rare neon highlight
-        border.width: 1
-        RowLayout {
-            id: bannerRow
+        readonly property string summary: {
+            if (!root.session) return ""
+            var who = root.session.callPeerName
+            switch (root.session.callState) {
+            case "outgoing": return qsTr("Calling %1…").arg(who)
+            case "incoming": return qsTr("Incoming call · %1").arg(who)
+            case "active": return qsTr("In call · %1").arg(who)
+            }
+            return ""
+        }
+        CallGlow {
             anchors.centerIn: parent
-            spacing: 8
-            Label {
-                Layout.leftMargin: 8
-                color: Theme.text
-                font.pixelSize: Theme.fontSmall
-                text: {
-                    if (!root.session) return ""
-                    var who = root.session.callPeerName
-                    switch (root.session.callState) {
-                    case "outgoing": return qsTr("Calling %1…").arg(who)
-                    case "incoming": return qsTr("Incoming call · %1").arg(who)
-                    case "active": return qsTr("In call · %1").arg(who)
-                    }
-                    return ""
+            avatarSize: callBadge.kDiameter
+            level: !root.session ? 0
+                : root.session.callState === "incoming" ? App.ringLevel
+                : root.session.callState === "active"
+                    ? Math.min(1, Theme.speechGain * Math.max(root.session.callOutputLevel,
+                        root.session.callMuted ? 0 : root.session.callInputLevel))
+                : 0
+        }
+        Button {
+            id: callBadgeButton
+            anchors.fill: parent
+            padding: 0
+            hoverEnabled: true
+            Accessible.name: callBadge.summary
+            ToolTip.visible: hovered
+            ToolTip.text: callBadge.summary
+            HoverHandler { cursorShape: Qt.PointingHandCursor }
+            background: Rectangle {
+                radius: width / 2
+                color: callBadgeButton.down ? Qt.darker(Theme.green, 1.2)
+                    : callBadgeButton.hovered ? Qt.lighter(Theme.green, 1.25) : Theme.green
+                border.color: callBadgeButton.hovered ? Theme.text : Theme.border
+                Behavior on color { ColorAnimation { duration: 90 } }
+            }
+            contentItem: Item {
+                Icon {
+                    anchors.centerIn: parent
+                    name: "call"
+                    color: "white"
+                    size: callBadge.kIconSize
                 }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                TapHandler { onTapped: { root.callMinimized = false; callScreen.open() } }
             }
-            IconButton {
-                visible: root.session
-                    && (root.session.callState === "outgoing" || root.session.callState === "active")
-                iconName: "close"
-                onClicked: root.session.endCall()
-            }
+            onClicked: { root.callMinimized = false; callScreen.open() }
         }
     }
     AccountSwitcher { id: accountSwitcher }
