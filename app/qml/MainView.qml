@@ -85,7 +85,7 @@ Item {
                             session: root.session
                             narrow: chatPane.narrow
                             onContactInfoRequested: contactInfo.open()
-                            onCallRequested: root.session.startCall("")
+                            onCallRequested: callMicrophone.whenGranted(() => root.session.startCall(""))
                             onAddByNameRequested: function(alias) { newChat.openAlias(alias) }
                         }
                     }
@@ -124,6 +124,10 @@ Item {
     // A live call opens the full-screen overlay; the user can collapse it to the
     // compact banner below (root.callMinimized) and keep using the app.
     property bool callMinimized: false
+    MicrophoneGate {
+        id: callMicrophone
+        onRefused: window.showToast(qsTr("No access to the microphone."))
+    }
     CallScreen {
         id: callScreen
         session: root.session

@@ -23,10 +23,11 @@ Popup {
     property string errorText: ""
     readonly property bool taken: root.shotSource.length > 0
 
-    MediaDevices { id: cameras }
-    readonly property bool haveCamera: cameras.videoInputs.length > 0
+    CameraGate { id: cameraGate }
+    Loader { id: cameras; active: cameraGate.granted; sourceComponent: MediaDevices { } }
+    readonly property bool haveCamera: cameras.item !== null && cameras.item.videoInputs.length > 0
 
-    onOpened: { root.shotSource = ""; root.errorText = "" }
+    onOpened: { root.shotSource = ""; root.errorText = ""; cameraGate.ask() }
     onClosed: { root.shotSource = ""; root.errorText = "" }
 
     contentItem: ColumnLayout {
@@ -92,8 +93,9 @@ Popup {
 
             Label {
                 anchors.centerIn: parent
-                visible: !root.haveCamera
-                text: qsTr("No camera on this machine.")
+                visible: cameraGate.refused || (cameraGate.granted && !root.haveCamera)
+                text: cameraGate.refused ? qsTr("No access to the camera.")
+                                         : qsTr("No camera on this machine.")
                 color: Theme.textDim
             }
         }

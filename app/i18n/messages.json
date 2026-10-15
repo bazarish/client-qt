@@ -1697,6 +1697,18 @@
       "zh": "没有音频输出设备。",
       "ar": "لا يوجد جهاز لإخراج الصوت."
     },
+    "No access to the camera.": {
+      "ru": "Нет доступа к камере.",
+      "es": "Sin acceso a la cámara.",
+      "zh": "无法访问摄像头。",
+      "ar": "لا يمكن الوصول إلى الكاميرا."
+    },
+    "No access to the microphone.": {
+      "ru": "Нет доступа к микрофону.",
+      "es": "Sin acceso al micrófono.",
+      "zh": "无法访问麦克风。",
+      "ar": "لا يمكن الوصول إلى الميكروفون."
+    },
     "No camera on this machine.": {
       "ru": "На этой машине нет камеры.",
       "es": "No hay ninguna cámara en este equipo.",

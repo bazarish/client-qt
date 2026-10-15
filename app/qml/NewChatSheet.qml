@@ -144,13 +144,26 @@ Popup {
                 iconName: "qr"
                 Layout.alignment: Qt.AlignTop
                 tint: root.scanning ? Theme.green : Theme.text
-                onClicked: root.scanning = !root.scanning
+                onClicked: {
+                    root.scanning = !root.scanning
+                    if (root.scanning) {
+                        cameraGate.ask()
+                    }
+                }
             }
         }
 
+        CameraGate { id: cameraGate }
+        Label {
+            visible: root.scanning && cameraGate.refused
+            text: qsTr("No access to the camera.")
+            color: Theme.textDim
+            Layout.fillWidth: true
+        }
+
         Loader {
-            active: root.scanning
-            visible: root.scanning
+            active: root.scanning && cameraGate.granted
+            visible: active
             Layout.fillWidth: true
             Layout.preferredHeight: 240
             sourceComponent: VideoOutput {

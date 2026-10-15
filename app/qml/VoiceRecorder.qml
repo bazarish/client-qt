@@ -62,9 +62,17 @@ Popup {
             root.session.discardVoiceTake()
             // The microphone opens with the window, so the line moves before the
             // user commits to a take.
-            root.session.startVoiceMonitor()
+            voiceMicrophone.whenGranted(() => root.session.startVoiceMonitor())
         }
     }
+    MicrophoneGate {
+        id: voiceMicrophone
+        onRefused: {
+            root.close()
+            window.showToast(qsTr("No access to the microphone."))
+        }
+    }
+
     // Leaving throws the take away: a recording nobody confirmed is not a draft.
     // The microphone closes with it - nothing is watched once nobody is looking.
     onClosed: if (root.session) {
@@ -201,7 +209,7 @@ Popup {
                         root.session.stopVoiceRecording()
                     } else {
                         root.clearLevels()
-                        root.session.startVoiceRecording()
+                        voiceMicrophone.whenGranted(() => root.session.startVoiceRecording())
                     }
                 }
             }

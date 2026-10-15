@@ -310,6 +310,7 @@ if(Qt6_FOUND)
             app/qml/components/Toggle.qml
             app/qml/components/ContextMenu.qml
             app/qml/components/ContextMenuItem.qml
+            app/qml/components/CameraGate.qml
             app/qml/components/Dropdown.qml
             app/qml/components/UnreadBadge.qml
             app/qml/components/DialogButtons.qml
@@ -319,6 +320,7 @@ if(Qt6_FOUND)
             app/qml/components/IconButton.qml
             app/qml/components/IconLabel.qml
             app/qml/components/MenuButton.qml
+            app/qml/components/MicrophoneGate.qml
             app/qml/components/FormField.qml
             app/qml/components/ModeTab.qml
             app/qml/components/ServerConnectForm.qml

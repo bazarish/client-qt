@@ -294,7 +294,17 @@ Popup {
             visible: root.callState === "incoming"
             text: qsTr("Accept"); fill: Theme.accent; label: Theme.accentInk
             enabled: root.pending.length === 0
-            onClicked: { root.pending = "accepting"; root.session.acceptCall() }
+            onClicked: {
+                root.pending = "accepting"
+                acceptMicrophone.whenGranted(() => root.session.acceptCall())
+            }
+            MicrophoneGate {
+                id: acceptMicrophone
+                onRefused: {
+                    root.pending = ""
+                    window.showToast(qsTr("No access to the microphone."))
+                }
+            }
         }
 
         // Active: devices, mute, end.
