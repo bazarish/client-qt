@@ -157,7 +157,8 @@ if(Qt6_FOUND)
         # package name is the one the Mac bundle carries.
         set(kAndroidMinSdk 31)
         set(kAndroidTargetSdk 34)
-        target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp)
+        target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp
+            app/AndroidCallAudio.cpp app/AndroidCallAudio.hpp)
         set_target_properties(bazarish-app PROPERTIES
             QT_ANDROID_PACKAGE_NAME sh.bazari.client
             QT_ANDROID_MIN_SDK_VERSION ${kAndroidMinSdk}

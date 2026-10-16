@@ -8,6 +8,7 @@
 #include "PopupStack.hpp"
 #include "Version.hpp"
 #ifdef Q_OS_ANDROID
+#include "AndroidCallAudio.hpp"
 #include "AndroidShade.hpp"
 #endif
 
@@ -175,6 +176,17 @@ void AppController::updateRinging()
         ringtone_.start();
     } else {
         ringtone_.stop();
+    }
+    bool live = false;
+    for (const SessionController* const ctrl : sessions_) {
+        live = live || ctrl->callState() != QLatin1String("idle");
+    }
+    if (live != callLive_) {
+        callLive_ = live;
+        if (!callLive_) {
+            setSpeakerOn(false);
+        }
+        emit callLiveChanged();
     }
 }
 
@@ -970,6 +982,34 @@ void AppController::openBackgroundSettings() const
 #ifdef Q_OS_ANDROID
     AndroidShade::openBackgroundSettings();
 #endif
+}
+
+bool AppController::fullScreenCallsRestricted() const
+{
+#ifdef Q_OS_ANDROID
+    return AndroidShade::fullScreenCallsRestricted();
+#else
+    return false;
+#endif
+}
+
+void AppController::openFullScreenCallsSettings() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidShade::openFullScreenCallsSettings();
+#endif
+}
+
+void AppController::setSpeakerOn(const bool on)
+{
+    if (speakerOn_ == on) {
+        return;
+    }
+    speakerOn_ = on;
+#ifdef Q_OS_ANDROID
+    AndroidCallAudio::setSpeaker(speakerOn_);
+#endif
+    emit speakerOnChanged();
 }
 
 bool AppController::closeTopPopup(QQuickWindow* const window) const

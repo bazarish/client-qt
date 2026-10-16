@@ -22,6 +22,7 @@ import android.provider.Settings;
 import android.service.notification.StatusBarNotification;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 
 public final class Bazarish {
     static final String CHANNEL_PRESENCE = "presence";
@@ -40,6 +41,7 @@ public final class Bazarish {
     private static MediaPlayer ring = null;
 
     static Context app;
+    static WeakReference<Activity> window = new WeakReference<>(null);
     static String turnOff = "";
     static String turnOn = "";
     static String quit = "";
@@ -124,6 +126,18 @@ public final class Bazarish {
         app.getSystemService(NotificationManager.class).notify(CALL_ID, shown);
     }
 
+    // Only while a call rings or runs: the app is not to be read over the lock screen otherwise.
+    public static void overLockScreen(boolean on) {
+        Activity shown = window.get();
+        if (shown == null) {
+            return;
+        }
+        shown.runOnUiThread(() -> {
+            shown.setShowWhenLocked(on);
+            shown.setTurnScreenOn(on);
+        });
+    }
+
     public static void startRinging() {
         if (ring != null) {
             return;
@@ -168,6 +182,17 @@ public final class Bazarish {
     public static boolean backgroundRestricted() {
         return !app.getSystemService(PowerManager.class)
             .isIgnoringBatteryOptimizations(app.getPackageName());
+    }
+
+    public static boolean fullScreenCallsRestricted() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+            && !app.getSystemService(NotificationManager.class).canUseFullScreenIntent();
+    }
+
+    public static void openFullScreenCallsSettings() {
+        app.startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                Uri.parse("package:" + app.getPackageName()))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
     public static void openBackgroundSettings() {

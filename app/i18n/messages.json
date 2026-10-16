@@ -4222,6 +4222,18 @@
       "es": "Sin leer: %1",
       "zh": "未读：%1",
       "ar": "غير مقروءة: ⁦%1⁩"
+    },
+    "Speaker": {
+      "ru": "Громкая связь",
+      "es": "Altavoz",
+      "zh": "免提",
+      "ar": "مكبر الصوت"
+    },
+    "Allow full-screen notifications to see incoming calls on the lock screen.": {
+      "ru": "Разрешите полноэкранные уведомления, чтобы видеть входящие звонки на экране блокировки.",
+      "es": "Permite las notificaciones a pantalla completa para ver las llamadas entrantes en la pantalla de bloqueo.",
+      "zh": "允许全屏通知，以便在锁屏上看到来电。",
+      "ar": "اسمح بالإشعارات بملء الشاشة لرؤية المكالمات الواردة على شاشة القفل."
     }
   }
 }

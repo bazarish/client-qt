@@ -134,7 +134,16 @@ public:
             NOTIFY backgroundRestrictedChanged)
     bool backgroundRestricted() const;
     Q_INVOKABLE void openBackgroundSettings() const;
+    Q_PROPERTY(bool fullScreenCallsRestricted READ fullScreenCallsRestricted
+            NOTIFY backgroundRestrictedChanged)
+    bool fullScreenCallsRestricted() const;
+    Q_INVOKABLE void openFullScreenCallsSettings() const;
     Q_INVOKABLE bool closeTopPopup(QQuickWindow* window) const;
+    Q_PROPERTY(bool callLive READ callLive NOTIFY callLiveChanged)
+    bool callLive() const { return callLive_; }
+    Q_PROPERTY(bool speakerOn READ speakerOn WRITE setSpeakerOn NOTIFY speakerOnChanged)
+    bool speakerOn() const { return speakerOn_; }
+    void setSpeakerOn(bool on);
     Q_INVOKABLE void moveToBackground() const;
     Q_PROPERTY(QString dataLocation READ dataLocation NOTIFY portableChanged)
     QString dataLocation() const;
@@ -154,6 +163,8 @@ signals:
     void pairingFinished(bool ok);
     void portableChanged();
     void backgroundRestrictedChanged();
+    void callLiveChanged();
+    void speakerOnChanged();
     void restartRequired(const QString& message);
     void accountListChanged();
     void accountsChanged();
@@ -229,6 +240,8 @@ private:
     Ringtone ringtone_;
     QString ringingAccount_;
     QString ringingPeer_;
+    bool callLive_ = false;
+    bool speakerOn_ = false;
     QString ringingPeerFingerprint_;
     QString ringingAccountName_;
     qreal ringLevel_ = 0.0;

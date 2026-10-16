@@ -17,9 +17,13 @@ public:
         QObject* parent = nullptr);
     ~AndroidShade() override;
 
+    // Android drops a native process's stderr, which is where the app's log goes.
+    static void routeStderrToLogcat();
     static bool windowless();
     static bool backgroundRestricted();
     static void openBackgroundSettings();
+    static bool fullScreenCallsRestricted();
+    static void openFullScreenCallsSettings();
     static void moveToBackground();
     static void startRinging();
     static void stopRinging();
@@ -37,6 +41,7 @@ private:
     AppController& app_;
     QString line_;
     bool callShown_ = false;
+    bool overLock_ = false;
 };
 
 }  // namespace bazarish::app

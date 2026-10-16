@@ -4,6 +4,7 @@ package sh.bazari.client;
 import android.content.Intent;
 import android.os.Bundle;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 
 import org.qtproject.qt.android.QtActivityBase;
@@ -13,6 +14,7 @@ public class BazarishActivity extends QtActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Bazarish.app = getApplicationContext();
+        Bazarish.window = new WeakReference<>(this);
         Bazarish.holdConversation(this, getIntent());
         super.onCreate(savedInstanceState);
     }

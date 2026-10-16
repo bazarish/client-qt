@@ -4,6 +4,9 @@
 #include "SessionShared.hpp"
 
 #include "QtAudioIo.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidCallAudio.hpp"
+#endif
 #include "I2pRouter.hpp"
 #include "FederationFetch.hpp"
 
@@ -468,10 +471,17 @@ void SessionWorker::openAccount(
         emit openFailed(QString::fromUtf8(e.what()));
         return;
     }
-    // Real microphone/speaker for calls (Qt Multimedia).
+#ifdef Q_OS_ANDROID
+    // A phone speaks a call as a phone call: the voice stream and the earpiece.
+    using CallSource = AndroidCallSource;
+    using CallSink = AndroidCallSink;
+#else
+    using CallSource = QtAudioSource;
+    using CallSink = QtAudioSink;
+#endif
     session_->setAudioBackend(
-        []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<QtAudioSource>(); },
-        []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<QtAudioSink>(); });
+        []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<CallSource>(); },
+        []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<CallSink>(); });
     session_->onServerAnswered([this]() { emit syncReachable(true); });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     session_->setSelfSendSink(

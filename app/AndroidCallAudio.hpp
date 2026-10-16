@@ -1,0 +1,54 @@
+// Bazarish project (c) 2026
+#pragma once
+
+#include "AudioIo.hpp"
+
+#include <QJniObject>
+
+#include <atomic>
+#include <cstdint>
+#include <vector>
+
+namespace bazarish::app {
+
+class AndroidCallSource : public bazarish::AudioSource {
+public:
+    AndroidCallSource();
+    ~AndroidCallSource() override;
+    // The Java buffer points into frame_.
+    AndroidCallSource(const AndroidCallSource&) = delete;
+    AndroidCallSource& operator=(const AndroidCallSource&) = delete;
+
+    void start() override;
+    void stop() override;
+    std::vector<std::int16_t> readFrame() override;
+
+private:
+    std::vector<std::int16_t> frame_;
+    QJniObject buffer_;
+    std::atomic<bool> running_ = false;
+};
+
+class AndroidCallSink : public bazarish::AudioSink {
+public:
+    AndroidCallSink();
+    ~AndroidCallSink() override;
+    // The Java buffer points into frame_.
+    AndroidCallSink(const AndroidCallSink&) = delete;
+    AndroidCallSink& operator=(const AndroidCallSink&) = delete;
+
+    void start() override;
+    void stop() override;
+    void writeFrame(const std::vector<std::int16_t>& pcm) override;
+
+private:
+    std::vector<std::int16_t> frame_;
+    QJniObject buffer_;
+    std::atomic<bool> running_ = false;
+};
+
+namespace AndroidCallAudio {
+void setSpeaker(bool on);
+}
+
+}  // namespace bazarish::app

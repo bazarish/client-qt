@@ -158,6 +158,9 @@ void useTheDesktopsDialogs()
 
 int main(int argc, char** argv)
 {
+#ifdef Q_OS_ANDROID
+    bazarish::app::AndroidShade::routeStderrToLogcat();
+#endif
 #ifdef Q_OS_LINUX
     useTheDesktopsDialogs();
 #endif

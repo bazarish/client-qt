@@ -26,7 +26,7 @@ Window {
     // their name alone does not say who is being called.
     readonly property string heading: App.ringingAccountName + " - Bazarish"
 
-    visible: root.ringing && !root.mainWindowActive
+    visible: root.ringing && !root.mainWindowActive && !App.mobile
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
     color: Theme.bg
     // The size of the call screen inside the main window: this is that screen,

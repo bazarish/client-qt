@@ -47,8 +47,9 @@ Popup {
     modal: true
     closePolicy: Popup.NoAutoClose  // dismissed only through call actions
     anchors.centerIn: Overlay.overlay
-    width: Math.min(360, parent ? parent.width - 24 : 360)
-    height: Math.min(440, parent ? parent.height - 24 : 440)
+    // On a phone the call is the whole screen, as a phone call is.
+    width: App.mobile && parent ? parent.width : Math.min(360, parent ? parent.width - 24 : 360)
+    height: App.mobile && parent ? parent.height : Math.min(440, parent ? parent.height - 24 : 440)
     padding: 18
 
     background: DialogFrame { }
@@ -127,6 +128,7 @@ Popup {
         property color fill: Theme.surface
         property string iconName: ""
         property bool crossed: false
+        property bool lit: false
         readonly property int diameter: 48
         readonly property real iconSize: 22
         Layout.preferredWidth: diameter
@@ -135,9 +137,10 @@ Popup {
         HoverHandler { cursorShape: Qt.PointingHandCursor }
         background: Rectangle {
             radius: iconButton.diameter / 2
-            color: iconButton.down ? Qt.darker(iconButton.fill, 1.2)
-                : iconButton.hovered ? Qt.lighter(iconButton.fill, 1.35)
-                : iconButton.fill
+            readonly property color base: iconButton.lit ? Theme.accent : iconButton.fill
+            color: iconButton.down ? Qt.darker(base, 1.2)
+                : iconButton.hovered ? Qt.lighter(base, 1.35)
+                : base
             border.color: iconButton.hovered ? Theme.text : Theme.border
             implicitWidth: iconButton.diameter
             implicitHeight: iconButton.diameter
@@ -147,7 +150,7 @@ Popup {
             Icon {
                 anchors.centerIn: parent
                 name: iconButton.iconName
-                color: Theme.text
+                color: iconButton.lit ? Theme.accentInk : Theme.text
                 size: iconButton.iconSize
             }
             Rectangle {
@@ -309,8 +312,15 @@ Popup {
 
         // Active: devices, mute, end.
         CallIconButton {
+            visible: App.mobile && root.callState === "active"
+            iconName: "speaker"
+            lit: App.speakerOn
+            Accessible.name: qsTr("Speaker")
+            onClicked: App.speakerOn = !App.speakerOn
+        }
+        CallIconButton {
             id: gear
-            visible: root.callState === "active"
+            visible: !App.mobile && root.callState === "active"
             iconName: "gear"
             Accessible.name: qsTr("Audio devices")
             ToolTip.visible: hovered && !devicePicker.visible

@@ -168,13 +168,15 @@ ApplicationWindow {
         if (!I2p.gatewayAsked) {
             gatewayFirstRun.open()
         }
-        if (App.backgroundRestricted) {
+        if (backgroundAsk.needed) {
             backgroundAsk.open()
         }
     }
 
+    // What a phone must allow for the app to keep working and ring: asked one at a time.
     Popup {
         id: backgroundAsk
+        readonly property bool needed: App.backgroundRestricted || App.fullScreenCallsRestricted
         parent: Overlay.overlay
         anchors.centerIn: Overlay.overlay
         modal: true
@@ -185,7 +187,7 @@ ApplicationWindow {
         Connections {
             target: App
             function onBackgroundRestrictedChanged() {
-                if (!App.backgroundRestricted) {
+                if (!backgroundAsk.needed) {
                     backgroundAsk.close()
                 }
             }
@@ -195,7 +197,9 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 Label {
-                    text: qsTr("Allow unrestricted background work to get notifications.")
+                    text: App.backgroundRestricted
+                        ? qsTr("Allow unrestricted background work to get notifications.")
+                        : qsTr("Allow full-screen notifications to see incoming calls on the lock screen.")
                     color: Theme.text
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
@@ -209,7 +213,8 @@ ApplicationWindow {
             MenuButton {
                 text: qsTr("Settings")
                 Layout.alignment: Qt.AlignRight
-                onClicked: App.openBackgroundSettings()
+                onClicked: App.backgroundRestricted ? App.openBackgroundSettings()
+                                                    : App.openFullScreenCallsSettings()
             }
         }
     }

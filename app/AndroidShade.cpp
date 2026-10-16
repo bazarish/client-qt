@@ -15,15 +15,23 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <android/log.h>
+#include <unistd.h>
+
 #include <atomic>
+#include <cstdio>
 #include <functional>
 #include <iterator>
 #include <stdexcept>
+#include <string>
+#include <thread>
 
 namespace bazarish::app {
 namespace {
 
 const char* const kBridge = "sh/bazari/client/Bazarish";
+const char* const kLogTag = "bazarish";
+constexpr int kLogLineBytes = 1024;
 
 std::atomic<AppController*> gApp{nullptr};
 
@@ -119,6 +127,7 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
     });
     connect(&translations, &Translations::languageChanged, this, &AndroidShade::show);
     connect(&app_, &AppController::ringingChanged, this, &AndroidShade::followRinging);
+    connect(&app_, &AppController::callLiveChanged, this, &AndroidShade::followRinging);
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
         [](const Qt::ApplicationState state) {
             if (state == Qt::ApplicationActive) {
@@ -132,6 +141,23 @@ AndroidShade::~AndroidShade()
     gApp.store(nullptr);
 }
 
+void AndroidShade::routeStderrToLogcat()
+{
+    int ends[2] = {-1, -1};
+    if (pipe(ends) != 0 || dup2(ends[1], STDERR_FILENO) < 0) {
+        throw std::runtime_error("stderr could not be turned towards logcat");
+    }
+    close(ends[1]);
+    std::setvbuf(stderr, nullptr, _IOLBF, 0);
+    std::thread([reading = ends[0]]() {
+        FILE* const lines = fdopen(reading, "r");
+        char line[kLogLineBytes];
+        while (lines != nullptr && std::fgets(line, sizeof(line), lines) != nullptr) {
+            __android_log_write(ANDROID_LOG_INFO, kLogTag, line);
+        }
+    }).detach();
+}
+
 bool AndroidShade::windowless()
 {
     return !QNativeInterface::QAndroidApplication::isActivityContext();
@@ -140,6 +166,16 @@ bool AndroidShade::windowless()
 bool AndroidShade::backgroundRestricted()
 {
     return QJniObject::callStaticMethod<jboolean>(kBridge, "backgroundRestricted", "()Z");
+}
+
+bool AndroidShade::fullScreenCallsRestricted()
+{
+    return QJniObject::callStaticMethod<jboolean>(kBridge, "fullScreenCallsRestricted", "()Z");
+}
+
+void AndroidShade::openFullScreenCallsSettings()
+{
+    QJniObject::callStaticMethod<void>(kBridge, "openFullScreenCallsSettings", "()V");
 }
 
 void AndroidShade::openBackgroundSettings()
@@ -228,6 +264,11 @@ void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,
 void AndroidShade::followRinging()
 {
     const bool ringing = !app_.ringingPeer().isEmpty();
+    const bool overLock = ringing || app_.callLive();
+    if (overLock != overLock_) {
+        overLock_ = overLock;
+        QJniObject::callStaticMethod<void>(kBridge, "overLockScreen", "(Z)V", jboolean(overLock_));
+    }
     if (ringing && !callShown_ && QGuiApplication::applicationState() != Qt::ApplicationActive) {
         const QJniObject account = javaString(app_.ringingAccount());
         const QJniObject fingerprint = javaString(app_.ringingPeerFingerprint());
