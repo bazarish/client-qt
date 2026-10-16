@@ -2,7 +2,6 @@
 #include "TrayIcon.hpp"
 
 #include "AppController.hpp"
-#include "Notifier.hpp"
 
 #pragma push_macro("emit")
 #undef emit
@@ -57,7 +56,7 @@ bool TrayIcon::available()
     return QSystemTrayIcon::isSystemTrayAvailable();
 }
 
-TrayIcon::TrayIcon(AppController& app, Notifier& notifier, QObject* const parent)
+TrayIcon::TrayIcon(AppController& app, QObject* const parent)
     : QObject(parent)
     , app_(app)
 {
@@ -81,7 +80,6 @@ TrayIcon::TrayIcon(AppController& app, Notifier& notifier, QObject* const parent
         });
     connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::openNotified);
     connect(&app_, &AppController::accountsChanged, this, &TrayIcon::refreshIcon);
-    connect(&notifier, &Notifier::announced, this, &TrayIcon::showNotice);
 }
 
 void TrayIcon::attachWindow(QWindow* const window)

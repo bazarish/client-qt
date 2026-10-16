@@ -90,7 +90,6 @@ void Translations::setLanguage(const QString& code)
         return;
     }
     language_ = wanted;
-    AppSettings::instance().setLanguage(wanted.toStdString());
     emit languageChanged();
 }
 

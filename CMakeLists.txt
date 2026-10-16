@@ -80,6 +80,8 @@ if(Qt6_FOUND)
         app/AppEvents.hpp
         app/CoreHost.cpp
         app/CoreHost.hpp
+        app/CoreSocket.cpp
+        app/CoreSocket.hpp
         app/ContactBook.cpp
         app/ContactBook.hpp
         app/CoreAccount.cpp
@@ -433,4 +435,19 @@ if(Qt6_FOUND)
     target_link_libraries(TestWire PRIVATE bazarish_client Qt6::Core)
     target_compile_options(TestWire PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestWire COMMAND TestWire)
+
+    add_executable(TestSocketChannel tests/TestSocketChannel.cpp app/CoreSocket.cpp app/Wire.cpp
+        app/AppSettings.cpp)
+    target_include_directories(TestSocketChannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestSocketChannel PRIVATE bazarish_client Qt6::Core Qt6::Network)
+    target_compile_options(TestSocketChannel PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestSocketChannel COMMAND TestSocketChannel)
+
+    add_executable(TestTwoProcess tests/TestTwoProcess.cpp app/CoreSocket.cpp app/Wire.cpp
+        app/AppSettings.cpp app/AppCommands.hpp app/AppEvents.hpp app/AccountEvents.hpp
+        app/I2pEvents.hpp)
+    target_include_directories(TestTwoProcess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestTwoProcess PRIVATE bazarish_client Qt6::Core Qt6::Network)
+    target_compile_options(TestTwoProcess PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestTwoProcess COMMAND TestTwoProcess $<TARGET_FILE:bazarish-app>)
 endif()

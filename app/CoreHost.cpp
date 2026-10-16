@@ -2,6 +2,7 @@
 #include "CoreHost.hpp"
 
 #include "AppSettings.hpp"
+#include "AudioRoute.hpp"
 #include "CoreAccount.hpp"
 #include "DevicePairing.hpp"
 #include "I2pRouter.hpp"
@@ -24,7 +25,9 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <thread>
+#include <utility>
 
 namespace bazarish::app {
 
@@ -101,6 +104,8 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::windowActive, this,
         [this](const bool active) { windowActive_ = active; });
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
+    connect(&commands_, &AppCommands::setLanguage, this, &CoreHost::setLanguage);
+    connect(&commands_, &AppCommands::chooseAudio, this, &CoreHost::chooseAudio);
 
     connect(&relay_, &Relay::broken, this, &CoreHost::windowBroken);
     relay_.sendFrom(kAppScope, events_, kAppLatches);
@@ -956,6 +961,20 @@ void CoreHost::rebuildI2pLinks()
     }
 }
 
+void CoreHost::setLanguage(const QString& code)
+{
+    AppSettings::instance().setLanguage(code.toStdString());
+    emit languageChosen(code);
+}
+
+void CoreHost::chooseAudio(const QString& input, const QString& output)
+{
+    AppSettings::instance().setAudioInput(input.toStdString());
+    AppSettings::instance().setAudioOutput(output.toStdString());
+    AudioRoute::instance().chooseInput(input);
+    AudioRoute::instance().chooseOutput(output);
+}
+
 void CoreHost::prepareForExit()
 {
     if (exiting_) {
@@ -972,6 +991,52 @@ void CoreHost::closeAllSessions()
         removeSession(account);
     }
     refreshAccounts();
+}
+
+CoreListener::CoreListener(CoreHost& core, const QString& path, QObject* const parent)
+    : QObject(parent)
+    , core_(core)
+{
+    server_.setSocketOptions(QLocalServer::UserAccessOption);
+    if (!QLocalServer::removeServer(path)) {
+        throw std::runtime_error("a stale core socket could not be removed: " + path.toStdString());
+    }
+    if (!server_.listen(path)) {
+        throw std::runtime_error("the core cannot listen at " + path.toStdString() + ": "
+            + server_.errorString().toStdString());
+    }
+    connect(&server_, &QLocalServer::newConnection, this, &CoreListener::accept);
+}
+
+void CoreListener::dropWindow()
+{
+    if (SocketChannelEnd* const old = std::exchange(window_, nullptr)) {
+        core_.detachWindow();
+        old->close();
+        old->deleteLater();
+    }
+}
+
+void CoreListener::accept()
+{
+    while (QLocalSocket* const socket = server_.nextPendingConnection()) {
+        if (window_ != nullptr) {
+            bazarish::log::info("wire: a new window replaces the attached one");
+            dropWindow();
+        }
+        auto* const channel = new SocketChannelEnd(socket, this);
+        window_ = channel;
+        connect(channel, &SocketChannelEnd::closed, this, [this, channel]() {
+            if (window_ != channel) {
+                return;
+            }
+            bazarish::log::info("wire: the window went away");
+            core_.detachWindow();
+            window_ = nullptr;
+            channel->deleteLater();
+        });
+        core_.attachWindow(*channel);
+    }
 }
 
 }  // namespace bazarish::app

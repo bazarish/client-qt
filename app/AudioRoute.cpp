@@ -71,13 +71,27 @@ QVariantList AudioRoute::outputs() const
     return describe(QMediaDevices::audioOutputs(), output());
 }
 
+QString AudioRoute::inputId() const
+{
+    const std::lock_guard<std::mutex> lock(mutex_);
+    return QString::fromUtf8(inputId_);
+}
+
+QString AudioRoute::outputId() const
+{
+    const std::lock_guard<std::mutex> lock(mutex_);
+    return QString::fromUtf8(outputId_);
+}
+
 void AudioRoute::chooseInput(const QString& id)
 {
     {
         const std::lock_guard<std::mutex> lock(mutex_);
+        if (inputId_ == id.toUtf8()) {
+            return;
+        }
         inputId_ = id.toUtf8();
     }
-    AppSettings::instance().setAudioInput(id.toStdString());
     emit inputChanged();
 }
 
@@ -85,9 +99,11 @@ void AudioRoute::chooseOutput(const QString& id)
 {
     {
         const std::lock_guard<std::mutex> lock(mutex_);
+        if (outputId_ == id.toUtf8()) {
+            return;
+        }
         outputId_ = id.toUtf8();
     }
-    AppSettings::instance().setAudioOutput(id.toStdString());
     emit outputChanged();
 }
 

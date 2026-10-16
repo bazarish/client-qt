@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
 #include "CoreHost.hpp"
+#include "CoreSocket.hpp"
 #include "Wire.hpp"
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
@@ -33,6 +34,7 @@
 #pragma pop_macro("emit")
 
 #include <QColor>
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFont>
@@ -118,6 +120,65 @@ private:
     QString waiting_;
 };
 
+constexpr const char* kCoreFlag = "--core";
+constexpr const char* kWindowFlag = "--ui";
+
+enum class Mode { eWhole, eCore, eWindow };
+
+Mode modeOf(const int argc, char** const argv)
+{
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], kCoreFlag) == 0) {
+            return Mode::eCore;
+        }
+        if (std::strcmp(argv[i], kWindowFlag) == 0) {
+            return Mode::eWindow;
+        }
+    }
+    return Mode::eWhole;
+}
+
+void exitNow()
+{
+    std::fflush(nullptr);
+    std::_Exit(EXIT_SUCCESS);
+}
+
+void exitLost()
+{
+    std::fflush(nullptr);
+    std::_Exit(EXIT_FAILURE);
+}
+
+int runCore(int argc, char** argv)
+{
+    QCoreApplication app(argc, argv);
+    QCoreApplication::setApplicationName("Bazarish");
+    QCoreApplication::setOrganizationName("Bazarish");
+    const std::filesystem::path accounts = bazarish::app::AppController::accountsFolder();
+    std::filesystem::create_directories(accounts);
+    bazarish::app::SingleInstance instance(QString::fromStdString(accounts.string()));
+    if (!instance.claim()) {
+        bazarish::log::info("another Bazarish core already has this account folder");
+        return 1;
+    }
+    bazarish::app::Translations translations;
+    QCoreApplication::installTranslator(&translations);
+    bazarish::app::CoreHost core;
+    QObject::connect(&core, &bazarish::app::CoreHost::languageChosen, &translations,
+        &bazarish::app::Translations::setLanguage);
+    core.start();
+    bazarish::app::Notifier notifier(core);
+    bazarish::app::CoreListener listener(core, bazarish::app::coreSocketPath());
+    QObject::connect(&core, &bazarish::app::CoreHost::windowBroken, &listener,
+        [&listener](const QString& reason) {
+            bazarish::log::warn("wire: {}; letting the window go", reason.toStdString());
+            listener.dropWindow();
+        });
+    QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &app, exitNow);
+    return QCoreApplication::exec();
+}
+
 constexpr const char* kBrandCanvas = "#16191c";
 constexpr const char* kBrandSurface = "#1b2026";
 constexpr const char* kBrandSurfaceAlt = "#232a31";
@@ -163,6 +224,10 @@ int main(int argc, char** argv)
 #ifdef Q_OS_ANDROID
     bazarish::app::AndroidShade::routeStderrToLogcat();
 #endif
+    const Mode mode = modeOf(argc, argv);
+    if (mode == Mode::eCore) {
+        return runCore(argc, argv);
+    }
 #ifdef Q_OS_LINUX
     useTheDesktopsDialogs();
 #endif
@@ -280,7 +345,7 @@ int main(int argc, char** argv)
     const std::filesystem::path accounts = bazarish::app::AppController::accountsFolder();
     std::filesystem::create_directories(accounts);
     bazarish::app::SingleInstance instance(QString::fromStdString(accounts.string()));
-    if (!instance.claim()) {
+    if (mode == Mode::eWhole && !instance.claim()) {
         const bool handed = instance.handOver(link);
         bazarish::log::info("another Bazarish already has this account folder; {}",
             handed ? "brought its window forward" : "it is not answering");
@@ -302,18 +367,28 @@ int main(int argc, char** argv)
         bazarish::log::error("wire: {}", reason.toStdString());
         QCoreApplication::exit(1);
     };
-    bazarish::app::CoreHost core;
-    QObject::connect(&core, &bazarish::app::CoreHost::windowBroken, &app, wireBroken);
-    core.start();
+    std::unique_ptr<bazarish::app::CoreHost> core;
     bazarish::app::InProcessChannel channel;
     bazarish::app::Relay windowRelay;
     QObject::connect(&windowRelay, &bazarish::app::Relay::broken, &app, wireBroken);
-    windowRelay.attach(channel.second());
-    bazarish::app::AppController controller;
+    if (mode == Mode::eWhole) {
+        core = std::make_unique<bazarish::app::CoreHost>();
+        QObject::connect(core.get(), &bazarish::app::CoreHost::windowBroken, &app, wireBroken);
+        core->start();
+        windowRelay.attach(channel.second());
+    }
+    bazarish::app::AppController controller(translations);
     controller.attach(windowRelay);
     bazarish::app::I2pController i2pController;
     i2pController.attach(windowRelay);
-    core.attachWindow(channel.first());
+    std::unique_ptr<bazarish::app::CoreLink> coreLink;
+    if (core) {
+        core->attachWindow(channel.first());
+    } else {
+        coreLink = std::make_unique<bazarish::app::CoreLink>(
+            windowRelay, bazarish::app::coreSocketPath());
+        QObject::connect(coreLink.get(), &bazarish::app::CoreLink::lost, &app, exitLost);
+    }
     engine.rootContext()->setContextProperty("App", &controller);
     engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
     engine.rootContext()->setContextProperty("Audio", &bazarish::app::AudioRoute::instance());
@@ -363,25 +438,29 @@ int main(int argc, char** argv)
     }
     QObject::connect(&controller, &bazarish::app::AppController::raiseRequested, &app, raiseWindow);
 
-    bazarish::app::Notifier notifier(core);
+    std::unique_ptr<bazarish::app::Notifier> notifier;
+    if (core) {
+        notifier = std::make_unique<bazarish::app::Notifier>(*core);
+        QObject::connect(core.get(), &bazarish::app::CoreHost::readyToExit, &app, exitNow);
+    }
 #ifdef Q_OS_ANDROID
-    bazarish::app::AndroidShade shade(core, controller, notifier, translations);
-    QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &shade,
+    bazarish::app::AndroidShade shade(*core, controller, *notifier, translations);
+    QObject::connect(core.get(), &bazarish::app::CoreHost::readyToExit, &shade,
         &bazarish::app::AndroidShade::stop);
 #endif
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {
-        tray = std::make_unique<bazarish::app::TrayIcon>(controller, notifier);
+        tray = std::make_unique<bazarish::app::TrayIcon>(controller);
         QApplication::setQuitOnLastWindowClosed(false);
         tray->attachWindow(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));
-        QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &core,
-            &bazarish::app::CoreHost::prepareForExit);
+        QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &controller,
+            &bazarish::app::AppController::prepareForExit);
+        if (notifier) {
+            QObject::connect(notifier.get(), &bazarish::app::Notifier::announced, tray.get(),
+                &bazarish::app::TrayIcon::showNotice);
+        }
     } else {
         bazarish::log::info("tray: this desktop offers none; the window is the only way in");
     }
-    QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &app, []() {
-        std::fflush(nullptr);
-        std::_Exit(0);
-    });
     return app.exec();
 }

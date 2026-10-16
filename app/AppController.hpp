@@ -22,6 +22,7 @@ class QQuickWindow;
 namespace bazarish::app {
 
 class Relay;
+class Translations;
 
 class AppController : public QObject {
     Q_OBJECT
@@ -54,7 +55,7 @@ class AppController : public QObject {
     Q_PROPERTY(QString ringingAccountName READ ringingAccountName NOTIFY ringingChanged)
     Q_PROPERTY(qreal ringLevel READ ringLevel NOTIFY ringLevelChanged)
 public:
-    explicit AppController(QObject* parent = nullptr);
+    explicit AppController(Translations& translations, QObject* parent = nullptr);
 
     void attach(Relay& relay);
     bool attached() const { return attached_; }

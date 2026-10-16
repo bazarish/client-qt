@@ -24,6 +24,8 @@ public:
 
     QAudioDevice input() const;
     QAudioDevice output() const;
+    QString inputId() const;
+    QString outputId() const;
 
 signals:
     void inputChanged();

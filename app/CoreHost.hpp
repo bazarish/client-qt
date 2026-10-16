@@ -7,9 +7,11 @@
 #include "I2pService.hpp"
 #include "OperationLog.hpp"
 #include "Ringtone.hpp"
+#include "CoreSocket.hpp"
 #include "Wire.hpp"
 
 #include <QList>
+#include <QLocalServer>
 #include <QObject>
 #include <QSet>
 #include <QString>
@@ -62,6 +64,7 @@ signals:
         const QString& title, const QString& body);
     void readyToExit();
     void windowBroken(const QString& reason);
+    void languageChosen(const QString& code);
 
 private:
     CoreAccount* sessionFor(const QString& id) const;
@@ -101,6 +104,8 @@ private:
     void setPortable(bool on);
     void closeAllSessions();
     void rebuildI2pLinks();
+    void setLanguage(const QString& code);
+    void chooseAudio(const QString& input, const QString& output);
 
     AppCommands commands_;
     AppEvents events_;
@@ -138,6 +143,21 @@ private:
     std::shared_ptr<std::atomic<bool>> pairCancel_;
     std::shared_ptr<bazarish::i2p::Endpoint> pairEndpoint_;
     OperationLog log_;
+};
+
+class CoreListener : public QObject {
+    Q_OBJECT
+public:
+    CoreListener(CoreHost& core, const QString& path, QObject* parent = nullptr);
+
+    void dropWindow();
+
+private:
+    void accept();
+
+    CoreHost& core_;
+    QLocalServer server_;
+    SocketChannelEnd* window_ = nullptr;
 };
 
 }  // namespace bazarish::app

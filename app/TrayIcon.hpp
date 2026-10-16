@@ -12,16 +12,17 @@ class QWindow;
 namespace bazarish::app {
 
 class AppController;
-class Notifier;
 
 class TrayIcon : public QObject {
     Q_OBJECT
 public:
-    TrayIcon(AppController& app, Notifier& notifier, QObject* parent = nullptr);
+    explicit TrayIcon(AppController& app, QObject* parent = nullptr);
 
     static bool available();
 
     void attachWindow(QWindow* window);
+    void showNotice(const QString& accountId, const QString& peer, const QString& title,
+        const QString& body);
 
 signals:
     void quitRequested();
@@ -29,8 +30,6 @@ signals:
 private:
     void rebuildMenu();
     void refreshIcon();
-    void showNotice(const QString& accountId, const QString& peer, const QString& title,
-        const QString& body);
     void openNotified();
     void showWindow();
     void toggleWindow();

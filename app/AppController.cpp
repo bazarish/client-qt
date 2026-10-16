@@ -3,6 +3,8 @@
 
 #include "AccountManager.hpp"
 #include "AppSettings.hpp"
+#include "AudioRoute.hpp"
+#include "Translations.hpp"
 #include "Markup.hpp"
 #include "PopupStack.hpp"
 #include "Version.hpp"
@@ -37,9 +39,18 @@ const QString kAppScope = QStringLiteral("app");
 
 }  // namespace
 
-AppController::AppController(QObject* parent)
+AppController::AppController(Translations& translations, QObject* parent)
     : QObject(parent)
 {
+    connect(&translations, &Translations::languageChanged, this, [this, &translations]() {
+        emit commands_.setLanguage(translations.language());
+    });
+    for (const auto changed : {&AudioRoute::inputChanged, &AudioRoute::outputChanged}) {
+        connect(&AudioRoute::instance(), changed, this, [this]() {
+            emit commands_.chooseAudio(
+                AudioRoute::instance().inputId(), AudioRoute::instance().outputId());
+        });
+    }
     // Coming back from the system settings is when the answer may have changed.
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
         &AppController::backgroundRestrictedChanged);

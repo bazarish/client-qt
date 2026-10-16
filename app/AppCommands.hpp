@@ -32,6 +32,8 @@ signals:
     void setPortable(bool on);
     void closeAllSessions();
     void windowActive(bool active);
+    void setLanguage(const QString& code);
+    void chooseAudio(const QString& input, const QString& output);
     void quit();
 };
 
