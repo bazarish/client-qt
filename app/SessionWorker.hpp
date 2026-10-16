@@ -2,11 +2,9 @@
 #pragma once
 
 #include "AccountEvents.hpp"
-#include "Models.hpp"
 #include "Session.hpp"
 #include "AccountDb.hpp"
 #include "TranscriptStore.hpp"
-#include "VoiceNote.hpp"
 #include "CallTones.hpp"
 
 #include <QObject>

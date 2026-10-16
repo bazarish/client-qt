@@ -63,27 +63,45 @@ if(Qt6_FOUND)
     target_compile_options(quirc PRIVATE -w)
     set_target_properties(quirc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-    qt_add_executable(bazarish-app
-        app/main.cpp
-        app/AppController.cpp
-        app/PopupStack.cpp
+    # The core keeps every account and runs with no window: no Qt Quick, no Qt QML.
+    add_library(bazarish_app_shared STATIC
         app/AppSettings.cpp
-        app/AppController.hpp
-        app/I2pController.cpp
-        app/I2pController.hpp
         app/I2pEvents.hpp
-        app/I2pService.cpp
-        app/I2pService.hpp
         app/AccountCommands.hpp
         app/AccountEvents.hpp
         app/AppCommands.hpp
         app/AppEvents.hpp
-        app/CoreHost.cpp
-        app/CoreHost.hpp
         app/CoreSocket.cpp
         app/CoreSocket.hpp
         app/ContactBook.cpp
         app/ContactBook.hpp
+        app/Wire.cpp
+        app/Wire.hpp
+        app/SessionShared.cpp
+        app/SessionShared.hpp
+        app/SystemNotes.cpp
+        app/SystemNotes.hpp
+        app/Translations.cpp
+        app/Translations.hpp
+        app/TranscriptStore.cpp
+        app/TranscriptStore.hpp
+        app/QtAudioIo.cpp
+        app/QtAudioIo.hpp
+        app/AudioRoute.cpp
+        app/AudioRoute.hpp
+        app/VoiceNote.cpp
+    )
+    target_include_directories(bazarish_app_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/app
+        ${SQLCIPHER_INCLUDE_DIR})
+    target_link_libraries(bazarish_app_shared PUBLIC bazarish_client ${SQLCIPHER_LIBRARY}
+        Qt6::Core Qt6::Multimedia Qt6::Network)
+    target_compile_options(bazarish_app_shared PRIVATE -Wall -Wextra)
+
+    add_library(bazarish_app_core STATIC
+        app/I2pService.cpp
+        app/I2pService.hpp
+        app/CoreHost.cpp
+        app/CoreHost.hpp
         app/CoreAccount.cpp
         app/CoreAccount.hpp
         app/CoreCalls.cpp
@@ -93,70 +111,72 @@ if(Qt6_FOUND)
         app/CoreTransfers.cpp
         app/MessageIngest.cpp
         app/MessageIngest.hpp
-        app/Wire.cpp
-        app/Wire.hpp
         app/OperationLog.cpp
         app/OperationLog.hpp
-        app/SessionController.cpp
-        app/SessionController.hpp
         app/SessionWorker.cpp
         app/SessionWorker.hpp
-        app/SessionCalls.cpp
-        app/SessionVoice.cpp
-        app/SessionTransfers.cpp
-        app/SessionReactions.cpp
-        app/SessionReceive.cpp
-        app/SessionContacts.cpp
-        app/DeliveryStatus.hpp
-        app/SessionShared.cpp
-        app/SessionShared.hpp
-        app/SystemNotes.cpp
-        app/SystemNotes.hpp
-        app/Markup.cpp
-        app/Markup.hpp
-        app/Picture.cpp
-        app/Picture.hpp
-        app/Translations.cpp
-        app/Translations.hpp
-        app/PhotoShot.cpp
-        app/PhotoShot.hpp
-        app/Models.cpp
-        app/Models.hpp
-        app/TranscriptStore.cpp
-        app/TranscriptStore.hpp
-        app/QtAudioIo.cpp
-        app/QtAudioIo.hpp
-        app/AudioRoute.cpp
-        app/AudioRoute.hpp
         app/CallTones.cpp
         app/CallTones.hpp
-        app/DesktopEntry.cpp
-        app/DesktopEntry.hpp
-        app/SingleInstance.cpp
-        app/SingleInstance.hpp
         app/Notifier.cpp
         app/Notifier.hpp
         app/NotifySound.cpp
         app/NotifySound.hpp
         app/Ringtone.cpp
         app/Ringtone.hpp
+    )
+    target_link_libraries(bazarish_app_core PUBLIC bazarish_app_shared Qt6::QmlIntegration)
+    target_compile_options(bazarish_app_core PRIVATE -Wall -Wextra)
+
+    add_library(bazarish_app_ui STATIC
+        app/AppController.cpp
+        app/PopupStack.cpp
+        app/AppController.hpp
+        app/I2pController.cpp
+        app/I2pController.hpp
+        app/SessionController.cpp
+        app/SessionController.hpp
+        app/SessionCalls.cpp
+        app/SessionVoice.cpp
+        app/SessionTransfers.cpp
+        app/SessionReactions.cpp
+        app/SessionReceive.cpp
+        app/SessionContacts.cpp
+        app/Markup.cpp
+        app/Markup.hpp
+        app/Picture.cpp
+        app/Picture.hpp
+        app/Models.cpp
+        app/Models.hpp
+        app/DesktopEntry.cpp
+        app/DesktopEntry.hpp
+        app/SingleInstance.cpp
+        app/SingleInstance.hpp
         app/TrayIcon.cpp
         app/TrayIcon.hpp
         app/Identicon.cpp
         app/Identicon.hpp
         app/LetterAvatar.cpp
         app/LetterAvatar.hpp
-        app/QrScanner.cpp
-        app/QrScanner.hpp
         app/AvatarStore.cpp
         app/PictureStore.cpp
-        app/VoiceNote.cpp
         app/AvatarStore.hpp
     )
-    target_link_libraries(bazarish-app PRIVATE
-        bazarish_client quirc ${QRENCODE_LIBRARY} ${SQLCIPHER_LIBRARY}
-        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Multimedia Qt6::Widgets
-        Qt6::Network)
+    target_include_directories(bazarish_app_ui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+        ${QRENCODE_INCLUDE_DIR})
+    target_link_libraries(bazarish_app_ui PUBLIC bazarish_app_shared quirc ${QRENCODE_LIBRARY}
+        Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Widgets)
+    target_compile_options(bazarish_app_ui PRIVATE -Wall -Wextra)
+    add_dependencies(bazarish_app_ui stamp-version)
+
+    qt_add_executable(bazarish-app
+        app/main.cpp
+        app/DeliveryStatus.hpp
+        app/PhotoShot.cpp
+        app/PhotoShot.hpp
+        app/QrScanner.cpp
+        app/QrScanner.hpp
+    )
+    target_link_libraries(bazarish-app PRIVATE bazarish_app_core bazarish_app_ui)
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
         ${CMAKE_CURRENT_BINARY_DIR}
         ${QRENCODE_INCLUDE_DIR} ${SQLCIPHER_INCLUDE_DIR})
@@ -211,8 +231,8 @@ if(Qt6_FOUND)
     # Reveal-in-file-manager (FileManager1 over D-Bus) when the optional module is
     # present; otherwise the code path is compiled out and falls back gracefully.
     if(TARGET Qt6::DBus)
-        target_link_libraries(bazarish-app PRIVATE Qt6::DBus)
-        target_compile_definitions(bazarish-app PRIVATE BAZARISH_HAVE_QTDBUS)
+        target_link_libraries(bazarish_app_ui PRIVATE Qt6::DBus)
+        target_compile_definitions(bazarish_app_ui PRIVATE BAZARISH_HAVE_QTDBUS)
     endif()
 
     # Bundle the brand font (Roboto Mono, Latin, Greek and Cyrillic) so the
