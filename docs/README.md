@@ -26,6 +26,7 @@ this client performs before reporting failure is not.
 | [SavedAndBlocking.md](SavedAndBlocking.md) | The saved-messages chat, blocking a correspondent, and the per-contact notification and call switches |
 | [Calls.md](Calls.md) | Calls: what carries the media, the router patch a b33 datagram needs, the lane kept for real time, and why a call leaves nothing in the chat |
 | [Sounds.md](Sounds.md) | The notification sound and the ringtone: where a recording of the user's own goes, what the ringtone has to be, and what the call window's pulse follows |
+| [Processes.md](Processes.md) | The core that keeps the accounts and the window that shows them: what each holds, the frames between them, and what a window attaching is told |
 | [BackgroundActivity.md](BackgroundActivity.md) | The activity panel: what is reported there while it runs, and what a row says |
 | [Formatting.md](Formatting.md) | Message formatting: the markers a body may carry, what a press on one does, and where a body is shown without them |
 | [Groups.md](Groups.md) | Groups and channels: what makes a chat one, the author line and letter circle, reaction counts, the admin actions and the descriptor plate |

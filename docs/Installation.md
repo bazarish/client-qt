@@ -39,8 +39,9 @@ I2P is carried - which of the three transports, tunnel length, engine logging,
 the clearnet proxy, and a private gateway's address and key
 ([I2pRouter.md](I2pRouter.md)).
 
-It is read at start and rewritten whole on every change, so the file on disk is
-always a complete document. A file larger than **64 KiB** at that path is refused
+The core is its only writer: it reads the file at start and rewrites it whole on
+every change, so the file on disk is always a complete document
+([Processes.md](Processes.md)). A file larger than **64 KiB** at that path is refused
 unread and the defaults apply: settings run to a few hundred bytes, and nothing
 at that path is allowed to decide how much memory the application takes at start.
 

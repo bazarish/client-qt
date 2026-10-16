@@ -34,8 +34,10 @@ a connection that no longer existed.
    session's own transport is left free for what the user is doing.
 2. When the wait returns, the mailbox is read on the worker thread: one bounded
    pass, each item fetched and decrypted, each surfaced to the interface.
-3. An item is acked only after the interface has durably stored it, so a crash
-   between fetching and storing loses nothing.
+3. An item is acked only after the core has stored it. A store that fails leaves
+   the item on the server and stops receiving for that account with the
+   database's error, so a crash or a full disk between fetching and storing loses
+   nothing.
 4. The loop asks again once that pass has given back everything it took. A
    mailbox answers the next wait at once while it still holds what this device is
    carrying, so asking earlier would spin the loop through its own drain - and a
