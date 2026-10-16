@@ -84,6 +84,8 @@ if(Qt6_FOUND)
         app/CoreTransfers.cpp
         app/MessageIngest.cpp
         app/MessageIngest.hpp
+        app/Wire.cpp
+        app/Wire.hpp
         app/OperationLog.cpp
         app/OperationLog.hpp
         app/SessionController.cpp
@@ -417,4 +419,11 @@ if(Qt6_FOUND)
         bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core Qt6::QmlIntegration)
     target_compile_options(TestIngest PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestIngest COMMAND TestIngest)
+
+    add_executable(TestWire tests/TestWire.cpp app/Wire.cpp app/AccountCommands.hpp
+        app/AccountEvents.hpp)
+    target_include_directories(TestWire PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestWire PRIVATE bazarish_client Qt6::Core)
+    target_compile_options(TestWire PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestWire COMMAND TestWire)
 endif()

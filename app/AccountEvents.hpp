@@ -2,6 +2,7 @@
 #pragma once
 
 #include <QByteArray>
+#include <QDataStream>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -37,6 +38,36 @@ struct OperationRow {
     QString peer;
     QString cancelId;
 };
+
+inline QDataStream& operator<<(QDataStream& out, const ContactState& contact)
+{
+    return out << contact.fingerprint << contact.name << contact.invite << contact.writable
+               << contact.notifications << contact.calls << static_cast<qint32>(contact.request);
+}
+
+inline QDataStream& operator>>(QDataStream& in, ContactState& contact)
+{
+    qint32 request = 0;
+    in >> contact.fingerprint >> contact.name >> contact.invite >> contact.writable
+        >> contact.notifications >> contact.calls >> request;
+    contact.request = static_cast<ContactState::Request>(request);
+    return in;
+}
+
+inline QDataStream& operator<<(QDataStream& out, const OperationRow& row)
+{
+    return out << row.id << row.kind << row.title << row.status << row.detail << row.progress
+               << static_cast<qint32>(row.state) << row.startedAt << row.peer << row.cancelId;
+}
+
+inline QDataStream& operator>>(QDataStream& in, OperationRow& row)
+{
+    qint32 state = 0;
+    in >> row.id >> row.kind >> row.title >> row.status >> row.detail >> row.progress >> state
+        >> row.startedAt >> row.peer >> row.cancelId;
+    row.state = state;
+    return in;
+}
 
 enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
 
