@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "AndroidShade.hpp"
 
+#include "AndroidCallAudio.hpp"
 #include "AppController.hpp"
 #include "Notifier.hpp"
 #include "Translations.hpp"
@@ -80,6 +81,11 @@ void callDeclined(JNIEnv*, jclass)
     inAppThread([](AppController& app) { app.declineRinging(); });
 }
 
+void unlocked(JNIEnv*, jclass)
+{
+    inAppThread([](AppController& app) { emit app.unlocked(); });
+}
+
 void conversationOpened(JNIEnv*, jclass, jstring account, jstring peer)
 {
     const QString accountId = QJniObject(account).toString();
@@ -103,6 +109,7 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
             reinterpret_cast<void*>(conversationOpened)},
         {"callAnswered", "()V", reinterpret_cast<void*>(callAnswered)},
         {"callDeclined", "()V", reinterpret_cast<void*>(callDeclined)},
+        {"unlocked", "()V", reinterpret_cast<void*>(unlocked)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kBridge, natives, static_cast<int>(std::size(natives)))) {
@@ -130,6 +137,7 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
     connect(&translations, &Translations::languageChanged, this, &AndroidShade::show);
     connect(&app_, &AppController::ringingChanged, this, &AndroidShade::followRinging);
     connect(&app_, &AppController::callLiveChanged, this, &AndroidShade::followRinging);
+    connect(&app_, &AppController::speakerOnChanged, this, &AndroidShade::followRinging);
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
         [](const Qt::ApplicationState state) {
             if (state == Qt::ApplicationActive) {
@@ -205,6 +213,11 @@ void AndroidShade::stopRinging()
     QJniObject::callStaticMethod<void>(kBridge, "stopRinging", "()V");
 }
 
+void AndroidShade::dismissKeyguard()
+{
+    QJniObject::callStaticMethod<void>(kBridge, "dismissKeyguard", "()V");
+}
+
 void AndroidShade::stop()
 {
     QJniObject::callStaticMethod<void>(kBridge, "stop", "()V");
@@ -271,6 +284,11 @@ void AndroidShade::followRinging()
         overLock_ = overLock;
         QJniObject::callStaticMethod<void>(kBridge, "overLockScreen", "(Z)V", jboolean(overLock_));
     }
+    if (app_.callTalking() != talking_) {
+        talking_ = app_.callTalking();
+        QJniObject::callStaticMethod<void>(kBridge, "callTalking", "(Z)V", jboolean(talking_));
+    }
+    AndroidCallAudio::holdNearEar(talking_ && !app_.speakerOn());
     if (ringing && !callShown_ && QGuiApplication::applicationState() != Qt::ApplicationActive) {
         const QJniObject account = javaString(app_.ringingAccount());
         const QJniObject fingerprint = javaString(app_.ringingPeerFingerprint());

@@ -8,6 +8,7 @@ import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
+import android.os.PowerManager;
 
 import java.nio.ByteBuffer;
 
@@ -23,96 +24,49 @@ public final class CallAudio {
     private static final int[] kSpeakerDevices = {AudioDeviceInfo.TYPE_BUILTIN_SPEAKER};
     private static final int kBufferedFrames = 4;
 
-    private static volatile AudioTrack track = null;
-    private static volatile AudioRecord record = null;
-    private static volatile boolean speaker = false;
+    private static int users = 0;
+    private static boolean speaker = false;
+    private static PowerManager.WakeLock nearEar = null;
 
     private CallAudio() {}
 
-    public static void startPlayback(int sampleRate, int frameBytes) {
+    // Everything that sounds during a call - its tones and its voice - shares one route.
+    private static synchronized void join() {
         AudioManager manager = Bazarish.app.getSystemService(AudioManager.class);
-        manager.setMode(AudioManager.MODE_IN_COMMUNICATION);
-        speaker = false;
+        if (users++ == 0) {
+            speaker = false;
+            manager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+        }
         route(manager);
-        int least = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_16BIT);
-        track = new AudioTrack.Builder()
-            .setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build())
-            .setAudioFormat(new AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build())
-            .setBufferSizeInBytes(Math.max(least, frameBytes * kBufferedFrames))
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build();
-        track.play();
     }
 
-    public static void write(ByteBuffer pcm, int bytes) {
-        AudioTrack playing = track;
-        if (playing == null) {
+    private static synchronized void leave() {
+        if (--users > 0) {
             return;
-        }
-        pcm.position(0).limit(bytes);
-        if (playing.write(pcm, bytes, AudioTrack.WRITE_NON_BLOCKING) < 0) {
-            throw new IllegalStateException("the call audio did not play");
-        }
-    }
-
-    public static void stopPlayback() {
-        AudioTrack playing = track;
-        track = null;
-        if (playing != null) {
-            playing.stop();
-            playing.release();
         }
         AudioManager manager = Bazarish.app.getSystemService(AudioManager.class);
         manager.clearCommunicationDevice();
         manager.setMode(AudioManager.MODE_NORMAL);
         speaker = false;
+        holdNearEar(false);
     }
 
-    public static void startCapture(int sampleRate, int frameBytes) {
-        int least = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT);
-        // The voice-communication source brings the platform's echo canceller with it.
-        record = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, sampleRate,
-            AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-            Math.max(least, frameBytes * kBufferedFrames));
-        if (record.getState() != AudioRecord.STATE_INITIALIZED) {
-            record.release();
-            record = null;
-            throw new IllegalStateException("the microphone did not open for the call");
-        }
-        record.startRecording();
-    }
-
-    public static int read(ByteBuffer pcm, int bytes) {
-        AudioRecord capturing = record;
-        if (capturing == null) {
-            return 0;
-        }
-        pcm.position(0).limit(bytes);
-        return capturing.read(pcm, bytes, AudioRecord.READ_BLOCKING);
-    }
-
-    public static void stopCapture() {
-        AudioRecord capturing = record;
-        record = null;
-        if (capturing != null) {
-            capturing.stop();
-            capturing.release();
-        }
-    }
-
-    public static void setSpeaker(boolean on) {
+    public static synchronized void setSpeaker(boolean on) {
         speaker = on;
-        if (track != null) {
+        if (users > 0) {
             route(Bazarish.app.getSystemService(AudioManager.class));
+        }
+    }
+
+    // Near the ear the screen goes dark, so a cheek does not press the buttons.
+    public static synchronized void holdNearEar(boolean on) {
+        if (on && nearEar == null) {
+            nearEar = Bazarish.app.getSystemService(PowerManager.class)
+                .newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "bazarish:ear");
+            nearEar.acquire();
+        } else if (!on && nearEar != null) {
+            nearEar.release();
+            nearEar = null;
         }
     }
 
@@ -128,5 +82,87 @@ public final class CallAudio {
             }
         }
         throw new IllegalStateException("there is nothing to speak through");
+    }
+
+    public static final class Playback {
+        private volatile AudioTrack track;
+
+        public Playback(int sampleRate, int frameBytes) {
+            join();
+            int least = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT);
+            track = new AudioTrack.Builder()
+                .setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build())
+                .setAudioFormat(new AudioFormat.Builder()
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(sampleRate)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build())
+                .setBufferSizeInBytes(Math.max(least, frameBytes * kBufferedFrames))
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build();
+            track.play();
+        }
+
+        public void write(ByteBuffer pcm, int bytes) {
+            AudioTrack playing = track;
+            if (playing == null) {
+                return;
+            }
+            pcm.position(0).limit(bytes);
+            if (playing.write(pcm, bytes, AudioTrack.WRITE_NON_BLOCKING) < 0) {
+                throw new IllegalStateException("the call audio did not play");
+            }
+        }
+
+        public void stop() {
+            AudioTrack playing = track;
+            track = null;
+            if (playing != null) {
+                playing.stop();
+                playing.release();
+                leave();
+            }
+        }
+    }
+
+    public static final class Capture {
+        private volatile AudioRecord record;
+
+        public Capture(int sampleRate, int frameBytes) {
+            int least = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT);
+            // The voice-communication source brings the platform's echo canceller with it.
+            AudioRecord opened = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+                Math.max(least, frameBytes * kBufferedFrames));
+            if (opened.getState() != AudioRecord.STATE_INITIALIZED) {
+                opened.release();
+                throw new IllegalStateException("the microphone did not open for the call");
+            }
+            opened.startRecording();
+            record = opened;
+        }
+
+        public int read(ByteBuffer pcm, int bytes) {
+            AudioRecord capturing = record;
+            if (capturing == null) {
+                return 0;
+            }
+            pcm.position(0).limit(bytes);
+            return capturing.read(pcm, bytes, AudioRecord.READ_BLOCKING);
+        }
+
+        public void stop() {
+            AudioRecord capturing = record;
+            record = null;
+            if (capturing != null) {
+                capturing.stop();
+                capturing.release();
+            }
+        }
     }
 }

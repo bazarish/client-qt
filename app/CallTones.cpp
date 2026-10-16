@@ -4,6 +4,9 @@
 #include "AudioCodec.hpp"
 #include "AudioRoute.hpp"
 #include "QtAudioIo.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidCallAudio.hpp"
+#endif
 
 #include <QAudioSink>
 #include <QIODevice>
@@ -14,6 +17,8 @@
 #include <cstdint>
 #include <limits>
 #include <numbers>
+#include <stdexcept>
+#include <vector>
 
 namespace bazarish::app {
 
@@ -30,6 +35,7 @@ constexpr int kBusyOnMs = 250;
 constexpr int kBusyOffMs = 250;
 constexpr int kBusyBursts = 4;
 constexpr int kForever = 0;
+constexpr int kPrefilledFrames = 2;
 
 }  // namespace
 
@@ -123,10 +129,24 @@ void CallTones::endRingback()
 
 void CallTones::play(const int onMs, const int offMs, const int bursts)
 {
-    if (voice_ && voice_->durationMs() == 0 && bursts == kForever && sink_) {
+    if (voice_ && voice_->durationMs() == 0 && bursts == kForever) {
         return;
     }
     stop();
+#ifdef Q_OS_ANDROID
+    // A phone sounds the tones where the call will speak: the earpiece, or the speaker if chosen.
+    voice_ = std::make_unique<Voice>(onMs, offMs, bursts);
+    voice_->open(QIODevice::ReadOnly);
+    phone_ = std::make_unique<AndroidCallSink>();
+    phone_->start();
+    feeder_ = std::make_unique<QTimer>();
+    feeder_->setInterval(kCallFrameMs);
+    connect(feeder_.get(), &QTimer::timeout, this, &CallTones::feed);
+    for (int i = 0; i < kPrefilledFrames; ++i) {
+        feed();
+    }
+    feeder_->start();
+#else
     const QAudioDevice output = AudioRoute::instance().output();
     if (output.isNull()) {
         return;
@@ -135,13 +155,33 @@ void CallTones::play(const int onMs, const int offMs, const int bursts)
     voice_->open(QIODevice::ReadOnly);
     sink_ = std::make_unique<QAudioSink>(output, callAudioFormat());
     sink_->start(voice_.get());
+#endif
     if (bursts != kForever) {
         QTimer::singleShot(voice_->durationMs(), this, [this]() { stop(); });
     }
 }
 
+void CallTones::feed()
+{
+#ifdef Q_OS_ANDROID
+    std::vector<std::int16_t> frame(static_cast<std::size_t>(kCallSamplesPerFrame));
+    const qint64 bytes = static_cast<qint64>(frame.size() * sizeof(std::int16_t));
+    if (voice_->read(reinterpret_cast<char*>(frame.data()), bytes) != bytes) {
+        throw std::runtime_error("a call tone came up short of a frame");
+    }
+    phone_->writeFrame(frame);
+#endif
+}
+
 void CallTones::stop()
 {
+#ifdef Q_OS_ANDROID
+    feeder_.reset();
+    if (phone_) {
+        phone_->stop();
+        phone_.reset();
+    }
+#endif
     if (sink_) {
         sink_->stop();
         sink_.reset();

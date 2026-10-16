@@ -26,6 +26,7 @@ public:
 private:
     std::vector<std::int16_t> frame_;
     QJniObject buffer_;
+    QJniObject capture_;
     std::atomic<bool> running_ = false;
 };
 
@@ -44,11 +45,13 @@ public:
 private:
     std::vector<std::int16_t> frame_;
     QJniObject buffer_;
+    QJniObject playback_;
     std::atomic<bool> running_ = false;
 };
 
 namespace AndroidCallAudio {
 void setSpeaker(bool on);
+void holdNearEar(bool on);
 }
 
 }  // namespace bazarish::app

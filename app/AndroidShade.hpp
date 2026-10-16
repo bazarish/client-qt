@@ -26,6 +26,7 @@ public:
     static void openFullScreenCallsSettings();
     static void moveToBackground();
     static void startRinging();
+    static void dismissKeyguard();
     static void stopRinging();
 
     void stop();
@@ -42,6 +43,7 @@ private:
     QString line_;
     bool callShown_ = false;
     bool overLock_ = false;
+    bool talking_ = false;
 };
 
 }  // namespace bazarish::app

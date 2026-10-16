@@ -3,6 +3,7 @@ package sh.bazari.client;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -55,6 +56,7 @@ public final class Bazarish {
     static native void conversationOpened(String account, String peer);
     static native void callAnswered();
     static native void callDeclined();
+    static native void unlocked();
 
     private Bazarish() {}
 
@@ -151,6 +153,37 @@ public final class Bazarish {
             shown.setShowWhenLocked(on);
             shown.setTurnScreenOn(on);
         });
+    }
+
+    // The rest of the app is behind the lock: leaving the call screen asks for the unlock first.
+    public static void dismissKeyguard() {
+        Activity shown = window.get();
+        if (shown == null) {
+            unlocked();
+            return;
+        }
+        shown.runOnUiThread(() -> {
+            KeyguardManager keyguard = shown.getSystemService(KeyguardManager.class);
+            if (!keyguard.isKeyguardLocked()) {
+                unlocked();
+                return;
+            }
+            keyguard.requestDismissKeyguard(shown, new KeyguardManager.KeyguardDismissCallback() {
+                @Override
+                public void onDismissSucceeded() {
+                    unlocked();
+                }
+            });
+        });
+    }
+
+    // Android keeps the microphone open in the background only for a microphone service.
+    public static void callTalking(boolean on) {
+        BazarishService.talking = on;
+        BazarishService service = BazarishService.running.get();
+        if (service != null) {
+            service.comeForward();
+        }
     }
 
     public static void startRinging() {

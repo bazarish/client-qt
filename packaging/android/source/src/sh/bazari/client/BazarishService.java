@@ -9,6 +9,8 @@ import android.content.pm.ServiceInfo;
 import android.graphics.drawable.Icon;
 import android.os.PowerManager;
 
+import java.lang.ref.WeakReference;
+
 import org.qtproject.qt.android.QtServiceBase;
 
 // Started at boot it runs Qt itself, with no window; next to the activity it only holds the process.
@@ -23,6 +25,9 @@ public class BazarishService extends QtServiceBase {
     private static final int DECLINE_REQUEST = 3;
     private static final int SHOW_REQUEST = 4;
 
+    static volatile boolean talking = false;
+    static WeakReference<BazarishService> running = new WeakReference<>(null);
+
     private PowerManager.WakeLock awake;
 
     @Override
@@ -34,8 +39,8 @@ public class BazarishService extends QtServiceBase {
         awake.acquire();
         // Android gives a started service seconds to come to the foreground; loading Qt takes longer.
         Bazarish.presenceChannel(this, getApplicationInfo().loadLabel(getPackageManager()).toString());
-        startForeground(Bazarish.PRESENCE_ID, presence(this),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
+        running = new WeakReference<>(this);
+        comeForward();
         super.onCreate();
     }
 
@@ -55,9 +60,16 @@ public class BazarishService extends QtServiceBase {
         } else if (ACTION_DECLINE.equals(action)) {
             Bazarish.callDeclined();
         }
-        startForeground(Bazarish.PRESENCE_ID, presence(this),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
+        comeForward();
         return START_NOT_STICKY;
+    }
+
+    void comeForward() {
+        int types = ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING;
+        if (talking) {
+            types |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+        }
+        startForeground(Bazarish.PRESENCE_ID, presence(this), types);
     }
 
     static Notification presence(Context context) {
