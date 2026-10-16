@@ -8,6 +8,15 @@ Item {
     objectName: "mainView"
     property var session: App.session
 
+    // On a narrow window an open chat covers the list, so back closes it.
+    function goBack() {
+        if (panes.narrow && panes.chatOpen) {
+            root.session.closeConversation()
+            return true
+        }
+        return false
+    }
+
     // Positive results stay as transient toasts; failures are routed to the
     // top-layer error dialog in Main.qml (so they are never covered or missed).
     Connections {

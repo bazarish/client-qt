@@ -19,6 +19,7 @@ public:
 
     static bool backgroundRestricted();
     static void openBackgroundSettings();
+    static void moveToBackground();
 
     void stop();
 

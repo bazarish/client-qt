@@ -66,6 +66,7 @@ if(Qt6_FOUND)
     qt_add_executable(bazarish-app
         app/main.cpp
         app/AppController.cpp
+        app/PopupStack.cpp
         app/AppSettings.cpp
         app/AppController.hpp
         app/I2pController.cpp
@@ -367,6 +368,15 @@ if(Qt6_FOUND)
         bazarish_client quirc ${QRENCODE_LIBRARY} Qt6::Gui Qt6::Multimedia Qt6::Qml)
     target_compile_options(TestQrScan PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestQrScan COMMAND TestQrScan)
+
+    # Android's back key closes the top popup first; which one that is rests on Qt internals.
+    add_executable(TestPopupStack tests/TestPopupStack.cpp app/PopupStack.cpp)
+    target_include_directories(TestPopupStack PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestPopupStack PRIVATE Qt6::Quick Qt6::Qml)
+    target_compile_options(TestPopupStack PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestPopupStack COMMAND TestPopupStack)
+    set_tests_properties(TestPopupStack PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
 
     add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)
     target_include_directories(TestLetterAvatar PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)

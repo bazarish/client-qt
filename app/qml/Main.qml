@@ -29,6 +29,27 @@ ApplicationWindow {
         WheelHandler { onWheel: (event) => event.accepted = true }
     }
 
+    // Android turns an unhandled back press into closing the window, which would end the app.
+    onClosing: function(close) {
+        if (App.mobile) {
+            close.accepted = false
+            window.goBack()
+        }
+    }
+    function goBack() {
+        if (App.closeTopPopup(window)) {
+            return
+        }
+        if (stack.depth > 1) {
+            stack.pop()
+            return
+        }
+        if (stack.currentItem && stack.currentItem.goBack && stack.currentItem.goBack()) {
+            return
+        }
+        App.moveToBackground()
+    }
+
     function showToast(message) {
         toastLabel.text = message
         toast.opacity = 1

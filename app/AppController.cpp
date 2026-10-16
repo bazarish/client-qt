@@ -5,6 +5,7 @@
 #include "AppSettings.hpp"
 #include "I2pRouter.hpp"
 #include "Markup.hpp"
+#include "PopupStack.hpp"
 #include "Version.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidShade.hpp"
@@ -968,6 +969,18 @@ void AppController::openBackgroundSettings() const
 {
 #ifdef Q_OS_ANDROID
     AndroidShade::openBackgroundSettings();
+#endif
+}
+
+bool AppController::closeTopPopup(QQuickWindow* const window) const
+{
+    return bazarish::app::closeTopPopup(window);
+}
+
+void AppController::moveToBackground() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidShade::moveToBackground();
 #endif
 }
 

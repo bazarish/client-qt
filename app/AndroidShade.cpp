@@ -124,6 +124,16 @@ void AndroidShade::openBackgroundSettings()
         "(Landroid/content/Context;)V", context().object());
 }
 
+void AndroidShade::moveToBackground()
+{
+    QJniObject activity = context();
+    QNativeInterface::QAndroidApplication::runOnAndroidMainThread([activity]() {
+        if (!activity.callMethod<jboolean>("moveTaskToBack", "(Z)Z", jboolean(true))) {
+            bazarish::log::warn("android: the task did not move to the background");
+        }
+    });
+}
+
 void AndroidShade::stop()
 {
     QJniObject::callStaticMethod<void>(kBridge, "stop", "(Landroid/content/Context;)V",

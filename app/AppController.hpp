@@ -21,6 +21,8 @@
 #include <filesystem>
 #include <memory>
 
+class QQuickWindow;
+
 namespace bazarish::app {
 
 // Owns the account manager and every open account.
@@ -132,6 +134,8 @@ public:
             NOTIFY backgroundRestrictedChanged)
     bool backgroundRestricted() const;
     Q_INVOKABLE void openBackgroundSettings() const;
+    Q_INVOKABLE bool closeTopPopup(QQuickWindow* window) const;
+    Q_INVOKABLE void moveToBackground() const;
     Q_PROPERTY(QString dataLocation READ dataLocation NOTIFY portableChanged)
     QString dataLocation() const;
     Q_INVOKABLE void setPortable(bool on);
