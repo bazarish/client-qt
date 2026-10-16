@@ -8,12 +8,22 @@
 #include <QPointer>
 #include <QString>
 
+#include <cstdint>
+#include <map>
 #include <memory>
+#include <span>
 #include <vector>
 
 namespace bazarish::app {
 
 inline constexpr QDataStream::Version kWireStreamVersion = QDataStream::Qt_6_8;
+
+// An event that states something rather than reports it: a window that attaches later is
+// told its last value, one per distinct value of its first keyArgs arguments.
+struct Latch {
+    const char* name;
+    int keyArgs = 0;
+};
 
 class ChannelEnd : public QObject {
     Q_OBJECT
@@ -46,10 +56,14 @@ private:
 class Relay : public QObject {
     Q_OBJECT
 public:
-    explicit Relay(ChannelEnd& channel, QObject* parent = nullptr);
+    explicit Relay(QObject* parent = nullptr);
     ~Relay() override;
 
-    void sendFrom(const QString& scope, QObject& object);
+    void attach(ChannelEnd& channel);
+    void detach();
+    void replay();
+
+    void sendFrom(const QString& scope, QObject& object, std::span<const Latch> latches = {});
     void deliverTo(const QString& scope, QObject& object);
     void forget(const QString& scope);
 
@@ -58,12 +72,22 @@ signals:
 
 private:
     class Tap;
+    struct Latched {
+        QString scope;
+        QByteArray key;
+        QByteArray frame;
+    };
 
+    void post(const QString& scope, const QByteArray& frame, const QByteArray* latchKey);
     void deliver(const QByteArray& frame);
 
-    ChannelEnd& channel_;
+    QPointer<ChannelEnd> channel_;
+    QMetaObject::Connection receiving_;
     std::vector<std::unique_ptr<Tap>> taps_;
     QHash<QString, QPointer<QObject>> targets_;
+    std::uint64_t latchSeq_ = 0;
+    std::map<std::uint64_t, Latched> latched_;
+    QHash<QByteArray, std::uint64_t> latchedAt_;
 };
 
 }  // namespace bazarish::app

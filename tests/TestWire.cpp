@@ -176,6 +176,60 @@ int roundTrip(Relay& from, Relay& to, QObject& sent, QObject& got)
     return static_cast<int>(expected.size());
 }
 
+template <typename... Args>
+std::pair<QByteArray, QByteArray> heardAs(const QByteArray& signature, const Args&... args)
+{
+    QByteArray bytes;
+    QDataStream out(&bytes, QIODevice::WriteOnly);
+    out.setVersion(kWireStreamVersion);
+    (out << ... << args);
+    return {signature, bytes};
+}
+
+void latchedStateReachesALateWindow()
+{
+    const QString scope = QStringLiteral("acct");
+    Relay core;
+    AccountEvents sent;
+    core.sendFrom(scope, sent, kAccountLatches);
+    emit sent.renamed(QStringLiteral("a"));
+    emit sent.renamed(QStringLiteral("b"));
+    emit sent.avatarReady(QStringLiteral("fp1"), QByteArray("x"));
+    emit sent.avatarReady(QStringLiteral("fp2"), QByteArray("y"));
+    emit sent.avatarReady(QStringLiteral("fp1"), QByteArray("z"));
+    emit sent.actionFailed(QStringLiteral("lost"));
+
+    InProcessChannel channel;
+    Relay window;
+    window.attach(channel.second());
+    AccountEvents got;
+    window.deliverTo(scope, got);
+    Recorder recorder(got);
+    core.attach(channel.first());
+    core.replay();
+    emit sent.actionFailed(QStringLiteral("live"));
+    const std::vector<std::pair<QByteArray, QByteArray>> expected = {
+        heardAs("renamed(QString)", QStringLiteral("b")),
+        heardAs("avatarReady(QString,QByteArray)", QStringLiteral("fp2"), QByteArray("y")),
+        heardAs("avatarReady(QString,QByteArray)", QStringLiteral("fp1"), QByteArray("z")),
+        heardAs("actionFailed(QString)", QStringLiteral("live")),
+    };
+    settleUntil([&]() { return recorder.heard.size() >= expected.size(); });
+    CHECK(recorder.heard == expected);
+
+    core.forget(scope);
+    InProcessChannel again;
+    Relay second;
+    second.attach(again.second());
+    AccountEvents gotAgain;
+    second.deliverTo(scope, gotAgain);
+    Recorder nothing(gotAgain);
+    core.attach(again.first());
+    core.replay();
+    QCoreApplication::processEvents();
+    CHECK(nothing.heard.empty());
+}
+
 QByteArray frameFor(const QString& scope, const QByteArray& signature, const QString& arg)
 {
     QByteArray frame;
@@ -197,8 +251,10 @@ int main(int argc, char** argv)
 {
     const QCoreApplication app(argc, argv);
     InProcessChannel channel;
-    Relay left(channel.first());
-    Relay right(channel.second());
+    Relay left;
+    left.attach(channel.first());
+    Relay right;
+    right.attach(channel.second());
     int breaks = 0;
     QObject::connect(&right, &Relay::broken, [&breaks](const QString&) { ++breaks; });
 
@@ -247,6 +303,8 @@ int main(int argc, char** argv)
         refused = true;
     }
     CHECK(refused);
+
+    latchedStateReachesALateWindow();
 
     std::fprintf(stderr, "TestWire passed\n");
     return 0;

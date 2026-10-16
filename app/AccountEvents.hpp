@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "Wire.hpp"
+
 #include <QByteArray>
 #include <QDataStream>
 #include <QObject>
@@ -70,6 +72,28 @@ inline QDataStream& operator>>(QDataStream& in, OperationRow& row)
 }
 
 enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
+
+inline constexpr Latch kAccountLatches[] = {
+    {"transcriptOpened"},
+    {"opened"},
+    {"renamed"},
+    {"accountRenamed"},
+    {"presence"},
+    {"connectionChanged"},
+    {"connectProgress"},
+    {"facadeInfo"},
+    {"contactsRefreshed"},
+    {"accountSettings"},
+    {"approvalState"},
+    {"i2pStatus"},
+    {"i2pKeyState"},
+    {"i2pServedAddress"},
+    {"callStateChanged"},
+    {"reactionsToFlash"},
+    {"recentReactions"},
+    {"aliasHoldings"},
+    {"avatarReady", 1},
+};
 
 class AccountEvents : public QObject {
     Q_OBJECT

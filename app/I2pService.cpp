@@ -101,7 +101,7 @@ I2pService::I2pService(QObject* parent)
 
 void I2pService::attach(Relay& relay)
 {
-    relay.sendFrom(kI2pScope, events_);
+    relay.sendFrom(kI2pScope, events_, kI2pLatches);
     relay.deliverTo(kI2pScope, commands_);
 }
 

@@ -11,6 +11,7 @@
 #include <QMetaObject>
 #include <QMetaType>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -60,8 +61,8 @@ ChannelEnd& InProcessChannel::second()
 // No Q_OBJECT: qt_metacall is overridden so one object can listen to every signal of another.
 class Relay::Tap : public QObject {
 public:
-    Tap(ChannelEnd& channel, const QString& scope, QObject& source)
-        : channel_(channel)
+    Tap(Relay& relay, const QString& scope, QObject& source, const std::span<const Latch> latches)
+        : relay_(relay)
         , scope_(scope)
     {
         const QMetaObject* const meta = source.metaObject();
@@ -80,6 +81,9 @@ public:
             const int slot = QObject::staticMetaObject.methodCount()
                 + static_cast<int>(methods_.size());
             methods_.push_back(method);
+            const auto latch = std::find_if(latches.begin(), latches.end(),
+                [&method](const Latch& entry) { return method.name() == entry.name; });
+            keyArgs_.push_back(latch == latches.end() ? kNotLatched : latch->keyArgs);
             if (!QMetaObject::connect(&source, index, this, slot, Qt::DirectConnection)) {
                 throw std::logic_error("a signal that could not be tapped: "
                     + method.methodSignature().toStdString());
@@ -94,7 +98,7 @@ public:
             return id;
         }
         if (id < static_cast<int>(methods_.size())) {
-            forward(methods_[static_cast<std::size_t>(id)], args);
+            forward(static_cast<std::size_t>(id), args);
         }
         return -1;
     }
@@ -102,38 +106,84 @@ public:
     QString scope() const { return scope_; }
 
 private:
-    void forward(const QMetaMethod& method, void** args)
+    static constexpr int kNotLatched = -1;
+
+    void forward(const std::size_t at, void** args)
     {
+        const QMetaMethod& method = methods_[at];
         QByteArray frame;
         QDataStream out(&frame, QIODevice::WriteOnly);
         out.setVersion(kWireStreamVersion);
         out << scope_ << method.methodSignature();
-        for (int at = 0; at < method.parameterCount(); ++at) {
-            if (!method.parameterMetaType(at).save(out, args[at + 1])) {
+        QByteArray key = method.methodSignature();
+        const int keyArgs = keyArgs_[at];
+        for (int arg = 0; arg < method.parameterCount(); ++arg) {
+            const qsizetype before = frame.size();
+            if (!method.parameterMetaType(arg).save(out, args[arg + 1])) {
                 throw std::logic_error(
                     "an argument that did not encode: " + method.methodSignature().toStdString());
             }
+            if (arg < keyArgs) {
+                key += frame.sliced(before);
+            }
         }
-        channel_.send(frame);
+        relay_.post(scope_, frame, keyArgs == kNotLatched ? nullptr : &key);
     }
 
-    ChannelEnd& channel_;
+    Relay& relay_;
     QString scope_;
     std::vector<QMetaMethod> methods_;
+    std::vector<int> keyArgs_;
 };
 
-Relay::Relay(ChannelEnd& channel, QObject* const parent)
+Relay::Relay(QObject* const parent)
     : QObject(parent)
-    , channel_(channel)
 {
-    connect(&channel_, &ChannelEnd::received, this, &Relay::deliver);
 }
 
 Relay::~Relay() = default;
 
-void Relay::sendFrom(const QString& scope, QObject& object)
+void Relay::attach(ChannelEnd& channel)
 {
-    taps_.push_back(std::make_unique<Tap>(channel_, scope, object));
+    detach();
+    channel_ = &channel;
+    receiving_ = connect(&channel, &ChannelEnd::received, this, &Relay::deliver);
+}
+
+void Relay::detach()
+{
+    disconnect(receiving_);
+    channel_ = nullptr;
+}
+
+void Relay::replay()
+{
+    if (channel_ == nullptr) {
+        return;
+    }
+    for (const auto& [seq, entry] : latched_) {
+        channel_->send(entry.frame);
+    }
+}
+
+void Relay::post(const QString& scope, const QByteArray& frame, const QByteArray* const latchKey)
+{
+    if (latchKey != nullptr) {
+        const QByteArray key = scope.toUtf8() + '\0' + *latchKey;
+        if (const auto was = latchedAt_.constFind(key); was != latchedAt_.cend()) {
+            latched_.erase(was.value());
+        }
+        latchedAt_.insert(key, ++latchSeq_);
+        latched_.emplace(latchSeq_, Latched{scope, key, frame});
+    }
+    if (channel_ != nullptr) {
+        channel_->send(frame);
+    }
+}
+
+void Relay::sendFrom(const QString& scope, QObject& object, const std::span<const Latch> latches)
+{
+    taps_.push_back(std::make_unique<Tap>(*this, scope, object, latches));
 }
 
 void Relay::deliverTo(const QString& scope, QObject& object)
@@ -146,6 +196,14 @@ void Relay::forget(const QString& scope)
     targets_.remove(scope);
     std::erase_if(
         taps_, [&scope](const std::unique_ptr<Tap>& tap) { return tap->scope() == scope; });
+    for (auto entry = latched_.begin(); entry != latched_.end();) {
+        if (entry->second.scope != scope) {
+            ++entry;
+            continue;
+        }
+        latchedAt_.remove(entry->second.key);
+        entry = latched_.erase(entry);
+    }
 }
 
 void Relay::deliver(const QByteArray& frame)

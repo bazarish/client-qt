@@ -57,6 +57,18 @@ inline QDataStream& operator>>(QDataStream& in, AccountRow& row)
     return in;
 }
 
+inline constexpr Latch kAppLatches[] = {
+    {"settings"},
+    {"accountList"},
+    {"accounts"},
+    {"activeChanged"},
+    {"ringing"},
+    {"call"},
+    {"speakerOn"},
+    {"pairing"},
+    {"deleting"},
+};
+
 class AppEvents : public QObject {
     Q_OBJECT
 public:

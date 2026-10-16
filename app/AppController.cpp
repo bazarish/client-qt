@@ -160,6 +160,9 @@ void AppController::startSession(const QString& id)
     relay_->deliverTo(id, ctrl->events());
     connect(ctrl, &SessionController::openFailed, this, &AppController::accountOpenFailed);
     emit accountsChanged();
+    if (id == activeId_) {
+        emit sessionChanged();
+    }
     if (pendingConversation_.first == id) {
         const auto [account, peer] = std::exchange(pendingConversation_, {});
         openConversationOf(account, peer);

@@ -7,6 +7,7 @@
 #include "I2pService.hpp"
 #include "OperationLog.hpp"
 #include "Ringtone.hpp"
+#include "Wire.hpp"
 
 #include <QList>
 #include <QObject>
@@ -23,8 +24,8 @@ class Endpoint;
 
 namespace bazarish::app {
 
+class ChannelEnd;
 class CoreAccount;
-class Relay;
 
 class CoreHost : public QObject {
     Q_OBJECT
@@ -32,8 +33,9 @@ public:
     explicit CoreHost(QObject* parent = nullptr);
     ~CoreHost() override;
 
-    void attach(Relay& relay);
     void start();
+    void attachWindow(ChannelEnd& channel);
+    void detachWindow();
 
     QVector<AccountRow> accountStatuses() const { return accountStatuses_; }
     bool notificationsEnabled() const { return notifications_; }
@@ -59,6 +61,7 @@ signals:
     void reactionNotificationRequested(const QString& accountId, const QString& peer,
         const QString& title, const QString& body);
     void readyToExit();
+    void windowBroken(const QString& reason);
 
 private:
     CoreAccount* sessionFor(const QString& id) const;
@@ -102,7 +105,7 @@ private:
     AppCommands commands_;
     AppEvents events_;
     I2pService i2p_;
-    Relay* relay_ = nullptr;
+    Relay relay_;
     std::unique_ptr<client::AccountManager> manager_;
     QVector<AccountListRow> accountRows_;
     QVector<AccountRow> accountStatuses_;

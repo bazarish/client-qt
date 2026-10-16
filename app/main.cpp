@@ -298,22 +298,22 @@ int main(int argc, char** argv)
     engine.addImageProvider("picture", new bazarish::app::PictureProvider());
     engine.addImageProvider("qr", new bazarish::app::QrImageProvider());
 
+    const auto wireBroken = [](const QString& reason) {
+        bazarish::log::error("wire: {}", reason.toStdString());
+        QCoreApplication::exit(1);
+    };
     bazarish::app::CoreHost core;
+    QObject::connect(&core, &bazarish::app::CoreHost::windowBroken, &app, wireBroken);
+    core.start();
     bazarish::app::InProcessChannel channel;
-    bazarish::app::Relay coreRelay(channel.first());
-    bazarish::app::Relay windowRelay(channel.second());
-    for (bazarish::app::Relay* const relay : {&coreRelay, &windowRelay}) {
-        QObject::connect(relay, &bazarish::app::Relay::broken, &app, [](const QString& reason) {
-            bazarish::log::error("wire: {}", reason.toStdString());
-            QCoreApplication::exit(1);
-        });
-    }
-    core.attach(coreRelay);
+    bazarish::app::Relay windowRelay;
+    QObject::connect(&windowRelay, &bazarish::app::Relay::broken, &app, wireBroken);
+    windowRelay.attach(channel.second());
     bazarish::app::AppController controller;
     controller.attach(windowRelay);
     bazarish::app::I2pController i2pController;
     i2pController.attach(windowRelay);
-    core.start();
+    core.attachWindow(channel.first());
     engine.rootContext()->setContextProperty("App", &controller);
     engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
     engine.rootContext()->setContextProperty("Audio", &bazarish::app::AudioRoute::instance());

@@ -474,6 +474,13 @@ void CoreAccount::goOffline()
     emit commands_.requestSetSync(false);
 }
 
+void CoreAccount::replayOperations()
+{
+    for (const OperationRow& row : log_.rows()) {
+        emit events_.opChanged(row);
+    }
+}
+
 void CoreAccount::rebuildI2pLinks()
 {
     linksRebuilding_ = true;

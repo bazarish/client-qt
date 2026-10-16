@@ -101,16 +101,35 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::windowActive, this,
         [this](const bool active) { windowActive_ = active; });
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
+
+    connect(&relay_, &Relay::broken, this, &CoreHost::windowBroken);
+    relay_.sendFrom(kAppScope, events_, kAppLatches);
+    relay_.deliverTo(kAppScope, commands_);
+    i2p_.attach(relay_);
 }
 
 CoreHost::~CoreHost() = default;
 
-void CoreHost::attach(Relay& relay)
+void CoreHost::attachWindow(ChannelEnd& channel)
 {
-    relay_ = &relay;
-    relay.sendFrom(kAppScope, events_);
-    relay.deliverTo(kAppScope, commands_);
-    i2p_.attach(relay);
+    relay_.attach(channel);
+    for (const CoreAccount* const account : sessions_) {
+        emit events_.sessionStarted(account->accountId());
+    }
+    relay_.replay();
+    for (const OperationRow& row : log_.rows()) {
+        emit events_.opChanged(row);
+    }
+    for (CoreAccount* const account : sessions_) {
+        account->replayOperations();
+    }
+    emit events_.started();
+}
+
+void CoreHost::detachWindow()
+{
+    relay_.detach();
+    windowActive_ = false;
 }
 
 void CoreHost::start()
@@ -129,7 +148,6 @@ void CoreHost::start()
         setActive(sessions_.first()->accountId());
     }
     refreshAccounts();
-    emit events_.started();
 }
 
 CoreAccount* CoreHost::sessionFor(const QString& id) const
@@ -381,8 +399,8 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
 
     auto* const account = new CoreAccount(id, this);
     sessions_.append(account);
-    relay_->sendFrom(id, account->events());
-    relay_->deliverTo(id, account->commands());
+    relay_.sendFrom(id, account->events(), kAccountLatches);
+    relay_.deliverTo(id, account->commands());
     emit events_.sessionStarted(id);
 
     connect(&account->events(), &AccountEvents::opened, this, [this, id, makeActive]() {
@@ -461,7 +479,7 @@ void CoreHost::removeSession(CoreAccount* const account)
     }
     updateRinging();
     refreshAccounts();
-    relay_->forget(id);
+    relay_.forget(id);
     emit events_.sessionEnded(id);
     connect(&account->events(), &AccountEvents::closed, this, [this, account, id]() {
         account->deleteLater();

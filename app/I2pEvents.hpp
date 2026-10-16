@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "Wire.hpp"
+
 #include <QDataStream>
 #include <QObject>
 #include <QString>
@@ -101,6 +103,8 @@ signals:
     void useEmbedded();
     void refresh();
 };
+
+inline constexpr Latch kI2pLatches[] = {{"state"}};
 
 class I2pEvents : public QObject {
     Q_OBJECT

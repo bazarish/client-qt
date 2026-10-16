@@ -53,6 +53,7 @@ public:
     void goOnline();
     void goOffline();
     void rebuildI2pLinks();
+    void replayOperations();
     void beginShutdown();
     void shutdown();
 
