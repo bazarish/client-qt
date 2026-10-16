@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 
 public final class Bazarish {
-    static final String CHANNEL_PRESENCE = "presence";
+    static final String CHANNEL_PRESENCE = "status";
     static final String CHANNEL_MESSAGES = "message";
     static final String CHANNEL_REACTIONS = "reaction";
     static final String CHANNEL_CALLS = "calls";
@@ -66,11 +66,9 @@ public final class Bazarish {
         notificationsOn = notifications;
         line = presenceLine;
         NotificationManager manager = app.getSystemService(NotificationManager.class);
-        // Default importance keeps it out of the silent group; with no sound it never rings.
+        // Low importance is what Android draws collapsed until it is pulled open.
         NotificationChannel presenceChannel = new NotificationChannel(
-            CHANNEL_PRESENCE, presence, NotificationManager.IMPORTANCE_DEFAULT);
-        presenceChannel.setSound(null, null);
-        presenceChannel.enableVibration(false);
+            CHANNEL_PRESENCE, presence, NotificationManager.IMPORTANCE_LOW);
         presenceChannel.setShowBadge(false);
         manager.createNotificationChannel(presenceChannel);
         manager.createNotificationChannel(sounding(CHANNEL_MESSAGES, messages,
