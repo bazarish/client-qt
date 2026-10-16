@@ -58,7 +58,7 @@ void SessionController::startCall(const QString& peer)
     if (target.isEmpty() || !speakerPresent()) {
         return;
     }
-    emit requestStartCall(target);
+    emit commands_.requestStartCall(target);
 }
 
 void SessionController::acceptCall()
@@ -66,7 +66,7 @@ void SessionController::acceptCall()
     if (!speakerPresent()) {
         return;
     }
-    emit requestAcceptCall(callId_);
+    emit commands_.requestAcceptCall(callId_);
 }
 
 QString SessionController::callStage() const
@@ -81,19 +81,19 @@ void SessionController::declineCall()
     refusedCallId_ = callId_;
     const QString callId = callId_;
     onCallStateChanged(0, QString(), QString(), false, QString(), false, 0, 0.0F, 0.0F);
-    emit requestDeclineCall(callId);
+    emit commands_.requestDeclineCall(callId);
 }
 
 void SessionController::endCall()
 {
     callEndedLocally_ = true;
     callTones_.stop();
-    emit requestEndCall();
+    emit commands_.requestEndCall();
 }
 
 void SessionController::setCallMuted(const bool muted)
 {
-    emit requestSetCallMuted(muted);
+    emit commands_.requestSetCallMuted(muted);
 }
 
 void SessionController::onCallStateChanged(const int state, const QString& peer,

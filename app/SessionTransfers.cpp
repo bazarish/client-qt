@@ -60,7 +60,7 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
     pendingSavePath_.insert(token, dest);
     beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
         QFileInfo(dest).fileName(), tr("Connecting…"), activePeer_, e2eId);
-    emit requestSaveAttachment(peer, e2eId, dest, token);
+    emit commands_.requestSaveAttachment(peer, e2eId, dest, token);
 }
 
 QUrl SessionController::defaultSaveUrl(const QString& fileName) const
@@ -186,7 +186,7 @@ void SessionController::onServedFinished(
 
 void SessionController::cancelTransfer(const QString& e2eId)
 {
-    emit requestCancelTransfer(e2eId);
+    emit commands_.requestCancelTransfer(e2eId);
 }
 
 void SessionController::replayTransfersForActivePeer()

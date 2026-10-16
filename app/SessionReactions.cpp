@@ -151,7 +151,7 @@ void SessionController::react(const QString& e2eId, const QString& emoji)
         reportUnsaved();
         return;
     }
-    emit requestSendReaction(activePeer_, e2eId, next);
+    emit commands_.requestSendReaction(activePeer_, e2eId, next);
     ++reactionsRevision_;
     emit reactionsRevisionChanged();
 }

@@ -104,16 +104,6 @@ constexpr int kLinkRebuildGraceMs = 1500;
 
 constexpr qint64 kCommandVisibleAfterMs = 400;
 
-const QSet<QByteArray> kSelfDescribingCommands = {
-    "requestOpen", "requestConnect", "requestShutdown", "requestSendText", "requestSendFile",
-    "requestSendPicture", "requestSendVoice", "requestSendCallback", "requestSendCommand",
-    "requestAddByInvite", "requestAddByAlias", "requestAcceptContact", "requestInviteSig",
-    "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
-    "requestPublishThisDeviceAddress", "requestPublishFreshAddress", "requestRefreshI2pStatus",
-    "requestRefreshStorageUsage", "requestRefreshDevices", "requestForgetDevice",
-    "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
-    "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
-};
 
 const QString kConnectOperationId = QStringLiteral("connect");
 
@@ -205,14 +195,6 @@ qint64 highestId(const QVector<StoredMessage>& rows)
 
 }  // namespace
 
-// Both travel through a queued signal from the worker, so Qt has to know them by name.
-namespace {
-const int kLoginSignerMetaType
-    = qRegisterMetaType<std::shared_ptr<bazarish::client::LoginSigner>>(
-        "std::shared_ptr<bazarish::client::LoginSigner>");
-const int kContactStateMetaType
-    = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
-}  // namespace
 
 SessionController::SessionController(QObject* parent)
     : QObject(parent)
@@ -224,101 +206,33 @@ SessionController::SessionController(QObject* parent)
     readSyncTimer_.setSingleShot(true);
     connect(&readSyncTimer_, &QTimer::timeout, this, &SessionController::flushReadSync);
 
-    worker_ = new SessionWorker();
-    worker_->moveToThread(&thread_);
-    connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);
-
-    connect(this, &SessionController::requestOpen, worker_, &SessionWorker::openAccount);
-    connect(this, &SessionController::requestConnect, worker_, &SessionWorker::connectAndRegister);
-    connect(worker_, &SessionWorker::connectProgress, this, &SessionController::onConnectProgress);
-    connect(this, &SessionController::requestSendText, worker_, &SessionWorker::sendText);
-    connect(this, &SessionController::requestSendFile, worker_, &SessionWorker::sendFile);
-    connect(this, &SessionController::requestSendPicture, worker_, &SessionWorker::sendPicture);
-    connect(this, &SessionController::requestSendVoice, worker_, &SessionWorker::sendVoice);
-    connect(this, &SessionController::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
-    connect(this, &SessionController::requestSendReaction, worker_, &SessionWorker::sendReaction);
-    connect(this, &SessionController::requestSendCallback, worker_, &SessionWorker::sendCallback);
-    connect(this, &SessionController::requestSendCommand, worker_, &SessionWorker::sendCommand);
-    connect(this, &SessionController::requestSendEdit, worker_, &SessionWorker::sendEdit);
-    connect(this, &SessionController::requestSendDelete, worker_, &SessionWorker::sendDelete);
-    connect(this, &SessionController::requestUnsend, worker_, &SessionWorker::dropSentFile);
-    connect(this, &SessionController::requestSetAvatar, worker_, &SessionWorker::setAvatar);
-    connect(this, &SessionController::requestClearAvatar, worker_, &SessionWorker::clearAvatar);
-    connect(this, &SessionController::requestSetDisplayName, worker_,
-        &SessionWorker::setDisplayName);
-    connect(this, &SessionController::requestRenameContact, worker_, &SessionWorker::renameContact);
-    connect(this, &SessionController::requestRemoveContact, worker_, &SessionWorker::removeContact);
-    connect(this, &SessionController::requestClearSaved, worker_, &SessionWorker::clearSaved);
-    connect(this, &SessionController::requestSetBlocked, worker_, &SessionWorker::setBlocked);
-    connect(this, &SessionController::requestSetContactNotifications, worker_,
-        &SessionWorker::setContactNotifications);
-    connect(this, &SessionController::requestSetContactCalls, worker_,
-        &SessionWorker::setContactCalls);
-    connect(this, &SessionController::requestSyncChatPin, worker_, &SessionWorker::syncChatPin);
-    connect(this, &SessionController::requestSyncRead, worker_, &SessionWorker::syncRead);
-    connect(this, &SessionController::requestSyncChatClear, worker_,
-        &SessionWorker::syncChatClear);
-    connect(this, &SessionController::requestEmitSettings, worker_,
-        &SessionWorker::emitSettings);
-    connect(this, &SessionController::requestClearChatForEveryone, worker_,
-        &SessionWorker::clearChatForEveryone);
-    connect(this, &SessionController::requestAddByInvite, worker_, &SessionWorker::addByInvite);
-    connect(this, &SessionController::requestAddByAlias, worker_, &SessionWorker::addByAlias);
-    connect(this, &SessionController::requestAcceptContact, worker_, &SessionWorker::acceptContact);
-    connect(this, &SessionController::requestInviteSig, worker_, &SessionWorker::requestInvite);
-    connect(this, &SessionController::requestSignLoginSig, worker_, &SessionWorker::signLogin);
-    connect(this, &SessionController::requestPublishThisDeviceAddress, worker_,
-        &SessionWorker::publishThisDeviceAddress);
-    connect(this, &SessionController::requestPublishFreshAddress, worker_,
-        &SessionWorker::publishFreshAddress);
-    connect(worker_, &SessionWorker::addressMismatch, this,
+    connect(&events_, &AccountEvents::connectProgress, this, &SessionController::onConnectProgress);
+    connect(&events_, &AccountEvents::addressMismatch, this,
         [this](const QString& served, const QString& ours) {
             emit addressNeedsChoice(served, ours);
         });
-    connect(worker_, &SessionWorker::loginSignerReady, this,
-        [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {
-            loginSigner_ = std::move(signer);
-        });
-    connect(this, &SessionController::requestConnectionLog, worker_,
-        &SessionWorker::connectionLog);
-    connect(this, &SessionController::requestContactsFromDevices, worker_,
-        &SessionWorker::askDevicesForContacts);
-    connect(this, &SessionController::requestShutdown, worker_, &SessionWorker::shutdown);
-    connect(worker_, &SessionWorker::stopped, this, [this]() {
+    connect(&events_, &AccountEvents::stopped, this, [this]() {
         accountDb_.reset();
         store_.close();
-        thread_.quit();
     });
-    connect(&thread_, &QThread::finished, this, [this]() { emit closed(); });
-    connect(this, &SessionController::requestClearConnectionLog, worker_,
-        &SessionWorker::clearConnectionLog);
-    connect(this, &SessionController::requestSaveAttachment, worker_,
-        &SessionWorker::saveAttachment);
-    connect(worker_, &SessionWorker::downloadProgress, this,
+    connect(&events_, &AccountEvents::closed, this, &SessionController::closed);
+    connect(&events_, &AccountEvents::downloadProgress, this,
         &SessionController::onDownloadProgress);
-    connect(worker_, &SessionWorker::servedProgress, this, &SessionController::onServedProgress);
-    connect(worker_, &SessionWorker::transferStage, this, &SessionController::onTransferStage);
-    connect(worker_, &SessionWorker::servedFinished, this, &SessionController::onServedFinished);
-    connect(worker_, &SessionWorker::downloadFinished, this,
+    connect(&events_, &AccountEvents::servedProgress, this, &SessionController::onServedProgress);
+    connect(&events_, &AccountEvents::transferStage, this, &SessionController::onTransferStage);
+    connect(&events_, &AccountEvents::servedFinished, this, &SessionController::onServedFinished);
+    connect(&events_, &AccountEvents::downloadFinished, this,
         &SessionController::onDownloadFinished);
-    connect(this, &SessionController::requestExport, worker_, &SessionWorker::exportAccount);
-    connect(this, &SessionController::requestStartPairing, worker_,
-        &SessionWorker::startPairing);
-    connect(this, &SessionController::requestStopPairing, worker_, &SessionWorker::stopPairing);
-    connect(worker_, &SessionWorker::pairOfferReady, this, &SessionController::onPairOfferReady);
-    connect(worker_, &SessionWorker::pairStage, this, &SessionController::onPairStage);
-    connect(worker_, &SessionWorker::pairFinished, this, &SessionController::onPairFinished);
-    connect(this, &SessionController::requestChangePassphrase, worker_,
-        &SessionWorker::changePassphrase);
-    connect(this, &SessionController::requestActivateAliasServicing, worker_,
-        &SessionWorker::activateAliasServicing);
-    connect(worker_, &SessionWorker::aliasHoldings, this,
+    connect(&events_, &AccountEvents::pairOfferReady, this, &SessionController::onPairOfferReady);
+    connect(&events_, &AccountEvents::pairStage, this, &SessionController::onPairStage);
+    connect(&events_, &AccountEvents::pairFinished, this, &SessionController::onPairFinished);
+    connect(&events_, &AccountEvents::aliasHoldings, this,
         [this](const QVariantList& rows, const QString& note) {
             aliasHoldings_ = rows;
             aliasNote_ = note;
             emit aliasChanged();
         });
-    connect(worker_, &SessionWorker::aliasActivationDone, this, [this](const bool ok,
+    connect(&events_, &AccountEvents::aliasActivationDone, this, [this](const bool ok,
                                                                    const QString& text) {
         aliasBusy_ = false;
         emit aliasChanged();
@@ -329,42 +243,9 @@ SessionController::SessionController(QObject* parent)
             emit actionFailed(text);
         }
     });
-    connect(this, &SessionController::requestSetSync, worker_, &SessionWorker::setSyncEnabled);
-    connect(this, &SessionController::requestRebuildI2p, worker_, &SessionWorker::rebuildI2pLinks);
-    connect(this, &SessionController::requestCancelTransfer, worker_,
-        &SessionWorker::cancelTransfer);
-    connect(this, &SessionController::requestGeneratePersonalKey, worker_,
-        &SessionWorker::generatePersonalKey);
-    connect(this, &SessionController::requestLoadPersonalKey, worker_,
-        &SessionWorker::loadPersonalKey);
-    connect(this, &SessionController::requestReplacePersonalKey, worker_,
-        &SessionWorker::replacePersonalKey);
-    connect(this, &SessionController::requestSetAliasBinding, worker_,
-        &SessionWorker::setAliasBinding);
-    connect(this, &SessionController::requestRetryRoutingTo, worker_,
-        &SessionWorker::retryRoutingTo);
-    connect(this, &SessionController::requestPublishPersonalDest, worker_,
-        &SessionWorker::publishPersonalDest);
-    connect(this, &SessionController::requestSetDelegationDays, worker_,
-        &SessionWorker::setDelegationDays);
-    connect(this, &SessionController::requestSetAcceptCalls, worker_,
-        &SessionWorker::setAcceptCalls);
-    connect(this, &SessionController::requestSetSendReceipts, worker_,
-        &SessionWorker::setSendReceipts);
-    connect(this, &SessionController::requestDisablePersonalDest, worker_,
-        &SessionWorker::disablePersonalDest);
-    connect(this, &SessionController::requestRefreshI2pStatus, worker_,
-        &SessionWorker::refreshI2pStatus);
-    connect(this, &SessionController::requestRefreshStorageUsage, worker_,
-        &SessionWorker::refreshStorageUsage);
-    connect(this, &SessionController::requestStartCall, worker_, &SessionWorker::startCall);
-    connect(this, &SessionController::requestAcceptCall, worker_, &SessionWorker::acceptCall);
-    connect(this, &SessionController::requestDeclineCall, worker_, &SessionWorker::declineCall);
-    connect(this, &SessionController::requestEndCall, worker_, &SessionWorker::endCall);
-    connect(this, &SessionController::requestSetCallMuted, worker_, &SessionWorker::setCallMuted);
 
-    connect(worker_, &SessionWorker::opened, this, &SessionController::onOpened);
-    connect(worker_, &SessionWorker::accountSettings, this,
+    connect(&events_, &AccountEvents::opened, this, &SessionController::onOpened);
+    connect(&events_, &AccountEvents::accountSettings, this,
         [this](const bool acceptCalls, const bool sendReceipts) {
             if (sendReceipts_ != sendReceipts) {
                 sendReceipts_ = sendReceipts;
@@ -375,19 +256,18 @@ SessionController::SessionController(QObject* parent)
                 emit acceptCallsChanged();
             }
         });
-    connect(worker_, &SessionWorker::renamed, this, [this](const QString& newName) {
+    connect(&events_, &AccountEvents::renamed, this, [this](const QString& newName) {
         if (newName != displayName_) {
             displayName_ = newName;
             emit identityChanged();
         }
     });
-    connect(worker_, &SessionWorker::openFailed, this, &SessionController::openFailed);
-    connect(worker_, &SessionWorker::connectionChanged, this,
+    connect(&events_, &AccountEvents::openFailed, this, &SessionController::openFailed);
+    connect(&events_, &AccountEvents::connectionChanged, this,
         &SessionController::onConnectionChanged);
-    connect(worker_, &SessionWorker::messageReceived, this,
+    connect(&events_, &AccountEvents::messageReceived, this,
         &SessionController::onMessageReceived);
-    connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
-    connect(worker_, &SessionWorker::contactsRefreshed, this,
+    connect(&events_, &AccountEvents::contactsRefreshed, this,
         [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
             contactFps_.clear();
             contactState_.clear();
@@ -402,54 +282,47 @@ SessionController::SessionController(QObject* parent)
             ++contactsRevision_;
             emit contactsRevisionChanged();
         });
-    connect(worker_, &SessionWorker::avatarReady, this, &SessionController::onAvatarReady);
-    connect(worker_, &SessionWorker::sendProgress, this, &SessionController::onSendProgress);
-    connect(worker_, &SessionWorker::uploadProgress, this, &SessionController::onUploadProgress);
-    connect(worker_, &SessionWorker::sendResult, this, &SessionController::onSendResult);
-    connect(worker_, &SessionWorker::sendPhase, this, &SessionController::onSendPhase);
-    connect(worker_, &SessionWorker::contactRequestSent, this,
+    connect(&events_, &AccountEvents::avatarReady, this, &SessionController::onAvatarReady);
+    connect(&events_, &AccountEvents::sendProgress, this, &SessionController::onSendProgress);
+    connect(&events_, &AccountEvents::uploadProgress, this, &SessionController::onUploadProgress);
+    connect(&events_, &AccountEvents::sendResult, this, &SessionController::onSendResult);
+    connect(&events_, &AccountEvents::sendPhase, this, &SessionController::onSendPhase);
+    connect(&events_, &AccountEvents::contactRequestSent, this,
         &SessionController::onContactRequestSent);
-    connect(worker_, &SessionWorker::contactAddStage, this,
+    connect(&events_, &AccountEvents::contactAddStage, this,
         &SessionController::onContactAddStage);
-    connect(this, &SessionController::requestForgetPendingAdd, worker_,
-        &SessionWorker::forgetPendingAdd);
-    connect(worker_, &SessionWorker::contactAddDone, this, &SessionController::onContactAddDone);
-    connect(worker_, &SessionWorker::routingTold, this, &SessionController::onRoutingTold);
-    connect(worker_, &SessionWorker::contactAlreadyKnown, this,
+    connect(&events_, &AccountEvents::contactAddDone, this, &SessionController::onContactAddDone);
+    connect(&events_, &AccountEvents::routingTold, this, &SessionController::onRoutingTold);
+    connect(&events_, &AccountEvents::contactAlreadyKnown, this,
         &SessionController::onContactAlreadyKnown);
-    connect(worker_, &SessionWorker::contactAliasUnknown, this,
+    connect(&events_, &AccountEvents::contactAliasUnknown, this,
         &SessionController::onContactAliasUnknown);
-    connect(worker_, &SessionWorker::contactAddResolved, this,
+    connect(&events_, &AccountEvents::contactAddResolved, this,
         &SessionController::onContactAddResolved);
-    connect(worker_, &SessionWorker::contactRequestUnconfirmed, this,
+    connect(&events_, &AccountEvents::contactRequestUnconfirmed, this,
         &SessionController::onContactRequestUnconfirmed);
-    connect(worker_, &SessionWorker::contactAddResumed, this,
+    connect(&events_, &AccountEvents::contactAddResumed, this,
         &SessionController::onContactAddResumed);
-    connect(worker_, &SessionWorker::contactAddRateLimited, this,
+    connect(&events_, &AccountEvents::contactAddRateLimited, this,
         &SessionController::onContactAddRateLimited);
-    connect(worker_, &SessionWorker::contactAccepted, this,
+    connect(&events_, &AccountEvents::contactAccepted, this,
         &SessionController::onContactAccepted);
-    connect(worker_, &SessionWorker::opBegin, this, &SessionController::onOpBegin);
-    connect(worker_, &SessionWorker::opDone, this, &SessionController::onOpDone);
-    connect(worker_, &SessionWorker::opProgress, this,
+    connect(&events_, &AccountEvents::opBegin, this, &SessionController::onOpBegin);
+    connect(&events_, &AccountEvents::opDone, this, &SessionController::onOpDone);
+    connect(&events_, &AccountEvents::opProgress, this,
         [this](const QString& opId, const QString& status) { updateOperation(opId, status); });
-    connect(worker_, &SessionWorker::syncReachable, this, &SessionController::onSyncReachable);
-    connect(worker_, &SessionWorker::approvalState, this, &SessionController::onApprovalState);
-    connect(worker_, &SessionWorker::devicesReady, this, &SessionController::onDevicesReady);
-    connect(this, &SessionController::requestRefreshDevices, worker_,
-        &SessionWorker::refreshDevices);
-    connect(this, &SessionController::requestForgetDevice, worker_, &SessionWorker::forgetDevice);
-    connect(this, &SessionController::requestCloseAccountOnServer, worker_,
-        &SessionWorker::closeAccountOnServer);
-    connect(worker_, &SessionWorker::accountClosed, this,
+    connect(&events_, &AccountEvents::syncReachable, this, &SessionController::onSyncReachable);
+    connect(&events_, &AccountEvents::approvalState, this, &SessionController::onApprovalState);
+    connect(&events_, &AccountEvents::devicesReady, this, &SessionController::onDevicesReady);
+    connect(&events_, &AccountEvents::accountClosed, this,
         &SessionController::accountClosedOnServer);
-    connect(worker_, &SessionWorker::facadeInfo, this, &SessionController::onFacadeInfo);
-    connect(worker_, &SessionWorker::actionOk, this, &SessionController::actionOk);
-    connect(worker_, &SessionWorker::botActionDone, this,
+    connect(&events_, &AccountEvents::facadeInfo, this, &SessionController::onFacadeInfo);
+    connect(&events_, &AccountEvents::actionOk, this, &SessionController::actionOk);
+    connect(&events_, &AccountEvents::botActionDone, this,
         [this](const QString& opId, const bool ok, const QString& error) {
             finishOperation(opId, ok, ok ? tr("Sent") : error);
         });
-    connect(worker_, &SessionWorker::actionFailed, this, [this](const QString& reason) {
+    connect(&events_, &AccountEvents::actionFailed, this, [this](const QString& reason) {
         setAvatarBusy(false);
         if (connecting_) {
             connecting_ = false;
@@ -460,33 +333,33 @@ SessionController::SessionController(QObject* parent)
         }
         emit actionFailed(reason);
     });
-    connect(worker_, &SessionWorker::inviteReady, this, [this](const QString& uri) {
+    connect(&events_, &AccountEvents::inviteReady, this, [this](const QString& uri) {
         if (ownInvite_ != uri) {
             ownInvite_ = uri;
             emit ownInviteChanged();
         }
         emit inviteReady(uri);
     });
-    connect(worker_, &SessionWorker::inviteUnavailable, this,
+    connect(&events_, &AccountEvents::inviteUnavailable, this,
         &SessionController::inviteUnavailable);
-    connect(worker_, &SessionWorker::loginSigned, this, &SessionController::loginSigned);
-    connect(worker_, &SessionWorker::connectionLogReady, this,
+    connect(&events_, &AccountEvents::loginSigned, this, &SessionController::loginSigned);
+    connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
-    connect(worker_, &SessionWorker::serverHello, this, &SessionController::serverHello);
-    connect(worker_, &SessionWorker::i2pStatus, this, &SessionController::onI2pStatus);
-    connect(worker_, &SessionWorker::i2pKeyState, this, &SessionController::onI2pKeyState);
-    connect(worker_, &SessionWorker::i2pServedAddress, this, [this](const QString& address) {
+    connect(&events_, &AccountEvents::serverHello, this, &SessionController::serverHello);
+    connect(&events_, &AccountEvents::i2pStatus, this, &SessionController::onI2pStatus);
+    connect(&events_, &AccountEvents::i2pKeyState, this, &SessionController::onI2pKeyState);
+    connect(&events_, &AccountEvents::i2pServedAddress, this, [this](const QString& address) {
         if (i2pServedAddress_ == address) {
             return;
         }
         i2pServedAddress_ = address;
         emit i2pStatusChanged();
     });
-    connect(worker_, &SessionWorker::storageUsageReady, this,
+    connect(&events_, &AccountEvents::storageUsageReady, this,
         &SessionController::onStorageUsageReady);
-    connect(worker_, &SessionWorker::callStateChanged, this,
+    connect(&events_, &AccountEvents::callStateChanged, this,
         &SessionController::onCallStateChanged);
-    connect(worker_, &SessionWorker::callLogged, this, &SessionController::onCallLogged);
+    connect(&events_, &AccountEvents::callLogged, this, &SessionController::onCallLogged);
 
     connect(&contacts_, &QAbstractItemModel::dataChanged, this,
         &SessionController::refreshUnreadTotal);
@@ -495,24 +368,16 @@ SessionController::SessionController(QObject* parent)
     connect(&contacts_, &QAbstractItemModel::modelReset, this,
         &SessionController::refreshUnreadTotal);
 
-    const QMetaObject* const meta = metaObject();
-    const QMetaMethod noted = meta->method(meta->indexOfSlot("noteCommandQueued()"));
-    const QMetaMethod done = SessionWorker::staticMetaObject.method(
-        SessionWorker::staticMetaObject.indexOfSlot("noteCommandDone()"));
-    QSet<QByteArray> bracketed;
-    for (int i = meta->methodOffset(); i < meta->methodCount(); ++i) {
-        const QMetaMethod method = meta->method(i);
-        if (method.methodType() != QMetaMethod::Signal
-            || !method.name().startsWith("request")
-            || kSelfDescribingCommands.contains(method.name())
-            || bracketed.contains(method.name())) {
-            continue;
+    const QMetaObject& commands = AccountCommands::staticMetaObject;
+    const QMetaMethod noted = metaObject()->method(metaObject()->indexOfSlot("noteCommandQueued()"));
+    for (int i = commands.methodOffset(); i < commands.methodCount(); ++i) {
+        const QMetaMethod method = commands.method(i);
+        if (method.methodType() == QMetaMethod::Signal
+            && !kSelfDescribingCommands.contains(method.name())) {
+            connect(&commands_, method, this, noted);
         }
-        bracketed.insert(method.name());
-        connect(this, method, this, noted);
-        connect(this, method, worker_, done);
     }
-    connect(worker_, &SessionWorker::commandFinished, this,
+    connect(&events_, &AccountEvents::commandFinished, this,
         &SessionController::onCommandFinished);
     commandTimer_.setInterval(kCommandTickMs);
     connect(&commandTimer_, &QTimer::timeout, this, &SessionController::showSlowCommands);
@@ -523,7 +388,7 @@ SessionController::SessionController(QObject* parent)
         onSyncReachable(false);
     });
 
-    thread_.start();
+    core_ = std::make_unique<CoreAccount>(commands_, events_);
 }
 
 namespace {
@@ -569,7 +434,7 @@ QString commandTitle(const QByteArray& signalName)
 
 void SessionController::noteCommandQueued()
 {
-    const QMetaMethod signal = metaObject()->method(senderSignalIndex());
+    const QMetaMethod signal = AccountCommands::staticMetaObject.method(senderSignalIndex());
     QueuedCommand command;
     command.id = QStringLiteral("cmd:") + QString::number(++commandSeq_);
     command.title = commandTitle(signal.name());
@@ -637,20 +502,13 @@ void SessionController::beginShutdown()
         return;
     }
     shuttingDown_ = true;
-    if (!thread_.isRunning()) {
-        emit closed();
-        return;
-    }
-    emit requestShutdown();
+    emit commands_.requestShutdown();
 }
 
 void SessionController::shutdown()
 {
     shuttingDown_ = true;
-    if (thread_.isRunning()) {
-        thread_.quit();
-        thread_.wait();
-    }
+    core_->shutdown();
     accountDb_.reset();
     store_.close();
 }
@@ -696,7 +554,7 @@ void SessionController::open(const QString& file, const QString& accountId,
         emit openFailed(tr("This profile could not be opened."));
         return;
     }
-    emit requestOpen(file, passphrase, startOnline);
+    emit commands_.requestOpen(file, passphrase, startOnline);
 }
 
 void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp,
@@ -709,7 +567,7 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
     beginOperation(kConnectOperationId, QStringLiteral("connect"),
         tr("Connecting this account"), connectPhase_);
     emit connectStateChanged();
-    emit requestConnect(facadeUrls, serverFp, reseedUrls);
+    emit commands_.requestConnect(facadeUrls, serverFp, reseedUrls);
 }
 
 void SessionController::onConnectProgress(const int percent, const QString& phase)
@@ -1104,7 +962,7 @@ void SessionController::setAvatarFromGrab(QObject* const grab)
         return;
     }
     setAvatarBusy(true);
-    emit requestSetAvatar(jpeg);
+    emit commands_.requestSetAvatar(jpeg);
 }
 
 void SessionController::setAvatarBusy(const bool busy)
@@ -1124,7 +982,7 @@ bool SessionController::hasAvatar() const
 void SessionController::clearAvatar()
 {
     setAvatarBusy(true);
-    emit requestClearAvatar();
+    emit commands_.requestClearAvatar();
 }
 
 void SessionController::setDisplayName(const QString& name)
@@ -1133,7 +991,7 @@ void SessionController::setDisplayName(const QString& name)
     if (trimmed.isEmpty() || trimmed == displayName_) {
         return;
     }
-    emit requestSetDisplayName(trimmed);
+    emit commands_.requestSetDisplayName(trimmed);
 }
 
 bool SessionController::canWriteTo(const QString& fp) const
@@ -1155,7 +1013,7 @@ void SessionController::renameContact(const QString& fp, const QString& name)
     contactState_[fp].name = trimmed;
     rebuildChatList();
     emit activePeerNameChanged();
-    emit requestRenameContact(fp, trimmed);
+    emit commands_.requestRenameContact(fp, trimmed);
 }
 
 void SessionController::clearChat(bool forEveryone)
@@ -1169,10 +1027,10 @@ void SessionController::clearChat(bool forEveryone)
         return;
     }
     if (!forEveryone) {
-        emit requestSyncChatClear(peer);
+        emit commands_.requestSyncChatClear(peer);
     }
     if (forEveryone) {
-        emit requestClearChatForEveryone(peer);
+        emit commands_.requestClearChatForEveryone(peer);
         StoredMessage sys;
         sys.peer = peer;
         sys.type = QStringLiteral("system");
@@ -1200,7 +1058,7 @@ void SessionController::deleteContact()
     contactState_.remove(peer);
     dropChat(peer);
     if (!hasAliasSigil(peer)) {
-        emit requestRemoveContact(peer);
+        emit commands_.requestRemoveContact(peer);
     }
 }
 
@@ -1226,7 +1084,7 @@ void SessionController::clearSavedEverywhere()
     loadLatestWindow();
     contacts_.touch(savedPeer(), savedChatName(), QString(), nowMillis(), false);
     rebuildChatList();
-    emit requestClearSaved();
+    emit commands_.requestClearSaved();
 }
 
 bool SessionController::isBlocked(const QString& peer) const
@@ -1258,7 +1116,7 @@ void SessionController::setBlocked(const QString& peer, const bool blocked)
     }
     ++contactsRevision_;
     emit contactsRevisionChanged();
-    emit requestSetBlocked(peer, blocked);
+    emit commands_.requestSetBlocked(peer, blocked);
 }
 
 bool SessionController::contactNotifications(const QString& peer) const
@@ -1279,7 +1137,7 @@ void SessionController::setContactNotifications(const QString& peer, const bool 
     contactState_[peer].notifications = on;
     ++contactsRevision_;
     emit contactsRevisionChanged();
-    emit requestSetContactNotifications(peer, on);
+    emit commands_.requestSetContactNotifications(peer, on);
 }
 
 void SessionController::setContactCalls(const QString& peer, const bool allowed)
@@ -1290,7 +1148,7 @@ void SessionController::setContactCalls(const QString& peer, const bool allowed)
     contactState_[peer].calls = allowed;
     ++contactsRevision_;
     emit contactsRevisionChanged();
-    emit requestSetContactCalls(peer, allowed);
+    emit commands_.requestSetContactCalls(peer, allowed);
 }
 
 void SessionController::unblockBeforeWriting(const QString& peer)
@@ -1351,7 +1209,7 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
             tr("To %1").arg(peerName(activePeer_)), tr("Sending…"),
             activePeer_);
     }
-    emit requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
+    emit commands_.requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
 }
 
 StoredMessage SessionController::beginAttachmentSend(const QString& type, const QString& name,
@@ -1405,7 +1263,7 @@ void SessionController::sendFile(const QString& fileUrl)
     if (m.id == 0) {
         return;
     }
-    emit requestSendFile(activePeer_, m.attSrcPath, m.id, m.e2eId, m.replyTo);
+    emit commands_.requestSendFile(activePeer_, m.attSrcPath, m.id, m.e2eId, m.replyTo);
 }
 
 void SessionController::sendPictureFile(const QString& fileUrl)
@@ -1457,7 +1315,7 @@ void SessionController::sendPreparedPicture(const PreparedPicture& picture)
         reportUnsaved();
     }
     conversation_.setPictureReadyForId(m.id, drawable);
-    emit requestSendPicture(
+    emit commands_.requestSendPicture(
         activePeer_, picture.bytes, picture.name, picture.mime, m.id, m.e2eId, m.replyTo);
 }
 
@@ -1471,7 +1329,7 @@ void SessionController::sendCallback(
     beginOperation(opId, QStringLiteral("bot"),
         (label.isEmpty() ? data : label) + QStringLiteral(" → ") + peerName(activePeer_),
         tr("Sending…"), activePeer_);
-    emit requestSendCallback(opId, activePeer_, data, refMsgId);
+    emit commands_.requestSendCallback(opId, activePeer_, data, refMsgId);
 }
 
 void SessionController::sendCommand(
@@ -1485,7 +1343,7 @@ void SessionController::sendCommand(
         (label.isEmpty() ? QStringLiteral("/") + command : label) + QStringLiteral(" → ")
             + peerName(activePeer_),
         tr("Sending…"), activePeer_);
-    emit requestSendCommand(opId, activePeer_, command, args);
+    emit commands_.requestSendCommand(opId, activePeer_, command, args);
 }
 
 void SessionController::beginEdit(qint64 localId, const QString& e2eId, const QString& text)
@@ -1574,7 +1432,7 @@ void SessionController::commitEdit(const QString& newText)
         conversation_.editById(editingLocalId_, trimmed, {});
         contacts_.touch(activePeer_, {}, trimmed, nowMillis(), false);
         restartDelivery(editingLocalId_);
-        emit requestSendEdit(activePeer_, editingE2eId_, editingLocalId_, trimmed);
+        emit commands_.requestSendEdit(activePeer_, editingE2eId_, editingLocalId_, trimmed);
     }
     cancelEdit();
 }
@@ -1601,59 +1459,45 @@ void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool
         return;
     }
     if (!e2eId.isEmpty()) {
-        emit requestUnsend(e2eId);
+        emit commands_.requestUnsend(e2eId);
     }
     conversation_.removeById(localId);
     statusById_.remove(localId);
     contacts_.touch(activePeer_, {}, chatPreview(activePeer_), store_.lastTime(activePeer_),
         false);
     if (outgoing && !e2eId.isEmpty()) {
-        emit requestSendDelete(activePeer_, e2eId);
+        emit commands_.requestSendDelete(activePeer_, e2eId);
     }
 }
 
 void SessionController::keepThisDeviceAddress()
 {
-    emit requestPublishThisDeviceAddress();
+    emit commands_.requestPublishThisDeviceAddress();
 }
 
 void SessionController::useFreshAddress()
 {
-    emit requestPublishFreshAddress();
+    emit commands_.requestPublishFreshAddress();
 }
 
 void SessionController::signLogin(const QString& challenge)
 {
-    if (loginSigner_) {
-        QString blob;
-        try {
-            blob = QString::fromStdString(loginSigner_->sign(challenge.toStdString()));
-        } catch (const std::exception& error) {
-            const QString problem = QString::fromUtf8(error.what());
-            QMetaObject::invokeMethod(
-                this, [this, problem]() { emit actionFailed(problem); }, Qt::QueuedConnection);
-            return;
-        }
-        QMetaObject::invokeMethod(
-            this, [this, blob]() { emit loginSigned(blob); }, Qt::QueuedConnection);
-        return;
-    }
-    emit requestSignLoginSig(challenge);
+    emit commands_.requestSignLoginSig(challenge);
 }
 
 void SessionController::askForContacts()
 {
-    emit requestContactsFromDevices();
+    emit commands_.requestContactsFromDevices();
 }
 
 void SessionController::refreshConnectionLog()
 {
-    emit requestConnectionLog();
+    emit commands_.requestConnectionLog();
 }
 
 void SessionController::clearConnectionLog()
 {
-    emit requestClearConnectionLog();
+    emit commands_.requestClearConnectionLog();
 }
 
 QVariantMap SessionController::describeLoginChallenge(const QString& challenge) const
@@ -1680,7 +1524,7 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
 void SessionController::changePassphrase(const QString& passphrase)
 {
     accountPassphrase_ = passphrase;
-    emit requestChangePassphrase(passphrase);
+    emit commands_.requestChangePassphrase(passphrase);
 }
 
 void SessionController::startPairing()
@@ -1691,7 +1535,7 @@ void SessionController::startPairing()
     pairProgress_ = kProgressUnknown;
     pairing_ = true;
     emit pairingChanged();
-    emit requestStartPairing();
+    emit commands_.requestStartPairing();
 }
 
 void SessionController::stopPairing()
@@ -1702,7 +1546,7 @@ void SessionController::stopPairing()
     pairStatus_.clear();
     pairProgress_ = kProgressUnknown;
     emit pairingChanged();
-    emit requestStopPairing();
+    emit commands_.requestStopPairing();
 }
 
 void SessionController::onPairOfferReady(const QString& uri, const QString& code)
@@ -1744,7 +1588,7 @@ void SessionController::exportAccount(const QString& fileUrl, const QString& pas
     }
     beginOperation(QStringLiteral("export"), QStringLiteral("account"),
         tr("Exporting your backup"), tr("Waiting for this account…"));
-    emit requestExport(localPath, password);
+    emit commands_.requestExport(localPath, password);
 }
 
 QString SessionController::shortFingerprint(const QString& fp) const
@@ -1770,7 +1614,7 @@ void SessionController::pinChat(const QString& peer, bool pinned)
         return;
     }
     rebuildChatList();
-    emit requestSyncChatPin(peer, pinned);
+    emit commands_.requestSyncChatPin(peer, pinned);
 }
 
 void SessionController::beginOperation(const QString& id, const QString& kind, const QString& title,
@@ -1812,30 +1656,30 @@ void SessionController::generatePersonalKey()
 {
     beginOperation(QStringLiteral("dest-key"), QStringLiteral("dest"),
         tr("Creating your destination key"), tr("Queued…"));
-    emit requestGeneratePersonalKey();
+    emit commands_.requestGeneratePersonalKey();
 }
 
 void SessionController::loadPersonalKey(const QString& fileUrl)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
     if (!localPath.isEmpty()) {
-        emit requestLoadPersonalKey(localPath);
+        emit commands_.requestLoadPersonalKey(localPath);
     }
 }
 
 void SessionController::replacePersonalKey()
 {
-    emit requestReplacePersonalKey();
+    emit commands_.requestReplacePersonalKey();
 }
 
 void SessionController::setAliasBinding(const QString& alias, const bool on)
 {
-    emit requestSetAliasBinding(alias, on);
+    emit commands_.requestSetAliasBinding(alias, on);
 }
 
 void SessionController::retryRoutingTo(const QString& peer)
 {
-    emit requestRetryRoutingTo(peer);
+    emit commands_.requestRetryRoutingTo(peer);
 }
 
 void SessionController::setDelegationDays(const int days)
@@ -1845,7 +1689,7 @@ void SessionController::setDelegationDays(const int days)
         return;
     }
     delegationDays_ = bounded;
-    emit requestSetDelegationDays(bounded);
+    emit commands_.requestSetDelegationDays(bounded);
     emit delegationDaysChanged();
 }
 
@@ -1855,7 +1699,7 @@ void SessionController::setAcceptCalls(const bool on)
         return;
     }
     acceptCalls_ = on;
-    emit requestSetAcceptCalls(on);
+    emit commands_.requestSetAcceptCalls(on);
     emit acceptCallsChanged();
 }
 
@@ -1865,7 +1709,7 @@ void SessionController::setSendReceipts(const bool on)
         return;
     }
     sendReceipts_ = on;
-    emit requestSetSendReceipts(on);
+    emit commands_.requestSetSendReceipts(on);
     emit sendReceiptsChanged();
 }
 
@@ -1874,7 +1718,7 @@ void SessionController::publishPersonalDest()
     i2pBusy_ = true;
     flashOnNextStatus_ = true;
     emit i2pStatusChanged();
-    emit requestPublishPersonalDest();
+    emit commands_.requestPublishPersonalDest();
 }
 
 void SessionController::disablePersonalDest()
@@ -1882,12 +1726,12 @@ void SessionController::disablePersonalDest()
     i2pBusy_ = true;
     flashOnNextStatus_ = true;
     emit i2pStatusChanged();
-    emit requestDisablePersonalDest();
+    emit commands_.requestDisablePersonalDest();
 }
 
 void SessionController::refreshI2pStatus()
 {
-    emit requestRefreshI2pStatus();
+    emit commands_.requestRefreshI2pStatus();
 }
 
 void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
@@ -1919,22 +1763,22 @@ void SessionController::onI2pStatus(const bool hasKey, const bool delegated, con
 
 void SessionController::refreshStorageUsage()
 {
-    emit requestRefreshStorageUsage();
+    emit commands_.requestRefreshStorageUsage();
 }
 
 void SessionController::refreshDevices()
 {
-    emit requestRefreshDevices();
+    emit commands_.requestRefreshDevices();
 }
 
 void SessionController::forgetDevice(const QString& clientId)
 {
-    emit requestForgetDevice(clientId);
+    emit commands_.requestForgetDevice(clientId);
 }
 
 void SessionController::closeAccountOnServer()
 {
-    emit requestCloseAccountOnServer();
+    emit commands_.requestCloseAccountOnServer();
 }
 
 void SessionController::forwardMessage(const QString& e2eId, const QString& toPeer)
@@ -1974,7 +1818,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
             return;
         }
         forwardShown(m, toPeer, tr("[voice]"));
-        emit requestSendVoice(toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
+        emit commands_.requestSendVoice(toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
         return;
     }
     if (source.type == QStringLiteral("text")) {
@@ -1984,7 +1828,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
             return;
         }
         forwardShown(m, toPeer, m.text);
-        emit requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
+        emit commands_.requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
         return;
     }
     m.attName = source.attName;
@@ -2008,7 +1852,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
             return;
         }
         forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[image]") : m.attName);
-        emit requestSendPicture(
+        emit commands_.requestSendPicture(
             toPeer, picture, m.attName, m.attMime, m.id, m.e2eId, QString(), true);
         return;
     }
@@ -2024,7 +1868,7 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
         return;
     }
     forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[file]") : m.attName);
-    emit requestSendFile(toPeer, path, m.id, m.e2eId, QString(), true);
+    emit commands_.requestSendFile(toPeer, path, m.id, m.e2eId, QString(), true);
 }
 
 void SessionController::forwardShown(
@@ -2284,14 +2128,14 @@ void SessionController::goOnline()
         online_ = true;
         emit onlineChanged();
     }
-    emit requestSetSync(true);
+    emit commands_.requestSetSync(true);
 }
 
 void SessionController::rebuildI2pLinks()
 {
     linksRebuilding_ = true;
     rebuildGrace_.start();
-    emit requestRebuildI2p();
+    emit commands_.requestRebuildI2p();
 }
 
 void SessionController::goOffline()
@@ -2304,7 +2148,7 @@ void SessionController::goOffline()
         reachable_ = false;
         emit reachableChanged();
     }
-    emit requestSetSync(false);
+    emit commands_.requestSetSync(false);
 }
 
 void SessionController::onSyncReachable(const bool ok)
@@ -2404,7 +2248,7 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
         tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
         activePeer_);
-    emit requestSendText(activePeer_, text, localId, e2eId, stored.replyTo, stored.forwarded);
+    emit commands_.requestSendText(activePeer_, text, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendFile(qint64 localId, const QString& e2eId)
@@ -2422,7 +2266,7 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
         stored.attName.isEmpty() ? tr("file") : stored.attName,
         tr("Sending again…"), activePeer_);
-    emit requestSendFile(activePeer_, srcPath, localId, e2eId, stored.replyTo, stored.forwarded);
+    emit commands_.requestSendFile(activePeer_, srcPath, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendVoice(qint64 localId, const QString& e2eId)
@@ -2440,7 +2284,7 @@ void SessionController::resendVoice(qint64 localId, const QString& e2eId)
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
         tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
         activePeer_);
-    emit requestSendVoice(
+    emit commands_.requestSendVoice(
         activePeer_, audio, stored.attDurationMs, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
@@ -2459,7 +2303,7 @@ void SessionController::resendPicture(qint64 localId, const QString& e2eId)
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
         stored.attName.isEmpty() ? tr("image") : stored.attName,
         tr("Sending again…"), activePeer_);
-    emit requestSendPicture(activePeer_, picture, stored.attName, stored.attMime, localId, e2eId,
+    emit commands_.requestSendPicture(activePeer_, picture, stored.attName, stored.attMime, localId, e2eId,
         stored.replyTo, stored.forwarded);
 }
 
@@ -2508,7 +2352,7 @@ void SessionController::markReadThroughRow(int row)
     if (!sendReceipts_ || !online_) {
         return;
     }
-    emit requestSendReceipt(activePeer_, e2eId);
+    emit commands_.requestSendReceipt(activePeer_, e2eId);
 }
 
 void SessionController::flushReadSync()
@@ -2519,7 +2363,7 @@ void SessionController::flushReadSync()
         return;
     }
     for (auto it = pendingReadSync_.constBegin(); it != pendingReadSync_.constEnd(); ++it) {
-        emit requestSyncRead(it.key(), it.value());
+        emit commands_.requestSyncRead(it.key(), it.value());
     }
     pendingReadSync_.clear();
 }

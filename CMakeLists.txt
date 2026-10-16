@@ -71,6 +71,10 @@ if(Qt6_FOUND)
         app/AppController.hpp
         app/I2pController.cpp
         app/I2pController.hpp
+        app/AccountCommands.hpp
+        app/AccountEvents.hpp
+        app/CoreAccount.cpp
+        app/CoreAccount.hpp
         app/SessionController.cpp
         app/SessionController.hpp
         app/SessionWorker.cpp

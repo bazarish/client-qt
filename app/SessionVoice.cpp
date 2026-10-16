@@ -267,7 +267,7 @@ void SessionController::sendVoiceTake()
     beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
         tr("To %1").arg(peerName(activePeer_)), tr("Sending…"), activePeer_);
 
-    emit requestSendVoice(activePeer_, audio, durationMs, m.id, m.e2eId, replyTo);
+    emit commands_.requestSendVoice(activePeer_, audio, durationMs, m.id, m.e2eId, replyTo);
 }
 
 void SessionController::cancelVoiceRecording()

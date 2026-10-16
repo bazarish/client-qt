@@ -5,6 +5,7 @@
 #include "SystemNotes.hpp"
 
 #include "DeliveryStatus.hpp"
+#include "Session.hpp"
 
 #include <bazarish/Address.hpp>
 #include <bazarish/Crypto.hpp>
@@ -54,7 +55,7 @@ void SessionController::activateAliasServicing()
     emit aliasChanged();
     beginOperation(kAliasOperationId, QStringLiteral("alias"),
         tr("Checking your aliases"), tr("Asking the registry over I2P…"));
-    emit requestActivateAliasServicing();
+    emit commands_.requestActivateAliasServicing();
 }
 
 QString SessionController::inviteProblem(const QString& uri) const
@@ -125,7 +126,7 @@ void SessionController::sendContactAdd(
     beginOperation(opId, QStringLiteral("contact"), tr("Adding contact"),
         tr("Preparing…"));
     trackContactAdd(opId, uri, intro, requestId);
-    emit requestAddByInvite(uri, intro, opId, requestId);
+    emit commands_.requestAddByInvite(uri, intro, opId, requestId);
 }
 
 void SessionController::onContactAddResumed(
@@ -162,7 +163,7 @@ void SessionController::trackContactAdd(
 void SessionController::onContactAddRateLimited(
     const QString& opId, const QString& fingerprint, const QString& requestId)
 {
-    emit requestForgetPendingAdd(opId);
+    emit commands_.requestForgetPendingAdd(opId);
     finishOperation(opId, false, tr("Their address is busy"));
     contactProgressRows_.remove(opId);
     const auto found = refusedRequests_.find(fingerprint);
@@ -282,7 +283,7 @@ void SessionController::startAliasAdd(
     beginOperation(opId, QStringLiteral("contact"), tr("Adding %1").arg(alias),
         tr("Preparing…"));
     trackAliasAdd(opId, alias, intro, requestId, chat);
-    emit requestAddByAlias(alias, intro, opId, requestId);
+    emit commands_.requestAddByAlias(alias, intro, opId, requestId);
 }
 
 void SessionController::trackAliasAdd(const QString& opId, const QString& alias,
@@ -411,7 +412,7 @@ void SessionController::acceptContact()
     }
     acceptingContact_ = peer;
     emit acceptingContactChanged();
-    emit requestAcceptContact(peer);
+    emit commands_.requestAcceptContact(peer);
 }
 
 bool SessionController::contactCanAccept(const QString& fp) const
@@ -427,7 +428,7 @@ bool SessionController::contactAgreeing(const QString& fp) const
 
 void SessionController::requestInvite()
 {
-    emit requestInviteSig();
+    emit commands_.requestInviteSig();
 }
 
 void SessionController::onContactAddStage(const QString& opId, const QString& status)
@@ -467,7 +468,7 @@ void SessionController::onContactRequestUnconfirmed(const QString& opId)
 void SessionController::settleContactAdd(const QString& opId, const bool ok, const QString& note)
 {
     aliasChats_.remove(opId);
-    emit requestForgetPendingAdd(opId);
+    emit commands_.requestForgetPendingAdd(opId);
     finishOperation(opId, ok, systemNoteText(note));
     const auto row = contactProgressRows_.constFind(opId);
     if (row != contactProgressRows_.cend()) {
@@ -485,7 +486,7 @@ void SessionController::settleContactAdd(const QString& opId, const bool ok, con
 
 void SessionController::onContactAlreadyKnown(const QString& opId, const QString& fingerprint)
 {
-    emit requestForgetPendingAdd(opId);
+    emit commands_.requestForgetPendingAdd(opId);
     finishOperation(opId, true, tr("Already in your contacts"));
     contactProgressRows_.remove(opId);
     if (const QString chat = aliasChats_.take(opId); !chat.isEmpty()) {
@@ -503,7 +504,7 @@ void SessionController::onContactAliasUnknown(const QString& opId, const QString
         onContactAddDone(opId, false, status);
         return;
     }
-    emit requestForgetPendingAdd(opId);
+    emit commands_.requestForgetPendingAdd(opId);
     finishOperation(opId, false, status);
     contactProgressRows_.remove(opId);
     refusedRequests_.remove(chat);

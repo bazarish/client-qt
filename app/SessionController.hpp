@@ -1,10 +1,30 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "AccountCommands.hpp"
+#include "AccountEvents.hpp"
+#include "AccountDb.hpp"
+#include "CallTones.hpp"
+#include "CoreAccount.hpp"
+#include "Models.hpp"
 #include "Picture.hpp"
-#include "SessionWorker.hpp"
+#include "TranscriptStore.hpp"
+#include "VoiceNote.hpp"
+
+#include <bazarish/Limits.hpp>
 
 #include <QColor>
+#include <QHash>
+#include <QSet>
+#include <QSortFilterProxyModel>
+#include <QTimer>
+#include <QUrl>
+#include <QVariantList>
+#include <QVariantMap>
+
+#include <functional>
+#include <memory>
+#include <optional>
 
 namespace bazarish::app {
 
@@ -423,90 +443,9 @@ signals:
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
 signals:
-    void requestPublishThisDeviceAddress();
-    void requestPublishFreshAddress();
-    void requestConnect(const QStringList& facadeUrls, const QString& serverFp,
-        const QStringList& reseedUrls);
-    void requestSendText(const QString& peer, const QString& text, qint64 localId,
-        const QString& e2eId, const QString& replyTo, bool forwarded = false);
-    void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
-        const QString& e2eId, const QString& replyTo, bool forwarded = false);
-    void requestSendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
-        const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo,
-        bool forwarded = false);
-    void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
-        qint64 localId, const QString& e2eId, const QString& replyTo, bool forwarded = false);
-    void requestSendReceipt(const QString& peer, const QString& refId);
-    void requestAckPending(const QString& pendingId);
-    void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
-    void requestSendCallback(
-        const QString& opId, const QString& peer, const QString& data, const QString& ref);
-    void requestSendCommand(
-        const QString& opId, const QString& peer, const QString& command, const QString& args);
-    void requestSendEdit(const QString& peer, const QString& refId, qint64 localId,
-        const QString& text);
-    void requestSendDelete(const QString& peer, const QString& refId);
-    void requestUnsend(const QString& refId);
-    void requestSetAvatar(const QByteArray& jpeg);
-    void requestClearAvatar();
-    void requestSetDisplayName(const QString& name);
-    void requestRenameContact(const QString& peer, const QString& name);
-    void requestRemoveContact(const QString& peer);
-    void requestClearSaved();
-    void requestSetBlocked(const QString& peer, bool blocked);
-    void requestSetContactNotifications(const QString& peer, bool on);
-    void requestSetContactCalls(const QString& peer, bool allowed);
-    void requestSyncChatPin(const QString& peer, bool pinned);
-    void requestSyncRead(const QString& peer, qint64 sentAtMs);
-    void requestSyncChatClear(const QString& peer);
-    void requestEmitSettings();
-    void requestClearChatForEveryone(const QString& peer);
-    void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId,
-        const QString& requestId);
-    void requestAddByAlias(const QString& alias, const QString& intro, const QString& opId,
-        const QString& requestId);
-    void requestAcceptContact(const QString& peer);
-    void requestInviteSig();
-    void requestSignLoginSig(const QString& challenge);
-    void requestConnectionLog();
-    void requestContactsFromDevices();
-    void requestShutdown();
-    void requestClearConnectionLog();
-    void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
-        qint64 token);
-    void requestExport(const QString& path, const QString& password);
-    void requestStartPairing();
-    void requestStopPairing();
     void pairingChanged();
     void pairingFinished(bool ok);
-    void requestChangePassphrase(const QString& passphrase);
-    void requestActivateAliasServicing();
     void aliasChanged();
-    void requestOpen(const QString& dir, const QString& passphrase, bool startOnline);
-    void requestSetSync(bool on);
-    void requestRebuildI2p();
-    void requestCancelTransfer(const QString& e2eId);
-    void requestGeneratePersonalKey();
-    void requestLoadPersonalKey(const QString& path);
-    void requestReplacePersonalKey();
-    void requestSetAliasBinding(const QString& alias, bool on);
-    void requestRetryRoutingTo(const QString& peer);
-    void requestSetAcceptCalls(bool accept);
-    void requestSetSendReceipts(bool on);
-    void requestSetDelegationDays(int days);
-    void requestPublishPersonalDest();
-    void requestDisablePersonalDest();
-    void requestRefreshI2pStatus();
-    void requestRefreshStorageUsage();
-    void requestRefreshDevices();
-    void requestForgetDevice(const QString& clientId);
-    void requestForgetPendingAdd(const QString& opId);
-    void requestCloseAccountOnServer();
-    void requestStartCall(const QString& peer);
-    void requestAcceptCall(const QString& callId);
-    void requestDeclineCall(const QString& callId);
-    void requestEndCall();
-    void requestSetCallMuted(bool muted);
 
 private slots:
     void noteCommandQueued();
@@ -577,8 +516,9 @@ private slots:
     void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
 private:
-    QThread thread_;
-    SessionWorker* worker_ = nullptr;
+    AccountCommands commands_;
+    AccountEvents events_;
+    std::unique_ptr<CoreAccount> core_;
     TranscriptStore store_;
     ContactListModel contacts_;
     QSortFilterProxyModel contactsProxy_;
@@ -767,7 +707,6 @@ private:
     QString callId_;
     QString refusedCallId_;
     QSet<qint64> savedSends_;
-    std::shared_ptr<bazarish::client::LoginSigner> loginSigner_;
     bool shuttingDown_ = false;
     QString callOpId_;
     bool callMuted_ = false;

@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "AccountEvents.hpp"
 #include "Models.hpp"
 #include "Session.hpp"
 #include "AccountDb.hpp"
@@ -31,20 +32,6 @@
 class QTimer;
 
 namespace bazarish::app {
-
-inline constexpr double kProgressUnknown = -1.0;
-
-struct ContactState {
-    enum Request { eAnswered, eWaiting, eAccepting };
-
-    QString fingerprint;
-    QString name;
-    QString invite;
-    bool writable = false;
-    bool notifications = true;
-    bool calls = true;
-    Request request = eAnswered;
-};
 
 struct ResolvedContactAddQueue;
 struct AliasErrandQueue;

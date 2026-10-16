@@ -62,7 +62,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         return;
     }
     if (const QString pendingId = message.value("pendingId").toString(); !pendingId.isEmpty()) {
-        emit requestAckPending(pendingId);
+        emit commands_.requestAckPending(pendingId);
     }
 }
 
@@ -127,7 +127,7 @@ bool SessionController::takeIn(const QVariantMap& message)
         return true;
     }
     if (type == "device.account-prefs") {
-        emit requestEmitSettings();
+        emit commands_.requestEmitSettings();
         return true;
     }
 
@@ -240,7 +240,7 @@ bool SessionController::takeIn(const QVariantMap& message)
             }
             if (peer == activePeer_ && sendReceipts_
                 && localId <= lastReadAckedId_.value(peer, 0)) {
-                emit requestSendReceipt(peer, message.value("ref").toString());
+                emit commands_.requestSendReceipt(peer, message.value("ref").toString());
             }
             QString preview = newText;
             if (preview.isEmpty() && !newKeyboard.isEmpty()) {
