@@ -17,6 +17,7 @@ Button {
     // A drawn shape to the left of the label, naming what the button does; empty
     // leaves the label alone in the middle as before.
     property string iconName: ""
+    property real iconSize: Theme.iconInline
     leftPadding: 14
     rightPadding: 14
     background: Rectangle {
@@ -35,5 +36,6 @@ Button {
         color: !control.enabled ? Theme.textDim
             : (control.positive ? Theme.green : (control.danger ? Theme.danger : Theme.text))
         available: control.availableWidth
+        iconSize: control.iconSize
     }
 }

@@ -196,15 +196,17 @@ Popup {
 
         RowLayout {
             id: actions
-            Layout.fillWidth: true
+            readonly property int kButton: 56
+            readonly property int kIcon: 24
+            Layout.alignment: Qt.AlignHCenter
             Layout.margins: root.kEdge
-            spacing: 8
+            spacing: 24
 
             // Where to press first: the light under it breathes until a take exists.
             Item {
                 id: recordSpot
-                readonly property int kDiameter: sendButton.height
-                readonly property int kDot: 14
+                readonly property int kDiameter: actions.kButton
+                readonly property int kDot: 18
                 readonly property int kStopCorner: 2
                 readonly property int kBreathMs: 900
                 readonly property real kBreathLevel: 1
@@ -272,17 +274,23 @@ Popup {
                 ToolTip.visible: hovered
                 ToolTip.text: Accessible.name
                 enabled: root.takeReady
+                iconSize: actions.kIcon
                 leftPadding: 0
                 rightPadding: 0
-                Layout.preferredWidth: sendButton.height
-                Layout.preferredHeight: sendButton.height
+                Layout.preferredWidth: actions.kButton
+                Layout.preferredHeight: actions.kButton
                 onClicked: root.session.playVoiceTake()
             }
-            Item { Layout.fillWidth: true }
             MenuButton {
-                id: sendButton
                 iconName: "send"
-                text: qsTr("Send")
+                Accessible.name: qsTr("Send")
+                ToolTip.visible: hovered
+                ToolTip.text: Accessible.name
+                iconSize: actions.kIcon
+                leftPadding: 0
+                rightPadding: 0
+                Layout.preferredWidth: actions.kButton
+                Layout.preferredHeight: actions.kButton
                 enabled: root.takeReady
                 onClicked: {
                     root.session.sendVoiceTake()

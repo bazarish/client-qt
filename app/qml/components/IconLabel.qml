@@ -16,12 +16,15 @@ Item {
     // What the button offers its content. The label elides inside what the icon
     // leaves of it, so it is the words that give way, never the drawing.
     property real available: width
+    property real iconSize: Theme.iconInline
     readonly property int kGap: 8
+    readonly property bool worded: root.text.length > 0
 
     // From the parts, not from the row: the label's width is bound to what the
     // button offers, so asking the row how wide it wants to be would ask the
     // button a question that depends on the answer.
-    implicitWidth: label.implicitWidth + (icon.visible ? icon.width + root.kGap : 0)
+    implicitWidth: (root.worded ? label.implicitWidth : 0)
+        + (icon.visible ? icon.width + (root.worded ? root.kGap : 0) : 0)
     implicitHeight: Math.max(label.implicitHeight, icon.visible ? icon.height : 0)
 
     Row {
@@ -33,10 +36,11 @@ Item {
             visible: root.name.length > 0
             name: root.name
             color: root.color
-            size: Theme.iconInline
+            size: root.iconSize
         }
         Label {
             id: label
+            visible: root.worded
             width: Math.min(implicitWidth,
                 root.available - (icon.visible ? icon.width + root.kGap : 0))
             text: root.text
