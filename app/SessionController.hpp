@@ -447,7 +447,7 @@ signals:
         const QString& text);
     void requestSendDelete(const QString& peer, const QString& refId);
     void requestUnsend(const QString& refId);
-    void requestSetAvatar(const QImage& image);
+    void requestSetAvatar(const QByteArray& jpeg);
     void requestClearAvatar();
     void requestSetDisplayName(const QString& name);
     void requestRenameContact(const QString& peer, const QString& name);

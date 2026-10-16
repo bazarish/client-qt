@@ -28,6 +28,7 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QBuffer>
 #include <QByteArray>
 #include <QClipboard>
 #include <QFileInfo>
@@ -150,6 +151,44 @@ constexpr int kPageSize = 50;
 constexpr int kBusyPaintDelayMs = 32;
 
 constexpr int kReadSyncIdleMs = 4000;
+
+constexpr int kAvatarSide = 256;
+constexpr int kAvatarFallbackSide = 128;
+constexpr int kAvatarFirstQuality = 90;
+constexpr int kAvatarQualityStep = 15;
+constexpr int kAvatarLowestQuality = 30;
+constexpr int kAvatarFallbackQuality = 80;
+
+QByteArray compressAvatarJpeg(const QImage& img)
+{
+    const int side = std::min(img.width(), img.height());
+    QImage square = img.copy((img.width() - side) / 2, (img.height() - side) / 2, side, side);
+    if (square.width() > kAvatarSide) {
+        square = square.scaled(
+            kAvatarSide, kAvatarSide, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
+    constexpr int kCap = static_cast<int>(bazarish::kAvatarMaxBytes);
+    const auto encode = [&square](int quality) {
+        QByteArray out;
+        QBuffer buffer(&out);
+        buffer.open(QIODevice::WriteOnly);
+        square.save(&buffer, "JPEG", quality);
+        buffer.close();
+        return out;
+    };
+    QByteArray bytes;
+    int quality = kAvatarFirstQuality;
+    do {
+        bytes = encode(quality);
+        quality -= kAvatarQualityStep;
+    } while (bytes.size() > kCap && quality >= kAvatarLowestQuality);
+    if (bytes.size() > kCap) {
+        square = square.scaled(kAvatarFallbackSide, kAvatarFallbackSide, Qt::IgnoreAspectRatio,
+            Qt::SmoothTransformation);
+        bytes = encode(kAvatarFallbackQuality);
+    }
+    return bytes;
+}
 
 // A page is chosen by id and shown by order key, so its bounds are its lowest and highest id.
 qint64 lowestId(const QVector<StoredMessage>& rows)
@@ -1056,12 +1095,15 @@ QString SessionController::contactName(const QString& fp) const
 void SessionController::setAvatarFromGrab(QObject* const grab)
 {
     auto* const grabbed = qobject_cast<QQuickItemGrabResult*>(grab);
-    if (grabbed == nullptr || grabbed->image().isNull()) {
+    const QByteArray jpeg = (grabbed == nullptr || grabbed->image().isNull())
+        ? QByteArray()
+        : compressAvatarJpeg(grabbed->image());
+    if (jpeg.isEmpty()) {
         emit actionFailed(tr("The cropped avatar could not be read."));
         return;
     }
     setAvatarBusy(true);
-    emit requestSetAvatar(grabbed->image());
+    emit requestSetAvatar(jpeg);
 }
 
 void SessionController::setAvatarBusy(const bool busy)

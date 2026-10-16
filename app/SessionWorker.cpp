@@ -25,10 +25,8 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
-#include <QBuffer>
 #include <QByteArray>
 #include <QDateTime>
-#include <QImage>
 #include <chrono>
 #include <QTimer>
 #include <cstring>
@@ -239,39 +237,6 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
                       : QString::fromStdString(outcome.errorMessage));
           };
     return watch;
-}
-
-QByteArray compressAvatarJpeg(const QImage& img)
-{
-    if (img.isNull()) {
-        return {};
-    }
-    const int side = std::min(img.width(), img.height());
-    QImage square = img.copy((img.width() - side) / 2, (img.height() - side) / 2, side, side);
-    constexpr int kDim = 256;
-    if (square.width() > kDim) {
-        square = square.scaled(kDim, kDim, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-    }
-    constexpr int kCap = static_cast<int>(bazarish::kAvatarMaxBytes);
-    const auto encode = [&square](int quality) {
-        QByteArray out;
-        QBuffer buffer(&out);
-        buffer.open(QIODevice::WriteOnly);
-        square.save(&buffer, "JPEG", quality);
-        buffer.close();
-        return out;
-    };
-    QByteArray bytes;
-    int quality = 90;
-    do {
-        bytes = encode(quality);
-        quality -= 15;
-    } while (bytes.size() > kCap && quality >= 30);
-    if (bytes.size() > kCap) {
-        square = square.scaled(128, 128, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        bytes = encode(80);
-    }
-    return bytes;
 }
 
 }  // namespace
@@ -1434,21 +1399,14 @@ void SessionWorker::requestInvite()
     }
 }
 
-void SessionWorker::setAvatar(const QImage& image)
+void SessionWorker::setAvatar(const QByteArray& bytes)
 {
     if (!session_) {
         return;
     }
     const QString op = beginOp(
-        QStringLiteral("service"), tr("Setting your avatar"), tr("Preparing the image…"));
+        QStringLiteral("service"), tr("Setting your avatar"), tr("Sending to your contacts…"));
     try {
-        const QByteArray bytes = compressAvatarJpeg(image);
-        if (bytes.isEmpty()) {
-            emit opDone(op, false, tr("Could not read the image"));
-            emit actionFailed(tr("Could not read the selected image."));
-            return;
-        }
-        emit opProgress(op, tr("Sending to your contacts…"));
         session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
         emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
         emit opDone(op, true, tr("Avatar set"));

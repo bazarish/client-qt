@@ -887,18 +887,6 @@
       "zh": "无法迁移数据：%1",
       "ar": "تعذّر نقل البيانات: ⁦%1⁩"
     },
-    "Could not read the image": {
-      "ru": "Не удалось прочитать картинку",
-      "es": "No se ha podido leer la imagen",
-      "zh": "无法读取图片",
-      "ar": "تعذّرت قراءة الصورة"
-    },
-    "Could not read the selected image.": {
-      "ru": "Выбранную картинку прочитать не удалось.",
-      "es": "No se ha podido leer la imagen elegida.",
-      "zh": "无法读取所选图片。",
-      "ar": "تعذّرت قراءة الصورة المختارة."
-    },
     "Could not write %1": {
       "ru": "Не удалось записать %1",
       "es": "No se ha podido escribir %1",
@@ -2134,12 +2122,6 @@
       "es": "Preparando una dirección desde la que enviar…",
       "zh": "正在准备发送地址…",
       "ar": "جارٍ تحضير عنوان الإرسال…"
-    },
-    "Preparing the image…": {
-      "ru": "Изображение подготавливается…",
-      "es": "Preparando la imagen…",
-      "zh": "正在处理图片…",
-      "ar": "جارٍ تحضير الصورة…"
     },
     "Preparing your call address": {
       "ru": "Адрес для звонка готовится",

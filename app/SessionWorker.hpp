@@ -95,7 +95,7 @@ public slots:
     void sendEdit(const QString& peer, const QString& refId, qint64 localId, const QString& text);
     void sendDelete(const QString& peer, const QString& refId);
     void dropSentFile(const QString& refId);
-    void setAvatar(const QImage& image);
+    void setAvatar(const QByteArray& bytes);
     void clearAvatar();
     void setDisplayName(const QString& name);
     void renameContact(const QString& peer, const QString& name);
