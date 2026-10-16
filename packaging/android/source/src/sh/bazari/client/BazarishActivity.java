@@ -3,6 +3,7 @@ package sh.bazari.client;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Process;
 
 import java.lang.ref.WeakReference;
 
@@ -30,5 +31,11 @@ public class BazarishActivity extends QtActivity {
         if (account != null && peer != null) {
             Window.conversationOpened(account, peer);
         }
+    }
+
+    // Qt cannot start twice in one process, and its teardown hangs; the core keeps the rest.
+    @Override
+    protected void onDestroy() {
+        Process.killProcess(Process.myPid());
     }
 }
