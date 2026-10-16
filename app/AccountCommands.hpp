@@ -57,6 +57,10 @@ signals:
     void clearChat(const QString& peer, bool forEveryone);
     void forgetChat(const QString& peer);
     void clearSavedEverywhere();
+    void addByInvite(const QString& uri, const QString& intro);
+    void addByAlias(const QString& alias, const QString& intro);
+    void retryContactAdd(const QString& peer);
+    void retryContactRequest(const QString& fingerprint);
     void opBegin(const QString& id, const QString& kind, const QString& title,
         const QString& status, const QString& peer, const QString& cancelId);
     void opUpdate(const QString& id, const QString& status, const QString& detail,

@@ -80,6 +80,43 @@ private:
     void clearChat(const QString& peer, bool forEveryone);
     void forgetChat(const QString& peer);
     void clearSavedEverywhere();
+    void addByInvite(const QString& uri, const QString& intro);
+    void addByAlias(const QString& alias, const QString& intro);
+    void retryContactAdd(const QString& peer);
+    void retryContactRequest(const QString& fingerprint);
+    void sendContactAdd(const QString& uri, const QString& intro, const QString& requestId);
+    void onContactAddResumed(
+        const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
+    void trackContactAdd(
+        const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
+    void onContactAddRateLimited(
+        const QString& opId, const QString& fingerprint, const QString& requestId);
+    void syncAgreeingRows();
+    struct PendingContactRequest {
+        QString uri;
+        QString intro;
+        int triesLeft = 0;
+        QString requestId;
+    };
+    void repeatContactAdd(const QString& chat, const PendingContactRequest& pending);
+    void startAliasAdd(const QString& alias, const QString& intro, const QString& requestId,
+        const QString& chat);
+    void trackAliasAdd(const QString& opId, const QString& alias, const QString& intro,
+        const QString& requestId, const QString& chat);
+    void writeConversationNote(const QString& peer, const QString& text);
+    void onRoutingTold(const QString& peer, bool delivered);
+    void openContactProgress(const QString& peer, const QString& opId);
+    void noteContactProgress(const QString& peer, const QString& opId);
+    void writeContactProgress(const QString& opId, const QString& text);
+    void onContactAddStage(const QString& opId, const QString& status);
+    void onContactAddDone(const QString& opId, bool ok, const QString& status);
+    void onContactRequestUnconfirmed(const QString& opId);
+    void settleContactAdd(const QString& opId, bool ok, const QString& note);
+    void onContactAlreadyKnown(const QString& opId, const QString& fingerprint);
+    void onContactAliasUnknown(const QString& opId, const QString& status);
+    void onContactAddResolved(const QString& opId, const QString& fingerprint);
+    void onContactRequestSent(const QString& fingerprint, const QString& intro,
+        const QString& requestId, qint64 sentAtMs);
     void restartDelivery(const QString& peer, qint64 localId);
     void bumpStatus(qint64 localId, int status);
     void onSendProgress(qint64 localId, int state);
@@ -111,6 +148,14 @@ private:
     OperationLog log_;
     QHash<qint64, int> statusById_;
     QSet<qint64> savedSends_;
+    struct ContactProgressRow {
+        qint64 id = 0;
+        QString peer;
+    };
+    QHash<QString, ContactProgressRow> contactProgressRows_;
+    QHash<QString, QString> aliasChats_;
+    QHash<QString, PendingContactRequest> refusedRequests_;
+    QSet<QString> agreeingShown_;
     struct QueuedCommand {
         QString id;
         QString title;

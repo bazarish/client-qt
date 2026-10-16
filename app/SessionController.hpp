@@ -334,7 +334,6 @@ public:
     Q_INVOKABLE QString inviteProblem(const QString& uri) const;
     Q_INVOKABLE QString aliasProblem(const QString& typed) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
-    void addByInvite(const QString& uri, const QString& intro, const QString& requestId);
     Q_INVOKABLE void retryContactRequest(const QString& fingerprint);
     Q_INVOKABLE void addByAlias(const QString& alias, const QString& intro);
     Q_INVOKABLE void acceptContact();
@@ -450,29 +449,7 @@ private slots:
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected);
     void onConnectionChanged(bool connected, const QString& connectionNote);
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
-    void onContactAddStage(const QString& opId, const QString& status);
-    void openContactProgress(const QString& peer, const QString& opId);
-    void noteContactProgress(const QString& peer, const QString& opId);
-    void writeContactProgress(const QString& opId, const QString& text);
-    void onContactAddDone(const QString& opId, bool ok, const QString& status);
-    void onContactRequestUnconfirmed(const QString& opId);
-    void settleContactAdd(const QString& opId, bool ok, const QString& note);
-    void onContactAddResumed(
-        const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
-    void sendContactAdd(const QString& uri, const QString& intro, const QString& requestId);
-    void trackContactAdd(
-        const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
-    void onContactAlreadyKnown(const QString& opId, const QString& fingerprint);
-    void onContactAliasUnknown(const QString& opId, const QString& status);
-    void onContactAddResolved(const QString& opId, const QString& fingerprint);
-    void startAliasAdd(const QString& alias, const QString& intro, const QString& requestId,
-        const QString& chat);
-    void trackAliasAdd(const QString& opId, const QString& alias, const QString& intro,
-        const QString& requestId, const QString& chat);
     void dropChat(const QString& peer);
-    void writeConversationNote(const QString& peer, const QString& text);
-    void onContactAddRateLimited(
-        const QString& opId, const QString& fingerprint, const QString& requestId);
     void onContactAccepted(const QString& peer, bool ok, const QString& reason);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onDownloadProgress(qint64 token, qint64 received, qint64 total);
@@ -485,8 +462,6 @@ private slots:
     void onPairOfferReady(const QString& uri, const QString& code);
     void onPairStage(const QString& status, double progress);
     void onPairFinished(bool ok, const QString& status);
-    void onContactRequestSent(const QString& fingerprint, const QString& intro,
-        const QString& requestId, qint64 sentAtMs);
     void onSyncReachable(bool ok);
     void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
@@ -558,8 +533,6 @@ private:
     QString replyingE2eId_;
     QString replyingText_;
     QString replyingSender_;
-    QSet<QString> agreeingShown_;
-    void syncAgreeingRows();
     QStringList reactionsToFlash_;
     int contactsRevision_ = 0;
     int reactionsRevision_ = 0;
@@ -586,23 +559,8 @@ private:
     void loadLatestWindow();
     void openWindowAtUnread(const QString& peer, qint64 firstUnread);
     void showInActiveView(const StoredMessage& m, bool isOwn);
-    void onRoutingTold(const QString& peer, bool delivered);
     ContactBook book_;
     QStringList recentReactions_;
-    struct ContactProgressRow {
-        qint64 id = 0;
-        QString peer;
-    };
-    QHash<QString, ContactProgressRow> contactProgressRows_;
-    QHash<QString, QString> aliasChats_;
-    struct PendingContactRequest {
-        QString uri;
-        QString intro;
-        int triesLeft = 0;
-        QString requestId;
-    };
-    QHash<QString, PendingContactRequest> refusedRequests_;
-    void repeatContactAdd(const QString& chat, const PendingContactRequest& pending);
     QString ownInvite_;
     QHash<qint64, QString> pendingSavePath_;
     QHash<QString, qint64> pictureOwners_;

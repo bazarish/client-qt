@@ -53,7 +53,6 @@ signals:
     void accountClosed(bool ok, const QString& error);
     void accountSettings(bool acceptCalls, bool sendReceipts);
     void aliasHoldings(const QVariantList& rows, const QString& note);
-    void routingTold(const QString& peer, bool delivered);
     void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected);
     void renamed(const QString& newName);
@@ -70,18 +69,6 @@ signals:
     void downloadFinished(qint64 token, bool ok, const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
-    void contactRequestSent(const QString& fingerprint, const QString& intro,
-        const QString& requestId, qint64 sentAtMs);
-    void contactAddStage(const QString& opId, const QString& status);
-    void contactAddRateLimited(const QString& opId, const QString& fingerprint,
-        const QString& requestId);
-    void contactAddDone(const QString& opId, bool ok, const QString& status);
-    void contactAliasUnknown(const QString& opId, const QString& status);
-    void contactAddResolved(const QString& opId, const QString& fingerprint);
-    void contactAlreadyKnown(const QString& opId, const QString& fingerprint);
-    void contactRequestUnconfirmed(const QString& opId);
-    void contactAddResumed(const QString& opId, const QString& uri, const QString& intro,
-        const QString& requestId);
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
@@ -122,6 +109,9 @@ signals:
     void opRemoved(const QString& id);
     void messageError(qint64 localId, const QString& error);
     void resendFilePickRequested();
+    void showConversation(const QString& peer);
+    void contactRetryExhausted(const QString& fingerprint);
+    void contactNamed(const QString& peer, const QString& name);
 };
 
 }  // namespace bazarish::app

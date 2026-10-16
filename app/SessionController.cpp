@@ -274,7 +274,6 @@ SessionController::SessionController(QObject* parent)
     connect(&events_, &AccountEvents::contactsRefreshed, this,
         [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
             book_.reset(contacts, blocked);
-            syncAgreeingRows();
             rebuildChatList();
             emit activePeerNameChanged();
             ++contactsRevision_;
@@ -288,24 +287,15 @@ SessionController::SessionController(QObject* parent)
         });
     connect(&events_, &AccountEvents::resendFilePickRequested, this,
         &SessionController::resendFilePickRequested);
-    connect(&events_, &AccountEvents::contactRequestSent, this,
-        &SessionController::onContactRequestSent);
-    connect(&events_, &AccountEvents::contactAddStage, this,
-        &SessionController::onContactAddStage);
-    connect(&events_, &AccountEvents::contactAddDone, this, &SessionController::onContactAddDone);
-    connect(&events_, &AccountEvents::routingTold, this, &SessionController::onRoutingTold);
-    connect(&events_, &AccountEvents::contactAlreadyKnown, this,
-        &SessionController::onContactAlreadyKnown);
-    connect(&events_, &AccountEvents::contactAliasUnknown, this,
-        &SessionController::onContactAliasUnknown);
-    connect(&events_, &AccountEvents::contactAddResolved, this,
-        &SessionController::onContactAddResolved);
-    connect(&events_, &AccountEvents::contactRequestUnconfirmed, this,
-        &SessionController::onContactRequestUnconfirmed);
-    connect(&events_, &AccountEvents::contactAddResumed, this,
-        &SessionController::onContactAddResumed);
-    connect(&events_, &AccountEvents::contactAddRateLimited, this,
-        &SessionController::onContactAddRateLimited);
+    connect(&events_, &AccountEvents::showConversation, this, [this](const QString& peer) {
+        if (peer != activePeer_) {
+            openConversation(peer);
+        }
+    });
+    connect(&events_, &AccountEvents::contactRetryExhausted, this,
+        &SessionController::contactRetryExhausted);
+    connect(&events_, &AccountEvents::contactNamed, this,
+        [this](const QString& peer, const QString& name) { book_.notePendingName(peer, name); });
     connect(&events_, &AccountEvents::contactAccepted, this,
         &SessionController::onContactAccepted);
     connect(&events_, &AccountEvents::opChanged, this, [this](const OperationRow& row) {

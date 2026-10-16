@@ -40,12 +40,6 @@
 
 namespace bazarish::app {
 
-namespace {
-constexpr int kContactRetryAttempts = 3;
-constexpr int kContactRetrySeconds = 20;
-constexpr int kMillisecondsPerSecond = 1000;
-}  // namespace
-
 void SessionController::activateAliasServicing()
 {
     if (aliasBusy_) {
@@ -92,166 +86,24 @@ QString SessionController::aliasProblem(const QString& typed) const
 
 void SessionController::addByInvite(const QString& uri, const QString& intro)
 {
-    addByInvite(uri, intro, QString());
-}
-
-void SessionController::addByInvite(
-    const QString& uri, const QString& intro, const QString& requestId)
-{
     const QString problem = inviteProblem(uri);
     if (!problem.isEmpty()) {
         emit actionFailed(problem);
         return;
     }
-    try {
-        const bazarish::Descriptor known
-            = bazarish::parseDescriptor(uri.trimmed().toStdString());
-        const QString peer = QString::fromStdString(known.fingerprint);
-        if (book_.has(peer) && book_.state(peer).writable) {
-            openConversation(peer);
-            emit actionOk(tr("Already in your contacts"));
-            return;
-        }
-    } catch (const std::exception&) {
-        // error-hiding: allowed - the link was vetted; the add below parses it and reports again.
-    }
-    sendContactAdd(uri, intro, requestId.isEmpty() ? newE2eId() : requestId);
-}
-
-void SessionController::sendContactAdd(
-    const QString& uri, const QString& intro, const QString& requestId)
-{
-    const QString opId = QStringLiteral("contact:") + newE2eId();
-    beginOperation(opId, QStringLiteral("contact"), tr("Adding contact"),
-        tr("Preparing…"));
-    trackContactAdd(opId, uri, intro, requestId);
-    emit commands_.requestAddByInvite(uri, intro, opId, requestId);
-}
-
-void SessionController::onContactAddResumed(
-    const QString& opId, const QString& uri, const QString& intro, const QString& requestId)
-{
-    beginOperation(opId, QStringLiteral("contact"), tr("Adding a contact"),
-        tr("Resuming after a restart…"));
-    if (hasAliasSigil(uri)) {
-        trackAliasAdd(opId, uri, intro, requestId, aliasChatPeer(uri));
-        return;
-    }
-    trackContactAdd(opId, uri, intro, requestId);
-}
-
-void SessionController::trackContactAdd(
-    const QString& opId, const QString& uri, const QString& intro, const QString& requestId)
-{
-    try {
-        const bazarish::Descriptor descriptor
-            = bazarish::parseDescriptor(uri.trimmed().toStdString());
-        const QString peer = QString::fromStdString(descriptor.fingerprint);
-        if (!descriptor.name.empty()) {
-            book_.notePendingName(peer,
-                QString::fromStdString(bazarish::client::safeContactName(descriptor.name)));
-        }
-        openContactProgress(peer, opId);
-        refusedRequests_.insert(peer,
-            PendingContactRequest{uri, intro, kContactRetryAttempts, requestId});
-    } catch (const std::exception& error) {
-        bazarish::log::warn("invite parsed for the chat but not for its peer: {}", error.what());
-    }
-}
-
-void SessionController::onContactAddRateLimited(
-    const QString& opId, const QString& fingerprint, const QString& requestId)
-{
-    emit commands_.requestForgetPendingAdd(opId);
-    finishOperation(opId, false, tr("Their address is busy"));
-    contactProgressRows_.remove(opId);
-    const auto found = refusedRequests_.find(fingerprint);
-    if (found != refusedRequests_.end() && found->requestId.isEmpty()) {
-        found->requestId = requestId;
-    }
-    if (found == refusedRequests_.end() || found->triesLeft <= 0) {
-        writeConversationNote(fingerprint,
-            encodeSystemNote(QT_TR_NOOP("The request was refused: the contact's server is busy.")));
-        emit contactRetryExhausted(fingerprint);
-        return;
-    }
-    --found->triesLeft;
-    writeConversationNote(fingerprint,
-        encodeSystemNote(QT_TR_NOOP("Their server is busy. Trying again in %1 seconds (%2 left)."),
-            {QString::number(kContactRetrySeconds), QString::number(found->triesLeft + 1)}));
-    const QString peer = fingerprint;
-    QTimer::singleShot(kContactRetrySeconds * kMillisecondsPerSecond, this,
-        [this, peer]() { retryContactRequest(peer); });
+    emit commands_.addByInvite(uri, intro);
 }
 
 void SessionController::retryContactRequest(const QString& fingerprint)
 {
-    const auto found = refusedRequests_.find(fingerprint);
-    if (found == refusedRequests_.end()) {
-        return;
-    }
-    const PendingContactRequest pending = *found;
-    repeatContactAdd(fingerprint, pending);
-    if (const auto again = refusedRequests_.find(fingerprint); again != refusedRequests_.end()) {
-        again->triesLeft = pending.triesLeft;
-        again->requestId = pending.requestId;
-    }
-}
-
-void SessionController::syncAgreeingRows()
-{
-    for (const QString& fingerprint : book_.accepting()) {
-        if (agreeingShown_.contains(fingerprint)
-            || operations_.indexOf(QStringLiteral("accept:") + fingerprint) >= 0) {
-            continue;
-        }
-        agreeingShown_.insert(fingerprint);
-        beginOperation(QStringLiteral("agreeing:") + fingerprint, QStringLiteral("contact"),
-            tr("Agreeing to a contact request"),
-            tr("Waiting for their server…"), fingerprint);
-    }
-    for (auto at = agreeingShown_.begin(); at != agreeingShown_.end();) {
-        if (book_.state(*at).request == ContactState::eAccepting) {
-            ++at;
-            continue;
-        }
-        finishOperation(QStringLiteral("agreeing:") + *at, true, tr("Agreed"));
-        at = agreeingShown_.erase(at);
-    }
+    emit commands_.retryContactRequest(fingerprint);
 }
 
 void SessionController::retryContactAdd()
 {
-    if (activePeer_.isEmpty()) {
-        return;
+    if (!activePeer_.isEmpty()) {
+        emit commands_.retryContactAdd(activePeer_);
     }
-    const auto found = refusedRequests_.constFind(activePeer_);
-    if (found == refusedRequests_.cend()) {
-        emit actionFailed(tr("This add cannot be tried again from here"));
-        return;
-    }
-    const PendingContactRequest pending = *found;
-    repeatContactAdd(activePeer_, pending);
-}
-
-void SessionController::repeatContactAdd(const QString& chat, const PendingContactRequest& pending)
-{
-    const QString failed = QStringLiteral("contact.failed");
-    qint64 removed = 0;
-    for (qint64 row = store_.oldestOfType(chat, failed, /*outgoing=*/false);
-         row != 0 && row != removed; row = store_.oldestOfType(chat, failed, /*outgoing=*/false)) {
-        if (!store_.removeById(row)) {
-            reportUnsaved();
-            break;
-        }
-        conversation_.removeById(row);
-        removed = row;
-    }
-    if (hasAliasSigil(pending.uri)) {
-        startAliasAdd(pending.uri, pending.intro, pending.requestId, chat);
-        return;
-    }
-    sendContactAdd(pending.uri, pending.intro, pending.requestId);
 }
 
 void SessionController::addByAlias(const QString& alias, const QString& intro)
@@ -261,132 +113,7 @@ void SessionController::addByAlias(const QString& alias, const QString& intro)
         emit actionFailed(problem);
         return;
     }
-    startAliasAdd(alias, intro, newE2eId(), aliasChatPeer(alias));
-}
-
-void SessionController::startAliasAdd(
-    const QString& alias, const QString& intro, const QString& requestId, const QString& chat)
-{
-    const QString opId = QStringLiteral("contact:") + newE2eId();
-    beginOperation(opId, QStringLiteral("contact"), tr("Adding %1").arg(alias),
-        tr("Preparing…"));
-    trackAliasAdd(opId, alias, intro, requestId, chat);
-    emit commands_.requestAddByAlias(alias, intro, opId, requestId);
-}
-
-void SessionController::trackAliasAdd(const QString& opId, const QString& alias,
-    const QString& intro, const QString& requestId, const QString& chat)
-{
-    if (hasAliasSigil(chat)) {
-        aliasChats_.insert(opId, chat);
-    }
-    openContactProgress(chat, opId);
-    refusedRequests_.insert(chat,
-        PendingContactRequest{alias, intro, kContactRetryAttempts, requestId});
-}
-
-void SessionController::writeConversationNote(const QString& peer, const QString& text)
-{
-    if (peer.isEmpty()) {
-        return;
-    }
-    StoredMessage note;
-    note.peer = peer;
-    note.type = QStringLiteral("system");
-    note.text = text;
-    note.ts = nowMillis();
-    note.orderKey = note.ts;
-    note.status = DeliveryStatus::Received;
-    note.id = store_.append(note);
-    if (note.id == 0) {
-        reportUnsaved();
-        return;
-    }
-    contacts_.touch(peer, peerName(peer), systemNoteText(text), note.ts, false);
-    showInActiveView(note, true);
-}
-
-void SessionController::onRoutingTold(const QString& peer, const bool delivered)
-{
-    if (peer.isEmpty()) {
-        return;
-    }
-    const QString kind = QStringLiteral("routing.failed");
-    const qint64 told = store_.oldestOfType(peer, kind, /*outgoing=*/false);
-    if (delivered) {
-        if (told > 0) {
-            if (!store_.removeById(told)) {
-                reportUnsaved();
-                return;
-            }
-            conversation_.removeById(told);
-        }
-        return;
-    }
-    if (told > 0) {
-        return;
-    }
-    StoredMessage note;
-    note.peer = peer;
-    note.type = kind;
-    note.text = encodeSystemNote(
-        QT_TR_NOOP("Your new contact details did not reach them."));
-    note.ts = nowMillis();
-    note.orderKey = note.ts;
-    note.status = DeliveryStatus::Received;
-    note.id = store_.append(note);
-    if (note.id == 0) {
-        reportUnsaved();
-        return;
-    }
-    contacts_.touch(peer, peerName(peer), systemNoteText(note.text), note.ts, false);
-    showInActiveView(note, true);
-}
-
-void SessionController::openContactProgress(const QString& peer, const QString& opId)
-{
-    if (peer.isEmpty()) {
-        return;
-    }
-    noteContactProgress(peer, opId);
-    if (activePeer_ != peer) {
-        openConversation(peer);
-    }
-}
-
-void SessionController::noteContactProgress(const QString& peer, const QString& opId)
-{
-    StoredMessage note;
-    note.peer = peer;
-    note.type = QStringLiteral("system");
-    note.text = encodeSystemNote(QT_TR_NOOP("Sending a contact request…"));
-    note.ts = nowMillis();
-    note.orderKey = note.ts;
-    note.status = DeliveryStatus::Preparing;
-    note.id = store_.append(note);
-    if (note.id == 0) {
-        reportUnsaved();
-        return;
-    }
-    contactProgressRows_[opId] = ContactProgressRow{note.id, peer};
-    contacts_.touch(peer, peerName(peer), systemNoteText(note.text), note.ts, false);
-    if (activePeer_ == peer) {
-        showInActiveView(note, true);
-    }
-}
-
-void SessionController::writeContactProgress(const QString& opId, const QString& text)
-{
-    const auto found = contactProgressRows_.constFind(opId);
-    if (found == contactProgressRows_.cend()) {
-        return;
-    }
-    if (!store_.editContent(found->id, text, QString())) {
-        reportUnsaved();
-        return;
-    }
-    conversation_.setTextForId(found->id, text);
-    contacts_.touch(found->peer, peerName(found->peer), chatPreview(found->peer), 0, false);
+    emit commands_.addByAlias(alias, intro);
 }
 
 void SessionController::acceptContact()
@@ -419,12 +146,6 @@ void SessionController::requestInvite()
     emit commands_.requestInviteSig();
 }
 
-void SessionController::onContactAddStage(const QString& opId, const QString& status)
-{
-    updateOperation(opId, systemNoteText(status));
-    writeContactProgress(opId, status);
-}
-
 void SessionController::onContactAccepted(const QString& peer, const bool ok,
     const QString& reason)
 {
@@ -439,123 +160,6 @@ void SessionController::onContactAccepted(const QString& peer, const bool ok,
     book_.edit(peer).request = ContactState::eAnswered;
     ++contactsRevision_;
     emit contactsRevisionChanged();
-}
-
-void SessionController::onContactAddDone(const QString& opId, const bool ok, const QString& status)
-{
-    settleContactAdd(opId, ok,
-        ok ? status : encodeSystemNote(QT_TR_NOOP("Could not add: %1"), {systemNoteText(status)}));
-}
-
-void SessionController::onContactRequestUnconfirmed(const QString& opId)
-{
-    settleContactAdd(opId, false,
-        encodeSystemNote(QT_TR_NOOP("The contact's server did not confirm the request.")));
-}
-
-void SessionController::settleContactAdd(const QString& opId, const bool ok, const QString& note)
-{
-    aliasChats_.remove(opId);
-    emit commands_.requestForgetPendingAdd(opId);
-    finishOperation(opId, ok, systemNoteText(note));
-    const auto row = contactProgressRows_.constFind(opId);
-    if (row != contactProgressRows_.cend()) {
-        if (!store_.updateStatus(row->id, DeliveryStatus::Received)
-            || (!ok && !store_.setType(row->id, QStringLiteral("contact.failed")))) {
-            reportUnsaved();
-        }
-        if (!ok) {
-            conversation_.setTypeForId(row->id, QStringLiteral("contact.failed"));
-        }
-    }
-    writeContactProgress(opId, note);
-    contactProgressRows_.remove(opId);
-}
-
-void SessionController::onContactAlreadyKnown(const QString& opId, const QString& fingerprint)
-{
-    emit commands_.requestForgetPendingAdd(opId);
-    finishOperation(opId, true, tr("Already in your contacts"));
-    contactProgressRows_.remove(opId);
-    if (const QString chat = aliasChats_.take(opId); !chat.isEmpty()) {
-        refusedRequests_.remove(chat);
-        dropChat(chat);
-    }
-    openConversation(fingerprint);
-    emit actionOk(tr("Already in your contacts"));
-}
-
-void SessionController::onContactAliasUnknown(const QString& opId, const QString& status)
-{
-    const QString chat = aliasChats_.take(opId);
-    if (chat.isEmpty()) {
-        onContactAddDone(opId, false, status);
-        return;
-    }
-    emit commands_.requestForgetPendingAdd(opId);
-    finishOperation(opId, false, status);
-    contactProgressRows_.remove(opId);
-    refusedRequests_.remove(chat);
-    dropChat(chat);
-}
-
-void SessionController::onContactAddResolved(const QString& opId, const QString& fingerprint)
-{
-    const QString chat = aliasChats_.take(opId);
-    if (chat.isEmpty()) {
-        return;
-    }
-    const bool shown = activePeer_ == chat;
-    if (const auto found = refusedRequests_.constFind(chat); found != refusedRequests_.cend()) {
-        const PendingContactRequest pending = *found;
-        refusedRequests_.remove(chat);
-        refusedRequests_.insert(fingerprint, pending);
-    }
-    contactProgressRows_.remove(opId);
-    dropChat(chat);
-    if (shown) {
-        openContactProgress(fingerprint, opId);
-    } else {
-        noteContactProgress(fingerprint, opId);
-    }
-}
-
-void SessionController::onContactRequestSent(const QString& fingerprint, const QString& intro,
-    const QString& requestId, const qint64 sentAtMs)
-{
-    if (fingerprint.isEmpty()) {
-        return;
-    }
-    if (store_.oldestOfType(fingerprint, QStringLiteral("contact.request"), /*outgoing=*/true)
-        != 0) {
-        if (activePeer_ != fingerprint) {
-            openConversation(fingerprint);
-        }
-        return;
-    }
-    const QString body = intro.isEmpty() ? tr("Contact request sent.") : intro;
-    StoredMessage m;
-    m.peer = fingerprint;
-    m.outgoing = true;
-    m.type = "contact.request";
-    m.e2eId = requestId.isEmpty() ? newE2eId() : requestId;
-    m.text = body;
-    m.ts = sentAtMs;
-    m.orderKey = m.ts;
-    const bool answered
-        = book_.has(fingerprint) && book_.state(fingerprint).request == ContactState::eAnswered;
-    m.status = answered ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer;
-    m.id = store_.append(m);
-    if (m.id == 0) {
-        reportUnsaved();
-        return;
-    }
-    contacts_.touch(fingerprint, {}, body, m.ts, false);
-    if (activePeer_ == fingerprint) {
-        showInActiveView(m, true);
-        return;
-    }
-    openConversation(fingerprint);
 }
 
 }  // namespace bazarish::app

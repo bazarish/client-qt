@@ -233,23 +233,20 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::uploadProgress, &events_, &AccountEvents::uploadProgress);
     connect(worker_, &SessionWorker::sendResult, this, &CoreAccount::onSendResult);
     connect(worker_, &SessionWorker::sendPhase, this, &CoreAccount::onSendPhase);
-    connect(worker_, &SessionWorker::contactRequestSent, &events_,
-        &AccountEvents::contactRequestSent);
-    connect(worker_, &SessionWorker::contactAddStage, &events_, &AccountEvents::contactAddStage);
-    connect(worker_, &SessionWorker::contactAddDone, &events_, &AccountEvents::contactAddDone);
-    connect(worker_, &SessionWorker::routingTold, &events_, &AccountEvents::routingTold);
-    connect(worker_, &SessionWorker::contactAlreadyKnown, &events_,
-        &AccountEvents::contactAlreadyKnown);
-    connect(worker_, &SessionWorker::contactAliasUnknown, &events_,
-        &AccountEvents::contactAliasUnknown);
-    connect(worker_, &SessionWorker::contactAddResolved, &events_,
-        &AccountEvents::contactAddResolved);
-    connect(worker_, &SessionWorker::contactRequestUnconfirmed, &events_,
-        &AccountEvents::contactRequestUnconfirmed);
-    connect(worker_, &SessionWorker::contactAddResumed, &events_,
-        &AccountEvents::contactAddResumed);
-    connect(worker_, &SessionWorker::contactAddRateLimited, &events_,
-        &AccountEvents::contactAddRateLimited);
+    connect(worker_, &SessionWorker::contactRequestSent, this, &CoreAccount::onContactRequestSent);
+    connect(worker_, &SessionWorker::contactAddStage, this, &CoreAccount::onContactAddStage);
+    connect(worker_, &SessionWorker::contactAddDone, this, &CoreAccount::onContactAddDone);
+    connect(worker_, &SessionWorker::routingTold, this, &CoreAccount::onRoutingTold);
+    connect(worker_, &SessionWorker::contactAlreadyKnown, this,
+        &CoreAccount::onContactAlreadyKnown);
+    connect(worker_, &SessionWorker::contactAliasUnknown, this,
+        &CoreAccount::onContactAliasUnknown);
+    connect(worker_, &SessionWorker::contactAddResolved, this, &CoreAccount::onContactAddResolved);
+    connect(worker_, &SessionWorker::contactRequestUnconfirmed, this,
+        &CoreAccount::onContactRequestUnconfirmed);
+    connect(worker_, &SessionWorker::contactAddResumed, this, &CoreAccount::onContactAddResumed);
+    connect(worker_, &SessionWorker::contactAddRateLimited, this,
+        &CoreAccount::onContactAddRateLimited);
     connect(worker_, &SessionWorker::contactAccepted, &events_, &AccountEvents::contactAccepted);
     connect(worker_, &SessionWorker::opBegin, &log_,
         [this](const QString& id, const QString& kind, const QString& title,
@@ -299,6 +296,7 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::contactsRefreshed, this,
         [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
             contacts_.reset(contacts, blocked);
+            syncAgreeingRows();
         });
     connect(worker_, &SessionWorker::stopped, this, &CoreAccount::close);
     connect(worker_, &SessionWorker::stopped, &thread_, &QThread::quit);
@@ -361,6 +359,11 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(&commands_, &AccountCommands::forgetChat, this, &CoreAccount::forgetChat);
     connect(&commands_, &AccountCommands::clearSavedEverywhere, this,
         &CoreAccount::clearSavedEverywhere);
+    connect(&commands_, &AccountCommands::addByInvite, this, &CoreAccount::addByInvite);
+    connect(&commands_, &AccountCommands::addByAlias, this, &CoreAccount::addByAlias);
+    connect(&commands_, &AccountCommands::retryContactAdd, this, &CoreAccount::retryContactAdd);
+    connect(&commands_, &AccountCommands::retryContactRequest, this,
+        &CoreAccount::retryContactRequest);
     connect(&commands_, &AccountCommands::opBegin, &log_, &OperationLog::begin);
     connect(&commands_, &AccountCommands::opUpdate, &log_, &OperationLog::update);
     connect(&commands_, &AccountCommands::opSetCancelId, &log_, &OperationLog::setCancelId);
