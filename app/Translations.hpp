@@ -7,8 +7,6 @@
 #include <QTranslator>
 #include <QVariantList>
 
-class QQmlApplicationEngine;
-
 namespace bazarish::app {
 
 class Translations : public QTranslator {
@@ -17,7 +15,7 @@ class Translations : public QTranslator {
     Q_PROPERTY(QVariantList languages READ languages CONSTANT)
     Q_PROPERTY(bool rightToLeft READ rightToLeft NOTIFY languageChanged)
 public:
-    explicit Translations(QQmlApplicationEngine& engine, QObject* parent = nullptr);
+    explicit Translations(QObject* parent = nullptr);
 
     QString translate(const char* context, const char* sourceText, const char* disambiguation,
         int n) const override;
@@ -39,7 +37,6 @@ private:
         QHash<QString, QString> byLanguage;
     };
 
-    QQmlApplicationEngine& engine_;
     QVariantList languages_;
     QHash<QString, Entry> messages_;
     QString language_;

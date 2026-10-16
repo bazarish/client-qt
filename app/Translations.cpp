@@ -8,7 +8,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
-#include <QQmlApplicationEngine>
 
 #include <stdexcept>
 
@@ -32,9 +31,8 @@ QString keyFor(const char* const sourceText, const char* const disambiguation)
 
 }  // namespace
 
-Translations::Translations(QQmlApplicationEngine& engine, QObject* const parent)
+Translations::Translations(QObject* const parent)
     : QTranslator(parent)
-    , engine_(engine)
 {
     QFile catalog(kCatalog);
     if (!catalog.open(QIODevice::ReadOnly)) {
@@ -93,7 +91,6 @@ void Translations::setLanguage(const QString& code)
     }
     language_ = wanted;
     AppSettings::instance().setLanguage(wanted.toStdString());
-    engine_.retranslate();
     emit languageChanged();
 }
 

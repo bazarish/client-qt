@@ -286,8 +286,10 @@ int main(int argc, char** argv)
     }
 
     QQmlApplicationEngine engine;
-    bazarish::app::Translations translations(engine);
+    bazarish::app::Translations translations;
     QCoreApplication::installTranslator(&translations);
+    QObject::connect(&translations, &bazarish::app::Translations::languageChanged, &engine,
+        &QQmlEngine::retranslate);
     engine.rootContext()->setContextProperty("Tr", &translations);
     engine.addImageProvider("identicon", new bazarish::app::IdenticonProvider());
     engine.addImageProvider("avatar", new bazarish::app::AvatarProvider());
