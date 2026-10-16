@@ -391,8 +391,6 @@ Rectangle {
 
     PhotoCapture {
         id: photoSheet
-        parent: Overlay.overlay
-        anchors.centerIn: parent
         onConfirmed: function(shot) { if (root.session) { root.session.sendShot(shot) } }
     }
 

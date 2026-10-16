@@ -34,12 +34,10 @@ Popup {
     onOpened: {
         targetText.text = root.prefillTarget
         errorText = ""
-        scanBox.scanning = false
         targetText.forceActiveFocus()
     }
     onClosed: {
         errorText = ""
-        scanBox.scanning = false
         targetText.text = ""
         intro.text = root.kGreeting
     }
@@ -139,15 +137,9 @@ Popup {
                 }
             }
             QrScanButton {
-                box: scanBox
                 Layout.alignment: Qt.AlignTop
+                onDecoded: function(text) { targetText.text = text }
             }
-        }
-
-        QrScanBox {
-            id: scanBox
-            onDecoded: function(text) { targetText.text = text }
-            onFailed: function(reason) { root.errorText = reason }
         }
 
         Label {

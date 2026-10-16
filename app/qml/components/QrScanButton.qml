@@ -3,8 +3,12 @@ import QtQuick
 import Bazarish
 
 IconButton {
-    property Item box: null
+    id: button
+    signal decoded(string text)
     iconName: "qr"
-    tint: box && box.scanning ? Theme.green : Theme.text
-    onClicked: box.scanning = !box.scanning
+    onClicked: scan.open()
+    QrScanSheet {
+        id: scan
+        onDecoded: function(text) { button.decoded(text) }
+    }
 }

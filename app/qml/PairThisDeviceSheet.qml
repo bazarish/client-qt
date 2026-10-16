@@ -22,10 +22,9 @@ Popup {
     onOpened: {
         linkField.text = root.prefillLink
         codeField.text = ""
-        scanBox.scanning = false
         root.refused = false
     }
-    onClosed: { scanBox.scanning = false; App.cancelPairing() }
+    onClosed: App.cancelPairing()
 
     background: DialogFrame { }
 
@@ -84,14 +83,9 @@ Popup {
                 }
             }
             QrScanButton {
-                box: scanBox
                 Layout.alignment: Qt.AlignTop
+                onDecoded: function(text) { linkField.text = text }
             }
-        }
-
-        QrScanBox {
-            id: scanBox
-            onDecoded: function(text) { linkField.text = text }
         }
 
         Label {

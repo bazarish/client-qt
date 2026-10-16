@@ -8,139 +8,96 @@ import Bazarish
 // Taking a photograph to send. The shot is looked at before it goes anywhere: a
 // frame nobody confirmed is not a message, and the shutter is the only place a
 // camera is held open.
-Popup {
+CameraSheet {
     id: root
-
-    readonly property int kEdge: 24
-    modal: true
-    // On a phone the window is the screen, so the viewfinder stands as the camera does.
-    width: App.mobile && parent ? parent.width - root.kEdge
-                               : Math.min(420, parent ? parent.width - root.kEdge : 420)
-    height: App.mobile && parent ? parent.height - root.kEdge : implicitHeight
-    padding: 0
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    background: DialogFrame { }
 
     signal confirmed(var shot)
 
     property string shotSource: ""
     property string errorText: ""
     readonly property bool taken: root.shotSource.length > 0
+    readonly property int kShutter: 68
+    readonly property int kShutterRing: 4
+    readonly property int kBarMargin: 20
 
-    CameraGate { id: cameraGate }
-    Loader { id: cameras; active: cameraGate.granted; sourceComponent: MediaDevices { } }
-    readonly property bool haveCamera: cameras.item !== null && cameras.item.videoInputs.length > 0
-
-    onOpened: { root.shotSource = ""; root.errorText = ""; cameraGate.ask() }
+    cameraActive: !root.taken
+    onOpened: { root.shotSource = ""; root.errorText = "" }
     onClosed: { root.shotSource = ""; root.errorText = "" }
+    onCameraFailed: function(reason) { root.errorText = reason }
 
-    contentItem: ColumnLayout {
-        spacing: 0
+    PhotoShot {
+        id: held
+        capture: root.imageCapture
+        onShotChanged: root.shotSource = held.source
+        onFailed: function(reason) { root.errorText = reason }
+    }
 
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.margins: 14
-            Label {
-                text: qsTr("Photo")
-                color: Theme.green
-                font.pixelSize: Theme.fontTitle
-                font.weight: Font.DemiBold
-                Layout.fillWidth: true
-            }
-            IconButton { iconName: "close"; onClicked: root.close() }
+    Rectangle {
+        anchors.fill: parent
+        visible: root.taken
+        color: Theme.deep
+        Image {
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectFit
+            source: root.shotSource
         }
-        Hairline { }
+    }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.fillHeight: App.mobile
-            Layout.margins: 14
-            Layout.preferredHeight: App.mobile ? -1 : 300
-            radius: Theme.radiusSmall
-            color: Theme.deep
-            border.color: Theme.border
-
-            Loader {
-                id: live
-                anchors.fill: parent
-                anchors.margins: 1
-                active: root.visible && root.haveCamera
-                sourceComponent: VideoOutput {
-                    id: preview
-                    readonly property bool ready: shutter.readyForCapture
-                    readonly property var heldShot: held
-                    CaptureSession {
-                        camera: Camera {
-                            active: !root.taken
-                            onErrorOccurred: function(error, errorString) {
-                                root.errorText = errorString
-                            }
-                        }
-                        imageCapture: ImageCapture { id: shutter }
-                        videoOutput: preview
-                    }
-                    PhotoShot {
-                        id: held
-                        capture: shutter
-                        onShotChanged: root.shotSource = held.source
-                        onFailed: function(reason) { root.errorText = reason }
-                    }
-                }
-            }
-
-            Image {
-                anchors.fill: parent
-                anchors.margins: 1
-                visible: root.taken
-                fillMode: Image.PreserveAspectFit
-                source: root.shotSource
-            }
-
-            Label {
-                anchors.centerIn: parent
-                visible: cameraGate.refused || (cameraGate.granted && !root.haveCamera)
-                text: cameraGate.refused ? qsTr("No access to the camera.")
-                                         : qsTr("No camera on this machine.")
-                color: Theme.textDim
-            }
-        }
+    ColumnLayout {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: root.kBarMargin
+        spacing: 12
 
         Label {
             visible: root.errorText.length > 0
             text: root.errorText
             color: Theme.danger
-            font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
+            horizontalAlignment: Text.AlignHCenter
             Layout.fillWidth: true
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
+        }
+
+        Button {
+            id: shutter
+            visible: !root.taken
+            enabled: root.imageCapture !== null && root.imageCapture.readyForCapture
+            Accessible.name: qsTr("Take photo")
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: root.kShutter
+            Layout.preferredHeight: root.kShutter
+            padding: 0
+            background: Rectangle {
+                radius: width / 2
+                color: shutter.down ? Theme.textDim : "white"
+                opacity: shutter.enabled ? 1 : 0.4
+                border.width: root.kShutterRing
+                border.color: Theme.bg
+            }
+            onClicked: {
+                root.errorText = ""
+                held.take()
+            }
         }
 
         RowLayout {
+            visible: root.taken
             Layout.fillWidth: true
-            Layout.margins: 14
-            spacing: 8
-
             MenuButton {
                 iconName: "camera"
-                text: root.taken ? qsTr("Take again") : qsTr("Take photo")
-                enabled: live.item !== null && (root.taken || live.item.ready)
+                text: qsTr("Take again")
                 onClicked: {
                     root.errorText = ""
-                    if (root.taken) {
-                        live.item.heldShot.discard()
-                    } else {
-                        live.item.heldShot.take()
-                    }
+                    held.discard()
                 }
             }
             Item { Layout.fillWidth: true }
             MenuButton {
                 iconName: "send"
                 text: qsTr("Send")
-                enabled: root.taken
                 onClicked: {
-                    root.confirmed(live.item.heldShot)
+                    root.confirmed(held)
                     root.close()
                 }
             }

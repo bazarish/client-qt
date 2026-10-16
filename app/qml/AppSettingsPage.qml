@@ -377,12 +377,11 @@ Popup {
                                 spacing: 8
                                 MenuButton {
                                     iconName: "qr"
-                                    positive: gatewayScan.scanning
                                     leftPadding: 0
                                     rightPadding: 0
                                     Layout.preferredWidth: gatewaySave.height
                                     Layout.preferredHeight: gatewaySave.height
-                                    onClicked: gatewayScan.scanning = !gatewayScan.scanning
+                                    onClicked: gatewayScan.open()
                                 }
                                 MenuButton {
                                     id: gatewaySave
@@ -397,7 +396,7 @@ Popup {
                                     }
                                 }
                             }
-                            QrScanBox {
+                            QrScanSheet {
                                 id: gatewayScan
                                 onDecoded: function(text) { gatewayField.text = text }
                             }

@@ -135,11 +135,9 @@ ColumnLayout {
                 Behavior on border.color { ColorAnimation { duration: 300 } }
             }
         }
-        QrScanButton { box: linkScan }
-    }
-    QrScanBox {
-        id: linkScan
-        onDecoded: function(text) { linkField.text = text }
+        QrScanButton {
+            onDecoded: function(text) { linkField.text = text }
+        }
     }
 
     // Opt into the per-field form when there is no link to paste.

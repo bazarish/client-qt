@@ -83,16 +83,10 @@ Dialog {
                     }
             }
             QrScanButton {
-                box: addressScan
                 enabled: !root.busy
                 Layout.alignment: Qt.AlignBottom
+                onDecoded: function(text) { addressField.text = text }
             }
-        }
-        QrScanBox {
-            id: addressScan
-            Layout.leftMargin: 14
-            Layout.rightMargin: 14
-            onDecoded: function(text) { addressField.text = text }
         }
 
         // Why it was refused. An address that does not answer is not saved:
