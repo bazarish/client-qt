@@ -42,11 +42,6 @@ namespace bazarish::app {
 
 namespace {
 constexpr int kRecentReactions = 5;
-constexpr int kReactionsToFlash = 64;
-QString flashKey(const QString& peer, const QString& target)
-{
-    return peer + "\n" + target;
-}
 const QStringList kStandardReactions = {QStringLiteral("\U0001F44D"),
     QStringLiteral("\u2764\uFE0F"), QStringLiteral("\U0001F602"),
     QStringLiteral("\U0001F389"), QStringLiteral("\U0001F525"), QStringLiteral("\U0001F62E"),
@@ -85,31 +80,10 @@ void SessionController::rememberReaction(const QString& emoji)
     emit recentReactionsChanged();
 }
 
-void SessionController::noteReactionToFlash(const QString& peer, const QString& target)
-{
-    const QString key = flashKey(peer, target);
-    reactionsToFlash_.removeAll(key);
-    reactionsToFlash_.append(key);
-    while (reactionsToFlash_.size() > kReactionsToFlash) {
-        reactionsToFlash_.removeFirst();
-    }
-    persistReactionsToFlash();
-}
-
-void SessionController::persistReactionsToFlash()
-{
-    QJsonArray array;
-    for (const QString& entry : reactionsToFlash_) {
-        array.append(entry);
-    }
-    accountDb().putText("reactions-to-flash",
-        QJsonDocument(array).toJson(QJsonDocument::Compact).toStdString());
-}
-
 QStringList SessionController::reactionsToFlash(const QString& e2eId) const
 {
     if (activePeer_.isEmpty() || e2eId.isEmpty()
-        || !reactionsToFlash_.contains(flashKey(activePeer_, e2eId))) {
+        || !reactionsToFlash_.contains(reactionFlashKey(activePeer_, e2eId))) {
         return {};
     }
     QStringList emoji;
@@ -123,19 +97,9 @@ QStringList SessionController::reactionsToFlash(const QString& e2eId) const
 
 void SessionController::forgetReactionFlash()
 {
-    if (activePeer_.isEmpty()) {
-        return;
+    if (!activePeer_.isEmpty()) {
+        emit commands_.forgetReactionFlash(activePeer_);
     }
-    const QString prefix = activePeer_ + "\n";
-    const qsizetype before = reactionsToFlash_.size();
-    reactionsToFlash_.removeIf(
-        [&prefix](const QString& entry) { return entry.startsWith(prefix); });
-    if (reactionsToFlash_.size() == before) {
-        return;
-    }
-    persistReactionsToFlash();
-    ++reactionsRevision_;
-    emit reactionsRevisionChanged();
 }
 
 void SessionController::react(const QString& e2eId, const QString& emoji)

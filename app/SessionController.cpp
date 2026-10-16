@@ -203,8 +203,6 @@ SessionController::SessionController(QObject* parent)
     contactsProxy_.setFilterRole(ContactListModel::NameRole);
     contactsProxy_.setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-    readSyncTimer_.setSingleShot(true);
-    connect(&readSyncTimer_, &QTimer::timeout, this, &SessionController::flushReadSync);
 
     connect(&events_, &AccountEvents::connectProgress, this, &SessionController::onConnectProgress);
     connect(&events_, &AccountEvents::addressMismatch, this,
@@ -265,17 +263,45 @@ SessionController::SessionController(QObject* parent)
     connect(&events_, &AccountEvents::openFailed, this, &SessionController::openFailed);
     connect(&events_, &AccountEvents::connectionChanged, this,
         &SessionController::onConnectionChanged);
-    connect(&events_, &AccountEvents::messageReceived, this,
-        &SessionController::onMessageReceived);
+    connect(&events_, &AccountEvents::rowAdded, this, &SessionController::onRowAdded);
+    connect(&events_, &AccountEvents::rowChanged, this, &SessionController::onRowChanged);
+    connect(&events_, &AccountEvents::rowRemoved, this, &SessionController::onRowRemoved);
+    connect(&events_, &AccountEvents::peerReset, this, &SessionController::onPeerReset);
+    connect(&events_, &AccountEvents::peerForgotten, this, &SessionController::onPeerForgotten);
+    connect(&events_, &AccountEvents::chatChanged, this, &SessionController::refreshChatRow);
+    connect(&events_, &AccountEvents::chatsChanged, this, &SessionController::rebuildChatList);
+    connect(&events_, &AccountEvents::deliveredThrough, this,
+        &SessionController::onDeliveredThrough);
+    connect(&events_, &AccountEvents::reactionsChanged, this, [this]() {
+        ++reactionsRevision_;
+        emit reactionsRevisionChanged();
+    });
+    connect(&events_, &AccountEvents::reactionsToFlash, this, [this](const QStringList& flashing) {
+        if (reactionsToFlash_ == flashing) {
+            return;
+        }
+        reactionsToFlash_ = flashing;
+        ++reactionsRevision_;
+        emit reactionsRevisionChanged();
+    });
+    connect(&events_, &AccountEvents::groupChanged, this, [this](const QString& peer) {
+        if (peer == activePeer_) {
+            refreshActiveGroup();
+        }
+    });
+    connect(&events_, &AccountEvents::accountRenamed, this, [this](const QString& name) {
+        if (name != displayName_) {
+            displayName_ = name;
+            emit identityChanged();
+        }
+    });
+    connect(&events_, &AccountEvents::contactsRevised, this, [this]() {
+        ++contactsRevision_;
+        emit contactsRevisionChanged();
+    });
     connect(&events_, &AccountEvents::contactsRefreshed, this,
         [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
-            contactFps_.clear();
-            contactState_.clear();
-            for (const ContactState& contact : contacts) {
-                contactFps_ << contact.fingerprint;
-                contactState_.insert(contact.fingerprint, contact);
-            }
-            blocked_ = blocked;
+            book_.reset(contacts, blocked);
             syncAgreeingRows();
             rebuildChatList();
             emit activePeerNameChanged();
@@ -369,11 +395,11 @@ SessionController::SessionController(QObject* parent)
         &SessionController::refreshUnreadTotal);
 
     const QMetaObject& commands = AccountCommands::staticMetaObject;
-    const QMetaMethod noted = metaObject()->method(metaObject()->indexOfSlot("noteCommandQueued()"));
+    const QMetaMethod noted
+        = metaObject()->method(metaObject()->indexOfSlot("noteCommandQueued()"));
     for (int i = commands.methodOffset(); i < commands.methodCount(); ++i) {
         const QMetaMethod method = commands.method(i);
-        if (method.methodType() == QMetaMethod::Signal
-            && !kSelfDescribingCommands.contains(method.name())) {
+        if (listedWhileQueued(method)) {
             connect(&commands_, method, this, noted);
         }
     }
@@ -389,6 +415,10 @@ SessionController::SessionController(QObject* parent)
     });
 
     core_ = std::make_unique<CoreAccount>(commands_, events_);
+    connect(core_.get(), &CoreAccount::messageNotification, this,
+        &SessionController::messageNotification);
+    connect(core_.get(), &CoreAccount::reactionNotification, this,
+        &SessionController::reactionNotification);
 }
 
 namespace {
@@ -541,19 +571,6 @@ void SessionController::open(const QString& file, const QString& accountId,
     if (!recentReactions_.isEmpty()) {
         emit recentReactionsChanged();
     }
-    const QJsonDocument flashes = QJsonDocument::fromJson(
-        QByteArray::fromStdString(accountDb().text("reactions-to-flash")));
-    for (const QJsonValue& entry : flashes.array()) {
-        reactionsToFlash_ << entry.toString();
-    }
-    if (!store_.failUnsentOnLoad(
-            DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed)
-        || !store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
-            DeliveryStatus::Received,
-            encodeSystemNote(QT_TR_NOOP("The contact request did not finish.")))) {
-        emit openFailed(tr("This profile could not be opened."));
-        return;
-    }
     emit commands_.requestOpen(file, passphrase, startOnline);
 }
 
@@ -621,12 +638,11 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
 
 void SessionController::activateConversation(const QString& peer)
 {
-    flushReadSync();
+    emit commands_.viewConversation(peer);
     activePeer_ = peer;
     emit activePeerChanged();
     emit activePeerNameChanged();
     refreshActiveGroup();
-    lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
 }
 
 void SessionController::refreshActiveGroup()
@@ -708,6 +724,7 @@ void SessionController::closeConversation()
     if (activePeer_.isEmpty()) {
         return;
     }
+    emit commands_.viewConversation({});
     activePeer_.clear();
     conversation_.setMessages({});
     emit activePeerChanged();
@@ -868,7 +885,7 @@ void SessionController::rebuildChatList()
         rows.push_back(saved);
         known.insert(savedPeer());
     }
-    for (const QString& fp : contactFps_) {
+    for (const QString& fp : book_.fingerprints()) {
         rows.push_back(ContactRow{fp, peerName(fp), chatPreview(fp), store_.lastTime(fp),
             store_.unreadCount(fp), store_.isPinned(fp)});
         known.insert(fp);
@@ -890,7 +907,7 @@ QString SessionController::savedPeer() const
 
 QString SessionController::savedChatName()
 {
-    return tr("Saved messages");
+    return ContactBook::savedChatName();
 }
 
 void SessionController::retranslate()
@@ -913,16 +930,17 @@ QString SessionController::attachmentLabel(const QString& type)
 QString SessionController::chatPreview(const QString& peer) const
 {
     const TranscriptStore::LastMessage last = store_.lastMessage(peer);
+    QString preview;
     if (!last.text.isEmpty()) {
-        return isServiceMessage(last.type) ? systemNoteText(last.text) : last.text;
-    }
-    if (last.type.isEmpty()) {
+        preview = isServiceMessage(last.type) ? systemNoteText(last.text) : last.text;
+    } else if (last.type.isEmpty()) {
         return {};
+    } else if (last.attachment.isEmpty()) {
+        preview = attachmentLabel(last.type);
+    } else {
+        preview = attachmentLabel(last.type) + QLatin1Char(' ') + last.attachment;
     }
-    if (last.attachment.isEmpty()) {
-        return attachmentLabel(last.type);
-    }
-    return attachmentLabel(last.type) + QLatin1Char(' ') + last.attachment;
+    return last.author.isEmpty() ? preview : tr("%1: %2").arg(last.author, preview);
 }
 
 bool SessionController::activeAliasLookup() const
@@ -932,23 +950,12 @@ bool SessionController::activeAliasLookup() const
 
 QString SessionController::peerName(const QString& id) const
 {
-    if (!id.isEmpty() && id == fingerprint_) {
-        return savedChatName();
-    }
-    const QString name = contactState_.contains(id) ? contactState_.value(id).name
-                                                    : pendingContactNames_.value(id);
-    if (!name.isEmpty()) {
-        return name;
-    }
-    if (hasAliasSigil(id)) {
-        return id.mid(1);
-    }
-    return shortFingerprint(id);
+    return book_.peerName(id);
 }
 
 QString SessionController::contactName(const QString& fp) const
 {
-    return contactState_.value(fp).name;
+    return book_.state(fp).name;
 }
 
 void SessionController::setAvatarFromGrab(QObject* const grab)
@@ -996,12 +1003,12 @@ void SessionController::setDisplayName(const QString& name)
 
 bool SessionController::canWriteTo(const QString& fp) const
 {
-    return contactState_.value(fp).writable;
+    return book_.state(fp).writable;
 }
 
 QString SessionController::contactInvite(const QString& fp) const
 {
-    return contactState_.value(fp).invite;
+    return book_.state(fp).invite;
 }
 
 void SessionController::renameContact(const QString& fp, const QString& name)
@@ -1010,7 +1017,7 @@ void SessionController::renameContact(const QString& fp, const QString& name)
         return;
     }
     const QString trimmed = name.trimmed();
-    contactState_[fp].name = trimmed;
+    book_.edit(fp).name = trimmed;
     rebuildChatList();
     emit activePeerNameChanged();
     emit commands_.requestRenameContact(fp, trimmed);
@@ -1054,8 +1061,7 @@ void SessionController::deleteContact()
         return;
     }
     const QString peer = activePeer_;
-    contactFps_.removeAll(peer);
-    contactState_.remove(peer);
+    book_.remove(peer);
     dropChat(peer);
     if (!hasAliasSigil(peer)) {
         emit commands_.requestRemoveContact(peer);
@@ -1089,13 +1095,13 @@ void SessionController::clearSavedEverywhere()
 
 bool SessionController::isBlocked(const QString& peer) const
 {
-    return blocked_.contains(peer);
+    return book_.isBlocked(peer);
 }
 
 QVariantList SessionController::blockedList() const
 {
     QVariantList rows;
-    for (const QString& peer : blocked_) {
+    for (const QString& peer : book_.blocked()) {
         rows.push_back(QVariantMap{{QStringLiteral("fingerprint"), peer},
             {QStringLiteral("name"), peerName(peer)}});
     }
@@ -1107,13 +1113,7 @@ void SessionController::setBlocked(const QString& peer, const bool blocked)
     if (peer.isEmpty() || isSavedChat(peer)) {
         return;
     }
-    if (blocked) {
-        if (!blocked_.contains(peer)) {
-            blocked_.push_back(peer);
-        }
-    } else {
-        blocked_.removeAll(peer);
-    }
+    book_.setBlocked(peer, blocked);
     ++contactsRevision_;
     emit contactsRevisionChanged();
     emit commands_.requestSetBlocked(peer, blocked);
@@ -1121,12 +1121,12 @@ void SessionController::setBlocked(const QString& peer, const bool blocked)
 
 bool SessionController::contactNotifications(const QString& peer) const
 {
-    return contactState_.value(peer).notifications;
+    return book_.state(peer).notifications;
 }
 
 bool SessionController::contactCalls(const QString& peer) const
 {
-    return contactState_.value(peer).calls;
+    return book_.state(peer).calls;
 }
 
 void SessionController::setContactNotifications(const QString& peer, const bool on)
@@ -1134,7 +1134,7 @@ void SessionController::setContactNotifications(const QString& peer, const bool 
     if (peer.isEmpty()) {
         return;
     }
-    contactState_[peer].notifications = on;
+    book_.edit(peer).notifications = on;
     ++contactsRevision_;
     emit contactsRevisionChanged();
     emit commands_.requestSetContactNotifications(peer, on);
@@ -1145,7 +1145,7 @@ void SessionController::setContactCalls(const QString& peer, const bool allowed)
     if (peer.isEmpty()) {
         return;
     }
-    contactState_[peer].calls = allowed;
+    book_.edit(peer).calls = allowed;
     ++contactsRevision_;
     emit contactsRevisionChanged();
     emit commands_.requestSetContactCalls(peer, allowed);
@@ -1593,10 +1593,7 @@ void SessionController::exportAccount(const QString& fileUrl, const QString& pas
 
 QString SessionController::shortFingerprint(const QString& fp) const
 {
-    if (fp.size() <= 14) {
-        return fp;
-    }
-    return fp.left(8) + "…" + fp.right(4);
+    return ContactBook::shortFingerprint(fp);
 }
 
 void SessionController::setChatFilter(const QString& text)
@@ -1818,7 +1815,8 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
             return;
         }
         forwardShown(m, toPeer, tr("[voice]"));
-        emit commands_.requestSendVoice(toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
+        emit commands_.requestSendVoice(
+            toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
         return;
     }
     if (source.type == QStringLiteral("text")) {
@@ -2093,6 +2091,7 @@ void SessionController::onOpened(
     const QString& fingerprint, const QString& displayName, bool connected)
 {
     fingerprint_ = fingerprint;
+    book_.setOwnFingerprint(fingerprint);
     displayName_ = displayName;
     connected_ = connected;
     emit identityChanged();
@@ -2248,7 +2247,8 @@ void SessionController::resendText(qint64 localId, const QString& text, const QS
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
         tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
         activePeer_);
-    emit commands_.requestSendText(activePeer_, text, localId, e2eId, stored.replyTo, stored.forwarded);
+    emit commands_.requestSendText(
+        activePeer_, text, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendFile(qint64 localId, const QString& e2eId)
@@ -2266,7 +2266,8 @@ void SessionController::resendFile(qint64 localId, const QString& e2eId)
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
         stored.attName.isEmpty() ? tr("file") : stored.attName,
         tr("Sending again…"), activePeer_);
-    emit commands_.requestSendFile(activePeer_, srcPath, localId, e2eId, stored.replyTo, stored.forwarded);
+    emit commands_.requestSendFile(
+        activePeer_, srcPath, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendVoice(qint64 localId, const QString& e2eId)
@@ -2303,22 +2304,8 @@ void SessionController::resendPicture(qint64 localId, const QString& e2eId)
     beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
         stored.attName.isEmpty() ? tr("image") : stored.attName,
         tr("Sending again…"), activePeer_);
-    emit commands_.requestSendPicture(activePeer_, picture, stored.attName, stored.attMime, localId, e2eId,
-        stored.replyTo, stored.forwarded);
-}
-
-bool SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
-{
-    if (!store_.markOutgoingReadUpTo(peer, uptoId, DeliveryStatus::Delivered,
-            DeliveryStatus::AtRecipientServer, DeliveryStatus::AtRecipientServer)) {
-        return false;
-    }
-    if (peer == activePeer_) {
-        for (const qint64 id : conversation_.markDeliveredThrough(uptoId)) {
-            statusById_[id] = DeliveryStatus::Delivered;
-        }
-    }
-    return true;
+    emit commands_.requestSendPicture(activePeer_, picture, stored.attName, stored.attMime,
+        localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::reportUnsaved()
@@ -2337,35 +2324,7 @@ void SessionController::markReadThroughRow(int row)
     if (!conversation_.newestIncomingThrough(row, id, e2eId, sentAt)) {
         return;
     }
-    const qint64 prevAcked = lastReadAckedId_.value(activePeer_, 0);
-    if (id <= prevAcked) {
-        return;
-    }
-    if (!store_.setLastReadId(activePeer_, id)) {
-        reportUnsaved();
-        return;
-    }
-    lastReadAckedId_[activePeer_] = id;
-    contacts_.setUnread(activePeer_, store_.unreadCount(activePeer_));
-    pendingReadSync_[activePeer_] = sentAt;
-    readSyncTimer_.start(kReadSyncIdleMs);
-    if (!sendReceipts_ || !online_) {
-        return;
-    }
-    emit commands_.requestSendReceipt(activePeer_, e2eId);
-}
-
-void SessionController::flushReadSync()
-{
-    readSyncTimer_.stop();
-    if (!online_) {
-        pendingReadSync_.clear();
-        return;
-    }
-    for (auto it = pendingReadSync_.constBegin(); it != pendingReadSync_.constEnd(); ++it) {
-        emit commands_.requestSyncRead(it.key(), it.value());
-    }
-    pendingReadSync_.clear();
+    emit commands_.markRead(activePeer_, id, e2eId, sentAt);
 }
 
 void SessionController::onOpBegin(

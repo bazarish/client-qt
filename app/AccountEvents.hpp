@@ -50,7 +50,6 @@ signals:
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& connectionNote);
     void connectProgress(int percent, const QString& phase);
-    void messageReceived(const QVariantMap& message);
     void contactsRefreshed(const QVector<ContactState>& contacts, const QStringList& blocked);
     void avatarReady(const QString& fingerprint, const QByteArray& data);
     void sendProgress(qint64 localId, int state);
@@ -99,6 +98,19 @@ signals:
         float outputLevel);
     void callLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
     void closed();
+    void rowAdded(const QString& peer, qint64 id, bool own);
+    void rowChanged(const QString& peer, qint64 id);
+    void rowRemoved(const QString& peer, qint64 id);
+    void peerReset(const QString& peer);
+    void peerForgotten(const QString& peer);
+    void chatChanged(const QString& peer);
+    void chatsChanged();
+    void deliveredThrough(const QString& peer, qint64 uptoId);
+    void reactionsChanged();
+    void reactionsToFlash(const QStringList& flashing);
+    void groupChanged(const QString& peer);
+    void accountRenamed(const QString& name);
+    void contactsRevised();
 };
 
 }  // namespace bazarish::app

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <QByteArray>
+#include <QMetaMethod>
 #include <QObject>
 #include <QSet>
 #include <QString>
@@ -21,12 +22,22 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
 };
 
+// A request goes to the worker; the core answers every other command itself.
+inline bool listedWhileQueued(const QMetaMethod& command)
+{
+    return command.methodType() == QMetaMethod::Signal && command.name().startsWith("request")
+        && !kSelfDescribingCommands.contains(command.name());
+}
+
 class AccountCommands : public QObject {
     Q_OBJECT
 public:
     using QObject::QObject;
 
 signals:
+    void viewConversation(const QString& peer);
+    void markRead(const QString& peer, qint64 id, const QString& e2eId, qint64 sentAtMs);
+    void forgetReactionFlash(const QString& peer);
     void requestPublishThisDeviceAddress();
     void requestPublishFreshAddress();
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp,

@@ -434,6 +434,16 @@ void ConversationModel::setPictureReadyForId(qint64 id, const bool ready)
     notifyRow(row, {PictureRole});
 }
 
+void ConversationModel::replaceById(const StoredMessage& message)
+{
+    const int row = rowForId(message.id);
+    if (row < 0) {
+        return;
+    }
+    messages_[row] = message;
+    notifyRow(row, {});
+}
+
 void ConversationModel::editById(qint64 id, const QString& text, const QString& keyboard)
 {
     const int row = rowForId(id);

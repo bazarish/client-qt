@@ -19,6 +19,7 @@ QString newE2eId();
 QString aliasChatPeer(const QString& alias);
 
 bool hasAliasSigil(const QString& text);
+QString reactionFlashKey(const QString& peer, const QString& target);
 
 inline const QString kAliasOperationId = QStringLiteral("alias");
 

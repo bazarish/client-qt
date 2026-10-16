@@ -1,8 +1,15 @@
 // Bazarish project (c) 2026
 #include "CoreAccount.hpp"
 
+#include "DeliveryStatus.hpp"
+#include "SessionShared.hpp"
 #include "SessionWorker.hpp"
+#include "SystemNotes.hpp"
 
+#include "AccountDb.hpp"
+
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QMetaMethod>
 
 #include <exception>
@@ -18,6 +25,8 @@ const int kLoginSignerMetaType
 const int kContactStateMetaType
     = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
 
+constexpr int kReadSyncIdleMs = 4000;
+constexpr int kReactionsToFlash = 64;
 
 }  // namespace
 
@@ -30,7 +39,6 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     worker_->moveToThread(&thread_);
     connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);
 
-    connect(&commands_, &AccountCommands::requestOpen, worker_, &SessionWorker::openAccount);
     connect(&commands_, &AccountCommands::requestConnect, worker_,
         &SessionWorker::connectAndRegister);
     connect(&commands_, &AccountCommands::requestSendText, worker_, &SessionWorker::sendText);
@@ -137,7 +145,20 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
         &SessionWorker::forgetDevice);
     connect(&commands_, &AccountCommands::requestCloseAccountOnServer, worker_,
         &SessionWorker::closeAccountOnServer);
+    connect(&commands_, &AccountCommands::requestOpen, this, &CoreAccount::open);
     connect(&commands_, &AccountCommands::requestSignLoginSig, this, &CoreAccount::signLogin);
+    connect(&commands_, &AccountCommands::viewConversation, this, &CoreAccount::viewConversation);
+    connect(&commands_, &AccountCommands::markRead, this, &CoreAccount::markRead);
+    connect(&commands_, &AccountCommands::forgetReactionFlash, this,
+        &CoreAccount::forgetReactionFlash);
+    connect(&commands_, &AccountCommands::requestSetSync, this, [this](const bool on) {
+        if (on) {
+            startOnline_ = true;
+        }
+        online_ = on;
+    });
+    connect(&commands_, &AccountCommands::requestSetSendReceipts, this,
+        [this](const bool on) { sendReceipts_ = on; });
     connect(&commands_, &AccountCommands::requestShutdown, this, &CoreAccount::beginShutdown);
 
     connect(worker_, &SessionWorker::connectProgress, &events_, &AccountEvents::connectProgress);
@@ -160,7 +181,7 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::openFailed, &events_, &AccountEvents::openFailed);
     connect(worker_, &SessionWorker::connectionChanged, &events_,
         &AccountEvents::connectionChanged);
-    connect(worker_, &SessionWorker::messageReceived, &events_, &AccountEvents::messageReceived);
+    connect(worker_, &SessionWorker::messageReceived, this, &CoreAccount::onMessageReceived);
     connect(worker_, &SessionWorker::contactsRefreshed, &events_,
         &AccountEvents::contactsRefreshed);
     connect(worker_, &SessionWorker::avatarReady, &events_, &AccountEvents::avatarReady);
@@ -216,7 +237,65 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
         [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {
             loginSigner_ = std::move(signer);
         });
+    connect(worker_, &SessionWorker::opened, this,
+        [this](const QString& fingerprint, const QString&, const bool connected) {
+            contacts_.setOwnFingerprint(fingerprint);
+            online_ = connected && startOnline_;
+        });
+    connect(worker_, &SessionWorker::connectionChanged, this,
+        [this](const bool connected, const QString&) { online_ = connected; });
+    connect(worker_, &SessionWorker::accountSettings, this,
+        [this](const bool, const bool sendReceipts) { sendReceipts_ = sendReceipts; });
+    connect(worker_, &SessionWorker::contactsRefreshed, this,
+        [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
+            contacts_.reset(contacts, blocked);
+        });
+    connect(worker_, &SessionWorker::stopped, this, &CoreAccount::close);
     connect(worker_, &SessionWorker::stopped, &thread_, &QThread::quit);
+
+    connect(&ingest_, &MessageIngest::rowAdded, &events_, &AccountEvents::rowAdded);
+    connect(&ingest_, &MessageIngest::rowChanged, &events_, &AccountEvents::rowChanged);
+    connect(&ingest_, &MessageIngest::rowRemoved, &events_, &AccountEvents::rowRemoved);
+    connect(&ingest_, &MessageIngest::peerReset, &events_, &AccountEvents::peerReset);
+    connect(&ingest_, &MessageIngest::peerForgotten, &events_, &AccountEvents::peerForgotten);
+    connect(&ingest_, &MessageIngest::chatChanged, &events_, &AccountEvents::chatChanged);
+    connect(&ingest_, &MessageIngest::chatsChanged, &events_, &AccountEvents::chatsChanged);
+    connect(&ingest_, &MessageIngest::deliveredThrough, &events_,
+        &AccountEvents::deliveredThrough);
+    connect(&ingest_, &MessageIngest::reactionsChanged, &events_,
+        &AccountEvents::reactionsChanged);
+    connect(&ingest_, &MessageIngest::groupChanged, &events_, &AccountEvents::groupChanged);
+    connect(&ingest_, &MessageIngest::accountRenamed, &events_, &AccountEvents::accountRenamed);
+    connect(&ingest_, &MessageIngest::contactsRevised, &events_,
+        &AccountEvents::contactsRevised);
+    connect(&ingest_, &MessageIngest::settingsAsked, &commands_,
+        &AccountCommands::requestEmitSettings);
+    connect(&ingest_, &MessageIngest::readElsewhere, this, [this](const QString& peer) {
+        lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
+        emit events_.chatChanged(peer);
+    });
+    connect(&ingest_, &MessageIngest::editArrived, this,
+        [this](const QString& peer, const qint64 localId, const QString& ref) {
+            if (peer == viewedPeer_ && sendReceipts_
+                && localId <= lastReadAckedId_.value(peer, 0)) {
+                emit commands_.requestSendReceipt(peer, ref);
+            }
+        });
+    connect(&ingest_, &MessageIngest::messageArrived, this, [this](const QString& peer) {
+        if (contacts_.state(peer).notifications) {
+            emit messageNotification(peer, contacts_.peerName(peer));
+        }
+    });
+    connect(&ingest_, &MessageIngest::reactionArrived, this,
+        [this](const QString& peer, const QString& target, const QString& emoji) {
+            noteReactionToFlash(peer, target);
+            if (contacts_.state(peer).notifications) {
+                emit reactionNotification(peer, contacts_.peerName(peer), emoji);
+            }
+        });
+
+    readSyncTimer_.setSingleShot(true);
+    connect(&readSyncTimer_, &QTimer::timeout, this, &CoreAccount::flushReadSync);
     connect(&thread_, &QThread::finished, &events_, &AccountEvents::closed);
 
     const QMetaObject& meta = AccountCommands::staticMetaObject;
@@ -224,8 +303,7 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
         SessionWorker::staticMetaObject.indexOfSlot("noteCommandDone()"));
     for (int i = meta.methodOffset(); i < meta.methodCount(); ++i) {
         const QMetaMethod method = meta.method(i);
-        if (method.methodType() == QMetaMethod::Signal
-            && !kSelfDescribingCommands.contains(method.name())) {
+        if (listedWhileQueued(method)) {
             connect(&commands_, method, worker_, done);
         }
     }
@@ -244,6 +322,141 @@ void CoreAccount::shutdown()
         thread_.quit();
         thread_.wait();
     }
+    close();
+}
+
+void CoreAccount::open(const QString& file, const QString& passphrase, const bool startOnline)
+{
+    accountPath_ = file;
+    passphrase_ = passphrase;
+    startOnline_ = startOnline;
+    if (!store_.open({}, file, passphrase)
+        || !store_.failUnsentOnLoad(
+            DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed)
+        || !store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
+            DeliveryStatus::Received,
+            encodeSystemNote(QT_TR_NOOP("The contact request did not finish.")))) {
+        emit events_.openFailed(tr("This profile could not be opened."));
+        return;
+    }
+    const QJsonDocument flashes = QJsonDocument::fromJson(
+        QByteArray::fromStdString(accountDb().text("reactions-to-flash")));
+    for (const QJsonValue& entry : flashes.array()) {
+        reactionsToFlash_ << entry.toString();
+    }
+    emit events_.reactionsToFlash(reactionsToFlash_);
+    QMetaObject::invokeMethod(
+        worker_,
+        [worker = worker_, file, passphrase, startOnline]() {
+            worker->openAccount(file, passphrase, startOnline);
+        },
+        Qt::QueuedConnection);
+}
+
+void CoreAccount::close()
+{
+    accountDb_.reset();
+    store_.close();
+}
+
+client::AccountDb& CoreAccount::accountDb()
+{
+    if (!accountDb_) {
+        accountDb_ = std::make_unique<client::AccountDb>(
+            accountPath_.toStdString(), passphrase_.toStdString());
+    }
+    return *accountDb_;
+}
+
+void CoreAccount::reportUnsaved()
+{
+    emit events_.actionFailed(tr("History not saved: %1").arg(store_.lastError()));
+}
+
+void CoreAccount::onMessageReceived(const QVariantMap& message)
+{
+    if (!ingest_.takeIn(message)) {
+        emit events_.actionFailed(tr("Receiving stopped: %1").arg(store_.lastError()));
+        return;
+    }
+    if (const QString pendingId = message.value("pendingId").toString(); !pendingId.isEmpty()) {
+        emit commands_.requestAckPending(pendingId);
+    }
+}
+
+void CoreAccount::viewConversation(const QString& peer)
+{
+    flushReadSync();
+    viewedPeer_ = peer;
+    if (!peer.isEmpty()) {
+        lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
+    }
+}
+
+void CoreAccount::markRead(
+    const QString& peer, const qint64 id, const QString& e2eId, const qint64 sentAtMs)
+{
+    if (peer.isEmpty() || id <= lastReadAckedId_.value(peer, 0)) {
+        return;
+    }
+    if (!store_.setLastReadId(peer, id)) {
+        reportUnsaved();
+        return;
+    }
+    lastReadAckedId_[peer] = id;
+    emit events_.chatChanged(peer);
+    pendingReadSync_[peer] = sentAtMs;
+    readSyncTimer_.start(kReadSyncIdleMs);
+    if (!sendReceipts_ || !online_) {
+        return;
+    }
+    emit commands_.requestSendReceipt(peer, e2eId);
+}
+
+void CoreAccount::flushReadSync()
+{
+    readSyncTimer_.stop();
+    if (!online_) {
+        pendingReadSync_.clear();
+        return;
+    }
+    for (auto it = pendingReadSync_.constBegin(); it != pendingReadSync_.constEnd(); ++it) {
+        emit commands_.requestSyncRead(it.key(), it.value());
+    }
+    pendingReadSync_.clear();
+}
+
+void CoreAccount::noteReactionToFlash(const QString& peer, const QString& target)
+{
+    const QString key = reactionFlashKey(peer, target);
+    reactionsToFlash_.removeAll(key);
+    reactionsToFlash_.append(key);
+    while (reactionsToFlash_.size() > kReactionsToFlash) {
+        reactionsToFlash_.removeFirst();
+    }
+    persistReactionsToFlash();
+}
+
+void CoreAccount::forgetReactionFlash(const QString& peer)
+{
+    const QString prefix = reactionFlashKey(peer, {});
+    const qsizetype before = reactionsToFlash_.size();
+    reactionsToFlash_.removeIf(
+        [&prefix](const QString& entry) { return entry.startsWith(prefix); });
+    if (reactionsToFlash_.size() != before) {
+        persistReactionsToFlash();
+    }
+}
+
+void CoreAccount::persistReactionsToFlash()
+{
+    QJsonArray array;
+    for (const QString& entry : reactionsToFlash_) {
+        array.append(entry);
+    }
+    accountDb().putText("reactions-to-flash",
+        QJsonDocument(array).toJson(QJsonDocument::Compact).toStdString());
+    emit events_.reactionsToFlash(reactionsToFlash_);
 }
 
 void CoreAccount::beginShutdown()

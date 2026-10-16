@@ -107,8 +107,7 @@ void SessionController::addByInvite(
         const bazarish::Descriptor known
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
         const QString peer = QString::fromStdString(known.fingerprint);
-        if (const auto contact = contactState_.constFind(peer);
-            contact != contactState_.cend() && contact->writable) {
+        if (book_.has(peer) && book_.state(peer).writable) {
             openConversation(peer);
             emit actionOk(tr("Already in your contacts"));
             return;
@@ -149,7 +148,7 @@ void SessionController::trackContactAdd(
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
         const QString peer = QString::fromStdString(descriptor.fingerprint);
         if (!descriptor.name.empty()) {
-            pendingContactNames_.insert(peer,
+            book_.notePendingName(peer,
                 QString::fromStdString(bazarish::client::safeContactName(descriptor.name)));
         }
         openContactProgress(peer, opId);
@@ -199,20 +198,9 @@ void SessionController::retryContactRequest(const QString& fingerprint)
     }
 }
 
-QStringList SessionController::agreeingFingerprints() const
-{
-    QStringList out;
-    for (const ContactState& contact : contactState_) {
-        if (contact.request == ContactState::eAccepting) {
-            out << contact.fingerprint;
-        }
-    }
-    return out;
-}
-
 void SessionController::syncAgreeingRows()
 {
-    for (const QString& fingerprint : agreeingFingerprints()) {
+    for (const QString& fingerprint : book_.accepting()) {
         if (agreeingShown_.contains(fingerprint)
             || operations_.indexOf(QStringLiteral("accept:") + fingerprint) >= 0) {
             continue;
@@ -223,7 +211,7 @@ void SessionController::syncAgreeingRows()
             tr("Waiting for their server…"), fingerprint);
     }
     for (auto at = agreeingShown_.begin(); at != agreeingShown_.end();) {
-        if (contactState_.value(*at).request == ContactState::eAccepting) {
+        if (book_.state(*at).request == ContactState::eAccepting) {
             ++at;
             continue;
         }
@@ -417,13 +405,13 @@ void SessionController::acceptContact()
 
 bool SessionController::contactCanAccept(const QString& fp) const
 {
-    return contactState_.value(fp).request != ContactState::eAnswered;
+    return book_.state(fp).request != ContactState::eAnswered;
 }
 
 bool SessionController::contactAgreeing(const QString& fp) const
 {
     return acceptingContact_ == fp
-        || contactState_.value(fp).request == ContactState::eAccepting;
+        || book_.state(fp).request == ContactState::eAccepting;
 }
 
 void SessionController::requestInvite()
@@ -448,7 +436,7 @@ void SessionController::onContactAccepted(const QString& peer, const bool ok,
         bazarish::log::warn("agreeing to {} failed: {}", peer.toStdString(), reason.toStdString());
         return;
     }
-    contactState_[peer].request = ContactState::eAnswered;
+    book_.edit(peer).request = ContactState::eAnswered;
     ++contactsRevision_;
     emit contactsRevisionChanged();
 }
@@ -554,9 +542,8 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
     m.text = body;
     m.ts = sentAtMs;
     m.orderKey = m.ts;
-    const auto known = contactState_.constFind(fingerprint);
     const bool answered
-        = known != contactState_.constEnd() && known->request == ContactState::eAnswered;
+        = book_.has(fingerprint) && book_.state(fingerprint).request == ContactState::eAnswered;
     m.status = answered ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer;
     m.id = store_.append(m);
     if (m.id == 0) {

@@ -43,401 +43,66 @@
 
 namespace bazarish::app {
 
-namespace {
-struct Placement {
-    qint64 displayTs = 0;
-    qint64 orderKey = 0;
-};
-Placement placeReceived(const qint64 sentAtMs, const qint64 arrivalMs)
+void SessionController::refreshChatRow(const QString& peer)
 {
-    const qint64 written = sentAtMs > 0 ? sentAtMs : arrivalMs;
-    return {written, written};
+    contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
+    contacts_.setUnread(peer, store_.unreadCount(peer));
 }
-}  // namespace
 
-void SessionController::onMessageReceived(const QVariantMap& message)
+void SessionController::onRowAdded(const QString& peer, const qint64 id, const bool own)
 {
-    if (!takeIn(message)) {
-        emit actionFailed(tr("Receiving stopped: %1").arg(store_.lastError()));
+    const StoredMessage row = store_.messageById(id);
+    if (row.id == 0) {
         return;
     }
-    if (const QString pendingId = message.value("pendingId").toString(); !pendingId.isEmpty()) {
-        emit commands_.requestAckPending(pendingId);
-    }
-}
-
-bool SessionController::takeIn(const QVariantMap& message)
-{
-    const QString peer = message.value("peer").toString();
-    const QString type = message.value("type").toString();
-    const QString incomingId = message.value("e2eId").toString();
-
-    if (!incomingId.isEmpty() && store_.idForIncomingE2e(incomingId, peer) != 0) {
-        return true;
-    }
-    if (!incomingId.isEmpty() && message.value("sentByUs").toBool()
-        && store_.idForE2e(incomingId) != 0) {
-        return true;
-    }
-
-    if (type.startsWith(QStringLiteral("call."))) {
-        return true;
-    }
-
-    if (!message.value("sentByUs").toBool() && !noteGroupBlock(peer, message)) {
-        return false;
-    }
-    if (type == QStringLiteral("group.state")) {
-        return true;
-    }
-    if (type == QStringLiteral("group.reactions")) {
-        return applyGroupReactions(peer, message.value("groupReactions").toString());
-    }
-
-    if (type == QStringLiteral("contact.request") && !message.value("sentByUs").toBool()
-        && store_.oldestOfType(peer, type, /*outgoing=*/false) != 0) {
-        bazarish::log::info("a second contact request from {} keeps the plate it already has",
-            peer.toStdString());
-        return true;
-    }
-
-    if (type == "device.chat-clear") {
-        const QString cleared = message.value("ref").toString();
-        if (!cleared.isEmpty()) {
-            if (!store_.clearPeer(cleared)) {
-                return false;
-            }
-            if (activePeer_ == cleared) {
-                loadLatestWindow();
-            }
-            contacts_.touch(cleared, peerName(cleared), chatPreview(cleared),
-                store_.lastTime(cleared), false);
-            contacts_.setUnread(cleared, store_.unreadCount(cleared));
-            refreshUnreadTotal();
-        }
-        return true;
-    }
-
-    if (type == "device.account-name") {
-        const QString name = message.value("text").toString();
-        if (!name.isEmpty() && name != displayName_) {
-            displayName_ = name;
-            emit identityChanged();
-        }
-        return true;
-    }
-    if (type == "device.account-prefs") {
-        emit commands_.requestEmitSettings();
-        return true;
-    }
-
-    if (type == "device.saved-clear") {
-        if (!store_.clearPeer(savedPeer())) {
-            return false;
-        }
-        if (activePeer_ == savedPeer()) {
-            loadLatestWindow();
-        }
-        contacts_.touch(savedPeer(), savedChatName(), QString(), nowMillis(), false);
-        rebuildChatList();
-        return true;
-    }
-
-    if (type == "device.contact-remove") {
-        const QString gone = message.value("ref").toString();
-        if (!gone.isEmpty()) {
-            if (!store_.forgetPeer(gone)) {
-                return false;
-            }
-            contacts_.remove(gone);
-            if (activePeer_ == gone) {
-                openConversation({});
-            }
-            rebuildChatList();
-            refreshUnreadTotal();
-        }
-        return true;
-    }
-
-    if (type == "device.contact-block" || type == "device.contact-prefs"
-        || type == "device.contact-accepted") {
-        ++contactsRevision_;
-        emit contactsRevisionChanged();
-        return true;
-    }
-
-    if (type == "device.read") {
-        const QString readPeer = message.value("ref").toString();
-        const qint64 through = message.value("text").toString().toLongLong();
-        if (!readPeer.isEmpty() && through > 0) {
-            if (!store_.applyReadThrough(readPeer, through)) {
-                return false;
-            }
-            lastReadAckedId_[readPeer]
-                = qMax(lastReadAckedId_.value(readPeer, 0), store_.lastReadId(readPeer));
-            contacts_.setUnread(readPeer, store_.unreadCount(readPeer));
-            refreshUnreadTotal();
-        }
-        return true;
-    }
-
-    if (type == "device.chat-pin") {
-        const QString pinPeer = message.value("ref").toString();
-        if (!pinPeer.isEmpty()) {
-            if (!store_.setPinned(
-                    pinPeer, message.value("text").toString() == QStringLiteral("1"))) {
-                return false;
-            }
-            rebuildChatList();
-        }
-        return true;
-    }
-
-    if (type == "receipt") {
-        const QString ref = message.value("ref").toString();
-        const qint64 localId = store_.idForE2e(ref);
-        if (localId == 0) {
-            bazarish::log::info("receipt for {} arrived before the message it is about",
-                ref.toStdString());
-            receiptsAhead_[peer].insert(ref);
-            return true;
-        }
-        bazarish::log::info("receipt for {} applied to row {}", ref.toStdString(), localId);
-        return markOutgoingRead(peer, localId);
-    }
-
-    if (type == "reaction") {
-        const bool ours = message.value("sentByUs").toBool();
-        const QString reactor = ours ? fingerprint_ : peer;
-        const QString target = message.value("ref").toString();
-        const QString emoji = message.value("text").toString();
-        if (!store_.setReaction(peer, target, reactor, emoji)) {
-            return false;
-        }
-        if (!ours && !emoji.isEmpty()) {
-            noteReactionToFlash(peer, target);
-            if (contactNotifications(peer)) {
-                emit reactionNotification(peer, peerName(peer), emoji);
-            }
-        }
-        ++reactionsRevision_;
-        emit reactionsRevisionChanged();
-        return true;
-    }
-
-    if (type == "edit") {
-        const qint64 localId = message.value("sentByUs").toBool()
-            ? store_.idForE2e(message.value("ref").toString())
-            : store_.idForIncomingE2e(message.value("ref").toString(), peer);
-        if (localId != 0) {
-            const QString newText = message.value("text").toString();
-            const QString newKeyboard = message.value("keyboard").toString();
-            if (!store_.editContent(localId, newText, newKeyboard)) {
-                return false;
-            }
-            if (peer == activePeer_) {
-                conversation_.editById(localId, newText, newKeyboard);
-            }
-            if (peer == activePeer_ && sendReceipts_
-                && localId <= lastReadAckedId_.value(peer, 0)) {
-                emit commands_.requestSendReceipt(peer, message.value("ref").toString());
-            }
-            QString preview = newText;
-            if (preview.isEmpty() && !newKeyboard.isEmpty()) {
-                preview = tr("[interactive]");
-            }
-            contacts_.touch(peer, peerName(peer), preview, nowMillis(), false);
-        }
-        return true;
-    }
-
-    if (type == "delete") {
-        const qint64 localId = message.value("sentByUs").toBool()
-            ? store_.idForE2e(message.value("ref").toString())
-            : store_.idForIncomingE2e(message.value("ref").toString(), peer);
-        if (localId != 0) {
-            if (!store_.removeById(localId)) {
-                return false;
-            }
-            if (peer == activePeer_) {
-                conversation_.removeById(localId);
-            }
-            contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
-        }
-        return true;
-    }
-
-    if (type == "chat.clear") {
-        if (!store_.clearPeer(peer)) {
-            return false;
-        }
-        StoredMessage sys;
-        sys.peer = peer;
-        sys.e2eId = incomingId;
-        sys.type = QStringLiteral("system");
-        sys.text = message.value("sentByUs").toBool()
-            ? encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone."))
-            : encodeSystemNote(QT_TR_NOOP("%1 cleared the chat."), {peerName(peer)});
-        sys.ts = nowMillis();
-        sys.orderKey = sys.ts;
-        sys.status = DeliveryStatus::Received;
-        sys.id = store_.append(sys);
-        if (sys.id == 0) {
-            return false;
-        }
-        if (peer == activePeer_) {
-            loadLatestWindow();
-        }
-        contacts_.touch(peer, peerName(peer), systemNoteText(sys.text), sys.ts, false);
-        contacts_.setUnread(peer, store_.unreadCount(peer));
-        refreshUnreadTotal();
-        return true;
-    }
-
-    if (type == "contact.accept") {
-        StoredMessage sys;
-        sys.peer = peer;
-        sys.e2eId = incomingId;
-        sys.type = QStringLiteral("system");
-        sys.text = encodeSystemNote(
-            QT_TR_NOOP("%1 accepted your contact request."), {peerName(peer)});
-        sys.ts = nowMillis();
-        sys.orderKey = sys.ts;
-        sys.status = DeliveryStatus::Received;
-        sys.id = store_.append(sys);
-        if (sys.id == 0) {
-            return false;
-        }
-        showInActiveView(sys, false);
-        contacts_.touch(peer, peerName(peer), systemNoteText(sys.text), sys.ts, false);
-        contacts_.setUnread(peer, store_.unreadCount(peer));
-        const qint64 request
-            = store_.oldestOfType(peer, QStringLiteral("contact.request"), /*outgoing=*/true);
-        return request == 0 || markOutgoingRead(peer, request);
-    }
-
-    if (message.value("text").toString().isEmpty()
-        && message.value("attName").toString().isEmpty()
-        && message.value("attRef").toString().isEmpty()
-        && message.value("attSize").toLongLong() <= 0
-        && message.value("keyboard").toString().isEmpty()) {
-        bazarish::log::info("silent control message ({}) not shown", type.toStdString());
-        return true;
-    }
-
-    StoredMessage m;
-    m.peer = peer;
-    m.outgoing = message.value("sentByUs").toBool();
-    m.type = type;
-    m.e2eId = message.value("e2eId").toString();
-    m.text = message.value("text").toString();
-    m.replyTo = message.value("replyTo").toString();
-    m.forwarded = message.value("forwarded").toBool();
-    m.attName = message.value("attName").toString();
-    m.attMime = message.value("attMime").toString();
-    m.attSize = message.value("attSize").toLongLong();
-    m.attDurationMs = message.value("attDurationMs").toLongLong();
-    m.attWave = message.value("attWave").toString();
-    m.attRef = message.value("attRef").toString();
-    m.keyboard = message.value("keyboard").toString();
-    if (message.contains(QStringLiteral("group"))) {
-        m.author = message.value("author").toString();
-        m.contactable = message.value("contactable").toBool();
-        m.fromHost = message.value("fromHost").toBool();
-    }
-    const Placement placement = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
-    m.ts = placement.displayTs;
-    m.orderKey = placement.orderKey;
-    m.status = m.outgoing
-        ? (isSavedChat(peer) ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer)
-        : DeliveryStatus::Received;
-    m.id = store_.append(m);
-    if (m.id == 0) {
-        return false;
-    }
-    if (m.outgoing && !m.e2eId.isEmpty() && receiptsAhead_.value(peer).contains(m.e2eId)) {
-        receiptsAhead_[peer].remove(m.e2eId);
-        if (!markOutgoingRead(peer, m.id)) {
-            return false;
-        }
-    }
-
-    showInActiveView(m, false);
-    if (m.type == QStringLiteral("image") && !m.e2eId.isEmpty()) {
-        pictureOwners_.insert(m.e2eId, m.id);
-        const bool drawable = PictureStore::instance().put(
-            m.e2eId, store_.media(QStringLiteral("picture:") + m.e2eId));
-        if (!store_.setHasPicture(m.id, drawable)) {
-            return false;
-        }
-        conversation_.setPictureReadyForId(m.id, drawable);
-    }
-    QString preview = m.text;
-    if (preview.isEmpty() && !m.attName.isEmpty()) {
-        preview = attachmentLabel(type) + QLatin1Char(' ') + m.attName;
-    }
-    if (!m.author.isEmpty()) {
-        preview = tr("%1: %2").arg(m.author, preview);
-    }
-    contacts_.touch(peer, peerName(peer), preview, m.ts, false);
-    contacts_.setUnread(peer, store_.unreadCount(peer));
-    if (!m.outgoing && contactNotifications(peer)) {
-        emit messageNotification(peer, peerName(peer));
-    }
-    return true;
-}
-
-bool SessionController::noteGroupBlock(const QString& peer, const QVariantMap& message)
-{
-    const std::optional<GroupState> held = store_.groupState(peer);
-    if (!message.contains(QStringLiteral("group"))) {
-        if (held && message.value("sentAt").toLongLong() > held->at) {
-            if (!store_.dropGroupState(peer)) {
-                return false;
-            }
-            if (peer == activePeer_) {
-                refreshActiveGroup();
-            }
-        }
-        return true;
-    }
-    const QVariantMap block = message.value("group").toMap();
-    GroupState state;
-    state.kind = block.value("kind").toString();
-    state.members = block.value("members").toLongLong();
-    state.write = block.value("write").toBool();
-    state.admin = block.value("admin").toBool();
-    state.at = block.value("at").toLongLong();
-    if (held && held->at > state.at) {
-        return true;
-    }
-    if (!store_.setGroupState(peer, state)) {
-        return false;
-    }
+    showInActiveView(row, own);
     if (peer == activePeer_) {
-        refreshActiveGroup();
+        requestPicturesFor({row});
     }
-    return true;
+    refreshChatRow(peer);
 }
 
-bool SessionController::applyGroupReactions(const QString& peer, const QString& json)
+void SessionController::onRowChanged(const QString& peer, const qint64 id)
 {
-    const QJsonArray entries = QJsonDocument::fromJson(json.toUtf8()).array();
-    for (const QJsonValue& entry : entries) {
-        const QJsonObject item = entry.toObject();
-        QMap<QString, qint64> counts;
-        const QJsonObject given = item.value(QStringLiteral("counts")).toObject();
-        for (auto it = given.begin(); it != given.end(); ++it) {
-            counts.insert(it.key(), it.value().toInteger());
-        }
-        if (!store_.setGroupReactionCounts(
-                peer, item.value(QStringLiteral("ref")).toString(), counts)) {
-            return false;
-        }
+    if (peer == activePeer_) {
+        conversation_.replaceById(store_.messageById(id));
     }
-    ++reactionsRevision_;
-    emit reactionsRevisionChanged();
-    return true;
+    refreshChatRow(peer);
+}
+
+void SessionController::onRowRemoved(const QString& peer, const qint64 id)
+{
+    if (peer == activePeer_) {
+        conversation_.removeById(id);
+    }
+    refreshChatRow(peer);
+}
+
+void SessionController::onPeerReset(const QString& peer)
+{
+    if (peer == activePeer_) {
+        loadLatestWindow();
+    }
+    refreshChatRow(peer);
+}
+
+void SessionController::onPeerForgotten(const QString& peer)
+{
+    contacts_.remove(peer);
+    if (peer == activePeer_) {
+        openConversation({});
+    }
+    rebuildChatList();
+}
+
+void SessionController::onDeliveredThrough(const QString& peer, const qint64 uptoId)
+{
+    if (peer != activePeer_) {
+        return;
+    }
+    for (const qint64 id : conversation_.markDeliveredThrough(uptoId)) {
+        statusById_[id] = DeliveryStatus::Delivered;
+    }
 }
 
 void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)

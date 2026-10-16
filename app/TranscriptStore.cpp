@@ -743,6 +743,18 @@ qint64 TranscriptReader::idForAnyProtocol(const QString& e2eId, const QString& p
     return 0;
 }
 
+StoredMessage TranscriptReader::messageById(const qint64 id) const
+{
+    StoredMessage m;
+    Query query(db_);
+    query.prepare(QStringLiteral("SELECT %1 FROM messages WHERE id = ?").arg(kMessageColumns));
+    query.addBindValue(id);
+    if (query.exec() && query.next()) {
+        m = readMessageRow(query);
+    }
+    return m;
+}
+
 StoredMessage TranscriptReader::messageByE2e(
     const QString& e2eId, const QString& peer) const
 {
@@ -989,16 +1001,19 @@ QStringList TranscriptReader::conversationPeers() const
 TranscriptReader::LastMessage TranscriptReader::lastMessage(const QString& peer) const
 {
     Query query(db_);
-    query.prepare("SELECT text, type, attName FROM messages WHERE peer = ?"
+    query.prepare("SELECT text, type, attName, (SELECT author FROM group_posts g"
+                  " WHERE g.peer = messages.peer AND g.e2eId = messages.e2eId)"
+                  " FROM messages WHERE peer = ?"
                   " AND (text != '' OR type IN ('file','image','audio'))"
                   " ORDER BY orderKey DESC, id DESC LIMIT 1");
     query.addBindValue(peer);
     if (query.exec() && query.next()) {
         const QString text = query.value(0).toString();
+        const QString author = query.value(3).toString();
         if (!text.isEmpty()) {
-            return {text, query.value(1).toString(), {}};
+            return {text, query.value(1).toString(), {}, author};
         }
-        return {{}, query.value(1).toString(), query.value(2).toString()};
+        return {{}, query.value(1).toString(), query.value(2).toString(), author};
     }
     return {};
 }

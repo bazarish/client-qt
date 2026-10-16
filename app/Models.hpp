@@ -119,6 +119,7 @@ public:
     void setSavedPathForId(qint64 id, const QString& path);
     void setPictureReadyForId(qint64 id, bool ready);
     void editById(qint64 id, const QString& text, const QString& keyboard);
+    void replaceById(const StoredMessage& message);
     void removeById(qint64 id);
     Q_INVOKABLE bool lastMessageOutgoing() const;
 

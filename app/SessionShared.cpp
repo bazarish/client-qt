@@ -80,4 +80,9 @@ bool hasAliasSigil(const QString& text)
     return text.startsWith(QChar::fromLatin1(bazarish::kAliasSigil));
 }
 
+QString reactionFlashKey(const QString& peer, const QString& target)
+{
+    return peer + QLatin1Char('\n') + target;
+}
+
 }  // namespace bazarish::app

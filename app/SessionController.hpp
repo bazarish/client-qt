@@ -5,6 +5,7 @@
 #include "AccountEvents.hpp"
 #include "AccountDb.hpp"
 #include "CallTones.hpp"
+#include "ContactBook.hpp"
 #include "CoreAccount.hpp"
 #include "Models.hpp"
 #include "Picture.hpp"
@@ -452,7 +453,6 @@ private slots:
     void onCommandFinished();
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected);
     void onConnectionChanged(bool connected, const QString& connectionNote);
-    void onMessageReceived(const QVariantMap& message);
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onContactAddStage(const QString& opId, const QString& status);
     void openContactProgress(const QString& peer, const QString& opId);
@@ -580,10 +580,7 @@ private:
     QString replyingSender_;
     QSet<QString> agreeingShown_;
     void syncAgreeingRows();
-    QStringList agreeingFingerprints() const;
     QStringList reactionsToFlash_;
-    void noteReactionToFlash(const QString& peer, const QString& target);
-    void persistReactionsToFlash();
     int contactsRevision_ = 0;
     int reactionsRevision_ = 0;
     QHash<qint64, int> statusById_;
@@ -602,23 +599,19 @@ private:
     bool scrollStick_ = true;
     void activateConversation(const QString& peer);
     void refreshActiveGroup();
-    bool takeIn(const QVariantMap& message);
-    bool noteGroupBlock(const QString& peer, const QVariantMap& message);
-    bool applyGroupReactions(const QString& peer, const QString& json);
     void reportUnsaved();
+    void refreshChatRow(const QString& peer);
+    void onRowAdded(const QString& peer, qint64 id, bool own);
+    void onRowChanged(const QString& peer, qint64 id);
+    void onRowRemoved(const QString& peer, qint64 id);
+    void onPeerReset(const QString& peer);
+    void onPeerForgotten(const QString& peer);
+    void onDeliveredThrough(const QString& peer, qint64 uptoId);
     void loadLatestWindow();
     void openWindowAtUnread(const QString& peer, qint64 firstUnread);
     void showInActiveView(const StoredMessage& m, bool isOwn);
     void onRoutingTold(const QString& peer, bool delivered);
-    bool markOutgoingRead(const QString& peer, qint64 uptoId);
-    QHash<QString, qint64> lastReadAckedId_;
-    QHash<QString, qint64> pendingReadSync_;
-    QTimer readSyncTimer_;
-    void flushReadSync();
-    QHash<QString, QSet<QString>> receiptsAhead_;
-    QStringList contactFps_;
-    QHash<QString, ContactState> contactState_;
-    QStringList blocked_;
+    ContactBook book_;
     QStringList recentReactions_;
     QString accountPath_;
     struct ContactProgressRow {
@@ -627,7 +620,6 @@ private:
     };
     QHash<QString, ContactProgressRow> contactProgressRows_;
     QHash<QString, QString> aliasChats_;
-    QHash<QString, QString> pendingContactNames_;
     struct PendingContactRequest {
         QString uri;
         QString intro;

@@ -99,6 +99,7 @@ public:
     qint64 oldestOfType(const QString& peer, const QString& type, bool outgoing) const;
     qint64 idForAnyProtocol(const QString& e2eId, const QString& peer) const;
     StoredMessage messageByE2e(const QString& e2eId, const QString& peer) const;
+    StoredMessage messageById(qint64 id) const;
     QVector<StoredMessage> messagesFor(const QString& peer) const;
     QVector<StoredMessage> latestMessages(const QString& peer, int limit) const;
     QVector<StoredMessage> olderMessages(const QString& peer, qint64 beforeId, int limit) const;
@@ -111,6 +112,7 @@ public:
         QString text;
         QString type;
         QString attachment;
+        QString author;
     };
     LastMessage lastMessage(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;

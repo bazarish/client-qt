@@ -73,8 +73,12 @@ if(Qt6_FOUND)
         app/I2pController.hpp
         app/AccountCommands.hpp
         app/AccountEvents.hpp
+        app/ContactBook.cpp
+        app/ContactBook.hpp
         app/CoreAccount.cpp
         app/CoreAccount.hpp
+        app/MessageIngest.cpp
+        app/MessageIngest.hpp
         app/SessionController.cpp
         app/SessionController.hpp
         app/SessionWorker.cpp
@@ -397,4 +401,13 @@ if(Qt6_FOUND)
         bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core)
     target_compile_options(TestTranscript PRIVATE -Wall -Wextra)
     add_test(NAME TestTranscript COMMAND TestTranscript)
+
+    add_executable(TestIngest tests/TestIngest.cpp app/MessageIngest.cpp app/ContactBook.cpp
+        app/TranscriptStore.cpp app/SystemNotes.cpp app/SessionShared.cpp)
+    target_include_directories(TestIngest PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLCIPHER_INCLUDE_DIR})
+    target_link_libraries(TestIngest PRIVATE
+        bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core Qt6::QmlIntegration)
+    target_compile_options(TestIngest PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestIngest COMMAND TestIngest)
 endif()
