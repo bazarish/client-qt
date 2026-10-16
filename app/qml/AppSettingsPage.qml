@@ -359,22 +359,11 @@ Popup {
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
-                            RowLayout {
+                            FormField {
+                                id: gatewayField
                                 Layout.fillWidth: true
-                                FormField {
-                                    id: gatewayField
-                                    Layout.fillWidth: true
-                                    placeholder: "https://host/path#token"
-                                    text: I2p.gatewayAddress
-                                }
-                                QrScanButton {
-                                    box: gatewayScan
-                                    Layout.alignment: Qt.AlignBottom
-                                }
-                            }
-                            QrScanBox {
-                                id: gatewayScan
-                                onDecoded: function(text) { gatewayField.text = text }
+                                placeholder: "https://host/path#token"
+                                text: I2p.gatewayAddress
                             }
                             Label {
                                 visible: root.gatewayProblem.length > 0
@@ -383,17 +372,34 @@ Popup {
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
-                            MenuButton {
-                                iconName: "check"
-                                text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
+                            RowLayout {
                                 Layout.alignment: Qt.AlignRight
-                                enabled: !I2p.gatewayChecking
-                                    && gatewayField.text.trim().length > 0
-                                    && gatewayField.text.trim() !== I2p.gatewayAddress
-                                onClicked: {
-                                    root.gatewayProblem = ""
-                                    I2p.checkAndSaveGateway(gatewayField.text)
+                                spacing: 8
+                                MenuButton {
+                                    iconName: "qr"
+                                    positive: gatewayScan.scanning
+                                    leftPadding: 0
+                                    rightPadding: 0
+                                    Layout.preferredWidth: gatewaySave.height
+                                    Layout.preferredHeight: gatewaySave.height
+                                    onClicked: gatewayScan.scanning = !gatewayScan.scanning
                                 }
+                                MenuButton {
+                                    id: gatewaySave
+                                    iconName: "check"
+                                    text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
+                                    enabled: !I2p.gatewayChecking
+                                        && gatewayField.text.trim().length > 0
+                                        && gatewayField.text.trim() !== I2p.gatewayAddress
+                                    onClicked: {
+                                        root.gatewayProblem = ""
+                                        I2p.checkAndSaveGateway(gatewayField.text)
+                                    }
+                                }
+                            }
+                            QrScanBox {
+                                id: gatewayScan
+                                onDecoded: function(text) { gatewayField.text = text }
                             }
                         }
                     }
