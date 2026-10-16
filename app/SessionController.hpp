@@ -487,12 +487,6 @@ private:
     QSortFilterProxyModel contactsProxy_;
     ConversationModel conversation_;
     OperationListModel operations_;
-    void beginOperation(const QString& id, const QString& kind, const QString& title,
-        const QString& status, const QString& peer = {},
-        const QString& cancelId = {});
-    void updateOperation(const QString& id, const QString& status, const QString& detail = {},
-        double progress = -1.0);
-    void finishOperation(const QString& id, bool ok, const QString& finalStatus);
 
     void deliverText(const QString& text, const QString& replyTo);
     void unblockBeforeWriting(const QString& peer);
@@ -560,7 +554,6 @@ private:
     ContactBook book_;
     QStringList recentReactions_;
     QString ownInvite_;
-    QHash<qint64, QString> pendingSavePath_;
     QHash<QString, qint64> pictureOwners_;
     VoiceNote* voiceNote();
     std::unique_ptr<VoiceNote> voice_;

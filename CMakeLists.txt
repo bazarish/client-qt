@@ -81,6 +81,7 @@ if(Qt6_FOUND)
         app/CoreChats.cpp
         app/CoreContacts.cpp
         app/CoreSending.cpp
+        app/CoreTransfers.cpp
         app/MessageIngest.cpp
         app/MessageIngest.hpp
         app/OperationLog.cpp

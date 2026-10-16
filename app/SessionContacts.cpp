@@ -47,8 +47,6 @@ void SessionController::activateAliasServicing()
     }
     aliasBusy_ = true;
     emit aliasChanged();
-    beginOperation(kAliasOperationId, QStringLiteral("alias"),
-        tr("Checking your aliases"), tr("Asking the registry over I2P…"));
     emit commands_.requestActivateAliasServicing();
 }
 

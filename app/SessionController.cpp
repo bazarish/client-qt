@@ -101,9 +101,7 @@ QString facadeHost(const QString& url)
 constexpr int kLinkRebuildGraceMs = 1500;
 
 
-const QString kConnectOperationId = QStringLiteral("connect");
 
-constexpr double kPercentFull = 100.0;
 
 constexpr int kPageSize = 50;
 
@@ -202,7 +200,6 @@ SessionController::SessionController(QObject* parent)
                                                                    const QString& text) {
         aliasBusy_ = false;
         emit aliasChanged();
-        finishOperation(kAliasOperationId, ok, text);
         if (ok) {
             emit actionOk(text);
         } else {
@@ -294,6 +291,11 @@ SessionController::SessionController(QObject* parent)
     });
     connect(&events_, &AccountEvents::contactRetryExhausted, this,
         &SessionController::contactRetryExhausted);
+    connect(&events_, &AccountEvents::storageWorkDone, this, [this]() {
+        loadLatestWindow();
+        rebuildChatList();
+        endStorageWork();
+    });
     connect(&events_, &AccountEvents::contactNamed, this,
         [this](const QString& peer, const QString& name) { book_.notePendingName(peer, name); });
     connect(&events_, &AccountEvents::contactAccepted, this,
@@ -319,7 +321,6 @@ SessionController::SessionController(QObject* parent)
             connecting_ = false;
             connectPhase_.clear();
             connectError_ = reason;
-            finishOperation(kConnectOperationId, false, reason);
             emit connectStateChanged();
         }
         emit actionFailed(reason);
@@ -421,8 +422,6 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
     connectPercent_ = 0;
     connectPhase_ = tr("Starting…");
     connectError_.clear();
-    beginOperation(kConnectOperationId, QStringLiteral("connect"),
-        tr("Connecting this account"), connectPhase_);
     emit connectStateChanged();
     emit commands_.requestConnect(facadeUrls, serverFp, reseedUrls);
 }
@@ -434,7 +433,6 @@ void SessionController::onConnectProgress(const int percent, const QString& phas
     }
     connectPercent_ = percent;
     connectPhase_ = phase;
-    updateOperation(kConnectOperationId, phase, {}, percent / kPercentFull);
     emit connectStateChanged();
 }
 
@@ -1055,28 +1053,17 @@ void SessionController::sendPreparedPicture(const PreparedPicture& picture)
 void SessionController::sendCallback(
     const QString& data, const QString& refMsgId, const QString& label)
 {
-    if (activePeer_.isEmpty()) {
-        return;
+    if (!activePeer_.isEmpty()) {
+        emit commands_.sendCallback(activePeer_, data, refMsgId, label);
     }
-    const QString opId = QStringLiteral("bot:") + refMsgId + QStringLiteral(":") + data;
-    beginOperation(opId, QStringLiteral("bot"),
-        (label.isEmpty() ? data : label) + QStringLiteral(" → ") + peerName(activePeer_),
-        tr("Sending…"), activePeer_);
-    emit commands_.requestSendCallback(opId, activePeer_, data, refMsgId);
 }
 
 void SessionController::sendCommand(
     const QString& command, const QString& args, const QString& label)
 {
-    if (activePeer_.isEmpty() || command.isEmpty()) {
-        return;
+    if (!activePeer_.isEmpty() && !command.isEmpty()) {
+        emit commands_.sendCommand(activePeer_, command, args, label);
     }
-    const QString opId = QStringLiteral("bot-command:") + command;
-    beginOperation(opId, QStringLiteral("bot"),
-        (label.isEmpty() ? QStringLiteral("/") + command : label) + QStringLiteral(" → ")
-            + peerName(activePeer_),
-        tr("Sending…"), activePeer_);
-    emit commands_.requestSendCommand(opId, activePeer_, command, args);
 }
 
 void SessionController::beginEdit(qint64 localId, const QString& e2eId, const QString& text)
@@ -1297,8 +1284,6 @@ void SessionController::exportAccount(const QString& fileUrl, const QString& pas
     if (localPath.isEmpty()) {
         return;
     }
-    beginOperation(QStringLiteral("export"), QStringLiteral("account"),
-        tr("Exporting your backup"), tr("Waiting for this account…"));
     emit commands_.requestExport(localPath, password);
 }
 
@@ -1319,27 +1304,8 @@ void SessionController::pinChat(const QString& peer, bool pinned)
     }
 }
 
-void SessionController::beginOperation(const QString& id, const QString& kind, const QString& title,
-    const QString& status, const QString& peer, const QString& cancelId)
-{
-    emit commands_.opBegin(id, kind, title, status, peer, cancelId);
-}
-
-void SessionController::updateOperation(
-    const QString& id, const QString& status, const QString& detail, double progress)
-{
-    emit commands_.opUpdate(id, status, detail, progress);
-}
-
-void SessionController::finishOperation(const QString& id, bool ok, const QString& finalStatus)
-{
-    emit commands_.opFinish(id, ok, finalStatus);
-}
-
 void SessionController::generatePersonalKey()
 {
-    beginOperation(QStringLiteral("dest-key"), QStringLiteral("dest"),
-        tr("Creating your destination key"), tr("Queued…"));
     emit commands_.requestGeneratePersonalKey();
 }
 
@@ -1622,19 +1588,7 @@ void SessionController::compactDatabase()
     if (deviceStorageBusy_) {
         return;
     }
-    beginStorageWork(tr("Compacting the database"), [this]() {
-        QString reason;
-        const bool rebuilt = store_.rebuild(reason);
-        const qint64 before = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
-        endStorageWork();
-        if (!rebuilt) {
-            emit actionFailed(tr("The database was not compacted: %1").arg(reason));
-            return;
-        }
-        const qint64 after = deviceStorage_.value(QStringLiteral("fileBytes")).toLongLong();
-        emit actionOk(tr("The database was compacted. %1 came back to the disk")
-                          .arg(humanBytes(std::max<qint64>(0, before - after))));
-    });
+    beginStorageWork(tr("Compacting the database"), [this]() { emit commands_.compact(); });
 }
 
 void SessionController::runTrim(const QString& peer, const int keep)
@@ -1643,31 +1597,7 @@ void SessionController::runTrim(const QString& peer, const int keep)
         return;
     }
     beginStorageWork(tr("Trimming and compacting the database"),
-        [this, peer, keep]() {
-            qint64 removed = 0;
-            try {
-                removed = peer.isEmpty() ? store_.pruneEveryChatToLatest(keep)
-                                         : store_.pruneToLatest(peer, keep);
-            } catch (const std::exception& error) {
-                endStorageWork();
-                emit actionFailed(QString::fromUtf8(error.what()));
-                return;
-            }
-            QString reason;
-            const bool rebuilt = store_.rebuild(reason);
-            loadLatestWindow();
-            rebuildChatList();
-            refreshUnreadTotal();
-            endStorageWork();
-            if (rebuilt) {
-                emit actionOk(tr("Removed %1 messages and compacted the database")
-                        .arg(removed));
-                return;
-            }
-            emit actionFailed(tr("Removed %1 messages, but the space has not been returned to "
-                                 "the disk: %2. Trimming again returns it.")
-                    .arg(removed).arg(reason));
-        });
+        [this, peer, keep]() { emit commands_.trim(peer, keep); });
 }
 
 void SessionController::onOpened(
@@ -1687,11 +1617,7 @@ void SessionController::onOpened(
 
 void SessionController::onConnectionChanged(bool connected, const QString& connectionNote)
 {
-    if (connecting_) {
-        connecting_ = false;
-        finishOperation(kConnectOperationId, connected,
-            connected ? tr("Connected") : connectionNote);
-    }
+    connecting_ = false;
     connectPhase_.clear();
     connectError_ = connected ? QString() : connectionNote;
     emit connectStateChanged();

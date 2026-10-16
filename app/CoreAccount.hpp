@@ -124,6 +124,23 @@ private:
     void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
     void declineCall();
     void endCall();
+    void onConnectRequested();
+    void onConnectProgress(int percent, const QString& phase);
+    void settleConnect(bool connected, const QString& note);
+    void sendCallback(
+        const QString& peer, const QString& data, const QString& ref, const QString& label);
+    void sendCommand(
+        const QString& peer, const QString& command, const QString& args, const QString& label);
+    void saveAttachment(
+        const QString& peer, const QString& e2eId, const QString& dest, qint64 token);
+    void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
+    void onDownloadProgress(qint64 token, qint64 received, qint64 total);
+    void onTransferStage(const QString& peer, const QString& e2eId, const QString& stage);
+    void onServedProgress(const QString& peer, const QString& e2eId, qint64 sent, qint64 total);
+    void onServedFinished(const QString& peer, const QString& e2eId, bool ok, const QString& error);
+    void onDownloadFinished(qint64 token, bool ok, const QString& error);
+    void compact();
+    void trim(const QString& peer, int keep);
     void restartDelivery(const QString& peer, qint64 localId);
     void bumpStatus(qint64 localId, int status);
     void onSendProgress(qint64 localId, int state);
@@ -171,6 +188,10 @@ private:
         qint64 connectedAtMs = 0;
     };
     CallView call_;
+    bool connecting_ = false;
+    int connectPercent_ = 0;
+    QHash<qint64, QString> pendingSavePath_;
+    QHash<QString, QString> transferStages_;
     QString refusedCallId_;
     QString callOpId_;
     bool callEndedLocally_ = false;

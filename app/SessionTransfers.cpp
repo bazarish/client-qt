@@ -57,10 +57,7 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
         return;
     }
     conversation_.setDownloadProgressForId(token, 0, 0);
-    pendingSavePath_.insert(token, dest);
-    beginOperation(QStringLiteral("download:") + QString::number(token), QStringLiteral("file-down"),
-        QFileInfo(dest).fileName(), tr("Connecting…"), activePeer_, e2eId);
-    emit commands_.requestSaveAttachment(peer, e2eId, dest, token);
+    emit commands_.saveAttachment(peer, e2eId, dest, token);
 }
 
 QUrl SessionController::defaultSaveUrl(const QString& fileName) const
@@ -77,19 +74,11 @@ void SessionController::onUploadProgress(qint64 localId, qint64 sent, qint64 tot
 {
     const double fraction = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : 0.0;
     conversation_.setUploadProgressForId(localId, fraction);
-    updateOperation(QStringLiteral("send:") + QString::number(localId), tr("Uploading…"),
-        humanBytes(sent) + QStringLiteral(" / ") + humanBytes(total), fraction);
 }
 
 void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64 total)
 {
     conversation_.setDownloadProgressForId(token, received, total);
-    const double fraction
-        = total > 0 ? static_cast<double>(received) / static_cast<double>(total) : -1.0;
-    updateOperation(QStringLiteral("download:") + QString::number(token),
-        tr("Downloading…"),
-        total > 0 ? humanBytes(received) + QStringLiteral(" / ") + humanBytes(total) : QString(),
-        fraction);
 }
 
 void SessionController::onTransferStage(
@@ -98,24 +87,13 @@ void SessionController::onTransferStage(
     TransferProgress& progress = transfers_[e2eId];
     progress.peer = peer;
     progress.stage = stage;
-    const StoredMessage m = store_.messageByE2e(e2eId, peer);
-    if (m.id == 0) {
+    if (peer != activePeer_) {
         return;
     }
-    const QString opId = (m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
-        + QString::number(m.id);
-    if (operations_.indexOf(opId) < 0) {
-        beginOperation(opId, m.outgoing ? QStringLiteral("file-up") : QStringLiteral("file-down"),
-            m.attName.isEmpty() ? tr("file") : m.attName, stage, peer, e2eId);
-    } else {
-        emit commands_.opSetCancelId(opId, e2eId);
-    }
-    if (peer == activePeer_) {
+    const StoredMessage m = store_.messageByE2e(e2eId, peer);
+    if (m.id != 0) {
         conversation_.setTransferStageForId(m.id, stage);
     }
-    updateOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
-            + QString::number(m.id),
-        stage);
 }
 
 void SessionController::onServedProgress(
@@ -125,24 +103,19 @@ void SessionController::onServedProgress(
     progress.peer = peer;
     progress.sent = sent;
     progress.total = total;
+    if (peer != activePeer_) {
+        return;
+    }
     const StoredMessage m = store_.messageByE2e(e2eId, peer);
     if (m.id == 0) {
         return;
     }
-    const double fraction
-        = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : -1.0;
-    if (peer == activePeer_) {
-        if (m.outgoing) {
-            conversation_.setUploadProgressForId(m.id, fraction);
-        } else {
-            conversation_.setDownloadProgressForId(m.id, sent, total);
-        }
+    if (m.outgoing) {
+        conversation_.setUploadProgressForId(
+            m.id, total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : -1.0);
+    } else {
+        conversation_.setDownloadProgressForId(m.id, sent, total);
     }
-    updateOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
-            + QString::number(m.id),
-        progress.stage,
-        total > 0 ? humanBytes(sent) + QStringLiteral(" / ") + humanBytes(total) : QString(),
-        fraction);
 }
 
 void SessionController::onServedFinished(
@@ -156,32 +129,18 @@ void SessionController::onServedFinished(
         kept.finished = true;
         kept.ok = ok;
         kept.error = error;
-        if (!ok) {
-            emit actionFailed(error);
-        }
-        if (m.id != 0) {
-            finishOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
-                    + QString::number(m.id),
-                ok, ok ? tr("Transferred") : error);
-        }
         return;
     }
     transfers_.remove(e2eId);
+    conversation_.setTransferStageForId(m.id, {});
     if (!m.outgoing) {
-        conversation_.setTransferStageForId(m.id, {});
-        onDownloadFinished(m.id, ok, error);
+        conversation_.finishDownloadForId(m.id, ok, error);
         return;
     }
-    if (peer == activePeer_) {
-        conversation_.setUploadProgressForId(m.id, -1.0);
-        conversation_.setTransferStageForId(m.id, {});
-        if (!ok) {
-            conversation_.setErrorForId(m.id, error);
-        }
+    conversation_.setUploadProgressForId(m.id, -1.0);
+    if (!ok) {
+        conversation_.setErrorForId(m.id, error);
     }
-    finishOperation((m.outgoing ? QStringLiteral("send:") : QStringLiteral("download:"))
-            + QString::number(m.id),
-        ok, ok ? tr("Transferred") : error);
 }
 
 void SessionController::cancelTransfer(const QString& e2eId)
@@ -230,16 +189,7 @@ void SessionController::replayTransfersForActivePeer()
 
 void SessionController::onDownloadFinished(qint64 token, bool ok, const QString& error)
 {
-    const QString path = pendingSavePath_.take(token);
-    const QString opId = QStringLiteral("download:") + QString::number(token);
-    finishOperation(opId, ok, ok ? tr("Saved") : tr("Failed: %1").arg(error));
     conversation_.finishDownloadForId(token, ok, error);
-    if (ok && !path.isEmpty()) {
-        if (!store_.setSavedPath(token, path)) {
-            reportUnsaved();
-        }
-        conversation_.setSavedPathForId(token, path);
-    }
 }
 
 bool SessionController::fileExists(const QString& path) const

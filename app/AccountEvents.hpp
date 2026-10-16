@@ -111,6 +111,7 @@ signals:
     void showConversation(const QString& peer);
     void contactRetryExhausted(const QString& fingerprint);
     void contactNamed(const QString& peer, const QString& name);
+    void storageWorkDone();
 };
 
 }  // namespace bazarish::app

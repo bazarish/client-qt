@@ -213,6 +213,7 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::transferStage, &events_, &AccountEvents::transferStage);
     connect(worker_, &SessionWorker::servedFinished, &events_, &AccountEvents::servedFinished);
     connect(worker_, &SessionWorker::downloadFinished, &events_, &AccountEvents::downloadFinished);
+    connect(worker_, &SessionWorker::downloadFinished, this, &CoreAccount::onDownloadFinished);
     connect(worker_, &SessionWorker::pairOfferReady, &events_, &AccountEvents::pairOfferReady);
     connect(worker_, &SessionWorker::pairStage, &events_, &AccountEvents::pairStage);
     connect(worker_, &SessionWorker::pairFinished, &events_, &AccountEvents::pairFinished);
@@ -366,10 +367,35 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
         &CoreAccount::retryContactRequest);
     connect(&commands_, &AccountCommands::declineCall, this, &CoreAccount::declineCall);
     connect(&commands_, &AccountCommands::endCall, this, &CoreAccount::endCall);
-    connect(&commands_, &AccountCommands::opBegin, &log_, &OperationLog::begin);
-    connect(&commands_, &AccountCommands::opUpdate, &log_, &OperationLog::update);
-    connect(&commands_, &AccountCommands::opSetCancelId, &log_, &OperationLog::setCancelId);
-    connect(&commands_, &AccountCommands::opFinish, &log_, &OperationLog::finish);
+    connect(&commands_, &AccountCommands::sendCallback, this, &CoreAccount::sendCallback);
+    connect(&commands_, &AccountCommands::sendCommand, this, &CoreAccount::sendCommand);
+    connect(&commands_, &AccountCommands::saveAttachment, this, &CoreAccount::saveAttachment);
+    connect(&commands_, &AccountCommands::trim, this, &CoreAccount::trim);
+    connect(&commands_, &AccountCommands::compact, this, &CoreAccount::compact);
+    connect(&commands_, &AccountCommands::requestConnect, this, &CoreAccount::onConnectRequested);
+    connect(&commands_, &AccountCommands::requestActivateAliasServicing, this, [this]() {
+        log_.begin(kAliasOperationId, QStringLiteral("alias"), tr("Checking your aliases"),
+            tr("Asking the registry over I2P…"));
+    });
+    connect(&commands_, &AccountCommands::requestExport, this, [this]() {
+        log_.begin(QStringLiteral("export"), QStringLiteral("account"),
+            tr("Exporting your backup"), tr("Waiting for this account…"));
+    });
+    connect(&commands_, &AccountCommands::requestGeneratePersonalKey, this, [this]() {
+        log_.begin(QStringLiteral("dest-key"), QStringLiteral("dest"),
+            tr("Creating your destination key"), tr("Queued…"));
+    });
+    connect(worker_, &SessionWorker::connectProgress, this, &CoreAccount::onConnectProgress);
+    connect(worker_, &SessionWorker::connectionChanged, this, &CoreAccount::settleConnect);
+    connect(worker_, &SessionWorker::actionFailed, this,
+        [this](const QString& reason) { settleConnect(false, reason); });
+    connect(worker_, &SessionWorker::aliasActivationDone, this,
+        [this](const bool ok, const QString& text) { log_.finish(kAliasOperationId, ok, text); });
+    connect(worker_, &SessionWorker::uploadProgress, this, &CoreAccount::onUploadProgress);
+    connect(worker_, &SessionWorker::downloadProgress, this, &CoreAccount::onDownloadProgress);
+    connect(worker_, &SessionWorker::transferStage, this, &CoreAccount::onTransferStage);
+    connect(worker_, &SessionWorker::servedProgress, this, &CoreAccount::onServedProgress);
+    connect(worker_, &SessionWorker::servedFinished, this, &CoreAccount::onServedFinished);
     commandTimer_.setInterval(kCommandTickMs);
     connect(&commandTimer_, &QTimer::timeout, this, &CoreAccount::showSlowCommands);
 

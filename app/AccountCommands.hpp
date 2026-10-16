@@ -63,12 +63,14 @@ signals:
     void retryContactRequest(const QString& fingerprint);
     void declineCall();
     void endCall();
-    void opBegin(const QString& id, const QString& kind, const QString& title,
-        const QString& status, const QString& peer, const QString& cancelId);
-    void opUpdate(const QString& id, const QString& status, const QString& detail,
-        double progress);
-    void opSetCancelId(const QString& id, const QString& cancelId);
-    void opFinish(const QString& id, bool ok, const QString& status);
+    void sendCallback(
+        const QString& peer, const QString& data, const QString& ref, const QString& label);
+    void sendCommand(
+        const QString& peer, const QString& command, const QString& args, const QString& label);
+    void saveAttachment(
+        const QString& peer, const QString& e2eId, const QString& dest, qint64 token);
+    void trim(const QString& peer, int keep);
+    void compact();
     void requestPublishThisDeviceAddress();
     void requestPublishFreshAddress();
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp,
