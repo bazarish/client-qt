@@ -179,7 +179,6 @@ SessionController::SessionController(QObject* parent)
             emit addressNeedsChoice(served, ours);
         });
     connect(&events_, &AccountEvents::stopped, this, [this]() {
-        accountDb_.reset();
         store_.close();
     });
     connect(&events_, &AccountEvents::closed, this, &SessionController::closed);
@@ -252,6 +251,10 @@ SessionController::SessionController(QObject* parent)
         reactionsToFlash_ = flashing;
         ++reactionsRevision_;
         emit reactionsRevisionChanged();
+    });
+    connect(&events_, &AccountEvents::recentReactions, this, [this](const QStringList& recent) {
+        recentReactions_ = recent;
+        emit recentReactionsChanged();
     });
     connect(&events_, &AccountEvents::groupChanged, this, [this](const QString& peer) {
         if (peer == activePeer_) {
@@ -407,17 +410,7 @@ void SessionController::shutdown()
 {
     shuttingDown_ = true;
     core_->shutdown();
-    accountDb_.reset();
     store_.close();
-}
-
-client::AccountDb& SessionController::accountDb()
-{
-    if (!accountDb_) {
-        accountDb_ = std::make_unique<client::AccountDb>(
-            accountPath_.toStdString(), accountPassphrase_.toStdString());
-    }
-    return *accountDb_;
 }
 
 void SessionController::open(const QString& file, const QString& accountId,
@@ -425,19 +418,9 @@ void SessionController::open(const QString& file, const QString& accountId,
 {
     startOnline_ = startOnline;
     accountId_ = accountId;
-    accountPath_ = file;
-    accountPassphrase_ = passphrase;
     if (!store_.open(accountId, file, passphrase)) {
         emit openFailed(tr("This profile could not be opened."));
         return;
-    }
-    const QJsonDocument recents = QJsonDocument::fromJson(
-        QByteArray::fromStdString(accountDb().text("recent-reactions")));
-    for (const QJsonValue& entry : recents.array()) {
-        recentReactions_ << entry.toString();
-    }
-    if (!recentReactions_.isEmpty()) {
-        emit recentReactionsChanged();
     }
     emit commands_.requestOpen(file, passphrase, startOnline);
 }
@@ -893,34 +876,9 @@ void SessionController::renameContact(const QString& fp, const QString& name)
 
 void SessionController::clearChat(bool forEveryone)
 {
-    if (activePeer_.isEmpty()) {
-        return;
+    if (!activePeer_.isEmpty()) {
+        emit commands_.clearChat(activePeer_, forEveryone);
     }
-    const QString peer = activePeer_;
-    if (!store_.clearPeer(peer)) {
-        reportUnsaved();
-        return;
-    }
-    if (!forEveryone) {
-        emit commands_.requestSyncChatClear(peer);
-    }
-    if (forEveryone) {
-        emit commands_.requestClearChatForEveryone(peer);
-        StoredMessage sys;
-        sys.peer = peer;
-        sys.type = QStringLiteral("system");
-        sys.text = encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone."));
-        sys.ts = nowMillis();
-        sys.orderKey = sys.ts;
-        sys.status = DeliveryStatus::Received;
-        sys.id = store_.append(sys);
-        if (sys.id == 0) {
-            reportUnsaved();
-        }
-    }
-    loadLatestWindow();
-    contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
-    refreshUnreadTotal();
 }
 
 void SessionController::deleteContact()
@@ -938,27 +896,12 @@ void SessionController::deleteContact()
 
 void SessionController::dropChat(const QString& peer)
 {
-    if (!store_.forgetPeer(peer)) {
-        reportUnsaved();
-        return;
-    }
-    if (activePeer_ == peer) {
-        openConversation({});
-    }
-    rebuildChatList();
-    refreshUnreadTotal();
+    emit commands_.forgetChat(peer);
 }
 
 void SessionController::clearSavedEverywhere()
 {
-    if (!store_.clearPeer(savedPeer())) {
-        reportUnsaved();
-        return;
-    }
-    loadLatestWindow();
-    contacts_.touch(savedPeer(), savedChatName(), QString(), nowMillis(), false);
-    rebuildChatList();
-    emit commands_.requestClearSaved();
+    emit commands_.clearSavedEverywhere();
 }
 
 bool SessionController::isBlocked(const QString& peer) const
@@ -1303,7 +1246,6 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
 
 void SessionController::changePassphrase(const QString& passphrase)
 {
-    accountPassphrase_ = passphrase;
     emit commands_.requestChangePassphrase(passphrase);
 }
 
@@ -1383,15 +1325,9 @@ void SessionController::setChatFilter(const QString& text)
 
 void SessionController::pinChat(const QString& peer, bool pinned)
 {
-    if (peer.isEmpty()) {
-        return;
+    if (!peer.isEmpty()) {
+        emit commands_.pinChat(peer, pinned);
     }
-    if (!store_.setPinned(peer, pinned)) {
-        reportUnsaved();
-        return;
-    }
-    rebuildChatList();
-    emit commands_.requestSyncChatPin(peer, pinned);
 }
 
 void SessionController::beginOperation(const QString& id, const QString& kind, const QString& title,
@@ -1560,13 +1496,9 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
             continue;
         }
         const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.e2eId);
-        if (!bytes.isEmpty() && PictureStore::instance().put(message.e2eId, bytes)) {
-            continue;
+        if (bytes.isEmpty() || !PictureStore::instance().put(message.e2eId, bytes)) {
+            conversation_.setPictureReadyForId(message.id, false);
         }
-        if (!store_.setHasPicture(message.id, false)) {
-            reportUnsaved();
-        }
-        conversation_.setPictureReadyForId(message.id, false);
     }
 }
 

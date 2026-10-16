@@ -1,0 +1,114 @@
+// Bazarish project (c) 2026
+#include "CoreAccount.hpp"
+
+#include "AccountDb.hpp"
+#include "DeliveryStatus.hpp"
+#include "SessionShared.hpp"
+#include "SystemNotes.hpp"
+
+#include <QJsonArray>
+#include <QJsonDocument>
+
+namespace bazarish::app {
+
+namespace {
+constexpr int kRecentReactions = 5;
+}  // namespace
+
+void CoreAccount::react(const QString& peer, const QString& e2eId, const QString& emoji)
+{
+    QString mine;
+    for (const Reaction& reaction : store_.reactionsFor(peer, e2eId)) {
+        if (reaction.reactor == contacts_.ownFingerprint()) {
+            mine = reaction.emoji;
+        }
+    }
+    const QString next = mine == emoji ? QString() : emoji;
+    if (!next.isEmpty() && !standardReactions().contains(next)) {
+        rememberReaction(next);
+    }
+    if (!store_.setReaction(peer, e2eId, contacts_.ownFingerprint(), next)) {
+        reportUnsaved();
+        return;
+    }
+    emit commands_.requestSendReaction(peer, e2eId, next);
+    emit events_.reactionsChanged();
+}
+
+void CoreAccount::rememberReaction(const QString& emoji)
+{
+    const QString trimmed = emoji.trimmed();
+    if (trimmed.isEmpty()) {
+        return;
+    }
+    recentReactions_.removeAll(trimmed);
+    recentReactions_.prepend(trimmed);
+    while (recentReactions_.size() > kRecentReactions) {
+        recentReactions_.removeLast();
+    }
+    QJsonArray array;
+    for (const QString& entry : recentReactions_) {
+        array.append(entry);
+    }
+    accountDb().putText("recent-reactions",
+        QJsonDocument(array).toJson(QJsonDocument::Compact).toStdString());
+    emit events_.recentReactions(recentReactions_);
+}
+
+void CoreAccount::pinChat(const QString& peer, const bool pinned)
+{
+    if (!store_.setPinned(peer, pinned)) {
+        reportUnsaved();
+        return;
+    }
+    emit events_.chatsChanged();
+    emit commands_.requestSyncChatPin(peer, pinned);
+}
+
+void CoreAccount::clearChat(const QString& peer, const bool forEveryone)
+{
+    if (!store_.clearPeer(peer)) {
+        reportUnsaved();
+        return;
+    }
+    if (!forEveryone) {
+        emit commands_.requestSyncChatClear(peer);
+        emit events_.peerReset(peer);
+        return;
+    }
+    emit commands_.requestClearChatForEveryone(peer);
+    StoredMessage sys;
+    sys.peer = peer;
+    sys.type = QStringLiteral("system");
+    sys.text = encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone."));
+    sys.ts = nowMillis();
+    sys.orderKey = sys.ts;
+    sys.status = DeliveryStatus::Received;
+    if (store_.append(sys) == 0) {
+        reportUnsaved();
+    }
+    emit events_.peerReset(peer);
+}
+
+void CoreAccount::forgetChat(const QString& peer)
+{
+    if (!store_.forgetPeer(peer)) {
+        reportUnsaved();
+        return;
+    }
+    emit events_.peerForgotten(peer);
+}
+
+void CoreAccount::clearSavedEverywhere()
+{
+    const QString saved = contacts_.ownFingerprint();
+    if (!store_.clearPeer(saved)) {
+        reportUnsaved();
+        return;
+    }
+    emit events_.peerReset(saved);
+    emit events_.chatsChanged();
+    emit commands_.requestClearSaved();
+}
+
+}  // namespace bazarish::app

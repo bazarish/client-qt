@@ -52,6 +52,11 @@ signals:
     void editMessage(
         const QString& peer, qint64 localId, const QString& e2eId, const QString& text);
     void deleteMessage(const QString& peer, qint64 localId, const QString& e2eId, bool outgoing);
+    void react(const QString& peer, const QString& e2eId, const QString& emoji);
+    void pinChat(const QString& peer, bool pinned);
+    void clearChat(const QString& peer, bool forEveryone);
+    void forgetChat(const QString& peer);
+    void clearSavedEverywhere();
     void opBegin(const QString& id, const QString& kind, const QString& title,
         const QString& status, const QString& peer, const QString& cancelId);
     void opUpdate(const QString& id, const QString& status, const QString& detail,

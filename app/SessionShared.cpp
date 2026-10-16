@@ -11,6 +11,7 @@
 #pragma pop_macro("emit")
 
 #include <QChar>
+#include <QStringList>
 #include <QDateTime>
 #include <QRandomGenerator>
 
@@ -78,6 +79,18 @@ QString aliasChatPeer(const QString& alias)
 bool hasAliasSigil(const QString& text)
 {
     return text.startsWith(QChar::fromLatin1(bazarish::kAliasSigil));
+}
+
+const QStringList& standardReactions()
+{
+    static const QStringList kStandard = {QStringLiteral("\U0001F44D"),
+        QStringLiteral("\u2764\uFE0F"), QStringLiteral("\U0001F602"),
+        QStringLiteral("\U0001F389"), QStringLiteral("\U0001F525"), QStringLiteral("\U0001F62E"),
+        QStringLiteral("\U0001F622"), QStringLiteral("\U0001F64F"), QStringLiteral("\U0001F440"),
+        QStringLiteral("\u2705"), QStringLiteral("\U0001F4AF"), QStringLiteral("\U0001F680"),
+        QStringLiteral("\U0001F621"), QStringLiteral("\U0001F44F"), QStringLiteral("\U0001F914"),
+        QStringLiteral("\U0001F44E"), QStringLiteral("\U0001F91D"), QStringLiteral("\U0001F529")};
+    return kStandard;
 }
 
 QString reactionFlashKey(const QString& peer, const QString& target)

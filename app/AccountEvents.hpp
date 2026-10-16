@@ -114,6 +114,7 @@ signals:
     void deliveredThrough(const QString& peer, qint64 uptoId);
     void reactionsChanged();
     void reactionsToFlash(const QStringList& flashing);
+    void recentReactions(const QStringList& recent);
     void groupChanged(const QString& peer);
     void accountRenamed(const QString& name);
     void contactsRevised();

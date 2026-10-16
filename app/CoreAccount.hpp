@@ -74,6 +74,12 @@ private:
     void editMessage(
         const QString& peer, qint64 localId, const QString& e2eId, const QString& text);
     void deleteMessage(const QString& peer, qint64 localId, const QString& e2eId, bool outgoing);
+    void react(const QString& peer, const QString& e2eId, const QString& emoji);
+    void rememberReaction(const QString& emoji);
+    void pinChat(const QString& peer, bool pinned);
+    void clearChat(const QString& peer, bool forEveryone);
+    void forgetChat(const QString& peer);
+    void clearSavedEverywhere();
     void restartDelivery(const QString& peer, qint64 localId);
     void bumpStatus(qint64 localId, int status);
     void onSendProgress(qint64 localId, int state);
@@ -94,6 +100,7 @@ private:
     QString passphrase_;
     std::unique_ptr<client::AccountDb> accountDb_;
     QStringList reactionsToFlash_;
+    QStringList recentReactions_;
     QString viewedPeer_;
     bool startOnline_ = true;
     bool online_ = false;

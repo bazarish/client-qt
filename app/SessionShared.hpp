@@ -4,6 +4,7 @@
 #include <bazarish/Bytes.hpp>
 
 #include <QString>
+#include <QStringList>
 
 namespace bazarish::app {
 
@@ -20,6 +21,7 @@ QString aliasChatPeer(const QString& alias);
 
 bool hasAliasSigil(const QString& text);
 QString reactionFlashKey(const QString& peer, const QString& target);
+const QStringList& standardReactions();
 
 inline const QString kAliasOperationId = QStringLiteral("alias");
 

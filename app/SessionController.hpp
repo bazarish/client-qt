@@ -310,8 +310,6 @@ public:
     QStringList standardReactions() const;
     Q_PROPERTY(QStringList recentReactions READ recentReactions NOTIFY recentReactionsChanged)
     QStringList recentReactions() const { return recentReactions_; }
-    void rememberReaction(const QString& emoji);
-    QString myReaction(const QString& e2eId) const;
     Q_INVOKABLE QVariantList reactionSummary(const QString& e2eId) const;
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
@@ -591,7 +589,6 @@ private:
     void onRoutingTold(const QString& peer, bool delivered);
     ContactBook book_;
     QStringList recentReactions_;
-    QString accountPath_;
     struct ContactProgressRow {
         qint64 id = 0;
         QString peer;
@@ -606,9 +603,6 @@ private:
     };
     QHash<QString, PendingContactRequest> refusedRequests_;
     void repeatContactAdd(const QString& chat, const PendingContactRequest& pending);
-    QString accountPassphrase_;
-    std::unique_ptr<client::AccountDb> accountDb_;
-    client::AccountDb& accountDb();
     QString ownInvite_;
     QHash<qint64, QString> pendingSavePath_;
     QHash<QString, qint64> pictureOwners_;

@@ -77,6 +77,7 @@ if(Qt6_FOUND)
         app/ContactBook.hpp
         app/CoreAccount.cpp
         app/CoreAccount.hpp
+        app/CoreChats.cpp
         app/CoreSending.cpp
         app/MessageIngest.cpp
         app/MessageIngest.hpp

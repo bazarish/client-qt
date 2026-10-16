@@ -201,6 +201,8 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     });
     connect(&commands_, &AccountCommands::requestSetSendReceipts, this,
         [this](const bool on) { sendReceipts_ = on; });
+    connect(&commands_, &AccountCommands::requestChangePassphrase, this,
+        [this](const QString& passphrase) { passphrase_ = passphrase; });
     connect(&commands_, &AccountCommands::requestShutdown, this, &CoreAccount::beginShutdown);
 
     connect(worker_, &SessionWorker::connectProgress, &events_, &AccountEvents::connectProgress);
@@ -353,6 +355,12 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(&commands_, &AccountCommands::resend, this, &CoreAccount::resend);
     connect(&commands_, &AccountCommands::editMessage, this, &CoreAccount::editMessage);
     connect(&commands_, &AccountCommands::deleteMessage, this, &CoreAccount::deleteMessage);
+    connect(&commands_, &AccountCommands::react, this, &CoreAccount::react);
+    connect(&commands_, &AccountCommands::pinChat, this, &CoreAccount::pinChat);
+    connect(&commands_, &AccountCommands::clearChat, this, &CoreAccount::clearChat);
+    connect(&commands_, &AccountCommands::forgetChat, this, &CoreAccount::forgetChat);
+    connect(&commands_, &AccountCommands::clearSavedEverywhere, this,
+        &CoreAccount::clearSavedEverywhere);
     connect(&commands_, &AccountCommands::opBegin, &log_, &OperationLog::begin);
     connect(&commands_, &AccountCommands::opUpdate, &log_, &OperationLog::update);
     connect(&commands_, &AccountCommands::opSetCancelId, &log_, &OperationLog::setCancelId);
@@ -414,6 +422,12 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
         reactionsToFlash_ << entry.toString();
     }
     emit events_.reactionsToFlash(reactionsToFlash_);
+    const QJsonDocument recents = QJsonDocument::fromJson(
+        QByteArray::fromStdString(accountDb().text("recent-reactions")));
+    for (const QJsonValue& entry : recents.array()) {
+        recentReactions_ << entry.toString();
+    }
+    emit events_.recentReactions(recentReactions_);
     QMetaObject::invokeMethod(
         worker_,
         [worker = worker_, file, passphrase, startOnline]() {

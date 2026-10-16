@@ -40,16 +40,6 @@
 
 namespace bazarish::app {
 
-namespace {
-constexpr int kRecentReactions = 5;
-const QStringList kStandardReactions = {QStringLiteral("\U0001F44D"),
-    QStringLiteral("\u2764\uFE0F"), QStringLiteral("\U0001F602"),
-    QStringLiteral("\U0001F389"), QStringLiteral("\U0001F525"), QStringLiteral("\U0001F62E"),
-    QStringLiteral("\U0001F622"), QStringLiteral("\U0001F64F"), QStringLiteral("\U0001F440"),
-    QStringLiteral("\u2705"), QStringLiteral("\U0001F4AF"), QStringLiteral("\U0001F680"),
-    QStringLiteral("\U0001F621"), QStringLiteral("\U0001F44F"), QStringLiteral("\U0001F914"),
-    QStringLiteral("\U0001F44E"), QStringLiteral("\U0001F91D"), QStringLiteral("\U0001F529")};
-}  // namespace
 
 using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
@@ -57,27 +47,7 @@ using bazarish::client::Session;
 
 QStringList SessionController::standardReactions() const
 {
-    return kStandardReactions;
-}
-
-void SessionController::rememberReaction(const QString& emoji)
-{
-    const QString trimmed = emoji.trimmed();
-    if (trimmed.isEmpty()) {
-        return;
-    }
-    recentReactions_.removeAll(trimmed);
-    recentReactions_.prepend(trimmed);
-    while (recentReactions_.size() > kRecentReactions) {
-        recentReactions_.removeLast();
-    }
-    QJsonArray array;
-    for (const QString& entry : recentReactions_) {
-        array.append(entry);
-    }
-    const QByteArray text = QJsonDocument(array).toJson(QJsonDocument::Compact);
-    accountDb().putText("recent-reactions", text.toStdString());
-    emit recentReactionsChanged();
+    return bazarish::app::standardReactions();
 }
 
 QStringList SessionController::reactionsToFlash(const QString& e2eId) const
@@ -104,30 +74,9 @@ void SessionController::forgetReactionFlash()
 
 void SessionController::react(const QString& e2eId, const QString& emoji)
 {
-    if (activePeer_.isEmpty() || e2eId.isEmpty()) {
-        return;
+    if (!activePeer_.isEmpty() && !e2eId.isEmpty()) {
+        emit commands_.react(activePeer_, e2eId, emoji);
     }
-    const QString next = (myReaction(e2eId) == emoji) ? QString() : emoji;
-    if (!next.isEmpty() && !kStandardReactions.contains(next)) {
-        rememberReaction(next);
-    }
-    if (!store_.setReaction(activePeer_, e2eId, fingerprint_, next)) {
-        reportUnsaved();
-        return;
-    }
-    emit commands_.requestSendReaction(activePeer_, e2eId, next);
-    ++reactionsRevision_;
-    emit reactionsRevisionChanged();
-}
-
-QString SessionController::myReaction(const QString& e2eId) const
-{
-    for (const Reaction& r : store_.reactionsFor(activePeer_, e2eId)) {
-        if (r.reactor == fingerprint_) {
-            return r.emoji;
-        }
-    }
-    return {};
 }
 
 QVariantList SessionController::reactionSummary(const QString& e2eId) const
