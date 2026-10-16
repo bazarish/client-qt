@@ -69,8 +69,9 @@ public class BazarishService extends QtServiceBase {
             .setShowWhen(false)
             // Android 14 lets the user swipe even this away; it is put back at once.
             .setDeleteIntent(acting(context, ACTION_SHOW, SHOW_REQUEST));
-        if (!Bazarish.unread.isEmpty()) {
-            shown.setContentText(Bazarish.unread);
+        // A notice with no title still keeps room for one, which leaves a blank band.
+        if (!Bazarish.line.isEmpty()) {
+            shown.setContentTitle(Bazarish.line);
         }
         // Until Qt has given its labels there is nothing to name the buttons with.
         if (!Bazarish.quit.isEmpty()) {

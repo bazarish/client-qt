@@ -43,7 +43,7 @@ public final class Bazarish {
     static String turnOff = "";
     static String turnOn = "";
     static String quit = "";
-    static String unread = "";
+    static String line = "";
     static boolean notificationsOn = true;
     private static boolean started = false;
 
@@ -57,12 +57,12 @@ public final class Bazarish {
 
     public static void show(String presence, String messages, String reactions, String calls,
             String turnOffText, String turnOnText, String quitText, boolean notifications,
-            String unreadText) {
+            String presenceLine) {
         turnOff = turnOffText;
         turnOn = turnOnText;
         quit = quitText;
         notificationsOn = notifications;
-        unread = unreadText;
+        line = presenceLine;
         NotificationManager manager = app.getSystemService(NotificationManager.class);
         // Default importance keeps it out of the silent group; with no sound it never rings.
         NotificationChannel presenceChannel = new NotificationChannel(

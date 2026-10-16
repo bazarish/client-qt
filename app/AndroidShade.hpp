@@ -28,14 +28,14 @@ public:
 
 private:
     void show();
-    void followUnread();
+    QString presenceLine() const;
     void notifyMessage(const QString& accountId, const QString& peer, const QString& title,
         const QString& body, bool reaction);
     void followRinging();
     void openHeldConversation();
 
     AppController& app_;
-    int unread_ = 0;
+    QString line_;
     bool callShown_ = false;
 };
 

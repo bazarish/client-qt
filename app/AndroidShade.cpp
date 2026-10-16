@@ -102,7 +102,7 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
     }
     gApp.store(&app);
 
-    followUnread();
+    line_ = presenceLine();
     show();
     QJniObject::callStaticMethod<void>(kBridge, "askNotifications",
         "(Landroid/content/Context;)V", context().object());
@@ -111,9 +111,9 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
     connect(&notifier, &Notifier::announced, this, &AndroidShade::notifyMessage);
     connect(&app_, &AppController::notificationsEnabledChanged, this, &AndroidShade::show);
     connect(&app_, &AppController::accountsChanged, this, [this]() {
-        const int before = unread_;
-        followUnread();
-        if (unread_ != before) {
+        const QString line = presenceLine();
+        if (line != line_) {
+            line_ = line;
             show();
         }
     });
@@ -172,13 +172,25 @@ void AndroidShade::stop()
     QJniObject::callStaticMethod<void>(kBridge, "stop", "()V");
 }
 
-void AndroidShade::followUnread()
+QString AndroidShade::presenceLine() const
 {
     int unread = 0;
+    int open = 0;
+    bool connected = true;
     for (const AccountRow& account : app_.accountStatuses()) {
         unread += account.unread;
+        if (account.open) {
+            ++open;
+            connected = connected && account.connected;
+        }
     }
-    unread_ = unread;
+    if (unread > 0) {
+        return tr("Unread: %1").arg(unread);
+    }
+    if (open == 0) {
+        return tr("Offline");
+    }
+    return connected ? tr("Online") : tr("Connecting…");
 }
 
 void AndroidShade::show()
@@ -190,14 +202,14 @@ void AndroidShade::show()
     const QJniObject turnOff = javaString(tr("Turn off notifications"));
     const QJniObject turnOn = javaString(tr("Turn on notifications"));
     const QJniObject quit = javaString(tr("Quit"));
-    const QJniObject unread = javaString(unread_ > 0 ? tr("Unread: %1").arg(unread_) : QString());
+    const QJniObject line = javaString(line_);
     QJniObject::callStaticMethod<void>(kBridge, "show",
         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
         "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V",
         presence.object<jstring>(), messages.object<jstring>(), reactions.object<jstring>(),
         calls.object<jstring>(), turnOff.object<jstring>(), turnOn.object<jstring>(),
         quit.object<jstring>(), static_cast<jboolean>(app_.notificationsEnabled()),
-        unread.object<jstring>());
+        line.object<jstring>());
 }
 
 void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,
