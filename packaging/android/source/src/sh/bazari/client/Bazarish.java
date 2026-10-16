@@ -37,6 +37,7 @@ public final class Bazarish {
     private static final int MESSAGE_ID = 3;
     private static final int ASK_NOTIFICATIONS = 1;
     private static final int ANSWER_REQUEST = 1;
+    private static final long WAKE_MILLIS = 3000;
     private static final String HELD = "held";
     private static MediaPlayer ring = null;
 
@@ -106,6 +107,18 @@ public final class Bazarish {
             .build();
         app.getSystemService(NotificationManager.class)
             .notify(account + "/" + peer, MESSAGE_ID, shown);
+        wakeScreen();
+    }
+
+    // A message lights a sleeping screen for a moment, as a phone call's would.
+    @SuppressWarnings("deprecation")
+    private static void wakeScreen() {
+        PowerManager power = app.getSystemService(PowerManager.class);
+        if (power.isInteractive()) {
+            return;
+        }
+        power.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "bazarish:message").acquire(WAKE_MILLIS);
     }
 
     public static void notifyCall(String account, String peer, String title, String body) {

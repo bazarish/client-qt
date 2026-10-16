@@ -112,6 +112,8 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
 
     line_ = presenceLine();
     show();
+    // A call notice left by a process that is gone belongs to a call that is gone.
+    QJniObject::callStaticMethod<void>(kBridge, "cancelCall", "()V");
     QJniObject::callStaticMethod<void>(kBridge, "askNotifications",
         "(Landroid/content/Context;)V", context().object());
     openHeldConversation();
