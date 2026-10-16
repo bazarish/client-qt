@@ -116,10 +116,18 @@ Item {
             Layout.fillHeight: true
             clip: true
             model: root.session ? root.session.chatList : null
+            topMargin: Theme.rowInset / 2
+            bottomMargin: Theme.rowInset / 2
             delegate: ItemDelegate {
                 id: chatRow
                 width: ListView.view.width
                 height: 66
+                leftInset: Theme.rowInset
+                rightInset: Theme.rowInset
+                topInset: Theme.rowInset / 2
+                bottomInset: Theme.rowInset / 2
+                leftPadding: Theme.rowInset + Theme.spacing
+                rightPadding: Theme.rowInset + Theme.spacing
                 highlighted: root.session && root.session.activePeer === model.fingerprint
                 onClicked: root.session.openConversation(model.fingerprint)
                 onPressAndHold: pinMenu.popup()

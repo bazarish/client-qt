@@ -53,6 +53,8 @@ QtObject {
     readonly property int spacing: 12
     readonly property int radius: 10
     readonly property int radiusSmall: 6
+    // A selected row's outline keeps this far from the list's edge and from its neighbours.
+    readonly property int rowInset: 6
     readonly property int avatar: 44
     // The action bar under the chat list and the composer beside it are one
     // horizontal line across the window, so they share a resting height.

@@ -73,9 +73,17 @@ Popup {
                     root.close()
                 }
             }
+            topMargin: Theme.rowInset / 2
+            bottomMargin: Theme.rowInset / 2
             delegate: ItemDelegate {
                 width: ListView.view.width
                 height: 68
+                leftInset: Theme.rowInset
+                rightInset: Theme.rowInset
+                topInset: Theme.rowInset / 2
+                bottomInset: Theme.rowInset / 2
+                leftPadding: Theme.rowInset + Theme.spacing
+                rightPadding: Theme.rowInset + Theme.spacing
                 onClicked: ListView.view.activate(model.accountId, model.encrypted && !model.open)
                 // The active account is marked with a neon outline, not a bright
                 // accent fill (the brand's one-accent rule; gray stays the base).
