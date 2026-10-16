@@ -9,6 +9,7 @@ Item {
     signal newChatRequested()
     signal settingsRequested()
     signal appSettingsRequested()
+    signal routerRequested()
     // Too narrow for two panes and a row of labelled actions: one menu instead.
     readonly property bool narrow: width < 300
     signal accountsRequested()
@@ -221,8 +222,8 @@ Item {
         // account is not syncing; "Connecting…" while online but not yet reaching
         // the server; "Waiting for approval" when the server has the account but
         // an operator has not let it in, which otherwise looks exactly like a
-        // healthy connection that quietly delivers nothing. Tapping it opens
-        // Settings, where the connection is managed.
+        // healthy connection that quietly delivers nothing. Tapping it opens the
+        // I2P router page, where the path to the server is seen.
         Rectangle {
             id: connPlate
             Layout.fillWidth: true
@@ -297,7 +298,7 @@ Item {
                     size: 15
                 }
             }
-            TapHandler { onTapped: root.settingsRequested() }
+            TapHandler { onTapped: root.routerRequested() }
         }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; visible: !root.narrow }

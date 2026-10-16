@@ -72,6 +72,7 @@ Item {
                     onNewChatRequested: newChat.open()
                     onSettingsRequested: settings.open()
                     onAppSettingsRequested: appSettings.open()
+                    onRouterRequested: routerStatus.open()
                     onAccountsRequested: accountSwitcher.open()
                 }
                 Rectangle {
