@@ -7,7 +7,6 @@
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
-#include <QFile>
 #include <QProcess>
 #include <QTemporaryDir>
 
@@ -103,11 +102,16 @@ int main(int argc, char** argv)
     QProcess core;
     gCore = &core;
     core.setProcessEnvironment(environment);
-    core.setProcessChannelMode(QProcess::ForwardedErrorChannel);
-    core.start(QString::fromLocal8Bit(argv[1]), {QStringLiteral("--core")});
+    bool listening = false;
+    QObject::connect(&core, &QProcess::readyReadStandardError, [&core, &listening]() {
+        const QByteArray said = core.readAllStandardError();
+        std::fwrite(said.constData(), 1, static_cast<std::size_t>(said.size()), stderr);
+        listening = listening || said.contains("wire: the core listens");
+    });
+    core.start(QString::fromLocal8Bit(argv[1]), {});
     CHECK(core.waitForStarted());
-    const QString path = coreSocketPath();
-    CHECK(settleUntil([&]() { return QFile::exists(path); }, kCoreStartMs));
+    CHECK(settleUntil([&]() { return listening; }, kCoreStartMs));
+    const QString path = coreSocketName();
 
     {
         Window first;

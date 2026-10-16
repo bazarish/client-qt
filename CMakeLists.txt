@@ -65,6 +65,8 @@ if(Qt6_FOUND)
 
     # The core keeps every account and runs with no window: no Qt Quick, no Qt QML.
     add_library(bazarish_app_shared STATIC
+        app/SingleInstance.cpp
+        app/SingleInstance.hpp
         app/AppSettings.cpp
         app/I2pEvents.hpp
         app/AccountCommands.hpp
@@ -98,6 +100,8 @@ if(Qt6_FOUND)
     target_compile_options(bazarish_app_shared PRIVATE -Wall -Wextra)
 
     add_library(bazarish_app_core STATIC
+        app/CoreMain.cpp
+        app/CoreMain.hpp
         app/I2pService.cpp
         app/I2pService.hpp
         app/CoreHost.cpp
@@ -149,8 +153,6 @@ if(Qt6_FOUND)
         app/Models.hpp
         app/DesktopEntry.cpp
         app/DesktopEntry.hpp
-        app/SingleInstance.cpp
-        app/SingleInstance.hpp
         app/TrayIcon.cpp
         app/TrayIcon.hpp
         app/Identicon.cpp
@@ -273,7 +275,7 @@ if(Qt6_FOUND)
 
     # The message catalog. Carried in the binary: the build has already checked
     # that every string the code shows has every language.
-    qt_add_resources(bazarish-app appi18n
+    qt_add_resources(bazarish_app_shared appi18n
         PREFIX "/i18n"
         BASE app/i18n
         FILES
@@ -282,7 +284,7 @@ if(Qt6_FOUND)
 
     # The notification sound, carried rather than looked for: a system sound theme
     # is not something this application can count on being installed.
-    qt_add_resources(bazarish-app appsound
+    qt_add_resources(bazarish_app_core appsound
         PREFIX "/sound"
         BASE app/sound
         FILES
@@ -463,11 +465,15 @@ if(Qt6_FOUND)
     target_compile_options(TestSocketChannel PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestSocketChannel COMMAND TestSocketChannel)
 
+    # The core alone, as Android runs it: linked with nothing of the window.
+    add_executable(bazarish-core-harness tests/CoreHarness.cpp)
+    target_link_libraries(bazarish-core-harness PRIVATE bazarish_app_core)
+
     add_executable(TestTwoProcess tests/TestTwoProcess.cpp app/CoreSocket.cpp app/Wire.cpp
         app/AppSettings.cpp app/AppCommands.hpp app/AppEvents.hpp app/AccountEvents.hpp
         app/I2pEvents.hpp)
     target_include_directories(TestTwoProcess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestTwoProcess PRIVATE bazarish_client Qt6::Core Qt6::Network)
     target_compile_options(TestTwoProcess PRIVATE -Wall -Wextra -Werror)
-    add_test(NAME TestTwoProcess COMMAND TestTwoProcess $<TARGET_FILE:bazarish-app>)
+    add_test(NAME TestTwoProcess COMMAND TestTwoProcess $<TARGET_FILE:bazarish-core-harness>)
 endif()

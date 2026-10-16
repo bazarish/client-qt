@@ -993,19 +993,20 @@ void CoreHost::closeAllSessions()
     refreshAccounts();
 }
 
-CoreListener::CoreListener(CoreHost& core, const QString& path, QObject* const parent)
+CoreListener::CoreListener(CoreHost& core, const QString& name, QObject* const parent)
     : QObject(parent)
     , core_(core)
 {
     server_.setSocketOptions(QLocalServer::UserAccessOption);
-    if (!QLocalServer::removeServer(path)) {
-        throw std::runtime_error("a stale core socket could not be removed: " + path.toStdString());
+    if (!QLocalServer::removeServer(name)) {
+        throw std::runtime_error("a stale core socket could not be removed: " + name.toStdString());
     }
-    if (!server_.listen(path)) {
-        throw std::runtime_error("the core cannot listen at " + path.toStdString() + ": "
+    if (!server_.listen(name)) {
+        throw std::runtime_error("the core cannot listen as " + name.toStdString() + ": "
             + server_.errorString().toStdString());
     }
     connect(&server_, &QLocalServer::newConnection, this, &CoreListener::accept);
+    bazarish::log::info("wire: the core listens");
 }
 
 void CoreListener::dropWindow()

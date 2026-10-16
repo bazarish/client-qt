@@ -148,7 +148,7 @@ private:
 class CoreListener : public QObject {
     Q_OBJECT
 public:
-    CoreListener(CoreHost& core, const QString& path, QObject* parent = nullptr);
+    CoreListener(CoreHost& core, const QString& name, QObject* parent = nullptr);
 
     void dropWindow();
 

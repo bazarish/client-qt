@@ -8,6 +8,7 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QCryptographicHash>
 #include <QtEndian>
 
 #include <stdexcept>
@@ -22,12 +23,16 @@ constexpr qsizetype kLengthBytes = sizeof(quint32);
 constexpr quint32 kMaxFrameBytes = 16 * 1024 * 1024;
 // A window this far behind has stopped reading.
 constexpr qint64 kMaxQueuedBytes = 64 * 1024 * 1024;
+constexpr int kNameBytes = 8;
 
 }  // namespace
 
-QString coreSocketPath()
+QString coreSocketName()
 {
-    return QString::fromStdString((appRoot() / "core.sock").string());
+    const QByteArray digest = QCryptographicHash::hash(
+        QByteArray::fromStdString(appRoot().string()), QCryptographicHash::Sha256);
+    return QStringLiteral("bazarish-core-")
+        + QString::fromLatin1(digest.left(kNameBytes).toHex());
 }
 
 SocketChannelEnd::SocketChannelEnd(QLocalSocket* const socket, QObject* const parent)

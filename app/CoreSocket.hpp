@@ -12,7 +12,7 @@
 
 namespace bazarish::app {
 
-QString coreSocketPath();
+QString coreSocketName();
 
 class SocketChannelEnd : public ChannelEnd {
     Q_OBJECT
