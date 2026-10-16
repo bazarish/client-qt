@@ -100,9 +100,10 @@ Rectangle {
             }
         }
         // Opening a chat means wanting to write in it: the caret starts there
-        // rather than after a click nobody should have to make.
+        // rather than after a click nobody should have to make. A phone would
+        // raise its keyboard over the chat for it, so there the tap decides.
         function onActivePeerChanged() {
-            if (root.session.activePeer.length > 0) {
+            if (root.session.activePeer.length > 0 && !App.mobile) {
                 Qt.callLater(function() { input.forceActiveFocus() })
             }
         }
