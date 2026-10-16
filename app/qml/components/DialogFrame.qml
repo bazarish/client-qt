@@ -15,8 +15,17 @@ Rectangle {
 
     color: Theme.bg
     radius: Theme.radius
-    border.color: frame.destructive ? Theme.neon : Theme.green
-    border.width: 1
+
+    // Drawn over the content, so a list scrolled to the rim never covers the edge.
+    Rectangle {
+        parent: frame.parent
+        z: 1
+        anchors.fill: parent
+        radius: frame.radius
+        color: "transparent"
+        border.color: frame.destructive ? Theme.neon : Theme.green
+        border.width: 1
+    }
 
     Repeater {
         model: frame.kGlowLayers

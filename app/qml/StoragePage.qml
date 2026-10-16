@@ -63,6 +63,7 @@ Popup {
         ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.bottomMargin: Theme.radius
             contentWidth: availableWidth
             clip: true
 

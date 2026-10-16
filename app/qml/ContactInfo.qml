@@ -38,6 +38,7 @@ Popup {
 
     contentItem: ScrollView {
         contentWidth: availableWidth
+        clip: true
         ColumnLayout {
         id: body
         width: root.width - 36

@@ -56,6 +56,7 @@ Popup {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.topMargin: 8
+            Layout.bottomMargin: Theme.radius
             clip: true
             model: root.session ? root.session.chatList : null
             delegate: ItemDelegate {
