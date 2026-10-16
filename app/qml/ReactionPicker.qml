@@ -50,6 +50,11 @@ Popup {
     }
     onHeightChanged: if (root.opened) { root.placeInside() }
     onWidthChanged: if (root.opened) { root.placeInside() }
+    // A phone's keyboard shrinks the window: the field and its button stay above it.
+    Connections {
+        target: root.parent
+        function onHeightChanged() { if (root.opened) { root.placeInside() } }
+    }
 
     // The set comes from the session, which also decides what counts as one of
     // the user's own - the two must not drift apart.
