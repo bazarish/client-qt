@@ -3137,12 +3137,6 @@
       "zh": "对方的地址正忙",
       "ar": "عنوان جهة الاتصال مشغول"
     },
-    "Their card: who they are and where to reach them. Whoever gets it can reach them too.": {
-      "ru": "Карточка контакта: кто это и куда обращаться. Получивший её тоже сможет связаться.",
-      "es": "Su tarjeta: quiénes son y dónde encontrarlos. Quien la reciba podrá alcanzarlos también.",
-      "zh": "他们的名片：他们是谁，以及到哪里找他们。拿到它的人同样能够联系到他们。",
-      "ar": "بطاقة جهة الاتصال: من هي وأين تُبلَغ. ومن تصله يستطيع بلوغها أيضًا."
-    },
     "Their device is ringing": {
       "ru": "У собеседника звонит",
       "es": "Está sonando en su dispositivo",

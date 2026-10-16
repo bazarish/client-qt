@@ -71,16 +71,6 @@ Popup {
                     font.weight: Font.Medium
                     elide: Text.ElideRight
                 }
-                Label {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 16
-                    Layout.rightMargin: 16
-                    text: qsTr("Their card: who they are and where to reach them. "
-                        + "Whoever gets it can reach them too.")
-                    color: Theme.textDim
-                    font.pixelSize: Theme.fontSmall
-                    wrapMode: Text.Wrap
-                }
                 QrView {
                     Layout.alignment: Qt.AlignHCenter
                     visible: root.link.length > 0
