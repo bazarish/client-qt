@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "AccountCommands.hpp"
 #include "AccountEvents.hpp"
+#include "AppCommands.hpp"
+#include "AppEvents.hpp"
 #include "Wire.hpp"
 
 #include <QCoreApplication>
@@ -205,6 +207,12 @@ int main(int argc, char** argv)
     AccountEvents eventsSent;
     AccountEvents eventsGot;
     CHECK(roundTrip(right, left, eventsSent, eventsGot) > 0);
+    AppCommands appCommandsSent;
+    AppCommands appCommandsGot;
+    CHECK(roundTrip(left, right, appCommandsSent, appCommandsGot) > 0);
+    AppEvents appEventsSent;
+    AppEvents appEventsGot;
+    CHECK(roundTrip(right, left, appEventsSent, appEventsGot) > 0);
     CHECK(breaks == 0);
 
     AccountEvents target;

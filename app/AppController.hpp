@@ -1,33 +1,31 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "AppCommands.hpp"
+#include "AppEvents.hpp"
 #include "Models.hpp"
-#include "AccountManager.hpp"
-#include "Ringtone.hpp"
 #include "SessionController.hpp"
-
-#include "DevicePairing.hpp"
 
 #include <bazarish/Address.hpp>
 #include <bazarish/Limits.hpp>
 
 #include <QList>
-#include <QImage>
 #include <QObject>
-#include <QSet>
 #include <QString>
 #include <QVector>
 
 #include <filesystem>
-#include <memory>
+#include <utility>
 
 class QQuickWindow;
 
 namespace bazarish::app {
 
-// Owns the account manager and every open account.
+class Relay;
+
 class AppController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(bool attached READ attached NOTIFY attachedChanged)
     Q_PROPERTY(QObject* operations READ operations CONSTANT)
     Q_PROPERTY(QString pairStatus READ pairStatus NOTIFY pairingChanged)
     Q_PROPERTY(double pairProgress READ pairProgress NOTIFY pairingChanged)
@@ -58,6 +56,9 @@ class AppController : public QObject {
 public:
     explicit AppController(QObject* parent = nullptr);
 
+    void attach(Relay& relay);
+    bool attached() const { return attached_; }
+
     QObject* accountList() { return &accountList_; }
     QObject* accounts() { return &accounts_; }
     int unreadElsewhere() const;
@@ -72,7 +73,7 @@ public:
 #endif
     }
     QObject* session();
-    bool hasAccounts() const { return haveAccounts_; }
+    bool hasAccounts() const { return !accountRows_.isEmpty(); }
     bool hasOpenAccounts() const { return !sessions_.isEmpty(); }
     QString i2pdVersion() const;
     QString appVersion() const;
@@ -116,14 +117,12 @@ public:
     void setBackgroundTasksVisible(bool on);
 
     qreal ringLevel() const { return ringLevel_; }
-    QString ringingAccount() const { return ringingAccount_; }
     QString ringingPeer() const { return ringingPeer_; }
     QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
     QString ringingAccountName() const { return ringingAccountName_; }
     Q_INVOKABLE void answerRinging();
     Q_INVOKABLE void declineRinging();
     static std::filesystem::path accountsFolder();
-    static QString soundFolder();
     QVector<AccountRow> accountStatuses() const { return accountStatuses_; }
     void rebuildI2pLinks();
     void retranslate();
@@ -141,8 +140,6 @@ public:
     Q_INVOKABLE bool closeTopPopup(QQuickWindow* window) const;
     Q_PROPERTY(bool callLive READ callLive NOTIFY callLiveChanged)
     bool callLive() const { return callLive_; }
-    // Talking or calling out, as opposed to only ringing.
-    bool callTalking() const { return callTalking_; }
     Q_INVOKABLE void requestUnlocked();
     Q_PROPERTY(bool speakerOn READ speakerOn WRITE setSpeakerOn NOTIFY speakerOnChanged)
     bool speakerOn() const { return speakerOn_; }
@@ -161,6 +158,7 @@ public:
     Q_INVOKABLE QString markupPlain(const QString& text) const;
 
 signals:
+    void attachedChanged();
     void operationsChanged();
     void pairingChanged();
     void pairingFinished(bool ok);
@@ -177,10 +175,6 @@ signals:
     void ringingChanged();
     void ringLevelChanged();
     void raiseRequested();
-    void notificationRequested(const QString& accountId, const QString& peer,
-        const QString& title, const QString& body);
-    void reactionNotificationRequested(const QString& accountId, const QString& peer,
-        const QString& title, const QString& body);
     void sessionChanged();
     void accountOpened();
     void accountOpenFailed(const QString& error);
@@ -189,7 +183,6 @@ signals:
     void needPassphrase(const QString& id, const QString& name);
     void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened);
     void deletingChanged();
-    void readyToExit();
     void accountDeleteNeedsUnlock(const QString& id, const QString& name);
     void unlockFailed(const QString& error);
     void accountUnlocked(const QString& id);
@@ -200,70 +193,38 @@ signals:
 
 private:
     SessionController* sessionFor(const QString& id) const;
-    SessionController* activeController() const;
-    void openSession(const QString& id, const QString& passphrase, bool makeActive,
-        bool startOnline = true);
-    void openAllAccounts();
-    void removeSession(SessionController* ctrl);
-    void onSessionClosed(const QString& id);
-    void removeAccountFiles(const QString& id);
-    void refreshAccounts();
-    void refreshAccountRows();
-    void setActive(const QString& id);
-    QString readLastActive() const;
-    void writeLastActive(const QString& id) const;
-
+    void startSession(const QString& id);
+    void endSession(const QString& id);
     void applyPendingLink();
-    void loadOfflineSet();
-    void persistOfflineSet() const;
-    void setAccountOffline(const QString& id, bool offline);
 
-    void loadSettings();
-    void persistSettings() const;
-
-    std::unique_ptr<client::AccountManager> manager_;
-    void failPairing(const QString& reason);
+    AppCommands commands_;
+    AppEvents events_;
+    Relay* relay_ = nullptr;
+    bool attached_ = false;
+    AccountListModel accountList_;
+    QVector<AccountListRow> accountRows_;
+    OpenAccountsModel accounts_;
+    QVector<AccountRow> accountStatuses_;
+    OperationListModel operations_;
+    QList<SessionController*> sessions_;
+    QString activeId_;
+    // A link that arrived before any account was open waits for one.
+    QString pendingLink_;
+    std::pair<QString, QString> pendingConversation_;
+    QString deletingId_;
+    bool notifications_ = true;
+    bool backgroundTasks_ = false;
+    QString ringingAccount_;
+    QString ringingPeer_;
+    QString ringingPeerFingerprint_;
+    QString ringingAccountName_;
+    qreal ringLevel_ = 0.0;
+    bool callLive_ = false;
+    bool speakerOn_ = false;
     QString pairStatus_;
     double pairProgress_ = kProgressUnknown;
     bool pairNeedsCode_ = false;
     bool pairing_ = false;
-    QString pairDest_;
-    QString pairAtRest_;
-    std::shared_ptr<std::atomic<bool>> pairCancel_;
-    std::shared_ptr<bazarish::i2p::Endpoint> pairEndpoint_;
-    AccountListModel accountList_;
-    QVector<AccountListRow> accountRows_;
-    QString notificationTitle(const SessionController* ctrl) const;
-
-    OpenAccountsModel accounts_;
-    QVector<AccountRow> accountStatuses_;
-    bool notifications_ = true;
-    bool backgroundTasks_ = false;
-
-    void updateRinging();
-    Ringtone ringtone_;
-    QString ringingAccount_;
-    QString ringingPeer_;
-    bool callLive_ = false;
-    bool callTalking_ = false;
-    bool speakerOn_ = false;
-    QString ringingPeerFingerprint_;
-    QString ringingAccountName_;
-    qreal ringLevel_ = 0.0;
-    QList<SessionController*> sessions_;
-    QString activeId_;
-    bool haveAccounts_ = false;
-    // A link that arrived before any account was open waits for one.
-    QString pendingLink_;
-    QSet<QString> offline_;
-    QString unlockingId_;
-    QString pendingDeleteId_;
-    QString deletingId_;
-    QSet<QString> pendingRemovals_;
-    bool exiting_ = false;
-    int closingCount_ = 0;
-    bool unlockToBringOnline_ = false;
-    OperationListModel operations_;
 };
 
 }  // namespace bazarish::app

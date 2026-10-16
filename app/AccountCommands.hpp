@@ -118,7 +118,6 @@ signals:
     void requestSignLoginSig(const QString& challenge);
     void requestConnectionLog();
     void requestContactsFromDevices();
-    void requestShutdown();
     void requestClearConnectionLog();
     void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
         qint64 token);
@@ -127,7 +126,6 @@ signals:
     void requestStopPairing();
     void requestChangePassphrase(const QString& passphrase);
     void requestActivateAliasServicing();
-    void requestOpen(const QString& dir, const QString& passphrase, bool startOnline);
     void requestSetSync(bool on);
     void requestRebuildI2p();
     void requestCancelTransfer(const QString& e2eId);

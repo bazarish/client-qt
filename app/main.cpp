@@ -1,5 +1,7 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
+#include "CoreHost.hpp"
+#include "Wire.hpp"
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
 #include "I2pController.hpp"
@@ -296,7 +298,20 @@ int main(int argc, char** argv)
     engine.addImageProvider("picture", new bazarish::app::PictureProvider());
     engine.addImageProvider("qr", new bazarish::app::QrImageProvider());
 
+    bazarish::app::CoreHost core;
+    bazarish::app::InProcessChannel channel;
+    bazarish::app::Relay coreRelay(channel.first());
+    bazarish::app::Relay windowRelay(channel.second());
+    for (bazarish::app::Relay* const relay : {&coreRelay, &windowRelay}) {
+        QObject::connect(relay, &bazarish::app::Relay::broken, &app, [](const QString& reason) {
+            bazarish::log::error("wire: {}", reason.toStdString());
+            QCoreApplication::exit(1);
+        });
+    }
+    core.attach(coreRelay);
     bazarish::app::AppController controller;
+    controller.attach(windowRelay);
+    core.start();
     engine.rootContext()->setContextProperty("App", &controller);
     engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
     engine.rootContext()->setContextProperty("Audio", &bazarish::app::AudioRoute::instance());
@@ -349,10 +364,10 @@ int main(int argc, char** argv)
     }
     QObject::connect(&controller, &bazarish::app::AppController::raiseRequested, &app, raiseWindow);
 
-    bazarish::app::Notifier notifier(controller);
+    bazarish::app::Notifier notifier(core);
 #ifdef Q_OS_ANDROID
-    bazarish::app::AndroidShade shade(controller, notifier, translations);
-    QObject::connect(&controller, &bazarish::app::AppController::readyToExit, &shade,
+    bazarish::app::AndroidShade shade(core, controller, notifier, translations);
+    QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &shade,
         &bazarish::app::AndroidShade::stop);
 #endif
     std::unique_ptr<bazarish::app::TrayIcon> tray;
@@ -360,12 +375,12 @@ int main(int argc, char** argv)
         tray = std::make_unique<bazarish::app::TrayIcon>(controller, notifier);
         QApplication::setQuitOnLastWindowClosed(false);
         tray->attachWindow(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));
-        QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &controller,
-            &bazarish::app::AppController::prepareForExit);
+        QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &core,
+            &bazarish::app::CoreHost::prepareForExit);
     } else {
         bazarish::log::info("tray: this desktop offers none; the window is the only way in");
     }
-    QObject::connect(&controller, &bazarish::app::AppController::readyToExit, &app, []() {
+    QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &app, []() {
         std::fflush(nullptr);
         std::_Exit(0);
     });

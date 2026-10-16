@@ -5,7 +5,6 @@
 #include "AccountEvents.hpp"
 #include "AccountDb.hpp"
 #include "ContactBook.hpp"
-#include "CoreAccount.hpp"
 #include "Models.hpp"
 #include "Picture.hpp"
 #include "TranscriptStore.hpp"
@@ -121,11 +120,11 @@ class SessionController : public QObject {
     Q_PROPERTY(QString callPeerName READ callPeerName NOTIFY callChanged)
     Q_PROPERTY(bool callMuted READ callMuted NOTIFY callChanged)
 public:
-    explicit SessionController(QObject* parent = nullptr);
+    explicit SessionController(const QString& accountId, QObject* parent = nullptr);
     ~SessionController() override;
 
-    void beginShutdown();
-    void shutdown();
+    AccountCommands& commands() { return commands_; }
+    AccountEvents& events() { return events_; }
 
     QString fingerprint() const { return fingerprint_; }
     QString displayName() const { return displayName_; }
@@ -233,15 +232,10 @@ public:
     QString callPeerName() const { return peerName(callPeer_); }
     bool callMuted() const { return callMuted_; }
 
-    void open(const QString& file, const QString& accountId, const QString& passphrase,
-        bool startOnline = true);
 
     Q_INVOKABLE void connectServer(const QStringList& facadeUrls, const QString& serverFp,
         const QStringList& reseedUrls = {});
     Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
-    void goOnline();
-    void goOffline();
-    void rebuildI2pLinks();
     void retranslate();
     Q_INVOKABLE void openConversation(const QString& peer);
     Q_INVOKABLE void closeConversation();
@@ -379,7 +373,6 @@ public:
     Q_INVOKABLE void compactDatabase();
     Q_INVOKABLE void refreshDevices();
     Q_INVOKABLE void forgetDevice(const QString& clientId);
-    void closeAccountOnServer();
     Q_INVOKABLE void startCall(const QString& peer);
     Q_INVOKABLE void acceptCall();
     Q_INVOKABLE void declineCall();
@@ -398,7 +391,6 @@ signals:
     void scrollToMessage(qint64 localId);
     void scrollToUnread(qint64 firstUnreadId);
     void scrollToBottom();
-    void accountClosedOnServer(bool ok, const QString& error);
     void facadeInfoChanged();
     void connectStateChanged();
     void sendReceiptsChanged();
@@ -410,9 +402,6 @@ signals:
     void contactsRevisionChanged();
     void reactionsRevisionChanged();
     void unreadTotalChanged();
-    void messageNotification(const QString& peer, const QString& fromName);
-    void reactionNotification(const QString& peer, const QString& fromName,
-        const QString& emoji);
     void operationsChanged();
     void onlineChanged();
     void reachableChanged();
@@ -435,7 +424,6 @@ signals:
     void loginSigned(const QString& blob);
     void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     void connectionLogUpdated(const QVariantList& lines);
-    void closed();
     void resendFilePickRequested();
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
@@ -461,7 +449,6 @@ private slots:
     void onPairOfferReady(const QString& uri, const QString& code);
     void onPairStage(const QString& status, double progress);
     void onPairFinished(bool ok, const QString& status);
-    void onSyncReachable(bool ok);
     void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(const QString& activeUrl, const QStringList& configured,
@@ -481,7 +468,6 @@ private slots:
 private:
     AccountCommands commands_;
     AccountEvents events_;
-    std::unique_ptr<CoreAccount> core_;
     TranscriptReader store_;
     ContactListModel contacts_;
     QSortFilterProxyModel contactsProxy_;
@@ -496,10 +482,7 @@ private:
     QString displayName_;
     bool connected_ = false;
     bool online_ = false;
-    bool startOnline_ = true;
     bool reachable_ = false;
-    bool linksRebuilding_ = false;
-    QTimer rebuildGrace_;
     bool i2pBusy_ = false;
     bool flashOnNextStatus_ = false;
     bool awaitingApproval_ = false;
@@ -617,7 +600,6 @@ private:
     qreal callOutputLevel_ = 0.0;
     QString callPeer_;
     QString callId_;
-    bool shuttingDown_ = false;
     bool callMuted_ = false;
     void rebuildChatList();
     int unreadTotal_ = 0;

@@ -7,14 +7,15 @@
 namespace bazarish::app {
 
 class AppController;
+class CoreHost;
 class Notifier;
 class Translations;
 
 class AndroidShade : public QObject {
     Q_OBJECT
 public:
-    AndroidShade(AppController& app, Notifier& notifier, Translations& translations,
-        QObject* parent = nullptr);
+    AndroidShade(CoreHost& core, AppController& app, Notifier& notifier,
+        Translations& translations, QObject* parent = nullptr);
     ~AndroidShade() override;
 
     // Android drops a native process's stderr, which is where the app's log goes.
@@ -39,6 +40,7 @@ private:
     void followRinging();
     void openHeldConversation();
 
+    CoreHost& core_;
     AppController& app_;
     QString line_;
     bool callShown_ = false;

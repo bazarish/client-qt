@@ -29,15 +29,36 @@ class SessionWorker;
 class CoreAccount : public QObject {
     Q_OBJECT
 public:
-    CoreAccount(AccountCommands& commands, AccountEvents& events, QObject* parent = nullptr);
+    explicit CoreAccount(const QString& accountId, QObject* parent = nullptr);
     ~CoreAccount() override;
 
     CoreAccount(const CoreAccount&) = delete;
     CoreAccount& operator=(const CoreAccount&) = delete;
 
+    AccountCommands& commands() { return commands_; }
+    AccountEvents& events() { return events_; }
+    QString accountId() const { return accountId_; }
+    QString fingerprint() const { return contacts_.ownFingerprint(); }
+    QString displayName() const { return displayName_; }
+    bool online() const { return online_; }
+    bool reachable() const { return reachable_; }
+    QString activeFacade() const { return activeFacade_; }
+    bool hasServer() const { return hasServer_; }
+    QString callState() const { return call_.state; }
+    QString callPeer() const { return call_.peer; }
+    QString callPeerName() const { return contacts_.peerName(call_.peer); }
+    int unreadTotal() const { return unread_; }
+
+    void open(const QString& file, const QString& passphrase, bool startOnline);
+    void goOnline();
+    void goOffline();
+    void rebuildI2pLinks();
+    void beginShutdown();
     void shutdown();
 
 signals:
+    void changed();
+    void callChanged();
     void messageNotification(const QString& peer, const QString& fromName);
     void reactionNotification(const QString& peer, const QString& fromName, const QString& emoji);
 
@@ -47,9 +68,10 @@ private slots:
 private:
     void onCommandFinished();
     void showSlowCommands();
-    void open(const QString& file, const QString& passphrase, bool startOnline);
     void close();
-    void beginShutdown();
+    void onSyncReachable(bool ok);
+    void announcePresence();
+    void recountUnread();
     void signLogin(const QString& challenge);
     void onMessageReceived(const QVariantMap& message);
     void viewConversation(const QString& peer);
@@ -149,8 +171,16 @@ private:
     void noteDeliveredThrough(const QString& peer, qint64 uptoId);
     client::AccountDb& accountDb();
 
-    AccountCommands& commands_;
-    AccountEvents& events_;
+    QString accountId_;
+    AccountCommands commands_;
+    AccountEvents events_;
+    QString displayName_;
+    QString activeFacade_;
+    bool hasServer_ = false;
+    bool reachable_ = false;
+    int unread_ = 0;
+    bool linksRebuilding_ = false;
+    QTimer rebuildGrace_;
     QThread thread_;
     SessionWorker* worker_ = nullptr;
     std::shared_ptr<client::LoginSigner> loginSigner_;

@@ -97,17 +97,12 @@ QString facadeHost(const QString& url)
     return rest;
 }
 
-// A reconnect this client asked for is not reported before this much of it.
-constexpr int kLinkRebuildGraceMs = 1500;
-
 
 
 
 constexpr int kPageSize = 50;
 
 constexpr int kBusyPaintDelayMs = 32;
-
-constexpr int kReadSyncIdleMs = 4000;
 
 constexpr int kAvatarSide = 256;
 constexpr int kAvatarFallbackSide = 128;
@@ -163,8 +158,9 @@ qint64 highestId(const QVector<StoredMessage>& rows)
 }  // namespace
 
 
-SessionController::SessionController(QObject* parent)
+SessionController::SessionController(const QString& accountId, QObject* parent)
     : QObject(parent)
+    , accountId_(accountId)
 {
     contactsProxy_.setSourceModel(&contacts_);
     contactsProxy_.setFilterRole(ContactListModel::NameRole);
@@ -176,10 +172,6 @@ SessionController::SessionController(QObject* parent)
         [this](const QString& served, const QString& ours) {
             emit addressNeedsChoice(served, ours);
         });
-    connect(&events_, &AccountEvents::stopped, this, [this]() {
-        store_.close();
-    });
-    connect(&events_, &AccountEvents::closed, this, &SessionController::closed);
     connect(&events_, &AccountEvents::downloadProgress, this,
         &SessionController::onDownloadProgress);
     connect(&events_, &AccountEvents::servedProgress, this, &SessionController::onServedProgress);
@@ -225,7 +217,6 @@ SessionController::SessionController(QObject* parent)
             emit identityChanged();
         }
     });
-    connect(&events_, &AccountEvents::openFailed, this, &SessionController::openFailed);
     connect(&events_, &AccountEvents::connectionChanged, this,
         &SessionController::onConnectionChanged);
     connect(&events_, &AccountEvents::rowAdded, this, &SessionController::onRowAdded);
@@ -295,6 +286,10 @@ SessionController::SessionController(QObject* parent)
         [this](const QString& path, const QByteArray& key) {
             if (!store_.open(path, Bytes(key.begin(), key.end()))) {
                 emit openFailed(tr("This profile could not be opened."));
+                return;
+            }
+            if (!activePeer_.isEmpty()) {
+                loadLatestWindow();
             }
         });
     connect(&events_, &AccountEvents::storageWorkDone, this, [this]() {
@@ -314,11 +309,19 @@ SessionController::SessionController(QObject* parent)
         operations_.remove(id);
         emit operationsChanged();
     });
-    connect(&events_, &AccountEvents::syncReachable, this, &SessionController::onSyncReachable);
+    connect(&events_, &AccountEvents::presence, this,
+        [this](const bool online, const bool reachable) {
+            if (online_ != online) {
+                online_ = online;
+                emit onlineChanged();
+            }
+            if (reachable_ != reachable) {
+                reachable_ = reachable;
+                emit reachableChanged();
+            }
+        });
     connect(&events_, &AccountEvents::approvalState, this, &SessionController::onApprovalState);
     connect(&events_, &AccountEvents::devicesReady, this, &SessionController::onDevicesReady);
-    connect(&events_, &AccountEvents::accountClosed, this,
-        &SessionController::accountClosedOnServer);
     connect(&events_, &AccountEvents::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(&events_, &AccountEvents::actionOk, this, &SessionController::actionOk);
     connect(&events_, &AccountEvents::actionFailed, this, [this](const QString& reason) {
@@ -364,19 +367,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::refreshUnreadTotal);
     connect(&contacts_, &QAbstractItemModel::modelReset, this,
         &SessionController::refreshUnreadTotal);
-
-    rebuildGrace_.setSingleShot(true);
-    rebuildGrace_.setInterval(kLinkRebuildGraceMs);
-    connect(&rebuildGrace_, &QTimer::timeout, this, [this]() {
-        linksRebuilding_ = false;
-        onSyncReachable(false);
-    });
-
-    core_ = std::make_unique<CoreAccount>(commands_, events_);
-    connect(core_.get(), &CoreAccount::messageNotification, this,
-        &SessionController::messageNotification);
-    connect(core_.get(), &CoreAccount::reactionNotification, this,
-        &SessionController::reactionNotification);
 }
 
 void SessionController::refreshUnreadTotal()
@@ -388,34 +378,7 @@ void SessionController::refreshUnreadTotal()
     }
 }
 
-SessionController::~SessionController()
-{
-    shutdown();
-}
-
-void SessionController::beginShutdown()
-{
-    if (shuttingDown_) {
-        return;
-    }
-    shuttingDown_ = true;
-    emit commands_.requestShutdown();
-}
-
-void SessionController::shutdown()
-{
-    shuttingDown_ = true;
-    core_->shutdown();
-    store_.close();
-}
-
-void SessionController::open(const QString& file, const QString& accountId,
-    const QString& passphrase, const bool startOnline)
-{
-    startOnline_ = startOnline;
-    accountId_ = accountId;
-    emit commands_.requestOpen(file, passphrase, startOnline);
-}
+SessionController::~SessionController() = default;
 
 void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp,
     const QStringList& reseedUrls)
@@ -1428,11 +1391,6 @@ void SessionController::forgetDevice(const QString& clientId)
     emit commands_.requestForgetDevice(clientId);
 }
 
-void SessionController::closeAccountOnServer()
-{
-    emit commands_.requestCloseAccountOnServer();
-}
-
 void SessionController::forwardMessage(const QString& e2eId, const QString& toPeer)
 {
     if (e2eId.isEmpty() || toPeer.isEmpty()) {
@@ -1611,10 +1569,6 @@ void SessionController::onOpened(
     connected_ = connected;
     emit identityChanged();
     emit connectedChanged();
-    if (const bool nowOnline = connected && startOnline_; online_ != nowOnline) {
-        online_ = nowOnline;
-        emit onlineChanged();
-    }
 }
 
 void SessionController::onConnectionChanged(bool connected, const QString& connectionNote)
@@ -1625,55 +1579,6 @@ void SessionController::onConnectionChanged(bool connected, const QString& conne
     emit connectStateChanged();
     connected_ = connected;
     emit connectedChanged();
-    if (online_ != connected) {
-        online_ = connected;
-        emit onlineChanged();
-    }
-}
-
-void SessionController::goOnline()
-{
-    startOnline_ = true;
-    if (!online_) {
-        online_ = true;
-        emit onlineChanged();
-    }
-    emit commands_.requestSetSync(true);
-}
-
-void SessionController::rebuildI2pLinks()
-{
-    linksRebuilding_ = true;
-    rebuildGrace_.start();
-    emit commands_.requestRebuildI2p();
-}
-
-void SessionController::goOffline()
-{
-    if (online_) {
-        online_ = false;
-        emit onlineChanged();
-    }
-    if (reachable_) {
-        reachable_ = false;
-        emit reachableChanged();
-    }
-    emit commands_.requestSetSync(false);
-}
-
-void SessionController::onSyncReachable(const bool ok)
-{
-    if (ok) {
-        linksRebuilding_ = false;
-        rebuildGrace_.stop();
-    } else if (linksRebuilding_) {
-        return;
-    }
-    if (reachable_ == ok) {
-        return;
-    }
-    reachable_ = ok;
-    emit reachableChanged();
 }
 
 void SessionController::onApprovalState(const bool pending, const QString& note)

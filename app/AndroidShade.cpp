@@ -3,6 +3,7 @@
 
 #include "AndroidCallAudio.hpp"
 #include "AppController.hpp"
+#include "CoreHost.hpp"
 #include "Notifier.hpp"
 #include "Translations.hpp"
 
@@ -35,6 +36,7 @@ const char* const kLogTag = "bazarish";
 constexpr int kLogLineBytes = 1024;
 
 std::atomic<AppController*> gApp{nullptr};
+std::atomic<CoreHost*> gCore{nullptr};
 
 QJniObject context()
 {
@@ -47,28 +49,35 @@ QJniObject javaString(const QString& text)
 }
 
 // The shade's buttons are pressed on Android's own thread; the app answers on its own.
-void inAppThread(std::function<void(AppController&)> action)
+template <typename Target>
+void inAppThread(const std::atomic<Target*>& held, std::function<void(Target&)> action)
 {
-    AppController* const app = gApp.load();
-    if (app == nullptr) {
+    Target* const target = held.load();
+    if (target == nullptr) {
         return;
     }
-    if (!QMetaObject::invokeMethod(app, [app, action = std::move(action)]() { action(*app); },
+    if (!QMetaObject::invokeMethod(
+            target, [target, action = std::move(action)]() { action(*target); },
             Qt::QueuedConnection)) {
         bazarish::log::warn("android: a button pressed in the shade did not reach the app");
     }
 }
 
+void inAppThread(std::function<void(AppController&)> action)
+{
+    inAppThread(gApp, std::move(action));
+}
+
 void notificationsToggled(JNIEnv*, jclass)
 {
-    inAppThread([](AppController& app) {
-        app.setNotificationsEnabled(!app.notificationsEnabled());
+    inAppThread<CoreHost>(gCore, [](CoreHost& core) {
+        core.setNotificationsEnabled(!core.notificationsEnabled());
     });
 }
 
 void quitRequested(JNIEnv*, jclass)
 {
-    inAppThread([](AppController& app) { app.prepareForExit(); });
+    inAppThread<CoreHost>(gCore, [](CoreHost& core) { core.prepareForExit(); });
 }
 
 void callAnswered(JNIEnv*, jclass)
@@ -97,9 +106,10 @@ void conversationOpened(JNIEnv*, jclass, jstring account, jstring peer)
 
 }  // namespace
 
-AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations& translations,
-    QObject* const parent)
+AndroidShade::AndroidShade(CoreHost& core, AppController& app, Notifier& notifier,
+    Translations& translations, QObject* const parent)
     : QObject(parent)
+    , core_(core)
     , app_(app)
 {
     const JNINativeMethod natives[] = {
@@ -116,6 +126,7 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
         throw std::runtime_error("the Android bridge did not take its native methods");
     }
     gApp.store(&app);
+    gCore.store(&core);
 
     line_ = presenceLine();
     show();
@@ -126,8 +137,8 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
     openHeldConversation();
 
     connect(&notifier, &Notifier::announced, this, &AndroidShade::notifyMessage);
-    connect(&app_, &AppController::notificationsEnabledChanged, this, &AndroidShade::show);
-    connect(&app_, &AppController::accountsChanged, this, [this]() {
+    connect(&core_, &CoreHost::notificationsEnabledChanged, this, &AndroidShade::show);
+    connect(&core_, &CoreHost::accountsChanged, this, [this]() {
         const QString line = presenceLine();
         if (line != line_) {
             line_ = line;
@@ -135,9 +146,9 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
         }
     });
     connect(&translations, &Translations::languageChanged, this, &AndroidShade::show);
-    connect(&app_, &AppController::ringingChanged, this, &AndroidShade::followRinging);
-    connect(&app_, &AppController::callLiveChanged, this, &AndroidShade::followRinging);
-    connect(&app_, &AppController::speakerOnChanged, this, &AndroidShade::followRinging);
+    connect(&core_, &CoreHost::ringingChanged, this, &AndroidShade::followRinging);
+    connect(&core_, &CoreHost::callLiveChanged, this, &AndroidShade::followRinging);
+    connect(&core_, &CoreHost::speakerOnChanged, this, &AndroidShade::followRinging);
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
         [](const Qt::ApplicationState state) {
             if (state == Qt::ApplicationActive) {
@@ -149,6 +160,7 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
 AndroidShade::~AndroidShade()
 {
     gApp.store(nullptr);
+    gCore.store(nullptr);
 }
 
 void AndroidShade::routeStderrToLogcat()
@@ -228,7 +240,7 @@ QString AndroidShade::presenceLine() const
     int unread = 0;
     int open = 0;
     bool connected = true;
-    for (const AccountRow& account : app_.accountStatuses()) {
+    for (const AccountRow& account : core_.accountStatuses()) {
         unread += account.unread;
         if (account.open) {
             ++open;
@@ -259,7 +271,7 @@ void AndroidShade::show()
         "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V",
         presence.object<jstring>(), messages.object<jstring>(), reactions.object<jstring>(),
         calls.object<jstring>(), turnOff.object<jstring>(), turnOn.object<jstring>(),
-        quit.object<jstring>(), static_cast<jboolean>(app_.notificationsEnabled()),
+        quit.object<jstring>(), static_cast<jboolean>(core_.notificationsEnabled()),
         line.object<jstring>());
 }
 
@@ -278,21 +290,21 @@ void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,
 
 void AndroidShade::followRinging()
 {
-    const bool ringing = !app_.ringingPeer().isEmpty();
-    const bool overLock = ringing || app_.callLive();
+    const bool ringing = !core_.ringingPeer().isEmpty();
+    const bool overLock = ringing || core_.callLive();
     if (overLock != overLock_) {
         overLock_ = overLock;
         QJniObject::callStaticMethod<void>(kBridge, "overLockScreen", "(Z)V", jboolean(overLock_));
     }
-    if (app_.callTalking() != talking_) {
-        talking_ = app_.callTalking();
+    if (core_.callTalking() != talking_) {
+        talking_ = core_.callTalking();
         QJniObject::callStaticMethod<void>(kBridge, "callTalking", "(Z)V", jboolean(talking_));
     }
-    AndroidCallAudio::holdNearEar(talking_ && !app_.speakerOn());
+    AndroidCallAudio::holdNearEar(talking_ && !core_.speakerOn());
     if (ringing && !callShown_ && QGuiApplication::applicationState() != Qt::ApplicationActive) {
-        const QJniObject account = javaString(app_.ringingAccount());
-        const QJniObject fingerprint = javaString(app_.ringingPeerFingerprint());
-        const QJniObject heading = javaString(app_.ringingPeer());
+        const QJniObject account = javaString(core_.ringingAccount());
+        const QJniObject fingerprint = javaString(core_.ringingPeerFingerprint());
+        const QJniObject heading = javaString(core_.ringingPeer());
         const QJniObject text = javaString(tr("Incoming audio call"));
         QJniObject::callStaticMethod<void>(kBridge, "notifyCall",
             "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",

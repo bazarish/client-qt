@@ -45,6 +45,7 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
     call_.id = callId;
     call_.stage = stage;
     call_.connectedAtMs = connectedAtMs;
+    emit callChanged();
 
     const bool waitingOnThem = (name == QLatin1String("outgoing") && peerRinging)
         || (name == QLatin1String("active") && connectedAtMs == 0);

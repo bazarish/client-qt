@@ -1,9 +1,7 @@
 // Bazarish project (c) 2026
 #include "Notifier.hpp"
 
-#include "AppController.hpp"
-
-#include <QGuiApplication>
+#include "CoreHost.hpp"
 
 namespace bazarish::app {
 
@@ -21,19 +19,19 @@ constexpr bool kPlaysOwnSound = true;
 
 }  // namespace
 
-Notifier::Notifier(AppController& app, QObject* const parent)
+Notifier::Notifier(CoreHost& core, QObject* const parent)
     : QObject(parent)
-    , app_(app)
-    , sound_(app.soundFolder(), QStringLiteral("notify.wav"))
-    , reactionSound_(app.soundFolder(), QStringLiteral("reaction.wav"))
+    , core_(core)
+    , sound_(CoreHost::soundFolder(), QStringLiteral("notify.wav"))
+    , reactionSound_(CoreHost::soundFolder(), QStringLiteral("reaction.wav"))
 {
-    connect(&app_, &AppController::accountsChanged, this, &Notifier::noteUnread);
-    connect(&app_, &AppController::notificationRequested, this,
+    connect(&core_, &CoreHost::accountsChanged, this, &Notifier::noteUnread);
+    connect(&core_, &CoreHost::notificationRequested, this,
         [this](const QString& accountId, const QString& peer, const QString& title,
             const QString& body) {
             announce(accountId, peer, title, body, false, sound_, sinceSound_);
         });
-    connect(&app_, &AppController::reactionNotificationRequested, this,
+    connect(&core_, &CoreHost::reactionNotificationRequested, this,
         [this](const QString& accountId, const QString& peer, const QString& title,
             const QString& body) {
             announce(accountId, peer, title, body, true, reactionSound_, sinceReactionSound_);
@@ -42,7 +40,7 @@ Notifier::Notifier(AppController& app, QObject* const parent)
 
 void Notifier::noteUnread()
 {
-    for (const AccountRow& account : app_.accountStatuses()) {
+    for (const AccountRow& account : core_.accountStatuses()) {
         if (account.unread > 0) {
             return;
         }
@@ -53,13 +51,10 @@ void Notifier::noteUnread()
 void Notifier::announce(const QString& accountId, const QString& peer, const QString& title,
     const QString& body, const bool reaction, NotifySound& sound, QElapsedTimer& since)
 {
-    if (!app_.notificationsEnabled()) {
+    if (!core_.notificationsEnabled() || core_.windowActive()) {
         return;
     }
-    if (QGuiApplication::applicationState() == Qt::ApplicationActive) {
-        return;
-    }
-    if (!app_.ringingPeer().isEmpty()) {
+    if (!core_.ringingPeer().isEmpty()) {
         return;
     }
     emit announced(accountId, peer, title, body, reaction);

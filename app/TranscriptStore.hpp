@@ -121,6 +121,7 @@ public:
     bool isPinned(const QString& peer) const;
     QStringList pinnedPeers() const;
     int unreadCount(const QString& peer) const;
+    int unreadTotal() const;
     qint64 firstUnreadId(const QString& peer) const;
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
     std::optional<GroupState> groupState(const QString& peer) const;

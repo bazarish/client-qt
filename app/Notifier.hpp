@@ -9,12 +9,12 @@
 
 namespace bazarish::app {
 
-class AppController;
+class CoreHost;
 
 class Notifier : public QObject {
     Q_OBJECT
 public:
-    explicit Notifier(AppController& app, QObject* parent = nullptr);
+    explicit Notifier(CoreHost& core, QObject* parent = nullptr);
 
 signals:
     void announced(const QString& accountId, const QString& peer, const QString& title,
@@ -25,7 +25,7 @@ private:
         const QString& body, bool reaction, NotifySound& sound, QElapsedTimer& since);
     void noteUnread();
 
-    AppController& app_;
+    CoreHost& core_;
     NotifySound sound_;
     NotifySound reactionSound_;
     QElapsedTimer sinceSound_;

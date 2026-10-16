@@ -1129,6 +1129,19 @@ int TranscriptReader::unreadCount(const QString& peer) const
     return 0;
 }
 
+int TranscriptReader::unreadTotal() const
+{
+    Query query(db_);
+    if (query.exec("SELECT COALESCE(SUM((SELECT COUNT(*) FROM messages m WHERE m.peer = p.peer"
+                   " AND m.outgoing = 0 AND m.type != 'system' AND m.id > (SELECT"
+                   " COALESCE(MAX(last_read_id), 0) FROM read_state r WHERE r.peer = p.peer))), 0)"
+                   " FROM (SELECT DISTINCT peer FROM messages) p")
+        && query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
+}
+
 qint64 TranscriptReader::firstUnreadId(const QString& peer) const
 {
     Query query(db_);

@@ -80,15 +80,20 @@ ApplicationWindow {
     StackView {
         id: stack
         anchors.fill: parent
-        // Restored session(s) from last run -> straight into the app, no dialog.
-        initialItem: App.session ? mainComponent : pickerComponent
+        initialItem: attachingComponent
     }
 
+    Component { id: attachingComponent; Item { objectName: "attaching" } }
     Component { id: pickerComponent; AccountPicker {} }
     Component { id: mainComponent; MainView {} }
 
     Connections {
         target: App
+        function onAttachedChanged() {
+            if (stack.currentItem.objectName === "attaching") {
+                stack.replace(null, App.session ? mainComponent : pickerComponent)
+            }
+        }
         function onAccountOpened() { stack.replace(null, mainComponent) }
         function onAccountOpenFailed(error) { window.showToast(error) }
         // The data moved: the embedded router holds its directory for the life of
@@ -108,7 +113,9 @@ ApplicationWindow {
                 page.pairLink = link
                 return
             }
-            if (!page || page.objectName !== "accountPicker") {
+            if (page.objectName === "attaching") {
+                page = stack.replace(null, pickerComponent)
+            } else if (page.objectName !== "accountPicker") {
                 page = stack.push(pickerComponent)
             }
             page.openPairing(link)

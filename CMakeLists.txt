@@ -73,6 +73,10 @@ if(Qt6_FOUND)
         app/I2pController.hpp
         app/AccountCommands.hpp
         app/AccountEvents.hpp
+        app/AppCommands.hpp
+        app/AppEvents.hpp
+        app/CoreHost.cpp
+        app/CoreHost.hpp
         app/ContactBook.cpp
         app/ContactBook.hpp
         app/CoreAccount.cpp
@@ -421,7 +425,7 @@ if(Qt6_FOUND)
     add_test(NAME TestIngest COMMAND TestIngest)
 
     add_executable(TestWire tests/TestWire.cpp app/Wire.cpp app/AccountCommands.hpp
-        app/AccountEvents.hpp)
+        app/AccountEvents.hpp app/AppCommands.hpp app/AppEvents.hpp)
     target_include_directories(TestWire PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestWire PRIVATE bazarish_client Qt6::Core)
     target_compile_options(TestWire PRIVATE -Wall -Wextra -Werror)

@@ -2,6 +2,7 @@
 #pragma once
 
 #include "AccountEvents.hpp"
+#include "AppEvents.hpp"
 #include "TranscriptStore.hpp"
 
 #include <QAbstractListModel>
@@ -10,14 +11,6 @@
 #include <QVector>
 
 namespace bazarish::app {
-
-struct AccountListRow {
-    QString id;
-    QString name;
-    QString fingerprint;
-    bool encrypted = false;
-    bool open = false;
-};
 
 class AccountListModel : public QAbstractListModel {
     Q_OBJECT
@@ -129,19 +122,6 @@ private:
 
     QVector<StoredMessage> messages_;
     QHash<qint64, LiveMessageState> live_;
-};
-
-struct AccountRow {
-    QString id;
-    QString name;
-    QString fingerprint;
-    bool open = false;
-    bool active = false;
-    bool online = false;
-    bool connected = false;
-    bool encrypted = false;
-    int unread = 0;
-    QString activeFacade;
 };
 
 class OpenAccountsModel : public QAbstractListModel {

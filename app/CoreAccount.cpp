@@ -29,6 +29,8 @@ const int kContactStateMetaType
     = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
 
 constexpr int kReadSyncIdleMs = 4000;
+// A reconnect this client asked for is not reported before this much of it.
+constexpr int kLinkRebuildGraceMs = 1500;
 constexpr int kCommandTickMs = 200;
 constexpr qint64 kCommandVisibleAfterMs = 400;
 
@@ -73,10 +75,9 @@ constexpr int kReactionsToFlash = 64;
 
 }  // namespace
 
-CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObject* const parent)
+CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     : QObject(parent)
-    , commands_(commands)
-    , events_(events)
+    , accountId_(accountId)
 {
     worker_ = new SessionWorker();
     worker_->moveToThread(&thread_);
@@ -188,27 +189,18 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
         &SessionWorker::forgetDevice);
     connect(&commands_, &AccountCommands::requestCloseAccountOnServer, worker_,
         &SessionWorker::closeAccountOnServer);
-    connect(&commands_, &AccountCommands::requestOpen, this, &CoreAccount::open);
     connect(&commands_, &AccountCommands::requestSignLoginSig, this, &CoreAccount::signLogin);
     connect(&commands_, &AccountCommands::viewConversation, this, &CoreAccount::viewConversation);
     connect(&commands_, &AccountCommands::markRead, this, &CoreAccount::markRead);
     connect(&commands_, &AccountCommands::forgetReactionFlash, this,
         &CoreAccount::forgetReactionFlash);
-    connect(&commands_, &AccountCommands::requestSetSync, this, [this](const bool on) {
-        if (on) {
-            startOnline_ = true;
-        }
-        online_ = on;
-    });
     connect(&commands_, &AccountCommands::requestSetSendReceipts, this,
         [this](const bool on) { sendReceipts_ = on; });
     connect(&commands_, &AccountCommands::requestChangePassphrase, this,
         [this](const QString& passphrase) { passphrase_ = passphrase; });
-    connect(&commands_, &AccountCommands::requestShutdown, this, &CoreAccount::beginShutdown);
 
     connect(worker_, &SessionWorker::connectProgress, &events_, &AccountEvents::connectProgress);
     connect(worker_, &SessionWorker::addressMismatch, &events_, &AccountEvents::addressMismatch);
-    connect(worker_, &SessionWorker::stopped, &events_, &AccountEvents::stopped);
     connect(worker_, &SessionWorker::downloadProgress, &events_, &AccountEvents::downloadProgress);
     connect(worker_, &SessionWorker::servedProgress, &events_, &AccountEvents::servedProgress);
     connect(worker_, &SessionWorker::transferStage, &events_, &AccountEvents::transferStage);
@@ -256,7 +248,6 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::opDone, &log_, &OperationLog::finish);
     connect(worker_, &SessionWorker::opProgress, &log_,
         [this](const QString& id, const QString& status) { log_.update(id, status); });
-    connect(worker_, &SessionWorker::syncReachable, &events_, &AccountEvents::syncReachable);
     connect(worker_, &SessionWorker::approvalState, &events_, &AccountEvents::approvalState);
     connect(worker_, &SessionWorker::devicesReady, &events_, &AccountEvents::devicesReady);
     connect(worker_, &SessionWorker::accountClosed, &events_, &AccountEvents::accountClosed);
@@ -287,12 +278,38 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
             loginSigner_ = std::move(signer);
         });
     connect(worker_, &SessionWorker::opened, this,
-        [this](const QString& fingerprint, const QString&, const bool connected) {
+        [this](const QString& fingerprint, const QString& displayName, const bool connected) {
             contacts_.setOwnFingerprint(fingerprint);
+            displayName_ = displayName;
             online_ = connected && startOnline_;
+            announcePresence();
         });
+    connect(worker_, &SessionWorker::renamed, this, [this](const QString& name) {
+        displayName_ = name;
+        emit changed();
+    });
+    connect(&ingest_, &MessageIngest::accountRenamed, this, [this](const QString& name) {
+        displayName_ = name;
+        emit changed();
+    });
     connect(worker_, &SessionWorker::connectionChanged, this,
-        [this](const bool connected, const QString&) { online_ = connected; });
+        [this](const bool connected, const QString&) {
+            online_ = connected;
+            announcePresence();
+        });
+    connect(worker_, &SessionWorker::syncReachable, this, &CoreAccount::onSyncReachable);
+    connect(worker_, &SessionWorker::facadeInfo, this,
+        [this](const QString& activeUrl, const QStringList& configured) {
+            activeFacade_ = activeUrl;
+            hasServer_ = !configured.isEmpty();
+            emit changed();
+        });
+    rebuildGrace_.setSingleShot(true);
+    rebuildGrace_.setInterval(kLinkRebuildGraceMs);
+    connect(&rebuildGrace_, &QTimer::timeout, this, [this]() {
+        linksRebuilding_ = false;
+        onSyncReachable(false);
+    });
     connect(worker_, &SessionWorker::accountSettings, this,
         [this](const bool, const bool sendReceipts) { sendReceipts_ = sendReceipts; });
     connect(worker_, &SessionWorker::contactsRefreshed, this,
@@ -345,6 +362,13 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
             }
         });
 
+    for (const auto rowEvent : {&AccountEvents::peerReset, &AccountEvents::peerForgotten,
+             &AccountEvents::chatChanged}) {
+        connect(&events_, rowEvent, this, &CoreAccount::recountUnread);
+    }
+    connect(&events_, &AccountEvents::rowAdded, this, &CoreAccount::recountUnread);
+    connect(&events_, &AccountEvents::rowRemoved, this, &CoreAccount::recountUnread);
+    connect(&events_, &AccountEvents::chatsChanged, this, &CoreAccount::recountUnread);
     connect(&log_, &OperationLog::changed, &events_, &AccountEvents::opChanged);
     connect(&log_, &OperationLog::removed, &events_, &AccountEvents::opRemoved);
     connect(&commands_, &AccountCommands::sendText, this, &CoreAccount::sendText);
@@ -434,6 +458,60 @@ void CoreAccount::shutdown()
     close();
 }
 
+void CoreAccount::goOnline()
+{
+    startOnline_ = true;
+    online_ = true;
+    announcePresence();
+    emit commands_.requestSetSync(true);
+}
+
+void CoreAccount::goOffline()
+{
+    online_ = false;
+    reachable_ = false;
+    announcePresence();
+    emit commands_.requestSetSync(false);
+}
+
+void CoreAccount::rebuildI2pLinks()
+{
+    linksRebuilding_ = true;
+    rebuildGrace_.start();
+    emit commands_.requestRebuildI2p();
+}
+
+void CoreAccount::onSyncReachable(const bool ok)
+{
+    if (ok) {
+        linksRebuilding_ = false;
+        rebuildGrace_.stop();
+    } else if (linksRebuilding_) {
+        return;
+    }
+    if (reachable_ == ok) {
+        return;
+    }
+    reachable_ = ok;
+    announcePresence();
+}
+
+void CoreAccount::recountUnread()
+{
+    const int total = store_.unreadTotal();
+    if (total == unread_) {
+        return;
+    }
+    unread_ = total;
+    emit changed();
+}
+
+void CoreAccount::announcePresence()
+{
+    emit events_.presence(online_, reachable_);
+    emit changed();
+}
+
 void CoreAccount::open(const QString& file, const QString& passphrase, const bool startOnline)
 {
     accountPath_ = file;
@@ -448,6 +526,7 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
         emit events_.openFailed(tr("This profile could not be opened."));
         return;
     }
+    unread_ = store_.unreadTotal();
     const Bytes key = client::accountkey::keyFor(file.toStdString(), passphrase.toStdString());
     emit events_.transcriptOpened(file,
         QByteArray(reinterpret_cast<const char*>(key.data()), static_cast<qsizetype>(key.size())));
