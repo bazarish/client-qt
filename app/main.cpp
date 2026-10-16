@@ -311,6 +311,8 @@ int main(int argc, char** argv)
     core.attach(coreRelay);
     bazarish::app::AppController controller;
     controller.attach(windowRelay);
+    bazarish::app::I2pController i2pController;
+    i2pController.attach(windowRelay);
     core.start();
     engine.rootContext()->setContextProperty("App", &controller);
     engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
@@ -318,10 +320,7 @@ int main(int argc, char** argv)
     engine.rootContext()->setContextProperty(
         "Pictures", &bazarish::app::PictureStore::instance());
 
-    bazarish::app::I2pController i2pController;
     engine.rootContext()->setContextProperty("I2p", &i2pController);
-    QObject::connect(&i2pController, &bazarish::app::I2pController::tunnelsNeedRebuild,
-        &controller, &bazarish::app::AppController::rebuildI2pLinks);
     QObject::connect(&translations, &bazarish::app::Translations::languageChanged, &controller,
         &bazarish::app::AppController::retranslate);
 

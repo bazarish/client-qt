@@ -124,7 +124,6 @@ public:
     Q_INVOKABLE void declineRinging();
     static std::filesystem::path accountsFolder();
     QVector<AccountRow> accountStatuses() const { return accountStatuses_; }
-    void rebuildI2pLinks();
     void retranslate();
 
     Q_PROPERTY(bool portable READ portable NOTIFY portableChanged)

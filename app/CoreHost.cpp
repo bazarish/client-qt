@@ -72,6 +72,7 @@ CoreHost::CoreHost(QObject* const parent)
     , ringtone_(soundFolder())
 {
     connect(&ringtone_, &Ringtone::levelChanged, &events_, &AppEvents::ringLevel);
+    connect(&i2p_, &I2pService::tunnelsNeedRebuild, this, &CoreHost::rebuildI2pLinks);
     connect(&log_, &OperationLog::changed, &events_, &AppEvents::opChanged);
     connect(&log_, &OperationLog::removed, &events_, &AppEvents::opRemoved);
 
@@ -97,7 +98,6 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::setSpeakerOn, this, &CoreHost::setSpeakerOn);
     connect(&commands_, &AppCommands::setPortable, this, &CoreHost::setPortable);
     connect(&commands_, &AppCommands::closeAllSessions, this, &CoreHost::closeAllSessions);
-    connect(&commands_, &AppCommands::rebuildI2pLinks, this, &CoreHost::rebuildI2pLinks);
     connect(&commands_, &AppCommands::windowActive, this,
         [this](const bool active) { windowActive_ = active; });
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
@@ -110,10 +110,12 @@ void CoreHost::attach(Relay& relay)
     relay_ = &relay;
     relay.sendFrom(kAppScope, events_);
     relay.deliverTo(kAppScope, commands_);
+    i2p_.attach(relay);
 }
 
 void CoreHost::start()
 {
+    i2p_.announce();
     notifications_ = AppSettings::instance().notifications();
     backgroundTasks_ = AppSettings::instance().backgroundTasks();
     emit events_.settings(notifications_, backgroundTasks_);

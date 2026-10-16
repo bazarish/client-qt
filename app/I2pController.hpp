@@ -1,22 +1,16 @@
 // Bazarish project (c) 2026
 #pragma once
 
-#include <QObject>
-#include <QStringList>
-#include <QTimer>
-#include <QVariantList>
+#include "I2pEvents.hpp"
 
-#include <filesystem>
+#include <QObject>
 #include <QString>
+#include <QStringList>
+#include <QVariantList>
 
 namespace bazarish::app {
 
-inline constexpr int kMinimalPrivacyLevel = 0;
-inline constexpr int kMiddlePrivacyLevel = 1;
-inline constexpr int kMaxPrivacyLevel = 2;
-
-// The slider passes through notches on its way: rebuild for where it stopped.
-inline constexpr int kTunnelRebuildDelayMs = 1000;
+class Relay;
 
 class I2pController : public QObject {
     Q_OBJECT
@@ -27,7 +21,7 @@ class I2pController : public QObject {
     Q_PROPERTY(bool ready READ ready NOTIFY statusChanged)
     Q_PROPERTY(bool tunnelsBuilding READ tunnelsBuilding NOTIFY statusChanged)
     Q_PROPERTY(int knownRouters READ knownRouters NOTIFY statusChanged)
-    Q_PROPERTY(int minKnownRouters READ minKnownRouters CONSTANT)
+    Q_PROPERTY(int minKnownRouters READ minKnownRouters NOTIFY statusChanged)
     Q_PROPERTY(int floodfills READ floodfills NOTIFY statusChanged)
     Q_PROPERTY(int inboundTunnels READ inboundTunnels NOTIFY statusChanged)
     Q_PROPERTY(int outboundTunnels READ outboundTunnels NOTIFY statusChanged)
@@ -50,42 +44,44 @@ class I2pController : public QObject {
 public:
     explicit I2pController(QObject* parent = nullptr);
 
-    bool loggingEnabled() const { return loggingEnabled_; }
-    int privacyLevel() const { return privacyLevel_; }
+    void attach(Relay& relay);
+
+    bool loggingEnabled() const { return state_.loggingEnabled; }
+    int privacyLevel() const { return state_.privacyLevel; }
     void setPrivacyLevel(int level);
     void setLoggingEnabled(bool on);
-    bool running() const { return running_; }
-    bool ready() const { return ready_; }
+    bool running() const { return state_.running; }
+    bool ready() const { return state_.ready; }
     // No destination can carry anything yet, and one is being raised.
     bool tunnelsBuilding() const;
-    int knownRouters() const { return knownRouters_; }
-    int minKnownRouters() const;
-    QString proxyHost() const { return proxyHost_; }
-    int proxyPort() const { return proxyPort_; }
-    QString proxyNtcp2() const { return proxyNtcp2_; }
-    bool proxyChecking() const { return proxyChecking_; }
+    int knownRouters() const { return state_.knownRouters; }
+    int minKnownRouters() const { return state_.minKnownRouters; }
+    QString proxyHost() const { return state_.proxyHost; }
+    int proxyPort() const { return state_.proxyPort; }
+    QString proxyNtcp2() const { return state_.proxyNtcp2; }
+    bool proxyChecking() const { return state_.proxyChecking; }
     Q_INVOKABLE void checkAndSaveProxy(const QString& host, int port);
-    bool samEnabled() const { return samEnabled_; }
-    bool samChecking() const { return samChecking_; }
-    QString samHost() const { return samHost_; }
-    int samPort() const { return samPort_; }
+    bool samEnabled() const { return state_.samEnabled; }
+    bool samChecking() const { return state_.samChecking; }
+    QString samHost() const { return state_.samHost; }
+    int samPort() const { return state_.samPort; }
     Q_INVOKABLE void checkAndSaveSam(const QString& host, int port);
     Q_INVOKABLE void useSam(bool on);
     Q_INVOKABLE void useGateway(bool on);
-    int floodfills() const { return floodfills_; }
-    int inboundTunnels() const { return inboundTunnels_; }
-    int outboundTunnels() const { return outboundTunnels_; }
-    QStringList transports() const { return transports_; }
-    QVariantList destinations() const { return destinations_; }
+    int floodfills() const { return state_.floodfills; }
+    int inboundTunnels() const { return state_.inboundTunnels; }
+    int outboundTunnels() const { return state_.outboundTunnels; }
+    QStringList transports() const { return state_.transports; }
+    QVariantList destinations() const { return state_.destinations; }
 
-    bool gatewayAsked() const { return gatewayAsked_; }
-    bool gatewayEnabled() const { return gatewayEnabled_; }
-    QString gatewayAddress() const { return gatewayAddress_; }
-    bool gatewayChecking() const { return gatewayChecking_; }
-    QString gatewayHost() const;
+    bool gatewayAsked() const { return state_.gatewayAsked; }
+    bool gatewayEnabled() const { return state_.gatewayEnabled; }
+    QString gatewayAddress() const { return state_.gatewayAddress; }
+    bool gatewayChecking() const { return state_.gatewayChecking; }
+    QString gatewayHost() const { return state_.gatewayHost; }
     QString transport() const;
     Q_PROPERTY(bool restartNeeded READ restartNeeded NOTIFY transportChanged)
-    bool restartNeeded() const { return transport() != transportAtStart_; }
+    bool restartNeeded() const { return state_.restartNeeded; }
     Q_INVOKABLE void checkAndSaveGateway(const QString& address);
     Q_INVOKABLE void skipGateway();
     Q_INVOKABLE void clearGateway();
@@ -96,7 +92,6 @@ public:
 signals:
     void loggingChanged();
     void privacyLevelChanged();
-    void tunnelsNeedRebuild();
     void statusChanged();
     void proxyChanged();
     void proxyCheckingChanged();
@@ -110,33 +105,11 @@ signals:
     void samRefused(const QString& reason);
 
 private:
+    void take(const I2pState& state);
 
-    QTimer rebuildDelay_;
-    bool loggingEnabled_ = false;
-    int privacyLevel_ = kMinimalPrivacyLevel;
-    bool running_ = false;
-    bool ready_ = false;
-    int knownRouters_ = 0;
-    QString proxyHost_;
-    int proxyPort_ = 0;
-    bool proxyChecking_ = false;
-    void saveProxy(const QString& host, int port);
-    QString proxyNtcp2_;
-    bool gatewayAsked_ = false;
-    bool gatewayEnabled_ = false;
-    QString gatewayAddress_;
-    bool gatewayChecking_ = false;
-    bool samChecking_ = false;
-    bool samEnabled_ = false;
-    QString transportAtStart_;
-    void noteChoiceInForce();
-    QString samHost_;
-    int samPort_ = 0;
-    int floodfills_ = 0;
-    int inboundTunnels_ = 0;
-    int outboundTunnels_ = 0;
-    QStringList transports_;
-    QVariantList destinations_;
+    I2pCommands commands_;
+    I2pEvents events_;
+    I2pState state_;
 };
 
 }  // namespace bazarish::app

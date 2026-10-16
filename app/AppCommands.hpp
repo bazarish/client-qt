@@ -31,7 +31,6 @@ signals:
     void setSpeakerOn(bool on);
     void setPortable(bool on);
     void closeAllSessions();
-    void rebuildI2pLinks();
     void windowActive(bool active);
     void quit();
 };

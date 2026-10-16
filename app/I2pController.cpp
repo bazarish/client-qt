@@ -1,418 +1,175 @@
 // Bazarish project (c) 2026
 #include "I2pController.hpp"
 
+#include "Wire.hpp"
+
 #include <QVariantMap>
 
-#include "GatewayAddress.hpp"
-#include "I2pRouter.hpp"
-#include "SocksProxy.hpp"
-#include "AccountManager.hpp"
-#include "AppSettings.hpp"
-
-#include <bazarish/I2p.hpp>
-#include <bazarish/Sam.hpp>
-
-#pragma push_macro("emit")
-#undef emit
-#include <bazarish/Log.hpp>
-#pragma pop_macro("emit")
-
 #include <algorithm>
-#include <optional>
-#include <thread>
-#include <cstdlib>
-#include <fstream>
-#include <string>
-#include <thread>
-#include <vector>
+#include <tuple>
 
 namespace bazarish::app {
 
 namespace {
-bazarish::i2p::Privacy privacyForLevel(const int level)
+
+const QString kI2pScope = QStringLiteral("i2p");
+
+auto statusOf(const I2pState& state)
 {
-    switch (level) {
-        case kMinimalPrivacyLevel: return bazarish::i2p::Privacy::eMinimal;
-        case kMiddlePrivacyLevel:  return bazarish::i2p::Privacy::eMiddle;
-        default:                   return bazarish::i2p::Privacy::eMax;
-    }
+    return std::tie(state.running, state.ready, state.knownRouters, state.minKnownRouters,
+        state.floodfills, state.inboundTunnels, state.outboundTunnels, state.transports,
+        state.destinations, state.proxyNtcp2);
 }
+
+auto samOf(const I2pState& state)
+{
+    return std::tie(state.samEnabled, state.samChecking, state.samHost, state.samPort);
+}
+
+auto gatewayOf(const I2pState& state)
+{
+    return std::tie(state.gatewayAsked, state.gatewayEnabled, state.gatewayChecking,
+        state.gatewayAddress, state.gatewayHost);
+}
+
+auto transportOf(const I2pState& state)
+{
+    return std::tie(state.samEnabled, state.gatewayEnabled, state.restartNeeded);
+}
+
 }  // namespace
 
 I2pController::I2pController(QObject* parent)
     : QObject(parent)
 {
-    rebuildDelay_.setSingleShot(true);
-    rebuildDelay_.setInterval(kTunnelRebuildDelayMs);
-    connect(&rebuildDelay_, &QTimer::timeout, this, &I2pController::tunnelsNeedRebuild);
-    transportAtStart_ = AppSettings::instance().gatewayEnabled()
-        ? QStringLiteral("gateway")
-        : (AppSettings::instance().samEnabled() ? QStringLiteral("sam")
-                                                : QStringLiteral("embedded"));
-    // libi2pd logging is off by default: fully silent.
-    loggingEnabled_ = AppSettings::instance().i2pLogging();
-    privacyLevel_ = std::clamp(
-        AppSettings::instance().i2pTunnelLength(), kMinimalPrivacyLevel, kMaxPrivacyLevel);
-    {
-        proxyHost_ = QString::fromStdString(AppSettings::instance().i2pProxyHost());
-        proxyPort_ = AppSettings::instance().i2pProxyPort();
-        client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
-        if (!proxyHost_.isEmpty() && transportAtStart_ == QLatin1String("embedded")) {
-            bazarish::log::info("i2p: clearnet side goes through socks://{}:{}",
-                proxyHost_.toStdString(), proxyPort_);
-        }
-    }
-    samHost_ = QString::fromStdString(AppSettings::instance().samHost());
-    samPort_ = AppSettings::instance().samPort();
-    samEnabled_ = AppSettings::instance().samEnabled();
-    gatewayAsked_ = AppSettings::instance().gatewayAsked();
-    gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
-    gatewayAddress_ = QString::fromStdString(AppSettings::instance().gatewayAddress());
-    if (gatewayEnabled_) {
-        const std::optional<client::GatewayAddress> parsed
-            = client::GatewayAddress::parse(gatewayAddress_.toStdString());
-        if (parsed.has_value()) {
-            client::setGatewayTransport(parsed.value(), AppSettings::instance().gatewayPin());
-        } else {
-            gatewayEnabled_ = false;
-        }
-    }
-    if (samEnabled_) {
-        client::setSamTransport(samHost_.toStdString(), samPort_);
-    }
-    client::setI2pEnabled(true);
-    bazarish::i2p::setI2pLogging(loggingEnabled_);
-    client::setTunnelPrivacy(privacyForLevel(privacyLevel_));
-    refresh();
+    connect(&events_, &I2pEvents::state, this, &I2pController::take);
+    connect(&events_, &I2pEvents::proxyRefused, this, &I2pController::proxyRefused);
+    connect(&events_, &I2pEvents::gatewaySaved, this, &I2pController::gatewaySaved);
+    connect(&events_, &I2pEvents::gatewayRefused, this, &I2pController::gatewayRefused);
+    connect(&events_, &I2pEvents::samSaved, this, &I2pController::samSaved);
+    connect(&events_, &I2pEvents::samRefused, this, &I2pController::samRefused);
 }
 
-void I2pController::checkAndSaveSam(const QString& host, const int port)
+void I2pController::attach(Relay& relay)
 {
-    if (samChecking_) {
-        return;
-    }
-    const QString wanted = host.trimmed();
-    if (wanted.isEmpty() || port <= 0) {
-        emit samRefused(tr("Give the router's address first."));
-        return;
-    }
-    samChecking_ = true;
-    emit samChanged();
-    std::thread([this, wanted, port]() {
-        QString failure;
-        try {
-            bazarish::sam::RouterAddress address;
-            address.host = wanted.toStdString();
-            address.controlPort = static_cast<std::uint16_t>(port);
-            (void)bazarish::sam::probe(address);
-        } catch (const std::exception& error) {
-            failure = QString::fromUtf8(error.what());
-        }
-        QMetaObject::invokeMethod(
-            this,
-            [this, wanted, port, failure]() {
-                samChecking_ = false;
-                if (!failure.isEmpty()) {
-                    emit samChanged();
-                    emit samRefused(failure);
-                    return;
-                }
-                samHost_ = wanted;
-                samPort_ = port;
-                AppSettings::instance().setSam(samEnabled_, samHost_.toStdString(), samPort_);
-                emit samChanged();
-                emit samSaved();
-            },
-            Qt::QueuedConnection);
-    }).detach();
+    relay.sendFrom(kI2pScope, commands_);
+    relay.deliverTo(kI2pScope, events_);
 }
 
-void I2pController::noteChoiceInForce()
+void I2pController::take(const I2pState& state)
 {
-    if (client::sharedI2pRouterIfRunning() == nullptr) {
-        transportAtStart_ = transport();
+    const I2pState was = std::exchange(state_, state);
+    if (was.loggingEnabled != state_.loggingEnabled) {
+        emit loggingChanged();
     }
-}
-
-void I2pController::useGateway(const bool on)
-{
-    if (on && gatewayAddress_.isEmpty()) {
-        emit gatewayRefused(tr("Save a gateway address first."));
-        return;
+    if (was.privacyLevel != state_.privacyLevel) {
+        emit privacyLevelChanged();
     }
-    AppSettings::instance().useGateway(on);
-    gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
-    samEnabled_ = AppSettings::instance().samEnabled();
-    noteChoiceInForce();
-    emit samChanged();
-    emit gatewayChanged();
-    emit transportChanged();
-}
-
-void I2pController::useSam(const bool on)
-{
-    if (on && samHost_.isEmpty()) {
-        emit samRefused(tr("Give the router's address first."));
-        return;
+    if (statusOf(was) != statusOf(state_)) {
+        emit statusChanged();
     }
-    samEnabled_ = on;
-    AppSettings::instance().setSam(on, samHost_.toStdString(), samPort_);
-    gatewayEnabled_ = AppSettings::instance().gatewayEnabled();
-    noteChoiceInForce();
-    emit samChanged();
-    emit gatewayChanged();
-    emit transportChanged();
-}
-
-void I2pController::checkAndSaveProxy(const QString& host, const int port)
-{
-    if (proxyChecking_) {
-        return;
+    if (was.proxyHost != state_.proxyHost || was.proxyPort != state_.proxyPort) {
+        emit proxyChanged();
     }
-    const QString wantedHost = host.trimmed();
-    if (wantedHost.isEmpty() || port <= 0) {
-        saveProxy(QString(), 0);
-        return;
+    if (was.proxyChecking != state_.proxyChecking) {
+        emit proxyCheckingChanged();
     }
-    proxyChecking_ = true;
-    emit proxyCheckingChanged();
-    std::thread([this, wantedHost, port]() {
-        const client::SocksCheck check
-            = client::checkSocksProxy(wantedHost.toStdString(), port);
-        QMetaObject::invokeMethod(
-            this,
-            [this, wantedHost, port, check]() {
-                proxyChecking_ = false;
-                emit proxyCheckingChanged();
-                if (check.answer != client::SocksAnswer::eAccepted) {
-                    if (!check.error.empty()) {
-                        bazarish::log::warn("i2p: socks proxy {}:{}: {}",
-                            wantedHost.toStdString(), port, check.error);
-                    }
-                    emit proxyRefused(check.answer == client::SocksAnswer::eUnreachable
-                            ? tr("Could not connect to this address.")
-                            : check.answer == client::SocksAnswer::eNeedsAuthentication
-                            ? tr("The proxy requires authentication.")
-                            : tr("This is not a SOCKS5 proxy."));
-                    return;
-                }
-                saveProxy(wantedHost, port);
-            },
-            Qt::QueuedConnection);
-    }).detach();
-}
-
-void I2pController::saveProxy(const QString& host, const int port)
-{
-    proxyHost_ = host;
-    proxyPort_ = port;
-    AppSettings::instance().setI2pProxy(proxyHost_.toStdString(), proxyPort_);
-    client::setI2pSocksProxy(proxyHost_.toStdString(), proxyPort_);
-    emit proxyChanged();
-    const std::filesystem::path dataDir = i2pRoot();
-    std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
-    refresh();
-}
-
-void I2pController::setLoggingEnabled(bool on)
-{
-    if (loggingEnabled_ == on) {
-        return;
+    if (samOf(was) != samOf(state_)) {
+        emit samChanged();
     }
-    loggingEnabled_ = on;
-    bazarish::i2p::setI2pLogging(on);
-    AppSettings::instance().setI2pLogging(on);
-    emit loggingChanged();
+    if (gatewayOf(was) != gatewayOf(state_)) {
+        emit gatewayChanged();
+    }
+    if (transportOf(was) != transportOf(state_)) {
+        emit transportChanged();
+    }
 }
 
 void I2pController::setPrivacyLevel(const int level)
 {
     const int wanted = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
-    if (privacyLevel_ == wanted) {
+    if (state_.privacyLevel == wanted) {
         return;
     }
-    privacyLevel_ = wanted;
-    client::setTunnelPrivacy(privacyForLevel(wanted));
-    AppSettings::instance().setI2pTunnelLength(wanted);
+    state_.privacyLevel = wanted;
     emit privacyLevelChanged();
-    rebuildDelay_.start();
+    emit commands_.setPrivacyLevel(wanted);
 }
 
-int I2pController::minKnownRouters() const
+void I2pController::setLoggingEnabled(const bool on)
 {
-    return static_cast<int>(client::kMinKnownRouters);
-}
-
-void I2pController::checkAndSaveGateway(const QString& address)
-{
-    if (gatewayChecking_) {
+    if (state_.loggingEnabled == on) {
         return;
     }
-    const std::optional<client::GatewayAddress> parsed
-        = client::GatewayAddress::parse(address.trimmed().toStdString());
-    if (!parsed.has_value()) {
-        emit gatewayRefused(tr("That is not a gateway address. It looks like "
-                               "https://host/path#token."));
-        return;
-    }
-    gatewayChecking_ = true;
-    emit gatewayChanged();
-    std::thread([this, parsed]() {
-        const client::GatewayCheck check = client::checkGateway(parsed.value(), std::string());
-        QMetaObject::invokeMethod(
-            this,
-            [this, parsed, check]() {
-                gatewayChecking_ = false;
-                if (!check.ok) {
-                    bazarish::log::warn("i2p: gateway check: {}", check.error);
-                    emit gatewayChanged();
-                    emit gatewayRefused(tr("Could not connect to this address."));
-                    return;
-                }
-                AppSettings::instance().rememberGateway(parsed->toString(), check.pin);
-                gatewayAsked_ = true;
-                gatewayAddress_ = QString::fromStdString(parsed->toString());
-                emit gatewayChanged();
-                emit gatewaySaved();
-            },
-            Qt::QueuedConnection);
-    }).detach();
-}
-
-QString I2pController::gatewayHost() const
-{
-    const std::optional<client::GatewayAddress> parsed
-        = client::GatewayAddress::parse(gatewayAddress_.toStdString());
-    return parsed.has_value() ? QString::fromStdString(parsed->host) : QString();
-}
-
-QString I2pController::transport() const
-{
-    if (gatewayEnabled_) {
-        return QStringLiteral("gateway");
-    }
-    return samEnabled_ ? QStringLiteral("sam") : QStringLiteral("embedded");
-}
-
-void I2pController::useEmbedded()
-{
-    AppSettings::instance().setSam(false, samHost_.toStdString(), samPort_);
-    AppSettings::instance().useGateway(false);
-    samEnabled_ = false;
-    gatewayEnabled_ = false;
-    noteChoiceInForce();
-    emit samChanged();
-    emit gatewayChanged();
-    emit transportChanged();
-}
-
-void I2pController::skipGateway()
-{
-    AppSettings::instance().skipGateway();
-    gatewayAsked_ = true;
-    gatewayEnabled_ = false;
-    noteChoiceInForce();
-    emit gatewayChanged();
-    emit transportChanged();
-}
-
-void I2pController::clearGateway()
-{
-    AppSettings::instance().skipGateway();
-    gatewayEnabled_ = false;
-    noteChoiceInForce();
-    emit gatewayChanged();
-    emit transportChanged();
+    state_.loggingEnabled = on;
+    emit loggingChanged();
+    emit commands_.setLoggingEnabled(on);
 }
 
 bool I2pController::tunnelsBuilding() const
 {
-    if (!running_) {
+    if (!state_.running) {
         return true;
     }
-    for (const QVariant& entry : destinations_) {
-        if (entry.toMap().value(QStringLiteral("state")).toString()
-            == QLatin1String("building")) {
-            return true;
-        }
+    const bool building = std::any_of(state_.destinations.cbegin(), state_.destinations.cend(),
+        [](const QVariant& entry) {
+            return entry.toMap().value(QStringLiteral("state")).toString()
+                == QLatin1String("building");
+        });
+    return building || state_.destinations.isEmpty();
+}
+
+QString I2pController::transport() const
+{
+    if (state_.gatewayEnabled) {
+        return QStringLiteral("gateway");
     }
-    return destinations_.isEmpty();
+    return state_.samEnabled ? QStringLiteral("sam") : QStringLiteral("embedded");
+}
+
+void I2pController::checkAndSaveProxy(const QString& host, const int port)
+{
+    emit commands_.checkAndSaveProxy(host, port);
+}
+
+void I2pController::checkAndSaveSam(const QString& host, const int port)
+{
+    emit commands_.checkAndSaveSam(host, port);
+}
+
+void I2pController::useSam(const bool on)
+{
+    emit commands_.useSam(on);
+}
+
+void I2pController::useGateway(const bool on)
+{
+    emit commands_.useGateway(on);
+}
+
+void I2pController::checkAndSaveGateway(const QString& address)
+{
+    emit commands_.checkAndSaveGateway(address);
+}
+
+void I2pController::skipGateway()
+{
+    emit commands_.skipGateway();
+}
+
+void I2pController::clearGateway()
+{
+    emit commands_.clearGateway();
+}
+
+void I2pController::useEmbedded()
+{
+    emit commands_.useEmbedded();
 }
 
 void I2pController::refresh()
 {
-    bazarish::i2p::Router* const router = client::sharedI2pRouterIfRunning();
-    const bool running = router != nullptr;
-    bool ready = false;
-    const bool ownEngine = !samEnabled_ && !gatewayEnabled_;
-    int knownRouters = ownEngine ? static_cast<int>(client::knownRouterCount(i2pRoot())) : 0;
-    int floodfills = 0;
-    int inboundTunnels = 0;
-    int outboundTunnels = 0;
-    QStringList transports;
-    QVariantList destinations;
-    QString proxyNtcp2;
-    if (const std::optional<bazarish::i2p::ProxyState> proxy = client::i2pProxyState();
-        proxy.has_value()) {
-        proxyNtcp2 = QString::fromStdString(proxy->ntcp2);
-    }
-    if (running) {
-        ready = router->ready();
-    }
-    if (running && router->capabilities().routerCounters) {
-        knownRouters = router->knownRouters();
-        floodfills = router->floodfills();
-        inboundTunnels = router->inboundTunnels();
-        outboundTunnels = router->outboundTunnels();
-        for (const bazarish::i2p::TransportPeer& peer : router->transportPeers()) {
-            QString row = QString::fromStdString(peer.transport)
-                + (peer.outbound ? " · " : " · incoming · ");
-            if (!peer.endpoint.empty()) {
-                row += QString::fromStdString(peer.endpoint) + " · ";
-            }
-            row += QString::fromStdString(peer.ident);
-            transports << row;
-        }
-        transports.sort();
-    }
-    if (running) {
-        const bool manyAccounts = client::AccountManager(accountsRoot()).list().size() > 1;
-        for (const bazarish::i2p::LocalDestination& dest : router->localDestinations()) {
-            QVariantMap row;
-            const QString what = dest.label.empty() ? QStringLiteral("Destination")
-                                                    : QString::fromStdString(dest.label);
-            row[QStringLiteral("label")] = (manyAccounts && !dest.owner.empty())
-                ? (QString::fromStdString(dest.owner) + QStringLiteral(": ") + what)
-                : what;
-            row[QStringLiteral("host")] = QString::fromStdString(dest.host);
-            row[QStringLiteral("state")] = dest.closing ? QStringLiteral("closing")
-                : dest.ready
-                ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
-                : QStringLiteral("building");
-            row[QStringLiteral("tunnelsIn")] = dest.inboundTunnels;
-            row[QStringLiteral("tunnelsOut")] = dest.outboundTunnels;
-            row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;
-            row[QStringLiteral("localRoute")] = dest.localRoute;
-            row[QStringLiteral("countsKnown")] = router->capabilities().destinationCounters;
-            destinations << row;
-        }
-    }
-    if (running == running_ && ready == ready_ && knownRouters == knownRouters_
-        && floodfills == floodfills_ && inboundTunnels == inboundTunnels_
-        && outboundTunnels == outboundTunnels_ && transports == transports_
-        && destinations == destinations_ && proxyNtcp2 == proxyNtcp2_) {
-        return;
-    }
-    proxyNtcp2_ = proxyNtcp2;
-    running_ = running;
-    ready_ = ready;
-    knownRouters_ = knownRouters;
-    floodfills_ = floodfills;
-    inboundTunnels_ = inboundTunnels;
-    outboundTunnels_ = outboundTunnels;
-    transports_ = transports;
-    destinations_ = destinations;
-    emit statusChanged();
+    emit commands_.refresh();
 }
 
 }  // namespace bazarish::app

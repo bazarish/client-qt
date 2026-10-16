@@ -93,6 +93,9 @@ ApplicationWindow {
             if (stack.currentItem.objectName === "attaching") {
                 stack.replace(null, App.session ? mainComponent : pickerComponent)
             }
+            if (!I2p.gatewayAsked) {
+                gatewayFirstRun.open()
+            }
         }
         function onAccountOpened() { stack.replace(null, mainComponent) }
         function onAccountOpenFailed(error) { window.showToast(error) }
@@ -172,9 +175,6 @@ ApplicationWindow {
         z: 1100
     }
     Component.onCompleted: {
-        if (!I2p.gatewayAsked) {
-            gatewayFirstRun.open()
-        }
         if (backgroundAsk.needed) {
             backgroundAsk.open()
         }

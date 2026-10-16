@@ -356,11 +356,6 @@ void AppController::setPortable(const bool on)
     emit commands_.setPortable(on);
 }
 
-void AppController::rebuildI2pLinks()
-{
-    emit commands_.rebuildI2pLinks();
-}
-
 QString AppController::i2pdVersion() const
 {
     return QString::fromStdString(bazarish::i2p::routerVersion());

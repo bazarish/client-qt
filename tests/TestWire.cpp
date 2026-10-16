@@ -3,6 +3,7 @@
 #include "AccountEvents.hpp"
 #include "AppCommands.hpp"
 #include "AppEvents.hpp"
+#include "I2pEvents.hpp"
 #include "Wire.hpp"
 
 #include <QCoreApplication>
@@ -213,6 +214,12 @@ int main(int argc, char** argv)
     AppEvents appEventsSent;
     AppEvents appEventsGot;
     CHECK(roundTrip(right, left, appEventsSent, appEventsGot) > 0);
+    I2pCommands i2pCommandsSent;
+    I2pCommands i2pCommandsGot;
+    CHECK(roundTrip(left, right, i2pCommandsSent, i2pCommandsGot) > 0);
+    I2pEvents i2pEventsSent;
+    I2pEvents i2pEventsGot;
+    CHECK(roundTrip(right, left, i2pEventsSent, i2pEventsGot) > 0);
     CHECK(breaks == 0);
 
     AccountEvents target;

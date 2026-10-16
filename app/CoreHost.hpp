@@ -4,6 +4,7 @@
 #include "AccountManager.hpp"
 #include "AppCommands.hpp"
 #include "AppEvents.hpp"
+#include "I2pService.hpp"
 #include "OperationLog.hpp"
 #include "Ringtone.hpp"
 
@@ -100,6 +101,7 @@ private:
 
     AppCommands commands_;
     AppEvents events_;
+    I2pService i2p_;
     Relay* relay_ = nullptr;
     std::unique_ptr<client::AccountManager> manager_;
     QVector<AccountListRow> accountRows_;
