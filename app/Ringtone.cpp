@@ -2,6 +2,9 @@
 #include "Ringtone.hpp"
 
 #include "AudioRoute.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidShade.hpp"
+#endif
 
 #include <QAudioDevice>
 #include <QAudioFormat>
@@ -217,12 +220,17 @@ bool Ringtone::loadTrack()
 
 void Ringtone::start()
 {
-    if (sink_) {
+    if (sink_ || since_.isValid()) {
         return;
     }
     if (!loadTrack()) {
         return;
     }
+#ifdef Q_OS_ANDROID
+    // Android plays it on its ring stream, at the ring volume; a sink here would play as media.
+    AndroidShade::startRinging();
+    since_.start();
+#else
     const QAudioDevice device = AudioRoute::instance().output();
     if (device.isNull()) {
         return;
@@ -244,6 +252,7 @@ void Ringtone::start()
     }
     sink_ = std::make_unique<QAudioSink>(device, format);
     sink_->start(loop_.get());
+#endif
     if (!levelTimer_) {
         levelTimer_ = std::make_unique<QTimer>();
         levelTimer_->setInterval(kLevelIntervalMs);
@@ -261,16 +270,23 @@ void Ringtone::stop()
         sink_->stop();
         sink_.reset();
     }
+#ifdef Q_OS_ANDROID
+    if (since_.isValid()) {
+        AndroidShade::stopRinging();
+        since_.invalidate();
+    }
+#endif
     loop_.reset();
     emit levelChanged(0.0);
 }
 
 void Ringtone::publishLevel()
 {
-    if (!sink_ || envelope_.empty()) {
+    if ((!sink_ && !since_.isValid()) || envelope_.empty()) {
         return;
     }
-    const qint64 played = sink_->processedUSecs() * sampleRate_ / kUsPerSecond;
+    const qint64 played = sink_ ? sink_->processedUSecs() * sampleRate_ / kUsPerSecond
+                                : since_.elapsed() * sampleRate_ / kMsPerSecond;
     const std::size_t at = static_cast<std::size_t>(played) % samples_.size();
     emit levelChanged(static_cast<qreal>(envelope_[at / frameSamples_]));
 }

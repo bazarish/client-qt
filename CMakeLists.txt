@@ -153,9 +153,9 @@ if(Qt6_FOUND)
     endif()
 
     if(ANDROID)
-        # Qt 6.8 runs on Android 9 and newer; the package name is the one the Mac
-        # bundle carries, and the manifest beside it names the app and its icon.
-        set(kAndroidMinSdk 28)
+        # Android 12 and newer: an incoming call is drawn with its call style. The
+        # package name is the one the Mac bundle carries.
+        set(kAndroidMinSdk 31)
         set(kAndroidTargetSdk 34)
         target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp)
         set_target_properties(bazarish-app PROPERTIES

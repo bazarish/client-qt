@@ -62,6 +62,16 @@ void quitRequested(JNIEnv*, jclass)
     inAppThread([](AppController& app) { app.prepareForExit(); });
 }
 
+void callAnswered(JNIEnv*, jclass)
+{
+    inAppThread([](AppController& app) { app.answerRinging(); });
+}
+
+void callDeclined(JNIEnv*, jclass)
+{
+    inAppThread([](AppController& app) { app.declineRinging(); });
+}
+
 void conversationOpened(JNIEnv*, jclass, jstring account, jstring peer)
 {
     const QString accountId = QJniObject(account).toString();
@@ -83,6 +93,8 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
         {"quitRequested", "()V", reinterpret_cast<void*>(quitRequested)},
         {"conversationOpened", "(Ljava/lang/String;Ljava/lang/String;)V",
             reinterpret_cast<void*>(conversationOpened)},
+        {"callAnswered", "()V", reinterpret_cast<void*>(callAnswered)},
+        {"callDeclined", "()V", reinterpret_cast<void*>(callDeclined)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kBridge, natives, static_cast<int>(std::size(natives)))) {
@@ -90,19 +102,27 @@ AndroidShade::AndroidShade(AppController& app, Notifier& notifier, Translations&
     }
     gApp.store(&app);
 
+    followUnread();
     show();
     QJniObject::callStaticMethod<void>(kBridge, "askNotifications",
         "(Landroid/content/Context;)V", context().object());
+    openHeldConversation();
 
     connect(&notifier, &Notifier::announced, this, &AndroidShade::notifyMessage);
     connect(&app_, &AppController::notificationsEnabledChanged, this, &AndroidShade::show);
+    connect(&app_, &AppController::accountsChanged, this, [this]() {
+        const int before = unread_;
+        followUnread();
+        if (unread_ != before) {
+            show();
+        }
+    });
     connect(&translations, &Translations::languageChanged, this, &AndroidShade::show);
     connect(&app_, &AppController::ringingChanged, this, &AndroidShade::followRinging);
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
         [](const Qt::ApplicationState state) {
             if (state == Qt::ApplicationActive) {
-                QJniObject::callStaticMethod<void>(kBridge, "clearMessages",
-                    "(Landroid/content/Context;)V", context().object());
+                QJniObject::callStaticMethod<void>(kBridge, "clearMessages", "()V");
             }
         });
 }
@@ -112,16 +132,19 @@ AndroidShade::~AndroidShade()
     gApp.store(nullptr);
 }
 
+bool AndroidShade::windowless()
+{
+    return !QNativeInterface::QAndroidApplication::isActivityContext();
+}
+
 bool AndroidShade::backgroundRestricted()
 {
-    return QJniObject::callStaticMethod<jboolean>(kBridge, "backgroundRestricted",
-        "(Landroid/content/Context;)Z", context().object());
+    return QJniObject::callStaticMethod<jboolean>(kBridge, "backgroundRestricted", "()Z");
 }
 
 void AndroidShade::openBackgroundSettings()
 {
-    QJniObject::callStaticMethod<void>(kBridge, "openBackgroundSettings",
-        "(Landroid/content/Context;)V", context().object());
+    QJniObject::callStaticMethod<void>(kBridge, "openBackgroundSettings", "()V");
 }
 
 void AndroidShade::moveToBackground()
@@ -134,28 +157,47 @@ void AndroidShade::moveToBackground()
     });
 }
 
+void AndroidShade::startRinging()
+{
+    QJniObject::callStaticMethod<void>(kBridge, "startRinging", "()V");
+}
+
+void AndroidShade::stopRinging()
+{
+    QJniObject::callStaticMethod<void>(kBridge, "stopRinging", "()V");
+}
+
 void AndroidShade::stop()
 {
-    QJniObject::callStaticMethod<void>(kBridge, "stop", "(Landroid/content/Context;)V",
-        context().object());
+    QJniObject::callStaticMethod<void>(kBridge, "stop", "()V");
+}
+
+void AndroidShade::followUnread()
+{
+    int unread = 0;
+    for (const AccountRow& account : app_.accountStatuses()) {
+        unread += account.unread;
+    }
+    unread_ = unread;
 }
 
 void AndroidShade::show()
 {
-    const QJniObject running = javaString(tr("Background work"));
+    const QJniObject presence = javaString(tr("Background work"));
     const QJniObject messages = javaString(tr("Messages"));
     const QJniObject reactions = javaString(tr("Reactions"));
     const QJniObject calls = javaString(tr("Calls"));
     const QJniObject turnOff = javaString(tr("Turn off notifications"));
     const QJniObject turnOn = javaString(tr("Turn on notifications"));
     const QJniObject quit = javaString(tr("Quit"));
+    const QJniObject unread = javaString(unread_ > 0 ? tr("Unread: %1").arg(unread_) : QString());
     QJniObject::callStaticMethod<void>(kBridge, "show",
-        "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-        "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V",
-        context().object(), running.object<jstring>(), messages.object<jstring>(),
-        reactions.object<jstring>(), calls.object<jstring>(), turnOff.object<jstring>(),
-        turnOn.object<jstring>(), quit.object<jstring>(),
-        static_cast<jboolean>(app_.notificationsEnabled()));
+        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
+        "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V",
+        presence.object<jstring>(), messages.object<jstring>(), reactions.object<jstring>(),
+        calls.object<jstring>(), turnOff.object<jstring>(), turnOn.object<jstring>(),
+        quit.object<jstring>(), static_cast<jboolean>(app_.notificationsEnabled()),
+        unread.object<jstring>());
 }
 
 void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,
@@ -166,10 +208,9 @@ void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,
     const QJniObject heading = javaString(title);
     const QJniObject text = javaString(body);
     QJniObject::callStaticMethod<void>(kBridge, "notifyMessage",
-        "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-        "Ljava/lang/String;Z)V",
-        context().object(), account.object<jstring>(), fingerprint.object<jstring>(),
-        heading.object<jstring>(), text.object<jstring>(), static_cast<jboolean>(reaction));
+        "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Z)V",
+        account.object<jstring>(), fingerprint.object<jstring>(), heading.object<jstring>(),
+        text.object<jstring>(), static_cast<jboolean>(reaction));
 }
 
 void AndroidShade::followRinging()
@@ -181,16 +222,30 @@ void AndroidShade::followRinging()
         const QJniObject heading = javaString(app_.ringingPeer());
         const QJniObject text = javaString(tr("Incoming audio call"));
         QJniObject::callStaticMethod<void>(kBridge, "notifyCall",
-            "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-            "Ljava/lang/String;)V",
-            context().object(), account.object<jstring>(), fingerprint.object<jstring>(),
-            heading.object<jstring>(), text.object<jstring>());
+            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V",
+            account.object<jstring>(), fingerprint.object<jstring>(), heading.object<jstring>(),
+            text.object<jstring>());
         callShown_ = true;
     } else if (!ringing && callShown_) {
-        QJniObject::callStaticMethod<void>(kBridge, "cancelCall", "(Landroid/content/Context;)V",
-            context().object());
+        QJniObject::callStaticMethod<void>(kBridge, "cancelCall", "()V");
         callShown_ = false;
     }
+}
+
+void AndroidShade::openHeldConversation()
+{
+    const QJniObject held = QJniObject::callStaticObjectMethod(
+        kBridge, "takeHeldConversation", "()[Ljava/lang/String;");
+    QJniEnvironment env;
+    const auto list = static_cast<jobjectArray>(held.object());
+    constexpr jsize kAccountAndPeer = 2;
+    if (env->GetArrayLength(list) != kAccountAndPeer) {
+        return;
+    }
+    const QString accountId
+        = QJniObject::fromLocalRef(env->GetObjectArrayElement(list, 0)).toString();
+    const QString peer = QJniObject::fromLocalRef(env->GetObjectArrayElement(list, 1)).toString();
+    app_.openConversationOf(accountId, peer);
 }
 
 }  // namespace bazarish::app

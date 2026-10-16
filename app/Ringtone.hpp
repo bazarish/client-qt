@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QString>
 
@@ -42,6 +43,7 @@ private:
     std::unique_ptr<QAudioSink> sink_;
     std::unique_ptr<Loop> loop_;
     std::unique_ptr<QTimer> levelTimer_;
+    QElapsedTimer since_;
 };
 
 }  // namespace bazarish::app

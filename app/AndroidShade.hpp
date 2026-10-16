@@ -17,19 +17,25 @@ public:
         QObject* parent = nullptr);
     ~AndroidShade() override;
 
+    static bool windowless();
     static bool backgroundRestricted();
     static void openBackgroundSettings();
     static void moveToBackground();
+    static void startRinging();
+    static void stopRinging();
 
     void stop();
 
 private:
     void show();
+    void followUnread();
     void notifyMessage(const QString& accountId, const QString& peer, const QString& title,
         const QString& body, bool reaction);
     void followRinging();
+    void openHeldConversation();
 
     AppController& app_;
+    int unread_ = 0;
     bool callShown_ = false;
 };
 
