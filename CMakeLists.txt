@@ -129,6 +129,9 @@ if(Qt6_FOUND)
         app/Ringtone.hpp
     )
     target_link_libraries(bazarish_app_core PUBLIC bazarish_app_shared Qt6::QmlIntegration)
+    if(ANDROID)
+        target_link_libraries(bazarish_app_core PRIVATE Qt6::CorePrivate)
+    endif()
     target_compile_options(bazarish_app_core PRIVATE -Wall -Wextra)
 
     add_library(bazarish_app_ui STATIC

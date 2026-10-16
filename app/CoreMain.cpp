@@ -9,6 +9,8 @@
 #include "Translations.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidShade.hpp"
+
+#include <QtCore/private/qandroidextras_p.h>
 #endif
 
 #pragma push_macro("emit")
@@ -36,7 +38,12 @@ void exitNow()
 
 int runCore(int argc, char** argv)
 {
+#ifdef Q_OS_ANDROID
+    // Qt holds the service's start until this kind of application exists.
+    QAndroidService app(argc, argv);
+#else
     QCoreApplication app(argc, argv);
+#endif
     QCoreApplication::setApplicationName("Bazarish");
     QCoreApplication::setOrganizationName("Bazarish");
     const std::filesystem::path accounts = accountsRoot();
