@@ -112,6 +112,7 @@ signals:
     void contactRetryExhausted(const QString& fingerprint);
     void contactNamed(const QString& peer, const QString& name);
     void storageWorkDone();
+    void transcriptOpened(const QString& path, const QByteArray& key);
 };
 
 }  // namespace bazarish::app

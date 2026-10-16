@@ -482,7 +482,7 @@ private:
     AccountCommands commands_;
     AccountEvents events_;
     std::unique_ptr<CoreAccount> core_;
-    TranscriptStore store_;
+    TranscriptReader store_;
     ContactListModel contacts_;
     QSortFilterProxyModel contactsProxy_;
     ConversationModel conversation_;
@@ -540,7 +540,6 @@ private:
     bool scrollStick_ = true;
     void activateConversation(const QString& peer);
     void refreshActiveGroup();
-    void reportUnsaved();
     void refreshChatRow(const QString& peer);
     void onRowAdded(const QString& peer, qint64 id, bool own);
     void onRowChanged(const QString& peer, qint64 id);

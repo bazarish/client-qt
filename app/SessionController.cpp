@@ -291,6 +291,12 @@ SessionController::SessionController(QObject* parent)
     });
     connect(&events_, &AccountEvents::contactRetryExhausted, this,
         &SessionController::contactRetryExhausted);
+    connect(&events_, &AccountEvents::transcriptOpened, this,
+        [this](const QString& path, const QByteArray& key) {
+            if (!store_.open(path, Bytes(key.begin(), key.end()))) {
+                emit openFailed(tr("This profile could not be opened."));
+            }
+        });
     connect(&events_, &AccountEvents::storageWorkDone, this, [this]() {
         loadLatestWindow();
         rebuildChatList();
@@ -408,10 +414,6 @@ void SessionController::open(const QString& file, const QString& accountId,
 {
     startOnline_ = startOnline;
     accountId_ = accountId;
-    if (!store_.open(accountId, file, passphrase)) {
-        emit openFailed(tr("This profile could not be opened."));
-        return;
-    }
     emit commands_.requestOpen(file, passphrase, startOnline);
 }
 
@@ -1715,11 +1717,6 @@ void SessionController::resendPicture(qint64 localId, const QString& e2eId)
     if (!activePeer_.isEmpty()) {
         emit commands_.resend(activePeer_, localId);
     }
-}
-
-void SessionController::reportUnsaved()
-{
-    emit actionFailed(tr("History not saved: %1").arg(store_.lastError()));
 }
 
 void SessionController::markReadThroughRow(int row)

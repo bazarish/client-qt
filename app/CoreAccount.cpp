@@ -8,6 +8,7 @@
 #include "SystemNotes.hpp"
 
 #include "AccountDb.hpp"
+#include "AccountKey.hpp"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -447,6 +448,9 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
         emit events_.openFailed(tr("This profile could not be opened."));
         return;
     }
+    const Bytes key = client::accountkey::keyFor(file.toStdString(), passphrase.toStdString());
+    emit events_.transcriptOpened(file,
+        QByteArray(reinterpret_cast<const char*>(key.data()), static_cast<qsizetype>(key.size())));
     const QJsonDocument flashes = QJsonDocument::fromJson(
         QByteArray::fromStdString(accountDb().text("reactions-to-flash")));
     for (const QJsonValue& entry : flashes.array()) {
