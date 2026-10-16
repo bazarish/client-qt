@@ -2,6 +2,7 @@
 #pragma once
 
 #include "AccountCommands.hpp"
+#include "CallTones.hpp"
 #include "AccountEvents.hpp"
 #include "ContactBook.hpp"
 #include "MessageIngest.hpp"
@@ -117,6 +118,12 @@ private:
     void onContactAddResolved(const QString& opId, const QString& fingerprint);
     void onContactRequestSent(const QString& fingerprint, const QString& intro,
         const QString& requestId, qint64 sentAtMs);
+    void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
+        const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
+        float outputLevel);
+    void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
+    void declineCall();
+    void endCall();
     void restartDelivery(const QString& peer, qint64 localId);
     void bumpStatus(qint64 localId, int status);
     void onSendProgress(qint64 localId, int state);
@@ -156,6 +163,18 @@ private:
     QHash<QString, QString> aliasChats_;
     QHash<QString, PendingContactRequest> refusedRequests_;
     QSet<QString> agreeingShown_;
+    struct CallView {
+        QString state = QStringLiteral("idle");
+        QString peer;
+        QString id;
+        QString stage;
+        qint64 connectedAtMs = 0;
+    };
+    CallView call_;
+    QString refusedCallId_;
+    QString callOpId_;
+    bool callEndedLocally_ = false;
+    CallTones callTones_;
     struct QueuedCommand {
         QString id;
         QString title;

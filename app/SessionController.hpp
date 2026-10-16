@@ -4,7 +4,6 @@
 #include "AccountCommands.hpp"
 #include "AccountEvents.hpp"
 #include "AccountDb.hpp"
-#include "CallTones.hpp"
 #include "ContactBook.hpp"
 #include "CoreAccount.hpp"
 #include "Models.hpp"
@@ -478,7 +477,6 @@ private slots:
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
         float outputLevel);
     bool speakerPresent();
-    void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
 private:
     AccountCommands commands_;
@@ -627,12 +625,8 @@ private:
     qreal callOutputLevel_ = 0.0;
     QString callPeer_;
     QString callId_;
-    QString refusedCallId_;
     bool shuttingDown_ = false;
-    QString callOpId_;
     bool callMuted_ = false;
-    CallTones callTones_;
-    bool callEndedLocally_ = false;
     void rebuildChatList();
     int unreadTotal_ = 0;
     void refreshUnreadTotal();

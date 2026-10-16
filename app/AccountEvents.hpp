@@ -89,7 +89,6 @@ signals:
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
         float outputLevel);
-    void callLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
     void closed();
     void rowAdded(const QString& peer, qint64 id, bool own);
     void rowChanged(const QString& peer, qint64 id);

@@ -277,8 +277,8 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::i2pServedAddress, &events_, &AccountEvents::i2pServedAddress);
     connect(worker_, &SessionWorker::storageUsageReady, &events_,
         &AccountEvents::storageUsageReady);
-    connect(worker_, &SessionWorker::callStateChanged, &events_, &AccountEvents::callStateChanged);
-    connect(worker_, &SessionWorker::callLogged, &events_, &AccountEvents::callLogged);
+    connect(worker_, &SessionWorker::callStateChanged, this, &CoreAccount::onCallStateChanged);
+    connect(worker_, &SessionWorker::callLogged, this, &CoreAccount::onCallLogged);
     connect(worker_, &SessionWorker::commandFinished, this, &CoreAccount::onCommandFinished);
     connect(worker_, &SessionWorker::loginSignerReady, this,
         [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {
@@ -364,6 +364,8 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(&commands_, &AccountCommands::retryContactAdd, this, &CoreAccount::retryContactAdd);
     connect(&commands_, &AccountCommands::retryContactRequest, this,
         &CoreAccount::retryContactRequest);
+    connect(&commands_, &AccountCommands::declineCall, this, &CoreAccount::declineCall);
+    connect(&commands_, &AccountCommands::endCall, this, &CoreAccount::endCall);
     connect(&commands_, &AccountCommands::opBegin, &log_, &OperationLog::begin);
     connect(&commands_, &AccountCommands::opUpdate, &log_, &OperationLog::update);
     connect(&commands_, &AccountCommands::opSetCancelId, &log_, &OperationLog::setCancelId);

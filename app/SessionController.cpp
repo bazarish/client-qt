@@ -350,7 +350,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onStorageUsageReady);
     connect(&events_, &AccountEvents::callStateChanged, this,
         &SessionController::onCallStateChanged);
-    connect(&events_, &AccountEvents::callLogged, this, &SessionController::onCallLogged);
 
     connect(&contacts_, &QAbstractItemModel::dataChanged, this,
         &SessionController::refreshUnreadTotal);
