@@ -97,44 +97,13 @@ QString facadeHost(const QString& url)
     return rest;
 }
 
-constexpr int kCommandTickMs = 200;
-
 // A reconnect this client asked for is not reported before this much of it.
 constexpr int kLinkRebuildGraceMs = 1500;
-
-constexpr qint64 kCommandVisibleAfterMs = 400;
 
 
 const QString kConnectOperationId = QStringLiteral("connect");
 
 constexpr double kPercentFull = 100.0;
-
-bool isRetryPhase(const QString& phase)
-{
-    return phase.startsWith(QLatin1StringView(bazarish::client::kPhaseRetryPrefix));
-}
-
-QString humanDeliveryPhase(const QString& phase)
-{
-    if (phase == QLatin1StringView(bazarish::client::kPhasePreparing)) {
-        return SessionController::tr("Preparing an address to send from…");
-    }
-    if (phase == QLatin1StringView(bazarish::client::kPhaseDialing)) {
-        return SessionController::tr("Reaching the recipient's server…");
-    }
-    if (phase == QLatin1StringView(bazarish::client::kPhaseSending)) {
-        return SessionController::tr("Sending over I2P…");
-    }
-    if (isRetryPhase(phase)) {
-        const QLatin1StringView prefix(bazarish::client::kPhaseRetryPrefix);
-        const QStringList parts = phase.sliced(prefix.size()).trimmed().split(QChar('/'));
-        if (parts.size() == 2) {
-            return SessionController::tr("Trying again (%1 of %2)…")
-                .arg(parts.at(0), parts.at(1));
-        }
-    }
-    return phase;
-}
 
 constexpr int kPageSize = 50;
 
@@ -309,10 +278,13 @@ SessionController::SessionController(QObject* parent)
             emit contactsRevisionChanged();
         });
     connect(&events_, &AccountEvents::avatarReady, this, &SessionController::onAvatarReady);
-    connect(&events_, &AccountEvents::sendProgress, this, &SessionController::onSendProgress);
     connect(&events_, &AccountEvents::uploadProgress, this, &SessionController::onUploadProgress);
-    connect(&events_, &AccountEvents::sendResult, this, &SessionController::onSendResult);
-    connect(&events_, &AccountEvents::sendPhase, this, &SessionController::onSendPhase);
+    connect(&events_, &AccountEvents::messageError, this,
+        [this](const qint64 localId, const QString& error) {
+            conversation_.setErrorForId(localId, error);
+        });
+    connect(&events_, &AccountEvents::resendFilePickRequested, this,
+        &SessionController::resendFilePickRequested);
     connect(&events_, &AccountEvents::contactRequestSent, this,
         &SessionController::onContactRequestSent);
     connect(&events_, &AccountEvents::contactAddStage, this,
@@ -333,10 +305,14 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onContactAddRateLimited);
     connect(&events_, &AccountEvents::contactAccepted, this,
         &SessionController::onContactAccepted);
-    connect(&events_, &AccountEvents::opBegin, this, &SessionController::onOpBegin);
-    connect(&events_, &AccountEvents::opDone, this, &SessionController::onOpDone);
-    connect(&events_, &AccountEvents::opProgress, this,
-        [this](const QString& opId, const QString& status) { updateOperation(opId, status); });
+    connect(&events_, &AccountEvents::opChanged, this, [this](const OperationRow& row) {
+        operations_.upsert(row);
+        emit operationsChanged();
+    });
+    connect(&events_, &AccountEvents::opRemoved, this, [this](const QString& id) {
+        operations_.remove(id);
+        emit operationsChanged();
+    });
     connect(&events_, &AccountEvents::syncReachable, this, &SessionController::onSyncReachable);
     connect(&events_, &AccountEvents::approvalState, this, &SessionController::onApprovalState);
     connect(&events_, &AccountEvents::devicesReady, this, &SessionController::onDevicesReady);
@@ -344,10 +320,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::accountClosedOnServer);
     connect(&events_, &AccountEvents::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(&events_, &AccountEvents::actionOk, this, &SessionController::actionOk);
-    connect(&events_, &AccountEvents::botActionDone, this,
-        [this](const QString& opId, const bool ok, const QString& error) {
-            finishOperation(opId, ok, ok ? tr("Sent") : error);
-        });
     connect(&events_, &AccountEvents::actionFailed, this, [this](const QString& reason) {
         setAvatarBusy(false);
         if (connecting_) {
@@ -394,19 +366,6 @@ SessionController::SessionController(QObject* parent)
     connect(&contacts_, &QAbstractItemModel::modelReset, this,
         &SessionController::refreshUnreadTotal);
 
-    const QMetaObject& commands = AccountCommands::staticMetaObject;
-    const QMetaMethod noted
-        = metaObject()->method(metaObject()->indexOfSlot("noteCommandQueued()"));
-    for (int i = commands.methodOffset(); i < commands.methodCount(); ++i) {
-        const QMetaMethod method = commands.method(i);
-        if (listedWhileQueued(method)) {
-            connect(&commands_, method, this, noted);
-        }
-    }
-    connect(&events_, &AccountEvents::commandFinished, this,
-        &SessionController::onCommandFinished);
-    commandTimer_.setInterval(kCommandTickMs);
-    connect(&commandTimer_, &QTimer::timeout, this, &SessionController::showSlowCommands);
     rebuildGrace_.setSingleShot(true);
     rebuildGrace_.setInterval(kLinkRebuildGraceMs);
     connect(&rebuildGrace_, &QTimer::timeout, this, [this]() {
@@ -419,97 +378,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::messageNotification);
     connect(core_.get(), &CoreAccount::reactionNotification, this,
         &SessionController::reactionNotification);
-}
-
-namespace {
-
-QString commandTitle(const QByteArray& signalName)
-{
-    static const QHash<QByteArray, const char*> kNamed = {
-        {"requestSendReceipt", QT_TR_NOOP("Confirming a message was read")},
-        {"requestAckPending", QT_TR_NOOP("Clearing a message from the mailbox")},
-        {"requestSendReaction", QT_TR_NOOP("Sending a reaction")},
-        {"requestSendEdit", QT_TR_NOOP("Sending an edit")},
-        {"requestSendDelete", QT_TR_NOOP("Deleting a message for both sides")},
-        {"requestUnsend", QT_TR_NOOP("Withdrawing a file")},
-        {"requestAcceptContact", QT_TR_NOOP("Agreeing to a contact request")},
-        {"requestEmitSettings", QT_TR_NOOP("Telling your other devices")},
-        {"requestSyncRead", QT_TR_NOOP("Marking a chat read")},
-        {"requestSyncChatPin", QT_TR_NOOP("Pinning a chat")},
-        {"requestSyncChatClear", QT_TR_NOOP("Clearing a chat")},
-        {"requestClearChatForEveryone", QT_TR_NOOP("Clearing a chat for both sides")},
-        {"requestContactsFromDevices", QT_TR_NOOP("Asking your other devices")},
-        {"requestSetSync", QT_TR_NOOP("Going online")},
-        {"requestRebuildI2p", QT_TR_NOOP("Rebuilding the I2P destinations")},
-        {"requestInviteSig", QT_TR_NOOP("Preparing your invite")},
-        {"requestSignLoginSig", QT_TR_NOOP("Signing in")},
-    };
-    if (const auto found = kNamed.constFind(signalName); found != kNamed.cend()) {
-        return SessionController::tr(found.value());
-    }
-    QString words;
-    for (int at = static_cast<int>(strlen("request")); at < signalName.size(); ++at) {
-        const char letter = signalName.at(at);
-        if (letter >= 'A' && letter <= 'Z' && !words.isEmpty()) {
-            words += QLatin1Char(' ');
-            words += QLatin1Char(letter - 'A' + 'a');
-            continue;
-        }
-        words += QLatin1Char(letter);
-    }
-    return words;
-}
-
-}  // namespace
-
-void SessionController::noteCommandQueued()
-{
-    const QMetaMethod signal = AccountCommands::staticMetaObject.method(senderSignalIndex());
-    QueuedCommand command;
-    command.id = QStringLiteral("cmd:") + QString::number(++commandSeq_);
-    command.title = commandTitle(signal.name());
-    command.queuedAtMs = nowMillis();
-    commandQueue_.append(command);
-    if (!commandTimer_.isActive()) {
-        commandTimer_.start();
-    }
-}
-
-void SessionController::showSlowCommands()
-{
-    if (commandQueue_.isEmpty()) {
-        commandTimer_.stop();
-        return;
-    }
-    const qint64 now = nowMillis();
-    for (int at = 0; at < commandQueue_.size(); ++at) {
-        QueuedCommand& command = commandQueue_[at];
-        if (now - command.queuedAtMs < kCommandVisibleAfterMs) {
-            continue;
-        }
-        const QString status = at == 0 ? tr("Working on it…") : tr("Waiting its turn…");
-        if (!command.shown) {
-            command.shown = true;
-            beginOperation(command.id, QStringLiteral("command"), command.title, status);
-            continue;
-        }
-        updateOperation(command.id, status);
-    }
-    emit operationsChanged();
-}
-
-void SessionController::onCommandFinished()
-{
-    if (commandQueue_.isEmpty()) {
-        return;
-    }
-    const QueuedCommand command = commandQueue_.takeFirst();
-    if (command.shown) {
-        finishOperation(command.id, true, tr("Done"));
-    }
-    if (commandQueue_.isEmpty()) {
-        commandTimer_.stop();
-    }
 }
 
 void SessionController::refreshUnreadTotal()
@@ -1182,88 +1050,26 @@ void SessionController::sendOffered(const QString& text)
 void SessionController::deliverText(const QString& text, const QString& replyTo)
 {
     unblockBeforeWriting(activePeer_);
-    StoredMessage m;
-    m.peer = activePeer_;
-    m.outgoing = true;
-    m.type = "text";
-    m.e2eId = newE2eId();
-    m.text = text;
-    m.replyTo = replyTo;
-    m.ts = nowMillis();
-    m.orderKey = m.ts;
-    const bool saved = isSavedChat(activePeer_);
-    m.status = saved ? DeliveryStatus::Delivering : DeliveryStatus::Preparing;
-    m.id = store_.append(m);
-    if (m.id == 0) {
-        reportUnsaved();
-        return;
-    }
-    statusById_[m.id] = m.status;
-    if (saved) {
-        savedSends_.insert(m.id);
-    }
-    showInActiveView(m, true);
-    contacts_.touch(activePeer_, saved ? savedChatName() : QString(), text, m.ts, false);
-    if (!saved) {
-        beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-            tr("To %1").arg(peerName(activePeer_)), tr("Sending…"),
-            activePeer_);
-    }
-    emit commands_.requestSendText(activePeer_, text, m.id, m.e2eId, replyTo);
+    emit commands_.sendText(activePeer_, text, replyTo, newE2eId());
 }
 
-StoredMessage SessionController::beginAttachmentSend(const QString& type, const QString& name,
-    const qint64 size, const QString& mime, const QString& srcPath)
+QString SessionController::takeReply()
 {
-    if (activePeer_.isEmpty()) {
-        return {};
-    }
-    unblockBeforeWriting(activePeer_);
     const QString replyTo = replying_ ? replyingE2eId_ : QString();
     if (replying_) {
         cancelReply();
     }
-    StoredMessage m;
-    m.peer = activePeer_;
-    m.outgoing = true;
-    m.type = type;
-    m.e2eId = newE2eId();
-    m.replyTo = replyTo;
-    m.attName = name;
-    m.attSize = size;
-    m.attMime = mime;
-    m.attSrcPath = srcPath;
-    m.ts = nowMillis();
-    m.orderKey = m.ts;
-    m.status = isSavedChat(activePeer_) ? DeliveryStatus::Delivering
-                                        : DeliveryStatus::Preparing;
-    m.id = store_.append(m);
-    if (m.id == 0) {
-        reportUnsaved();
-        return {};
-    }
-    statusById_[m.id] = m.status;
-    showInActiveView(m, true);
-    contacts_.touch(
-        activePeer_, {}, attachmentLabel(m.type) + QLatin1Char(' ') + m.attName, m.ts, false);
-    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("file-up"),
-        m.attName, tr("Sending…"), activePeer_);
-    return m;
+    return replyTo;
 }
 
 void SessionController::sendFile(const QString& fileUrl)
 {
     const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (localPath.isEmpty()) {
+    if (localPath.isEmpty() || activePeer_.isEmpty()) {
         return;
     }
-    const QFileInfo info(localPath);
-    const StoredMessage m = beginAttachmentSend(QStringLiteral("file"), info.fileName(),
-        info.size(), QMimeDatabase().mimeTypeForFile(info).name(), localPath);
-    if (m.id == 0) {
-        return;
-    }
-    emit commands_.requestSendFile(activePeer_, m.attSrcPath, m.id, m.e2eId, m.replyTo);
+    unblockBeforeWriting(activePeer_);
+    emit commands_.sendFile(activePeer_, localPath, takeReply(), newE2eId());
 }
 
 void SessionController::sendPictureFile(const QString& fileUrl)
@@ -1304,19 +1110,14 @@ void SessionController::sendShot(QObject* const shot)
 
 void SessionController::sendPreparedPicture(const PreparedPicture& picture)
 {
-    const StoredMessage m = beginAttachmentSend(QStringLiteral("image"), picture.name,
-        picture.bytes.size(), picture.mime, QString());
-    if (m.id == 0) {
+    if (activePeer_.isEmpty()) {
         return;
     }
-    pictureOwners_.insert(m.e2eId, m.id);
-    const bool drawable = PictureStore::instance().put(m.e2eId, picture.bytes);
-    if (!store_.setHasPicture(m.id, drawable)) {
-        reportUnsaved();
-    }
-    conversation_.setPictureReadyForId(m.id, drawable);
-    emit commands_.requestSendPicture(
-        activePeer_, picture.bytes, picture.name, picture.mime, m.id, m.e2eId, m.replyTo);
+    unblockBeforeWriting(activePeer_);
+    const QString e2eId = newE2eId();
+    PictureStore::instance().put(e2eId, picture.bytes);
+    emit commands_.sendPicture(
+        activePeer_, picture.bytes, picture.name, picture.mime, takeReply(), e2eId);
 }
 
 void SessionController::sendCallback(
@@ -1424,15 +1225,7 @@ void SessionController::commitEdit(const QString& newText)
     }
     const QString trimmed = newText.trimmed();
     if (!trimmed.isEmpty() && trimmed != editingText_) {
-        if (!store_.editContent(editingLocalId_, trimmed, {})) {
-            reportUnsaved();
-            cancelEdit();
-            return;
-        }
-        conversation_.editById(editingLocalId_, trimmed, {});
-        contacts_.touch(activePeer_, {}, trimmed, nowMillis(), false);
-        restartDelivery(editingLocalId_);
-        emit commands_.requestSendEdit(activePeer_, editingE2eId_, editingLocalId_, trimmed);
+        emit commands_.editMessage(activePeer_, editingLocalId_, editingE2eId_, trimmed);
     }
     cancelEdit();
 }
@@ -1454,20 +1247,7 @@ void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool
     if (activePeer_.isEmpty() || localId == 0) {
         return;
     }
-    if (!store_.removeById(localId)) {
-        reportUnsaved();
-        return;
-    }
-    if (!e2eId.isEmpty()) {
-        emit commands_.requestUnsend(e2eId);
-    }
-    conversation_.removeById(localId);
-    statusById_.remove(localId);
-    contacts_.touch(activePeer_, {}, chatPreview(activePeer_), store_.lastTime(activePeer_),
-        false);
-    if (outgoing && !e2eId.isEmpty()) {
-        emit commands_.requestSendDelete(activePeer_, e2eId);
-    }
+    emit commands_.deleteMessage(activePeer_, localId, e2eId, outgoing);
 }
 
 void SessionController::keepThisDeviceAddress()
@@ -1617,36 +1397,18 @@ void SessionController::pinChat(const QString& peer, bool pinned)
 void SessionController::beginOperation(const QString& id, const QString& kind, const QString& title,
     const QString& status, const QString& peer, const QString& cancelId)
 {
-    OperationRow row;
-    row.id = id;
-    row.kind = kind;
-    row.title = title;
-    row.status = status;
-    row.state = eOpRunning;
-    row.startedAt = nowMillis();
-    row.peer = peer;
-    row.cancelId = cancelId;
-    operations_.upsert(row);
-    emit operationsChanged();
+    emit commands_.opBegin(id, kind, title, status, peer, cancelId);
 }
 
 void SessionController::updateOperation(
     const QString& id, const QString& status, const QString& detail, double progress)
 {
-    operations_.update(id, status, detail, progress, eOpRunning);
+    emit commands_.opUpdate(id, status, detail, progress);
 }
 
 void SessionController::finishOperation(const QString& id, bool ok, const QString& finalStatus)
 {
-    if (operations_.indexOf(id) < 0) {
-        return;
-    }
-    operations_.update(id, finalStatus, {}, -1.0, ok ? eOpDone : eOpFailed);
-    emit operationsChanged();
-    QTimer::singleShot(ok ? 3500 : 6000, this, [this, id]() {
-        operations_.remove(id);
-        emit operationsChanged();
-    });
+    emit commands_.opFinish(id, ok, finalStatus);
 }
 
 void SessionController::generatePersonalKey()
@@ -1783,108 +1545,8 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     if (e2eId.isEmpty() || toPeer.isEmpty()) {
         return;
     }
-    const StoredMessage source = store_.messageByE2e(e2eId, activePeer_);
-    if (source.id == 0) {
-        return;
-    }
     unblockBeforeWriting(toPeer);
-    StoredMessage m;
-    m.peer = toPeer;
-    m.outgoing = true;
-    m.type = source.type;
-    m.e2eId = newE2eId();
-    m.text = source.text;
-    m.forwarded = true;
-    m.ts = nowMillis();
-    m.orderKey = m.ts;
-    m.status = DeliveryStatus::Preparing;
-
-    if (source.type == QStringLiteral("audio")) {
-        const QByteArray audio = store_.media(QStringLiteral("voice:") + source.e2eId);
-        if (audio.isEmpty()) {
-            emit actionFailed(tr("this voice message is no longer on this device"));
-            return;
-        }
-        m.attMime = source.attMime;
-        m.attSize = audio.size();
-        m.attDurationMs = source.attDurationMs;
-        m.attWave = source.attWave;
-        m.id = store_.append(m);
-        if (m.id == 0) {
-            reportUnsaved();
-            return;
-        }
-        forwardShown(m, toPeer, tr("[voice]"));
-        emit commands_.requestSendVoice(
-            toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
-        return;
-    }
-    if (source.type == QStringLiteral("text")) {
-        m.id = store_.append(m);
-        if (m.id == 0) {
-            reportUnsaved();
-            return;
-        }
-        forwardShown(m, toPeer, m.text);
-        emit commands_.requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
-        return;
-    }
-    m.attName = source.attName;
-    m.attMime = source.attMime;
-    m.attSize = source.attSize;
-    if (source.type == QStringLiteral("image")) {
-        QByteArray picture = store_.media(QStringLiteral("picture:") + source.e2eId);
-        if (picture.isEmpty() && !source.savedPath.isEmpty()) {
-            QFile saved(source.savedPath);
-            if (saved.open(QIODevice::ReadOnly)) {
-                picture = saved.readAll();
-            }
-        }
-        if (picture.isEmpty()) {
-            emit actionFailed(tr("save this to your device first, then it can be forwarded"));
-            return;
-        }
-        m.id = store_.append(m);
-        if (m.id == 0) {
-            reportUnsaved();
-            return;
-        }
-        forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[image]") : m.attName);
-        emit commands_.requestSendPicture(
-            toPeer, picture, m.attName, m.attMime, m.id, m.e2eId, QString(), true);
-        return;
-    }
-    const QString path = source.savedPath;
-    if (path.isEmpty() || !QFileInfo::exists(path)) {
-        emit actionFailed(tr("save this to your device first, then it can be forwarded"));
-        return;
-    }
-    m.attSrcPath = path;
-    m.id = store_.append(m);
-    if (m.id == 0) {
-        reportUnsaved();
-        return;
-    }
-    forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[file]") : m.attName);
-    emit commands_.requestSendFile(toPeer, path, m.id, m.e2eId, QString(), true);
-}
-
-void SessionController::forwardShown(
-    const StoredMessage& m, const QString& toPeer, const QString& preview)
-{
-    statusById_[m.id] = DeliveryStatus::Preparing;
-    if (toPeer == activePeer_) {
-        showInActiveView(m, true);
-    }
-    const bool saved = isSavedChat(toPeer);
-    if (saved) {
-        savedSends_.insert(m.id);
-    }
-    contacts_.touch(toPeer, saved ? savedChatName() : peerName(toPeer), preview, m.ts, false);
-    if (!saved) {
-        beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-            tr("To %1").arg(peerName(toPeer)), tr("Forwarding…"), toPeer);
-    }
+    emit commands_.forwardMessage(activePeer_, e2eId, toPeer, newE2eId());
 }
 
 void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
@@ -2175,137 +1837,37 @@ void SessionController::onApprovalState(const bool pending, const QString& note)
     emit approvalChanged();
 }
 
-void SessionController::restartDelivery(qint64 localId)
-{
-    statusById_[localId] = DeliveryStatus::Preparing;
-    if (!store_.updateStatus(localId, DeliveryStatus::Preparing)) {
-        reportUnsaved();
-    }
-    conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
-    conversation_.setErrorForId(localId, {});
-}
-
-void SessionController::bumpStatus(qint64 localId, int status)
-{
-    const int current = statusById_.value(localId, DeliveryStatus::Preparing);
-    if (status != DeliveryStatus::Failed && status <= current) {
-        return;
-    }
-    statusById_[localId] = status;
-    if (!store_.updateStatus(localId, status)) {
-        reportUnsaved();
-    }
-    conversation_.setStatusForId(localId, status);
-}
-
-void SessionController::onSendProgress(qint64 localId, int state)
-{
-    if (state == DeliveryStatus::AtRecipientServer && savedSends_.contains(localId)) {
-        bumpStatus(localId, DeliveryStatus::Delivered);
-        finishOperation(QStringLiteral("send:") + QString::number(localId), true, tr("Saved"));
-        return;
-    }
-    bumpStatus(localId, state);
-    if (state == DeliveryStatus::AtRecipientServer) {
-        finishOperation(QStringLiteral("send:") + QString::number(localId), true,
-            tr("Handed to the recipient's server"));
-    }
-}
-
-void SessionController::onSendResult(qint64 localId, bool ok, const QString& error)
-{
-    if (ok) {
-        conversation_.setErrorForId(localId, {});
-        if (savedSends_.remove(localId)) {
-            bumpStatus(localId, DeliveryStatus::Delivered);
-        }
-        return;
-    }
-    savedSends_.remove(localId);
-    bumpStatus(localId, DeliveryStatus::Failed);
-    conversation_.setErrorForId(localId, error);
-    finishOperation(QStringLiteral("send:") + QString::number(localId), false,
-        tr("Failed: %1").arg(error));
-}
-
-void SessionController::onSendPhase(qint64 localId, const QString& phase)
-{
-    const QString human = humanDeliveryPhase(phase);
-    updateOperation(QStringLiteral("send:") + QString::number(localId), human);
-    if (isRetryPhase(phase)) {
-        conversation_.setErrorForId(localId, human);
-    }
-}
-
 void SessionController::resendText(qint64 localId, const QString& text, const QString& e2eId)
 {
-    if (activePeer_.isEmpty() || text.isEmpty()) {
-        return;
+    Q_UNUSED(text);
+    Q_UNUSED(e2eId);
+    if (!activePeer_.isEmpty()) {
+        emit commands_.resend(activePeer_, localId);
     }
-    restartDelivery(localId);
-    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
-    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
-        tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
-        activePeer_);
-    emit commands_.requestSendText(
-        activePeer_, text, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendFile(qint64 localId, const QString& e2eId)
 {
-    if (activePeer_.isEmpty()) {
-        return;
+    Q_UNUSED(e2eId);
+    if (!activePeer_.isEmpty()) {
+        emit commands_.resend(activePeer_, localId);
     }
-    const QString srcPath = store_.sourcePathFor(localId);
-    if (srcPath.isEmpty() || !QFileInfo::exists(srcPath)) {
-        emit resendFilePickRequested();
-        return;
-    }
-    restartDelivery(localId);
-    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
-    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
-        stored.attName.isEmpty() ? tr("file") : stored.attName,
-        tr("Sending again…"), activePeer_);
-    emit commands_.requestSendFile(
-        activePeer_, srcPath, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendVoice(qint64 localId, const QString& e2eId)
 {
-    if (activePeer_.isEmpty()) {
-        return;
+    Q_UNUSED(e2eId);
+    if (!activePeer_.isEmpty()) {
+        emit commands_.resend(activePeer_, localId);
     }
-    const QByteArray audio = store_.media(QStringLiteral("voice:") + e2eId);
-    if (audio.isEmpty()) {
-        emit actionFailed(tr("this voice message is no longer on this device"));
-        return;
-    }
-    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
-    restartDelivery(localId);
-    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("send"),
-        tr("To %1").arg(peerName(activePeer_)), tr("Sending again…"),
-        activePeer_);
-    emit commands_.requestSendVoice(
-        activePeer_, audio, stored.attDurationMs, localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::resendPicture(qint64 localId, const QString& e2eId)
 {
-    if (activePeer_.isEmpty()) {
-        return;
+    Q_UNUSED(e2eId);
+    if (!activePeer_.isEmpty()) {
+        emit commands_.resend(activePeer_, localId);
     }
-    const QByteArray picture = store_.media(QStringLiteral("picture:") + e2eId);
-    if (picture.isEmpty()) {
-        emit actionFailed(tr("this picture is no longer on this device"));
-        return;
-    }
-    const StoredMessage stored = store_.messageByE2e(e2eId, activePeer_);
-    restartDelivery(localId);
-    beginOperation(QStringLiteral("send:") + QString::number(localId), QStringLiteral("file-up"),
-        stored.attName.isEmpty() ? tr("image") : stored.attName,
-        tr("Sending again…"), activePeer_);
-    emit commands_.requestSendPicture(activePeer_, picture, stored.attName, stored.attMime,
-        localId, e2eId, stored.replyTo, stored.forwarded);
 }
 
 void SessionController::reportUnsaved()
@@ -2327,15 +1889,5 @@ void SessionController::markReadThroughRow(int row)
     emit commands_.markRead(activePeer_, id, e2eId, sentAt);
 }
 
-void SessionController::onOpBegin(
-    const QString& opId, const QString& kind, const QString& title, const QString& status)
-{
-    beginOperation(opId, kind, title, status);
-}
-
-void SessionController::onOpDone(const QString& opId, bool ok, const QString& status)
-{
-    finishOperation(opId, ok, status);
-}
 
 }  // namespace bazarish::app

@@ -237,37 +237,9 @@ void SessionController::sendVoiceTake()
     stopVoiceTake();
     const QByteArray audio = voiceTake_;
     const qint64 durationMs = voiceTakeMs_;
-    const QString replyTo = replying_ ? replyingE2eId_ : QString();
-    StoredMessage m;
-    m.peer = activePeer_;
-    m.outgoing = true;
-    m.type = "audio";
-    m.e2eId = newE2eId();
-    m.replyTo = replyTo;
-    m.attMime = QStringLiteral("audio/opus");
-    m.attSize = audio.size();
-    m.attDurationMs = durationMs;
-    m.attWave = voiceTakeWave_;
-    m.ts = nowMillis();
-    m.orderKey = m.ts;
-    m.status = isSavedChat(activePeer_) ? DeliveryStatus::Delivering
-                                        : DeliveryStatus::Preparing;
-    m.id = store_.append(m);
-    if (m.id == 0) {
-        reportUnsaved();
-        return;
-    }
+    const QString wave = voiceTakeWave_;
     discardVoiceTake();
-    if (replying_) {
-        cancelReply();
-    }
-    statusById_[m.id] = m.status;
-    showInActiveView(m, true);
-    contacts_.touch(activePeer_, peerName(activePeer_), tr("[voice]"), m.ts, true);
-    beginOperation(QStringLiteral("send:") + QString::number(m.id), QStringLiteral("send"),
-        tr("To %1").arg(peerName(activePeer_)), tr("Sending…"), activePeer_);
-
-    emit commands_.requestSendVoice(activePeer_, audio, durationMs, m.id, m.e2eId, replyTo);
+    emit commands_.sendVoice(activePeer_, audio, durationMs, wave, takeReply(), newE2eId());
 }
 
 void SessionController::cancelVoiceRecording()

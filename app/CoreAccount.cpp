@@ -2,6 +2,7 @@
 #include "CoreAccount.hpp"
 
 #include "DeliveryStatus.hpp"
+#include "OperationLog.hpp"
 #include "SessionShared.hpp"
 #include "SessionWorker.hpp"
 #include "SystemNotes.hpp"
@@ -12,6 +13,7 @@
 #include <QJsonDocument>
 #include <QMetaMethod>
 
+#include <cstring>
 #include <exception>
 #include <utility>
 
@@ -26,6 +28,46 @@ const int kContactStateMetaType
     = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
 
 constexpr int kReadSyncIdleMs = 4000;
+constexpr int kCommandTickMs = 200;
+constexpr qint64 kCommandVisibleAfterMs = 400;
+
+QString commandTitle(const QByteArray& signalName)
+{
+    static const QHash<QByteArray, const char*> kNamed = {
+        {"requestSendReceipt", QT_TR_NOOP("Confirming a message was read")},
+        {"requestAckPending", QT_TR_NOOP("Clearing a message from the mailbox")},
+        {"requestSendReaction", QT_TR_NOOP("Sending a reaction")},
+        {"requestSendEdit", QT_TR_NOOP("Sending an edit")},
+        {"requestSendDelete", QT_TR_NOOP("Deleting a message for both sides")},
+        {"requestUnsend", QT_TR_NOOP("Withdrawing a file")},
+        {"requestAcceptContact", QT_TR_NOOP("Agreeing to a contact request")},
+        {"requestEmitSettings", QT_TR_NOOP("Telling your other devices")},
+        {"requestSyncRead", QT_TR_NOOP("Marking a chat read")},
+        {"requestSyncChatPin", QT_TR_NOOP("Pinning a chat")},
+        {"requestSyncChatClear", QT_TR_NOOP("Clearing a chat")},
+        {"requestClearChatForEveryone", QT_TR_NOOP("Clearing a chat for both sides")},
+        {"requestContactsFromDevices", QT_TR_NOOP("Asking your other devices")},
+        {"requestSetSync", QT_TR_NOOP("Going online")},
+        {"requestRebuildI2p", QT_TR_NOOP("Rebuilding the I2P destinations")},
+        {"requestInviteSig", QT_TR_NOOP("Preparing your invite")},
+        {"requestSignLoginSig", QT_TR_NOOP("Signing in")},
+    };
+    if (const auto found = kNamed.constFind(signalName); found != kNamed.cend()) {
+        return CoreAccount::tr(found.value());
+    }
+    QString words;
+    for (int at = static_cast<int>(strlen("request")); at < signalName.size(); ++at) {
+        const char letter = signalName.at(at);
+        if (letter >= 'A' && letter <= 'Z' && !words.isEmpty()) {
+            words += QLatin1Char(' ');
+            words += QLatin1Char(letter - 'A' + 'a');
+            continue;
+        }
+        words += QLatin1Char(letter);
+    }
+    return words;
+}
+
 constexpr int kReactionsToFlash = 64;
 
 }  // namespace
@@ -185,10 +227,10 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::contactsRefreshed, &events_,
         &AccountEvents::contactsRefreshed);
     connect(worker_, &SessionWorker::avatarReady, &events_, &AccountEvents::avatarReady);
-    connect(worker_, &SessionWorker::sendProgress, &events_, &AccountEvents::sendProgress);
+    connect(worker_, &SessionWorker::sendProgress, this, &CoreAccount::onSendProgress);
     connect(worker_, &SessionWorker::uploadProgress, &events_, &AccountEvents::uploadProgress);
-    connect(worker_, &SessionWorker::sendResult, &events_, &AccountEvents::sendResult);
-    connect(worker_, &SessionWorker::sendPhase, &events_, &AccountEvents::sendPhase);
+    connect(worker_, &SessionWorker::sendResult, this, &CoreAccount::onSendResult);
+    connect(worker_, &SessionWorker::sendPhase, this, &CoreAccount::onSendPhase);
     connect(worker_, &SessionWorker::contactRequestSent, &events_,
         &AccountEvents::contactRequestSent);
     connect(worker_, &SessionWorker::contactAddStage, &events_, &AccountEvents::contactAddStage);
@@ -207,16 +249,22 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(worker_, &SessionWorker::contactAddRateLimited, &events_,
         &AccountEvents::contactAddRateLimited);
     connect(worker_, &SessionWorker::contactAccepted, &events_, &AccountEvents::contactAccepted);
-    connect(worker_, &SessionWorker::opBegin, &events_, &AccountEvents::opBegin);
-    connect(worker_, &SessionWorker::opDone, &events_, &AccountEvents::opDone);
-    connect(worker_, &SessionWorker::opProgress, &events_, &AccountEvents::opProgress);
+    connect(worker_, &SessionWorker::opBegin, &log_,
+        [this](const QString& id, const QString& kind, const QString& title,
+            const QString& status) { log_.begin(id, kind, title, status); });
+    connect(worker_, &SessionWorker::opDone, &log_, &OperationLog::finish);
+    connect(worker_, &SessionWorker::opProgress, &log_,
+        [this](const QString& id, const QString& status) { log_.update(id, status); });
     connect(worker_, &SessionWorker::syncReachable, &events_, &AccountEvents::syncReachable);
     connect(worker_, &SessionWorker::approvalState, &events_, &AccountEvents::approvalState);
     connect(worker_, &SessionWorker::devicesReady, &events_, &AccountEvents::devicesReady);
     connect(worker_, &SessionWorker::accountClosed, &events_, &AccountEvents::accountClosed);
     connect(worker_, &SessionWorker::facadeInfo, &events_, &AccountEvents::facadeInfo);
     connect(worker_, &SessionWorker::actionOk, &events_, &AccountEvents::actionOk);
-    connect(worker_, &SessionWorker::botActionDone, &events_, &AccountEvents::botActionDone);
+    connect(worker_, &SessionWorker::botActionDone, &log_,
+        [this](const QString& id, const bool ok, const QString& error) {
+            log_.finish(id, ok, ok ? tr("Sent") : error);
+        });
     connect(worker_, &SessionWorker::actionFailed, &events_, &AccountEvents::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, &events_, &AccountEvents::inviteReady);
     connect(worker_, &SessionWorker::inviteUnavailable, &events_,
@@ -232,7 +280,7 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
         &AccountEvents::storageUsageReady);
     connect(worker_, &SessionWorker::callStateChanged, &events_, &AccountEvents::callStateChanged);
     connect(worker_, &SessionWorker::callLogged, &events_, &AccountEvents::callLogged);
-    connect(worker_, &SessionWorker::commandFinished, &events_, &AccountEvents::commandFinished);
+    connect(worker_, &SessionWorker::commandFinished, this, &CoreAccount::onCommandFinished);
     connect(worker_, &SessionWorker::loginSignerReady, this,
         [this](std::shared_ptr<bazarish::client::LoginSigner> signer) {
             loginSigner_ = std::move(signer);
@@ -260,6 +308,7 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
     connect(&ingest_, &MessageIngest::peerForgotten, &events_, &AccountEvents::peerForgotten);
     connect(&ingest_, &MessageIngest::chatChanged, &events_, &AccountEvents::chatChanged);
     connect(&ingest_, &MessageIngest::chatsChanged, &events_, &AccountEvents::chatsChanged);
+    connect(&ingest_, &MessageIngest::deliveredThrough, this, &CoreAccount::noteDeliveredThrough);
     connect(&ingest_, &MessageIngest::deliveredThrough, &events_,
         &AccountEvents::deliveredThrough);
     connect(&ingest_, &MessageIngest::reactionsChanged, &events_,
@@ -294,16 +343,36 @@ CoreAccount::CoreAccount(AccountCommands& commands, AccountEvents& events, QObje
             }
         });
 
+    connect(&log_, &OperationLog::changed, &events_, &AccountEvents::opChanged);
+    connect(&log_, &OperationLog::removed, &events_, &AccountEvents::opRemoved);
+    connect(&commands_, &AccountCommands::sendText, this, &CoreAccount::sendText);
+    connect(&commands_, &AccountCommands::sendFile, this, &CoreAccount::sendFile);
+    connect(&commands_, &AccountCommands::sendPicture, this, &CoreAccount::sendPicture);
+    connect(&commands_, &AccountCommands::sendVoice, this, &CoreAccount::sendVoice);
+    connect(&commands_, &AccountCommands::forwardMessage, this, &CoreAccount::forwardMessage);
+    connect(&commands_, &AccountCommands::resend, this, &CoreAccount::resend);
+    connect(&commands_, &AccountCommands::editMessage, this, &CoreAccount::editMessage);
+    connect(&commands_, &AccountCommands::deleteMessage, this, &CoreAccount::deleteMessage);
+    connect(&commands_, &AccountCommands::opBegin, &log_, &OperationLog::begin);
+    connect(&commands_, &AccountCommands::opUpdate, &log_, &OperationLog::update);
+    connect(&commands_, &AccountCommands::opSetCancelId, &log_, &OperationLog::setCancelId);
+    connect(&commands_, &AccountCommands::opFinish, &log_, &OperationLog::finish);
+    commandTimer_.setInterval(kCommandTickMs);
+    connect(&commandTimer_, &QTimer::timeout, this, &CoreAccount::showSlowCommands);
+
     readSyncTimer_.setSingleShot(true);
     connect(&readSyncTimer_, &QTimer::timeout, this, &CoreAccount::flushReadSync);
     connect(&thread_, &QThread::finished, &events_, &AccountEvents::closed);
 
     const QMetaObject& meta = AccountCommands::staticMetaObject;
+    const QMetaMethod noted
+        = metaObject()->method(metaObject()->indexOfSlot("noteCommandQueued()"));
     const QMetaMethod done = SessionWorker::staticMetaObject.method(
         SessionWorker::staticMetaObject.indexOfSlot("noteCommandDone()"));
     for (int i = meta.methodOffset(); i < meta.methodCount(); ++i) {
         const QMetaMethod method = meta.method(i);
         if (listedWhileQueued(method)) {
+            connect(&commands_, method, this, noted);
             connect(&commands_, method, worker_, done);
         }
     }
@@ -487,6 +556,55 @@ void CoreAccount::signLogin(const QString& challenge)
     }
     QMetaObject::invokeMethod(
         this, [this, blob]() { emit events_.loginSigned(blob); }, Qt::QueuedConnection);
+}
+
+void CoreAccount::noteCommandQueued()
+{
+    const QMetaMethod signal = AccountCommands::staticMetaObject.method(senderSignalIndex());
+    QueuedCommand command;
+    command.id = QStringLiteral("cmd:") + QString::number(++commandSeq_);
+    command.title = commandTitle(signal.name());
+    command.queuedAtMs = nowMillis();
+    commandQueue_.append(command);
+    if (!commandTimer_.isActive()) {
+        commandTimer_.start();
+    }
+}
+
+void CoreAccount::showSlowCommands()
+{
+    if (commandQueue_.isEmpty()) {
+        commandTimer_.stop();
+        return;
+    }
+    const qint64 now = nowMillis();
+    for (int at = 0; at < commandQueue_.size(); ++at) {
+        QueuedCommand& command = commandQueue_[at];
+        if (now - command.queuedAtMs < kCommandVisibleAfterMs) {
+            continue;
+        }
+        const QString status = at == 0 ? tr("Working on it…") : tr("Waiting its turn…");
+        if (!command.shown) {
+            command.shown = true;
+            log_.begin(command.id, QStringLiteral("command"), command.title, status);
+            continue;
+        }
+        log_.update(command.id, status);
+    }
+}
+
+void CoreAccount::onCommandFinished()
+{
+    if (commandQueue_.isEmpty()) {
+        return;
+    }
+    const QueuedCommand command = commandQueue_.takeFirst();
+    if (command.shown) {
+        log_.finish(command.id, true, tr("Done"));
+    }
+    if (commandQueue_.isEmpty()) {
+        commandTimer_.stop();
+    }
 }
 
 }  // namespace bazarish::app

@@ -100,9 +100,7 @@ void SessionController::onDeliveredThrough(const QString& peer, const qint64 upt
     if (peer != activePeer_) {
         return;
     }
-    for (const qint64 id : conversation_.markDeliveredThrough(uptoId)) {
-        statusById_[id] = DeliveryStatus::Delivered;
-    }
+    conversation_.markDeliveredThrough(uptoId);
 }
 
 void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)

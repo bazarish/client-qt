@@ -108,7 +108,7 @@ void SessionController::onTransferStage(
         beginOperation(opId, m.outgoing ? QStringLiteral("file-up") : QStringLiteral("file-down"),
             m.attName.isEmpty() ? tr("file") : m.attName, stage, peer, e2eId);
     } else {
-        operations_.setCancelId(opId, e2eId);
+        emit commands_.opSetCancelId(opId, e2eId);
     }
     if (peer == activePeer_) {
         conversation_.setTransferStageForId(m.id, stage);

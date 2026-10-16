@@ -550,7 +550,6 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
         reportUnsaved();
         return;
     }
-    statusById_[m.id] = m.status;
     contacts_.touch(fingerprint, {}, body, m.ts, false);
     if (activePeer_ == fingerprint) {
         showInActiveView(m, true);

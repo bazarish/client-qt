@@ -38,6 +38,26 @@ signals:
     void viewConversation(const QString& peer);
     void markRead(const QString& peer, qint64 id, const QString& e2eId, qint64 sentAtMs);
     void forgetReactionFlash(const QString& peer);
+    void sendText(
+        const QString& peer, const QString& text, const QString& replyTo, const QString& e2eId);
+    void sendFile(
+        const QString& peer, const QString& path, const QString& replyTo, const QString& e2eId);
+    void sendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
+        const QString& mime, const QString& replyTo, const QString& e2eId);
+    void sendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
+        const QString& wave, const QString& replyTo, const QString& e2eId);
+    void forwardMessage(const QString& fromPeer, const QString& e2eId, const QString& toPeer,
+        const QString& newE2eId);
+    void resend(const QString& peer, qint64 localId);
+    void editMessage(
+        const QString& peer, qint64 localId, const QString& e2eId, const QString& text);
+    void deleteMessage(const QString& peer, qint64 localId, const QString& e2eId, bool outgoing);
+    void opBegin(const QString& id, const QString& kind, const QString& title,
+        const QString& status, const QString& peer, const QString& cancelId);
+    void opUpdate(const QString& id, const QString& status, const QString& detail,
+        double progress);
+    void opSetCancelId(const QString& id, const QString& cancelId);
+    void opFinish(const QString& id, bool ok, const QString& status);
     void requestPublishThisDeviceAddress();
     void requestPublishFreshAddress();
     void requestConnect(const QStringList& facadeUrls, const QString& serverFp,

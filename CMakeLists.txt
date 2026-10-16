@@ -77,8 +77,11 @@ if(Qt6_FOUND)
         app/ContactBook.hpp
         app/CoreAccount.cpp
         app/CoreAccount.hpp
+        app/CoreSending.cpp
         app/MessageIngest.cpp
         app/MessageIngest.hpp
+        app/OperationLog.cpp
+        app/OperationLog.hpp
         app/SessionController.cpp
         app/SessionController.hpp
         app/SessionWorker.cpp

@@ -449,8 +449,6 @@ signals:
     void aliasChanged();
 
 private slots:
-    void noteCommandQueued();
-    void onCommandFinished();
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected);
     void onConnectionChanged(bool connected, const QString& connectionNote);
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
@@ -478,10 +476,6 @@ private slots:
     void onContactAddRateLimited(
         const QString& opId, const QString& fingerprint, const QString& requestId);
     void onContactAccepted(const QString& peer, bool ok, const QString& reason);
-    void onOpBegin(const QString& opId, const QString& kind, const QString& title,
-        const QString& status);
-    void onOpDone(const QString& opId, bool ok, const QString& status);
-    void onSendProgress(qint64 localId, int state);
     void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
     void onDownloadProgress(qint64 token, qint64 received, qint64 total);
     void onServedProgress(const QString& peer, const QString& e2eId, qint64 sent,
@@ -493,8 +487,6 @@ private slots:
     void onPairOfferReady(const QString& uri, const QString& code);
     void onPairStage(const QString& status, double progress);
     void onPairFinished(bool ok, const QString& status);
-    void onSendResult(qint64 localId, bool ok, const QString& error);
-    void onSendPhase(qint64 localId, const QString& phase);
     void onContactRequestSent(const QString& fingerprint, const QString& intro,
         const QString& requestId, qint64 sentAtMs);
     void onSyncReachable(bool ok);
@@ -523,16 +515,6 @@ private:
     ContactListModel contacts_;
     QSortFilterProxyModel contactsProxy_;
     ConversationModel conversation_;
-    struct QueuedCommand {
-        QString id;
-        QString title;
-        qint64 queuedAtMs = 0;
-        bool shown = false;
-    };
-    QList<QueuedCommand> commandQueue_;
-    qint64 commandSeq_ = 0;
-    QTimer commandTimer_;
-    void showSlowCommands();
     OperationListModel operations_;
     void beginOperation(const QString& id, const QString& kind, const QString& title,
         const QString& status, const QString& peer = {},
@@ -583,11 +565,7 @@ private:
     QStringList reactionsToFlash_;
     int contactsRevision_ = 0;
     int reactionsRevision_ = 0;
-    QHash<qint64, int> statusById_;
-    void bumpStatus(qint64 localId, int status);
-    void restartDelivery(qint64 localId);
-    StoredMessage beginAttachmentSend(const QString& type, const QString& name, qint64 size,
-        const QString& mime, const QString& srcPath);
+    QString takeReply();
     void sendPreparedPicture(const PreparedPicture& picture);
     void setAvatarBusy(bool busy);
     qint64 oldestLoadedId_ = 0;
@@ -698,7 +676,6 @@ private:
     QString callPeer_;
     QString callId_;
     QString refusedCallId_;
-    QSet<qint64> savedSends_;
     bool shuttingDown_ = false;
     QString callOpId_;
     bool callMuted_ = false;
@@ -706,7 +683,6 @@ private:
     bool callEndedLocally_ = false;
     void rebuildChatList();
     int unreadTotal_ = 0;
-    void forwardShown(const StoredMessage& m, const QString& toPeer, const QString& preview);
     void refreshUnreadTotal();
 };
 

@@ -25,18 +25,28 @@ struct ContactState {
     Request request = eAnswered;
 };
 
+struct OperationRow {
+    QString id;
+    QString kind;
+    QString title;
+    QString status;
+    QString detail;
+    double progress = kProgressUnknown;
+    int state = 0;
+    qint64 startedAt = 0;
+    QString peer;
+    QString cancelId;
+};
+
+enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
+
 class AccountEvents : public QObject {
     Q_OBJECT
 public:
     using QObject::QObject;
 
 signals:
-    void commandFinished();
     void addressMismatch(const QString& servedHost, const QString& ourHost);
-    void opBegin(const QString& opId, const QString& kind, const QString& title,
-        const QString& status);
-    void opDone(const QString& opId, bool ok, const QString& status);
-    void opProgress(const QString& opId, const QString& status);
     void pairOfferReady(const QString& uri, const QString& code);
     void pairStage(const QString& status, double progress);
     void pairFinished(bool ok, const QString& status);
@@ -52,9 +62,6 @@ signals:
     void connectProgress(int percent, const QString& phase);
     void contactsRefreshed(const QVector<ContactState>& contacts, const QStringList& blocked);
     void avatarReady(const QString& fingerprint, const QByteArray& data);
-    void sendProgress(qint64 localId, int state);
-    void sendResult(qint64 localId, bool ok, const QString& error);
-    void sendPhase(qint64 localId, const QString& phase);
     void uploadProgress(qint64 localId, qint64 sent, qint64 total);
     void downloadProgress(qint64 token, qint64 received, qint64 total);
     void servedProgress(const QString& peer, const QString& e2eId, qint64 sent, qint64 total);
@@ -63,7 +70,6 @@ signals:
     void downloadFinished(qint64 token, bool ok, const QString& error);
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
-    void botActionDone(const QString& opId, bool ok, const QString& error);
     void contactRequestSent(const QString& fingerprint, const QString& intro,
         const QString& requestId, qint64 sentAtMs);
     void contactAddStage(const QString& opId, const QString& status);
@@ -111,6 +117,10 @@ signals:
     void groupChanged(const QString& peer);
     void accountRenamed(const QString& name);
     void contactsRevised();
+    void opChanged(const OperationRow& row);
+    void opRemoved(const QString& id);
+    void messageError(qint64 localId, const QString& error);
+    void resendFilePickRequested();
 };
 
 }  // namespace bazarish::app

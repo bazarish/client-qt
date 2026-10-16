@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "AccountEvents.hpp"
 #include "TranscriptStore.hpp"
 
 #include <QAbstractListModel>
@@ -161,21 +162,6 @@ public:
 private:
     QVector<AccountRow> accounts_;
 };
-
-struct OperationRow {
-    QString id;
-    QString kind;
-    QString title;
-    QString status;
-    QString detail;
-    double progress = -1.0;
-    int state = 0;
-    qint64 startedAt = 0;
-    QString peer;
-    QString cancelId;
-};
-
-enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
 
 class OperationListModel : public QAbstractListModel {
     Q_OBJECT
