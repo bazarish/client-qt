@@ -209,7 +209,7 @@ ApplicationWindow {
         visible: I2p.restartNeeded
         width: Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 32)
         padding: 18
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.green }
+        background: DialogFrame { }
         onVisibleChanged: if (visible) { App.closeAllSessions() }
         contentItem: ColumnLayout {
             spacing: 12
@@ -261,7 +261,7 @@ ApplicationWindow {
         closePolicy: Popup.CloseOnEscape
         width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 32)
         padding: 18
-        background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.danger; border.width: 2 }
+        background: DialogFrame { }
         contentItem: ColumnLayout {
             spacing: 12
             RowLayout {

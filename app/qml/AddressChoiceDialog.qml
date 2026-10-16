@@ -18,7 +18,7 @@ Dialog {
     modal: true
     closePolicy: Popup.NoAutoClose
     width: Math.min(420, parent ? parent.width - 24 : 420)
-    background: Rectangle { color: Theme.bg; radius: Theme.radius; border.color: Theme.warn }
+    background: DialogFrame { }
     header: Label {
         text: qsTr("Your server serves another address")
         color: Theme.warn

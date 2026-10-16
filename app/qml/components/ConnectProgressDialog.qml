@@ -39,7 +39,7 @@ Dialog {
         }
     }
 
-    background: Rectangle { radius: 14; color: Theme.surface; border.color: Theme.border }
+    background: DialogFrame { }
 
     contentItem: ColumnLayout {
         spacing: 14

@@ -24,12 +24,7 @@ Dialog {
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(460, parent ? parent.width - 24 : 460)
-    background: Rectangle {
-        color: Theme.bg
-        radius: Theme.radius
-        border.color: Theme.warn
-        border.width: 2
-    }
+    background: DialogFrame { }
     header: Label {
         text: qsTr("Leave Bazarish?")
         color: Theme.warn

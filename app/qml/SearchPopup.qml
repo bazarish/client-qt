@@ -18,7 +18,7 @@ Popup {
     height: Math.min(parent ? parent.height * 0.82 : 600, 640)
     padding: 0
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    background: Rectangle { color: Theme.surface; radius: 10; border.color: Theme.border }
+    background: DialogFrame { }
 
     function openSearch() {
         results = []

@@ -2,16 +2,33 @@
 import QtQuick
 import Bazarish
 
-// The frame a dialog or a sheet is drawn in. The one thing that varies is the
-// edge: an account-ending dialog carries the neon one, so it cannot be mistaken
-// for an ordinary question.
+// The frame every dialog and sheet is drawn in: a thin edge, and a black glow beneath so the
+// window lies on a dark patch instead of melting into the screen behind it. An
+// account-ending dialog carries the neon edge, so it cannot be mistaken for an ordinary question.
 Rectangle {
+    id: frame
     property bool destructive: false
+
+    readonly property int kGlowLayers: 10
+    readonly property int kGlowStep: 3
+    readonly property real kGlowOpacity: 0.14
 
     color: Theme.bg
     radius: Theme.radius
-    border.color: destructive ? Theme.neon : Theme.border
-    // A Rectangle draws a one-pixel border by default; the neon edge is doubled
-    // so it reads as a warning rather than as a frame.
-    border.width: destructive ? 2 : 1
+    border.color: frame.destructive ? Theme.neon : Theme.green
+    border.width: 1
+
+    Repeater {
+        model: frame.kGlowLayers
+        Rectangle {
+            required property int index
+            readonly property int spread: (index + 1) * frame.kGlowStep
+            z: -1
+            anchors.fill: parent
+            anchors.margins: -spread
+            radius: frame.radius + spread
+            color: "black"
+            opacity: frame.kGlowOpacity * (frame.kGlowLayers - index) / frame.kGlowLayers
+        }
+    }
 }
