@@ -178,11 +178,15 @@ void AppController::updateRinging()
         ringtone_.stop();
     }
     bool live = false;
+    bool talking = false;
     for (const SessionController* const ctrl : sessions_) {
         live = live || ctrl->callState() != QLatin1String("idle");
+        talking = talking || ctrl->callState() == QLatin1String("active")
+            || ctrl->callState() == QLatin1String("outgoing");
     }
-    if (live != callLive_) {
+    if (live != callLive_ || talking != callTalking_) {
         callLive_ = live;
+        callTalking_ = talking;
         if (!callLive_) {
             setSpeakerOn(false);
         }
@@ -1010,6 +1014,15 @@ void AppController::setSpeakerOn(const bool on)
     AndroidCallAudio::setSpeaker(speakerOn_);
 #endif
     emit speakerOnChanged();
+}
+
+void AppController::requestUnlocked()
+{
+#ifdef Q_OS_ANDROID
+    AndroidShade::dismissKeyguard();
+#else
+    emit unlocked();
+#endif
 }
 
 bool AppController::closeTopPopup(QQuickWindow* const window) const

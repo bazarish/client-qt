@@ -13,6 +13,7 @@ Popup {
     // "declining", "ending", "muting"). Every call button is a request that has
     // to travel to the other side, so it says so instead of looking ignored.
     property string pending: ""
+    property bool leaving: false
     onCallStateChanged: root.pending = ""
     // Emitted when the user collapses the call to MainView's compact banner.
     signal minimizeRequested()
@@ -179,7 +180,17 @@ Popup {
             anchors.right: parent.right
             anchors.margins: 6
             z: 10
-            onClicked: root.minimizeRequested()
+            // Over a locked phone the rest of the app stays behind the lock until it is opened.
+            onClicked: { root.leaving = true; App.requestUnlocked() }
+        }
+        Connections {
+            target: App
+            function onUnlocked() {
+                if (root.leaving) {
+                    root.leaving = false
+                    root.minimizeRequested()
+                }
+            }
         }
 
         // --- Audio (or pre-connect) layout: avatar + status + controls. ---

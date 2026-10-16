@@ -141,6 +141,9 @@ public:
     Q_INVOKABLE bool closeTopPopup(QQuickWindow* window) const;
     Q_PROPERTY(bool callLive READ callLive NOTIFY callLiveChanged)
     bool callLive() const { return callLive_; }
+    // Talking or calling out, as opposed to only ringing.
+    bool callTalking() const { return callTalking_; }
+    Q_INVOKABLE void requestUnlocked();
     Q_PROPERTY(bool speakerOn READ speakerOn WRITE setSpeakerOn NOTIFY speakerOnChanged)
     bool speakerOn() const { return speakerOn_; }
     void setSpeakerOn(bool on);
@@ -164,6 +167,7 @@ signals:
     void portableChanged();
     void backgroundRestrictedChanged();
     void callLiveChanged();
+    void unlocked();
     void speakerOnChanged();
     void restartRequired(const QString& message);
     void accountListChanged();
@@ -241,6 +245,7 @@ private:
     QString ringingAccount_;
     QString ringingPeer_;
     bool callLive_ = false;
+    bool callTalking_ = false;
     bool speakerOn_ = false;
     QString ringingPeerFingerprint_;
     QString ringingAccountName_;
