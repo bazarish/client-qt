@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "Ringtone.hpp"
 
+#include "AppSettings.hpp"
 #include "AudioRoute.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidShade.hpp"
@@ -9,7 +10,6 @@
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
-#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QIODevice>
@@ -24,14 +24,15 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
-#include <utility>
 
 namespace bazarish::app {
 
 namespace {
 
 const char* const kBuiltInTrack = ":/sound/ringtone.wav";
+#ifndef Q_OS_ANDROID
 const char* const kTrackName = "ringtone.wav";
+#endif
 
 constexpr qint64 kMaxTrackBytes = 8 * 1024 * 1024;
 
@@ -152,9 +153,8 @@ private:
     std::size_t position_ = 0;
 };
 
-Ringtone::Ringtone(QString folder, QObject* const parent)
+Ringtone::Ringtone(QObject* const parent)
     : QObject(parent)
-    , folder_(std::move(folder))
 {
 }
 
@@ -209,12 +209,13 @@ bool Ringtone::loadFrom(const QString& path)
 
 bool Ringtone::loadTrack()
 {
-    if (!folder_.isEmpty()) {
-        const QString own = QDir(folder_).filePath(QString::fromLatin1(kTrackName));
-        if (QFileInfo(own).isFile() && loadFrom(own)) {
-            return true;
-        }
+#ifndef Q_OS_ANDROID
+    // Android rings with the packaged sound, so a track of the user's would not be heard.
+    const QString own = QString::fromStdString((appRoot() / kTrackName).string());
+    if (QFileInfo(own).isFile() && loadFrom(own)) {
+        return true;
     }
+#endif
     return loadFrom(QString::fromLatin1(kBuiltInTrack));
 }
 

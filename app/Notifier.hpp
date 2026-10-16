@@ -1,7 +1,9 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#ifndef Q_OS_ANDROID
 #include "NotifySound.hpp"
+#endif
 
 #include <QElapsedTimer>
 #include <QObject>
@@ -22,15 +24,19 @@ signals:
 
 private:
     void announce(const QString& accountId, const QString& peer, const QString& title,
-        const QString& body, bool reaction, NotifySound& sound, QElapsedTimer& since);
-    void noteUnread();
+        const QString& body, bool reaction);
 
     CoreHost& core_;
+#ifndef Q_OS_ANDROID
+    void play(NotifySound& sound, QElapsedTimer& since);
+    void noteUnread();
+
     NotifySound sound_;
     NotifySound reactionSound_;
     QElapsedTimer sinceSound_;
     QElapsedTimer sinceReactionSound_;
     bool announcedWasRead_ = true;
+#endif
 };
 
 }  // namespace bazarish::app

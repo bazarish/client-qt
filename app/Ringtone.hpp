@@ -18,7 +18,7 @@ namespace bazarish::app {
 class Ringtone : public QObject {
     Q_OBJECT
 public:
-    explicit Ringtone(QString folder, QObject* parent = nullptr);
+    explicit Ringtone(QObject* parent = nullptr);
     ~Ringtone() override;
 
     void start();
@@ -34,7 +34,6 @@ private:
     bool loadFrom(const QString& path);
     void publishLevel();
 
-    const QString folder_;
     std::vector<std::int16_t> samples_;
     std::vector<float> envelope_;
     std::size_t frameSamples_ = 0;

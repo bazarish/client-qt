@@ -4,7 +4,8 @@
 
 The client carries three sounds of its own. This document
 states where a recording of the user's own goes instead, what each one has to be,
-and what the ringing call window's pulse is taken from.
+what the ringing call window's pulse is taken from, and how the phone's copies
+differ.
 
 ## The three
 
@@ -38,8 +39,8 @@ popup.
 
 ## Where a replacement goes
 
-At the root of the installation - the directory that holds `accounts/`,
-`settings.json` and the embedded router's state:
+A replacement is a desktop feature. It goes at the root of the installation - the
+directory that holds `accounts/`, `settings.json` and the embedded router's state:
 
 | Where the client runs | Root |
 |---|---|
@@ -58,6 +59,16 @@ used without restarting and taking it away brings the carried one back.
 The two call-progress tones - ringback while a call is being placed, and a
 short burst when it fails - are synthesised at 425 Hz (ITU-T E.180) rather than
 carried as files, so there is nothing to replace them with.
+
+## On Android
+
+The phone plays copies kept in `packaging/android/source/res/raw/`, not the files
+in `app/sound/`. The message sound is raised by
+9.0 dB and the ringtone by 8.2 dB, so both peak at **-1 dBTP**: that is how loud
+Android's own sounds are mastered (on a Pixel 8 the median of its 75
+notification sounds is -15.2 LUFS at -0.7 dBTP), and the desktop recordings sit
+9 dB below it. The reaction sound takes the message sound's gain and stays 11 dB
+under it. The desktop recordings keep their level.
 
 ## What the ringtone has to be
 

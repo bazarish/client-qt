@@ -5,39 +5,56 @@
 
 namespace bazarish::app {
 
+#ifndef Q_OS_ANDROID
 namespace {
 
 constexpr int kSoundSpacingNumerator = 3;
 constexpr int kSoundSpacingDenominator = 2;
 constexpr int kAssumedSoundMs = 1000;
-#ifdef Q_OS_ANDROID
-// The notification channel sounds there, under the phone's own silent and do-not-disturb rules.
-constexpr bool kPlaysOwnSound = false;
-#else
-constexpr bool kPlaysOwnSound = true;
-#endif
 
 }  // namespace
+#endif
 
 Notifier::Notifier(CoreHost& core, QObject* const parent)
     : QObject(parent)
     , core_(core)
+#ifndef Q_OS_ANDROID
     , sound_(CoreHost::soundFolder(), QStringLiteral("notify.wav"))
     , reactionSound_(CoreHost::soundFolder(), QStringLiteral("reaction.wav"))
+#endif
 {
-    connect(&core_, &CoreHost::accountsChanged, this, &Notifier::noteUnread);
     connect(&core_, &CoreHost::notificationRequested, this,
         [this](const QString& accountId, const QString& peer, const QString& title,
-            const QString& body) {
-            announce(accountId, peer, title, body, false, sound_, sinceSound_);
-        });
+            const QString& body) { announce(accountId, peer, title, body, false); });
     connect(&core_, &CoreHost::reactionNotificationRequested, this,
         [this](const QString& accountId, const QString& peer, const QString& title,
-            const QString& body) {
-            announce(accountId, peer, title, body, true, reactionSound_, sinceReactionSound_);
-        });
+            const QString& body) { announce(accountId, peer, title, body, true); });
+#ifndef Q_OS_ANDROID
+    connect(&core_, &CoreHost::accountsChanged, this, &Notifier::noteUnread);
+#endif
 }
 
+void Notifier::announce(const QString& accountId, const QString& peer, const QString& title,
+    const QString& body, const bool reaction)
+{
+    if (!core_.notificationsEnabled() || core_.windowActive()) {
+        return;
+    }
+    if (!core_.ringingPeer().isEmpty()) {
+        return;
+    }
+    emit announced(accountId, peer, title, body, reaction);
+#ifndef Q_OS_ANDROID
+    // On Android the notification channel sounds, under the phone's silent and do-not-disturb.
+    if (reaction) {
+        play(reactionSound_, sinceReactionSound_);
+    } else {
+        play(sound_, sinceSound_);
+    }
+#endif
+}
+
+#ifndef Q_OS_ANDROID
 void Notifier::noteUnread()
 {
     for (const AccountRow& account : core_.accountStatuses()) {
@@ -48,19 +65,8 @@ void Notifier::noteUnread()
     announcedWasRead_ = true;
 }
 
-void Notifier::announce(const QString& accountId, const QString& peer, const QString& title,
-    const QString& body, const bool reaction, NotifySound& sound, QElapsedTimer& since)
+void Notifier::play(NotifySound& sound, QElapsedTimer& since)
 {
-    if (!core_.notificationsEnabled() || core_.windowActive()) {
-        return;
-    }
-    if (!core_.ringingPeer().isEmpty()) {
-        return;
-    }
-    emit announced(accountId, peer, title, body, reaction);
-    if (!kPlaysOwnSound) {
-        return;
-    }
     const qint64 length = sound.durationMs() > 0 ? sound.durationMs() : kAssumedSoundMs;
     const qint64 spacing = length * kSoundSpacingNumerator / kSoundSpacingDenominator;
     const bool quiet = !announcedWasRead_ && since.isValid() && since.elapsed() < spacing;
@@ -71,5 +77,6 @@ void Notifier::announce(const QString& accountId, const QString& peer, const QSt
     since.start();
     sound.play();
 }
+#endif
 
 }  // namespace bazarish::app
