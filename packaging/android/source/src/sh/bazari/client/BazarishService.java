@@ -8,16 +8,14 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.drawable.Icon;
 import android.os.PowerManager;
+import android.os.ResultReceiver;
 
 import java.lang.ref.WeakReference;
 
 import org.qtproject.qt.android.QtServiceBase;
 
-// Started at boot it runs Qt itself, with no window; next to the activity it only holds the process.
+// The core: its own process, started by the window or at boot, and the only way out is Quit.
 public class BazarishService extends QtServiceBase {
-    private static final String ACTION_TOGGLE = "sh.bazari.client.TOGGLE_NOTIFICATIONS";
-    private static final String ACTION_QUIT = "sh.bazari.client.QUIT";
-    private static final String ACTION_DECLINE = "sh.bazari.client.DECLINE";
     private static final String ACTION_SHOW = "sh.bazari.client.SHOW";
     private static final int OPEN_REQUEST = 0;
     private static final int TOGGLE_REQUEST = 1;
@@ -32,13 +30,13 @@ public class BazarishService extends QtServiceBase {
 
     @Override
     public void onCreate() {
-        Bazarish.app = getApplicationContext();
+        Shade.app = getApplicationContext();
         // Tunnels expire in minutes; a sleeping CPU lets them lapse and no mail can arrive.
         awake = getSystemService(PowerManager.class)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bazarish:running");
         awake.acquire();
         // Android gives a started service seconds to come to the foreground; loading Qt takes longer.
-        Bazarish.presenceChannel(this, getApplicationInfo().loadLabel(getPackageManager()).toString());
+        Shade.presenceChannel(this, getApplicationInfo().loadLabel(getPackageManager()).toString());
         running = new WeakReference<>(this);
         comeForward();
         super.onCreate();
@@ -51,16 +49,19 @@ public class BazarishService extends QtServiceBase {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public int onStartCommand(Intent intent, int flags, int startId) {
-        String action = intent == null ? null : intent.getAction();
-        if (ACTION_TOGGLE.equals(action)) {
-            Bazarish.notificationsToggled();
-        } else if (ACTION_QUIT.equals(action)) {
-            Bazarish.quitRequested();
-        } else if (ACTION_DECLINE.equals(action)) {
-            Bazarish.callDeclined();
-        }
         comeForward();
+        if (intent == null) {
+            return START_NOT_STICKY;
+        }
+        ResultReceiver listener = intent.getParcelableExtra(Shade.EXTRA_LISTENER);
+        if (listener != null) {
+            Shade.whenListening(listener);
+        }
+        if (intent.getAction() != null) {
+            Shade.act(intent.getAction());
+        }
         return START_NOT_STICKY;
     }
 
@@ -69,7 +70,7 @@ public class BazarishService extends QtServiceBase {
         if (talking) {
             types |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
         }
-        startForeground(Bazarish.PRESENCE_ID, presence(this), types);
+        startForeground(Shade.PRESENCE_ID, presence(this), types);
     }
 
     static Notification presence(Context context) {
@@ -77,7 +78,7 @@ public class BazarishService extends QtServiceBase {
             .getLaunchIntentForPackage(context.getPackageName());
         PendingIntent open = PendingIntent.getActivity(context, OPEN_REQUEST, launch,
             PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder shown = new Notification.Builder(context, Bazarish.CHANNEL_PRESENCE)
+        Notification.Builder shown = new Notification.Builder(context, Shade.CHANNEL_PRESENCE)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(open)
             .setOngoing(true)
@@ -86,23 +87,23 @@ public class BazarishService extends QtServiceBase {
             // Android 14 lets the user swipe even this away; it is put back at once.
             .setDeleteIntent(acting(context, ACTION_SHOW, SHOW_REQUEST));
         // A notice with no title still keeps room for one, which leaves a blank band.
-        if (!Bazarish.line.isEmpty()) {
-            shown.setContentTitle(Bazarish.line);
+        if (!Shade.line.isEmpty()) {
+            shown.setContentTitle(Shade.line);
         }
         // Until Qt has given its labels there is nothing to name the buttons with.
-        if (!Bazarish.quit.isEmpty()) {
+        if (!Shade.quit.isEmpty()) {
             Icon icon = Icon.createWithResource(context, R.drawable.ic_notification);
             shown.addAction(new Notification.Action.Builder(icon,
-                Bazarish.notificationsOn ? Bazarish.turnOff : Bazarish.turnOn,
-                acting(context, ACTION_TOGGLE, TOGGLE_REQUEST)).build());
-            shown.addAction(new Notification.Action.Builder(icon, Bazarish.quit,
-                acting(context, ACTION_QUIT, QUIT_REQUEST)).build());
+                Shade.notificationsOn ? Shade.turnOff : Shade.turnOn,
+                acting(context, Shade.ACTION_TOGGLE, TOGGLE_REQUEST)).build());
+            shown.addAction(new Notification.Action.Builder(icon, Shade.quit,
+                acting(context, Shade.ACTION_QUIT, QUIT_REQUEST)).build());
         }
         return shown.build();
     }
 
     static PendingIntent declining(Context context) {
-        return acting(context, ACTION_DECLINE, DECLINE_REQUEST);
+        return acting(context, Shade.ACTION_DECLINE, DECLINE_REQUEST);
     }
 
     private static PendingIntent acting(Context context, String action, int request) {

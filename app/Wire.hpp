@@ -61,6 +61,7 @@ public:
 
     void attach(ChannelEnd& channel);
     void detach();
+    bool attached() const { return channel_ != nullptr; }
     void replay();
 
     void sendFrom(const QString& scope, QObject& object, std::span<const Latch> latches = {});

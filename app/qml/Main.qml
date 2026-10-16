@@ -90,6 +90,10 @@ ApplicationWindow {
     Connections {
         target: App
         function onAttachedChanged() {
+            if (!App.attached) {
+                stack.replace(null, attachingComponent)
+                return
+            }
             if (stack.currentItem.objectName === "attaching") {
                 stack.replace(null, App.session ? mainComponent : pickerComponent)
             }

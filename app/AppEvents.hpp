@@ -76,6 +76,7 @@ public:
 
 signals:
     void started();
+    void closing();
     void accountList(const QVector<AccountListRow>& rows);
     void accounts(const QVector<AccountRow>& rows);
     void sessionStarted(const QString& id);

@@ -17,6 +17,9 @@
 #include "TrayIcon.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidShade.hpp"
+#include "AndroidWindow.hpp"
+#include "CoreMain.hpp"
+#include "CoreSocket.hpp"
 #endif
 
 #pragma push_macro("emit")
@@ -168,6 +171,10 @@ int main(int argc, char** argv)
 {
 #ifdef Q_OS_ANDROID
     bazarish::app::AndroidShade::routeStderrToLogcat();
+    // The service and the activity are started with these by the manifest.
+    if (argc > 1 && std::strcmp(argv[argc - 1], "--core") == 0) {
+        return bazarish::app::runCore(argc, argv);
+    }
 #endif
 #ifdef Q_OS_LINUX
     useTheDesktopsDialogs();
@@ -286,12 +293,15 @@ int main(int argc, char** argv)
     const std::filesystem::path accounts = bazarish::app::AppController::accountsFolder();
     std::filesystem::create_directories(accounts);
     bazarish::app::SingleInstance instance(QString::fromStdString(accounts.string()));
+    // On Android the core's own process holds the folder.
+#ifndef Q_OS_ANDROID
     if (!instance.claim()) {
         const bool handed = instance.handOver(link);
         bazarish::log::info("another Bazarish already has this account folder; {}",
             handed ? "brought its window forward" : "it is not answering");
         return handed ? 0 : 1;
     }
+#endif
 
     QQmlApplicationEngine engine;
     bazarish::app::Translations translations;
@@ -308,6 +318,26 @@ int main(int argc, char** argv)
         bazarish::log::error("wire: {}", reason.toStdString());
         QCoreApplication::exit(1);
     };
+#ifdef Q_OS_ANDROID
+    bazarish::app::Relay windowRelay;
+    QObject::connect(&windowRelay, &bazarish::app::Relay::broken, &app, wireBroken);
+    bazarish::app::AppController controller(translations);
+    controller.attach(windowRelay);
+    bazarish::app::I2pController i2pController;
+    i2pController.attach(windowRelay);
+    bazarish::app::CoreLink coreLink(windowRelay, bazarish::app::coreSocketName());
+    bazarish::app::AndroidWindow androidWindow(controller);
+    QObject::connect(&androidWindow, &bazarish::app::AndroidWindow::coreListening, &coreLink,
+        &bazarish::app::CoreLink::open);
+    QObject::connect(&coreLink, &bazarish::app::CoreLink::lost, &app, [&controller]() {
+        if (controller.coreClosing()) {
+            exitNow();
+        }
+        controller.detach();
+        bazarish::app::AndroidWindow::startCore();
+    });
+    bazarish::app::AndroidWindow::startCore();
+#else
     bazarish::app::CoreHost core;
     QObject::connect(&core, &bazarish::app::CoreHost::windowBroken, &app, wireBroken);
     core.start();
@@ -320,6 +350,7 @@ int main(int argc, char** argv)
     bazarish::app::I2pController i2pController;
     i2pController.attach(windowRelay);
     core.attachWindow(channel.first());
+#endif
     engine.rootContext()->setContextProperty("App", &controller);
     engine.rootContext()->setContextProperty("Avatars", &bazarish::app::AvatarStore::instance());
     engine.rootContext()->setContextProperty("Audio", &bazarish::app::AudioRoute::instance());
@@ -334,17 +365,9 @@ int main(int argc, char** argv)
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 
-#ifdef Q_OS_ANDROID
-    // Started with the phone, the app runs without a window until it is opened.
-    const bool windowless = bazarish::app::AndroidShade::windowless();
-#else
-    const bool windowless = false;
-#endif
-    if (!windowless) {
-        engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Bazarish/app/qml/Main.qml")));
-        if (engine.rootObjects().isEmpty()) {
-            return -1;
-        }
+    engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Bazarish/app/qml/Main.qml")));
+    if (engine.rootObjects().isEmpty()) {
+        return -1;
     }
 
     const auto raiseWindow = [&engine]() {
@@ -369,12 +392,8 @@ int main(int argc, char** argv)
     }
     QObject::connect(&controller, &bazarish::app::AppController::raiseRequested, &app, raiseWindow);
 
+#ifndef Q_OS_ANDROID
     bazarish::app::Notifier notifier(core);
-#ifdef Q_OS_ANDROID
-    bazarish::app::AndroidShade shade(core, controller, notifier, translations);
-    QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &shade,
-        &bazarish::app::AndroidShade::stop);
-#endif
     QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &app, exitNow);
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {
@@ -388,5 +407,6 @@ int main(int argc, char** argv)
     } else {
         bazarish::log::info("tray: this desktop offers none; the window is the only way in");
     }
+#endif
     return app.exec();
 }

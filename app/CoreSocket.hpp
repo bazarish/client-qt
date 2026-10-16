@@ -37,14 +37,15 @@ class CoreLink : public QObject {
 public:
     CoreLink(Relay& relay, const QString& path, QObject* parent = nullptr);
 
+    void open();
+
 signals:
     void lost();
 
 private:
     Relay& relay_;
-    QLocalSocket* socket_;
+    QString path_;
     SocketChannelEnd* channel_ = nullptr;
-    bool connected_ = false;
 };
 
 }  // namespace bazarish::app

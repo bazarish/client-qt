@@ -10,7 +10,7 @@
 #include "Version.hpp"
 #include "Wire.hpp"
 #ifdef Q_OS_ANDROID
-#include "AndroidShade.hpp"
+#include "AndroidWindow.hpp"
 #endif
 
 #include <bazarish/I2p.hpp>
@@ -63,6 +63,7 @@ AppController::AppController(Translations& translations, QObject* parent)
         attached_ = true;
         emit attachedChanged();
     });
+    connect(&events_, &AppEvents::closing, this, [this]() { coreClosing_ = true; });
     connect(&events_, &AppEvents::accountList, this, [this](const QVector<AccountListRow>& rows) {
         accountRows_ = rows;
         accountList_.setAccounts(rows);
@@ -128,6 +129,10 @@ AppController::AppController(Translations& translations, QObject* parent)
             ringingPeerFingerprint_ = fingerprint;
             ringingAccountName_ = accountName;
             emit ringingChanged();
+            if (answerWhenRinging_ && !account.isEmpty()) {
+                answerWhenRinging_ = false;
+                answerRinging();
+            }
         });
     connect(&events_, &AppEvents::ringLevel, this, [this](const double level) {
         ringLevel_ = level;
@@ -161,6 +166,16 @@ void AppController::attach(Relay& relay)
     relay.sendFrom(kAppScope, commands_);
     relay.deliverTo(kAppScope, events_);
     emit commands_.windowActive(QGuiApplication::applicationState() == Qt::ApplicationActive);
+}
+
+void AppController::detach()
+{
+    const QList<SessionController*> open = sessions_;
+    for (SessionController* const ctrl : open) {
+        endSession(ctrl->accountId());
+    }
+    attached_ = false;
+    emit attachedChanged();
 }
 
 void AppController::startSession(const QString& id)
@@ -250,6 +265,7 @@ void AppController::answerRinging()
 {
     SessionController* const ctrl = sessionFor(ringingAccount_);
     if (ctrl == nullptr) {
+        answerWhenRinging_ = !attached_;
         return;
     }
     if (ctrl->accountId() != activeId_) {
@@ -440,7 +456,7 @@ bool AppController::portable() const
 bool AppController::backgroundRestricted() const
 {
 #ifdef Q_OS_ANDROID
-    return AndroidShade::backgroundRestricted();
+    return AndroidWindow::backgroundRestricted();
 #else
     return false;
 #endif
@@ -449,14 +465,14 @@ bool AppController::backgroundRestricted() const
 void AppController::openBackgroundSettings() const
 {
 #ifdef Q_OS_ANDROID
-    AndroidShade::openBackgroundSettings();
+    AndroidWindow::openBackgroundSettings();
 #endif
 }
 
 bool AppController::fullScreenCallsRestricted() const
 {
 #ifdef Q_OS_ANDROID
-    return AndroidShade::fullScreenCallsRestricted();
+    return AndroidWindow::fullScreenCallsRestricted();
 #else
     return false;
 #endif
@@ -465,14 +481,14 @@ bool AppController::fullScreenCallsRestricted() const
 void AppController::openFullScreenCallsSettings() const
 {
 #ifdef Q_OS_ANDROID
-    AndroidShade::openFullScreenCallsSettings();
+    AndroidWindow::openFullScreenCallsSettings();
 #endif
 }
 
 void AppController::requestUnlocked()
 {
 #ifdef Q_OS_ANDROID
-    AndroidShade::dismissKeyguard();
+    AndroidWindow::dismissKeyguard();
 #else
     emit unlocked();
 #endif
@@ -486,7 +502,7 @@ bool AppController::closeTopPopup(QQuickWindow* const window) const
 void AppController::moveToBackground() const
 {
 #ifdef Q_OS_ANDROID
-    AndroidShade::moveToBackground();
+    AndroidWindow::moveToBackground();
 #endif
 }
 

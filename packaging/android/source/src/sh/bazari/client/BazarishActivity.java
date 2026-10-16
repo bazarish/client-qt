@@ -5,44 +5,30 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 
-import org.qtproject.qt.android.QtActivityBase;
 import org.qtproject.qt.android.bindings.QtActivity;
 
+// The window: its process may end with it, the core goes on in its own.
 public class BazarishActivity extends QtActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        Bazarish.app = getApplicationContext();
-        Bazarish.window = new WeakReference<>(this);
-        Bazarish.holdConversation(this, getIntent());
+        Window.app = getApplicationContext();
+        Window.window = new WeakReference<>(this);
+        Window.hold(this, getIntent());
         super.onCreate(savedInstanceState);
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (Bazarish.ACTION_ANSWER.equals(intent.getAction())) {
-            Bazarish.callAnswered();
+        if (Shade.ACTION_ANSWER.equals(intent.getAction())) {
+            Window.callAnswered();
             return;
         }
-        String account = intent.getStringExtra(Bazarish.EXTRA_ACCOUNT);
-        String peer = intent.getStringExtra(Bazarish.EXTRA_PEER);
+        String account = intent.getStringExtra(Shade.EXTRA_ACCOUNT);
+        String peer = intent.getStringExtra(Shade.EXTRA_PEER);
         if (account != null && peer != null) {
-            Bazarish.conversationOpened(account, peer);
+            Window.conversationOpened(account, peer);
         }
-    }
-
-    // Swiping the app out of recents destroys this activity, and Qt would end the process with it.
-    @Override
-    protected void onDestroy() {
-        try {
-            Field retain = QtActivityBase.class.getDeclaredField("m_retainNonConfigurationInstance");
-            retain.setAccessible(true);
-            retain.setBoolean(this, true);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Qt's activity no longer lets the app outlive it", e);
-        }
-        super.onDestroy();
     }
 }

@@ -32,7 +32,7 @@ public final class CallAudio {
 
     // Everything that sounds during a call - its tones and its voice - shares one route.
     private static synchronized void join() {
-        AudioManager manager = Bazarish.app.getSystemService(AudioManager.class);
+        AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         if (users++ == 0) {
             speaker = false;
             manager.setMode(AudioManager.MODE_IN_COMMUNICATION);
@@ -44,7 +44,7 @@ public final class CallAudio {
         if (--users > 0) {
             return;
         }
-        AudioManager manager = Bazarish.app.getSystemService(AudioManager.class);
+        AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         manager.clearCommunicationDevice();
         manager.setMode(AudioManager.MODE_NORMAL);
         speaker = false;
@@ -54,14 +54,14 @@ public final class CallAudio {
     public static synchronized void setSpeaker(boolean on) {
         speaker = on;
         if (users > 0) {
-            route(Bazarish.app.getSystemService(AudioManager.class));
+            route(Shade.app.getSystemService(AudioManager.class));
         }
     }
 
     // Near the ear the screen goes dark, so a cheek does not press the buttons.
     public static synchronized void holdNearEar(boolean on) {
         if (on && nearEar == null) {
-            nearEar = Bazarish.app.getSystemService(PowerManager.class)
+            nearEar = Shade.app.getSystemService(PowerManager.class)
                 .newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "bazarish:ear");
             nearEar.acquire();
         } else if (!on && nearEar != null) {

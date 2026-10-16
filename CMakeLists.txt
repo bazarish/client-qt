@@ -206,6 +206,7 @@ if(Qt6_FOUND)
         set(kAndroidMinSdk 31)
         set(kAndroidTargetSdk 34)
         target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp
+            app/AndroidWindow.cpp app/AndroidWindow.hpp
             app/AndroidCallAudio.cpp app/AndroidCallAudio.hpp)
         set_target_properties(bazarish-app PROPERTIES
             QT_ANDROID_PACKAGE_NAME sh.bazari.client

@@ -91,26 +91,39 @@ void SocketChannelEnd::take()
 CoreLink::CoreLink(Relay& relay, const QString& path, QObject* const parent)
     : QObject(parent)
     , relay_(relay)
-    , socket_(new QLocalSocket)
+    , path_(path)
 {
-    channel_ = new SocketChannelEnd(socket_, this);
-    connect(socket_, &QLocalSocket::connected, this, [this]() {
-        connected_ = true;
-        relay_.attach(*channel_);
-    });
-    connect(channel_, &SocketChannelEnd::closed, this, [this]() {
+}
+
+void CoreLink::open()
+{
+    relay_.detach();
+    if (channel_ != nullptr) {
+        channel_->deleteLater();
+    }
+    auto* const socket = new QLocalSocket;
+    channel_ = new SocketChannelEnd(socket, this);
+    SocketChannelEnd* const channel = channel_;
+    connect(socket, &QLocalSocket::connected, this, [this, channel]() { relay_.attach(*channel); });
+    connect(channel, &SocketChannelEnd::closed, this, [this, channel]() {
+        if (channel != channel_) {
+            return;
+        }
         relay_.detach();
         bazarish::log::warn("wire: the core went away");
         emit lost();
     });
-    connect(socket_, &QLocalSocket::errorOccurred, this, [this](QLocalSocket::LocalSocketError) {
-        if (!connected_) {
+    connect(socket, &QLocalSocket::errorOccurred, this,
+        [this, channel, socket](const QLocalSocket::LocalSocketError) {
+            if (channel != channel_ || socket->state() != QLocalSocket::UnconnectedState
+                || relay_.attached()) {
+                return;
+            }
             bazarish::log::warn("wire: the core is not there: {}",
-                socket_->errorString().toStdString());
+                socket->errorString().toStdString());
             emit lost();
-        }
-    });
-    socket_->connectToServer(path);
+        });
+    socket->connectToServer(path_);
 }
 
 }  // namespace bazarish::app

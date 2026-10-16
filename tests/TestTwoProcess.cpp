@@ -81,6 +81,7 @@ struct Window {
     {
         link = std::make_unique<CoreLink>(relay, path);
         QObject::connect(link.get(), &CoreLink::lost, [this]() { lost = true; });
+        link->open();
     }
 };
 

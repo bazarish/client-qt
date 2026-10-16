@@ -7,6 +7,9 @@
 #include "Notifier.hpp"
 #include "SingleInstance.hpp"
 #include "Translations.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidShade.hpp"
+#endif
 
 #pragma push_macro("emit")
 #undef emit
@@ -55,6 +58,11 @@ int runCore(int argc, char** argv)
         bazarish::log::warn("wire: {}; letting the window go", reason.toStdString());
         listener.dropWindow();
     });
+#ifdef Q_OS_ANDROID
+    AndroidShade shade(core, notifier, translations);
+    QObject::connect(&core, &CoreHost::readyToExit, &shade, &AndroidShade::stop);
+    AndroidShade::listening();
+#endif
     QObject::connect(&core, &CoreHost::readyToExit, &app, exitNow);
     return QCoreApplication::exec();
 }

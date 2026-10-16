@@ -47,7 +47,7 @@
 
           <meta-data
                 android:name="android.app.arguments"
-                android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
+                android:value="--ui" />
           <meta-data
                 android:name="android.app.background_running"
                 android:value="true" />
@@ -55,6 +55,7 @@
 
         <service
             android:name="sh.bazari.client.BazarishService"
+            android:process=":core"
             android:exported="false"
             android:foregroundServiceType="remoteMessaging|microphone">
           <meta-data
@@ -62,7 +63,7 @@
                 android:value="-- %%INSERT_APP_LIB_NAME%% --" />
           <meta-data
                 android:name="android.app.arguments"
-                android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
+                android:value="--core" />
           <meta-data
                 android:name="android.app.background_running"
                 android:value="true" />
@@ -70,6 +71,7 @@
 
         <receiver
             android:name="sh.bazari.client.BootReceiver"
+            android:process=":core"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

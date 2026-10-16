@@ -58,7 +58,9 @@ public:
     explicit AppController(Translations& translations, QObject* parent = nullptr);
 
     void attach(Relay& relay);
+    void detach();
     bool attached() const { return attached_; }
+    bool coreClosing() const { return coreClosing_; }
 
     QObject* accountList() { return &accountList_; }
     QObject* accounts() { return &accounts_; }
@@ -201,6 +203,8 @@ private:
     AppEvents events_;
     Relay* relay_ = nullptr;
     bool attached_ = false;
+    bool coreClosing_ = false;
+    bool answerWhenRinging_ = false;
     AccountListModel accountList_;
     QVector<AccountListRow> accountRows_;
     OpenAccountsModel accounts_;

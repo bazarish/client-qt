@@ -49,6 +49,7 @@ public:
     bool callTalking() const { return callTalking_; }
     bool speakerOn() const { return speakerOn_; }
     bool windowActive() const { return windowActive_; }
+    void declineRinging();
     void prepareForExit();
     static QString soundFolder();
 
@@ -58,6 +59,7 @@ signals:
     void ringingChanged();
     void callLiveChanged();
     void speakerOnChanged();
+    void windowActiveChanged();
     void notificationRequested(const QString& accountId, const QString& peer,
         const QString& title, const QString& body);
     void reactionNotificationRequested(const QString& accountId, const QString& peer,
@@ -84,6 +86,7 @@ private:
     QString notificationTitle(const CoreAccount* account) const;
     void updateRinging();
     void setSpeakerOn(bool on);
+    void setWindowActive(bool active);
     void setBackgroundTasksVisible(bool on);
     void createAccount(const QString& name, const QString& passphrase);
     void openAccount(const QString& id, const QString& passphrase);

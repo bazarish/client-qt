@@ -101,8 +101,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::setSpeakerOn, this, &CoreHost::setSpeakerOn);
     connect(&commands_, &AppCommands::setPortable, this, &CoreHost::setPortable);
     connect(&commands_, &AppCommands::closeAllSessions, this, &CoreHost::closeAllSessions);
-    connect(&commands_, &AppCommands::windowActive, this,
-        [this](const bool active) { windowActive_ = active; });
+    connect(&commands_, &AppCommands::windowActive, this, &CoreHost::setWindowActive);
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
     connect(&commands_, &AppCommands::setLanguage, this, &CoreHost::setLanguage);
     connect(&commands_, &AppCommands::chooseAudio, this, &CoreHost::chooseAudio);
@@ -134,7 +133,23 @@ void CoreHost::attachWindow(ChannelEnd& channel)
 void CoreHost::detachWindow()
 {
     relay_.detach();
-    windowActive_ = false;
+    setWindowActive(false);
+}
+
+void CoreHost::setWindowActive(const bool active)
+{
+    if (windowActive_ == active) {
+        return;
+    }
+    windowActive_ = active;
+    emit windowActiveChanged();
+}
+
+void CoreHost::declineRinging()
+{
+    if (CoreAccount* const account = sessionFor(ringingAccount_)) {
+        emit account->commands().declineCall();
+    }
 }
 
 void CoreHost::start()
@@ -981,6 +996,7 @@ void CoreHost::prepareForExit()
         return;
     }
     exiting_ = true;
+    emit events_.closing();
     emit readyToExit();
 }
 
