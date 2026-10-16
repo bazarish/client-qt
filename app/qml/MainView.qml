@@ -10,7 +10,7 @@ Item {
 
     // On a narrow window an open chat covers the list, so back closes it.
     function goBack() {
-        if (panes.narrow && panes.chatOpen) {
+        if (root.width < Theme.narrowWidth && root.session && root.session.activePeer.length > 0) {
             root.session.closeConversation()
             return true
         }
