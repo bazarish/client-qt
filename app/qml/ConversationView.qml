@@ -597,6 +597,8 @@ Item {
                 }
                 // Keep following the bottom while the last bubble's height settles.
                 onContentHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
+                // A phone's keyboard shortens the list from below: the newest stays in sight.
+                onHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
 
                 Connections {
                     target: messages.model
