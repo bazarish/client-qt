@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include <bazarish/Bytes.hpp>
+
 #include <QByteArray>
 #include <QMap>
 #include <QString>
@@ -78,38 +80,25 @@ struct DatabaseFootprint {
     qint64 freeBytes = 0;
 };
 
-class TranscriptStore {
+class TranscriptReader {
 public:
-    TranscriptStore();
-    ~TranscriptStore();
+    TranscriptReader();
+    ~TranscriptReader();
+
+    TranscriptReader(const TranscriptReader&) = delete;
+    TranscriptReader& operator=(const TranscriptReader&) = delete;
 
     void close();
+    bool open(const QString& dbPath, const Bytes& key);
 
-    bool open(const QString& accountId, const QString& dbPath, const QString& passphrase = {});
-
-    qint64 append(const StoredMessage& message);
-    void updateStatus(qint64 id, int status);
-    int failUnsentOnLoad(int preparingStatus, int deliveringStatus, int failedStatus);
-    int settleUnfinishedNotes(const QString& type, int preparingStatus, int settledStatus,
-        const QString& text);
-    void markOutgoingReadUpTo(
-        const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus);
     QString sourcePathFor(qint64 id) const;
-    void setSavedPath(qint64 id, const QString& path);
     QByteArray media(const QString& key) const;
-
-    void setHasPicture(qint64 id, bool has);
     qint64 idForE2e(const QString& e2eId) const;
     qint64 idForKey(const QString& peer, const QString& e2eId, bool outgoing) const;
     qint64 idForIncomingE2e(const QString& e2eId, const QString& peer) const;
     qint64 oldestOfType(const QString& peer, const QString& type, bool outgoing) const;
     qint64 idForAnyProtocol(const QString& e2eId, const QString& peer) const;
     StoredMessage messageByE2e(const QString& e2eId, const QString& peer) const;
-    void editContent(qint64 id, const QString& text, const QString& keyboard);
-    void setType(qint64 id, const QString& type);
-    void removeById(qint64 id);
-    void clearPeer(const QString& peer);
-    void forgetPeer(const QString& peer);
     QVector<StoredMessage> messagesFor(const QString& peer) const;
     QVector<StoredMessage> latestMessages(const QString& peer, int limit) const;
     QVector<StoredMessage> olderMessages(const QString& peer, qint64 beforeId, int limit) const;
@@ -126,43 +115,66 @@ public:
     LastMessage lastMessage(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
     QStringList conversationPeers() const;
-
-    void setLastReadId(const QString& peer, qint64 id);
-    void applyReadThrough(const QString& peer, qint64 sentAtMs);
     qint64 lastReadId(const QString& peer) const;
-
-    void setPinned(const QString& peer, bool pinned);
     bool isPinned(const QString& peer) const;
     QStringList pinnedPeers() const;
     int unreadCount(const QString& peer) const;
     qint64 firstUnreadId(const QString& peer) const;
-
-    void setReaction(
-        const QString& peer, const QString& target, const QString& reactor, const QString& emoji);
     QVector<Reaction> reactionsFor(const QString& peer, const QString& target) const;
-
-    void setGroupState(const QString& peer, const GroupState& state);
     std::optional<GroupState> groupState(const QString& peer) const;
-    void dropGroupState(const QString& peer);
-    void setGroupReactionCounts(
-        const QString& peer, const QString& target, const QMap<QString, qint64>& counts);
     QMap<QString, qint64> groupReactionCounts(const QString& peer, const QString& target) const;
-
     QVector<ChatWeight> chatWeights() const;
     DatabaseFootprint footprint() const;
+
+protected:
+    bool hasMediaTable() const;
+
+    sqlite3* db_ = nullptr;
+    QString path_;
+};
+
+class TranscriptStore : public TranscriptReader {
+public:
+    bool open(const QString& accountId, const QString& dbPath, const QString& passphrase = {});
+    QString lastError() const { return lastError_; }
+
+    [[nodiscard]] qint64 append(const StoredMessage& message);
+    [[nodiscard]] bool updateStatus(qint64 id, int status);
+    [[nodiscard]] std::optional<int> failUnsentOnLoad(
+        int preparingStatus, int deliveringStatus, int failedStatus);
+    [[nodiscard]] std::optional<int> settleUnfinishedNotes(const QString& type,
+        int preparingStatus, int settledStatus, const QString& text);
+    [[nodiscard]] bool markOutgoingReadUpTo(
+        const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus);
+    [[nodiscard]] bool setSavedPath(qint64 id, const QString& path);
+    [[nodiscard]] bool setHasPicture(qint64 id, bool has);
+    [[nodiscard]] bool editContent(qint64 id, const QString& text, const QString& keyboard);
+    [[nodiscard]] bool setType(qint64 id, const QString& type);
+    [[nodiscard]] bool removeById(qint64 id);
+    [[nodiscard]] bool clearPeer(const QString& peer);
+    [[nodiscard]] bool forgetPeer(const QString& peer);
+    [[nodiscard]] bool setLastReadId(const QString& peer, qint64 id);
+    [[nodiscard]] bool applyReadThrough(const QString& peer, qint64 sentAtMs);
+    [[nodiscard]] bool setPinned(const QString& peer, bool pinned);
+    [[nodiscard]] bool setReaction(
+        const QString& peer, const QString& target, const QString& reactor, const QString& emoji);
+    [[nodiscard]] bool setGroupState(const QString& peer, const GroupState& state);
+    [[nodiscard]] bool dropGroupState(const QString& peer);
+    [[nodiscard]] bool setGroupReactionCounts(
+        const QString& peer, const QString& target, const QMap<QString, qint64>& counts);
     qint64 pruneToLatest(const QString& peer, int keep);
     qint64 pruneEveryChatToLatest(int keep);
     bool rebuild(QString& reason);
 
 private:
+    bool failed();
+    bool clearPeerRows(const QString& peer);
     bool removeMediaOfMessage(const QString& e2eId);
     bool removeMediaOfPeer(const QString& peer);
     bool removeMediaOfTrimmed(const QString& peer, int keep);
-    bool hasMediaTable() const;
     qint64 pruneRowsOf(const QString& peer, int keep);
 
-    sqlite3* db_ = nullptr;
-    QString path_;
+    QString lastError_;
 };
 
 }  // namespace bazarish::app

@@ -147,7 +147,10 @@ void SessionController::react(const QString& e2eId, const QString& emoji)
     if (!next.isEmpty() && !kStandardReactions.contains(next)) {
         rememberReaction(next);
     }
-    store_.setReaction(activePeer_, e2eId, fingerprint_, next);
+    if (!store_.setReaction(activePeer_, e2eId, fingerprint_, next)) {
+        reportUnsaved();
+        return;
+    }
     emit requestSendReaction(activePeer_, e2eId, next);
     ++reactionsRevision_;
     emit reactionsRevisionChanged();

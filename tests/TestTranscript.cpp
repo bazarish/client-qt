@@ -2,11 +2,14 @@
 #include "TranscriptStore.hpp"
 
 #include "AccountDb.hpp"
+#include "AccountKey.hpp"
 #include "SystemNotes.hpp"
 
 #include <bazarish/Bytes.hpp>
 
 #include <QCoreApplication>
+
+#include <sqlcipher/sqlite3.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -219,11 +222,11 @@ int main(int argc, char** argv)
             CHECK(store.unreadCount("nobody") == 0);
             CHECK(store.firstUnreadId("nobody") == 0);
 
-            store.setLastReadId("erin", ids[3]);
+            CHECK(store.setLastReadId("erin", ids[3]));
             CHECK(store.unreadCount("erin") == 1);
             CHECK(store.firstUnreadId("erin") == ids[4]);
 
-            store.setLastReadId("erin", ids[1]);
+            CHECK(store.setLastReadId("erin", ids[1]));
             CHECK(store.lastReadId("erin") == ids[3]);
             CHECK(store.unreadCount("erin") == 1);
         }
@@ -233,7 +236,7 @@ int main(int argc, char** argv)
             CHECK(store.lastReadId("erin") == ids[3]);
             CHECK(store.unreadCount("erin") == 1);
             CHECK(store.firstUnreadId("erin") == ids[4]);
-            store.setLastReadId("erin", ids[4]);
+            CHECK(store.setLastReadId("erin", ids[4]));
             CHECK(store.unreadCount("erin") == 0);
             CHECK(store.firstUnreadId("erin") == 0);
         }
@@ -319,8 +322,8 @@ int main(int argc, char** argv)
         const qint64 a5 = write("alpha", "a5", "five");
         write("beta", "b1", "beta one");
         write("beta", "b2", "beta two");
-        store.setReaction("alpha", "a1", "carol", "+1");
-        store.setReaction("alpha", "a5", "carol", "+1");
+        CHECK(store.setReaction("alpha", "a1", "carol", "+1"));
+        CHECK(store.setReaction("alpha", "a5", "carol", "+1"));
 
         const Bytes doomedPicture(4096, 7);
         const Bytes keptPicture(2048, 9);
@@ -399,14 +402,14 @@ int main(int argc, char** argv)
         const QVector<StoredMessage> alpha = store.messagesFor("alpha");
         CHECK(alpha.size() == 1);
         CHECK(alpha.front().e2eId == "a5");
-        store.removeById(alpha.front().id);
+        CHECK(store.removeById(alpha.front().id));
         {
             client::AccountDb account(file, "pw");
             CHECK(!account.has("picture:a5"));
             CHECK(account.has("voice:b2"));
         }
 
-        store.clearPeer("beta");
+        CHECK(store.clearPeer("beta"));
         CHECK(store.messagesFor("beta").isEmpty());
         {
             client::AccountDb account(file, "pw");
@@ -443,26 +446,26 @@ int main(int argc, char** argv)
         incoming("r4", 4000);
         CHECK(store.unreadCount("ivan") == 4);
 
-        store.applyReadThrough("ivan", 3000);
+        CHECK(store.applyReadThrough("ivan", 3000));
         CHECK(store.lastReadId("ivan") == third);
         CHECK(store.unreadCount("ivan") == 1);
 
         incoming("r5", 1500);
         CHECK(store.unreadCount("ivan") == 2);
 
-        store.applyReadThrough("ivan", 1000);
+        CHECK(store.applyReadThrough("ivan", 1000));
         CHECK(store.lastReadId("ivan") == third);
         CHECK(store.unreadCount("ivan") == 2);
 
-        store.applyReadThrough("ivan", 9000);
+        CHECK(store.applyReadThrough("ivan", 9000));
         CHECK(store.unreadCount("ivan") == 0);
     }
 
     {
         TranscriptStore store;
         CHECK(store.open("p1", db, "pw"));
-        store.setReaction("bob", "m1", "them", "\xF0\x9F\x91\x8D");
-        store.setReaction("bob", "m1", "us", "\xE2\x9D\xA4");
+        CHECK(store.setReaction("bob", "m1", "them", "\xF0\x9F\x91\x8D"));
+        CHECK(store.setReaction("bob", "m1", "us", "\xE2\x9D\xA4"));
         const QVector<Reaction> both = store.reactionsFor("bob", "m1");
         CHECK(both.size() == 2);
         int mine = 0;
@@ -472,9 +475,9 @@ int main(int argc, char** argv)
             }
         }
         CHECK(mine == 1);
-        store.setReaction("bob", "m1", "them", "\xF0\x9F\x94\xA5");
+        CHECK(store.setReaction("bob", "m1", "them", "\xF0\x9F\x94\xA5"));
         CHECK(store.reactionsFor("bob", "m1").size() == 2);
-        store.setReaction("bob", "m1", "them", QString());
+        CHECK(store.setReaction("bob", "m1", "them", QString()));
         const QVector<Reaction> left = store.reactionsFor("bob", "m1");
         CHECK(left.size() == 1);
         CHECK(left.first().reactor == QStringLiteral("us"));
@@ -575,22 +578,22 @@ int main(int argc, char** argv)
 
         const qint64 one = write("carol", "e-one");
         write("carol", "e-two");
-        store.setReaction("carol", "e-one", "carol", "\xf0\x9f\x91\x8d");
-        store.setReaction("carol", "e-two", "carol", "\xf0\x9f\x91\x8e");
-        store.setLastReadId("carol", one);
-        store.setPinned("carol", true);
+        CHECK(store.setReaction("carol", "e-one", "carol", "\xf0\x9f\x91\x8d"));
+        CHECK(store.setReaction("carol", "e-two", "carol", "\xf0\x9f\x91\x8e"));
+        CHECK(store.setLastReadId("carol", one));
+        CHECK(store.setPinned("carol", true));
         CHECK(store.reactionsFor("carol", "e-one").size() == 1);
 
-        store.removeById(one);
+        CHECK(store.removeById(one));
         CHECK(store.reactionsFor("carol", "e-one").isEmpty());
         CHECK(store.reactionsFor("carol", "e-two").size() == 1);
 
-        store.clearPeer("carol");
+        CHECK(store.clearPeer("carol"));
         CHECK(store.reactionsFor("carol", "e-two").isEmpty());
         CHECK(store.lastReadId("carol") == 0);
         CHECK(store.isPinned("carol"));
 
-        store.forgetPeer("carol");
+        CHECK(store.forgetPeer("carol"));
         CHECK(!store.isPinned("carol"));
         CHECK(store.pinnedPeers().isEmpty());
     }
@@ -648,7 +651,7 @@ int main(int argc, char** argv)
         CHECK(store.messageByE2e("g-one", "club").author == QStringLiteral("Ann"));
 
         CHECK(!store.groupState("club").has_value());
-        store.setGroupState("club", GroupState{QStringLiteral("channel"), 12, false, true, 500});
+        CHECK(store.setGroupState("club", GroupState{QStringLiteral("channel"), 12, false, true, 500}));
         const std::optional<GroupState> state = store.groupState("club");
         CHECK(state.has_value());
         CHECK(state->kind == QStringLiteral("channel"));
@@ -657,19 +660,55 @@ int main(int argc, char** argv)
         CHECK(state->admin);
         CHECK(state->at == 500);
 
-        store.setGroupReactionCounts("club", "g-one", {{QStringLiteral("+"), 3}});
+        CHECK(store.setGroupReactionCounts("club", "g-one", {{QStringLiteral("+"), 3}}));
         CHECK(store.groupReactionCounts("club", "g-one").value(QStringLiteral("+")) == 3);
-        store.setGroupReactionCounts("club", "g-one", {});
+        CHECK(store.setGroupReactionCounts("club", "g-one", {}));
         CHECK(store.groupReactionCounts("club", "g-one").isEmpty());
 
-        store.setGroupReactionCounts("club", "g-one", {{QStringLiteral("+"), 1}});
-        store.clearPeer("club");
+        CHECK(store.setGroupReactionCounts("club", "g-one", {{QStringLiteral("+"), 1}}));
+        CHECK(store.clearPeer("club"));
         CHECK(store.groupReactionCounts("club", "g-one").isEmpty());
         CHECK(store.groupState("club").has_value());
         CHECK(store.append(post) > 0);
         CHECK(store.latestMessages("club", 10)[0].author == QStringLiteral("Ann"));
-        store.forgetPeer("club");
+        CHECK(store.forgetPeer("club"));
         CHECK(!store.groupState("club").has_value());
+    }
+
+    {
+        const QString shared = QString::fromStdString((dir / "shared.db").string());
+        TranscriptStore store;
+        CHECK(store.open("p3", shared, "pw"));
+        StoredMessage first;
+        first.peer = "gus";
+        first.type = "text";
+        first.text = "one";
+        first.e2eId = "w1";
+        first.ts = 1;
+        CHECK(store.append(first) > 0);
+        CHECK(fs::exists(shared.toStdString() + "-wal"));
+
+        const Bytes key = client::accountkey::keyFor(shared.toStdString(), "pw");
+        TranscriptReader reader;
+        CHECK(reader.open(shared, key));
+        CHECK(reader.latestMessages("gus", 10).size() == 1);
+
+        sqlite3* writer = nullptr;
+        CHECK(sqlite3_open(shared.toUtf8().constData(), &writer) == SQLITE_OK);
+        const std::string keying = "PRAGMA key = \"x'" + toHex(key) + "'\"";
+        CHECK(sqlite3_exec(writer, keying.c_str(), nullptr, nullptr, nullptr) == SQLITE_OK);
+        CHECK(sqlite3_exec(writer, "BEGIN EXCLUSIVE", nullptr, nullptr, nullptr) == SQLITE_OK);
+        StoredMessage second = first;
+        second.e2eId = "w2";
+        second.text = "two";
+        CHECK(store.append(second) == 0);
+        CHECK(!store.lastError().isEmpty());
+        CHECK(reader.latestMessages("gus", 10).size() == 1);
+        CHECK(sqlite3_exec(writer, "ROLLBACK", nullptr, nullptr, nullptr) == SQLITE_OK);
+        CHECK(sqlite3_close(writer) == SQLITE_OK);
+
+        CHECK(store.append(second) > 0);
+        CHECK(reader.latestMessages("gus", 10).size() == 2);
     }
 
     fs::remove_all(dir);

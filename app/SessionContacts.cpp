@@ -251,7 +251,10 @@ void SessionController::repeatContactAdd(const QString& chat, const PendingConta
     qint64 removed = 0;
     for (qint64 row = store_.oldestOfType(chat, failed, /*outgoing=*/false);
          row != 0 && row != removed; row = store_.oldestOfType(chat, failed, /*outgoing=*/false)) {
-        store_.removeById(row);
+        if (!store_.removeById(row)) {
+            reportUnsaved();
+            break;
+        }
         conversation_.removeById(row);
         removed = row;
     }
@@ -306,6 +309,10 @@ void SessionController::writeConversationNote(const QString& peer, const QString
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Received;
     note.id = store_.append(note);
+    if (note.id == 0) {
+        reportUnsaved();
+        return;
+    }
     contacts_.touch(peer, peerName(peer), systemNoteText(text), note.ts, false);
     showInActiveView(note, true);
 }
@@ -319,7 +326,10 @@ void SessionController::onRoutingTold(const QString& peer, const bool delivered)
     const qint64 told = store_.oldestOfType(peer, kind, /*outgoing=*/false);
     if (delivered) {
         if (told > 0) {
-            store_.removeById(told);
+            if (!store_.removeById(told)) {
+                reportUnsaved();
+                return;
+            }
             conversation_.removeById(told);
         }
         return;
@@ -336,6 +346,10 @@ void SessionController::onRoutingTold(const QString& peer, const bool delivered)
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Received;
     note.id = store_.append(note);
+    if (note.id == 0) {
+        reportUnsaved();
+        return;
+    }
     contacts_.touch(peer, peerName(peer), systemNoteText(note.text), note.ts, false);
     showInActiveView(note, true);
 }
@@ -361,6 +375,10 @@ void SessionController::noteContactProgress(const QString& peer, const QString& 
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Preparing;
     note.id = store_.append(note);
+    if (note.id == 0) {
+        reportUnsaved();
+        return;
+    }
     contactProgressRows_[opId] = ContactProgressRow{note.id, peer};
     contacts_.touch(peer, peerName(peer), systemNoteText(note.text), note.ts, false);
     if (activePeer_ == peer) {
@@ -374,7 +392,10 @@ void SessionController::writeContactProgress(const QString& opId, const QString&
     if (found == contactProgressRows_.cend()) {
         return;
     }
-    store_.editContent(found->id, text, QString());
+    if (!store_.editContent(found->id, text, QString())) {
+        reportUnsaved();
+        return;
+    }
     conversation_.setTextForId(found->id, text);
     contacts_.touch(found->peer, peerName(found->peer), chatPreview(found->peer), 0, false);
 }
@@ -450,9 +471,11 @@ void SessionController::settleContactAdd(const QString& opId, const bool ok, con
     finishOperation(opId, ok, systemNoteText(note));
     const auto row = contactProgressRows_.constFind(opId);
     if (row != contactProgressRows_.cend()) {
-        store_.updateStatus(row->id, DeliveryStatus::Received);
+        if (!store_.updateStatus(row->id, DeliveryStatus::Received)
+            || (!ok && !store_.setType(row->id, QStringLiteral("contact.failed")))) {
+            reportUnsaved();
+        }
         if (!ok) {
-            store_.setType(row->id, QStringLiteral("contact.failed"));
             conversation_.setTypeForId(row->id, QStringLiteral("contact.failed"));
         }
     }
@@ -535,6 +558,10 @@ void SessionController::onContactRequestSent(const QString& fingerprint, const Q
         = known != contactState_.constEnd() && known->request == ContactState::eAnswered;
     m.status = answered ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer;
     m.id = store_.append(m);
+    if (m.id == 0) {
+        reportUnsaved();
+        return;
+    }
     statusById_[m.id] = m.status;
     contacts_.touch(fingerprint, {}, body, m.ts, false);
     if (activePeer_ == fingerprint) {

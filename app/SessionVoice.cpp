@@ -237,13 +237,7 @@ void SessionController::sendVoiceTake()
     stopVoiceTake();
     const QByteArray audio = voiceTake_;
     const qint64 durationMs = voiceTakeMs_;
-    const QString wave = voiceTakeWave_;
-    discardVoiceTake();
-
     const QString replyTo = replying_ ? replyingE2eId_ : QString();
-    if (replying_) {
-        cancelReply();
-    }
     StoredMessage m;
     m.peer = activePeer_;
     m.outgoing = true;
@@ -253,12 +247,20 @@ void SessionController::sendVoiceTake()
     m.attMime = QStringLiteral("audio/opus");
     m.attSize = audio.size();
     m.attDurationMs = durationMs;
-    m.attWave = wave;
+    m.attWave = voiceTakeWave_;
     m.ts = nowMillis();
     m.orderKey = m.ts;
     m.status = isSavedChat(activePeer_) ? DeliveryStatus::Delivering
                                         : DeliveryStatus::Preparing;
     m.id = store_.append(m);
+    if (m.id == 0) {
+        reportUnsaved();
+        return;
+    }
+    discardVoiceTake();
+    if (replying_) {
+        cancelReply();
+    }
     statusById_[m.id] = m.status;
     showInActiveView(m, true);
     contacts_.touch(activePeer_, peerName(activePeer_), tr("[voice]"), m.ts, true);

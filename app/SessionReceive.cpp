@@ -55,54 +55,58 @@ Placement placeReceived(const qint64 sentAtMs, const qint64 arrivalMs)
 }
 }  // namespace
 
-void SessionController::ackAfterReceive(const QVariantMap& message)
+void SessionController::onMessageReceived(const QVariantMap& message)
 {
-    const QString pendingId = message.value("pendingId").toString();
-    if (!pendingId.isEmpty()) {
+    if (!takeIn(message)) {
+        emit actionFailed(tr("Receiving stopped: %1").arg(store_.lastError()));
+        return;
+    }
+    if (const QString pendingId = message.value("pendingId").toString(); !pendingId.isEmpty()) {
         emit requestAckPending(pendingId);
     }
 }
 
-void SessionController::onMessageReceived(const QVariantMap& message)
+bool SessionController::takeIn(const QVariantMap& message)
 {
     const QString peer = message.value("peer").toString();
     const QString type = message.value("type").toString();
     const QString incomingId = message.value("e2eId").toString();
 
     if (!incomingId.isEmpty() && store_.idForIncomingE2e(incomingId, peer) != 0) {
-        return;
+        return true;
     }
     if (!incomingId.isEmpty() && message.value("sentByUs").toBool()
         && store_.idForE2e(incomingId) != 0) {
-        return;
+        return true;
     }
 
     if (type.startsWith(QStringLiteral("call."))) {
-        return;
+        return true;
     }
 
-    if (!message.value("sentByUs").toBool()) {
-        noteGroupBlock(peer, message);
+    if (!message.value("sentByUs").toBool() && !noteGroupBlock(peer, message)) {
+        return false;
     }
     if (type == QStringLiteral("group.state")) {
-        return;
+        return true;
     }
     if (type == QStringLiteral("group.reactions")) {
-        applyGroupReactions(peer, message.value("groupReactions").toString());
-        return;
+        return applyGroupReactions(peer, message.value("groupReactions").toString());
     }
 
     if (type == QStringLiteral("contact.request") && !message.value("sentByUs").toBool()
         && store_.oldestOfType(peer, type, /*outgoing=*/false) != 0) {
         bazarish::log::info("a second contact request from {} keeps the plate it already has",
             peer.toStdString());
-        return;
+        return true;
     }
 
     if (type == "device.chat-clear") {
         const QString cleared = message.value("ref").toString();
         if (!cleared.isEmpty()) {
-            store_.clearPeer(cleared);
+            if (!store_.clearPeer(cleared)) {
+                return false;
+            }
             if (activePeer_ == cleared) {
                 loadLatestWindow();
             }
@@ -111,7 +115,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             contacts_.setUnread(cleared, store_.unreadCount(cleared));
             refreshUnreadTotal();
         }
-        return;
+        return true;
     }
 
     if (type == "device.account-name") {
@@ -120,27 +124,31 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             displayName_ = name;
             emit identityChanged();
         }
-        return;
+        return true;
     }
     if (type == "device.account-prefs") {
         emit requestEmitSettings();
-        return;
+        return true;
     }
 
     if (type == "device.saved-clear") {
-        store_.clearPeer(savedPeer());
+        if (!store_.clearPeer(savedPeer())) {
+            return false;
+        }
         if (activePeer_ == savedPeer()) {
             loadLatestWindow();
         }
         contacts_.touch(savedPeer(), savedChatName(), QString(), nowMillis(), false);
         rebuildChatList();
-        return;
+        return true;
     }
 
     if (type == "device.contact-remove") {
         const QString gone = message.value("ref").toString();
         if (!gone.isEmpty()) {
-            store_.forgetPeer(gone);
+            if (!store_.forgetPeer(gone)) {
+                return false;
+            }
             contacts_.remove(gone);
             if (activePeer_ == gone) {
                 openConversation({});
@@ -148,36 +156,41 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             rebuildChatList();
             refreshUnreadTotal();
         }
-        return;
+        return true;
     }
 
     if (type == "device.contact-block" || type == "device.contact-prefs"
         || type == "device.contact-accepted") {
         ++contactsRevision_;
         emit contactsRevisionChanged();
-        return;
+        return true;
     }
 
     if (type == "device.read") {
         const QString readPeer = message.value("ref").toString();
         const qint64 through = message.value("text").toString().toLongLong();
         if (!readPeer.isEmpty() && through > 0) {
-            store_.applyReadThrough(readPeer, through);
+            if (!store_.applyReadThrough(readPeer, through)) {
+                return false;
+            }
             lastReadAckedId_[readPeer]
                 = qMax(lastReadAckedId_.value(readPeer, 0), store_.lastReadId(readPeer));
             contacts_.setUnread(readPeer, store_.unreadCount(readPeer));
             refreshUnreadTotal();
         }
-        return;
+        return true;
     }
 
     if (type == "device.chat-pin") {
         const QString pinPeer = message.value("ref").toString();
         if (!pinPeer.isEmpty()) {
-            store_.setPinned(pinPeer, message.value("text").toString() == QStringLiteral("1"));
+            if (!store_.setPinned(
+                    pinPeer, message.value("text").toString() == QStringLiteral("1"))) {
+                return false;
+            }
             rebuildChatList();
         }
-        return;
+        return true;
     }
 
     if (type == "receipt") {
@@ -187,13 +200,10 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             bazarish::log::info("receipt for {} arrived before the message it is about",
                 ref.toStdString());
             receiptsAhead_[peer].insert(ref);
-            return;
+            return true;
         }
         bazarish::log::info("receipt for {} applied to row {}", ref.toStdString(), localId);
-        if (localId != 0) {
-            markOutgoingRead(peer, localId);
-        }
-        return;
+        return markOutgoingRead(peer, localId);
     }
 
     if (type == "reaction") {
@@ -201,7 +211,9 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         const QString reactor = ours ? fingerprint_ : peer;
         const QString target = message.value("ref").toString();
         const QString emoji = message.value("text").toString();
-        store_.setReaction(peer, target, reactor, emoji);
+        if (!store_.setReaction(peer, target, reactor, emoji)) {
+            return false;
+        }
         if (!ours && !emoji.isEmpty()) {
             noteReactionToFlash(peer, target);
             if (contactNotifications(peer)) {
@@ -210,7 +222,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         }
         ++reactionsRevision_;
         emit reactionsRevisionChanged();
-        return;
+        return true;
     }
 
     if (type == "edit") {
@@ -220,7 +232,9 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         if (localId != 0) {
             const QString newText = message.value("text").toString();
             const QString newKeyboard = message.value("keyboard").toString();
-            store_.editContent(localId, newText, newKeyboard);
+            if (!store_.editContent(localId, newText, newKeyboard)) {
+                return false;
+            }
             if (peer == activePeer_) {
                 conversation_.editById(localId, newText, newKeyboard);
             }
@@ -234,7 +248,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             }
             contacts_.touch(peer, peerName(peer), preview, nowMillis(), false);
         }
-        return;
+        return true;
     }
 
     if (type == "delete") {
@@ -242,17 +256,21 @@ void SessionController::onMessageReceived(const QVariantMap& message)
             ? store_.idForE2e(message.value("ref").toString())
             : store_.idForIncomingE2e(message.value("ref").toString(), peer);
         if (localId != 0) {
-            store_.removeById(localId);
+            if (!store_.removeById(localId)) {
+                return false;
+            }
             if (peer == activePeer_) {
                 conversation_.removeById(localId);
             }
             contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
         }
-        return;
+        return true;
     }
 
     if (type == "chat.clear") {
-        store_.clearPeer(peer);
+        if (!store_.clearPeer(peer)) {
+            return false;
+        }
         StoredMessage sys;
         sys.peer = peer;
         sys.e2eId = incomingId;
@@ -264,13 +282,16 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
+        if (sys.id == 0) {
+            return false;
+        }
         if (peer == activePeer_) {
             loadLatestWindow();
         }
         contacts_.touch(peer, peerName(peer), systemNoteText(sys.text), sys.ts, false);
         contacts_.setUnread(peer, store_.unreadCount(peer));
         refreshUnreadTotal();
-        return;
+        return true;
     }
 
     if (type == "contact.accept") {
@@ -284,15 +305,15 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
+        if (sys.id == 0) {
+            return false;
+        }
         showInActiveView(sys, false);
         contacts_.touch(peer, peerName(peer), systemNoteText(sys.text), sys.ts, false);
         contacts_.setUnread(peer, store_.unreadCount(peer));
         const qint64 request
             = store_.oldestOfType(peer, QStringLiteral("contact.request"), /*outgoing=*/true);
-        if (request != 0) {
-            markOutgoingRead(peer, request);
-        }
-        return;
+        return request == 0 || markOutgoingRead(peer, request);
     }
 
     if (message.value("text").toString().isEmpty()
@@ -301,7 +322,7 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         && message.value("attSize").toLongLong() <= 0
         && message.value("keyboard").toString().isEmpty()) {
         bazarish::log::info("silent control message ({}) not shown", type.toStdString());
-        return;
+        return true;
     }
 
     StoredMessage m;
@@ -331,9 +352,14 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         ? (isSavedChat(peer) ? DeliveryStatus::Delivered : DeliveryStatus::AtRecipientServer)
         : DeliveryStatus::Received;
     m.id = store_.append(m);
+    if (m.id == 0) {
+        return false;
+    }
     if (m.outgoing && !m.e2eId.isEmpty() && receiptsAhead_.value(peer).contains(m.e2eId)) {
         receiptsAhead_[peer].remove(m.e2eId);
-        markOutgoingRead(peer, m.id);
+        if (!markOutgoingRead(peer, m.id)) {
+            return false;
+        }
     }
 
     showInActiveView(m, false);
@@ -341,7 +367,9 @@ void SessionController::onMessageReceived(const QVariantMap& message)
         pictureOwners_.insert(m.e2eId, m.id);
         const bool drawable = PictureStore::instance().put(
             m.e2eId, store_.media(QStringLiteral("picture:") + m.e2eId));
-        store_.setHasPicture(m.id, drawable);
+        if (!store_.setHasPicture(m.id, drawable)) {
+            return false;
+        }
         conversation_.setPictureReadyForId(m.id, drawable);
     }
     QString preview = m.text;
@@ -356,19 +384,22 @@ void SessionController::onMessageReceived(const QVariantMap& message)
     if (!m.outgoing && contactNotifications(peer)) {
         emit messageNotification(peer, peerName(peer));
     }
+    return true;
 }
 
-void SessionController::noteGroupBlock(const QString& peer, const QVariantMap& message)
+bool SessionController::noteGroupBlock(const QString& peer, const QVariantMap& message)
 {
     const std::optional<GroupState> held = store_.groupState(peer);
     if (!message.contains(QStringLiteral("group"))) {
         if (held && message.value("sentAt").toLongLong() > held->at) {
-            store_.dropGroupState(peer);
+            if (!store_.dropGroupState(peer)) {
+                return false;
+            }
             if (peer == activePeer_) {
                 refreshActiveGroup();
             }
         }
-        return;
+        return true;
     }
     const QVariantMap block = message.value("group").toMap();
     GroupState state;
@@ -378,15 +409,18 @@ void SessionController::noteGroupBlock(const QString& peer, const QVariantMap& m
     state.admin = block.value("admin").toBool();
     state.at = block.value("at").toLongLong();
     if (held && held->at > state.at) {
-        return;
+        return true;
     }
-    store_.setGroupState(peer, state);
+    if (!store_.setGroupState(peer, state)) {
+        return false;
+    }
     if (peer == activePeer_) {
         refreshActiveGroup();
     }
+    return true;
 }
 
-void SessionController::applyGroupReactions(const QString& peer, const QString& json)
+bool SessionController::applyGroupReactions(const QString& peer, const QString& json)
 {
     const QJsonArray entries = QJsonDocument::fromJson(json.toUtf8()).array();
     for (const QJsonValue& entry : entries) {
@@ -396,10 +430,14 @@ void SessionController::applyGroupReactions(const QString& peer, const QString& 
         for (auto it = given.begin(); it != given.end(); ++it) {
             counts.insert(it.key(), it.value().toInteger());
         }
-        store_.setGroupReactionCounts(peer, item.value(QStringLiteral("ref")).toString(), counts);
+        if (!store_.setGroupReactionCounts(
+                peer, item.value(QStringLiteral("ref")).toString(), counts)) {
+            return false;
+        }
     }
     ++reactionsRevision_;
     emit reactionsRevisionChanged();
+    return true;
 }
 
 void SessionController::onAvatarReady(const QString& fingerprint, const QByteArray& data)

@@ -514,7 +514,6 @@ private slots:
     void onOpened(const QString& fingerprint, const QString& displayName, bool connected);
     void onConnectionChanged(bool connected, const QString& connectionNote);
     void onMessageReceived(const QVariantMap& message);
-    void ackAfterReceive(const QVariantMap& message);
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void onContactAddStage(const QString& opId, const QString& status);
     void openContactProgress(const QString& peer, const QString& opId);
@@ -663,13 +662,15 @@ private:
     bool scrollStick_ = true;
     void activateConversation(const QString& peer);
     void refreshActiveGroup();
-    void noteGroupBlock(const QString& peer, const QVariantMap& message);
-    void applyGroupReactions(const QString& peer, const QString& json);
+    bool takeIn(const QVariantMap& message);
+    bool noteGroupBlock(const QString& peer, const QVariantMap& message);
+    bool applyGroupReactions(const QString& peer, const QString& json);
+    void reportUnsaved();
     void loadLatestWindow();
     void openWindowAtUnread(const QString& peer, qint64 firstUnread);
     void showInActiveView(const StoredMessage& m, bool isOwn);
     void onRoutingTold(const QString& peer, bool delivered);
-    void markOutgoingRead(const QString& peer, qint64 uptoId);
+    bool markOutgoingRead(const QString& peer, qint64 uptoId);
     QHash<QString, qint64> lastReadAckedId_;
     QHash<QString, qint64> pendingReadSync_;
     QTimer readSyncTimer_;

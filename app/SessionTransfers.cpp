@@ -235,7 +235,9 @@ void SessionController::onDownloadFinished(qint64 token, bool ok, const QString&
     finishOperation(opId, ok, ok ? tr("Saved") : tr("Failed: %1").arg(error));
     conversation_.finishDownloadForId(token, ok, error);
     if (ok && !path.isEmpty()) {
-        store_.setSavedPath(token, path);
+        if (!store_.setSavedPath(token, path)) {
+            reportUnsaved();
+        }
         conversation_.setSavedPathForId(token, path);
     }
 }

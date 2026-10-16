@@ -386,8 +386,6 @@ SessionController::SessionController(QObject* parent)
         &SessionController::onConnectionChanged);
     connect(worker_, &SessionWorker::messageReceived, this,
         &SessionController::onMessageReceived);
-    connect(worker_, &SessionWorker::messageReceived, this,
-        &SessionController::ackAfterReceive);
     connect(this, &SessionController::requestAckPending, worker_, &SessionWorker::ackPending);
     connect(worker_, &SessionWorker::contactsRefreshed, this,
         [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
@@ -690,11 +688,14 @@ void SessionController::open(const QString& file, const QString& accountId,
     for (const QJsonValue& entry : flashes.array()) {
         reactionsToFlash_ << entry.toString();
     }
-    store_.failUnsentOnLoad(
-        DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed);
-    store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
-        DeliveryStatus::Received,
-        encodeSystemNote(QT_TR_NOOP("The contact request did not finish.")));
+    if (!store_.failUnsentOnLoad(
+            DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed)
+        || !store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
+            DeliveryStatus::Received,
+            encodeSystemNote(QT_TR_NOOP("The contact request did not finish.")))) {
+        emit openFailed(tr("This profile could not be opened."));
+        return;
+    }
     emit requestOpen(file, passphrase, startOnline);
 }
 
@@ -1163,7 +1164,10 @@ void SessionController::clearChat(bool forEveryone)
         return;
     }
     const QString peer = activePeer_;
-    store_.clearPeer(peer);
+    if (!store_.clearPeer(peer)) {
+        reportUnsaved();
+        return;
+    }
     if (!forEveryone) {
         emit requestSyncChatClear(peer);
     }
@@ -1177,6 +1181,9 @@ void SessionController::clearChat(bool forEveryone)
         sys.orderKey = sys.ts;
         sys.status = DeliveryStatus::Received;
         sys.id = store_.append(sys);
+        if (sys.id == 0) {
+            reportUnsaved();
+        }
     }
     loadLatestWindow();
     contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
@@ -1199,7 +1206,10 @@ void SessionController::deleteContact()
 
 void SessionController::dropChat(const QString& peer)
 {
-    store_.forgetPeer(peer);
+    if (!store_.forgetPeer(peer)) {
+        reportUnsaved();
+        return;
+    }
     if (activePeer_ == peer) {
         openConversation({});
     }
@@ -1209,7 +1219,10 @@ void SessionController::dropChat(const QString& peer)
 
 void SessionController::clearSavedEverywhere()
 {
-    store_.clearPeer(savedPeer());
+    if (!store_.clearPeer(savedPeer())) {
+        reportUnsaved();
+        return;
+    }
     loadLatestWindow();
     contacts_.touch(savedPeer(), savedChatName(), QString(), nowMillis(), false);
     rebuildChatList();
@@ -1323,6 +1336,10 @@ void SessionController::deliverText(const QString& text, const QString& replyTo)
     const bool saved = isSavedChat(activePeer_);
     m.status = saved ? DeliveryStatus::Delivering : DeliveryStatus::Preparing;
     m.id = store_.append(m);
+    if (m.id == 0) {
+        reportUnsaved();
+        return;
+    }
     statusById_[m.id] = m.status;
     if (saved) {
         savedSends_.insert(m.id);
@@ -1363,6 +1380,10 @@ StoredMessage SessionController::beginAttachmentSend(const QString& type, const 
     m.status = isSavedChat(activePeer_) ? DeliveryStatus::Delivering
                                         : DeliveryStatus::Preparing;
     m.id = store_.append(m);
+    if (m.id == 0) {
+        reportUnsaved();
+        return {};
+    }
     statusById_[m.id] = m.status;
     showInActiveView(m, true);
     contacts_.touch(
@@ -1432,7 +1453,9 @@ void SessionController::sendPreparedPicture(const PreparedPicture& picture)
     }
     pictureOwners_.insert(m.e2eId, m.id);
     const bool drawable = PictureStore::instance().put(m.e2eId, picture.bytes);
-    store_.setHasPicture(m.id, drawable);
+    if (!store_.setHasPicture(m.id, drawable)) {
+        reportUnsaved();
+    }
     conversation_.setPictureReadyForId(m.id, drawable);
     emit requestSendPicture(
         activePeer_, picture.bytes, picture.name, picture.mime, m.id, m.e2eId, m.replyTo);
@@ -1543,7 +1566,11 @@ void SessionController::commitEdit(const QString& newText)
     }
     const QString trimmed = newText.trimmed();
     if (!trimmed.isEmpty() && trimmed != editingText_) {
-        store_.editContent(editingLocalId_, trimmed, {});
+        if (!store_.editContent(editingLocalId_, trimmed, {})) {
+            reportUnsaved();
+            cancelEdit();
+            return;
+        }
         conversation_.editById(editingLocalId_, trimmed, {});
         contacts_.touch(activePeer_, {}, trimmed, nowMillis(), false);
         restartDelivery(editingLocalId_);
@@ -1569,10 +1596,13 @@ void SessionController::deleteMessage(qint64 localId, const QString& e2eId, bool
     if (activePeer_.isEmpty() || localId == 0) {
         return;
     }
+    if (!store_.removeById(localId)) {
+        reportUnsaved();
+        return;
+    }
     if (!e2eId.isEmpty()) {
         emit requestUnsend(e2eId);
     }
-    store_.removeById(localId);
     conversation_.removeById(localId);
     statusById_.remove(localId);
     contacts_.touch(activePeer_, {}, chatPreview(activePeer_), store_.lastTime(activePeer_),
@@ -1735,7 +1765,10 @@ void SessionController::pinChat(const QString& peer, bool pinned)
     if (peer.isEmpty()) {
         return;
     }
-    store_.setPinned(peer, pinned);
+    if (!store_.setPinned(peer, pinned)) {
+        reportUnsaved();
+        return;
+    }
     rebuildChatList();
     emit requestSyncChatPin(peer, pinned);
 }
@@ -1936,12 +1969,20 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
         m.attDurationMs = source.attDurationMs;
         m.attWave = source.attWave;
         m.id = store_.append(m);
+        if (m.id == 0) {
+            reportUnsaved();
+            return;
+        }
         forwardShown(m, toPeer, tr("[voice]"));
         emit requestSendVoice(toPeer, audio, m.attDurationMs, m.id, m.e2eId, QString(), true);
         return;
     }
     if (source.type == QStringLiteral("text")) {
         m.id = store_.append(m);
+        if (m.id == 0) {
+            reportUnsaved();
+            return;
+        }
         forwardShown(m, toPeer, m.text);
         emit requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
         return;
@@ -1962,6 +2003,10 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
             return;
         }
         m.id = store_.append(m);
+        if (m.id == 0) {
+            reportUnsaved();
+            return;
+        }
         forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[image]") : m.attName);
         emit requestSendPicture(
             toPeer, picture, m.attName, m.attMime, m.id, m.e2eId, QString(), true);
@@ -1974,6 +2019,10 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     }
     m.attSrcPath = path;
     m.id = store_.append(m);
+    if (m.id == 0) {
+        reportUnsaved();
+        return;
+    }
     forwardShown(m, toPeer, m.attName.isEmpty() ? tr("[file]") : m.attName);
     emit requestSendFile(toPeer, path, m.id, m.e2eId, QString(), true);
 }
@@ -2007,15 +2056,13 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
             continue;
         }
         const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.e2eId);
-        if (bytes.isEmpty()) {
-            store_.setHasPicture(message.id, false);
-            conversation_.setPictureReadyForId(message.id, false);
+        if (!bytes.isEmpty() && PictureStore::instance().put(message.e2eId, bytes)) {
             continue;
         }
-        if (!PictureStore::instance().put(message.e2eId, bytes)) {
-            store_.setHasPicture(message.id, false);
-            conversation_.setPictureReadyForId(message.id, false);
+        if (!store_.setHasPicture(message.id, false)) {
+            reportUnsaved();
         }
+        conversation_.setPictureReadyForId(message.id, false);
     }
 }
 
@@ -2288,7 +2335,9 @@ void SessionController::onApprovalState(const bool pending, const QString& note)
 void SessionController::restartDelivery(qint64 localId)
 {
     statusById_[localId] = DeliveryStatus::Preparing;
-    store_.updateStatus(localId, DeliveryStatus::Preparing);
+    if (!store_.updateStatus(localId, DeliveryStatus::Preparing)) {
+        reportUnsaved();
+    }
     conversation_.setStatusForId(localId, DeliveryStatus::Preparing);
     conversation_.setErrorForId(localId, {});
 }
@@ -2300,7 +2349,9 @@ void SessionController::bumpStatus(qint64 localId, int status)
         return;
     }
     statusById_[localId] = status;
-    store_.updateStatus(localId, status);
+    if (!store_.updateStatus(localId, status)) {
+        reportUnsaved();
+    }
     conversation_.setStatusForId(localId, status);
 }
 
@@ -2412,15 +2463,23 @@ void SessionController::resendPicture(qint64 localId, const QString& e2eId)
         stored.replyTo, stored.forwarded);
 }
 
-void SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
+bool SessionController::markOutgoingRead(const QString& peer, qint64 uptoId)
 {
-    store_.markOutgoingReadUpTo(peer, uptoId, DeliveryStatus::Delivered,
-        DeliveryStatus::AtRecipientServer, DeliveryStatus::AtRecipientServer);
+    if (!store_.markOutgoingReadUpTo(peer, uptoId, DeliveryStatus::Delivered,
+            DeliveryStatus::AtRecipientServer, DeliveryStatus::AtRecipientServer)) {
+        return false;
+    }
     if (peer == activePeer_) {
         for (const qint64 id : conversation_.markDeliveredThrough(uptoId)) {
             statusById_[id] = DeliveryStatus::Delivered;
         }
     }
+    return true;
+}
+
+void SessionController::reportUnsaved()
+{
+    emit actionFailed(tr("History not saved: %1").arg(store_.lastError()));
 }
 
 void SessionController::markReadThroughRow(int row)
@@ -2438,8 +2497,11 @@ void SessionController::markReadThroughRow(int row)
     if (id <= prevAcked) {
         return;
     }
+    if (!store_.setLastReadId(activePeer_, id)) {
+        reportUnsaved();
+        return;
+    }
     lastReadAckedId_[activePeer_] = id;
-    store_.setLastReadId(activePeer_, id);
     contacts_.setUnread(activePeer_, store_.unreadCount(activePeer_));
     pendingReadSync_[activePeer_] = sentAt;
     readSyncTimer_.start(kReadSyncIdleMs);

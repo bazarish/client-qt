@@ -121,6 +121,43 @@ private:
     bool stepped_ = false;
 };
 
+class Transaction {
+public:
+    explicit Transaction(sqlite3* const db)
+        : db_(db)
+    {
+        Query begin(db_);
+        begun_ = begin.exec("BEGIN IMMEDIATE");
+    }
+    ~Transaction()
+    {
+        if (!begun_ || committed_) {
+            return;
+        }
+        Query rollback(db_);
+        if (!rollback.exec("ROLLBACK")) {
+            bazarish::log::warn("transcript: a change could not be rolled back");
+        }
+    }
+
+    Transaction(const Transaction&) = delete;
+    Transaction& operator=(const Transaction&) = delete;
+
+    bool begun() const { return begun_; }
+
+    bool commit()
+    {
+        Query end(db_);
+        committed_ = end.exec("COMMIT");
+        return committed_;
+    }
+
+private:
+    sqlite3* db_ = nullptr;
+    bool begun_ = false;
+    bool committed_ = false;
+};
+
 const char* const kMessageColumns = "id, peer, outgoing, type, e2eId, text, attName,"
                                     " attMime, attSize, attRef, attSrcPath, keyboard,"
                                     " edited, ts, status, orderKey, savedPath, replyTo,"
@@ -174,14 +211,14 @@ StoredMessage readMessageRow(const Query& query)
 
 }  // namespace
 
-TranscriptStore::TranscriptStore() = default;
+TranscriptReader::TranscriptReader() = default;
 
-TranscriptStore::~TranscriptStore()
+TranscriptReader::~TranscriptReader()
 {
     close();
 }
 
-void TranscriptStore::close()
+void TranscriptReader::close()
 {
     sqlite3_close(db_);
     db_ = nullptr;
@@ -214,7 +251,29 @@ bool readable(sqlite3* const db)
         == SQLITE_OK;
 }
 
+// One process writes while another reads, and a reader must never hold the writer up.
+bool takesWriteAheadLog(sqlite3* const db)
+{
+    Query journal(db);
+    return journal.exec("PRAGMA journal_mode = WAL")
+        && journal.value(0).toString() == QStringLiteral("wal");
+}
+
 }  // namespace
+
+bool TranscriptReader::open(const QString& dbPath, const Bytes& key)
+{
+    db_ = openKeyed(dbPath, key);
+    if (db_ == nullptr) {
+        return false;
+    }
+    if (!readable(db_)) {
+        close();
+        return false;
+    }
+    path_ = dbPath;
+    return true;
+}
 
 bool TranscriptStore::open(const QString& accountId, const QString& dbPath, const QString& passphrase)
 {
@@ -231,11 +290,16 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
         return false;
     }
     if (!readable(db_)) {
-        sqlite3_close(db_);
-        db_ = nullptr;
+        close();
         return false;
     }
     path_ = dbPath;
+
+    if (!takesWriteAheadLog(db_)) {
+        bazarish::log::warn("transcript: the database did not take a write-ahead log");
+        close();
+        return false;
+    }
 
     Query query(db_);
     if (!query.exec(
@@ -286,6 +350,11 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
 
 qint64 TranscriptStore::append(const StoredMessage& message)
 {
+    Transaction change(db_);
+    if (!change.begun()) {
+        failed();
+        return 0;
+    }
     if (!message.e2eId.isEmpty()) {
         if (const qint64 existing = idForKey(message.peer, message.e2eId, message.outgoing);
             existing != 0) {
@@ -320,14 +389,8 @@ qint64 TranscriptStore::append(const StoredMessage& message)
     query.addBindValue(message.attWave);
     query.addBindValue(message.forwarded ? 1 : 0);
     if (!query.exec()) {
-        const qint64 existing = message.e2eId.isEmpty()
-            ? 0
-            : idForKey(message.peer, message.e2eId, message.outgoing);
-        if (existing != 0) {
-            bazarish::log::warn("transcript: {} was stored without asking first",
-                message.e2eId.toStdString());
-        }
-        return existing;
+        failed();
+        return 0;
     }
     const qint64 id = query.lastInsertId();
     if (!message.author.isEmpty() || message.fromHost) {
@@ -339,13 +402,18 @@ qint64 TranscriptStore::append(const StoredMessage& message)
         post.addBindValue(message.author);
         post.addBindValue(message.contactable ? 1 : 0);
         if (!post.exec()) {
-            bazarish::log::warn("transcript: the author of a group post could not be stored");
+            failed();
+            return 0;
         }
+    }
+    if (!change.commit()) {
+        failed();
+        return 0;
     }
     return id;
 }
 
-qint64 TranscriptStore::idForKey(
+qint64 TranscriptReader::idForKey(
     const QString& peer, const QString& e2eId, const bool outgoing) const
 {
     if (e2eId.isEmpty()) {
@@ -362,18 +430,19 @@ qint64 TranscriptStore::idForKey(
     return query.value(0).toLongLong();
 }
 
-void TranscriptStore::updateStatus(qint64 id, int status)
+bool TranscriptStore::updateStatus(qint64 id, int status)
 {
     Query query(db_);
     query.prepare("UPDATE messages SET status = ? WHERE id = ?");
     query.addBindValue(status);
     query.addBindValue(id);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the delivery status could not be stored");
+        return failed();
     }
+    return true;
 }
 
-QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
+QVector<StoredMessage> TranscriptReader::messagesFor(const QString& peer) const
 {
     QVector<StoredMessage> result;
     Query query(db_);
@@ -390,7 +459,7 @@ QVector<StoredMessage> TranscriptStore::messagesFor(const QString& peer) const
     return result;
 }
 
-QVector<StoredMessage> TranscriptStore::latestMessages(const QString& peer, int limit) const
+QVector<StoredMessage> TranscriptReader::latestMessages(const QString& peer, int limit) const
 {
     QVector<StoredMessage> result;
     Query query(db_);
@@ -408,7 +477,7 @@ QVector<StoredMessage> TranscriptStore::latestMessages(const QString& peer, int 
     return result;
 }
 
-QVector<StoredMessage> TranscriptStore::olderMessages(
+QVector<StoredMessage> TranscriptReader::olderMessages(
     const QString& peer, qint64 beforeId, int limit) const
 {
     QVector<StoredMessage> result;
@@ -429,7 +498,7 @@ QVector<StoredMessage> TranscriptStore::olderMessages(
     return result;
 }
 
-StoredMessage TranscriptStore::nextVoiceAfter(const QString& peer, const qint64 afterId) const
+StoredMessage TranscriptReader::nextVoiceAfter(const QString& peer, const qint64 afterId) const
 {
     StoredMessage found;
     Query query(db_);
@@ -444,7 +513,7 @@ StoredMessage TranscriptStore::nextVoiceAfter(const QString& peer, const qint64 
     return readMessageRow(query);
 }
 
-QVector<StoredMessage> TranscriptStore::newerMessages(
+QVector<StoredMessage> TranscriptReader::newerMessages(
     const QString& peer, qint64 afterId, int limit) const
 {
     QVector<StoredMessage> result;
@@ -465,7 +534,7 @@ QVector<StoredMessage> TranscriptStore::newerMessages(
     return result;
 }
 
-bool TranscriptStore::hasMessagesBefore(const QString& peer, qint64 id) const
+bool TranscriptReader::hasMessagesBefore(const QString& peer, qint64 id) const
 {
     Query query(db_);
     query.prepare("SELECT 1 FROM messages WHERE peer = ? AND id < ? LIMIT 1");
@@ -474,7 +543,7 @@ bool TranscriptStore::hasMessagesBefore(const QString& peer, qint64 id) const
     return query.exec() && query.next();
 }
 
-bool TranscriptStore::hasMessagesAfter(const QString& peer, qint64 id) const
+bool TranscriptReader::hasMessagesAfter(const QString& peer, qint64 id) const
 {
     Query query(db_);
     query.prepare("SELECT 1 FROM messages WHERE peer = ? AND id > ? LIMIT 1");
@@ -483,7 +552,7 @@ bool TranscriptStore::hasMessagesAfter(const QString& peer, qint64 id) const
     return query.exec() && query.next();
 }
 
-QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QString& query) const
+QVector<SearchHit> TranscriptReader::searchInPeer(const QString& peer, const QString& query) const
 {
     QVector<SearchHit> hits;
     if (query.isEmpty()) {
@@ -517,7 +586,7 @@ QVector<SearchHit> TranscriptStore::searchInPeer(const QString& peer, const QStr
     return hits;
 }
 
-int TranscriptStore::failUnsentOnLoad(
+std::optional<int> TranscriptStore::failUnsentOnLoad(
     const int preparingStatus, const int deliveringStatus, const int failedStatus)
 {
     Query query(db_);
@@ -527,13 +596,14 @@ int TranscriptStore::failUnsentOnLoad(
     query.addBindValue(preparingStatus);
     query.addBindValue(deliveringStatus);
     if (!query.exec()) {
-        return 0;
+        failed();
+        return std::nullopt;
     }
     return query.numRowsAffected();
 }
 
-int TranscriptStore::settleUnfinishedNotes(const QString& type, const int preparingStatus,
-    const int settledStatus, const QString& text)
+std::optional<int> TranscriptStore::settleUnfinishedNotes(const QString& type,
+    const int preparingStatus, const int settledStatus, const QString& text)
 {
     Query query(db_);
     query.prepare("UPDATE messages SET status = ?, text = ? WHERE type = ? AND status = ?");
@@ -542,12 +612,13 @@ int TranscriptStore::settleUnfinishedNotes(const QString& type, const int prepar
     query.addBindValue(type);
     query.addBindValue(preparingStatus);
     if (!query.exec()) {
-        return 0;
+        failed();
+        return std::nullopt;
     }
     return query.numRowsAffected();
 }
 
-void TranscriptStore::markOutgoingReadUpTo(
+bool TranscriptStore::markOutgoingReadUpTo(
     const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus)
 {
     Query query(db_);
@@ -559,11 +630,12 @@ void TranscriptStore::markOutgoingReadUpTo(
     query.addBindValue(minStatus);
     query.addBindValue(maxStatus);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the read mark could not be applied to sent messages");
+        return failed();
     }
+    return true;
 }
 
-QString TranscriptStore::sourcePathFor(qint64 id) const
+QString TranscriptReader::sourcePathFor(qint64 id) const
 {
     Query query(db_);
     query.prepare("SELECT attSrcPath FROM messages WHERE id = ? LIMIT 1");
@@ -574,18 +646,19 @@ QString TranscriptStore::sourcePathFor(qint64 id) const
     return {};
 }
 
-void TranscriptStore::setSavedPath(qint64 id, const QString& path)
+bool TranscriptStore::setSavedPath(qint64 id, const QString& path)
 {
     Query query(db_);
     query.prepare("UPDATE messages SET savedPath = ? WHERE id = ?");
     query.addBindValue(path);
     query.addBindValue(id);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: where the attachment was saved could not be stored");
+        return failed();
     }
+    return true;
 }
 
-QByteArray TranscriptStore::media(const QString& key) const
+QByteArray TranscriptReader::media(const QString& key) const
 {
     Query query(db_);
     if (!query.prepare("SELECT value FROM state WHERE name = ?")) {
@@ -598,18 +671,19 @@ QByteArray TranscriptStore::media(const QString& key) const
     return query.value(0).toByteArray();
 }
 
-void TranscriptStore::setHasPicture(const qint64 id, const bool has)
+bool TranscriptStore::setHasPicture(const qint64 id, const bool has)
 {
     Query query(db_);
     query.prepare("UPDATE messages SET hasPicture = ? WHERE id = ?");
     query.addBindValue(has ? 1 : 0);
     query.addBindValue(id);
     if (!query.exec()) {
-        bazarish::log::warn("could not record that a message holds a picture");
+        return failed();
     }
+    return true;
 }
 
-qint64 TranscriptStore::idForE2e(const QString& e2eId) const
+qint64 TranscriptReader::idForE2e(const QString& e2eId) const
 {
     if (e2eId.isEmpty()) {
         return 0;
@@ -623,7 +697,7 @@ qint64 TranscriptStore::idForE2e(const QString& e2eId) const
     return 0;
 }
 
-qint64 TranscriptStore::idForIncomingE2e(const QString& e2eId, const QString& peer) const
+qint64 TranscriptReader::idForIncomingE2e(const QString& e2eId, const QString& peer) const
 {
     if (e2eId.isEmpty()) {
         return 0;
@@ -639,7 +713,7 @@ qint64 TranscriptStore::idForIncomingE2e(const QString& e2eId, const QString& pe
     return 0;
 }
 
-qint64 TranscriptStore::oldestOfType(
+qint64 TranscriptReader::oldestOfType(
     const QString& peer, const QString& type, const bool outgoing) const
 {
     Query query(db_);
@@ -654,7 +728,7 @@ qint64 TranscriptStore::oldestOfType(
     return 0;
 }
 
-qint64 TranscriptStore::idForAnyProtocol(const QString& e2eId, const QString& peer) const
+qint64 TranscriptReader::idForAnyProtocol(const QString& e2eId, const QString& peer) const
 {
     if (e2eId.isEmpty()) {
         return 0;
@@ -669,7 +743,7 @@ qint64 TranscriptStore::idForAnyProtocol(const QString& e2eId, const QString& pe
     return 0;
 }
 
-StoredMessage TranscriptStore::messageByE2e(
+StoredMessage TranscriptReader::messageByE2e(
     const QString& e2eId, const QString& peer) const
 {
     StoredMessage m;
@@ -688,7 +762,7 @@ StoredMessage TranscriptStore::messageByE2e(
     return m;
 }
 
-void TranscriptStore::editContent(qint64 id, const QString& text, const QString& keyboard)
+bool TranscriptStore::editContent(qint64 id, const QString& text, const QString& keyboard)
 {
     Query query(db_);
     query.prepare("UPDATE messages SET text = ?, keyboard = ?, edited = 1 WHERE id = ?");
@@ -696,33 +770,41 @@ void TranscriptStore::editContent(qint64 id, const QString& text, const QString&
     query.addBindValue(keyboard);
     query.addBindValue(id);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the edited body could not be stored");
+        return failed();
     }
+    return true;
 }
 
-void TranscriptStore::setType(qint64 id, const QString& type)
+bool TranscriptStore::setType(qint64 id, const QString& type)
 {
     Query query(db_);
     query.prepare("UPDATE messages SET type = ? WHERE id = ?");
     query.addBindValue(type);
     query.addBindValue(id);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the message kind could not be stored");
+        return failed();
     }
+    return true;
 }
 
-void TranscriptStore::removeById(qint64 id)
+bool TranscriptStore::removeById(qint64 id)
 {
+    Transaction change(db_);
+    if (!change.begun()) {
+        return failed();
+    }
     QString named;
     Query naming(db_);
-    if (naming.prepare("SELECT e2eId FROM messages WHERE id = ?")) {
-        naming.addBindValue(id);
-        if (naming.exec() && naming.next()) {
-            named = naming.value(0).toString();
-        }
+    naming.prepare("SELECT e2eId FROM messages WHERE id = ?");
+    naming.addBindValue(id);
+    if (!naming.exec()) {
+        return failed();
+    }
+    if (naming.next()) {
+        named = naming.value(0).toString();
     }
     if (!removeMediaOfMessage(named)) {
-        bazarish::log::warn("transcript: the picture or voice note of a deleted message stayed");
+        return false;
     }
     if (!named.isEmpty()) {
         for (const char* statement : {"DELETE FROM reactions WHERE target = ?",
@@ -732,49 +814,78 @@ void TranscriptStore::removeById(qint64 id)
             side.prepare(QString::fromUtf8(statement));
             side.addBindValue(named);
             if (!side.exec()) {
-                bazarish::log::warn("transcript: something of a deleted message stayed");
+                return failed();
             }
         }
     }
     Query query(db_);
     query.prepare("DELETE FROM messages WHERE id = ?");
     query.addBindValue(id);
-    if (!query.exec()) {
-        bazarish::log::warn("transcript: a message could not be deleted");
+    if (!query.exec() || !change.commit()) {
+        return failed();
     }
+    return true;
 }
 
-void TranscriptStore::clearPeer(const QString& peer)
+bool TranscriptStore::clearPeerRows(const QString& peer)
 {
     if (!removeMediaOfPeer(peer)) {
-        bazarish::log::warn("transcript: the media of a cleared conversation stayed behind");
+        return false;
     }
-    Query query(db_);
-    query.prepare("DELETE FROM messages WHERE peer = ?");
-    query.addBindValue(peer);
-    if (!query.exec()) {
-        bazarish::log::warn("transcript: a conversation could not be cleared");
-    }
-    for (const char* statement : {"DELETE FROM reactions WHERE peer = ?",
-             "DELETE FROM read_state WHERE peer = ?", "DELETE FROM group_posts WHERE peer = ?",
+    for (const char* statement : {"DELETE FROM messages WHERE peer = ?",
+             "DELETE FROM reactions WHERE peer = ?", "DELETE FROM read_state WHERE peer = ?",
+             "DELETE FROM group_posts WHERE peer = ?",
              "DELETE FROM group_reaction_counts WHERE peer = ?"}) {
-        Query side(db_);
-        side.prepare(QString::fromUtf8(statement));
-        side.addBindValue(peer);
-        if (!side.exec()) {
-            bazarish::log::warn("transcript: something of a cleared conversation stayed behind");
+        Query query(db_);
+        query.prepare(QString::fromUtf8(statement));
+        query.addBindValue(peer);
+        if (!query.exec()) {
+            return failed();
         }
     }
+    return true;
 }
 
-void TranscriptStore::forgetPeer(const QString& peer)
+bool TranscriptStore::clearPeer(const QString& peer)
 {
-    clearPeer(peer);
-    setPinned(peer, false);
-    dropGroupState(peer);
+    Transaction change(db_);
+    if (!change.begun()) {
+        return failed();
+    }
+    if (!clearPeerRows(peer)) {
+        return false;
+    }
+    if (!change.commit()) {
+        return failed();
+    }
+    return true;
 }
 
-void TranscriptStore::setGroupState(const QString& peer, const GroupState& state)
+bool TranscriptStore::forgetPeer(const QString& peer)
+{
+    Transaction change(db_);
+    if (!change.begun()) {
+        return failed();
+    }
+    if (!clearPeerRows(peer)) {
+        return false;
+    }
+    for (const char* statement : {"DELETE FROM pinned_chats WHERE peer = ?",
+             "DELETE FROM group_state WHERE peer = ?"}) {
+        Query query(db_);
+        query.prepare(QString::fromUtf8(statement));
+        query.addBindValue(peer);
+        if (!query.exec()) {
+            return failed();
+        }
+    }
+    if (!change.commit()) {
+        return failed();
+    }
+    return true;
+}
+
+bool TranscriptStore::setGroupState(const QString& peer, const GroupState& state)
 {
     Query query(db_);
     query.prepare("INSERT OR REPLACE INTO group_state (peer, kind, members, write, admin, at)"
@@ -786,11 +897,12 @@ void TranscriptStore::setGroupState(const QString& peer, const GroupState& state
     query.addBindValue(state.admin ? 1 : 0);
     query.addBindValue(state.at);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the group state could not be stored");
+        return failed();
     }
+    return true;
 }
 
-std::optional<GroupState> TranscriptStore::groupState(const QString& peer) const
+std::optional<GroupState> TranscriptReader::groupState(const QString& peer) const
 {
     Query query(db_);
     query.prepare("SELECT kind, members, write, admin, at FROM group_state WHERE peer = ?");
@@ -802,26 +914,30 @@ std::optional<GroupState> TranscriptStore::groupState(const QString& peer) const
         query.value(2).toInt() != 0, query.value(3).toInt() != 0, query.value(4).toLongLong()};
 }
 
-void TranscriptStore::dropGroupState(const QString& peer)
+bool TranscriptStore::dropGroupState(const QString& peer)
 {
     Query query(db_);
     query.prepare("DELETE FROM group_state WHERE peer = ?");
     query.addBindValue(peer);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the group state could not be dropped");
+        return failed();
     }
+    return true;
 }
 
-void TranscriptStore::setGroupReactionCounts(
+bool TranscriptStore::setGroupReactionCounts(
     const QString& peer, const QString& target, const QMap<QString, qint64>& counts)
 {
+    Transaction change(db_);
+    if (!change.begun()) {
+        return failed();
+    }
     Query clear(db_);
     clear.prepare("DELETE FROM group_reaction_counts WHERE peer = ? AND target = ?");
     clear.addBindValue(peer);
     clear.addBindValue(target);
     if (!clear.exec()) {
-        bazarish::log::warn("transcript: group reaction counts could not be replaced");
-        return;
+        return failed();
     }
     for (auto it = counts.cbegin(); it != counts.cend(); ++it) {
         Query insert(db_);
@@ -832,12 +948,16 @@ void TranscriptStore::setGroupReactionCounts(
         insert.addBindValue(it.key());
         insert.addBindValue(it.value());
         if (!insert.exec()) {
-            bazarish::log::warn("transcript: a group reaction count could not be stored");
+            return failed();
         }
     }
+    if (!change.commit()) {
+        return failed();
+    }
+    return true;
 }
 
-QMap<QString, qint64> TranscriptStore::groupReactionCounts(
+QMap<QString, qint64> TranscriptReader::groupReactionCounts(
     const QString& peer, const QString& target) const
 {
     QMap<QString, qint64> counts;
@@ -854,7 +974,7 @@ QMap<QString, qint64> TranscriptStore::groupReactionCounts(
     return counts;
 }
 
-QStringList TranscriptStore::conversationPeers() const
+QStringList TranscriptReader::conversationPeers() const
 {
     QStringList peers;
     Query query(db_);
@@ -866,7 +986,7 @@ QStringList TranscriptStore::conversationPeers() const
     return peers;
 }
 
-TranscriptStore::LastMessage TranscriptStore::lastMessage(const QString& peer) const
+TranscriptReader::LastMessage TranscriptReader::lastMessage(const QString& peer) const
 {
     Query query(db_);
     query.prepare("SELECT text, type, attName FROM messages WHERE peer = ?"
@@ -883,7 +1003,7 @@ TranscriptStore::LastMessage TranscriptStore::lastMessage(const QString& peer) c
     return {};
 }
 
-qint64 TranscriptStore::lastTime(const QString& peer) const
+qint64 TranscriptReader::lastTime(const QString& peer) const
 {
     Query query(db_);
     query.prepare(
@@ -895,10 +1015,10 @@ qint64 TranscriptStore::lastTime(const QString& peer) const
     return 0;
 }
 
-void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
+bool TranscriptStore::setLastReadId(const QString& peer, qint64 id)
 {
     if (peer.isEmpty() || id <= 0) {
-        return;
+        return true;
     }
     Query query(db_);
     query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
@@ -907,32 +1027,32 @@ void TranscriptStore::setLastReadId(const QString& peer, qint64 id)
     query.addBindValue(id);
     query.addBindValue(peer);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the read mark could not be stored");
+        return failed();
     }
+    return true;
 }
 
-void TranscriptStore::applyReadThrough(const QString& peer, const qint64 sentAtMs)
+bool TranscriptStore::applyReadThrough(const QString& peer, const qint64 sentAtMs)
 {
     if (peer.isEmpty() || sentAtMs <= 0) {
-        return;
+        return true;
     }
     Query query(db_);
-    if (!query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
-                       " max(coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0),"
-                       " coalesce((SELECT MAX(id) FROM messages WHERE peer = ? AND outgoing = 0"
-                       " AND type != 'system' AND ts <= ?), 0)))")) {
-        return;
-    }
+    query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
+                  " max(coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0),"
+                  " coalesce((SELECT MAX(id) FROM messages WHERE peer = ? AND outgoing = 0"
+                  " AND type != 'system' AND ts <= ?), 0)))");
     query.addBindValue(peer);
     query.addBindValue(peer);
     query.addBindValue(peer);
     query.addBindValue(sentAtMs);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: a read mark from another device was not applied");
+        return failed();
     }
+    return true;
 }
 
-qint64 TranscriptStore::lastReadId(const QString& peer) const
+qint64 TranscriptReader::lastReadId(const QString& peer) const
 {
     Query query(db_);
     query.prepare("SELECT last_read_id FROM read_state WHERE peer = ? LIMIT 1");
@@ -943,10 +1063,10 @@ qint64 TranscriptStore::lastReadId(const QString& peer) const
     return 0;
 }
 
-void TranscriptStore::setPinned(const QString& peer, bool pinned)
+bool TranscriptStore::setPinned(const QString& peer, bool pinned)
 {
     if (peer.isEmpty()) {
-        return;
+        return true;
     }
     Query query(db_);
     if (pinned) {
@@ -956,11 +1076,12 @@ void TranscriptStore::setPinned(const QString& peer, bool pinned)
     }
     query.addBindValue(peer);
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the pinned state could not be stored");
+        return failed();
     }
+    return true;
 }
 
-bool TranscriptStore::isPinned(const QString& peer) const
+bool TranscriptReader::isPinned(const QString& peer) const
 {
     Query query(db_);
     query.prepare("SELECT 1 FROM pinned_chats WHERE peer = ? LIMIT 1");
@@ -968,7 +1089,7 @@ bool TranscriptStore::isPinned(const QString& peer) const
     return query.exec() && query.next();
 }
 
-QStringList TranscriptStore::pinnedPeers() const
+QStringList TranscriptReader::pinnedPeers() const
 {
     QStringList peers;
     Query query(db_);
@@ -980,7 +1101,7 @@ QStringList TranscriptStore::pinnedPeers() const
     return peers;
 }
 
-int TranscriptStore::unreadCount(const QString& peer) const
+int TranscriptReader::unreadCount(const QString& peer) const
 {
     Query query(db_);
     query.prepare("SELECT COUNT(*) FROM messages WHERE peer = ? AND outgoing = 0 AND type != 'system' AND id >"
@@ -993,7 +1114,7 @@ int TranscriptStore::unreadCount(const QString& peer) const
     return 0;
 }
 
-qint64 TranscriptStore::firstUnreadId(const QString& peer) const
+qint64 TranscriptReader::firstUnreadId(const QString& peer) const
 {
     Query query(db_);
     query.prepare("SELECT MIN(id) FROM messages WHERE peer = ? AND outgoing = 0 AND type != 'system' AND id >"
@@ -1006,11 +1127,11 @@ qint64 TranscriptStore::firstUnreadId(const QString& peer) const
     return 0;
 }
 
-void TranscriptStore::setReaction(
+bool TranscriptStore::setReaction(
     const QString& peer, const QString& target, const QString& reactor, const QString& emoji)
 {
     if (peer.isEmpty() || target.isEmpty() || reactor.isEmpty()) {
-        return;
+        return true;
     }
     Query query(db_);
     if (emoji.isEmpty()) {
@@ -1027,11 +1148,12 @@ void TranscriptStore::setReaction(
         query.addBindValue(emoji);
     }
     if (!query.exec()) {
-        bazarish::log::warn("transcript: the reaction could not be stored");
+        return failed();
     }
+    return true;
 }
 
-QVector<Reaction> TranscriptStore::reactionsFor(const QString& peer, const QString& target) const
+QVector<Reaction> TranscriptReader::reactionsFor(const QString& peer, const QString& target) const
 {
     QVector<Reaction> result;
     if (peer.isEmpty() || target.isEmpty()) {
@@ -1078,47 +1200,11 @@ QString mediaOfRows(const QString& rowCondition)
             rowCondition);
 }
 
-class Transaction {
-public:
-    explicit Transaction(sqlite3* const db)
-        : db_(db)
-    {
-        Query begin(db_);
-        if (!begin.exec("BEGIN IMMEDIATE")) {
-            throw std::runtime_error("the database is busy");
-        }
-    }
-    ~Transaction()
-    {
-        if (committed_) {
-            return;
-        }
-        Query rollback(db_);
-        if (!rollback.exec("ROLLBACK")) {
-            bazarish::log::warn("transcript: a change could not be rolled back");
-        }
-    }
 
-    Transaction(const Transaction&) = delete;
-    Transaction& operator=(const Transaction&) = delete;
-
-    void commit()
-    {
-        Query end(db_);
-        if (!end.exec("COMMIT")) {
-            throw std::runtime_error("the change could not be committed");
-        }
-        committed_ = true;
-    }
-
-private:
-    sqlite3* db_ = nullptr;
-    bool committed_ = false;
-};
 
 }  // namespace
 
-bool TranscriptStore::hasMediaTable() const
+bool TranscriptReader::hasMediaTable() const
 {
     Query query(db_);
     return query.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'state'")
@@ -1131,12 +1217,19 @@ bool TranscriptStore::removeMediaOfMessage(const QString& e2eId)
         return true;
     }
     Query query(db_);
-    if (!query.prepare("DELETE FROM state WHERE name = ? OR name = ?")) {
-        return false;
-    }
+    query.prepare("DELETE FROM state WHERE name = ? OR name = ?");
     query.addBindValue(QString::fromUtf8(kPictureKeyPrefix) + e2eId);
     query.addBindValue(QString::fromUtf8(kVoiceKeyPrefix) + e2eId);
-    return query.exec();
+    if (!query.exec()) {
+        return failed();
+    }
+    return true;
+}
+
+bool TranscriptStore::failed()
+{
+    lastError_ = QString::fromUtf8(sqlite3_errmsg(db_));
+    return false;
 }
 
 bool TranscriptStore::removeMediaOfPeer(const QString& peer)
@@ -1145,12 +1238,13 @@ bool TranscriptStore::removeMediaOfPeer(const QString& peer)
         return true;
     }
     Query query(db_);
-    if (!query.prepare(mediaOfRows("peer = ?"))) {
-        return false;
+    query.prepare(mediaOfRows("peer = ?"));
+    query.addBindValue(peer);
+    query.addBindValue(peer);
+    if (!query.exec()) {
+        return failed();
     }
-    query.addBindValue(peer);
-    query.addBindValue(peer);
-    return query.exec();
+    return true;
 }
 
 bool TranscriptStore::removeMediaOfTrimmed(const QString& peer, const int keep)
@@ -1172,7 +1266,7 @@ bool TranscriptStore::removeMediaOfTrimmed(const QString& peer, const int keep)
     return query.exec();
 }
 
-QVector<ChatWeight> TranscriptStore::chatWeights() const
+QVector<ChatWeight> TranscriptReader::chatWeights() const
 {
     QVector<ChatWeight> weights;
     const QString media = hasMediaTable()
@@ -1202,10 +1296,10 @@ QVector<ChatWeight> TranscriptStore::chatWeights() const
     return weights;
 }
 
-DatabaseFootprint TranscriptStore::footprint() const
+DatabaseFootprint TranscriptReader::footprint() const
 {
     DatabaseFootprint out;
-    out.fileBytes = QFileInfo(path_).size();
+    out.fileBytes = QFileInfo(path_).size() + QFileInfo(path_ + QStringLiteral("-wal")).size();
     qint64 bytesPerPage = 0;
     Query pageSize(db_);
     if (pageSize.exec("PRAGMA page_size") && pageSize.next()) {
@@ -1254,8 +1348,13 @@ qint64 TranscriptStore::pruneToLatest(const QString& peer, const int keep)
         return 0;
     }
     Transaction change(db_);
+    if (!change.begun()) {
+        throw std::runtime_error("the database is busy");
+    }
     const qint64 removed = pruneRowsOf(peer, keep);
-    change.commit();
+    if (!change.commit()) {
+        throw std::runtime_error("the change could not be committed");
+    }
     return removed;
 }
 
@@ -1266,11 +1365,16 @@ qint64 TranscriptStore::pruneEveryChatToLatest(const int keep)
     }
     const QStringList peers = conversationPeers();
     Transaction change(db_);
+    if (!change.begun()) {
+        throw std::runtime_error("the database is busy");
+    }
     qint64 removed = 0;
     for (const QString& peer : peers) {
         removed += pruneRowsOf(peer, keep);
     }
-    change.commit();
+    if (!change.commit()) {
+        throw std::runtime_error("the change could not be committed");
+    }
     return removed;
 }
 
@@ -1284,6 +1388,15 @@ bool TranscriptStore::rebuild(QString& reason)
     Query vacuum(db_);
     if (!vacuum.exec("VACUUM")) {
         reason = QString::fromUtf8(sqlite3_errmsg(db_));
+        return false;
+    }
+    Query checkpoint(db_);
+    if (!checkpoint.exec("PRAGMA wal_checkpoint(TRUNCATE)")) {
+        reason = QString::fromUtf8(sqlite3_errmsg(db_));
+        return false;
+    }
+    if (checkpoint.value(0).toInt() != 0) {
+        reason = QStringLiteral("the database is still being read");
         return false;
     }
     return true;
