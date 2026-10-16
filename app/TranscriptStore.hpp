@@ -89,6 +89,7 @@ public:
     TranscriptReader& operator=(const TranscriptReader&) = delete;
 
     void close();
+    bool isOpen() const { return db_ != nullptr; }
     bool open(const QString& dbPath, const Bytes& key);
 
     QString sourcePathFor(qint64 id) const;

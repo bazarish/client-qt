@@ -288,9 +288,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
                 emit openFailed(tr("This profile could not be opened."));
                 return;
             }
-            if (!activePeer_.isEmpty()) {
-                loadLatestWindow();
-            }
+            emit historyOpened();
         });
     connect(&events_, &AccountEvents::storageWorkDone, this, [this]() {
         loadLatestWindow();

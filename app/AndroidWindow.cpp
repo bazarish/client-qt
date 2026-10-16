@@ -149,11 +149,11 @@ void AndroidWindow::dismissKeyguard()
 void AndroidWindow::followCall()
 {
     const bool overLock = !app_.ringingPeer().isEmpty() || app_.callLive();
-    if (overLock == overLock_) {
+    if (overLock_ == overLock) {
         return;
     }
     overLock_ = overLock;
-    QJniObject::callStaticMethod<void>(kWindow, "overLockScreen", "(Z)V", jboolean(overLock_));
+    QJniObject::callStaticMethod<void>(kWindow, "overLockScreen", "(Z)V", jboolean(overLock));
 }
 
 void AndroidWindow::takeHeld()

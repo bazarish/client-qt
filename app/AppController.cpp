@@ -185,13 +185,15 @@ void AppController::startSession(const QString& id)
     relay_->sendFrom(id, ctrl->commands());
     relay_->deliverTo(id, ctrl->events());
     connect(ctrl, &SessionController::openFailed, this, &AppController::accountOpenFailed);
+    connect(ctrl, &SessionController::historyOpened, this, [this, id]() {
+        if (pendingConversation_.first == id) {
+            const auto [account, peer] = std::exchange(pendingConversation_, {});
+            openConversationOf(account, peer);
+        }
+    });
     emit accountsChanged();
     if (id == activeId_) {
         emit sessionChanged();
-    }
-    if (pendingConversation_.first == id) {
-        const auto [account, peer] = std::exchange(pendingConversation_, {});
-        openConversationOf(account, peer);
     }
 }
 
@@ -367,7 +369,7 @@ void AppController::switchTo(const QString& id)
 void AppController::openConversationOf(const QString& accountId, const QString& peer)
 {
     SessionController* const ctrl = sessionFor(accountId);
-    if (ctrl == nullptr) {
+    if (ctrl == nullptr || !ctrl->historyIsOpen()) {
         pendingConversation_ = {accountId, peer};
         return;
     }

@@ -165,6 +165,7 @@ public:
     bool atNewest() const;
     bool hasMoreOlder() const;
     QString accountId() const { return accountId_; }
+    bool historyIsOpen() const { return store_.isOpen(); }
     int unreadTotal() const { return unreadTotal_; }
     QObject* contacts() { return &contacts_; }
     QObject* chatList() { return &contactsProxy_; }
@@ -417,6 +418,7 @@ signals:
     void callChanged();
     void callLevelsChanged();
     void openFailed(const QString& error);
+    void historyOpened();
     void actionOk(const QString& info);
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);

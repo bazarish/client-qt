@@ -3,6 +3,8 @@
 
 #include <QObject>
 
+#include <optional>
+
 namespace bazarish::app {
 
 class AppController;
@@ -30,7 +32,7 @@ private:
     void takeHeld();
 
     AppController& app_;
-    bool overLock_ = false;
+    std::optional<bool> overLock_;
 };
 
 }  // namespace bazarish::app

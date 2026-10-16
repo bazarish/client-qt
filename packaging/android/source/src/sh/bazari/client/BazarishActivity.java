@@ -16,12 +16,14 @@ public class BazarishActivity extends QtActivity {
         Window.app = getApplicationContext();
         Window.window = new WeakReference<>(this);
         Window.hold(this, getIntent());
+        showForRinging(getIntent());
         super.onCreate(savedInstanceState);
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        showForRinging(intent);
         if (Shade.ACTION_ANSWER.equals(intent.getAction())) {
             Window.callAnswered();
             return;
@@ -30,6 +32,14 @@ public class BazarishActivity extends QtActivity {
         String peer = intent.getStringExtra(Shade.EXTRA_PEER);
         if (account != null && peer != null) {
             Window.conversationOpened(account, peer);
+        }
+    }
+
+    // A ringing call is shown over the lock at once; the window learns of the call seconds later.
+    private void showForRinging(Intent intent) {
+        if (intent != null && Shade.ACTION_RING.equals(intent.getAction())) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
         }
     }
 

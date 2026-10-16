@@ -30,6 +30,7 @@ public final class Shade {
     static final String EXTRA_PEER = "sh.bazari.client.peer";
     static final String EXTRA_LISTENER = "sh.bazari.client.listener";
     static final String ACTION_ANSWER = "sh.bazari.client.ANSWER";
+    static final String ACTION_RING = "sh.bazari.client.RING";
     static final String ACTION_TOGGLE = "sh.bazari.client.TOGGLE_NOTIFICATIONS";
     static final String ACTION_QUIT = "sh.bazari.client.QUIT";
     static final String ACTION_DECLINE = "sh.bazari.client.DECLINE";
@@ -37,6 +38,7 @@ public final class Shade {
     private static final int CALL_ID = 2;
     private static final int MESSAGE_ID = 3;
     private static final int ANSWER_REQUEST = 1;
+    private static final int RING_REQUEST = 2;
     private static final long WAKE_MILLIS = 3000;
     private static MediaPlayer ring = null;
 
@@ -165,15 +167,20 @@ public final class Shade {
             new Intent(app, BazarishActivity.class).setAction(ACTION_ANSWER)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        PendingIntent opened = opening(account, peer);
+        PendingIntent ringing = PendingIntent.getActivity(app, RING_REQUEST,
+            new Intent(app, BazarishActivity.class).setAction(ACTION_RING)
+                .putExtra(EXTRA_ACCOUNT, account)
+                .putExtra(EXTRA_PEER, peer)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification shown = new Notification.Builder(app, CHANNEL_CALLS)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentText(body)
             .setStyle(Notification.CallStyle.forIncomingCall(
                 caller, BazarishService.declining(app), answer))
             .setCategory(Notification.CATEGORY_CALL)
-            .setContentIntent(opened)
-            .setFullScreenIntent(opened, true)
+            .setContentIntent(ringing)
+            .setFullScreenIntent(ringing, true)
             .setOngoing(true)
             .build();
         app.getSystemService(NotificationManager.class).notify(CALL_ID, shown);
