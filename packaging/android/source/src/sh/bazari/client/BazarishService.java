@@ -32,6 +32,10 @@ public class BazarishService extends QtServiceBase {
         awake = getSystemService(PowerManager.class)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bazarish:running");
         awake.acquire();
+        // Android gives a started service seconds to come to the foreground; loading Qt takes longer.
+        Bazarish.presenceChannel(this, getApplicationInfo().loadLabel(getPackageManager()).toString());
+        startForeground(Bazarish.PRESENCE_ID, presence(this),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
         super.onCreate();
     }
 

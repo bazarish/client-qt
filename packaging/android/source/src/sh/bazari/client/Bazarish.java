@@ -66,11 +66,7 @@ public final class Bazarish {
         notificationsOn = notifications;
         line = presenceLine;
         NotificationManager manager = app.getSystemService(NotificationManager.class);
-        // Low importance is what Android draws collapsed until it is pulled open.
-        NotificationChannel presenceChannel = new NotificationChannel(
-            CHANNEL_PRESENCE, presence, NotificationManager.IMPORTANCE_LOW);
-        presenceChannel.setShowBadge(false);
-        manager.createNotificationChannel(presenceChannel);
+        presenceChannel(app, presence);
         manager.createNotificationChannel(sounding(CHANNEL_MESSAGES, messages,
             NotificationManager.IMPORTANCE_HIGH, "notify"));
         manager.createNotificationChannel(sounding(CHANNEL_REACTIONS, reactions,
@@ -86,6 +82,14 @@ public final class Bazarish {
             app.startForegroundService(new Intent(app, BazarishService.class));
             started = true;
         }
+    }
+
+    // Low importance is what Android draws collapsed until it is pulled open.
+    static void presenceChannel(Context context, String name) {
+        NotificationChannel channel = new NotificationChannel(
+            CHANNEL_PRESENCE, name, NotificationManager.IMPORTANCE_LOW);
+        channel.setShowBadge(false);
+        context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
     }
 
     public static void notifyMessage(String account, String peer, String title, String body,
