@@ -51,9 +51,11 @@ Popup {
     onOpened: Qt.inputMethod.hide()
     closePolicy: Popup.NoAutoClose  // dismissed only through call actions
     anchors.centerIn: Overlay.overlay
-    // On a phone the call is the whole screen, as a phone call is.
-    width: App.mobile && parent ? parent.width : Math.min(360, parent ? parent.width - 24 : 360)
-    height: App.mobile && parent ? parent.height : Math.min(440, parent ? parent.height - 24 : 440)
+    // On a phone the call is the whole screen, as a phone call is, its frame off the edge.
+    width: App.mobile && parent ? parent.width - 2 * Theme.spacing
+        : Math.min(360, parent ? parent.width - 24 : 360)
+    height: App.mobile && parent ? parent.height - 2 * Theme.spacing
+        : Math.min(440, parent ? parent.height - 24 : 440)
     padding: 18
 
     background: DialogFrame { }
