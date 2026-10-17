@@ -10,6 +10,8 @@ Item {
     property var session: null
     // Briefly true when a search jump lands on this message, to flash it.
     property bool highlighted: false
+    readonly property bool held: holdHandler.pressed || contextMenu.visible
+    readonly property int heldFadeMs: 120
     // Asks the view to confirm and delete this message (irreversible; for one's
     // own one-to-one message it is removed at the recipient too).
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
@@ -301,7 +303,9 @@ Item {
         width: Math.min(Math.max(content.implicitWidth + 20, 80), delegate.width * 0.72)
         height: content.implicitHeight + 14
         radius: 12
-        color: model.outgoing ? Theme.bubbleOut : Theme.bubbleIn
+        color: model.outgoing ? (delegate.held ? Theme.bubbleOutHeld : Theme.bubbleOut)
+            : (delegate.held ? Theme.bubbleInHeld : Theme.bubbleIn)
+        Behavior on color { ColorAnimation { duration: delegate.heldFadeMs } }
         // Search-jump flash: a brief accent outline on the targeted message. An
         // incoming contact request keeps a permanent thin green outline, and a
         // group message meant for this member alone a white one, so they stand

@@ -48,6 +48,9 @@ QtObject {
     // the neon accent), incoming is the plain surface.
     readonly property color bubbleOut: "#13261a"
     readonly property color bubbleIn:  "#1b2026"
+    // A message under a held finger or its open menu: a row's hover tint, in its bubble's hue.
+    readonly property color bubbleOutHeld: "#1c3524"
+    readonly property color bubbleInHeld: surfaceAlt
     readonly property color authorName: "#7fd36f"
 
     readonly property int spacing: 12
