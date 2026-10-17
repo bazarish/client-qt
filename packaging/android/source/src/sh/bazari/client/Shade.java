@@ -6,6 +6,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -34,6 +35,8 @@ public final class Shade {
     static final String ACTION_TOGGLE = "sh.bazari.client.TOGGLE_NOTIFICATIONS";
     static final String ACTION_QUIT = "sh.bazari.client.QUIT";
     static final String ACTION_DECLINE = "sh.bazari.client.DECLINE";
+    // Not exported: what a notice asks of the window cannot come from another app.
+    static final String NOTICE_ENTRY = "sh.bazari.client.NoticeEntry";
     static final int PRESENCE_ID = 1;
     private static final int CALL_ID = 2;
     private static final int MESSAGE_ID = 3;
@@ -164,11 +167,11 @@ public final class Shade {
     public static void notifyCall(String account, String peer, String title, String body) {
         Person caller = new Person.Builder().setName(title).setImportant(true).build();
         PendingIntent answer = PendingIntent.getActivity(app, ANSWER_REQUEST,
-            new Intent(app, BazarishActivity.class).setAction(ACTION_ANSWER)
+            notice().setAction(ACTION_ANSWER)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent ringing = PendingIntent.getActivity(app, RING_REQUEST,
-            new Intent(app, BazarishActivity.class).setAction(ACTION_RING)
+            notice().setAction(ACTION_RING)
                 .putExtra(EXTRA_ACCOUNT, account)
                 .putExtra(EXTRA_PEER, peer)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -258,8 +261,12 @@ public final class Shade {
         return channel;
     }
 
+    private static Intent notice() {
+        return new Intent().setComponent(new ComponentName(app, NOTICE_ENTRY));
+    }
+
     private static PendingIntent opening(String account, String peer) {
-        Intent open = new Intent(app, BazarishActivity.class)
+        Intent open = notice()
             .putExtra(EXTRA_ACCOUNT, account)
             .putExtra(EXTRA_PEER, peer)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);

@@ -61,6 +61,8 @@ AppController::AppController(Translations& translations, QObject* parent)
 
     connect(&events_, &AppEvents::started, this, [this]() {
         attached_ = true;
+        // The snapshot names the call that rang when the notice was tapped; a later one is not it.
+        answerWhenRinging_ = false;
         emit attachedChanged();
     });
     connect(&events_, &AppEvents::closing, this, [this]() { coreClosing_ = true; });

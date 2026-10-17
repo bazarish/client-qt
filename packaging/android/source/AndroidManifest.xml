@@ -53,6 +53,11 @@
                 android:value="true" />
         </activity>
 
+        <activity-alias
+            android:name="sh.bazari.client.NoticeEntry"
+            android:targetActivity="sh.bazari.client.BazarishActivity"
+            android:exported="false" />
+
         <service
             android:name="sh.bazari.client.BazarishService"
             android:process=":core"
