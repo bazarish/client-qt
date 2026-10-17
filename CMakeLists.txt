@@ -371,6 +371,8 @@ if(Qt6_FOUND)
             app/qml/components/CameraGate.qml
             app/qml/components/Dropdown.qml
             app/qml/components/UnreadBadge.qml
+            app/qml/components/ButtonRow.qml
+            app/qml/components/ScrollColumn.qml
             app/qml/components/DialogButtons.qml
             app/qml/components/DialogFrame.qml
             app/qml/components/Hairline.qml

@@ -52,6 +52,7 @@ Popup {
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                wrapMode: Text.Wrap
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
@@ -176,27 +177,35 @@ Popup {
 
         // What this contact may do here. The global settings still apply on top:
         // these only take something away, never add it back.
-        RowLayout {
+        GridLayout {
+            id: contactSwitches
             visible: !root.saved
             Layout.fillWidth: true
             Layout.topMargin: 2
-            spacing: 12
+            columnSpacing: 12
+            rowSpacing: 8
+            readonly property int sideBySideWidth: 360
+            columns: width < sideBySideWidth ? 2 : 4
             Label {
                 text: qsTr("Notifications")
                 color: Theme.text
                 font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: contactSwitches.columns === 2
             }
             Toggle {
                 checked: root.session !== null && root.session.contactsRevision >= 0
                     && root.session.contactNotifications(root.session.activePeer)
                 onToggled: root.session.setContactNotifications(root.session.activePeer, checked)
             }
-            Item { Layout.fillWidth: true }
             Label {
                 visible: !root.inGroup
                 text: qsTr("Allow calls")
                 color: Theme.text
                 font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+                horizontalAlignment: contactSwitches.columns === 4 ? Text.AlignRight : Text.AlignLeft
             }
             Toggle {
                 visible: !root.inGroup
@@ -250,9 +259,8 @@ Popup {
                 text: qsTr("Clear chat")
                 onClicked: clearChoiceDialog.open()
             }
-            RowLayout {
+            ButtonRow {
                 Layout.fillWidth: true
-                spacing: 8
                 MenuButton {
                     Layout.fillWidth: true
                     iconName: root.blocked ? "check" : "block"
@@ -295,6 +303,7 @@ Popup {
                 return may ? qsTr("You can write to this contact")
                            : qsTr("This contact has not allowed you to write")
             }
+            wrapMode: Text.Wrap
         }
     }
 

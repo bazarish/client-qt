@@ -913,6 +913,8 @@ Item {
                 color: Theme.green
                 font.pixelSize: Theme.fontSmall
                 Layout.topMargin: 2
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
             }
 
             // Inline keyboard (interactive message): rows of tappable buttons.

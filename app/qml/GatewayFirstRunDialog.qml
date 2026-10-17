@@ -17,6 +17,7 @@ Dialog {
     modal: true
     closePolicy: Popup.NoAutoClose
     width: Math.min(520, parent ? parent.width - 24 : 520)
+    margins: Theme.spacing
     background: DialogFrame { destructive: true }
 
     header: Label {
@@ -55,7 +56,7 @@ Dialog {
         }
     }
 
-    contentItem: ColumnLayout {
+    contentItem: ScrollColumn {
         spacing: 8
 
         Label {

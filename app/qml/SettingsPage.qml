@@ -189,6 +189,8 @@ Popup {
                                     }
                                 }
                                 HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
                             }
                         }
                         // Sharing yourself lives at the far edge of the same row.
@@ -218,7 +220,13 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 6
-                    Label { text: qsTr("Server connection"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        text: qsTr("Server connection")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
                     Label {
                         text: !(root.session && root.session.connected)
                             ? qsTr("Not configured")
@@ -255,6 +263,8 @@ Popup {
                                 .arg(root.session.configuredFacades.length)
                             : ""
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                     // What this account is holding on its server, as one line and a
                     // bar. Tapping it re-polls the server and tints the row, so the
@@ -299,6 +309,7 @@ Popup {
                                         color: Theme.textDim
                                         font.pixelSize: Theme.fontSmall
                                         Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
                                     }
                                     Label {
                                         text: storageSection.ok
@@ -346,6 +357,7 @@ Popup {
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 Layout.fillWidth: true
+                                wrapMode: Text.Wrap
                             }
                             Label {
                                 text: root.session ? root.session.devices.length : 0
@@ -452,7 +464,13 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 8
-                    Label { text: qsTr("Your I2P destination"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        text: qsTr("Your I2P destination")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
                     // The box is tinted when the server's answer arrives, not when
                     // the button is pressed.
                     Connections {
@@ -538,6 +556,7 @@ Popup {
                                     font.pixelSize: Theme.fontSmall
                                     font.weight: Font.DemiBold
                                     Layout.fillWidth: true
+                                    wrapMode: Text.Wrap
                                 }
                                 Label {
                                     text: root.session ? root.session.i2pServedAddress : ""
@@ -564,16 +583,16 @@ Popup {
                         }
                     }
                     // Set up a master key first (generate or load a .dat), then turn it on.
-                    RowLayout {
+                    ButtonRow {
                         visible: root.session && !root.session.i2pHasKey
-                        Layout.fillWidth: true; spacing: 8
+                        Layout.fillWidth: true
                         MenuButton { Layout.fillWidth: true; iconName: "plus"; text: qsTr("Create address")
                             onClicked: root.session.generatePersonalKey() }
                         MenuButton { Layout.fillWidth: true; iconName: "folder"; text: qsTr("Load an existing key"); onClicked: i2pKeyDialog.open() }
                     }
-                    RowLayout {
+                    ButtonRow {
                         visible: root.session && root.session.i2pHasKey
-                        Layout.fillWidth: true; spacing: 8
+                        Layout.fillWidth: true
                         MenuButton {
                             Layout.fillWidth: true
                             visible: root.session && !root.session.i2pEnabled
@@ -619,12 +638,19 @@ Popup {
                             && !root.session.i2pBusy
                         onClicked: newKeyDialog.open()
                     }
-                    RowLayout {
+                    GridLayout {
+                        id: delegationRow
                         Layout.fillWidth: true
-                        spacing: 8
+                        columnSpacing: 8
+                        rowSpacing: 8
+                        readonly property int sideBySideWidth: 400
+                        columns: width < sideBySideWidth ? 1 : 2
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: qsTr("Delegation term"); color: Theme.text }
+                            Label {
+                                text: qsTr("Delegation term"); color: Theme.text
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
                             Label {
                                 text: qsTr("Sets how long your server keeps serving incoming mail while you are offline.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
@@ -632,7 +658,8 @@ Popup {
                             }
                         }
                         ColumnLayout {
-                            Layout.alignment: Qt.AlignVCenter
+                            Layout.alignment: delegationRow.columns === 1
+                                ? Qt.AlignLeft : Qt.AlignVCenter
                             Layout.rightMargin: 2
                             spacing: 6
                             // One width for both rows: an editable SpinBox asks
@@ -750,7 +777,12 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: qsTr("Allow incoming calls"); color: Theme.text }
+                            Label {
+                                text: qsTr("Allow incoming calls")
+                                color: Theme.text
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
                             Label {
                                 text: qsTr("Off, a caller is refused automatically.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
@@ -766,7 +798,12 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: qsTr("Send read receipts"); color: Theme.text }
+                            Label {
+                                text: qsTr("Send read receipts")
+                                color: Theme.text
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
                             Label { text: qsTr("Lets contacts see a green mark when you receive."); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
                         }
                         Toggle {
@@ -1106,7 +1143,8 @@ Popup {
         id: connectionDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        width: 460
+        width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 2 * Theme.spacing)
+        margins: Theme.spacing
         onOpened: connectionForm.reset()
         background: DialogFrame { }
         header: RowLayout {
@@ -1116,9 +1154,10 @@ Popup {
                 text: qsTr("Server connection")
                 color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                 Layout.fillWidth: true; Layout.rightMargin: 14; topPadding: 14; bottomPadding: 14
+                wrapMode: Text.Wrap
             }
         }
-        contentItem: ColumnLayout {
+        contentItem: ScrollColumn {
             spacing: 12
             Label {
                 text: qsTr("Paste a server link, or edit the facades and fingerprint, then Connect. If your key needs registration, register on the server's portal and Connect again.")
@@ -1155,7 +1194,7 @@ Popup {
         id: newKeyDialog
         anchors.centerIn: Overlay.overlay
         modal: true
-        width: 360
+        width: Math.min(360, (Overlay.overlay ? Overlay.overlay.width : 360) - 2 * Theme.spacing)
         title: qsTr("New key")
         footer: DialogButtons { acceptText: qsTr("New key"); danger: true; onAccepted: newKeyDialog.accept(); onRejected: newKeyDialog.reject() }
         onAccepted: if (root.session) root.session.replacePersonalKey()

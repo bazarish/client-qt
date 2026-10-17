@@ -9,6 +9,7 @@ import Bazarish
 // entry.
 Menu {
     id: root
+    margins: Theme.spacing
 
     // Wide enough for the entry that needs the most room, and no wider. Hidden
     // entries (the delegates collapse to zero height) do not count.

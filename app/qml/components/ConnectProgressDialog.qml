@@ -21,7 +21,7 @@ Dialog {
     closePolicy: Popup.CloseOnEscape
     onClosed: if (root.session && root.session.connecting) { root.suppressed = true }
     anchors.centerIn: Overlay.overlay
-    width: Math.min(parent ? parent.width - 48 : 420, 460)
+    width: Math.min(parent ? parent.width - 2 * Theme.spacing : 420, 460)
     padding: 0
 
     // Open while connecting; close as soon as the attempt ends either way.
@@ -52,6 +52,8 @@ Dialog {
             font.weight: Font.DemiBold
             padding: 16
             bottomPadding: 0
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
 
         ColumnLayout {

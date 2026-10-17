@@ -244,6 +244,7 @@ Popup {
                             : ((root.session && root.session.callMuted)
                                 ? qsTr("In call (muted)") : qsTr("In call")))
                     : ""
+                wrapMode: Text.Wrap
             }
             // The running time, once there is a call to time.
             Label {

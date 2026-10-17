@@ -96,6 +96,7 @@ Window {
                 horizontalAlignment: Text.AlignHCenter
                 color: Theme.textDim
                 text: qsTr("Incoming audio call")
+                wrapMode: Text.Wrap
             }
 
             Item { Layout.fillHeight: true }

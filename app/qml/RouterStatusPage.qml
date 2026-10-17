@@ -116,6 +116,7 @@ Popup {
                         Label {
                             text: I2p.ready ? qsTr("Running — tunnels are up") : qsTr("Starting — building tunnels…")
                             color: Theme.text; Layout.fillWidth: true
+                            wrapMode: Text.Wrap
                         }
                     }
 
@@ -148,6 +149,8 @@ Popup {
                     Label {
                         text: qsTr("Local destinations (%1)").arg(I2p.destinations.length)
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                     Label {
                         visible: I2p.destinations.length === 0
@@ -309,11 +312,15 @@ Popup {
                     Label {
                         text: qsTr("Direct network connections: %1").arg(I2p.transports.length)
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                     Label {
                         visible: I2p.transports.length === 0
                         text: qsTr("No direct transport connections yet.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                     Frame {
                         visible: I2p.transports.length > 0

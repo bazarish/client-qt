@@ -284,6 +284,8 @@ Item {
                         color: connPlate.isOffline ? Theme.textDim : Theme.warn
                         font.pixelSize: Theme.fontSmall
                         font.weight: Font.Medium
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                     Label {
                         text: connPlate.heldForApproval

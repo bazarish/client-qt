@@ -16,6 +16,7 @@ Popup {
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
+    margins: Theme.spacing
     padding: 18
     closePolicy: Popup.CloseOnEscape
 
@@ -39,7 +40,7 @@ Popup {
         }
     }
 
-    contentItem: ColumnLayout {
+    contentItem: ScrollColumn {
         spacing: 12
 
         RowLayout {
@@ -50,6 +51,7 @@ Popup {
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                wrapMode: Text.Wrap
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }

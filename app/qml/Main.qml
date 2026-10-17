@@ -256,6 +256,7 @@ ApplicationWindow {
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                wrapMode: Text.Wrap
             }
             Label {
                 text: (I2p.transport === "gateway"
@@ -307,6 +308,7 @@ ApplicationWindow {
                     text: qsTr("Something went wrong")
                     color: Theme.danger; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
                     Layout.fillWidth: true
+                    wrapMode: Text.Wrap
                 }
                 IconButton { iconName: "close"; onClicked: errorDialog.close() }
             }

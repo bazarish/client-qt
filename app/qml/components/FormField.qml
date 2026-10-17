@@ -17,6 +17,8 @@ ColumnLayout {
         id: lbl
         color: Theme.textDim
         font.pixelSize: Theme.fontSmall
+        wrapMode: Text.Wrap
+        Layout.fillWidth: true
     }
     TextField {
         id: field

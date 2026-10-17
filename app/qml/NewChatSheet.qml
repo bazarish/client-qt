@@ -10,6 +10,7 @@ Popup {
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
+    margins: Theme.spacing
     padding: 18
     property string errorText: ""
     property string prefillTarget: ""
@@ -18,7 +19,8 @@ Popup {
     readonly property int kInputLimit: 120
     readonly property int kInputPadding: 18
     readonly property int inputHeight: Math.min(kInputLimit,
-        Math.max(kInputLine, Math.ceil(targetText.contentHeight) + kInputPadding))
+        Math.max(kInputLine, Math.ceil(Math.max(targetText.contentHeight,
+            targetHint.visible ? targetHint.contentHeight : 0)) + kInputPadding))
 
     readonly property string typed: targetText.text.trim()
     readonly property bool byAlias: root.typed.startsWith(App.aliasSigil)
@@ -94,7 +96,7 @@ Popup {
         }
     }
 
-    contentItem: ColumnLayout {
+    contentItem: ScrollColumn {
         spacing: 12
 
         RowLayout {
@@ -129,9 +131,22 @@ Popup {
                     id: targetText
                     wrapMode: TextArea.WrapAnywhere
                     color: Theme.text
-                    placeholderTextColor: Theme.textDim
-                    placeholderText: qsTr("bazarish://invite?...  or  %1alias").arg(App.aliasSigil)
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                    Label {
+                        id: targetHint
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.leftMargin: targetText.leftPadding
+                        anchors.rightMargin: targetText.rightPadding
+                        anchors.topMargin: targetText.topPadding
+                        visible: targetText.length === 0 && targetText.preeditText.length === 0
+                        // U+2060 keeps the sigil on the line of the word it marks.
+                        text: qsTr("bazarish://invite?...  or  %1alias").arg(App.aliasSigil + "\u2060")
+                        color: Theme.textDim
+                        font: targetText.font
+                        wrapMode: Text.Wrap
+                    }
                     Keys.onReturnPressed: function(event) { root.submit(); event.accepted = true }
                     Keys.onEnterPressed: function(event) { root.submit(); event.accepted = true }
                 }

@@ -15,6 +15,7 @@ Popup {
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
+    margins: Theme.spacing
     padding: 18
     closePolicy: Popup.CloseOnEscape
 
@@ -23,7 +24,7 @@ Popup {
 
     background: DialogFrame { }
 
-    contentItem: ColumnLayout {
+    contentItem: ScrollColumn {
         spacing: 12
 
         RowLayout {
@@ -100,6 +101,8 @@ Popup {
                 text: qsTr("Code for the new device")
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
             }
             Label {
                 text: root.code

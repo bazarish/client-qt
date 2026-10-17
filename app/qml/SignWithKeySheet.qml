@@ -75,6 +75,7 @@ Popup {
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                wrapMode: Text.Wrap
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
@@ -131,6 +132,8 @@ Popup {
                         text: qsTr("Challenge from the site")
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                     ScrollView {
                         visible: !root.consumer.ok
@@ -177,6 +180,8 @@ Popup {
                                     : qsTr("This challenge cannot be signed")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
                             }
                             Label {
                                 visible: root.consumer.ok

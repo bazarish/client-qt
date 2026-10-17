@@ -79,6 +79,8 @@ Popup {
                         text: qsTr("Database file: %1").arg(Format.bytes(root.info.fileBytes))
                         color: Theme.text
                         font.pixelSize: Theme.fontBody
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                     Label {
                         visible: root.info.freeBytes > 0
@@ -125,6 +127,7 @@ Popup {
                     text: root.session ? qsTr("Nothing stored yet.") : qsTr("No account is open.")
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
+                    wrapMode: Text.Wrap
                 }
 
                 Repeater {
@@ -153,6 +156,8 @@ Popup {
                                     .arg(Format.bytes(chatRow.modelData.bytes))
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
                             }
                             Label {
                                 visible: chatRow.modelData.mediaCount > 0
@@ -160,6 +165,8 @@ Popup {
                                     .arg(chatRow.modelData.mediaCount)
                                 color: Theme.textFaint
                                 font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
                             }
                         }
                         MenuButton {
@@ -274,6 +281,8 @@ Popup {
                 text: qsTr("The window does not answer while this runs.")
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
             }
         }
     }

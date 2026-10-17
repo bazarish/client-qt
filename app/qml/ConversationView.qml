@@ -199,7 +199,6 @@ Item {
             color: Theme.neon
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
-            wrapMode: Text.Wrap
             padding: 14
         }
         contentItem: Label {

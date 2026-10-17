@@ -54,7 +54,7 @@ Item {
 
     ColumnLayout {
         anchors.centerIn: parent
-        width: Math.min(parent.width - 64, 460)
+        width: Math.min(parent.width - 2 * Theme.spacing, 460)
         spacing: 18
 
         Image {
@@ -72,6 +72,9 @@ Item {
                                    : qsTr("Create your first account to begin"))
             color: Theme.textDim
             Layout.alignment: Qt.AlignHCenter
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
         }
 
         Frame {

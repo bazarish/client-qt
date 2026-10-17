@@ -130,6 +130,7 @@ Rectangle {
                 font.pixelSize: Theme.fontSmall
                 font.weight: Font.Medium
                 verticalAlignment: Text.AlignVCenter
+                wrapMode: Text.Wrap
             }
             IconButton { iconName: "close"; onClicked: root.session.cancelEdit() }
         }

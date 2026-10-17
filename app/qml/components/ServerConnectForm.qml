@@ -155,6 +155,9 @@ ColumnLayout {
             cursorShape: Qt.PointingHandCursor
             onClicked: form.showManual = true
         }
+        wrapMode: Text.Wrap
+        Layout.fillWidth: true
+        horizontalAlignment: Text.AlignHCenter
     }
 
     // The per-field inputs, hidden until a link parses or manual entry is chosen.
@@ -167,6 +170,8 @@ ColumnLayout {
             text: qsTr("Facade URL(s) — tried in order, with failover:")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
         }
         Repeater {
             model: facadeModel

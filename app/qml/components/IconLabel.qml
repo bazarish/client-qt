@@ -18,6 +18,7 @@ Item {
     property real available: width
     property real iconSize: Theme.iconInline
     readonly property int kGap: 8
+    readonly property int kMaxLines: 2
     readonly property bool worded: root.text.length > 0
 
     // From the parts, not from the row: the label's width is bound to what the
@@ -47,6 +48,9 @@ Item {
             color: root.color
             font.weight: root.weight
             verticalAlignment: Text.AlignVCenter
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.Wrap
+            maximumLineCount: root.kMaxLines
             elide: Text.ElideRight
         }
     }

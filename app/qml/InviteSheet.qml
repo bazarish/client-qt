@@ -24,6 +24,7 @@ Popup {
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
+    margins: Theme.spacing
     padding: 18
     onOpened: {
         // Straight from what this account stores - no request, works offline.
@@ -53,7 +54,7 @@ Popup {
         }
     }
 
-    contentItem: ColumnLayout {
+    contentItem: ScrollColumn {
         spacing: 12
 
         RowLayout {
@@ -217,9 +218,9 @@ Popup {
                 }
             }
         }
-        RowLayout {
+        ButtonRow {
+            id: inviteActions
             Layout.fillWidth: true
-            spacing: 8
             Button {
                 id: copyBtn
                 hoverEnabled: true
@@ -248,6 +249,7 @@ Popup {
             // the client keeps the aliases their owner pointed here pointing
             // here, and leaves the rest alone.
             MenuButton {
+                Layout.fillWidth: inviteActions.columns === 1
                 iconName: "bang"
                 text: root.session && root.session.aliasBusy
                     ? qsTr("Asking…")

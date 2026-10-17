@@ -42,9 +42,12 @@ Item {
         onShowRouterStatus: routerStatus.open()
     }
 
-    ColumnLayout {
-        anchors.centerIn: parent
-        width: Math.min(parent.width - 64, 480)
+    ScrollColumn {
+        z: -1
+        anchors.fill: parent
+        anchors.bottomMargin: signatureButton.height + 2 * signatureButton.anchors.bottomMargin
+        centered: true
+        columnWidth: Math.min(availableWidth - 2 * Theme.spacing, 480)
         spacing: 14
 
         Label {
@@ -53,6 +56,9 @@ Item {
             font.pixelSize: 24
             font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignHCenter
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
         }
         Label {
             text: qsTr("Your account needs a serving server to send and receive.")
@@ -119,6 +125,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: { connectDialog.suppressed = false; connectDialog.open() }
             }
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
         }
 
         Label {
@@ -134,6 +143,7 @@ Item {
     // Footer: the key is the user's sign-in to every portal and any
     // sign-in-with-key site, available with or without a server.
     Button {
+        id: signatureButton
         text: qsTr("Signature")
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter

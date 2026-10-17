@@ -39,9 +39,11 @@ Item {
         onShowRouterStatus: routerStatus.open()
     }
 
-    ColumnLayout {
-        anchors.centerIn: parent
-        width: Math.min(parent.width - 64, 420)
+    ScrollColumn {
+        z: -1
+        anchors.fill: parent
+        centered: true
+        columnWidth: Math.min(availableWidth - 2 * Theme.spacing, 420)
         spacing: 16
 
         Label {

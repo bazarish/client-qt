@@ -6,8 +6,13 @@ import Bazarish
 // nothing else in this interface has a square corner.
 TabButton {
     id: tab
-    implicitHeight: 34
+    readonly property int kMinHeight: 34
+    readonly property int kTextInset: 8
+    readonly property int kMaxLines: 2
+    implicitHeight: Math.max(kMinHeight, contentItem.implicitHeight + 2 * kTextInset)
     padding: 0
+    leftPadding: kTextInset
+    rightPadding: kTextInset
 
     contentItem: Text {
         text: tab.text
@@ -16,6 +21,8 @@ TabButton {
         font.weight: tab.checked ? Font.DemiBold : Font.Normal
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
+        wrapMode: Text.Wrap
+        maximumLineCount: tab.kMaxLines
         elide: Text.ElideRight
     }
 

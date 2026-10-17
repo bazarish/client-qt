@@ -26,6 +26,7 @@ Popup {
     property string copiedKey: ""
     property bool allCopied: false
     readonly property int copiedFlashMs: 1500
+    readonly property int kOneLineWidth: 600
 
     Timer {
         id: copiedReset
@@ -106,6 +107,7 @@ Popup {
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                wrapMode: Text.Wrap
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
@@ -147,34 +149,46 @@ Popup {
                 HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
                 TapHandler { id: rowTap; onTapped: root.copyLine(modelData) }
 
-                RowLayout {
+                GridLayout {
                     id: rowLine
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.leftMargin: 4
                     anchors.rightMargin: 4
-                    spacing: 8
+                    columnSpacing: 8
+                    rowSpacing: 2
+                    readonly property bool stacked: list.width < root.kOneLineWidth
                     Label {
+                        Layout.row: 0
+                        Layout.column: 0
                         text: root.stamp(modelData.at)
                         color: Theme.textFaint
                         font.pixelSize: Theme.fontSmall
                     }
                     Label {
+                        Layout.row: 0
+                        Layout.column: 1
                         text: modelData.outgoing ? "→" : "←"
                         color: modelData.outgoing ? Theme.accent : Theme.green
                         font.pixelSize: Theme.fontSmall
                     }
                     Label {
+                        Layout.row: 0
+                        Layout.column: 2
+                        Layout.columnSpan: rowLine.stacked ? 2 : 1
                         text: modelData.what
                         color: Theme.text
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight
                         // One column, so the eye runs down the kinds rather than
                         // hunting for where each line's status begins.
-                        Layout.preferredWidth: 300
+                        Layout.preferredWidth: rowLine.stacked ? -1 : 300
+                        Layout.fillWidth: rowLine.stacked
                     }
                     Label {
+                        Layout.row: rowLine.stacked ? 1 : 0
+                        Layout.column: rowLine.stacked ? 2 : 3
                         text: modelData.status
                         elide: Text.ElideRight
                         Layout.fillWidth: true
@@ -184,6 +198,8 @@ Popup {
                         font.pixelSize: Theme.fontSmall
                     }
                     Label {
+                        Layout.row: rowLine.stacked ? 1 : 0
+                        Layout.column: rowLine.stacked ? 3 : 4
                         text: logRow.copied ? qsTr("copied") : modelData.detail
                         color: logRow.copied ? Theme.green : Theme.textFaint
                         font.pixelSize: Theme.fontSmall

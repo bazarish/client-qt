@@ -33,6 +33,7 @@ Popup {
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
+                wrapMode: Text.Wrap
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
@@ -66,6 +67,7 @@ Popup {
                             text: qsTr("Interface language")
                             color: Theme.text
                             Layout.fillWidth: true
+                            wrapMode: Text.Wrap
                         }
                         Dropdown {
                             id: languageBox
@@ -124,7 +126,12 @@ Popup {
                         Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
-                            Label { text: qsTr("Background tasks"); color: Theme.text }
+                            Label {
+                                text: qsTr("Background tasks")
+                                color: Theme.text
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
                             Label {
                                 text: qsTr("A panel on the right edge lists the background operations and the stage each one has reached. Off by default.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
@@ -148,7 +155,13 @@ Popup {
                     Layout.margins: 16
                     spacing: 8
 
-                    Label { text: qsTr("How this application connects to I2P"); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label {
+                        text: qsTr("How this application connects to I2P")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
 
                     TabBar {
                         id: transportTabs
