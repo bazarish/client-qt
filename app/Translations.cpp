@@ -8,6 +8,10 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QStringList>
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#endif
 
 #include <stdexcept>
 
@@ -19,6 +23,23 @@ const QString kCatalog = QStringLiteral(":/i18n/messages.json");
 // The wording in the code is English, so that language carries no column.
 const QString kSourceLanguage = QStringLiteral("en");
 const QChar kDisambiguationMark = QChar(u'|');
+
+QStringList preferredLanguages()
+{
+#ifdef Q_OS_ANDROID
+    // QLocale::system() is fed by Qt's Android platform plugin, which the core service runs without.
+    const QJniObject locales = QJniObject::callStaticObjectMethod(
+        "android/os/LocaleList", "getDefault", "()Landroid/os/LocaleList;");
+    if (!locales.isValid()) {
+        throw std::runtime_error("Android gave no list of the user's languages");
+    }
+    return locales.callObjectMethod("toLanguageTags", "()Ljava/lang/String;")
+        .toString()
+        .split(QChar(u','));
+#else
+    return QLocale::system().uiLanguages();
+#endif
+}
 
 QString keyFor(const char* const sourceText, const char* const disambiguation)
 {
@@ -65,7 +86,7 @@ Translations::Translations(QObject* const parent)
 
 QString Translations::systemLanguage() const
 {
-    for (const QString& wanted : QLocale::system().uiLanguages()) {
+    for (const QString& wanted : preferredLanguages()) {
         const QString code = wanted.section(QChar(u'-'), 0, 0).toLower();
         for (const QVariant& known : languages_) {
             if (known.toMap().value(QStringLiteral("code")).toString() == code) {
