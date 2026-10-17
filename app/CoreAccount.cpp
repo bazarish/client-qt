@@ -14,8 +14,8 @@
 #include <QJsonDocument>
 #include <QMetaMethod>
 
-#include <cstring>
 #include <exception>
+#include <stdexcept>
 #include <utility>
 
 namespace bazarish::app {
@@ -34,7 +34,7 @@ constexpr int kLinkRebuildGraceMs = 1500;
 constexpr int kCommandTickMs = 200;
 constexpr qint64 kCommandVisibleAfterMs = 400;
 
-QString commandTitle(const QByteArray& signalName)
+const char* commandTitle(const QByteArray& signalName)
 {
     static const QHash<QByteArray, const char*> kNamed = {
         {"requestSendReceipt", QT_TR_NOOP("Confirming a message was read")},
@@ -54,21 +54,37 @@ QString commandTitle(const QByteArray& signalName)
         {"requestRebuildI2p", QT_TR_NOOP("Rebuilding the I2P destinations")},
         {"requestInviteSig", QT_TR_NOOP("Preparing your invite")},
         {"requestSignLoginSig", QT_TR_NOOP("Signing in")},
+        {"requestSetDisplayName", QT_TR_NOOP("Changing your name")},
+        {"requestRenameContact", QT_TR_NOOP("Renaming a contact")},
+        {"requestRemoveContact", QT_TR_NOOP("Deleting a contact")},
+        {"requestClearSaved", QT_TR_NOOP("Clearing saved messages")},
+        {"requestSetBlocked", QT_TR_NOOP("Updating the block list")},
+        {"requestSetContactNotifications", QT_TR_NOOP("Changing a contact's notifications")},
+        {"requestSetContactCalls", QT_TR_NOOP("Changing whether a contact may call")},
+        {"requestConnectionLog", QT_TR_NOOP("Reading the connection log")},
+        {"requestClearConnectionLog", QT_TR_NOOP("Clearing the connection log")},
+        {"requestStartPairing", QT_TR_NOOP("Preparing a link for a new device")},
+        {"requestStopPairing", QT_TR_NOOP("Closing the link for a new device")},
+        {"requestChangePassphrase", QT_TR_NOOP("Changing the database password")},
+        {"requestCancelTransfer", QT_TR_NOOP("Cancelling a file transfer")},
+        {"requestRetryRoutingTo", QT_TR_NOOP("Sending your address to a contact")},
+        {"requestSetAcceptCalls", QT_TR_NOOP("Changing incoming calls")},
+        {"requestSetSendReceipts", QT_TR_NOOP("Changing read receipts")},
+        {"requestSetDelegationDays", QT_TR_NOOP("Changing the delegation term")},
+        {"requestDisablePersonalDest", QT_TR_NOOP("Taking your address offline")},
+        {"requestForgetPendingAdd", QT_TR_NOOP("Dropping a contact request")},
+        {"requestStartCall", QT_TR_NOOP("Starting a call")},
+        {"requestAcceptCall", QT_TR_NOOP("Answering a call")},
+        {"requestDeclineCall", QT_TR_NOOP("Declining a call")},
+        {"requestEndCall", QT_TR_NOOP("Ending a call")},
+        {"requestSetCallMuted", QT_TR_NOOP("Switching the microphone on or off")},
     };
-    if (const auto found = kNamed.constFind(signalName); found != kNamed.cend()) {
-        return CoreAccount::tr(found.value());
+    const auto found = kNamed.constFind(signalName);
+    if (found == kNamed.cend()) {
+        throw std::logic_error(
+            "the background-task panel has no title for " + signalName.toStdString());
     }
-    QString words;
-    for (int at = static_cast<int>(strlen("request")); at < signalName.size(); ++at) {
-        const char letter = signalName.at(at);
-        if (letter >= 'A' && letter <= 'Z' && !words.isEmpty()) {
-            words += QLatin1Char(' ');
-            words += QLatin1Char(letter - 'A' + 'a');
-            continue;
-        }
-        words += QLatin1Char(letter);
-    }
-    return words;
+    return found.value();
 }
 
 constexpr int kReactionsToFlash = 64;
@@ -436,6 +452,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     for (int i = meta.methodOffset(); i < meta.methodCount(); ++i) {
         const QMetaMethod method = meta.method(i);
         if (listedWhileQueued(method)) {
+            commandTitles_.insert(i, commandTitle(method.name()));
             connect(&commands_, method, this, noted);
             connect(&commands_, method, worker_, done);
         }
@@ -695,10 +712,9 @@ void CoreAccount::signLogin(const QString& challenge)
 
 void CoreAccount::noteCommandQueued()
 {
-    const QMetaMethod signal = AccountCommands::staticMetaObject.method(senderSignalIndex());
     QueuedCommand command;
     command.id = QStringLiteral("cmd:") + QString::number(++commandSeq_);
-    command.title = commandTitle(signal.name());
+    command.title = tr(commandTitles_.value(senderSignalIndex()));
     command.queuedAtMs = nowMillis();
     commandQueue_.append(command);
     if (!commandTimer_.isActive()) {

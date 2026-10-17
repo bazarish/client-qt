@@ -4222,6 +4222,150 @@
       "es": "Historial no guardado: %1",
       "zh": "历史未保存：%1",
       "ar": "لم يُحفظ السجل: ⁦%1⁩"
+    },
+    "Changing your name": {
+      "ru": "Смена имени",
+      "es": "Cambiando tu nombre",
+      "zh": "正在更改你的名称",
+      "ar": "جارٍ تغيير اسمك"
+    },
+    "Renaming a contact": {
+      "ru": "Переименование контакта",
+      "es": "Renombrando un contacto",
+      "zh": "正在重命名联系人",
+      "ar": "جارٍ إعادة تسمية جهة اتصال"
+    },
+    "Deleting a contact": {
+      "ru": "Удаление контакта",
+      "es": "Eliminando un contacto",
+      "zh": "正在删除联系人",
+      "ar": "جارٍ حذف جهة اتصال"
+    },
+    "Clearing saved messages": {
+      "ru": "Очистка избранного",
+      "es": "Vaciando los mensajes guardados",
+      "zh": "正在清空已保存的消息",
+      "ar": "جارٍ إفراغ الرسائل المحفوظة"
+    },
+    "Updating the block list": {
+      "ru": "Изменение чёрного списка",
+      "es": "Actualizando la lista negra",
+      "zh": "正在更新黑名单",
+      "ar": "جارٍ تحديث قائمة الحظر"
+    },
+    "Changing a contact's notifications": {
+      "ru": "Изменение уведомлений контакта",
+      "es": "Cambiando las notificaciones de un contacto",
+      "zh": "正在更改联系人的通知",
+      "ar": "جارٍ تغيير تنبيهات جهة اتصال"
+    },
+    "Changing whether a contact may call": {
+      "ru": "Изменение права контакта на звонки",
+      "es": "Cambiando si un contacto puede llamar",
+      "zh": "正在更改联系人能否来电",
+      "ar": "جارٍ تغيير سماح جهة اتصال بالاتصال"
+    },
+    "Reading the connection log": {
+      "ru": "Чтение журнала соединения",
+      "es": "Leyendo el registro de conexión",
+      "zh": "正在读取连接日志",
+      "ar": "جارٍ قراءة سجل الاتصال"
+    },
+    "Clearing the connection log": {
+      "ru": "Очистка журнала соединения",
+      "es": "Borrando el registro de conexión",
+      "zh": "正在清空连接日志",
+      "ar": "جارٍ مسح سجل الاتصال"
+    },
+    "Preparing a link for a new device": {
+      "ru": "Подготовка ссылки для нового устройства",
+      "es": "Preparando un enlace para un nuevo dispositivo",
+      "zh": "正在为新设备准备链接",
+      "ar": "جارٍ تحضير رابط لجهاز جديد"
+    },
+    "Closing the link for a new device": {
+      "ru": "Закрытие ссылки для нового устройства",
+      "es": "Cerrando el enlace para un nuevo dispositivo",
+      "zh": "正在关闭新设备的链接",
+      "ar": "جارٍ إغلاق رابط الجهاز الجديد"
+    },
+    "Changing the database password": {
+      "ru": "Смена пароля базы",
+      "es": "Cambiando la contraseña de la base de datos",
+      "zh": "正在更改数据库密码",
+      "ar": "جارٍ تغيير كلمة مرور قاعدة البيانات"
+    },
+    "Cancelling a file transfer": {
+      "ru": "Отмена передачи файла",
+      "es": "Cancelando una transferencia de archivo",
+      "zh": "正在取消文件传输",
+      "ar": "جارٍ إلغاء نقل ملف"
+    },
+    "Sending your address to a contact": {
+      "ru": "Отправка вашего адреса контакту",
+      "es": "Enviando tu dirección a un contacto",
+      "zh": "正在把你的地址发给联系人",
+      "ar": "جارٍ إرسال عنوانك إلى جهة اتصال"
+    },
+    "Changing incoming calls": {
+      "ru": "Изменение входящих звонков",
+      "es": "Cambiando las llamadas entrantes",
+      "zh": "正在更改来电设置",
+      "ar": "جارٍ تغيير المكالمات الواردة"
+    },
+    "Changing read receipts": {
+      "ru": "Изменение отметок о прочтении",
+      "es": "Cambiando las confirmaciones de lectura",
+      "zh": "正在更改已读回执",
+      "ar": "جارٍ تغيير إشعارات القراءة"
+    },
+    "Changing the delegation term": {
+      "ru": "Изменение срока делегирования",
+      "es": "Cambiando el plazo de la delegación",
+      "zh": "正在更改委托期限",
+      "ar": "جارٍ تغيير مدة التفويض"
+    },
+    "Taking your address offline": {
+      "ru": "Снятие адреса с публикации",
+      "es": "Retirando tu dirección de la red",
+      "zh": "正在让你的地址下线",
+      "ar": "جارٍ سحب عنوانك من الشبكة"
+    },
+    "Dropping a contact request": {
+      "ru": "Удаление запроса контакта",
+      "es": "Descartando una solicitud de contacto",
+      "zh": "正在丢弃联系人请求",
+      "ar": "جارٍ إسقاط طلب اتصال"
+    },
+    "Starting a call": {
+      "ru": "Начало звонка",
+      "es": "Iniciando una llamada",
+      "zh": "正在发起通话",
+      "ar": "جارٍ بدء مكالمة"
+    },
+    "Answering a call": {
+      "ru": "Ответ на звонок",
+      "es": "Contestando una llamada",
+      "zh": "正在接听通话",
+      "ar": "جارٍ الرد على مكالمة"
+    },
+    "Declining a call": {
+      "ru": "Отклонение звонка",
+      "es": "Rechazando una llamada",
+      "zh": "正在拒接通话",
+      "ar": "جارٍ رفض مكالمة"
+    },
+    "Ending a call": {
+      "ru": "Завершение звонка",
+      "es": "Terminando una llamada",
+      "zh": "正在结束通话",
+      "ar": "جارٍ إنهاء مكالمة"
+    },
+    "Switching the microphone on or off": {
+      "ru": "Включение или выключение микрофона",
+      "es": "Activando o silenciando el micrófono",
+      "zh": "正在开关麦克风",
+      "ar": "جارٍ تشغيل الميكروفون أو إيقافه"
     }
   }
 }

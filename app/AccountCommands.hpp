@@ -20,6 +20,7 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestRefreshStorageUsage", "requestRefreshDevices", "requestForgetDevice",
     "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
     "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
+    "requestSetAvatar", "requestClearAvatar",
 };
 
 // A request goes to the worker; the core answers every other command itself.

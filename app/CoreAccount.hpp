@@ -233,6 +233,7 @@ private:
         qint64 queuedAtMs = 0;
         bool shown = false;
     };
+    QHash<int, const char*> commandTitles_;
     QList<QueuedCommand> commandQueue_;
     qint64 commandSeq_ = 0;
     QTimer commandTimer_;
