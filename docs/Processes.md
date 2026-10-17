@@ -14,7 +14,8 @@ interface: its models, paging, search, drafts and voice recording. It reads a
 conversation from the account's database itself, read-only, with the key the core
 hands it, and asks the core for everything else.
 
-On the desktop both halves run in one process. The core is built as a library of
+On the desktop both halves run in one process. On Android they run in two
+([On Android](#on-android)). The core is built as a library of
 its own, without Qt Quick and Qt QML, so nothing in it can come to depend on the
 window.
 
@@ -26,9 +27,9 @@ frame that does not read to its end, or names a signal the other side does not
 have, is refused whole. Within one process that is a fault, and the application
 ends.
 
-The same frames cross a local socket when the core runs alone, as it does in the
-two-process test. There a frame is preceded by its length and is at most
-**16 MiB**, and a window that falls **64 MiB** behind is let go.
+The same frames cross a local socket when the core runs alone, as it does on
+Android and in the two-process test. There a frame is preceded by its length and
+is at most **16 MiB**, and a window that falls **64 MiB** behind is let go.
 
 ## A window attaching
 
@@ -39,3 +40,19 @@ avatars, settings and the router's state - in the order they happened, then the
 operations still running, and last that it has been told everything. Until then
 it shows an empty screen. Every start of the application attaches its window this
 way.
+
+## On Android
+
+The core is a foreground service in a process of its own, `:core`, started by the
+window or at boot. The window is the activity's process and ends with it, so
+swiping the app from the recent apps leaves the core and its tunnels standing,
+and the next window attaches to them in seconds.
+
+A window starts the core and connects once the core answers that it listens; the
+socket is the name `bazarish-core-` followed by a digest of the installation
+root. A window that loses its core starts it again and attaches anew, unless the
+core said it was quitting: Quit in the shade ends both processes.
+
+An incoming call opens the window over the lock screen at once, before the window
+has heard of the call; the call screen follows as soon as the window has been
+told.
