@@ -358,6 +358,7 @@ if(Qt6_FOUND)
             app/qml/AccountDeleteFailedDialog.qml
             app/qml/OperationsOverlay.qml
             app/qml/OperationRow.qml
+            app/qml/ConnectionStrip.qml
             app/qml/components/Avatar.qml
             app/qml/components/AvatarViewer.qml
             app/qml/components/QrView.qml

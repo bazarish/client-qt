@@ -9,7 +9,6 @@ Item {
     signal newChatRequested()
     signal settingsRequested()
     signal appSettingsRequested()
-    signal routerRequested()
     // Too narrow for two panes and a row of labelled actions: one menu instead.
     readonly property bool narrow: width < 300
     signal accountsRequested()
@@ -223,92 +222,6 @@ Item {
                     }
                 }
             }
-        }
-
-        // Connection status plate: makes a missing or pending server connection
-        // obvious at the bottom-left without opening any menu. "Offline" when the
-        // account is not syncing; "Connecting…" while online but not yet reaching
-        // the server; "Waiting for approval" when the server has the account but
-        // an operator has not let it in, which otherwise looks exactly like a
-        // healthy connection that quietly delivers nothing. Tapping it opens the
-        // I2P router page, where the path to the server is seen.
-        Rectangle {
-            id: connPlate
-            Layout.fillWidth: true
-            property bool isOffline: root.session && !root.session.online
-            property bool isConnecting: root.session && root.session.online && !root.session.reachable
-            // The server took the account and serves nothing until an operator
-            // approves it: connected, reachable, and unusable.
-            property bool heldForApproval: root.session && root.session.awaitingApproval
-            // The gateway is only to blame when it is the part that is silent.
-            readonly property string whyNotReachable: (I2p.gatewayEnabled && !I2p.ready)
-                ? qsTr("No connection to the HTTPS gateway")
-                : (I2p.tunnelsBuilding ? qsTr("The I2P tunnels are being built")
-                                       : qsTr("No tunnel to the server"))
-            readonly property int transportPollMs: 2000
-            visible: connPlate.isOffline || connPlate.isConnecting
-                || connPlate.heldForApproval
-            implicitHeight: plateRow.implicitHeight + 16
-            color: Theme.surface
-
-            // The router reports nothing by itself: I2p holds what the last refresh read.
-            Timer {
-                interval: connPlate.transportPollMs
-                repeat: true
-                running: connPlate.isConnecting
-                triggeredOnStart: true
-                onTriggered: I2p.refresh()
-            }
-
-            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Theme.border }
-
-            RowLayout {
-                id: plateRow
-                anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 12
-                anchors.topMargin: 8
-                anchors.bottomMargin: 8
-                spacing: 8
-                Rectangle {
-                    Layout.alignment: Qt.AlignVCenter
-                    implicitWidth: 8; implicitHeight: 8; radius: 4
-                    color: connPlate.isOffline ? Theme.textDim : Theme.warn
-                }
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 0
-                    Label {
-                        text: connPlate.heldForApproval ? qsTr("Waiting for approval")
-                            : (connPlate.isOffline ? qsTr("Offline") : qsTr("Connecting\u2026"))
-                        color: connPlate.isOffline ? Theme.textDim : Theme.warn
-                        font.pixelSize: Theme.fontSmall
-                        font.weight: Font.Medium
-                        wrapMode: Text.Wrap
-                        Layout.fillWidth: true
-                    }
-                    Label {
-                        text: connPlate.heldForApproval
-                            ? (root.session && root.session.approvalNote.length > 0
-                                ? root.session.approvalNote
-                                : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
-                            : (connPlate.isOffline ? qsTr("This account is not syncing")
-                                : connPlate.whyNotReachable)
-                        color: Theme.textFaint
-                        font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap
-                        maximumLineCount: 3
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                }
-                Icon {
-                    name: "person"
-                    color: Theme.textDim
-                    size: 15
-                }
-            }
-            TapHandler { onTapped: root.routerRequested() }
         }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; visible: !root.narrow }

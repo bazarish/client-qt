@@ -25,9 +25,20 @@ Item {
         function onActionOk(info) { if (typeof window !== "undefined") window.showToast(info) }
     }
 
+    ConnectionStrip {
+        id: connectionStrip
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        session: root.session
+        onTapped: routerStatus.open()
+    }
     Loader {
         id: pageLoader
-        anchors.fill: parent
+        anchors.top: connectionStrip.visible ? connectionStrip.bottom : parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
         sourceComponent: (root.session && root.session.connected) ? chatComponent : connectComponent
     }
 
@@ -73,7 +84,6 @@ Item {
                     onNewChatRequested: newChat.open()
                     onSettingsRequested: settings.open()
                     onAppSettingsRequested: appSettings.open()
-                    onRouterRequested: routerStatus.open()
                     onAccountsRequested: accountSwitcher.open()
                 }
                 Rectangle {
