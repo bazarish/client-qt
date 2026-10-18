@@ -7,8 +7,10 @@ CameraPermission {
     id: gate
     readonly property bool granted: gate.status === Qt.PermissionStatus.Granted
     readonly property bool refused: gate.status === Qt.PermissionStatus.Denied
-    // Asked even when granted: the answer is what refreshes a status read before the grant.
+    // On Android a request pauses the window even when granted, and a paused window stops the camera.
     function ask() {
-        gate.request()
+        if (!gate.granted) {
+            gate.request()
+        }
     }
 }
