@@ -15,7 +15,7 @@ ColumnLayout {
     id: form
     property var session: null
     // Label of the primary action button.
-    property string actionText: "Connect"
+    property string actionText: qsTr("Connect")
     // Prefill, used when editing an existing connection from Settings.
     property var initialFacades: []
     property string initialFingerprint: ""

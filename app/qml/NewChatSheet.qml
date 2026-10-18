@@ -14,7 +14,7 @@ Popup {
     padding: 18
     property string errorText: ""
     property string prefillTarget: ""
-    readonly property string kGreeting: "Hi, add me?"
+    readonly property string kGreeting: qsTr("Hi, add me?")
     readonly property int kInputLine: 38
     readonly property int kInputLimit: 120
     readonly property int kInputPadding: 18

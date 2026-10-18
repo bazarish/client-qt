@@ -19,6 +19,7 @@ SOURCE_LANGUAGE = "en"
 # Properties and calls that put text in front of a reader.
 QML_TEXT_PROPERTIES = (
     "text", "placeholderText", "placeholder", "title", "label", "description", "acceptText",
+    "actionText",
     "rejectText", "cancelText", "toolTipText", "unitLabel", "emptyText", "hint", "caption",
     "reason", "failure", "unavailable", r"Accessible\.name", r"ToolTip\.text",
 )
