@@ -134,6 +134,9 @@ is why it is the storage window's operation and not every deletion's.
 `export` writes one password-sealed file (CMS PWRI) holding what an account *is*,
 so a restore is a working device and not a shell of one:
 
+On Android the app opts out of the system's cloud backup, which would otherwise
+copy the account folder, keys included, to Google.
+
 | In the bundle | Why |
 |---|---|
 | identity and sealing private keys (PEM) | the account itself |
