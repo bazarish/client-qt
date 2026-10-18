@@ -77,6 +77,7 @@ Popup {
                     root.close()
                 }
             }
+            onPressAndHold: pictureMenu.popup()
             onWheel: function(wheel) { wheel.accepted = true }
         }
 
@@ -94,15 +95,6 @@ Popup {
                     saveDialog.open()
                 }
             }
-        }
-
-        Label {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 12
-            text: qsTr("Right-click for copy and save")
-            color: Theme.textFaint
-            font.pixelSize: Theme.fontSmall
         }
     }
 }
