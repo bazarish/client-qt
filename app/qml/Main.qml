@@ -147,6 +147,7 @@ ApplicationWindow {
     Rectangle {
         id: toast
         opacity: 0
+        z: 950
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 24

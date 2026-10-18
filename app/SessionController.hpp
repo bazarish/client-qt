@@ -62,6 +62,11 @@ class SessionController : public QObject {
     Q_PROPERTY(QString pairStatus READ pairStatus NOTIFY pairingChanged)
     Q_PROPERTY(double pairProgress READ pairProgress NOTIFY pairingChanged)
     Q_PROPERTY(bool pairing READ pairing NOTIFY pairingChanged)
+    Q_PROPERTY(QString loginSendChallenge READ loginSendChallenge NOTIFY loginSendChanged)
+    Q_PROPERTY(bool loginSending READ loginSending NOTIFY loginSendChanged)
+    Q_PROPERTY(bool loginAccepted READ loginAccepted NOTIFY loginSendChanged)
+    Q_PROPERTY(QString loginSendStatus READ loginSendStatus NOTIFY loginSendChanged)
+    Q_PROPERTY(qint64 loginSendStartedAt READ loginSendStartedAt NOTIFY loginSendChanged)
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredReseeds READ configuredReseeds NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
@@ -353,6 +358,11 @@ public:
     QString pairUri() const { return pairUri_; }
     QString pairCode() const { return pairCode_; }
     QString pairStatus() const { return pairStatus_; }
+    QString loginSendChallenge() const { return loginSendChallenge_; }
+    bool loginSending() const { return loginSendPhase_ == eLoginSending; }
+    bool loginAccepted() const { return loginSendPhase_ == eLoginAccepted; }
+    QString loginSendStatus() const { return loginSendStatus_; }
+    qint64 loginSendStartedAt() const { return loginSendStartedAt_; }
     double pairProgress() const { return pairProgress_; }
     bool pairing() const { return pairing_; }
     Q_INVOKABLE void changePassphrase(const QString& passphrase);
@@ -425,7 +435,6 @@ signals:
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
-    void loginSent(const QString& challenge, bool accepted, const QString& problem);
     void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     void connectionLogUpdated(const QVariantList& lines);
     void resendFilePickRequested();
@@ -433,6 +442,7 @@ signals:
 
 signals:
     void pairingChanged();
+    void loginSendChanged();
     void pairingFinished(bool ok);
     void aliasChanged();
 
@@ -565,6 +575,10 @@ private:
     QString pairUri_;
     QString pairCode_;
     QString pairStatus_;
+    QString loginSendChallenge_;
+    int loginSendPhase_ = eLoginRefused;
+    QString loginSendStatus_;
+    qint64 loginSendStartedAt_ = 0;
     double pairProgress_ = kProgressUnknown;
     bool pairing_ = false;
     bool i2pHasKey_ = false;

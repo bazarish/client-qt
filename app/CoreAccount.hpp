@@ -5,6 +5,7 @@
 #include "CallTones.hpp"
 #include "AccountEvents.hpp"
 #include "ContactBook.hpp"
+#include "FederationFetch.hpp"
 #include "MessageIngest.hpp"
 #include "OperationLog.hpp"
 #include "TranscriptStore.hpp"
@@ -16,6 +17,7 @@
 #include <QTimer>
 
 #include <memory>
+#include <optional>
 
 namespace bazarish::client {
 class AccountDb;
@@ -75,8 +77,10 @@ private:
     void recountUnread();
     void signLogin(const QString& challenge);
     void sendLogin(const QString& challenge);
-    void finishLoginSend(
-        const QString& op, const QString& challenge, int status, const QString& problem);
+    void showLoginStage(const QString& op, const QString& challenge, qint64 startedAtMs,
+        client::FetchStage stage);
+    void finishLoginSend(const QString& op, const QString& challenge, qint64 startedAtMs,
+        std::optional<int> status, const QString& problem);
     void onMessageReceived(const QVariantMap& message);
     void viewConversation(const QString& peer);
     void markRead(const QString& peer, qint64 id, const QString& e2eId, qint64 sentAtMs);

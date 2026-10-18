@@ -72,6 +72,7 @@ inline QDataStream& operator>>(QDataStream& in, OperationRow& row)
 }
 
 enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
+enum LoginSendPhase { eLoginSending = 0, eLoginAccepted = 1, eLoginRefused = 2 };
 
 inline constexpr Latch kAccountLatches[] = {
     {"transcriptOpened"},
@@ -93,6 +94,7 @@ inline constexpr Latch kAccountLatches[] = {
     {"recentReactions"},
     {"aliasHoldings"},
     {"avatarReady", 1},
+    {"loginSendState"},
 };
 
 class AccountEvents : public QObject {
@@ -128,7 +130,8 @@ signals:
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
-    void loginSent(const QString& challenge, bool accepted, const QString& problem);
+    void loginSendState(
+        const QString& challenge, int phase, const QString& status, qint64 startedAtMs);
     void connectionLogReady(const QVariantList& lines);
     void approvalState(bool pending, const QString& note);
     void facadeInfo(const QString& activeUrl, const QStringList& configured,

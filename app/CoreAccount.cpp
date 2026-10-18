@@ -91,6 +91,23 @@ const char* commandTitle(const QByteArray& signalName)
 }
 
 constexpr int kReactionsToFlash = 64;
+QString loginStageText(const client::FetchStage stage)
+{
+    switch (stage) {
+    case client::FetchStage::eTakingDest:
+        return CoreAccount::tr("Taking an address to send from…");
+    case client::FetchStage::eBuildingDest:
+        return CoreAccount::tr("Building an address to send from…");
+    case client::FetchStage::eReaching:
+        return CoreAccount::tr("Reaching the site…");
+    case client::FetchStage::eWaiting:
+        return CoreAccount::tr("Waiting for the site's answer…");
+    case client::FetchStage::eAskingAgain:
+        return CoreAccount::tr("No answer; asking again…");
+    }
+    throw std::logic_error("no words for this sign-in stage");
+}
+
 constexpr int kHttpAcceptedFirst = 200;
 constexpr int kHttpAcceptedLast = 299;
 
@@ -718,43 +735,71 @@ void CoreAccount::signLogin(const QString& challenge)
 
 void CoreAccount::sendLogin(const QString& challenge)
 {
+    const qint64 startedAt = nowMillis();
     if (!loginSigner_) {
-        emit events_.loginSent(challenge, false, tr("This account is still opening."));
+        emit events_.loginSendState(
+            challenge, eLoginRefused, tr("This account is still opening."), startedAt);
         return;
     }
     const QString op = QStringLiteral("login:") + QString::number(++commandSeq_);
-    log_.begin(op, QStringLiteral("login"), tr("Sending your signature"), tr("Reaching the site…"));
+    const QString first = loginStageText(client::FetchStage::eTakingDest);
+    log_.begin(op, QStringLiteral("login"), tr("Sending your signature"), first);
+    emit events_.loginSendState(challenge, eLoginSending, first, startedAt);
     const std::shared_ptr<client::LoginSigner> signer = loginSigner_;
     const QPointer<CoreAccount> account(this);
-    std::thread([signer, challenge, account, op]() {
-        int status = 0;
+    std::thread([signer, challenge, account, op, startedAt]() {
+        client::tellFetchStages([account, op, challenge, startedAt](const client::FetchStage stage) {
+            QMetaObject::invokeMethod(
+                QCoreApplication::instance(),
+                [account, op, challenge, startedAt, stage]() {
+                    if (account) {
+                        account->showLoginStage(op, challenge, startedAt, stage);
+                    }
+                },
+                Qt::QueuedConnection);
+        });
+        std::optional<int> status;
         QString problem;
         try {
             status = signer->send(challenge.toStdString());
         } catch (const std::exception& error) {
             problem = QString::fromUtf8(error.what());
         }
+        client::tellFetchStages(nullptr);
         QMetaObject::invokeMethod(
             QCoreApplication::instance(),
-            [account, op, challenge, status, problem]() {
+            [account, op, challenge, startedAt, status, problem]() {
                 if (account) {
-                    account->finishLoginSend(op, challenge, status, problem);
+                    account->finishLoginSend(op, challenge, startedAt, status, problem);
                 }
             },
             Qt::QueuedConnection);
     }).detach();
 }
 
-void CoreAccount::finishLoginSend(
-    const QString& op, const QString& challenge, const int status, const QString& problem)
+void CoreAccount::showLoginStage(const QString& op, const QString& challenge,
+    const qint64 startedAtMs, const client::FetchStage stage)
 {
-    const bool accepted
-        = problem.isEmpty() && status >= kHttpAcceptedFirst && status <= kHttpAcceptedLast;
+    if (!log_.has(op)) {
+        return;
+    }
+    const QString text = loginStageText(stage);
+    log_.update(op, text);
+    emit events_.loginSendState(challenge, eLoginSending, text, startedAtMs);
+}
+
+void CoreAccount::finishLoginSend(const QString& op, const QString& challenge,
+    const qint64 startedAtMs, const std::optional<int> status, const QString& problem)
+{
+    const bool accepted = problem.isEmpty() && status && *status >= kHttpAcceptedFirst
+        && *status <= kHttpAcceptedLast;
     const QString said = !problem.isEmpty() ? problem
-        : accepted                         ? QString()
-                                           : tr("The site refused it (HTTP %1)").arg(status);
-    log_.finish(op, accepted, accepted ? tr("Accepted") : said);
-    emit events_.loginSent(challenge, accepted, said);
+        : !status                          ? tr("The site did not answer over I2P")
+        : accepted                         ? tr("Accepted")
+                                           : tr("The site refused it (HTTP %1)").arg(*status);
+    log_.finish(op, accepted, said);
+    emit events_.loginSendState(
+        challenge, accepted ? eLoginAccepted : eLoginRefused, said, startedAtMs);
 }
 
 void CoreAccount::noteCommandQueued()

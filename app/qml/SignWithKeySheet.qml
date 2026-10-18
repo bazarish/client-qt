@@ -25,9 +25,19 @@ Popup {
     readonly property bool hasCallback: root.consumer.ok === true && !!root.consumer.callback
     // Send stays out of reach for a moment: long enough to read where the signature goes.
     property int holdLeft: 0
-    property bool sendPending: false
-    property bool sent: false
-    property string sendProblem: ""
+    // Pressed, and the core has not said so yet: a second press must not send twice.
+    property bool asking: false
+    readonly property bool sendingThis: root.hasCallback && root.session !== null
+        && root.session.loginSendChallenge === challengeArea.text.trim()
+    readonly property bool sendPending: root.asking || (root.sendingThis && root.session.loginSending)
+    readonly property bool sent: root.sendingThis && root.session.loginAccepted
+    readonly property string sendProblem: root.sendingThis && !root.session.loginSending
+        && !root.session.loginAccepted ? root.session.loginSendStatus : ""
+    property int sendElapsed: 0
+    property int secondsLeft: 0
+    readonly property bool expired: root.consumer.ok === true && root.secondsLeft <= 0
+    readonly property int kSecondsPerMinute: 60
+    readonly property int kClockDigits: 2
 
     function openWith(link) {
         root.open()
@@ -51,11 +61,26 @@ Popup {
         root.consumer = ({ "ok": false, "problem": "" })
         root.copyPending = false
         copyBtn.copied = false
-        root.sendPending = false
-        root.sent = false
-        root.sendProblem = ""
+        root.asking = false
         root.holdLeft = 0
         holdTimer.stop()
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: root.opened && root.consumer.ok === true
+        onTriggered: root.secondsLeft = Math.floor(root.consumer.expiresAt - Date.now() / 1000)
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        triggeredOnStart: true
+        running: root.sendPending && root.opened
+        onTriggered: root.sendElapsed = root.session && root.session.loginSendStartedAt > 0
+            ? Math.max(0, Math.floor((Date.now() - root.session.loginSendStartedAt) / 1000)) : 0
     }
 
     Timer {
@@ -88,13 +113,10 @@ Popup {
         // button goes back to asking rather than waiting for a blob that is not
         // coming. What went wrong is reported where every other failure is.
         function onActionFailed(message) { root.copyPending = false }
-        function onLoginSent(challenge, accepted, problem) {
-            if (!root.sendPending || challenge !== challengeArea.text.trim()) {
-                return
+        function onLoginSendChanged() {
+            if (root.sendingThis) {
+                root.asking = false
             }
-            root.sendPending = false
-            root.sent = accepted
-            root.sendProblem = accepted ? "" : problem
         }
     }
 
@@ -113,6 +135,15 @@ Popup {
                 font.weight: Font.DemiBold
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
+            }
+            Label {
+                visible: root.consumer.ok === true
+                text: root.expired ? qsTr("Expired")
+                    : Math.floor(root.secondsLeft / root.kSecondsPerMinute) + ":"
+                        + String(root.secondsLeft % root.kSecondsPerMinute).padStart(root.kClockDigits, "0")
+                color: root.expired ? Theme.danger : Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                font.weight: root.expired ? Font.DemiBold : Font.Normal
             }
             IconButton { iconName: "close"; onClicked: root.close() }
         }
@@ -193,9 +224,7 @@ Popup {
                                 background: Rectangle { radius: 8; color: Theme.surface; border.color: challengeArea.activeFocus ? Theme.accent : Theme.border }
                                 onTextChanged: {
                                     copyBtn.copied = false
-                                    root.sendPending = false
-                                    root.sent = false
-                                    root.sendProblem = ""
+                                    root.asking = false
                                     root.consumer = root.session
                                         ? root.session.describeLoginChallenge(text)
                                         : ({ "ok": false, "problem": "" })
@@ -260,16 +289,6 @@ Popup {
                                 text: root.consumer.role ? qsTr("as %1").arg(root.consumer.role) : ""
                                 color: Theme.textDim
                                 Layout.fillWidth: true
-                            }
-                            Label {
-                                visible: root.hasCallback
-                                text: root.hasCallback
-                                    ? qsTr("The signature goes to %1").arg(root.consumer.callback) : ""
-                                color: Theme.textDim
-                                font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.WrapAnywhere
-                                Layout.fillWidth: true
-                                Layout.topMargin: 4
                             }
                             Label {
                                 visible: root.consumer.ok
@@ -358,8 +377,7 @@ Popup {
                             enabled: root.session !== null && root.hasCallback && root.holdLeft === 0
                                 && !root.sendPending && !root.sent
                             onClicked: {
-                                root.sendPending = true
-                                root.sendProblem = ""
+                                root.asking = true
                                 root.session.sendLogin(challengeArea.text.trim())
                             }
                             background: Rectangle {
@@ -372,6 +390,33 @@ Popup {
                             contentItem: IconLabel {
                                 name: "send"
                                 color: sendBtn.enabled || root.sent ? Theme.accentText : Theme.textDim
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        visible: root.sendPending
+                        Layout.fillWidth: true
+                        spacing: 6
+                        ProgressBar {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 4
+                            indeterminate: true
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Label {
+                                text: root.sendingThis ? root.session.loginSendStatus : ""
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("%1s").arg(root.sendElapsed)
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
                             }
                         }
                     }

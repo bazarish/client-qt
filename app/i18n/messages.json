@@ -4379,12 +4379,6 @@
       "zh": "发送（%1）",
       "ar": "إرسال (⁦%1⁩)"
     },
-    "The signature goes to %1": {
-      "ru": "Подпись уйдёт на %1",
-      "es": "La firma se envía a %1",
-      "zh": "签名将发送到 %1",
-      "ar": "يُرسَل التوقيع إلى ⁦%1⁩"
-    },
     "Sending your signature": {
       "ru": "Отправка подписи",
       "es": "Enviando tu firma",
@@ -4408,6 +4402,42 @@
       "es": "La cuenta aún se está abriendo.",
       "zh": "账号仍在打开。",
       "ar": "لا يزال الحساب يُفتح."
+    },
+    "Taking an address to send from…": {
+      "ru": "Беру адрес для отправки…",
+      "es": "Tomando una dirección para el envío…",
+      "zh": "正在取用发送地址…",
+      "ar": "جارٍ أخذ عنوان للإرسال…"
+    },
+    "Building an address to send from…": {
+      "ru": "Строю адрес для отправки…",
+      "es": "Creando una dirección para el envío…",
+      "zh": "正在建立发送地址…",
+      "ar": "جارٍ بناء عنوان للإرسال…"
+    },
+    "Waiting for the site's answer…": {
+      "ru": "Жду ответа сайта…",
+      "es": "Esperando la respuesta del sitio…",
+      "zh": "正在等待网站回应…",
+      "ar": "جارٍ انتظار رد الموقع…"
+    },
+    "The site accepted the signature": {
+      "ru": "Сайт принял подпись",
+      "es": "El sitio aceptó la firma",
+      "zh": "网站已接受签名",
+      "ar": "قبل الموقع التوقيع"
+    },
+    "Expired": {
+      "ru": "Просрочен",
+      "es": "Caducado",
+      "zh": "已过期",
+      "ar": "منتهي الصلاحية"
+    },
+    "The site did not answer over I2P": {
+      "ru": "Сайт не ответил через I2P",
+      "es": "El sitio no respondió por I2P",
+      "zh": "网站没有通过 I2P 回应",
+      "ar": "لم يستجب الموقع عبر I2P"
     }
   }
 }

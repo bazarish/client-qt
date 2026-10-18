@@ -342,7 +342,15 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::inviteUnavailable, this,
         &SessionController::inviteUnavailable);
     connect(&events_, &AccountEvents::loginSigned, this, &SessionController::loginSigned);
-    connect(&events_, &AccountEvents::loginSent, this, &SessionController::loginSent);
+    connect(&events_, &AccountEvents::loginSendState, this,
+        [this](const QString& challenge, const int phase, const QString& status,
+            const qint64 startedAtMs) {
+            loginSendChallenge_ = challenge;
+            loginSendPhase_ = phase;
+            loginSendStatus_ = status;
+            loginSendStartedAt_ = startedAtMs;
+            emit loginSendChanged();
+        });
     connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
     connect(&events_, &AccountEvents::serverHello, this, &SessionController::serverHello);
@@ -1187,6 +1195,8 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
         described["callback"] = callback
             ? QString::fromStdString(callback->host + callback->path)
             : QString();
+        described["expiresAt"] = static_cast<double>(
+            bazarish::service::loginChallengeExpiresAt(challenge.trimmed().toStdString()));
     } catch (const std::exception& error) {
         described["ok"] = false;
         described["problem"] = QString::fromUtf8(error.what());
