@@ -74,6 +74,9 @@ private:
     void announcePresence();
     void recountUnread();
     void signLogin(const QString& challenge);
+    void sendLogin(const QString& challenge);
+    void finishLoginSend(
+        const QString& op, const QString& challenge, int status, const QString& problem);
     void onMessageReceived(const QVariantMap& message);
     void viewConversation(const QString& peer);
     void markRead(const QString& peer, qint64 id, const QString& e2eId, qint64 sentAtMs);

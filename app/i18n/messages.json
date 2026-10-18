@@ -4366,6 +4366,48 @@
       "es": "Activando o silenciando el micrófono",
       "zh": "正在开关麦克风",
       "ar": "جارٍ تشغيل الميكروفون أو إيقافه"
+    },
+    "Accepted": {
+      "ru": "Принято",
+      "es": "Aceptado",
+      "zh": "已接受",
+      "ar": "قُبلت"
+    },
+    "Send (%1)": {
+      "ru": "Отправить (%1)",
+      "es": "Enviar (%1)",
+      "zh": "发送（%1）",
+      "ar": "إرسال (⁦%1⁩)"
+    },
+    "The signature goes to %1": {
+      "ru": "Подпись уйдёт на %1",
+      "es": "La firma se envía a %1",
+      "zh": "签名将发送到 %1",
+      "ar": "يُرسَل التوقيع إلى ⁦%1⁩"
+    },
+    "Sending your signature": {
+      "ru": "Отправка подписи",
+      "es": "Enviando tu firma",
+      "zh": "正在发送签名",
+      "ar": "جارٍ إرسال توقيعك"
+    },
+    "Reaching the site…": {
+      "ru": "Подключение к сайту…",
+      "es": "Contactando con el sitio…",
+      "zh": "正在连接网站…",
+      "ar": "جارٍ الوصول إلى الموقع…"
+    },
+    "The site refused it (HTTP %1)": {
+      "ru": "Сайт отказал (HTTP %1)",
+      "es": "El sitio lo rechazó (HTTP %1)",
+      "zh": "网站拒绝了（HTTP %1）",
+      "ar": "رفضه الموقع (HTTP ⁦%1⁩)"
+    },
+    "This account is still opening.": {
+      "ru": "Аккаунт ещё открывается.",
+      "es": "La cuenta aún se está abriendo.",
+      "zh": "账号仍在打开。",
+      "ar": "لا يزال الحساب يُفتح."
     }
   }
 }

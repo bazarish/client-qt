@@ -34,6 +34,7 @@ Item {
         if (k === "call") return "call"
         if (k === "service") return "gear"
         if (k === "alias") return "bang"
+        if (k === "login") return "key"
         return "dot"
     }
 

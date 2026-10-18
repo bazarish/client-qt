@@ -50,6 +50,12 @@ void conversationOpened(JNIEnv*, jclass, jstring account, jstring peer)
     });
 }
 
+void linkOpened(JNIEnv*, jclass, jstring link)
+{
+    const QString uri = QJniObject(link).toString();
+    inWindowThread<AppController>(gApp, [uri](AppController& app) { app.openLink(uri); });
+}
+
 void callAnswered(JNIEnv*, jclass)
 {
     inWindowThread<AppController>(gApp, [](AppController& app) { app.answerRinging(); });
@@ -77,6 +83,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         {"conversationOpened", "(Ljava/lang/String;Ljava/lang/String;)V",
             reinterpret_cast<void*>(conversationOpened)},
         {"callAnswered", "()V", reinterpret_cast<void*>(callAnswered)},
+        {"linkOpened", "(Ljava/lang/String;)V", reinterpret_cast<void*>(linkOpened)},
         {"unlocked", "()V", reinterpret_cast<void*>(unlocked)},
         {"coreListening", "()V", reinterpret_cast<void*>(coreAnswered)},
     };
@@ -169,6 +176,11 @@ void AndroidWindow::takeHeld()
         const QString peer
             = QJniObject::fromLocalRef(env->GetObjectArrayElement(list, 1)).toString();
         app_.openConversationOf(accountId, peer);
+    }
+    const QString link = QJniObject::callStaticObjectMethod(
+        kWindow, "takeHeldLink", "()Ljava/lang/String;").toString();
+    if (!link.isEmpty()) {
+        app_.openLink(link);
     }
     if (QJniObject::callStaticMethod<jboolean>(kWindow, "takeHeldAnswer", "()Z")) {
         app_.answerRinging();

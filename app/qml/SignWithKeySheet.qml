@@ -4,11 +4,11 @@ import QtQuick.Layouts
 import Bazarish
 
 // Sign-in-with-key: paste a challenge from any Bazarish portal, see who it is
-// for, and copy the signature back. Signing is not a step of its own - copying
-// the signature is what asks for it - so the window is a field, what the
-// challenge says about its consumer, and one button.
+// for, and copy the signature back or send it. Signing is not a step of its own -
+// copying or sending the signature is what asks for it - so the window is a field,
+// what the challenge says about its consumer, and its buttons.
 //
-// No server is contacted, so it works even before a server is connected.
+// The account's own server plays no part, so it works even before one is connected.
 Popup {
     id: root
     property var session: null
@@ -21,6 +21,18 @@ Popup {
     // Set while the signature this account was asked for is on its way back, so
     // the blob lands in the clipboard rather than in a box nobody reads.
     property bool copyPending: false
+    readonly property int kSendHoldSeconds: 5
+    readonly property bool hasCallback: root.consumer.ok === true && !!root.consumer.callback
+    // Send stays out of reach for a moment: long enough to read where the signature goes.
+    property int holdLeft: 0
+    property bool sendPending: false
+    property bool sent: false
+    property string sendProblem: ""
+
+    function openWith(link) {
+        root.open()
+        challengeArea.text = link
+    }
 
     modal: true
     anchors.centerIn: Overlay.overlay
@@ -39,6 +51,23 @@ Popup {
         root.consumer = ({ "ok": false, "problem": "" })
         root.copyPending = false
         copyBtn.copied = false
+        root.sendPending = false
+        root.sent = false
+        root.sendProblem = ""
+        root.holdLeft = 0
+        holdTimer.stop()
+    }
+
+    Timer {
+        id: holdTimer
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            root.holdLeft -= 1
+            if (root.holdLeft <= 0) {
+                stop()
+            }
+        }
     }
 
     background: DialogFrame { }
@@ -59,6 +88,14 @@ Popup {
         // button goes back to asking rather than waiting for a blob that is not
         // coming. What went wrong is reported where every other failure is.
         function onActionFailed(message) { root.copyPending = false }
+        function onLoginSent(challenge, accepted, problem) {
+            if (!root.sendPending || challenge !== challengeArea.text.trim()) {
+                return
+            }
+            root.sendPending = false
+            root.sent = accepted
+            root.sendProblem = accepted ? "" : problem
+        }
     }
 
     contentItem: ColumnLayout {
@@ -135,28 +172,45 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
-                    ScrollView {
+                    RowLayout {
                         visible: !root.consumer.ok
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 96
-                        // The challenge wraps, so the only scrolling that means
-                        // anything here is downwards.
-                        contentWidth: availableWidth
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        TextArea {
-                            id: challengeArea
-                            wrapMode: TextArea.WrapAnywhere
-                            placeholderText: qsTr("Paste the challenge")
-                            color: Theme.text
-                            placeholderTextColor: Theme.textDim
-                            selectByMouse: true
-                            background: Rectangle { radius: 8; color: Theme.surface; border.color: challengeArea.activeFocus ? Theme.accent : Theme.border }
-                            onTextChanged: {
-                                copyBtn.copied = false
-                                root.consumer = root.session
-                                    ? root.session.describeLoginChallenge(text)
-                                    : ({ "ok": false, "problem": "" })
+                        spacing: 8
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 96
+                            // The challenge wraps, so the only scrolling that means
+                            // anything here is downwards.
+                            contentWidth: availableWidth
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                            TextArea {
+                                id: challengeArea
+                                wrapMode: TextArea.WrapAnywhere
+                                placeholderText: qsTr("Paste the challenge")
+                                color: Theme.text
+                                placeholderTextColor: Theme.textDim
+                                selectByMouse: true
+                                background: Rectangle { radius: 8; color: Theme.surface; border.color: challengeArea.activeFocus ? Theme.accent : Theme.border }
+                                onTextChanged: {
+                                    copyBtn.copied = false
+                                    root.sendPending = false
+                                    root.sent = false
+                                    root.sendProblem = ""
+                                    root.consumer = root.session
+                                        ? root.session.describeLoginChallenge(text)
+                                        : ({ "ok": false, "problem": "" })
+                                    root.holdLeft = root.hasCallback ? root.kSendHoldSeconds : 0
+                                    if (root.hasCallback) {
+                                        holdTimer.restart()
+                                    } else {
+                                        holdTimer.stop()
+                                    }
+                                }
                             }
+                        }
+                        QrScanButton {
+                            Layout.alignment: Qt.AlignTop
+                            onDecoded: function(text) { challengeArea.text = text }
                         }
                     }
 
@@ -208,6 +262,16 @@ Popup {
                                 Layout.fillWidth: true
                             }
                             Label {
+                                visible: root.hasCallback
+                                text: root.hasCallback
+                                    ? qsTr("The signature goes to %1").arg(root.consumer.callback) : ""
+                                color: Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.WrapAnywhere
+                                Layout.fillWidth: true
+                                Layout.topMargin: 4
+                            }
+                            Label {
                                 visible: root.consumer.ok
                                 text: (root.consumer.place && root.consumer.place.length > 1)
                                     ? qsTr("If the address you came to is not in the list, do not sign.")
@@ -246,8 +310,12 @@ Popup {
                             id: copyBtn
                             hoverEnabled: true
                             property bool copied: false
-                            Layout.fillWidth: true
-                            text: copied ? qsTr("Copied") : qsTr("Copy signature")
+                            Layout.fillWidth: !root.hasCallback
+                            Layout.preferredWidth: root.hasCallback ? sendBtn.implicitHeight : -1
+                            text: root.hasCallback ? "" : (copied ? qsTr("Copied") : qsTr("Copy signature"))
+                            Accessible.name: qsTr("Copy signature")
+                            ToolTip.visible: root.hasCallback && hovered
+                            ToolTip.text: qsTr("Copy signature")
                             enabled: root.session && root.consumer.ok && !root.copyPending
                             onClicked: {
                                 // Belt as well as braces: `enabled` above already
@@ -263,16 +331,57 @@ Popup {
                             background: Rectangle {
                                 radius: 10
                                 color: copyBtn.copied ? Theme.success
+                                    : root.hasCallback ? (copyBtn.hovered ? Theme.surfaceAlt : Theme.surface)
                                     : (copyBtn.enabled ? (copyBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
                                         : Theme.surfaceAlt)
+                                border.color: root.hasCallback && !copyBtn.copied ? Theme.border : "transparent"
                                 Behavior on color { ColorAnimation { duration: 200 } }
                             }
                             contentItem: IconLabel {
                                 name: "copy"
-                                color: copyBtn.enabled || copyBtn.copied ? Theme.accentText : Theme.textDim
+                                color: copyBtn.copied ? Theme.accentText
+                                    : !copyBtn.enabled ? Theme.textDim
+                                    : root.hasCallback ? Theme.text : Theme.accentText
                             }
                             Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
                         }
+
+                        Button {
+                            id: sendBtn
+                            visible: root.hasCallback
+                            hoverEnabled: true
+                            Layout.fillWidth: true
+                            text: root.sent ? qsTr("Sent")
+                                : root.sendPending ? qsTr("Sending…")
+                                : root.holdLeft > 0 ? qsTr("Send (%1)").arg(root.holdLeft)
+                                : qsTr("Send")
+                            enabled: root.session !== null && root.hasCallback && root.holdLeft === 0
+                                && !root.sendPending && !root.sent
+                            onClicked: {
+                                root.sendPending = true
+                                root.sendProblem = ""
+                                root.session.sendLogin(challengeArea.text.trim())
+                            }
+                            background: Rectangle {
+                                radius: 10
+                                color: root.sent ? Theme.success
+                                    : (sendBtn.enabled ? (sendBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
+                                        : Theme.surfaceAlt)
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                            }
+                            contentItem: IconLabel {
+                                name: "send"
+                                color: sendBtn.enabled || root.sent ? Theme.accentText : Theme.textDim
+                            }
+                        }
+                    }
+
+                    Label {
+                        visible: root.sendProblem.length > 0
+                        text: qsTr("Not sent: %1").arg(root.sendProblem)
+                        color: Theme.danger
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
                     }
                 }
             }

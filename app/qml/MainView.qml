@@ -34,6 +34,7 @@ Item {
     Connections {
         target: App
         function onInviteLinkOpened(link) { newChat.openInvite(link) }
+        function onSignLinkOpened(link) { signWithKeySheet.openWith(link) }
         function onServerLinkOpened(link) {
             if (root.session && root.session.connected) {
                 window.showToast(qsTr("This account already has a server."))

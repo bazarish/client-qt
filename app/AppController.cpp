@@ -419,13 +419,14 @@ void AppController::openLink(const QString& link)
         return;
     }
     const bool invite = uri.startsWith(QLatin1String(bazarish::kInviteUri));
-    if (!invite && !uri.startsWith(QLatin1String(bazarish::kServerUri))) {
+    const bool sign = uri.startsWith(QLatin1String(bazarish::kSignUri));
+    if (!invite && !sign && !uri.startsWith(QLatin1String(bazarish::kServerUri))) {
         bazarish::log::warn("asked to open a link this client does not know");
         emit linkRefused(tr("This link is not one Bazarish knows."));
         return;
     }
     emit raiseRequested();
-    // Both of these act on an open account, so a link that arrives before one is
+    // These act on an open account, so a link that arrives before one is
     // open waits for it rather than going nowhere.
     if (sessions_.isEmpty()) {
         pendingLink_ = uri;
@@ -433,6 +434,10 @@ void AppController::openLink(const QString& link)
     }
     if (invite) {
         emit inviteLinkOpened(uri);
+        return;
+    }
+    if (sign) {
+        emit signLinkOpened(uri);
         return;
     }
     emit serverLinkOpened(uri);

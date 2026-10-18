@@ -128,6 +128,7 @@ signals:
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
+    void loginSent(const QString& challenge, bool accepted, const QString& problem);
     void connectionLogReady(const QVariantList& lines);
     void approvalState(bool pending, const QString& note);
     void facadeInfo(const QString& activeUrl, const QStringList& configured,

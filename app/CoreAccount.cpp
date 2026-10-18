@@ -10,12 +10,15 @@
 #include "AccountDb.hpp"
 #include "AccountKey.hpp"
 
+#include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QMetaMethod>
+#include <QPointer>
 
 #include <exception>
 #include <stdexcept>
+#include <thread>
 #include <utility>
 
 namespace bazarish::app {
@@ -88,6 +91,8 @@ const char* commandTitle(const QByteArray& signalName)
 }
 
 constexpr int kReactionsToFlash = 64;
+constexpr int kHttpAcceptedFirst = 200;
+constexpr int kHttpAcceptedLast = 299;
 
 }  // namespace
 
@@ -206,6 +211,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestCloseAccountOnServer, worker_,
         &SessionWorker::closeAccountOnServer);
     connect(&commands_, &AccountCommands::requestSignLoginSig, this, &CoreAccount::signLogin);
+    connect(&commands_, &AccountCommands::sendLogin, this, &CoreAccount::sendLogin);
     connect(&commands_, &AccountCommands::viewConversation, this, &CoreAccount::viewConversation);
     connect(&commands_, &AccountCommands::markRead, this, &CoreAccount::markRead);
     connect(&commands_, &AccountCommands::forgetReactionFlash, this,
@@ -708,6 +714,47 @@ void CoreAccount::signLogin(const QString& challenge)
     }
     QMetaObject::invokeMethod(
         this, [this, blob]() { emit events_.loginSigned(blob); }, Qt::QueuedConnection);
+}
+
+void CoreAccount::sendLogin(const QString& challenge)
+{
+    if (!loginSigner_) {
+        emit events_.loginSent(challenge, false, tr("This account is still opening."));
+        return;
+    }
+    const QString op = QStringLiteral("login:") + QString::number(++commandSeq_);
+    log_.begin(op, QStringLiteral("login"), tr("Sending your signature"), tr("Reaching the site…"));
+    const std::shared_ptr<client::LoginSigner> signer = loginSigner_;
+    const QPointer<CoreAccount> account(this);
+    std::thread([signer, challenge, account, op]() {
+        int status = 0;
+        QString problem;
+        try {
+            status = signer->send(challenge.toStdString());
+        } catch (const std::exception& error) {
+            problem = QString::fromUtf8(error.what());
+        }
+        QMetaObject::invokeMethod(
+            QCoreApplication::instance(),
+            [account, op, challenge, status, problem]() {
+                if (account) {
+                    account->finishLoginSend(op, challenge, status, problem);
+                }
+            },
+            Qt::QueuedConnection);
+    }).detach();
+}
+
+void CoreAccount::finishLoginSend(
+    const QString& op, const QString& challenge, const int status, const QString& problem)
+{
+    const bool accepted
+        = problem.isEmpty() && status >= kHttpAcceptedFirst && status <= kHttpAcceptedLast;
+    const QString said = !problem.isEmpty() ? problem
+        : accepted                         ? QString()
+                                           : tr("The site refused it (HTTP %1)").arg(status);
+    log_.finish(op, accepted, accepted ? tr("Accepted") : said);
+    emit events_.loginSent(challenge, accepted, said);
 }
 
 void CoreAccount::noteCommandQueued()

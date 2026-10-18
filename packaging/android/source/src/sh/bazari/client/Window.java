@@ -25,12 +25,14 @@ public final class Window {
     private static final int ASK_NOTIFICATIONS = 1;
     private static final String HELD = "held";
     private static final String HELD_ANSWER = "answer";
+    private static final String HELD_LINK = "link";
 
     static Context app;
     static WeakReference<Activity> window = new WeakReference<>(null);
 
     static native void conversationOpened(String account, String peer);
     static native void callAnswered();
+    static native void linkOpened(String link);
     static native void unlocked();
     static native void coreListening();
 
@@ -136,6 +138,24 @@ public final class Window {
                 .commit()) {
             throw new IllegalStateException("what a notice was tapped for was not kept");
         }
+    }
+
+    // A bazarish:// link from any app: it only opens the window it names.
+    static void holdLink(Context context, String link) {
+        if (!context.getSharedPreferences(HELD, Context.MODE_PRIVATE).edit()
+                .putString(HELD_LINK, link)
+                .commit()) {
+            throw new IllegalStateException("the link the app was opened with was not kept");
+        }
+    }
+
+    public static String takeHeldLink() {
+        SharedPreferences held = app.getSharedPreferences(HELD, Context.MODE_PRIVATE);
+        String link = held.getString(HELD_LINK, "");
+        if (!held.edit().remove(HELD_LINK).commit()) {
+            throw new IllegalStateException("the link the app was opened with was not cleared");
+        }
+        return link;
     }
 
     public static String[] takeHeldConversation() {

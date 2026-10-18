@@ -337,6 +337,7 @@ public:
     Q_INVOKABLE void forgetReactionFlash();
     Q_INVOKABLE void requestInvite();
     Q_INVOKABLE void signLogin(const QString& challenge);
+    Q_INVOKABLE void sendLogin(const QString& challenge);
     Q_INVOKABLE QVariantMap describeLoginChallenge(const QString& challenge) const;
     Q_INVOKABLE void askForContacts();
     Q_INVOKABLE void refreshConnectionLog();
@@ -424,6 +425,7 @@ signals:
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
+    void loginSent(const QString& challenge, bool accepted, const QString& problem);
     void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     void connectionLogUpdated(const QVariantList& lines);
     void resendFilePickRequested();

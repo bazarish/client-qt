@@ -61,5 +61,6 @@ Only the app itself reaches the core. The socket file lies in the app's private
 cache directory, which no other app can enter, and whoever connects there gets
 the whole account. The service is not exported. The notices open the window
 through `NoticeEntry`, an entry other apps cannot start. The launcher entry,
-which any app can start, opens the window and does nothing else: no answering,
-no showing over the lock screen, no opening a chat.
+which any app can start, opens the window and, for a `bazarish://` link, the
+sheet that link names, filled in. It acts on nothing: no answering, no showing
+over the lock screen, no opening a chat, no sending.

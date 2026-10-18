@@ -342,6 +342,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::inviteUnavailable, this,
         &SessionController::inviteUnavailable);
     connect(&events_, &AccountEvents::loginSigned, this, &SessionController::loginSigned);
+    connect(&events_, &AccountEvents::loginSent, this, &SessionController::loginSent);
     connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
     connect(&events_, &AccountEvents::serverHello, this, &SessionController::serverHello);
@@ -1147,6 +1148,11 @@ void SessionController::signLogin(const QString& challenge)
     emit commands_.requestSignLoginSig(challenge);
 }
 
+void SessionController::sendLogin(const QString& challenge)
+{
+    emit commands_.sendLogin(challenge.trimmed());
+}
+
 void SessionController::askForContacts()
 {
     emit commands_.requestContactsFromDevices();
@@ -1176,6 +1182,11 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
         }
         described["place"] = places;
         described["role"] = QString::fromStdString(consumer.role);
+        const std::optional<bazarish::service::LoginCallback> callback
+            = bazarish::service::readLoginCallback(challenge.trimmed().toStdString());
+        described["callback"] = callback
+            ? QString::fromStdString(callback->host + callback->path)
+            : QString();
     } catch (const std::exception& error) {
         described["ok"] = false;
         described["problem"] = QString::fromUtf8(error.what());

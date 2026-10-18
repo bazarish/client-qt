@@ -19,12 +19,21 @@ public class BazarishActivity extends QtActivity {
             Window.hold(this, getIntent());
             showForRinging(getIntent());
         }
+        String link = linkOf(getIntent());
+        if (link != null) {
+            Window.holdLink(this, link);
+        }
         super.onCreate(savedInstanceState);
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        String link = linkOf(intent);
+        if (link != null) {
+            Window.linkOpened(link);
+            return;
+        }
         if (!fromNotice(intent)) {
             return;
         }
@@ -38,6 +47,14 @@ public class BazarishActivity extends QtActivity {
         if (account != null && peer != null) {
             Window.conversationOpened(account, peer);
         }
+    }
+
+    private static String linkOf(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())
+            || intent.getData() == null || !"bazarish".equals(intent.getData().getScheme())) {
+            return null;
+        }
+        return intent.getDataString();
     }
 
     private static boolean fromNotice(Intent intent) {

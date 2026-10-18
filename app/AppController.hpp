@@ -190,6 +190,7 @@ signals:
     void accountUnlocked(const QString& id);
     void inviteLinkOpened(const QString& link);
     void serverLinkOpened(const QString& link);
+    void signLinkOpened(const QString& link);
     void pairLinkOpened(const QString& link);
     void linkRefused(const QString& reason);
 
