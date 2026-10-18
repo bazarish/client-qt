@@ -132,6 +132,21 @@ introduce audible latency in a live call.
 A change applies to destinations created after it. Destinations already in use
 are rebuilt by the application so that the previous profile is not retained.
 
+## Call media paths
+
+A call's destination keeps six tunnels each way instead of three. Every 100 ms it
+sends a path probe (`docs-main/api/Calls.md`) on one pairing of its own outbound
+tunnel with one of the peer's inbound tunnels, every other probe on the pairing the
+audio uses, and keeps a smoothed round trip per pairing: each answer moves it a
+quarter of the way. Audio is pinned to the fastest pairing that has answered and
+moves only to one at least 30 ms faster. A probe left unanswered for 2 s counts as
+a 2 s round trip for a pairing that has answered before and as nothing for one
+that never has; until one answers, the engine picks the path as before.
+
+The engine does this itself, so it holds on this machine's router and on a
+gateway, which runs the same engine for its clients. Over SAM the six tunnels are
+asked for too, but the router alone picks the path: no probe is sent or answered.
+
 ## Engine logging
 
 Disabled by default; the engine's log messages are suppressed before formatting.
