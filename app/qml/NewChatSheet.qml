@@ -83,6 +83,7 @@ Popup {
     // reads clearly against the dark popup (the default Basic Button blends in).
     component ActionButton: Button {
         id: ctl
+        focusPolicy: Theme.pressFocus
         hoverEnabled: true
         background: Rectangle {
             radius: 10

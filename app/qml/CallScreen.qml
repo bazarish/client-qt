@@ -131,6 +131,7 @@ Popup {
     // is, and crossed out in red says it is off, in the one glance a call allows.
     component CallIconButton: Button {
         id: iconButton
+        focusPolicy: Theme.pressFocus
         property color fill: Theme.surface
         property string iconName: ""
         property bool crossed: false
