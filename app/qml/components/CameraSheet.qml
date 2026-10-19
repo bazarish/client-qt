@@ -27,6 +27,7 @@ Popup {
     height: parent ? parent.height : 0
     padding: sheet.kFrame
     modal: true
+    focus: true
     closePolicy: Popup.CloseOnEscape
     background: Rectangle { color: Theme.bg }
 

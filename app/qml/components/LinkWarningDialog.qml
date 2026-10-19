@@ -23,6 +23,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    focus: true
     width: Math.min(460, parent ? parent.width - 24 : 460)
     background: DialogFrame { }
     header: Label {

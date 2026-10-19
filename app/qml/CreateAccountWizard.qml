@@ -152,6 +152,7 @@ Item {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         title: qsTr("Backup password")
         // name + at-rest passphrase come from the wizard fields; this asks only
         // for the password the backup file was sealed with.

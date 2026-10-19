@@ -20,6 +20,7 @@ Popup {
     readonly property var chats: root.info.chats !== undefined ? root.info.chats : []
 
     modal: true
+    focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(600, parent ? parent.width - 24 : 600)
     height: Math.min(parent ? parent.height - 40 : 600, 560)
@@ -201,6 +202,7 @@ Popup {
         property string who: ""
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(380, parent ? parent.width - 24 : 380)
         background: DialogFrame { }
         header: Label {
@@ -267,6 +269,7 @@ Popup {
         id: working
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         visible: root.busy
         closePolicy: Popup.NoAutoClose
         padding: 20

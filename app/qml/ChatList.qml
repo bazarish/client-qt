@@ -12,8 +12,6 @@ Item {
     // Too narrow for two panes and a row of labelled actions: one menu instead.
     readonly property bool narrow: width < 300
     signal accountsRequested()
-    // A hidden item keeps its active focus, and the keyboard would go on typing into it.
-    onVisibleChanged: if (!visible) { chatSearch.focus = false }
 
     function formatTime(ts) {
         if (!ts) return ""

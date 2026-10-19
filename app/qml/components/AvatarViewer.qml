@@ -13,6 +13,7 @@ Popup {
     parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
     modal: true
+    focus: true
     dim: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: 10

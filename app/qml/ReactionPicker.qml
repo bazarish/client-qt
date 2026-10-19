@@ -12,6 +12,7 @@ Popup {
     property var session: null
     property string target: ""
     modal: true
+    focus: true
     parent: Overlay.overlay
     // As wide as the chips it holds and no wider: a fixed width left a gap on
     // the right that was not enough for another chip.

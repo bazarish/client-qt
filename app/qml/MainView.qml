@@ -292,6 +292,7 @@ Item {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         closePolicy: Popup.CloseOnEscape
         // Submitting is not closing: Dialog.accept() would take the prompt away
         // before anyone knew whether the passphrase worked.

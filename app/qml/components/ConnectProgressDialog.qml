@@ -18,6 +18,7 @@ Dialog {
     property bool suppressed: false
 
     modal: true
+    focus: true
     closePolicy: Popup.CloseOnEscape
     onClosed: if (root.session && root.session.connecting) { root.suppressed = true }
     anchors.centerIn: Overlay.overlay

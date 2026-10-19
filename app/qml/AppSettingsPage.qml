@@ -15,6 +15,7 @@ Popup {
     signal showRouterStatus()
 
     modal: true
+    focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
     // As tall as what it holds, not a fixed box: there are two settings here.
@@ -538,6 +539,7 @@ Popup {
         property bool turningOn: false
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
         background: DialogFrame { }
         header: Label {

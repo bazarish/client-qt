@@ -25,6 +25,7 @@ Popup {
     // size of whatever opened this.
     parent: Overlay.overlay
     modal: true
+    focus: true
     dim: true
     padding: 0
     x: 0

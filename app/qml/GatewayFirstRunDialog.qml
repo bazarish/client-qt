@@ -15,6 +15,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    focus: true
     closePolicy: Popup.NoAutoClose
     width: Math.min(520, parent ? parent.width - 24 : 520)
     margins: Theme.spacing

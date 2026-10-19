@@ -18,6 +18,7 @@ Popup {
     // The window's overlay: declared inside a page, the sheet would size itself to that page's column.
     parent: Overlay.overlay
     modal: true
+    focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
     height: Math.min(parent ? parent.height - 40 : 640, body.implicitHeight + 84)

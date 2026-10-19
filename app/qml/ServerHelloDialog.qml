@@ -21,6 +21,7 @@ Popup {
     }
 
     modal: true
+    focus: true
     closePolicy: Popup.NoAutoClose
     // Sit above any other open popup (settings, sheets) so the error is never
     // covered by another window.

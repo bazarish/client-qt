@@ -18,6 +18,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    focus: true
     width: Math.min(400, parent ? parent.width - 24 : 400)
     background: DialogFrame { destructive: true }
     header: Label {

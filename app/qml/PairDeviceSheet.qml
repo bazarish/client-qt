@@ -13,6 +13,7 @@ Popup {
     readonly property bool live: root.session !== null && root.session.pairing
 
     modal: true
+    focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
     margins: Theme.spacing

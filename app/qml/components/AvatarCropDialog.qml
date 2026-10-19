@@ -36,6 +36,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    focus: true
     width: Math.min(kViewport + 48, parent ? parent.width - 24 : kViewport + 48)
     background: DialogFrame { }
     header: Label {

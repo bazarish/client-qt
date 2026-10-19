@@ -22,6 +22,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    focus: true
     width: Math.min(380, parent ? parent.width - 24 : 380)
     padding: 0
 

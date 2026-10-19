@@ -21,6 +21,7 @@ Popup {
     signal shareRequested()
 
     modal: true
+    focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
     height: Math.min(parent ? parent.height - 40 : 620, body.implicitHeight + 36)
@@ -315,6 +316,7 @@ Popup {
         id: clearSavedDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
         background: DialogFrame { }
         header: Label {
@@ -349,6 +351,7 @@ Popup {
         id: blockDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(380, parent ? parent.width - 24 : 380)
         background: DialogFrame { }
         header: Label {
@@ -380,6 +383,7 @@ Popup {
         id: clearChoiceDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
         background: DialogFrame { }
         header: Label {
@@ -438,6 +442,7 @@ Popup {
         id: deleteContactDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
         background: DialogFrame { destructive: true }
         header: Label {

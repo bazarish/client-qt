@@ -17,6 +17,7 @@ Popup {
     signal showConnectionLog()
 
     modal: true
+    focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
     height: Math.min(parent ? parent.height - 40 : 600, 640)
@@ -949,6 +950,7 @@ Popup {
         property string clientId: ""
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(380, root.width - 24)
         background: DialogFrame { }
         header: Label {
@@ -994,6 +996,7 @@ Popup {
         id: dropAvatarDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, root.width - 24)
         background: DialogFrame { }
         header: Label {
@@ -1025,6 +1028,7 @@ Popup {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         // Narrow on purpose: with no width of its own the dialog grew to fit its
         // explanation on one line, which made a two-field form as wide as the app.
         width: Math.min(320, parent ? parent.width - 24 : 320)
@@ -1067,6 +1071,7 @@ Popup {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         title: qsTr("Backup password")
         onAccepted: root.session.exportAccount(root.pendingExportFile, exportPass.text)
         background: DialogFrame { }
@@ -1084,6 +1089,7 @@ Popup {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         title: qsTr("Database password")
         background: DialogFrame { }
         header: Label { text: qsTr("Database password"); color: Theme.green
@@ -1137,6 +1143,7 @@ Popup {
         id: connectionDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 2 * Theme.spacing)
         margins: Theme.spacing
         bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
@@ -1179,6 +1186,7 @@ Popup {
         id: serverChoice
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, (Overlay.overlay ? Overlay.overlay.width : 360) - 2 * Theme.spacing)
         background: DialogFrame { }
         header: Label {
@@ -1226,6 +1234,7 @@ Popup {
         id: newKeyDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, (Overlay.overlay ? Overlay.overlay.width : 360) - 2 * Theme.spacing)
         title: qsTr("New key")
         footer: DialogButtons { acceptText: qsTr("New key"); danger: true; onAccepted: newKeyDialog.accept(); onRejected: newKeyDialog.reject() }

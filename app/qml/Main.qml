@@ -26,6 +26,16 @@ ApplicationWindow {
         return false
     }
 
+    // Qt leaves the focus on an item that was hidden, and the keyboard goes on typing into it.
+    Connections {
+        target: window.activeFocusItem
+        function onVisibleChanged() {
+            if (!window.activeFocusItem.visible) {
+                window.activeFocusItem.focus = false
+            }
+        }
+    }
+
     // The dim behind every modal, and the thing that makes it modal: the stock
     // overlay dims but lets a pointer handler underneath still see the press, so a
     // click on a dialog reached the chat behind it. This one swallows the lot.
@@ -209,6 +219,7 @@ ApplicationWindow {
         parent: Overlay.overlay
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         z: 1050
         width: Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 32)
         padding: 14
@@ -259,6 +270,7 @@ ApplicationWindow {
         parent: Overlay.overlay
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         z: 1200
         closePolicy: Popup.NoAutoClose
         visible: I2p.restartNeeded
@@ -313,6 +325,7 @@ ApplicationWindow {
         parent: Overlay.overlay
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         z: 1000
         closePolicy: Popup.CloseOnEscape
         width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 32)
@@ -385,6 +398,7 @@ ApplicationWindow {
         function show(text) { message = text; open() }
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         closePolicy: Popup.NoAutoClose
         width: Math.min(360, parent ? parent.width - 24 : 360)
         background: DialogFrame { destructive: true }

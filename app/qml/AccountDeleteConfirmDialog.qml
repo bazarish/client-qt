@@ -20,6 +20,7 @@ Dialog {
 
     anchors.centerIn: Overlay.overlay
     modal: true
+    focus: true
     width: Math.min(360, parent ? parent.width - 24 : 360)
     title: qsTr("Delete account")
     footer: DialogButtons {

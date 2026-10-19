@@ -171,6 +171,7 @@ Item {
         property string author: ""
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
         footer: DialogButtons {
             acceptText: groupActionDialog.command === "exclude" ? qsTr("Exclude")
@@ -218,6 +219,7 @@ Item {
         id: deleteMessageDialog
         anchors.centerIn: Overlay.overlay
         modal: true
+        focus: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
         readonly property bool forEveryone: root.pendingDeleteOutgoing && root.session
         footer: DialogButtons {

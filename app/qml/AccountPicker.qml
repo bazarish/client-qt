@@ -191,6 +191,7 @@ Item {
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: parent
         modal: true
+        focus: true
         title: qsTr("Unlock account")
         closePolicy: Popup.CloseOnEscape
         // Submitting is not closing. Dialog.accept() takes the prompt away the

@@ -15,6 +15,7 @@ Popup {
     property var session: null
 
     modal: true
+    focus: true
     readonly property int kLeastWidth: 420
     readonly property int kEdge: 14
     width: Math.min(parent ? parent.width - 24 : root.kLeastWidth,

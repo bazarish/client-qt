@@ -16,6 +16,7 @@ Popup {
     }
 
     modal: true
+    focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
     height: Math.min(parent ? parent.height - 80 : 560, 560)
