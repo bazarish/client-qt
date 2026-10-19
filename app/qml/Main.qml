@@ -180,9 +180,14 @@ ApplicationWindow {
         z: 1100
     }
     Component.onCompleted: {
+        App.paintSystemBars(Theme.bg)
         if (backgroundAsk.needed) {
             backgroundAsk.open()
         }
+    }
+    Connections {
+        target: Theme
+        function onLightChanged() { App.paintSystemBars(Theme.bg) }
     }
 
     // What a phone must allow for the app to keep working and ring: asked one at a time.
@@ -330,7 +335,7 @@ ApplicationWindow {
                 text: qsTr("Close")
                 hoverEnabled: true
                 onClicked: errorDialog.close()
-                background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
+                background: Rectangle { radius: 10; color: parent.hovered ? Theme.accentHover : Theme.accent }
                 contentItem: IconLabel { name: "close"; color: Theme.accentText }
             }
         }

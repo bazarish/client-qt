@@ -179,7 +179,7 @@ Popup {
             text: qsTr("Manage")
             hoverEnabled: true
             onClicked: { root.close(); App.requestAddAccount() }
-            background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
+            background: Rectangle { radius: 10; color: parent.down ? Theme.accentDown : (parent.hovered ? Theme.accentHover : Theme.accent) }
             contentItem: IconLabel { name: "gear"; color: Theme.accentText }
         }
     }

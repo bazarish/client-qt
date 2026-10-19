@@ -80,7 +80,7 @@ Popup {
             background: Rectangle {
                 radius: 10
                 color: copyBtn.copied ? Theme.success
-                    : (copyBtn.enabled ? (copyBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
+                    : (copyBtn.enabled ? (copyBtn.hovered ? Theme.accentHover : Theme.accent)
                         : Theme.surfaceAlt)
                 Behavior on color { ColorAnimation { duration: 200 } }
             }

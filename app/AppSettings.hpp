@@ -21,6 +21,9 @@ public:
     std::string language() const;
     void setLanguage(const std::string& code);
 
+    bool lightTheme() const;
+    void setLightTheme(bool on);
+
     std::vector<std::string> offlineAccounts() const;
     void setOfflineAccounts(std::vector<std::string> ids);
 
@@ -65,6 +68,7 @@ private:
     std::filesystem::path path_;
     std::string activeAccount_;
     std::string language_;
+    bool lightTheme_ = false;
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;
     bool backgroundTasks_ = false;

@@ -155,7 +155,7 @@ Popup {
                 background: Rectangle {
                     radius: 10
                     color: !goBtn.enabled ? Theme.surfaceAlt
-                        : (goBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
+                        : (goBtn.hovered ? Theme.accentHover : Theme.accent)
                 }
                 contentItem: Label {
                     text: goBtn.text

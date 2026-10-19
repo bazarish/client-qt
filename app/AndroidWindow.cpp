@@ -153,6 +153,12 @@ void AndroidWindow::dismissKeyguard()
     QJniObject::callStaticMethod<void>(kWindow, "dismissKeyguard", "()V");
 }
 
+void AndroidWindow::paintSystemBars(const bool light, const QColor& color)
+{
+    QJniObject::callStaticMethod<void>(kWindow, "paintSystemBars", "(ZI)V", jboolean(light),
+        static_cast<jint>(color.rgba()));
+}
+
 void AndroidWindow::followCall()
 {
     const bool overLock = !app_.ringingPeer().isEmpty() || app_.callLive();

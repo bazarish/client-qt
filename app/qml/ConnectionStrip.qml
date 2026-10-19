@@ -25,7 +25,7 @@ Rectangle {
     visible: root.session !== null && root.session.connected
         && (root.isOffline || root.isConnecting || root.heldForApproval)
     implicitHeight: line.implicitHeight + 2 * root.kPadding
-    color: Theme.warn
+    color: Theme.warnFill
 
     // The router reports nothing by itself: I2p holds what the last refresh read.
     Timer {
@@ -47,7 +47,7 @@ Rectangle {
         Label {
             text: root.heldForApproval ? qsTr("Waiting for approval")
                 : (root.isOffline ? qsTr("Offline") : qsTr("Connecting…"))
-            color: Theme.accentInk
+            color: Theme.onWarn
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold
         }
@@ -57,7 +57,7 @@ Rectangle {
                     ? root.session.approvalNote
                     : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
                 : (root.isOffline ? qsTr("This account is not syncing") : root.whyNotReachable)
-            color: Theme.accentInk
+            color: Theme.onWarn
             font.pixelSize: Theme.fontSmall
             elide: Text.ElideRight
             Layout.fillWidth: true

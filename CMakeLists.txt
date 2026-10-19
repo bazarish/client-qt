@@ -305,6 +305,7 @@ if(Qt6_FOUND)
         FILES
             app/icon/bazarish.png
             app/icon/logo.svg
+            app/icon/logo-onlight.svg
     )
 
     set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
@@ -384,6 +385,7 @@ if(Qt6_FOUND)
             app/qml/components/MicrophoneGate.qml
             app/qml/components/FormField.qml
             app/qml/components/ModeTab.qml
+            app/qml/components/IconTab.qml
             app/qml/components/ServerConnectForm.qml
             app/qml/components/ConnectProgressDialog.qml
             app/qml/components/LinkWarningDialog.qml

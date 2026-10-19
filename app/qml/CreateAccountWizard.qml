@@ -87,7 +87,7 @@ Item {
                 errorLabel.text = ""
                 App.createAccount(nameField.text.trim(), passField.text)
             }
-            background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
+            background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Theme.accentHover : Theme.accent) }
             contentItem: IconLabel {
                 name: "plus"
                 color: createButton.enabled ? Theme.accentText : Theme.textDim

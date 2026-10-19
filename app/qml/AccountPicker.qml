@@ -58,7 +58,7 @@ Item {
         spacing: 18
 
         Image {
-            source: "qrc:/icon/logo.svg"
+            source: Theme.light ? "qrc:/icon/logo-onlight.svg" : "qrc:/icon/logo.svg"
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredHeight: 44
             Layout.preferredWidth: 230
@@ -179,7 +179,7 @@ Item {
             text: qsTr("Create account")
             hoverEnabled: true
             onClicked: root.StackView.view.push(wizardComponent)
-            background: Rectangle { radius: 10; color: parent.down ? Qt.darker(Theme.accent, 1.2) : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
+            background: Rectangle { radius: 10; color: parent.down ? Theme.accentDown : (parent.hovered ? Theme.accentHover : Theme.accent) }
             contentItem: IconLabel { name: "plus"; color: Theme.accentText }
         }
 

@@ -41,6 +41,7 @@ const QString kAppScope = QStringLiteral("app");
 
 AppController::AppController(Translations& translations, QObject* parent)
     : QObject(parent)
+    , lightTheme_(AppSettings::instance().lightTheme())
 {
     connect(&translations, &Translations::languageChanged, this, [this, &translations]() {
         emit commands_.setLanguage(translations.language());
@@ -253,6 +254,16 @@ void AppController::setBackgroundTasksVisible(const bool on)
     backgroundTasks_ = on;
     emit backgroundTasksVisibleChanged();
     emit commands_.setBackgroundTasksVisible(on);
+}
+
+void AppController::setLightTheme(const bool on)
+{
+    if (lightTheme_ == on) {
+        return;
+    }
+    lightTheme_ = on;
+    emit lightThemeChanged();
+    emit commands_.setLightTheme(on);
 }
 
 void AppController::setSpeakerOn(const bool on)
@@ -506,6 +517,15 @@ void AppController::requestUnlocked()
 bool AppController::closeTopPopup(QQuickWindow* const window) const
 {
     return bazarish::app::closeTopPopup(window);
+}
+
+void AppController::paintSystemBars(const QColor& color) const
+{
+#ifdef Q_OS_ANDROID
+    AndroidWindow::paintSystemBars(lightTheme_, color);
+#else
+    Q_UNUSED(color);
+#endif
 }
 
 void AppController::moveToBackground() const

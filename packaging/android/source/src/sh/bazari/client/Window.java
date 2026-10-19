@@ -17,6 +17,7 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.ResultReceiver;
 import android.provider.Settings;
+import android.view.WindowInsetsController;
 
 import java.lang.ref.WeakReference;
 
@@ -27,8 +28,14 @@ public final class Window {
     private static final String HELD_ANSWER = "answer";
     private static final String HELD_LINK = "link";
 
+    private static final int LIGHT_BARS = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+        | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+
     static Context app;
     static WeakReference<Activity> window = new WeakReference<>(null);
+    private static Integer systemStatusBar;
+    private static int systemNavigationBar;
+    private static int systemBarsLook;
 
     static native void conversationOpened(String account, String peer);
     static native void callAnswered();
@@ -59,6 +66,26 @@ public final class Window {
         shown.runOnUiThread(() -> {
             shown.setShowWhenLocked(on);
             shown.setTurnScreenOn(on);
+        });
+    }
+
+    // The bars as the system drew them come back with the dark theme, so it looks as it always did.
+    public static void paintSystemBars(boolean light, int color) {
+        Activity shown = window.get();
+        if (shown == null || (!light && systemStatusBar == null)) {
+            return;
+        }
+        shown.runOnUiThread(() -> {
+            android.view.Window frame = shown.getWindow();
+            WindowInsetsController bars = frame.getInsetsController();
+            if (systemStatusBar == null) {
+                systemStatusBar = frame.getStatusBarColor();
+                systemNavigationBar = frame.getNavigationBarColor();
+                systemBarsLook = bars.getSystemBarsAppearance();
+            }
+            frame.setStatusBarColor(light ? color : systemStatusBar);
+            frame.setNavigationBarColor(light ? color : systemNavigationBar);
+            bars.setSystemBarsAppearance(light ? LIGHT_BARS : systemBarsLook & LIGHT_BARS, LIGHT_BARS);
         });
     }
 

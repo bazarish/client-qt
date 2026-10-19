@@ -253,7 +253,7 @@ ColumnLayout {
                     form.reseedList())
                 form.submitted()
             }
-            background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent) }
+            background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Theme.accentHover : Theme.accent) }
             contentItem: IconLabel {
                 name: "server"
                 color: actionButton.enabled ? Theme.accentText : Theme.textDim

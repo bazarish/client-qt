@@ -33,6 +33,7 @@ signals:
     void closeAllSessions();
     void windowActive(bool active);
     void setLanguage(const QString& code);
+    void setLightTheme(bool on);
     void chooseAudio(const QString& input, const QString& output);
     void quit();
 };

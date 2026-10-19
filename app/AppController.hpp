@@ -9,6 +9,7 @@
 #include <bazarish/Address.hpp>
 #include <bazarish/Limits.hpp>
 
+#include <QColor>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -46,6 +47,7 @@ class AppController : public QObject {
             NOTIFY notificationsEnabledChanged)
     Q_PROPERTY(bool backgroundTasksVisible READ backgroundTasksVisible
             WRITE setBackgroundTasksVisible NOTIFY backgroundTasksVisibleChanged)
+    Q_PROPERTY(bool lightTheme READ lightTheme WRITE setLightTheme NOTIFY lightThemeChanged)
     // The embedded upstream i2pd engine version (e.g.
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
@@ -119,6 +121,9 @@ public:
     bool backgroundTasksVisible() const { return backgroundTasks_; }
     void setBackgroundTasksVisible(bool on);
 
+    bool lightTheme() const { return lightTheme_; }
+    void setLightTheme(bool on);
+
     qreal ringLevel() const { return ringLevel_; }
     QString ringingPeer() const { return ringingPeer_; }
     QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
@@ -147,6 +152,7 @@ public:
     bool speakerOn() const { return speakerOn_; }
     void setSpeakerOn(bool on);
     Q_INVOKABLE void moveToBackground() const;
+    Q_INVOKABLE void paintSystemBars(const QColor& color) const;
     Q_PROPERTY(QString dataLocation READ dataLocation NOTIFY portableChanged)
     QString dataLocation() const;
     Q_INVOKABLE void setPortable(bool on);
@@ -174,6 +180,7 @@ signals:
     void accountsChanged();
     void notificationsEnabledChanged();
     void backgroundTasksVisibleChanged();
+    void lightThemeChanged();
     void ringingChanged();
     void ringLevelChanged();
     void raiseRequested();
@@ -219,6 +226,7 @@ private:
     QString deletingId_;
     bool notifications_ = true;
     bool backgroundTasks_ = false;
+    bool lightTheme_ = false;
     QString ringingAccount_;
     QString ringingPeer_;
     QString ringingPeerFingerprint_;

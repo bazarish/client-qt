@@ -351,7 +351,7 @@ Popup {
                                 radius: 10
                                 color: copyBtn.copied ? Theme.success
                                     : root.hasCallback ? (copyBtn.hovered ? Theme.surfaceAlt : Theme.surface)
-                                    : (copyBtn.enabled ? (copyBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
+                                    : (copyBtn.enabled ? (copyBtn.hovered ? Theme.accentHover : Theme.accent)
                                         : Theme.surfaceAlt)
                                 border.color: root.hasCallback && !copyBtn.copied ? Theme.border : "transparent"
                                 Behavior on color { ColorAnimation { duration: 200 } }
@@ -383,7 +383,7 @@ Popup {
                             background: Rectangle {
                                 radius: 10
                                 color: root.sent ? Theme.success
-                                    : (sendBtn.enabled ? (sendBtn.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent)
+                                    : (sendBtn.enabled ? (sendBtn.hovered ? Theme.accentHover : Theme.accent)
                                         : Theme.surfaceAlt)
                                 Behavior on color { ColorAnimation { duration: 200 } }
                             }

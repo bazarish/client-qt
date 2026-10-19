@@ -118,7 +118,7 @@ Popup {
                 text: qsTr("Close")
                 hoverEnabled: true
                 onClicked: root.close()
-                background: Rectangle { radius: 10; color: parent.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent }
+                background: Rectangle { radius: 10; color: parent.hovered ? Theme.accentHover : Theme.accent }
                 contentItem: IconLabel { name: "close"; color: Theme.accentText }
             }
         }

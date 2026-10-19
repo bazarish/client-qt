@@ -31,7 +31,7 @@ TabButton {
         anchors.margins: 3
         radius: Theme.radiusSmall
         color: tab.checked ? Theme.surfaceAlt
-            : tab.hovered ? Qt.rgba(1, 1, 1, 0.04) : "transparent"
+            : tab.hovered ? Theme.hoverTint : "transparent"
         border.width: tab.checked ? 1 : 0
         border.color: Theme.border
         Behavior on color { ColorAnimation { duration: 120 } }

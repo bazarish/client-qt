@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include <QColor>
 #include <QObject>
 
 #include <optional>
@@ -23,6 +24,7 @@ public:
     static void openFullScreenCallsSettings();
     static void moveToBackground();
     static void dismissKeyguard();
+    static void paintSystemBars(bool light, const QColor& color);
 
 signals:
     void coreListening();

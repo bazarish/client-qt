@@ -85,8 +85,8 @@ Popup {
         background: Rectangle {
             radius: 10
             color: !ctl.enabled ? Theme.surfaceAlt
-                : (ctl.down ? Qt.darker(Theme.accent, 1.2)
-                : (ctl.hovered ? Qt.darker(Theme.accent, 1.12) : Theme.accent))
+                : (ctl.down ? Theme.accentDown
+                : (ctl.hovered ? Theme.accentHover : Theme.accent))
         }
         contentItem: Label {
             text: ctl.text

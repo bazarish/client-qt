@@ -81,6 +81,7 @@ void AppSettings::load()
         const nlohmann::json document = nlohmann::json::parse(text);
         activeAccount_ = document.value("activeAccount", std::string());
         language_ = document.value("language", std::string());
+        lightTheme_ = document.value("lightTheme", false);
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
         backgroundTasks_ = document.value("backgroundTasks", false);
@@ -130,6 +131,7 @@ void AppSettings::save() const
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
         {"language", language_},
+        {"lightTheme", lightTheme_},
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
         {"backgroundTasks", backgroundTasks_},
@@ -158,6 +160,17 @@ void AppSettings::setLanguage(const std::string& code)
         return;
     }
     language_ = code;
+    save();
+}
+
+bool AppSettings::lightTheme() const { return lightTheme_; }
+
+void AppSettings::setLightTheme(const bool on)
+{
+    if (lightTheme_ == on) {
+        return;
+    }
+    lightTheme_ = on;
     save();
 }
 

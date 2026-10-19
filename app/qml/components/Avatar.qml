@@ -37,6 +37,15 @@ Item {
         // drawn is reused instead of being redrawn every time a list rebinds.
         cache: true
     }
+    // On the light screen an identicon's pale ground would melt into it without an edge.
+    Rectangle {
+        anchors.fill: parent
+        radius: width / 2
+        visible: Theme.light
+        color: "transparent"
+        border.color: Theme.border2
+        border.width: 1
+    }
 
     // Tap to view the avatar full-size (created only on demand, one at a time).
     TapHandler {

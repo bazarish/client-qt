@@ -11,7 +11,10 @@ Rectangle {
 
     readonly property int kGlowLayers: 10
     readonly property int kGlowStep: 3
-    readonly property real kGlowOpacity: 0.14
+    readonly property real kGlowOpacityOnDark: 0.14
+    // Paper needs a softer shadow than a dark screen needs to be lifted off.
+    readonly property real kGlowOpacityOnLight: 0.04
+    readonly property real kGlowOpacity: Theme.light ? kGlowOpacityOnLight : kGlowOpacityOnDark
 
     color: Theme.bg
     radius: Theme.radius

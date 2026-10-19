@@ -85,6 +85,34 @@ Popup {
                             }
                         }
                     }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Theme")
+                            color: Theme.text
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                        TabBar {
+                            currentIndex: App.lightTheme ? 1 : 0
+                            Layout.preferredWidth: implicitWidth
+                            background: Rectangle {
+                                radius: Theme.radius
+                                color: Theme.surface
+                                border.color: Theme.border
+                            }
+                            IconTab {
+                                iconName: "moon"
+                                text: qsTr("Dark")
+                                onClicked: App.lightTheme = false
+                            }
+                            IconTab {
+                                iconName: "sun"
+                                text: qsTr("Light")
+                                onClicked: App.lightTheme = true
+                            }
+                        }
+                    }
                     Hairline { Layout.fillWidth: true; visible: !App.mobile }
 
                     RowLayout {

@@ -12,7 +12,7 @@ Item {
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
     // refresh, edit, more, plus, check, up, down, forward, forwarded, link, bang, dot, qr,
     // stop, send, person, people, burger, key, lock, disk, server, list, devices,
-    // broadcast, camera, folder, block, power, signout.
+    // broadcast, camera, folder, block, power, signout, sun, moon.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -52,6 +52,11 @@ Item {
                 path: {
                     switch (root.name) {
                     case "close":   return "M 6 6 L 18 18 M 18 6 L 6 18"
+                    case "sun":     return "M 16 12 A 4 4 0 1 0 8 12 A 4 4 0 1 0 16 12 Z "
+                                         + "M 12 2 L 12 4 M 12 20 L 12 22 M 2 12 L 4 12 M 20 12 L 22 12 "
+                                         + "M 4.9 4.9 L 6.3 6.3 M 17.7 17.7 L 19.1 19.1 "
+                                         + "M 4.9 19.1 L 6.3 17.7 M 17.7 6.3 L 19.1 4.9"
+                    case "moon":    return "M 21 12.8 A 9 9 0 1 1 11.2 3 A 7 7 0 0 0 21 12.8 Z"
                     case "back":    return "M 15 5 L 8 12 L 15 19"
                     case "forward": return "M 9 5 L 16 12 L 9 19"
                     // Two of the same chevron, one behind the other: passed on.
