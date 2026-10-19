@@ -1044,7 +1044,7 @@ Popup {
         // or on their other devices, so Save has nothing to save.
         footer: DialogButtons {
             acceptText: qsTr("Save")
-            acceptEnabled: renameSelfField.text.trim().length > 0
+            acceptEnabled: renameSelfField.displayText.trim().length > 0
             onAccepted: renameSelfDialog.accept()
             onRejected: renameSelfDialog.reject()
         }
@@ -1124,7 +1124,7 @@ Popup {
             }
             Label {
                 text: passwordDialog.matched
-                    ? (newPass.text.length === 0
+                    ? (newPass.displayText.length === 0
                         ? qsTr("Empty: this account will be kept unencrypted.")
                         : qsTr("Asked for whenever this account is opened."))
                     : qsTr("The two do not match.")

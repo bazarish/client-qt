@@ -7,6 +7,7 @@ import Bazarish
 // touch and swallows the line it sits on, so the track is drawn here instead.
 Switch {
     id: root
+    focusPolicy: Theme.pressFocus
 
     readonly property int kTrackWidth: 34
     readonly property int kTrackHeight: 18

@@ -71,6 +71,7 @@ Popup {
 
         Button {
             id: copyBtn
+            focusPolicy: Theme.pressFocus
             property bool copied: false
             hoverEnabled: true
             Layout.fillWidth: true

@@ -61,6 +61,7 @@ CameraSheet {
 
         Button {
             id: shutter
+            focusPolicy: Theme.pressFocus
             visible: !root.taken
             enabled: root.imageCapture !== null && root.imageCapture.readyForCapture
             Accessible.name: qsTr("Take photo")

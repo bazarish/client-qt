@@ -144,6 +144,7 @@ Item {
     // sign-in-with-key site, available with or without a server.
     Button {
         id: signatureButton
+        focusPolicy: Theme.pressFocus
         text: qsTr("Signature")
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter

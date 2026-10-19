@@ -53,6 +53,8 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QInputMethod>
+#include <QWindow>
 #include <QUrl>
 
 #include <array>
@@ -88,6 +90,21 @@ void attachConsole()
 namespace {
 // macOS does not pass a bazarish:// link on the command line: it hands it to the
 // running application as an event, and starts no second copy to do it.
+// A keyboard keeps the word being typed out of a field until it is committed, and a button
+// that leaves the focus in the field would act on the text without that word.
+class PressCommitsWord : public QObject {
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        const QEvent::Type type = event->type();
+        if ((type == QEvent::MouseButtonPress || type == QEvent::TouchBegin)
+            && qobject_cast<QWindow*>(watched) != nullptr) {
+            QGuiApplication::inputMethod()->commit();
+        }
+        return QObject::eventFilter(watched, event);
+    }
+};
+
 class LinkCatcher : public QObject {
 public:
     void handOverTo(bazarish::app::AppController& controller)
@@ -219,6 +236,8 @@ int main(int argc, char** argv)
     QApplication app(argc, argv);
     LinkCatcher links;
     app.installEventFilter(&links);
+    PressCommitsWord words;
+    app.installEventFilter(&words);
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--allow-facade-without-i2p-for-dev-purposes") == 0) {
             bazarish::setAllowFacadeWithoutI2pForDevPurposes(true);

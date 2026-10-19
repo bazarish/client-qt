@@ -9,7 +9,7 @@ Popup {
     property string prefillLink: ""
     property bool refused: false
 
-    readonly property string typed: linkField.text.trim()
+    readonly property string typed: (linkField.text + linkField.preeditText).trim()
     readonly property string problem: App.pairLinkProblem(root.typed)
     readonly property bool live: App.pairing
 
@@ -139,10 +139,11 @@ Popup {
             Item { Layout.fillWidth: true }
             Button {
                 id: goBtn
+                focusPolicy: Theme.pressFocus
                 hoverEnabled: true
                 text: App.pairNeedsCode ? qsTr("Receive") : qsTr("Connect")
                 enabled: App.pairNeedsCode
-                    ? codeField.text.length === 4
+                    ? codeField.displayText.length === 4
                     : (!root.live && root.typed.length > 0 && root.problem.length === 0)
                 onClicked: {
                     root.refused = false

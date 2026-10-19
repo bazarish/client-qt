@@ -175,6 +175,7 @@ Item {
         }
 
         Button {
+            focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
             text: qsTr("Create account")
             hoverEnabled: true

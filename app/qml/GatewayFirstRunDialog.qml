@@ -31,7 +31,7 @@ Dialog {
     footer: DialogButtons {
         acceptText: root.busy ? qsTr("Checking\u2026") : qsTr("OK")
         rejectText: qsTr("Skip")
-        acceptEnabled: !root.busy && addressField.text.trim().length > 0
+        acceptEnabled: !root.busy && addressField.displayText.trim().length > 0
         onAccepted: {
             root.problem = ""
             I2p.checkAndSaveGateway(addressField.text)

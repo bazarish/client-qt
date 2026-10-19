@@ -9,6 +9,7 @@ import Bazarish
 // never centred under the avatar.
 Button {
     id: control
+    focusPolicy: Theme.pressFocus
 
     property color fill: Theme.accent
     property color label: "white"

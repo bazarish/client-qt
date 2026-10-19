@@ -75,10 +75,11 @@ Item {
 
         Button {
             id: createButton
+            focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
             text: qsTr("Create")
             hoverEnabled: true
-            enabled: nameField.text.trim().length > 0
+            enabled: nameField.displayText.trim().length > 0
             onClicked: {
                 if (passField.text !== confirmField.text) {
                     errorLabel.text = qsTr("Passphrases do not match.")
@@ -99,6 +100,7 @@ Item {
         // The display name is restored from the backup itself, so a name is not
         // required here; if one is typed it only picks the on-disk account id.
         Button {
+            focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
             text: qsTr("Restore from backup")
             hoverEnabled: true
@@ -115,6 +117,7 @@ Item {
         }
 
         Button {
+            focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
             text: qsTr("Connect this device online")
             hoverEnabled: true

@@ -103,6 +103,7 @@ Popup {
                     }
                     IconButton { iconName: "copy"; onClicked: root.copyText(modelData) }
                     Button {
+                        focusPolicy: Theme.pressFocus
                         text: qsTr("Open")
                         leftPadding: 10
                         rightPadding: 10
@@ -114,6 +115,7 @@ Popup {
             }
 
             Button {
+                focusPolicy: Theme.pressFocus
                 Layout.fillWidth: true
                 text: qsTr("Close")
                 hoverEnabled: true

@@ -242,12 +242,13 @@ ColumnLayout {
 
         Button {
             id: actionButton
+            focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
             text: (form.session && form.session.connecting) ? qsTr("Connecting\u2026")
                 : form.actionText
             hoverEnabled: true
             enabled: form.session && !form.session.connecting
-                && form.facadeList().length > 0 && fpField.text.trim().length > 0
+                && form.facadeList().length > 0 && fpField.displayText.trim().length > 0
             onClicked: {
                 form.session.connectServer(form.facadeList(), fpField.text.trim(),
                     form.reseedList())

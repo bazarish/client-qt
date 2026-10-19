@@ -8,6 +8,7 @@ import Bazarish
 // a destructive action (it keeps a red outline and red text instead).
 Button {
     id: control
+    focusPolicy: Theme.pressFocus
     hoverEnabled: true
     property bool danger: false
     // Set positive: true for a brief success/confirmation state - a green outline

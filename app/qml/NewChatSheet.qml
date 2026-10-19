@@ -22,7 +22,7 @@ Popup {
         Math.max(kInputLine, Math.ceil(Math.max(targetText.contentHeight,
             targetHint.visible ? targetHint.contentHeight : 0)) + kInputPadding))
 
-    readonly property string typed: targetText.text.trim()
+    readonly property string typed: (targetText.text + targetText.preeditText).trim()
     readonly property bool byAlias: root.typed.startsWith(App.aliasSigil)
     readonly property string problem: {
         if (!root.session || root.typed.length === 0) {

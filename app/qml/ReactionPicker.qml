@@ -173,7 +173,7 @@ Popup {
             MenuButton {
                 iconName: "smile"
                 text: qsTr("React")
-                enabled: customField.text.trim().length > 0
+                enabled: customField.displayText.trim().length > 0
                 onClicked: root.pick(customField.text)
             }
         }

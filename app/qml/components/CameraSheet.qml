@@ -82,6 +82,7 @@ Popup {
         }
 
         Button {
+            focusPolicy: Theme.pressFocus
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.margins: sheet.kFrame

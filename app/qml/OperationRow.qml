@@ -109,6 +109,7 @@ Item {
         // Stop, for the operations that can be stopped: a running file transfer.
         Button {
             id: stopButton
+            focusPolicy: Theme.pressFocus
             visible: row.state === 0 && row.cancelId.length > 0
             hoverEnabled: true
             implicitWidth: 26

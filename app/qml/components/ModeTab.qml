@@ -6,6 +6,7 @@ import Bazarish
 // nothing else in this interface has a square corner.
 TabButton {
     id: tab
+    focusPolicy: Theme.pressFocus
     readonly property int kMinHeight: 34
     readonly property int kTextInset: 8
     readonly property int kMaxLines: 2

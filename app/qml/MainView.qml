@@ -215,6 +215,7 @@ Item {
         }
         Button {
             id: callBadgeButton
+            focusPolicy: Theme.pressFocus
             anchors.fill: parent
             padding: 0
             hoverEnabled: true

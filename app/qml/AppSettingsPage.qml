@@ -282,8 +282,8 @@ Popup {
                                 text: I2p.proxyChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
                                 enabled: !I2p.proxyChecking
-                                    && (proxyHostField.text.trim() !== I2p.proxyHost
-                                        || parseInt(proxyPortField.text || "0") !== I2p.proxyPort)
+                                    && (proxyHostField.displayText.trim() !== I2p.proxyHost
+                                        || parseInt(proxyPortField.displayText || "0") !== I2p.proxyPort)
                                 onClicked: {
                                     root.proxyProblem = ""
                                     I2p.checkAndSaveProxy(proxyHostField.text,
@@ -356,9 +356,9 @@ Popup {
                                 text: I2p.samChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                 Layout.alignment: Qt.AlignRight
                                 enabled: !I2p.samChecking
-                                    && samHostField.text.trim().length > 0
-                                    && (samHostField.text.trim() !== I2p.samHost
-                                        || parseInt(samPortField.text || "0") !== I2p.samPort)
+                                    && samHostField.displayText.trim().length > 0
+                                    && (samHostField.displayText.trim() !== I2p.samHost
+                                        || parseInt(samPortField.displayText || "0") !== I2p.samPort)
                                 onClicked: {
                                     root.samNote = ""
                                     I2p.checkAndSaveSam(samHostField.text,
@@ -431,8 +431,8 @@ Popup {
                                     iconName: "check"
                                     text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                     enabled: !I2p.gatewayChecking
-                                        && gatewayField.text.trim().length > 0
-                                        && gatewayField.text.trim() !== I2p.gatewayAddress
+                                        && gatewayField.displayText.trim().length > 0
+                                        && gatewayField.displayText.trim() !== I2p.gatewayAddress
                                     onClicked: {
                                         root.gatewayProblem = ""
                                         I2p.checkAndSaveGateway(gatewayField.text)

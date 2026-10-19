@@ -7,6 +7,7 @@ import Bazarish
 // callers can be moved over one at a time.
 Button {
     id: control
+    focusPolicy: Theme.pressFocus
     flat: true
     hoverEnabled: true
     property color tint: Theme.text

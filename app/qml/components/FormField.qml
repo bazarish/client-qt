@@ -6,6 +6,8 @@ import Bazarish
 ColumnLayout {
     property alias label: lbl.text
     property alias text: field.text
+    // With the word still being typed: a keyboard keeps it out of `text` until committed.
+    property alias displayText: field.displayText
     property alias placeholder: field.placeholderText
     property alias echoMode: field.echoMode
     property alias inputField: field

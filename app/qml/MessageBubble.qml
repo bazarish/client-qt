@@ -433,6 +433,7 @@ Item {
                 }
                 Button {
                     id: agreeButton
+                    focusPolicy: Theme.pressFocus
                     // Re-evaluated on contact changes via contactsRevision.
                     visible: delegate.isContactRequestIncoming && delegate.session
                         && delegate.session.contactsRevision >= 0
@@ -522,6 +523,7 @@ Item {
                             // looking while it runs.
                             Button {
                                 id: stopUpload
+                                focusPolicy: Theme.pressFocus
                                 implicitWidth: 18
                                 implicitHeight: 18
                                 padding: 0
@@ -588,6 +590,7 @@ Item {
                             // looking while it runs.
                             Button {
                                 id: stopDownload
+                                focusPolicy: Theme.pressFocus
                                 implicitWidth: 18
                                 implicitHeight: 18
                                 padding: 0
@@ -628,6 +631,7 @@ Item {
                     }
                     Button {
                         id: saveButton
+                        focusPolicy: Theme.pressFocus
                         visible: !model.outgoing && !model.downloading
                         // Once saved and the file is still on disk, offer to open it;
                         // otherwise (never saved, or the file is gone) offer Save.
@@ -950,6 +954,7 @@ Item {
                                 model: modelData
                                 Button {
                                     id: kbButton
+                                    focusPolicy: Theme.pressFocus
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 34
                                     text: modelData.text

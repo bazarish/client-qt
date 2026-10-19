@@ -331,6 +331,7 @@ ApplicationWindow {
                 }
             }
             Button {
+                focusPolicy: Theme.pressFocus
                 Layout.fillWidth: true
                 text: qsTr("Close")
                 hoverEnabled: true

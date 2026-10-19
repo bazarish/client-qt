@@ -77,6 +77,9 @@ QtObject {
     // Speech sits low in the range a level can show, so what is drawn is lifted to
     // where the eye reads it.
     readonly property real speechGain: 4
+    // A press that takes the focus closes a phone's keyboard, and the window moves
+    // under the finger before it lifts: the press is lost. Keys still reach buttons on a desktop.
+    readonly property int pressFocus: App.mobile ? Qt.NoFocus : Qt.StrongFocus
     // Below this the two panes cannot both be useful, so the actions collapse
     // into one menu and the window shows a single pane.
     readonly property int narrowWidth: 560

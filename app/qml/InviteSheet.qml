@@ -97,6 +97,7 @@ Popup {
                 Layout.fillWidth: true
             }
             Button {
+                focusPolicy: Theme.pressFocus
                 text: qsTr("Publish my destination")
                 Layout.fillWidth: true
                 onClicked: if (root.session) { root.session.publishPersonalDest(); root.unavailable = qsTr("Publishing. This takes a few minutes") }
@@ -223,6 +224,7 @@ Popup {
             Layout.fillWidth: true
             Button {
                 id: copyBtn
+                focusPolicy: Theme.pressFocus
                 hoverEnabled: true
                 property bool copied: false
                 Layout.fillWidth: true

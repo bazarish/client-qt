@@ -5,6 +5,7 @@ import Bazarish
 
 ComboBox {
     id: root
+    focusPolicy: Theme.pressFocus
 
     readonly property int kRowHeight: 32
     readonly property int kListHeight: 320

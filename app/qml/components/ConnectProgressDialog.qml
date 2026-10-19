@@ -105,6 +105,7 @@ Dialog {
                 Layout.fillWidth: true
             }
             Button {
+                focusPolicy: Theme.pressFocus
                 text: qsTr("Hide")
                 leftPadding: 12
                 rightPadding: 12

@@ -172,6 +172,7 @@ Popup {
         Hairline { }
 
         Button {
+            focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
             Layout.margins: 12
             // The picker behind this button also opens, removes and imports

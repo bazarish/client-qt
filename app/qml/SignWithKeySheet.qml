@@ -327,6 +327,7 @@ Popup {
 
                         Button {
                             id: copyBtn
+                            focusPolicy: Theme.pressFocus
                             hoverEnabled: true
                             property bool copied: false
                             Layout.fillWidth: !root.hasCallback
@@ -367,6 +368,7 @@ Popup {
 
                         Button {
                             id: sendBtn
+                            focusPolicy: Theme.pressFocus
                             visible: root.hasCallback
                             hoverEnabled: true
                             Layout.fillWidth: true

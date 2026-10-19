@@ -644,6 +644,7 @@ Item {
             // bottom (scrolled up, or viewing older history after a search jump).
             RoundButton {
                 id: jumpButton
+                focusPolicy: Theme.pressFocus
                 // Shown only when scrolled up more than half a screen above the
                 // content end, so it never overlaps the latest messages. Measured
                 // by distance (the bottom can sit below the visible area, so atYEnd
