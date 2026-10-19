@@ -3443,11 +3443,23 @@
       "zh": "要使用私有网关吗？",
       "ar": "أتريد استخدام بوابة خاصة؟"
     },
-    "Use avatar": {
-      "ru": "Поставить аватар",
-      "es": "Usar este avatar",
-      "zh": "使用该头像",
-      "ar": "استخدام الصورة"
+    "Apply": {
+      "ru": "Применить",
+      "es": "Aplicar",
+      "zh": "应用",
+      "ar": "تطبيق"
+    },
+    "Rotate left": {
+      "ru": "Повернуть влево",
+      "es": "Girar a la izquierda",
+      "zh": "向左旋转",
+      "ar": "تدوير لليسار"
+    },
+    "Rotate right": {
+      "ru": "Повернуть вправо",
+      "es": "Girar a la derecha",
+      "zh": "向右旋转",
+      "ar": "تدوير لليمين"
     },
     "Use the local external I2P router.": {
       "ru": "Использовать локальный внешний роутер I2P.",

@@ -12,7 +12,7 @@ Item {
     // One of: close, back, chevron, gear, info, search, call, attach, pin, copy,
     // refresh, edit, more, plus, check, up, down, forward, forwarded, link, bang, dot, qr,
     // stop, send, person, people, burger, key, lock, disk, server, list, devices,
-    // broadcast, camera, folder, block, power, signout, sun, moon.
+    // broadcast, camera, folder, block, power, signout, sun, moon, rotate-left, rotate-right.
     property string name: ""
     property color color: Theme.text
     property real size: 16
@@ -57,6 +57,9 @@ Item {
                                          + "M 4.9 4.9 L 6.3 6.3 M 17.7 17.7 L 19.1 19.1 "
                                          + "M 4.9 19.1 L 6.3 17.7 M 17.7 6.3 L 19.1 4.9"
                     case "moon":    return "M 21 12.8 A 9 9 0 1 1 11.2 3 A 7 7 0 0 0 21 12.8 Z"
+                    // Three quarters of a turn, the arrow at the top heading the way it turns.
+                    case "rotate-right": return "M 19 13 A 7 7 0 1 1 12 6 M 9 3 L 12 6 L 9 9"
+                    case "rotate-left":  return "M 5 13 A 7 7 0 1 0 12 6 M 15 3 L 12 6 L 15 9"
                     case "back":    return "M 15 5 L 8 12 L 15 19"
                     case "forward": return "M 9 5 L 16 12 L 9 19"
                     // Two of the same chevron, one behind the other: passed on.

@@ -15,15 +15,23 @@ Dialog {
     readonly property int kViewport: 240
     readonly property real kMaxZoom: 4.0
     readonly property int kOutputSize: 512
+    readonly property int kQuarter: 90
+    readonly property int kTurnsPerCircle: 4
+    property int quarterTurns: 0
 
     signal cropped(var grab)
 
     function openFor(source) {
         picture.source = source
+        root.quarterTurns = 0
         zoom.value = 1.0
         picture.x = 0
         picture.y = 0
         open()
+    }
+
+    function turn(by) {
+        root.quarterTurns = (root.quarterTurns + by + root.kTurnsPerCircle) % root.kTurnsPerCircle
     }
 
     anchors.centerIn: Overlay.overlay
@@ -38,7 +46,7 @@ Dialog {
         padding: 14
     }
     footer: DialogButtons {
-        acceptText: qsTr("Use avatar")
+        acceptText: qsTr("Apply")
         onAccepted: root.commit()
         onRejected: root.reject()
     }
@@ -77,6 +85,17 @@ Dialog {
                     : root.kViewport * zoom.value * (implicitHeight / Math.max(1, implicitWidth))
                 x: (parent.width - width) / 2
                 y: (parent.height - height) / 2
+                // Turned about its corner and shifted back, so x and y stay the top-left of what
+                // is shown: zoom and drag behave as unturned, and the shorter side still fills.
+                transform: [
+                    Rotation { angle: root.quarterTurns * root.kQuarter },
+                    Translate {
+                        x: root.quarterTurns === 1 ? picture.height
+                            : root.quarterTurns === 2 ? picture.width : 0
+                        y: root.quarterTurns === 2 ? picture.height
+                            : root.quarterTurns === 3 ? picture.width : 0
+                    }
+                ]
                 smooth: true
                 DragHandler {
                     target: picture
@@ -88,6 +107,7 @@ Dialog {
             // The grab underneath stays square: the picture is stored as cropped, and
             // the circle is only how it is shown.
             Canvas {
+                id: mask
                 anchors.fill: parent
                 onPaint: {
                     const ctx = getContext("2d")
@@ -109,6 +129,10 @@ Dialog {
                 // Nothing here reacts to the pointer: the picture underneath is
                 // what is dragged.
                 enabled: false
+                Connections {
+                    target: Theme
+                    function onLightChanged() { mask.requestPaint() }
+                }
             }
         }
 
@@ -122,6 +146,20 @@ Dialog {
                 from: 1.0
                 to: root.kMaxZoom
                 value: 1.0
+            }
+            IconButton {
+                iconName: "rotate-left"
+                Accessible.name: qsTr("Rotate left")
+                ToolTip.visible: hovered && !App.mobile
+                ToolTip.text: qsTr("Rotate left")
+                onClicked: root.turn(-1)
+            }
+            IconButton {
+                iconName: "rotate-right"
+                Accessible.name: qsTr("Rotate right")
+                ToolTip.visible: hovered && !App.mobile
+                ToolTip.text: qsTr("Rotate right")
+                onClicked: root.turn(1)
             }
         }
     }
