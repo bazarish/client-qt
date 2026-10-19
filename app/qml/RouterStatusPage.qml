@@ -197,10 +197,7 @@ Popup {
                                     // of them, so the count is not a headcount of who is on
                                     // the other side.
                                     text: modelData.localRoute
-                                        ? qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
-                                            + "gateway routing")
-                                            .arg(modelData.state).arg(modelData.tunnelsIn)
-                                            .arg(modelData.tunnelsOut)
+                                        ? qsTr("gateway routing")
                                         : qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
                                             + "%4 leasesets")
                                             .arg(modelData.state).arg(modelData.tunnelsIn)
