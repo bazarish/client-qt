@@ -123,7 +123,12 @@ ApplicationWindow {
                 gatewayFirstRun.open()
             }
         }
-        function onAccountOpened() { stack.replace(null, mainComponent) }
+        // The picker over a running account steps aside on selection; that view takes the new session.
+        function onAccountOpened() {
+            if (stack.currentItem.objectName !== "mainView") {
+                stack.replace(null, mainComponent)
+            }
+        }
         function onAccountOpenFailed(error) { window.showToast(error) }
         // The data moved: the embedded router holds its directory for the life of
         // the process, so there is nothing to do here but say so and stand down.
