@@ -31,7 +31,7 @@ namespace {
 
 const char* const kShade = "sh/bazari/client/Shade";
 const char* const kLogTag = "bazarish";
-constexpr int kLogLineBytes = 1024;
+constexpr int kLogChunkBytes = 1024;
 
 std::atomic<CoreHost*> gCore{nullptr};
 
@@ -123,11 +123,18 @@ void AndroidShade::routeStderrToLogcat()
     }
     close(ends[1]);
     std::setvbuf(stderr, nullptr, _IOLBF, 0);
+    // Not a FILE: fgets holds its lock while it waits, and fflush(nullptr) at exit waits for it.
     std::thread([reading = ends[0]]() {
-        FILE* const lines = fdopen(reading, "r");
-        char line[kLogLineBytes];
-        while (lines != nullptr && std::fgets(line, sizeof(line), lines) != nullptr) {
-            __android_log_write(ANDROID_LOG_INFO, kLogTag, line);
+        std::string pending;
+        char chunk[kLogChunkBytes];
+        ssize_t got = 0;
+        while ((got = read(reading, chunk, sizeof(chunk))) > 0) {
+            pending.append(chunk, static_cast<std::size_t>(got));
+            std::size_t end = 0;
+            while ((end = pending.find('\n')) != std::string::npos) {
+                __android_log_write(ANDROID_LOG_INFO, kLogTag, pending.substr(0, end).c_str());
+                pending.erase(0, end + 1);
+            }
         }
     }).detach();
 }
