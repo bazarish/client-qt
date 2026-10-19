@@ -280,15 +280,35 @@ Item {
             contextMenu.popup()
         }
     }
-    // On a phone the text takes no touch, so a hold on it reaches the row; its links are followed here.
+    function within(item, scene) {
+        return item.visible && item.contains(item.mapFromItem(null, scene.x, scene.y))
+    }
+    // A tap on a part that answers taps itself stays that part's.
+    function onTappablePart(scene) {
+        const parts = [replyQuote, preview, wave, speedChip, resendLink]
+        for (let i = 0; i < reactionChips.count; ++i) {
+            parts.push(reactionChips.itemAt(i))
+        }
+        return parts.some(part => delegate.within(part, scene))
+    }
+    // On a phone the text takes no touch, so a tap on it reaches the row: a link is followed,
+    // and a tap anywhere else on the bubble opens the reactions.
     TapHandler {
-        enabled: App.mobile && bodyText.visible
+        enabled: App.mobile && !delegate.isSystem
         acceptedButtons: Qt.LeftButton
         onTapped: function(point) {
-            const at = bodyText.mapFromItem(null, point.scenePosition.x, point.scenePosition.y)
-            const link = bodyText.linkAt(at.x, at.y)
-            if (link.length > 0) {
-                delegate.activateLink(link)
+            const scene = point.scenePosition
+            if (bodyText.visible) {
+                const at = bodyText.mapFromItem(null, scene.x, scene.y)
+                const link = bodyText.linkAt(at.x, at.y)
+                if (link.length > 0) {
+                    delegate.activateLink(link)
+                    return
+                }
+            }
+            if (delegate.reactable && delegate.within(bubble, scene)
+                && !delegate.onTappablePart(scene)) {
+                delegate.reactRequested(model.e2eId, scene.x, scene.y)
             }
         }
     }
@@ -801,6 +821,7 @@ Item {
                 // Playback speed, stepped through by pressing it. It belongs to
                 // the session, so the choice holds for the next one too.
                 Label {
+                    id: speedChip
                     text: qsTr("%1x").arg(delegate.session ? delegate.session.voiceSpeed : 1)
                     color: (delegate.session && delegate.session.voiceSpeed > 1)
                         ? Theme.accent : Theme.textDim
@@ -1030,6 +1051,7 @@ Item {
                 // lighter, so whose it is reads without a second colour. Tapping
                 // a chip toggles our reaction to that emoji.
                 Repeater {
+                    id: reactionChips
                     model: delegate.reactions
                     Rectangle {
                         id: chip
@@ -1111,13 +1133,6 @@ Item {
                     text: model.time ? new Date(model.time).toLocaleTimeString(Qt.locale(), "hh:mm") : ""
                     color: Theme.textDim
                     font.pixelSize: 10
-                    // Hovering the time reveals the full date and time.
-                    HoverHandler { id: timeHover }
-                    ToolTip.visible: timeHover.hovered && model.time > 0
-                    ToolTip.text: model.time
-                        ? new Date(model.time).toLocaleString(Qt.locale(Tr.language),
-                            "dddd, d MMMM yyyy, hh:mm:ss")
-                        : ""
                 }
                 Rectangle {
                     visible: model.outgoing

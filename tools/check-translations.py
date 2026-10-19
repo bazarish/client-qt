@@ -69,8 +69,7 @@ RETURNED = re.compile(r'\breturn\s+(' + JOINED + r')')
 # Inside a visible property even one word is prose; only these are not.
 NOT_SHOWN = re.compile(r'^"(?:|[^a-zA-Z]*|#[0-9a-fA-F]+|qrc:.*|image://.*|\w+://.*)"$')
 # Compared against, not shown: a transport name, a date format Qt reads.
-NOT_TEXT = ("gateway", "embedded", "sam", "hh:mm", "yyyy-MM-dd", "dd MMM hh:mm",
-    "dddd, d MMMM yyyy, hh:mm:ss")
+NOT_TEXT = ("gateway", "embedded", "sam", "hh:mm", "yyyy-MM-dd", "dd MMM hh:mm")
 # Shown, and deliberately the same in every language.
 UNTRANSLATED = ("min", "middle", "max")
 
