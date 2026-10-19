@@ -344,6 +344,7 @@ if(Qt6_FOUND)
             app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml
             app/qml/ContactShareSheet.qml
+            app/qml/ServerShareSheet.qml
             app/qml/CallScreen.qml
             app/qml/IncomingCallWindow.qml
             app/qml/AppSettingsPage.qml

@@ -430,7 +430,7 @@ Popup {
                             Layout.fillWidth: true
                             iconName: "server"
                             text: qsTr("Server connection")
-                            onClicked: connectionDialog.open()
+                            onClicked: serverChoice.open()
                         }
                         // What the account actually did on the wire: the one
                         // place that shows a refusal, a delivery nobody signed
@@ -1167,6 +1167,40 @@ Popup {
                 onSubmitted: connectionDialog.close()
             }
         }
+    }
+
+    // What the server connection is opened for: to change it, or to hand it to a friend.
+    Dialog {
+        id: serverChoice
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        width: Math.min(360, (Overlay.overlay ? Overlay.overlay.width : 360) - 2 * Theme.spacing)
+        background: DialogFrame { }
+        header: Label {
+            text: qsTr("Server connection")
+            color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold
+            padding: 14
+        }
+        contentItem: ButtonRow {
+            MenuButton {
+                Layout.fillWidth: true
+                iconName: "gear"
+                text: qsTr("Configure")
+                onClicked: { serverChoice.close(); connectionDialog.open() }
+            }
+            MenuButton {
+                Layout.fillWidth: true
+                iconName: "qr"
+                text: qsTr("Share")
+                enabled: root.session && root.session.serverLink.length > 0
+                onClicked: { serverChoice.close(); serverShare.open() }
+            }
+        }
+    }
+    ServerShareSheet {
+        id: serverShare
+        session: root.session
+        onBack: { serverShare.close(); serverChoice.open() }
     }
 
     AccountDeleteConfirmDialog {

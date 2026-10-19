@@ -69,6 +69,8 @@ class SessionController : public QObject {
     Q_PROPERTY(qint64 loginSendStartedAt READ loginSendStartedAt NOTIFY loginSendChanged)
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredReseeds READ configuredReseeds NOTIFY facadeInfoChanged)
+    // The server's descriptor link, empty while the account has none.
+    Q_PROPERTY(QString serverLink READ serverLink NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     Q_PROPERTY(QString activePeerName READ activePeerName NOTIFY activePeerNameChanged)
     Q_PROPERTY(bool activeIsGroup READ activeIsGroup NOTIFY activeGroupChanged)
@@ -164,6 +166,7 @@ public:
     int connectPercent() const { return connectPercent_; }
     QString connectError() const { return connectError_; }
     QString serverFingerprint() const { return serverFp_; }
+    QString serverLink() const;
     QStringList configuredReseeds() const { return configuredReseeds_; }
     QString activePeer() const { return activePeer_; }
     QString activePeerName() const { return peerName(activePeer_); }

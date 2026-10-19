@@ -22,6 +22,7 @@
 #include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
+#include <bazarish/ServerDescriptor.hpp>
 
 #pragma push_macro("emit")
 #undef emit
@@ -1314,6 +1315,22 @@ void SessionController::setAliasBinding(const QString& alias, const bool on)
 void SessionController::retryRoutingTo(const QString& peer)
 {
     emit commands_.requestRetryRoutingTo(peer);
+}
+
+QString SessionController::serverLink() const
+{
+    if (serverFp_.isEmpty() || configuredFacades_.isEmpty()) {
+        return {};
+    }
+    ServerDescriptor descriptor;
+    descriptor.fingerprint = serverFp_.toStdString();
+    for (const QString& facade : configuredFacades_) {
+        descriptor.facades.push_back(facade.toStdString());
+    }
+    for (const QString& reseed : configuredReseeds_) {
+        descriptor.reseeds.push_back(reseed.toStdString());
+    }
+    return QString::fromStdString(encodeServerDescriptor(descriptor));
 }
 
 void SessionController::setDelegationDays(const int days)
