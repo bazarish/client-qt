@@ -3083,11 +3083,11 @@
       "zh": "无法读取裁剪后的头像。",
       "ar": "تعذّرت قراءة الصورة بعد الاقتصاص."
     },
-    "The database is compacted afterwards, and the app is busy while it happens.": {
-      "ru": "Затем база сжимается, и программа на это время занята.",
-      "es": "Después se compacta la base de datos, y la aplicación está ocupada mientras tanto.",
-      "zh": "随后数据库会被压缩，期间程序处于忙碌状态。",
-      "ar": "تُضغط قاعدة البيانات بعد ذلك، ويكون التطبيق مشغولًا أثناءها."
+    "The app may not respond for a few seconds during the operation.": {
+      "ru": "Приложение может не отвечать несколько секунд во время операции.",
+      "es": "La aplicación puede no responder durante unos segundos mientras dura la operación.",
+      "zh": "操作期间应用可能会有几秒钟没有响应。",
+      "ar": "قد لا يستجيب التطبيق لبضع ثوانٍ أثناء العملية."
     },
     "The database was compacted. %1 came back to the disk": {
       "ru": "База данных сжата. Диску возвращено %1",

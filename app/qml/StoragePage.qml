@@ -242,7 +242,7 @@ Popup {
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("The database is compacted afterwards, and the app is busy while it happens.")
+                text: qsTr("The app may not respond for a few seconds during the operation.")
             }
         }
 
