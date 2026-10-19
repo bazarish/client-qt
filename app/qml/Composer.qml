@@ -262,9 +262,11 @@ Rectangle {
             spacing: 6
 
             // One way to attach anything: the clip asks what kind.
+            // Taking focus from the field would close a phone's keyboard under the finger.
             IconButton {
                 id: attachButton
                 iconName: "attach"
+                focusPolicy: Qt.NoFocus
                 visible: !root.editing
                 enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
@@ -338,6 +340,7 @@ Rectangle {
 
             IconButton {
                 iconName: root.editing ? "check" : "send"
+                focusPolicy: Qt.NoFocus
                 tint: Theme.accent
                 enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
