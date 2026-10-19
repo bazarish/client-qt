@@ -353,6 +353,30 @@
       "zh": "正在询问…",
       "ar": "جارٍ السؤال…"
     },
+    "Asking the sender…": {
+      "ru": "Запрос к отправителю…",
+      "es": "Consultando al remitente…",
+      "zh": "正在询问发送方…",
+      "ar": "جارٍ الطلب من المرسل…"
+    },
+    "Encrypting…": {
+      "ru": "Шифрование…",
+      "es": "Cifrando…",
+      "zh": "正在加密…",
+      "ar": "جارٍ التشفير…"
+    },
+    "Waiting for the recipient…": {
+      "ru": "Ожидание получателя…",
+      "es": "Esperando al destinatario…",
+      "zh": "正在等待接收方…",
+      "ar": "بانتظار المستلم…"
+    },
+    "Receiving…": {
+      "ru": "Приём…",
+      "es": "Recibiendo…",
+      "zh": "正在接收…",
+      "ar": "جارٍ الاستلام…"
+    },
     "Audio devices": {
       "ru": "Звуковые устройства",
       "es": "Dispositivos de audio",

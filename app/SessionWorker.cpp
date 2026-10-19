@@ -151,6 +151,32 @@ QString noteForCallStage(const bazarish::client::Session::CallStage stage)
     throw std::logic_error("no note for this call stage");
 }
 
+QString textForTransferStage(const bazarish::client::TransferStage stage)
+{
+    using bazarish::client::TransferStage;
+    switch (stage) {
+    case TransferStage::eNone:
+        return QString();
+    case TransferStage::eAsking:
+        return QObject::tr("Asking the sender…");
+    case TransferStage::eEncrypting:
+        return QObject::tr("Encrypting…");
+    case TransferStage::eMakingAddress:
+        return QObject::tr("Making an address");
+    case TransferStage::ePublishing:
+        return QObject::tr("Publishing the address");
+    case TransferStage::eWaiting:
+        return QObject::tr("Waiting for the recipient…");
+    case TransferStage::eSending:
+        return QObject::tr("Sending…");
+    case TransferStage::eConnecting:
+        return QObject::tr("Connecting…");
+    case TransferStage::eReceiving:
+        return QObject::tr("Receiving…");
+    }
+    throw std::logic_error("no text for this transfer stage");
+}
+
 class WorkerOp {
 public:
     WorkerOp(SessionWorker* const worker, const QString& id, const QString& kind,
@@ -517,8 +543,8 @@ void SessionWorker::openAccount(
     session_->setTransferHandler([this](const bazarish::client::TransferEvent& event) {
         const QString id = QString::fromStdString(event.e2eId);
         const QString peer = QString::fromStdString(event.peer);
-        if (!event.stage.empty()) {
-            emit transferStage(peer, id, QString::fromStdString(event.stage));
+        if (event.stage != bazarish::client::TransferStage::eNone) {
+            emit transferStage(peer, id, textForTransferStage(event.stage));
         }
         switch (event.state) {
         case bazarish::client::TransferState::eRunning:
