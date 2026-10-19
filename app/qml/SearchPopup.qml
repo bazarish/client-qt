@@ -7,6 +7,7 @@ import Bazarish
 // clicking one asks the conversation to jump to it (and closes the popup).
 Popup {
     id: popup
+    bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     signal jumpRequested(var localId)
 

@@ -9,6 +9,7 @@ import Bazarish
 // a per-account setting and an app-wide one can never be read as the same thing.
 Popup {
     id: root
+    bottomMargin: activeFocus ? App.keyboardInset : 0
     // A window of its own: it is opened from several places and belongs to none
     // of them, so it closes rather than going back to one.
     signal showRouterStatus()

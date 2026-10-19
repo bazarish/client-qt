@@ -11,6 +11,7 @@ import Bazarish
 // The account's own server plays no part, so it works even before one is connected.
 Popup {
     id: root
+    bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     // Return to the page this opened from (Settings); the close button exits.
     signal back()

@@ -8,6 +8,7 @@ import Bazarish
 // the target message's protocol id, so the chat does not pay a popup per bubble.
 Popup {
     id: root
+    bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     property string target: ""
     modal: true
@@ -50,7 +51,7 @@ Popup {
     }
     onHeightChanged: if (root.opened) { root.placeInside() }
     onWidthChanged: if (root.opened) { root.placeInside() }
-    // A phone's keyboard shrinks the window: the field and its button stay above it.
+    // A resized window keeps the field and its button inside.
     Connections {
         target: root.parent
         function onHeightChanged() { if (root.opened) { root.placeInside() } }

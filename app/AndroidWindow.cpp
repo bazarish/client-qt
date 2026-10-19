@@ -66,6 +66,13 @@ void unlocked(JNIEnv*, jclass)
     inWindowThread<AppController>(gApp, [](AppController& app) { emit app.unlocked(); });
 }
 
+void keyboardCovers(JNIEnv*, jclass, jint pixels)
+{
+    inWindowThread<AppController>(gApp, [pixels](AppController& app) {
+        app.setKeyboardInset(pixels / qGuiApp->devicePixelRatio());
+    });
+}
+
 void coreAnswered(JNIEnv*, jclass)
 {
     inWindowThread<AndroidWindow>(gWindow, [](AndroidWindow& window) {
@@ -86,6 +93,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         {"linkOpened", "(Ljava/lang/String;)V", reinterpret_cast<void*>(linkOpened)},
         {"unlocked", "()V", reinterpret_cast<void*>(unlocked)},
         {"coreListening", "()V", reinterpret_cast<void*>(coreAnswered)},
+        {"keyboardCovers", "(I)V", reinterpret_cast<void*>(keyboardCovers)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kWindow, natives, static_cast<int>(std::size(natives)))) {
@@ -95,6 +103,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
     gWindow.store(this);
 
     QJniObject::callStaticMethod<void>(kWindow, "askNotifications", "()V");
+    QJniObject::callStaticMethod<void>(kWindow, "followKeyboard", "()V");
     takeHeld();
 
     connect(&app_, &AppController::ringingChanged, this, &AndroidWindow::followCall);

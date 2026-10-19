@@ -5,6 +5,7 @@ import Bazarish
 
 Popup {
     id: root
+    bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     readonly property string shareLink: (session && session.activePeer.length > 0
         && session.contactsRevision >= 0) ? session.contactInvite(session.activePeer) : ""

@@ -289,6 +289,7 @@ Item {
     }
     Dialog {
         id: unlockDialog
+        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
         closePolicy: Popup.CloseOnEscape

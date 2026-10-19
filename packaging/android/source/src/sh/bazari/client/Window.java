@@ -17,6 +17,8 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.ResultReceiver;
 import android.provider.Settings;
+import android.view.View;
+import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 
 import java.lang.ref.WeakReference;
@@ -42,6 +44,7 @@ public final class Window {
     static native void linkOpened(String link);
     static native void unlocked();
     static native void coreListening();
+    static native void keyboardCovers(int pixels);
 
     private Window() {}
 
@@ -66,6 +69,24 @@ public final class Window {
         shown.runOnUiThread(() -> {
             shown.setShowWhenLocked(on);
             shown.setTurnScreenOn(on);
+        });
+    }
+
+    // The window keeps its size under the keyboard, so the content is told how much it covers.
+    public static void followKeyboard() {
+        Activity shown = window.get();
+        if (shown == null) {
+            return;
+        }
+        shown.runOnUiThread(() -> {
+            View frame = shown.getWindow().getDecorView();
+            frame.setOnApplyWindowInsetsListener((view, insets) -> {
+                int keyboard = insets.getInsets(WindowInsets.Type.ime()).bottom;
+                int bars = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+                keyboardCovers(Math.max(0, keyboard - bars));
+                return view.onApplyWindowInsets(insets);
+            });
+            frame.requestApplyInsets();
         });
     }
 

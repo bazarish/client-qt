@@ -266,6 +266,15 @@ void AppController::setLightTheme(const bool on)
     emit commands_.setLightTheme(on);
 }
 
+void AppController::setKeyboardInset(const qreal inset)
+{
+    if (qFuzzyCompare(keyboardInset_ + 1, inset + 1)) {
+        return;
+    }
+    keyboardInset_ = inset;
+    emit keyboardInsetChanged();
+}
+
 void AppController::setSpeakerOn(const bool on)
 {
     if (speakerOn_ == on) {

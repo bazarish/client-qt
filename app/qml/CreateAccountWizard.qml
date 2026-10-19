@@ -149,6 +149,7 @@ Item {
 
     Dialog {
         id: backupPassDialog
+        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
         title: qsTr("Backup password")

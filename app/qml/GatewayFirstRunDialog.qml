@@ -18,6 +18,7 @@ Dialog {
     closePolicy: Popup.NoAutoClose
     width: Math.min(520, parent ? parent.width - 24 : 520)
     margins: Theme.spacing
+    bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
     background: DialogFrame { destructive: true }
 
     header: Label {

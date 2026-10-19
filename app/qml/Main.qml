@@ -15,6 +15,17 @@ ApplicationWindow {
     LayoutMirroring.enabled: Tr.rightToLeft
     LayoutMirroring.childrenInherit: true
 
+    // The window keeps its size under the keyboard; only the part holding the focus makes room.
+    readonly property real contentInset: holds(stack, activeFocusItem) ? App.keyboardInset : 0
+    function holds(area, item) {
+        for (let at = item; at; at = at.parent) {
+            if (at === area) {
+                return true
+            }
+        }
+        return false
+    }
+
     // The dim behind every modal, and the thing that makes it modal: the stock
     // overlay dims but lets a pointer handler underneath still see the press, so a
     // click on a dialog reached the chat behind it. This one swallows the lot.
@@ -80,6 +91,7 @@ ApplicationWindow {
     StackView {
         id: stack
         anchors.fill: parent
+        anchors.bottomMargin: window.contentInset
         initialItem: attachingComponent
     }
 
@@ -150,7 +162,7 @@ ApplicationWindow {
         z: 950
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 24
+        anchors.bottomMargin: 24 + window.contentInset
         radius: 10
         color: Theme.text
         width: Math.min(toastLabel.implicitWidth + 32, window.width - 48)
@@ -170,7 +182,7 @@ ApplicationWindow {
     // Background-activity overlay: a right-edge handle + slide-out panel listing
     // in-flight async operations (contact add, sends, transfers, calls) with live
     // status. Below the error dialog (z 1000), above the app content.
-    OperationsOverlay { anchors.fill: parent; z: 900 }
+    OperationsOverlay { anchors.fill: parent; anchors.bottomMargin: window.contentInset; z: 900 }
 
     // Asked once, before anything can start a router, because the answer decides
     // which one starts. Skipping is an answer and is recorded as one, so this

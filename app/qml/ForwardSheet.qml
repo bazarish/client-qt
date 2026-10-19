@@ -8,6 +8,7 @@ import Bazarish
 // to start a conversation.
 Popup {
     id: root
+    bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     // The message being passed on, by the id the two ends know it as.
     property string e2eId: ""

@@ -188,6 +188,7 @@ Item {
 
     Dialog {
         id: passDialog
+        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: parent
         modal: true
         title: qsTr("Unlock account")

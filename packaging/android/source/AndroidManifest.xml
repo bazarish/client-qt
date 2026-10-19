@@ -32,7 +32,7 @@
             android:name="sh.bazari.client.BazarishActivity"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
             android:launchMode="singleTask"
-            android:windowSoftInputMode="adjustResize"
+            android:windowSoftInputMode="adjustNothing"
             android:screenOrientation="unspecified"
             android:exported="true">
             <intent-filter>

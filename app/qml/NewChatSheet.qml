@@ -11,6 +11,7 @@ Popup {
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
     margins: Theme.spacing
+    bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
     padding: 18
     property string errorText: ""
     property string prefillTarget: ""

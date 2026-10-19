@@ -7,6 +7,7 @@ import "Format.js" as Format
 
 Popup {
     id: root
+    bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
     signal showInvite()
     signal showSignWithKey()
@@ -1021,6 +1022,7 @@ Popup {
     // local name they have for us (it is never sent to them).
     Dialog {
         id: renameSelfDialog
+        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
         // Narrow on purpose: with no width of its own the dialog grew to fit its
@@ -1062,6 +1064,7 @@ Popup {
 
     Dialog {
         id: exportPassDialog
+        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
         title: qsTr("Backup password")
@@ -1078,6 +1081,7 @@ Popup {
     // beside the database changes, so nothing open on it is disturbed.
     Dialog {
         id: passwordDialog
+        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
         title: qsTr("Database password")
@@ -1135,6 +1139,7 @@ Popup {
         modal: true
         width: Math.min(460, (Overlay.overlay ? Overlay.overlay.width : 460) - 2 * Theme.spacing)
         margins: Theme.spacing
+        bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
         onOpened: connectionForm.reset()
         background: DialogFrame { }
         header: RowLayout {
