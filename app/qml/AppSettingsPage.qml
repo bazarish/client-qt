@@ -444,8 +444,7 @@ Popup {
                                     iconName: "qr"
                                     leftPadding: 0
                                     rightPadding: 0
-                                    Layout.preferredWidth: gatewaySave.height
-                                    Layout.preferredHeight: gatewaySave.height
+                                    Layout.preferredWidth: height
                                     onClicked: gatewayScan.open()
                                 }
                                 MenuButton {
@@ -455,7 +454,16 @@ Popup {
                                     onClicked: gatewayShare.open()
                                 }
                                 MenuButton {
-                                    id: gatewaySave
+                                    visible: root.editingGateway
+                                    iconName: "close"
+                                    text: qsTr("Cancel")
+                                    enabled: !I2p.gatewayChecking
+                                    onClicked: {
+                                        root.gatewayProblem = ""
+                                        root.editingGateway = false
+                                    }
+                                }
+                                MenuButton {
                                     visible: root.gatewayInput
                                     iconName: "check"
                                     text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
