@@ -1762,7 +1762,7 @@ void SessionWorker::refreshI2pStatus()
     op.succeed(summary);
     const Session::ApprovalState approval = session_->approvalState();
     emit approvalState(approval.pending, QString::fromStdString(approval.message));
-    emit i2pStatus(hasKey, delegated, live, address, summary, transientExpires, serverState);
+    emit i2pStatus(hasKey, delegated, live, address, transientExpires, serverState);
 }
 
 void SessionWorker::refreshStorageUsage()

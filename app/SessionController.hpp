@@ -110,7 +110,6 @@ class SessionController : public QObject {
     Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pServedAddress READ i2pServedAddress NOTIFY i2pStatusChanged)
     Q_PROPERTY(bool i2pAddressMismatch READ i2pAddressMismatch NOTIFY i2pStatusChanged)
-    Q_PROPERTY(QString i2pStatusText READ i2pStatusText NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pServerState READ i2pServerState NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString acceptingContact READ acceptingContact NOTIFY acceptingContactChanged)
     Q_PROPERTY(qint64 i2pTransientExpires READ i2pTransientExpires NOTIFY i2pStatusChanged)
@@ -224,7 +223,6 @@ public:
         return !i2pServedAddress_.isEmpty() && !i2pAddress_.isEmpty()
             && i2pServedAddress_ != i2pAddress_;
     }
-    QString i2pStatusText() const { return i2pStatusText_; }
     QString i2pServerState() const { return i2pServerState_; }
     QString acceptingContact() const { return acceptingContact_; }
     QVariantMap storageInfo() const;
@@ -471,7 +469,7 @@ private slots:
     void onFacadeInfo(const QString& activeUrl, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
-        const QString& summary, qint64 transientExpires, const QString& serverState);
+        qint64 transientExpires, const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
     void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
@@ -589,7 +587,6 @@ private:
     bool i2pActive_ = false;
     QString i2pAddress_;
     QString i2pServedAddress_;
-    QString i2pStatusText_;
     QVariantList devices_;
     QString i2pServerState_;
     QString acceptingContact_;

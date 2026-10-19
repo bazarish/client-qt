@@ -1392,8 +1392,7 @@ void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
 }
 
 void SessionController::onI2pStatus(const bool hasKey, const bool delegated, const bool live,
-    const QString& address, const QString& summary, const qint64 transientExpires,
-    const QString& serverState)
+    const QString& address, const qint64 transientExpires, const QString& serverState)
 {
     i2pBusy_ = false;
     const bool flash = flashOnNextStatus_;
@@ -1403,7 +1402,6 @@ void SessionController::onI2pStatus(const bool hasKey, const bool delegated, con
     i2pEnabled_ = delegated;
     i2pActive_ = live;
     i2pAddress_ = address;
-    i2pStatusText_ = summary;
     i2pTransientExpires_ = transientExpires;
     emit i2pStatusChanged();
     if (flash) {

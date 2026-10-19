@@ -139,7 +139,7 @@ signals:
     void facadeInfo(const QString& activeUrl, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
     void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
-        const QString& summary, qint64 transientExpires, const QString& serverState);
+        qint64 transientExpires, const QString& serverState);
     void i2pKeyState(bool hasKey, const QString& address);
     void i2pServedAddress(const QString& address);
     void devicesReady(const QVariantList& devices);

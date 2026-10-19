@@ -497,11 +497,6 @@ Popup {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.margins: 6
                             spacing: 4
-                            Label {
-                                text: root.session ? root.session.i2pStatusText : ""
-                                color: (root.session && root.session.i2pActive) ? Theme.success : Theme.text
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
                             // Two facts, not one verdict: what the server holds (the
                             // delegation, with its term) and whether the destination
                             // is actually up. "Not published" said neither.
