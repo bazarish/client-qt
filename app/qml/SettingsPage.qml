@@ -616,17 +616,19 @@ Popup {
                             enabled: root.session && !root.session.i2pBusy
                             onClicked: root.session.disablePersonalDest()
                         }
-                        // Hands the server a new delegation. The status itself is
-                        // polled while this page is open, with no button for it.
-                        MenuButton {
-                            Layout.fillWidth: true
-                            iconName: "refresh"
-                            text: root.session && root.session.i2pBusy
-                                ? qsTr("Publishing…") : qsTr("Renew")
-                            enabled: root.session && root.session.connected
-                                && !root.session.i2pBusy
-                            onClicked: root.session.publishPersonalDest()
-                        }
+                    }
+                    // Hands the server a new delegation. The status itself is polled while
+                    // this page is open, with no button for it. A line of its own: beside the
+                    // other buttons its changing label pushed it onto the next row and back.
+                    MenuButton {
+                        visible: root.session && root.session.i2pHasKey
+                        Layout.fillWidth: true
+                        iconName: "refresh"
+                        text: root.session && root.session.i2pBusy
+                            ? qsTr("Publishing…") : qsTr("Renew")
+                        enabled: root.session && root.session.connected
+                            && !root.session.i2pBusy
+                        onClicked: root.session.publishPersonalDest()
                     }
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey
@@ -662,10 +664,7 @@ Popup {
                                 ? Qt.AlignLeft : Qt.AlignVCenter
                             Layout.rightMargin: 2
                             spacing: 6
-                            // One width for both rows: an editable SpinBox asks
-                            // for far more room than it needs, and two stacked
-                            // controls of different widths read as two unrelated
-                            // things. Sized to hold the button's label.
+                            // An editable SpinBox asks for far more room than it needs.
                             readonly property int controlWidth: 168
                             RowLayout {
                                 Layout.preferredWidth: parent.controlWidth
@@ -677,6 +676,11 @@ Popup {
                                     to: root.session ? root.session.maxDelegationDays : 30
                                     value: root.session ? root.session.delegationDays : 14
                                     editable: true
+                                    // A step, or typing finished: each change re-issues the
+                                    // delegation, so "30" must not pass through 3 days.
+                                    onValueModified: if (root.session) {
+                                        root.session.delegationDays = value
+                                    }
                                     // The stock control is a white box the height
                                     // of three lines: on this palette it reads as
                                     // the brightest thing on the page.
@@ -739,21 +743,7 @@ Popup {
                                     Layout.alignment: Qt.AlignVCenter
                                 }
                             }
-                            // Applied on the button, not on every keystroke: each
-                            // change re-issues the delegation, and typing "30"
-                            // would issue one for three days on the way.
-                            MenuButton {
-                                id: saveTermButton
-                                Layout.preferredWidth: parent.controlWidth
-                                iconName: "check"
-                                text: qsTr("Save")
-                                enabled: root.session
-                                    && delegationDaysBox.value !== root.session.delegationDays
-                                onClicked: root.session.delegationDays = delegationDaysBox.value
-                            }
-                            // The saved term is the truth: a number typed and left
-                            // unsaved must not come back on the next open, and one
-                            // this account's other devices changed must.
+                            // A term this account's other devices set shows up here too.
                             Connections {
                                 target: root.session
                                 function onDelegationDaysChanged() {
