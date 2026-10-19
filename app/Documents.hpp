@@ -26,6 +26,15 @@ inline QString dialogTarget(const QString& fileUrl)
     return isDocumentUri(fileUrl) ? fileUrl : QString();
 }
 
+struct FileFacts {
+    QString name;
+    qint64 size = -1;
+};
+FileFacts factsOf(const QString& location);
+
+// The files this device reads: local paths, and on Android the documents the user picked.
+std::shared_ptr<const client::FileSource> deviceFiles();
+
 // What is written whole goes here: a local file, or an Android document through its provider.
 std::unique_ptr<client::FileOutput> openOutput(const QString& dest);
 

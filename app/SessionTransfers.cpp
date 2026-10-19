@@ -196,7 +196,7 @@ void SessionController::onDownloadFinished(qint64 token, bool ok, const QString&
 
 bool SessionController::fileExists(const QString& path) const
 {
-    return !path.isEmpty() && QFileInfo::exists(path);
+    return !path.isEmpty() && deviceFiles()->exists(path.toStdString());
 }
 
 void SessionController::showInFolder(const QString& path) const

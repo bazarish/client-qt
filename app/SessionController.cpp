@@ -966,12 +966,12 @@ QString SessionController::takeReply()
 
 void SessionController::sendFile(const QString& fileUrl)
 {
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (localPath.isEmpty() || activePeer_.isEmpty()) {
+    const QString source = dialogTarget(fileUrl);
+    if (source.isEmpty() || activePeer_.isEmpty()) {
         return;
     }
     unblockBeforeWriting(activePeer_);
-    emit commands_.sendFile(activePeer_, localPath, takeReply(), newE2eId());
+    emit commands_.sendFile(activePeer_, source, takeReply(), newE2eId());
 }
 
 void SessionController::sendPictureFile(const QString& fileUrl)

@@ -483,6 +483,7 @@ void SessionWorker::openAccount(
         emit openFailed(QString::fromUtf8(e.what()));
         return;
     }
+    session_->setFileSource(deviceFiles());
 #ifdef Q_OS_ANDROID
     // A phone speaks a call as a phone call: the voice stream and the earpiece.
     using CallSource = AndroidCallSource;
@@ -2012,8 +2013,8 @@ void SessionWorker::disablePersonalDest()
     refreshI2pStatus();
 }
 
-void SessionWorker::saveAttachment(
-    const QString& peer, const QString& e2eId, const QString& destPath, qint64 token)
+void SessionWorker::saveAttachment(const QString& peer, const QString& e2eId,
+    const QString& announcedSha256, const QString& destPath, qint64 token)
 {
     Session* const session = session_.get();
     if (session == nullptr) {
@@ -2022,9 +2023,10 @@ void SessionWorker::saveAttachment(
     }
     const std::string e2eIdStd = e2eId.toStdString();
     const std::string peerStd = peer.toStdString();
-    downloadPool_.start([this, session, e2eIdStd, peerStd, destPath, token]() {
+    const std::string sha256Std = announcedSha256.toStdString();
+    downloadPool_.start([this, session, e2eIdStd, peerStd, sha256Std, destPath, token]() {
         try {
-            session->requestFile(peerStd, e2eIdStd,
+            session->requestFile(peerStd, e2eIdStd, sha256Std,
                 fileTargetFor(destPath, QString::number(token) + QStringLiteral(".part")));
         } catch (const std::exception& e) {
             if (!downloadsCancelled_.load()) {

@@ -2,16 +2,19 @@
 #include "CoreAccount.hpp"
 
 #include "DeliveryStatus.hpp"
+#include "Documents.hpp"
 #include "OutboundCourier.hpp"
 #include "SessionShared.hpp"
 
-#include <QFile>
-#include <QFileInfo>
 #include <QMimeDatabase>
+
+#include <array>
 
 namespace bazarish::app {
 
 namespace {
+
+constexpr std::size_t kPictureReadBytes = 64 * 1024;
 
 bool isRetryPhase(const QString& phase)
 {
@@ -106,12 +109,12 @@ qint64 CoreAccount::beginAttachmentSend(StoredMessage m)
 void CoreAccount::sendFile(
     const QString& peer, const QString& path, const QString& replyTo, const QString& e2eId)
 {
-    const QFileInfo info(path);
+    const FileFacts facts = factsOf(path);
     StoredMessage m = outgoing(peer, QStringLiteral("file"), e2eId, replyTo,
         isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
-    m.attName = info.fileName();
-    m.attSize = info.size();
-    m.attMime = QMimeDatabase().mimeTypeForFile(info).name();
+    m.attName = facts.name;
+    m.attSize = facts.size;
+    m.attMime = QMimeDatabase().mimeTypeForFile(facts.name, QMimeDatabase::MatchExtension).name();
     m.attSrcPath = path;
     const qint64 id = beginAttachmentSend(m);
     if (id != 0) {
@@ -190,10 +193,14 @@ void CoreAccount::forwardMessage(
         m.attSize = source.attSize;
         if (source.type == QStringLiteral("image")) {
             media = store_.media(QStringLiteral("picture:") + source.e2eId);
-            if (media.isEmpty() && !source.savedPath.isEmpty()) {
-                QFile saved(source.savedPath);
-                if (saved.open(QIODevice::ReadOnly)) {
-                    media = saved.readAll();
+            const std::string saved = source.savedPath.toStdString();
+            if (media.isEmpty() && !saved.empty() && deviceFiles()->exists(saved)) {
+                const std::unique_ptr<bazarish::client::FileInput> input
+                    = deviceFiles()->open(saved);
+                std::array<char, kPictureReadBytes> buffer{};
+                for (std::size_t got = input->read(buffer.data(), buffer.size()); got > 0;
+                    got = input->read(buffer.data(), buffer.size())) {
+                    media.append(buffer.data(), static_cast<qsizetype>(got));
                 }
             }
             if (media.isEmpty()) {
@@ -203,8 +210,8 @@ void CoreAccount::forwardMessage(
             }
             m.hasPicture = true;
         } else {
-            path = source.savedPath;
-            if (path.isEmpty() || !QFileInfo::exists(path)) {
+            path = source.outgoing ? source.attSrcPath : source.savedPath;
+            if (path.isEmpty() || !deviceFiles()->exists(path.toStdString())) {
                 emit events_.actionFailed(
                     tr("save this to your device first, then it can be forwarded"));
                 return;
@@ -251,7 +258,8 @@ void CoreAccount::resend(const QString& peer, const qint64 localId)
     }
     QByteArray media;
     if (stored.type == QStringLiteral("file")) {
-        if (stored.attSrcPath.isEmpty() || !QFileInfo::exists(stored.attSrcPath)) {
+        if (stored.attSrcPath.isEmpty()
+            || !deviceFiles()->exists(stored.attSrcPath.toStdString())) {
             emit events_.resendFilePickRequested();
             return;
         }

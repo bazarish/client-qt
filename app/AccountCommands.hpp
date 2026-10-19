@@ -121,8 +121,8 @@ signals:
     void requestConnectionLog();
     void requestContactsFromDevices();
     void requestClearConnectionLog();
-    void requestSaveAttachment(const QString& ref, const QString& key, const QString& destPath,
-        qint64 token);
+    void requestSaveAttachment(const QString& peer, const QString& e2eId,
+        const QString& announcedSha256, const QString& destPath, qint64 token);
     void requestExport(const QString& path, const QString& password);
     void requestStartPairing();
     void requestStopPairing();

@@ -109,7 +109,8 @@ public slots:
     void noteCommandDone();
     // Stops everything this worker owns and closes the account.
     void shutdown();
-    void saveAttachment(const QString& peer, const QString& e2eId, const QString& destPath, qint64 token);
+    void saveAttachment(const QString& peer, const QString& e2eId,
+        const QString& announcedSha256, const QString& destPath, qint64 token);
     void exportAccount(const QString& path, const QString& password);
     void startPairing();
     void stopPairing();

@@ -85,11 +85,11 @@ void CoreAccount::saveAttachment(
     const QString& peer, const QString& e2eId, const QString& dest, const qint64 token)
 {
     pendingSavePath_.insert(token, dest);
-    const QString name
-        = isDocumentUri(dest) ? store_.messageById(token).attName : QFileInfo(dest).fileName();
+    const StoredMessage message = store_.messageById(token);
+    const QString name = isDocumentUri(dest) ? message.attName : QFileInfo(dest).fileName();
     log_.begin(downloadOpId(token), QStringLiteral("file-down"), name,
         tr("Connecting…"), peer, e2eId);
-    emit commands_.requestSaveAttachment(peer, e2eId, dest, token);
+    emit commands_.requestSaveAttachment(peer, e2eId, message.attRef, dest, token);
 }
 
 void CoreAccount::onUploadProgress(const qint64 localId, const qint64 sent, const qint64 total)
