@@ -64,6 +64,7 @@ AppController::AppController(Translations& translations, QObject* parent)
         attached_ = true;
         // The snapshot names the call that rang when the notice was tapped; a later one is not it.
         answerWhenRinging_ = false;
+        emit commands_.windowActive(QGuiApplication::applicationState() == Qt::ApplicationActive);
         emit attachedChanged();
     });
     connect(&events_, &AppEvents::closing, this, [this]() { coreClosing_ = true; });
@@ -168,7 +169,6 @@ void AppController::attach(Relay& relay)
     relay_ = &relay;
     relay.sendFrom(kAppScope, commands_);
     relay.deliverTo(kAppScope, events_);
-    emit commands_.windowActive(QGuiApplication::applicationState() == Qt::ApplicationActive);
 }
 
 void AppController::detach()
