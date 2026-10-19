@@ -1064,7 +1064,7 @@ Popup {
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: renameSelfField.activeFocus ? Theme.accent : Theme.border }
             }
             Label {
-                text: qsTr("Only updates this device and your invite link. Your contacts keep the name they gave you.")
+                text: qsTr("Only updates this device and your invite link.")
                 color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
             }
         }

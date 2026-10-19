@@ -1931,11 +1931,11 @@
       "zh": "在线",
       "ar": "متصل"
     },
-    "Only updates this device and your invite link. Your contacts keep the name they gave you.": {
-      "ru": "Обновит только это устройство и вашу ссылку-приглашение. У контактов останется данное ими имя.",
-      "es": "Solo actualiza este dispositivo y tu enlace de invitación. Tus contactos conservan el nombre que te pusieron.",
-      "zh": "只更新本设备和你的邀请链接。联系人保留他们给你起的名字。",
-      "ar": "يحدّث هذا الجهاز ورابط دعوتك فقط. ويحتفظ مراسلوك بالاسم الذي أطلقوه عليك."
+    "Only updates this device and your invite link.": {
+      "ru": "Обновит только это устройство и вашу ссылку-приглашение.",
+      "es": "Solo actualiza este dispositivo y tu enlace de invitación.",
+      "zh": "只更新本设备和你的邀请链接。",
+      "ar": "يحدّث هذا الجهاز ورابط دعوتك فقط."
     },
     "Open": {
       "ru": "Открыть",
