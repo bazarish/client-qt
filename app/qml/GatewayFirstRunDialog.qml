@@ -44,6 +44,7 @@ Dialog {
 
     Connections {
         target: I2p
+        enabled: root.opened
         function onGatewaySaved() {
             // Asked before any engine is up, so choosing here is what this run
             // will use rather than a change to anything: saving the address and
