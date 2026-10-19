@@ -61,7 +61,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
         Label {
-            text: qsTr("Your account needs a serving server to send and receive.")
+            text: qsTr("A server is needed")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true

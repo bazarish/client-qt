@@ -3605,11 +3605,11 @@
       "zh": "你的 I2P 目的地",
       "ar": "وجهتك في I2P"
     },
-    "Your account needs a serving server to send and receive.": {
-      "ru": "Чтобы отправлять и получать, аккаунту нужен обслуживающий сервер.",
-      "es": "Para enviar y recibir, tu cuenta necesita un servidor que la sirva.",
-      "zh": "要收发消息，你的账号需要一台为它服务的服务器。",
-      "ar": "ليُرسِل حسابك ويستقبل يحتاج إلى خادم يخدمه."
+    "A server is needed": {
+      "ru": "Нужен сервер",
+      "es": "Se necesita un servidor",
+      "zh": "需要服务器",
+      "ar": "يلزم خادم"
     },
     "Your address changes. Every invite link you have handed out stops working and the old address stops answering at once. Your contacts are sent the new details automatically, and your aliases are repointed by themselves. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.": {
       "ru": "Адрес изменится. Все выданные ссылки-приглашения перестанут работать, а старый адрес сразу перестанет отвечать. Контактам новые данные разошлются автоматически, алиасы переназначатся сами. Это помогает в редком случае, когда нужно избавиться от спама. Не делайте этого, если не уверены, зачем.",
