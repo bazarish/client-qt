@@ -294,6 +294,7 @@ Popup {
                 Layout.preferredWidth: actions.kButton
                 Layout.preferredHeight: actions.kButton
                 enabled: root.takeReady
+                primary: true
                 onClicked: {
                     root.session.sendVoiceTake()
                     root.close()
