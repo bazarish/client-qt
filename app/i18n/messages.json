@@ -929,6 +929,18 @@
       "zh": "无回应，正在重试…",
       "ar": "لا رد، إعادة الطلب…"
     },
+    "Share gateway": {
+      "ru": "Поделиться шлюзом",
+      "es": "Compartir la pasarela",
+      "zh": "分享网关",
+      "ar": "مشاركة البوابة"
+    },
+    "This link connects another device to this gateway.": {
+      "ru": "Эта ссылка подключит другое устройство к этому шлюзу.",
+      "es": "Este enlace conecta otro dispositivo a esta pasarela.",
+      "zh": "此链接可将另一台设备连接到这个网关。",
+      "ar": "يربط هذا الرابط جهازًا آخر بهذه البوابة."
+    },
     "Copy link": {
       "ru": "Скопировать ссылку",
       "es": "Copiar el enlace",

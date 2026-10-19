@@ -1197,9 +1197,12 @@ Popup {
             }
         }
     }
-    ServerShareSheet {
+    ShareLinkSheet {
         id: serverShare
-        session: root.session
+        title: qsTr("Share server")
+        note: qsTr("This link connects another account to your server.")
+        link: root.session ? root.session.serverLink : ""
+        hasBack: true
         onBack: { serverShare.close(); serverChoice.open() }
     }
 

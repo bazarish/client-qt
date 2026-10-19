@@ -402,8 +402,31 @@ Popup {
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
+                            // A saved gateway shows its host; the whole address, secret path and
+                            // token included, is handed over by Share.
+                            RowLayout {
+                                visible: !root.gatewayInput
+                                Layout.fillWidth: true
+                                Label {
+                                    text: I2p.gatewayHost
+                                    color: Theme.text
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                IconButton {
+                                    iconName: "edit"
+                                    Accessible.name: qsTr("Edit")
+                                    ToolTip.visible: hovered && !App.mobile
+                                    ToolTip.text: qsTr("Edit")
+                                    onClicked: {
+                                        gatewayField.text = I2p.gatewayAddress
+                                        root.editingGateway = true
+                                    }
+                                }
+                            }
                             FormField {
                                 id: gatewayField
+                                visible: root.gatewayInput
                                 Layout.fillWidth: true
                                 placeholder: "https://host/path#token"
                                 text: I2p.gatewayAddress
@@ -427,7 +450,14 @@ Popup {
                                     onClicked: gatewayScan.open()
                                 }
                                 MenuButton {
+                                    iconName: "link"
+                                    text: qsTr("Share")
+                                    enabled: root.gatewayLink.length > 0
+                                    onClicked: gatewayShare.open()
+                                }
+                                MenuButton {
                                     id: gatewaySave
+                                    visible: root.gatewayInput
                                     iconName: "check"
                                     text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
                                     enabled: !I2p.gatewayChecking
@@ -441,7 +471,16 @@ Popup {
                             }
                             QrScanSheet {
                                 id: gatewayScan
-                                onDecoded: function(text) { gatewayField.text = text }
+                                onDecoded: function(text) {
+                                    gatewayField.text = text
+                                    root.editingGateway = true
+                                }
+                            }
+                            ShareLinkSheet {
+                                id: gatewayShare
+                                title: qsTr("Share gateway")
+                                note: qsTr("This link connects another device to this gateway.")
+                                link: root.gatewayLink
                             }
                         }
                     }
@@ -460,6 +499,11 @@ Popup {
 
     // Why the last gateway address was refused, cleared when a new one is tried.
     property string gatewayProblem: ""
+    property bool editingGateway: false
+    onClosed: root.editingGateway = false
+    readonly property bool gatewayInput: I2p.gatewayAddress.length === 0 || root.editingGateway
+    readonly property string gatewayLink: root.gatewayInput
+        ? gatewayField.displayText.trim() : I2p.gatewayAddress
     property string proxyProblem: ""
     // The verdict on the SAM address: whether the router at it answered.
     property string samNote: ""
@@ -467,7 +511,10 @@ Popup {
     Connections {
         target: I2p
         function onGatewayRefused(reason) { root.gatewayProblem = reason }
-        function onGatewaySaved() { root.gatewayProblem = "" }
+        function onGatewaySaved() {
+            root.gatewayProblem = ""
+            root.editingGateway = false
+        }
         function onProxyRefused(reason) { root.proxyProblem = reason }
         function onSamRefused(reason) {
             root.samAnswered = false

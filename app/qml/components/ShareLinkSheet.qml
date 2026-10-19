@@ -4,15 +4,19 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// The account's own server, offered as the link a new account connects with.
+// A link to hand over, as a QR code, as text and to the clipboard.
 Popup {
     id: root
-    property var session: null
+    property string title: ""
+    property string note: ""
+    property string link: ""
+    property bool hasBack: false
     property bool copied: false
-    readonly property string link: root.session ? root.session.serverLink : ""
     readonly property int kCopiedMs: 1500
     signal back()
 
+    // The window's overlay: declared inside a page, the sheet would size itself to that page's column.
+    parent: Overlay.overlay
     modal: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(420, parent ? parent.width - 24 : 420)
@@ -29,9 +33,9 @@ Popup {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: 14
-            IconButton { iconName: "back"; onClicked: root.back() }
+            IconButton { visible: root.hasBack; iconName: "back"; onClicked: root.back() }
             Label {
-                text: qsTr("Share server")
+                text: root.title
                 color: Theme.green
                 font.pixelSize: Theme.fontTitle
                 font.weight: Font.DemiBold
@@ -57,7 +61,7 @@ Popup {
                     Layout.leftMargin: 16
                     Layout.rightMargin: 16
                     Layout.topMargin: 14
-                    text: qsTr("This link connects another account to your server.")
+                    text: root.note
                     color: Theme.textDim
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap

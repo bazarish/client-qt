@@ -344,7 +344,6 @@ if(Qt6_FOUND)
             app/qml/SignWithKeySheet.qml
             app/qml/ContactInfo.qml
             app/qml/ContactShareSheet.qml
-            app/qml/ServerShareSheet.qml
             app/qml/CallScreen.qml
             app/qml/IncomingCallWindow.qml
             app/qml/AppSettingsPage.qml
@@ -387,6 +386,7 @@ if(Qt6_FOUND)
             app/qml/components/FormField.qml
             app/qml/components/ModeTab.qml
             app/qml/components/IconTab.qml
+            app/qml/components/ShareLinkSheet.qml
             app/qml/components/ServerConnectForm.qml
             app/qml/components/ConnectProgressDialog.qml
             app/qml/components/LinkWarningDialog.qml
