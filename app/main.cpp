@@ -153,6 +153,7 @@ constexpr const char* kBrandNeon = "#39ff14";
 constexpr const char* kBrandAccentInk = "#11151a";
 
 #ifdef Q_OS_LINUX
+#ifndef BAZARISH_STATIC_QT
 bool platformThemeIsHere(const QString& key)
 {
     const QDir themes(QLibraryInfo::path(QLibraryInfo::PluginsPath)
@@ -164,10 +165,15 @@ bool platformThemeIsHere(const QString& key)
     }
     return false;
 }
+#endif
 
 // Qt draws a file chooser of its own unless a platform theme hands it the desktop's.
 void useTheDesktopsDialogs()
 {
+#ifdef BAZARISH_STATIC_QT
+    // The only theme linked in: any other name the desktop sets falls back to Qt's own chooser.
+    qputenv("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
+#else
     const QString asked = qEnvironmentVariable("QT_QPA_PLATFORMTHEME");
     if (!asked.isEmpty() && platformThemeIsHere(asked)) {
         return;
@@ -179,6 +185,7 @@ void useTheDesktopsDialogs()
             return;
         }
     }
+#endif
 }
 #endif
 

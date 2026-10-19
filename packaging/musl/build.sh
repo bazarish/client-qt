@@ -19,6 +19,7 @@ readonly kHarfbuzz=14.2.1
 readonly kXcbUtil=0.4.1
 readonly kXau=1.0.12
 readonly kX11=1.8.12
+readonly kDbus=1.16.2
 readonly kQtMirror=https://download.qt.io/archive/qt/6.8/6.8.2/submodules
 
 mkdir -p "$kPrefix" "$kQt" "$kWork"
@@ -190,6 +191,25 @@ if step x11; then
     done_with x11
 fi
 
+# The file chooser is the desktop's, reached through its portal over D-Bus: the client library alone.
+if step dbus; then
+    fetch "https://dbus.freedesktop.org/releases/dbus/dbus-$kDbus.tar.xz" "dbus-$kDbus.tar.xz"
+    cd "$kWork" && rm -rf "dbus-$kDbus" && tar xf "dbus-$kDbus.tar.xz"
+    cd "dbus-$kDbus"
+    meson setup build --prefix="$kPrefix" --sysconfdir=/etc --localstatedir=/var \
+        --default-library=static --buildtype=release -Druntime_dir=/run \
+        -Dmessage_bus=false -Dtools=false -Dmodular_tests=disabled -Dinstalled_tests=false \
+        -Dx11_autolaunch=disabled -Dsystemd=disabled -Dselinux=disabled -Dapparmor=disabled \
+        -Dlibaudit=disabled -Ddoxygen_docs=disabled -Dxml_docs=disabled -Dducktype_docs=disabled \
+        -Dqt_help=disabled
+    meson compile -C build -j "$kJobs"
+    meson install -C build
+    # Qt makes a macro of every Cflags word, and -pthread is none; the link line keeps it.
+    sed -i '/^Cflags:/s/ -pthread//' "$kPrefix/lib/pkgconfig/dbus-1.pc"
+    cd "$kWork" && rm -rf "dbus-$kDbus"
+    done_with dbus
+fi
+
 qt_module() {
     name=$1
     if ! step "qt-$name"; then
@@ -205,7 +225,7 @@ qt_module() {
         if [ "$name" = qtbase ]; then
             "$source/configure" -static -release -prefix "$kQt" \
                 -opensource -confirm-license -nomake examples -nomake tests \
-                -no-opengl -no-dbus -no-icu -no-glib -qt-pcre \
+                -no-opengl -dbus-linked -no-icu -no-glib -qt-pcre \
                 -system-zlib -system-freetype -system-harfbuzz -system-libpng \
                 -system-libjpeg -fontconfig -xcb -openssl-linked \
                 -- -DOPENSSL_ROOT_DIR="$kPrefix" -DCMAKE_PREFIX_PATH="$kPrefix"
@@ -219,7 +239,7 @@ qt_module() {
     cmake --build . --parallel "$kJobs"
     cmake --install .
     done_with "qt-$name"
-    rm -rf "$build" "$source"
+    cd "$kWork" && rm -rf "$build" "$source"
 }
 
 qt_module qtbase
