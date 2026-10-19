@@ -612,6 +612,13 @@ int main(int argc, char** argv)
         const TranscriptStore::LastMessage last = store.lastMessage("dave");
         CHECK(isServiceMessage(last.type));
         CHECK(systemNoteText(last.text) == QStringLiteral("Request sent."));
+        const QString stage = encodeSystemNote(QStringLiteral("waiting for an answer…"));
+        CHECK(systemNoteText(encodeSystemNote(QStringLiteral("Fetching the contact card: %1"),
+                  {stage}))
+            == QStringLiteral("Fetching the contact card: waiting for an answer…"));
+        CHECK(systemNoteText(encodeSystemNote(
+                  QStringLiteral("Looking up %1 in the alias registry: %2"), {"!bob", stage}))
+            == QStringLiteral("Looking up !bob in the alias registry: waiting for an answer…"));
     }
 
     {

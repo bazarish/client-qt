@@ -51,8 +51,9 @@ QString systemNoteText(const QString& stored)
     QString text = QCoreApplication::translate(
         kNoteContext, currentWording(source).toUtf8().constData());
     const QJsonArray args = note.value(kArgsField).toArray();
+    // An argument may be a note of its own, translated in turn.
     for (const QJsonValue& arg : args) {
-        text = text.arg(arg.toString());
+        text = text.arg(systemNoteText(arg.toString()));
     }
     return text;
 }

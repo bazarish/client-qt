@@ -455,12 +455,6 @@
       "zh": "图片已损坏",
       "ar": "صورة معطوبة"
     },
-    "Building a destination to ask from…": {
-      "ru": "Создание назначения для запроса…",
-      "es": "Creando un destino para preguntar…",
-      "zh": "正在创建用于询问的目的地…",
-      "ar": "جارٍ إنشاء وجهة للسؤال منها…"
-    },
     "Building it…": {
       "ru": "Строится…",
       "es": "Construyéndola…",
@@ -874,6 +868,66 @@
       "es": "Este enlace conecta otra cuenta a tu servidor.",
       "zh": "此链接可将另一个账号连接到你的服务器。",
       "ar": "يربط هذا الرابط حسابًا آخر بخادمك."
+    },
+    "Looking up %1 in the alias registry…": {
+      "ru": "Поиск %1 в реестре алиасов…",
+      "es": "Buscando %1 en el registro de alias…",
+      "zh": "正在别名注册表中查找 %1…",
+      "ar": "جارٍ البحث عن %1 في سجل الأسماء المستعارة…"
+    },
+    "Looking up %1 in the alias registry: %2": {
+      "ru": "Поиск %1 в реестре алиасов: %2",
+      "es": "Buscando %1 en el registro de alias: %2",
+      "zh": "正在别名注册表中查找 %1：%2",
+      "ar": "جارٍ البحث عن %1 في سجل الأسماء المستعارة: %2"
+    },
+    "Fetching the contact card…": {
+      "ru": "Запрос карточки контакта…",
+      "es": "Obteniendo la tarjeta del contacto…",
+      "zh": "正在获取联系人名片…",
+      "ar": "جارٍ جلب بطاقة جهة الاتصال…"
+    },
+    "Fetching the contact card: %1": {
+      "ru": "Запрос карточки контакта: %1",
+      "es": "Obteniendo la tarjeta del contacto: %1",
+      "zh": "正在获取联系人名片：%1",
+      "ar": "جارٍ جلب بطاقة جهة الاتصال: %1"
+    },
+    "Sending the contact request…": {
+      "ru": "Отправка запроса в контакты…",
+      "es": "Enviando la solicitud de contacto…",
+      "zh": "正在发送联系人请求…",
+      "ar": "جارٍ إرسال طلب الاتصال…"
+    },
+    "choosing an address…": {
+      "ru": "выбор адреса…",
+      "es": "eligiendo una dirección…",
+      "zh": "正在选择地址…",
+      "ar": "اختيار عنوان…"
+    },
+    "preparing an address…": {
+      "ru": "подготовка адреса…",
+      "es": "preparando una dirección…",
+      "zh": "正在准备地址…",
+      "ar": "تجهيز عنوان…"
+    },
+    "connecting over I2P…": {
+      "ru": "подключение через I2P…",
+      "es": "conectando por I2P…",
+      "zh": "正在通过 I2P 连接…",
+      "ar": "الاتصال عبر I2P…"
+    },
+    "waiting for an answer…": {
+      "ru": "ожидание ответа…",
+      "es": "esperando respuesta…",
+      "zh": "正在等待回应…",
+      "ar": "انتظار الرد…"
+    },
+    "no answer, asking again…": {
+      "ru": "нет ответа, повторный запрос…",
+      "es": "sin respuesta, preguntando de nuevo…",
+      "zh": "无回应，正在重试…",
+      "ar": "لا رد، إعادة الطلب…"
     },
     "Copy link": {
       "ru": "Скопировать ссылку",
@@ -2513,12 +2567,6 @@
       "zh": "重新发送",
       "ar": "إعادة الإرسال"
     },
-    "Resolving recipient over I2P…": {
-      "ru": "Получатель определяется через I2P…",
-      "es": "Resolviendo al destinatario por I2P…",
-      "zh": "正在通过 I2P 解析收件人…",
-      "ar": "جارٍ تحديد المستلم عبر I2P…"
-    },
     "Restart Bazarish": {
       "ru": "Перезапустить Bazarish",
       "es": "Reiniciar Bazarish",
@@ -2717,12 +2765,6 @@
       "zh": "正在通过 I2P 发送…",
       "ar": "جارٍ الإرسال عبر I2P…"
     },
-    "Sending request…": {
-      "ru": "Запрос отправляется…",
-      "es": "Enviando la solicitud…",
-      "zh": "正在发送请求…",
-      "ar": "جارٍ إرسال الطلب…"
-    },
     "Sending the account": {
       "ru": "Передача аккаунта",
       "es": "Enviando la cuenta",
@@ -2920,12 +2962,6 @@
       "es": "Hacer la foto",
       "zh": "拍照",
       "ar": "التقاط صورة"
-    },
-    "Taking a destination to ask from…": {
-      "ru": "Выбор назначения для запроса…",
-      "es": "Tomando un destino para preguntar…",
-      "zh": "正在取用用于询问的目的地…",
-      "ar": "جارٍ أخذ وجهة للسؤال منها…"
     },
     "Taking offline…": {
       "ru": "Снятие с публикации…",
@@ -4186,12 +4222,6 @@
       "es": "Se actualiza de vez en cuando; el servidor fija la cifra.",
       "zh": "定期更新，人数由服务器设定。",
       "ar": "يُحدَّث من حين لآخر، والخادم يحدد العدد."
-    },
-    "Waiting for an answer…": {
-      "ru": "Ожидание ответа…",
-      "es": "Esperando respuesta…",
-      "zh": "正在等待答复…",
-      "ar": "في انتظار الرد…"
     },
     "No such alias.": {
       "ru": "Такого алиаса нет.",

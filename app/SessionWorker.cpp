@@ -97,17 +97,36 @@ QString noteForFetchStage(const bazarish::client::FetchStage stage)
 {
     switch (stage) {
     case bazarish::client::FetchStage::eTakingDest:
-        return encodeSystemNote(QT_TR_NOOP("Taking a destination to ask from…"));
+        return encodeSystemNote(QT_TR_NOOP("choosing an address…"));
     case bazarish::client::FetchStage::eBuildingDest:
-        return encodeSystemNote(QT_TR_NOOP("Building a destination to ask from…"));
+        return encodeSystemNote(QT_TR_NOOP("preparing an address…"));
     case bazarish::client::FetchStage::eReaching:
-        return encodeSystemNote(QT_TR_NOOP("Connecting over I2P…"));
+        return encodeSystemNote(QT_TR_NOOP("connecting over I2P…"));
     case bazarish::client::FetchStage::eWaiting:
-        return encodeSystemNote(QT_TR_NOOP("Waiting for an answer…"));
+        return encodeSystemNote(QT_TR_NOOP("waiting for an answer…"));
     case bazarish::client::FetchStage::eAskingAgain:
-        return encodeSystemNote(QT_TR_NOOP("No answer; asking again…"));
+        return encodeSystemNote(QT_TR_NOOP("no answer, asking again…"));
     }
     throw std::logic_error("no note for this contact-card fetch stage");
+}
+
+// What the add is doing, alone or with the network stage it is in.
+QString noteForCardStep(const bazarish::client::Session::CardStep step, const QString& alias,
+    const QString& fetchStage)
+{
+    using Step = bazarish::client::Session::CardStep;
+    switch (step) {
+    case Step::eLookingUpAlias:
+        return fetchStage.isEmpty()
+            ? encodeSystemNote(QT_TR_NOOP("Looking up %1 in the alias registry…"), {alias})
+            : encodeSystemNote(QT_TR_NOOP("Looking up %1 in the alias registry: %2"),
+                {alias, fetchStage});
+    case Step::eFetchingCard:
+        return fetchStage.isEmpty()
+            ? encodeSystemNote(QT_TR_NOOP("Fetching the contact card…"))
+            : encodeSystemNote(QT_TR_NOOP("Fetching the contact card: %1"), {fetchStage});
+    }
+    throw std::logic_error("no note for this contact-add step");
 }
 
 QString noteForCallStage(const bazarish::client::Session::CallStage stage)
@@ -1198,7 +1217,9 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     } catch (const std::exception& e) {
         bazarish::log::warn("contact-add not recorded: {}", e.what());
     }
-    emit contactAddStage(opId, encodeSystemNote(QT_TR_NOOP("Resolving recipient over I2P…")));
+    using Step = bazarish::client::Session::CardStep;
+    emit contactAddStage(opId,
+        noteForCardStep(byAlias ? Step::eLookingUpAlias : Step::eFetchingCard, uriOrAlias, {}));
 
     if (!resolvedAdds_) {
         resolvedAdds_ = std::make_shared<ResolvedContactAddQueue>();
@@ -1206,14 +1227,22 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     std::shared_ptr<ResolvedContactAddQueue> queue = resolvedAdds_;
     try {
         std::thread([context = std::move(context), request = std::move(request),
-                        queue = std::move(queue), opId]() {
+                        queue = std::move(queue), opId, alias = uriOrAlias]() {
+            Step step = request.byAlias ? Step::eLookingUpAlias : Step::eFetchingCard;
+            const auto tell = [&queue, &opId](const QString& note) {
+                const std::lock_guard<std::mutex> lock(queue->mutex);
+                queue->stages.push_back({opId, note});
+            };
             bazarish::client::tellFetchStages(
-                [queue, opId](const bazarish::client::FetchStage stage) {
-                    const std::lock_guard<std::mutex> lock(queue->mutex);
-                    queue->stages.push_back({opId, noteForFetchStage(stage)});
+                [&step, &tell, &alias](const bazarish::client::FetchStage stage) {
+                    tell(noteForCardStep(step, alias, noteForFetchStage(stage)));
                 });
             bazarish::client::Session::ContactCardResolved resolved
-                = bazarish::client::Session::resolveContactCard(context, request);
+                = bazarish::client::Session::resolveContactCard(context, request,
+                    [&step, &tell, &alias](const Step next) {
+                        step = next;
+                        tell(noteForCardStep(step, alias, {}));
+                    });
             bazarish::client::tellFetchStages(nullptr);
             const std::lock_guard<std::mutex> lock(queue->mutex);
             queue->results.push_back({opId, std::move(resolved)});
@@ -1287,7 +1316,8 @@ void SessionWorker::drainResolvedAdds()
             fingerprint, QString::fromStdString(resolved.introText),
             QString::fromStdString(resolved.requestId), !resending);
         try {
-            emit contactAddStage(entry.opId, encodeSystemNote(QT_TR_NOOP("Sending request…")));
+            emit contactAddStage(
+                entry.opId, encodeSystemNote(QT_TR_NOOP("Sending the contact request…")));
             if (resending) {
                 session_->sendContactRequest(resolved.fingerprint, resolved.requestId,
                     resolved.introText, watch, /*waitForOutcome=*/false);
