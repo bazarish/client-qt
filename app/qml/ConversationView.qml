@@ -596,8 +596,9 @@ Item {
                         loadNewer()
                     }
                 }
-                // Keep following the bottom while the last bubble's height settles.
-                onContentHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
+                // Follow the bottom as bubbles settle, but not mid-gesture: a drag past the end re-measures rows above.
+                onContentHeightChanged: if (stickToBottom && !paging && !moving) { scrollToEnd() }
+                onMovementEnded: if (stickToBottom && !paging) { scrollToEnd() }
                 // A phone's keyboard shortens the list from below: the newest stays in sight.
                 onHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
 
