@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "CoreAccount.hpp"
 
+#include "Documents.hpp"
 #include "SessionShared.hpp"
 
 #include <QFileInfo>
@@ -84,7 +85,9 @@ void CoreAccount::saveAttachment(
     const QString& peer, const QString& e2eId, const QString& dest, const qint64 token)
 {
     pendingSavePath_.insert(token, dest);
-    log_.begin(downloadOpId(token), QStringLiteral("file-down"), QFileInfo(dest).fileName(),
+    const QString name
+        = isDocumentUri(dest) ? store_.messageById(token).attName : QFileInfo(dest).fileName();
+    log_.begin(downloadOpId(token), QStringLiteral("file-down"), name,
         tr("Connecting…"), peer, e2eId);
     emit commands_.requestSaveAttachment(peer, e2eId, dest, token);
 }

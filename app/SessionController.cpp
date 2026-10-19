@@ -1,13 +1,12 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
+#include "Documents.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
 
 #include "I2pRouter.hpp"
 #include "Invite.hpp"
-
-#include <QFile>
 
 #include <QJsonDocument>
 
@@ -1265,11 +1264,11 @@ void SessionController::onPairFinished(const bool ok, const QString& status)
 
 void SessionController::exportAccount(const QString& fileUrl, const QString& password)
 {
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (localPath.isEmpty()) {
+    const QString target = dialogTarget(fileUrl);
+    if (target.isEmpty()) {
         return;
     }
-    emit commands_.requestExport(localPath, password);
+    emit commands_.requestExport(target, password);
 }
 
 QString SessionController::shortFingerprint(const QString& fp) const
@@ -1455,14 +1454,18 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
 
 void SessionController::savePictureAs(const QString& e2eId, const QString& fileUrl)
 {
-    const QString path = QUrl(fileUrl).toLocalFile();
+    const QString path = dialogTarget(fileUrl);
     const QByteArray bytes = PictureStore::instance().bytes(e2eId);
     if (path.isEmpty() || bytes.isEmpty()) {
         emit actionFailed(tr("This picture is not here to save."));
         return;
     }
-    QFile out(path);
-    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate) || out.write(bytes) != bytes.size()) {
+    try {
+        const std::unique_ptr<bazarish::client::FileOutput> out = openOutput(path);
+        out->write(bytes.constData(), static_cast<std::size_t>(bytes.size()));
+        out->finish();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("picture not saved: {}", error.what());
         emit actionFailed(tr("Could not write %1").arg(path));
         return;
     }

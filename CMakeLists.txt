@@ -77,6 +77,8 @@ if(Qt6_FOUND)
         app/CoreSocket.hpp
         app/ContactBook.cpp
         app/ContactBook.hpp
+        app/Documents.cpp
+        app/Documents.hpp
         app/Wire.cpp
         app/Wire.hpp
         app/SessionShared.cpp

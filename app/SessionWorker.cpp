@@ -3,6 +3,8 @@
 
 #include "SessionShared.hpp"
 
+#include "Documents.hpp"
+
 #include "QtAudioIo.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidCallAudio.hpp"
@@ -1994,10 +1996,10 @@ void SessionWorker::saveAttachment(
     }
     const std::string e2eIdStd = e2eId.toStdString();
     const std::string peerStd = peer.toStdString();
-    const std::string destStd = destPath.toStdString();
-    downloadPool_.start([this, session, e2eIdStd, peerStd, destStd, token]() {
+    downloadPool_.start([this, session, e2eIdStd, peerStd, destPath, token]() {
         try {
-            session->requestFile(peerStd, e2eIdStd, destStd);
+            session->requestFile(peerStd, e2eIdStd,
+                fileTargetFor(destPath, QString::number(token) + QStringLiteral(".part")));
         } catch (const std::exception& e) {
             if (!downloadsCancelled_.load()) {
                 emit downloadFinished(token, false, QString::fromUtf8(e.what()));
@@ -2070,7 +2072,10 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
     WorkerOp op(this, QStringLiteral("export"), QStringLiteral("account"),
         tr("Exporting your backup"), tr("Sealing the account…"));
     try {
-        session_->exportAccount(path.toStdString(), password.toStdString());
+        const bazarish::Bytes sealed = session_->exportAccountBytes(password.toStdString());
+        const std::unique_ptr<bazarish::client::FileOutput> out = openOutput(path);
+        out->write(sealed.data(), sealed.size());
+        out->finish();
         op.succeed(tr("Backup exported"));
         emit actionOk(tr("Backup exported"));
     } catch (const std::exception& e) {

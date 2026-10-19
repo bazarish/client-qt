@@ -3,6 +3,8 @@
 
 #include "SessionShared.hpp"
 
+#include "Documents.hpp"
+
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -50,7 +52,7 @@ using bazarish::client::Session;
 void SessionController::saveAttachmentToFile(const QString& peer, const QString& e2eId,
     const QString& fileUrl, qint64 token)
 {
-    const QString dest = QUrl(fileUrl).toLocalFile();
+    const QString dest = dialogTarget(fileUrl);
     if (dest.isEmpty()) {
         conversation_.finishDownloadForId(
             token, false, tr("Choose where to save the file."));
@@ -200,6 +202,10 @@ bool SessionController::fileExists(const QString& path) const
 void SessionController::showInFolder(const QString& path) const
 {
     if (path.isEmpty()) {
+        return;
+    }
+    if (isDocumentUri(path)) {
+        QDesktopServices::openUrl(QUrl(path));
         return;
     }
     const QFileInfo info(path);
