@@ -57,7 +57,7 @@ Popup {
                     Layout.leftMargin: 16
                     Layout.rightMargin: 16
                     Layout.topMargin: 14
-                    text: qsTr("A friend scans the code or pastes the link to connect to this server.")
+                    text: qsTr("This link connects another account to your server.")
                     color: Theme.textDim
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap

@@ -869,11 +869,11 @@
       "zh": "分享服务器",
       "ar": "مشاركة الخادم"
     },
-    "A friend scans the code or pastes the link to connect to this server.": {
-      "ru": "Друг отсканирует код или вставит ссылку, чтобы подключиться к этому серверу.",
-      "es": "Un amigo escanea el código o pega el enlace para conectarse a este servidor.",
-      "zh": "朋友扫描二维码或粘贴链接，即可连接到这台服务器。",
-      "ar": "يمسح صديقك الرمز أو يلصق الرابط ليتصل بهذا الخادم."
+    "This link connects another account to your server.": {
+      "ru": "Эта ссылка подключит другой аккаунт к вашему серверу.",
+      "es": "Este enlace conecta otra cuenta a tu servidor.",
+      "zh": "此链接可将另一个账号连接到你的服务器。",
+      "ar": "يربط هذا الرابط حسابًا آخر بخادمك."
     },
     "Copy link": {
       "ru": "Скопировать ссылку",
