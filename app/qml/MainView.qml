@@ -220,8 +220,6 @@ Item {
             padding: 0
             hoverEnabled: true
             Accessible.name: callBadge.summary
-            ToolTip.visible: hovered
-            ToolTip.text: callBadge.summary
             HoverHandler { cursorShape: Qt.PointingHandCursor }
             background: Rectangle {
                 radius: width / 2

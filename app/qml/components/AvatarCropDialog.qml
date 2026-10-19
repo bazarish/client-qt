@@ -151,15 +151,11 @@ Dialog {
             IconButton {
                 iconName: "rotate-left"
                 Accessible.name: qsTr("Rotate left")
-                ToolTip.visible: hovered && !App.mobile
-                ToolTip.text: qsTr("Rotate left")
                 onClicked: root.turn(-1)
             }
             IconButton {
                 iconName: "rotate-right"
                 Accessible.name: qsTr("Rotate right")
-                ToolTip.visible: hovered && !App.mobile
-                ToolTip.text: qsTr("Rotate right")
                 onClicked: root.turn(1)
             }
         }

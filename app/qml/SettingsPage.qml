@@ -444,8 +444,6 @@ Popup {
                             rightPadding: 0
                             iconName: "list"
                             Accessible.name: qsTr("Connection log")
-                            ToolTip.visible: hovered
-                            ToolTip.text: Accessible.name
                             onClicked: { root.close(); root.showConnectionLog() }
                         }
                     }

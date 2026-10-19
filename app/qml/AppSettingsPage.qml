@@ -416,8 +416,6 @@ Popup {
                                 IconButton {
                                     iconName: "edit"
                                     Accessible.name: qsTr("Edit")
-                                    ToolTip.visible: hovered && !App.mobile
-                                    ToolTip.text: qsTr("Edit")
                                     onClicked: {
                                         gatewayField.text = I2p.gatewayAddress
                                         root.editingGateway = true

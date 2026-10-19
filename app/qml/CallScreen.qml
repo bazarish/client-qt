@@ -340,8 +340,6 @@ Popup {
             visible: !App.mobile && root.callState === "active"
             iconName: "gear"
             Accessible.name: qsTr("Audio devices")
-            ToolTip.visible: hovered && !devicePicker.visible
-            ToolTip.text: Accessible.name
             onClicked: devicePicker.visible ? devicePicker.close() : devicePicker.open()
 
             Popup {
@@ -396,8 +394,6 @@ Popup {
             crossed: root.session && root.session.callMuted
             Accessible.name: (root.session && root.session.callMuted)
                 ? qsTr("Turn the microphone on") : qsTr("Turn the microphone off")
-            ToolTip.visible: hovered
-            ToolTip.text: Accessible.name
             onClicked: root.session.setCallMuted(!root.session.callMuted)
         }
         CallButton {

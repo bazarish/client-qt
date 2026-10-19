@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// A chooser pill that shows a drawing for its words; the words stay its name and tooltip.
+// A chooser pill that shows a drawing for its words; the words stay its name.
 ModeTab {
     id: tab
     property string iconName: ""
@@ -12,8 +12,6 @@ ModeTab {
 
     implicitWidth: Math.max(kMinWidth, kIconSize + leftPadding + rightPadding)
     Accessible.name: tab.text
-    ToolTip.visible: tab.hovered && !App.mobile
-    ToolTip.text: tab.text
 
     contentItem: Item {
         implicitWidth: tab.kIconSize

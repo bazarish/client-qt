@@ -548,8 +548,7 @@ Item {
                                 implicitHeight: 18
                                 padding: 0
                                 hoverEnabled: true
-                                ToolTip.visible: hovered
-                                ToolTip.text: qsTr("Stop")
+                                Accessible.name: qsTr("Stop")
                                 onClicked: if (delegate.session) {
                                     delegate.session.cancelTransfer(model.e2eId)
                                 }
@@ -615,8 +614,7 @@ Item {
                                 implicitHeight: 18
                                 padding: 0
                                 hoverEnabled: true
-                                ToolTip.visible: hovered
-                                ToolTip.text: qsTr("Stop")
+                                Accessible.name: qsTr("Stop")
                                 onClicked: if (delegate.session) {
                                     delegate.session.cancelTransfer(model.e2eId)
                                 }

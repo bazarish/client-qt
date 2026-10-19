@@ -242,8 +242,6 @@ Popup {
                     hoverEnabled: true
                     Accessible.name: root.recording ? qsTr("Stop")
                         : (root.takeReady ? qsTr("Record again") : qsTr("Record"))
-                    ToolTip.visible: hovered
-                    ToolTip.text: Accessible.name
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     background: Rectangle {
                         radius: width / 2
@@ -273,8 +271,6 @@ Popup {
             MenuButton {
                 iconName: root.takePlaying ? "stop" : "play"
                 Accessible.name: root.takePlaying ? qsTr("Stop") : qsTr("Listen")
-                ToolTip.visible: hovered
-                ToolTip.text: Accessible.name
                 enabled: root.takeReady
                 iconSize: actions.kIcon
                 leftPadding: 0
@@ -286,8 +282,6 @@ Popup {
             MenuButton {
                 iconName: "send"
                 Accessible.name: qsTr("Send")
-                ToolTip.visible: hovered
-                ToolTip.text: Accessible.name
                 iconSize: actions.kIcon
                 leftPadding: 0
                 rightPadding: 0

@@ -336,8 +336,6 @@ Popup {
                             Layout.preferredWidth: root.hasCallback ? sendBtn.implicitHeight : -1
                             text: root.hasCallback ? "" : (copied ? qsTr("Copied") : qsTr("Copy signature"))
                             Accessible.name: qsTr("Copy signature")
-                            ToolTip.visible: root.hasCallback && hovered
-                            ToolTip.text: qsTr("Copy signature")
                             enabled: root.session && root.consumer.ok && !root.copyPending
                             onClicked: {
                                 // Belt as well as braces: `enabled` above already

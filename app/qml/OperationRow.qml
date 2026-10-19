@@ -117,8 +117,7 @@ Item {
             // The glyph is centred in the content rectangle, and the default
             // padding of a button leaves less of one than the glyph needs.
             padding: 0
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Stop")
+            Accessible.name: qsTr("Stop")
             onClicked: if (App.session) { App.session.cancelTransfer(row.cancelId) }
             background: Rectangle {
                 radius: 6
