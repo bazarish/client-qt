@@ -226,7 +226,7 @@ private:
     QString deletingId_;
     bool notifications_ = true;
     bool backgroundTasks_ = false;
-    bool lightTheme_ = false;
+    bool lightTheme_ = true;
     QString ringingAccount_;
     QString ringingPeer_;
     QString ringingPeerFingerprint_;

@@ -68,7 +68,7 @@ private:
     std::filesystem::path path_;
     std::string activeAccount_;
     std::string language_;
-    bool lightTheme_ = false;
+    bool lightTheme_ = true;
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;
     bool backgroundTasks_ = false;

@@ -35,7 +35,7 @@ the application started again. The three sound files are specified in
 The document holds what belongs to the installation rather than to an account:
 the account last in the foreground, the accounts switched off, notifications,
 whether the background-activity panel is shown, the interface language, the
-theme (`lightTheme`, dark unless set), and how
+theme (`lightTheme`, light unless set), and how
 I2P is carried - which of the three transports, tunnel length, engine logging,
 the clearnet proxy, and a private gateway's address and key
 ([I2pRouter.md](I2pRouter.md)).

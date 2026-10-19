@@ -81,7 +81,7 @@ void AppSettings::load()
         const nlohmann::json document = nlohmann::json::parse(text);
         activeAccount_ = document.value("activeAccount", std::string());
         language_ = document.value("language", std::string());
-        lightTheme_ = document.value("lightTheme", false);
+        lightTheme_ = document.value("lightTheme", true);
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
         backgroundTasks_ = document.value("backgroundTasks", false);
