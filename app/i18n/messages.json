@@ -935,11 +935,11 @@
       "zh": "分享网关",
       "ar": "مشاركة البوابة"
     },
-    "This link connects another device to this gateway.": {
-      "ru": "Эта ссылка подключит другое устройство к этому шлюзу.",
-      "es": "Este enlace conecta otro dispositivo a esta pasarela.",
-      "zh": "此链接可将另一台设备连接到这个网关。",
-      "ar": "يربط هذا الرابط جهازًا آخر بهذه البوابة."
+    "The link connects another device to this gateway.": {
+      "ru": "Ссылка подключит другое устройство к этому шлюзу.",
+      "es": "El enlace conecta otro dispositivo a esta pasarela.",
+      "zh": "链接可将另一台设备连接到这个网关。",
+      "ar": "يربط الرابط جهازًا آخر بهذه البوابة."
     },
     "Copy link": {
       "ru": "Скопировать ссылку",

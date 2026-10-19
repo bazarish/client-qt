@@ -440,6 +440,7 @@ Popup {
                                 Layout.alignment: Qt.AlignRight
                                 spacing: 8
                                 MenuButton {
+                                    visible: root.gatewayInput
                                     iconName: "qr"
                                     leftPadding: 0
                                     rightPadding: 0
@@ -448,9 +449,9 @@ Popup {
                                     onClicked: gatewayScan.open()
                                 }
                                 MenuButton {
+                                    visible: !root.gatewayInput
                                     iconName: "link"
                                     text: qsTr("Share")
-                                    enabled: root.gatewayLink.length > 0
                                     onClicked: gatewayShare.open()
                                 }
                                 MenuButton {
@@ -477,8 +478,8 @@ Popup {
                             ShareLinkSheet {
                                 id: gatewayShare
                                 title: qsTr("Share gateway")
-                                note: qsTr("This link connects another device to this gateway.")
-                                link: root.gatewayLink
+                                note: qsTr("The link connects another device to this gateway.")
+                                link: I2p.gatewayAddress
                             }
                         }
                     }
@@ -500,8 +501,6 @@ Popup {
     property bool editingGateway: false
     onClosed: root.editingGateway = false
     readonly property bool gatewayInput: I2p.gatewayAddress.length === 0 || root.editingGateway
-    readonly property string gatewayLink: root.gatewayInput
-        ? gatewayField.displayText.trim() : I2p.gatewayAddress
     property string proxyProblem: ""
     // The verdict on the SAM address: whether the router at it answered.
     property string samNote: ""
