@@ -26,6 +26,8 @@ struct ContactState {
     bool notifications = true;
     bool calls = true;
     Request request = eAnswered;
+
+    friend bool operator==(const ContactState&, const ContactState&) = default;
 };
 
 struct OperationRow {

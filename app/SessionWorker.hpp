@@ -19,13 +19,15 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 #include <functional>
 #include <map>
-#include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 
 class QTimer;
 
@@ -244,6 +246,7 @@ private:
     bool aliasErrandRunning_ = false;
     bool aliasErrandByHand_ = false;
     bool routingFanoutTried_ = false;
+    std::optional<std::pair<QVector<ContactState>, QStringList>> toldContacts_;
     QTimer* maintenanceTimer_ = nullptr;
     QTimer* callTimer_ = nullptr;
     std::thread eventWaiter_;

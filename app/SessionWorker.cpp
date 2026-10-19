@@ -584,6 +584,11 @@ void SessionWorker::emitContacts()
     for (const std::string& fp : session_->blockedPeers()) {
         blocked << QString::fromStdString(fp);
     }
+    if (toldContacts_.has_value() && toldContacts_->first == contacts
+        && toldContacts_->second == blocked) {
+        return;
+    }
+    toldContacts_.emplace(contacts, blocked);
     emit contactsRefreshed(contacts, blocked);
 }
 
