@@ -61,6 +61,7 @@ struct Window {
     bool i2pState = false;
     std::unique_ptr<CoreLink> link;
     bool lost = false;
+    bool closing = false;
 
     Window()
     {
@@ -71,6 +72,7 @@ struct Window {
         QObject::connect(
             &events, &AppEvents::accountList, [this](const QVector<AccountListRow>&) { ++lists; });
         QObject::connect(&i2p, &I2pEvents::state, [this](const I2pState&) { i2pState = true; });
+        QObject::connect(&events, &AppEvents::closing, [this]() { closing = true; });
         QObject::connect(&relay, &Relay::broken, [](const QString& reason) {
             std::fprintf(stderr, "broken: %s\n", qPrintable(reason));
             fail(__LINE__, "the relay broke");
@@ -138,6 +140,7 @@ int main(int argc, char** argv)
     CHECK(core.exitStatus() == QProcess::NormalExit);
     CHECK(core.exitCode() == EXIT_SUCCESS);
     CHECK(settleUntil([&]() { return third.lost; }));
+    CHECK(third.closing);
 
     std::fprintf(stderr, "TestTwoProcess passed\n");
     return 0;

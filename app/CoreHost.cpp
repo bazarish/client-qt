@@ -1039,6 +1039,13 @@ void CoreListener::dropWindow()
     }
 }
 
+void CoreListener::flushWindow()
+{
+    if (window_ != nullptr && !window_->flush()) {
+        bazarish::log::warn("wire: the window did not take everything before the exit");
+    }
+}
+
 void CoreListener::accept()
 {
     while (QLocalSocket* const socket = server_.nextPendingConnection()) {

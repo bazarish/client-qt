@@ -70,7 +70,10 @@ int runCore(int argc, char** argv)
     QObject::connect(&core, &CoreHost::readyToExit, &shade, &AndroidShade::stop);
     AndroidShade::listening();
 #endif
-    QObject::connect(&core, &CoreHost::readyToExit, &app, exitNow);
+    QObject::connect(&core, &CoreHost::readyToExit, &app, [&listener]() {
+        listener.flushWindow();
+        exitNow();
+    });
     return QCoreApplication::exec();
 }
 

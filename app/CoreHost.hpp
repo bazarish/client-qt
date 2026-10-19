@@ -155,6 +155,7 @@ public:
     CoreListener(CoreHost& core, const QString& name, QObject* parent = nullptr);
 
     void dropWindow();
+    void flushWindow();
 
 private:
     void accept();

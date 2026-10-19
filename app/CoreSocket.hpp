@@ -20,6 +20,7 @@ public:
     explicit SocketChannelEnd(QLocalSocket* socket, QObject* parent = nullptr);
 
     void send(const QByteArray& frame) override;
+    [[nodiscard]] bool flush();
     void close();
 
 signals:

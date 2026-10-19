@@ -63,6 +63,14 @@ void SocketChannelEnd::send(const QByteArray& frame)
     }
 }
 
+bool SocketChannelEnd::flush()
+{
+    if (socket_->bytesToWrite() > 0 && !socket_->flush()) {
+        return false;
+    }
+    return socket_->bytesToWrite() == 0;
+}
+
 void SocketChannelEnd::close()
 {
     socket_->abort();
