@@ -4,6 +4,7 @@
 #include "AccountManager.hpp"
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
+#include "Documents.hpp"
 #include "Translations.hpp"
 #include "Markup.hpp"
 #include "PopupStack.hpp"
@@ -26,7 +27,6 @@
 #include <QColor>
 #include <QGuiApplication>
 #include <QImage>
-#include <QUrl>
 
 #include <exception>
 #include <utility>
@@ -340,7 +340,7 @@ void AppController::cancelUnlock()
 void AppController::importAccount(const QString& name, const QString& fileUrl,
     const QString& password, const QString& atRestPassphrase)
 {
-    emit commands_.importAccount(name, QUrl(fileUrl).toLocalFile(), password, atRestPassphrase);
+    emit commands_.importAccount(name, dialogTarget(fileUrl), password, atRestPassphrase);
 }
 
 void AppController::startPairing(const QString& link, const QString& atRestPassphrase)

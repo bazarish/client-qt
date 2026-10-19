@@ -5,6 +5,7 @@
 #include "AudioRoute.hpp"
 #include "CoreAccount.hpp"
 #include "DevicePairing.hpp"
+#include "Documents.hpp"
 #include "I2pRouter.hpp"
 #include "Wire.hpp"
 #ifdef Q_OS_ANDROID
@@ -792,7 +793,7 @@ void CoreHost::importAccount(const QString& name, const QString& path, const QSt
         QString failure;
         try {
             id = manager_
-                     ->import(name.toStdString(), path.toStdString(), password.toStdString(),
+                     ->import(name.toStdString(), readWhole(path), password.toStdString(),
                          atRestPassphrase.toStdString())
                      .id;
         } catch (const std::exception& error) {

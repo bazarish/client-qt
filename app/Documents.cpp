@@ -19,11 +19,19 @@
 #include <unistd.h>
 #endif
 
+#include <array>
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
 namespace bazarish::app {
+
+namespace {
+
+constexpr std::size_t kReadChunkBytes = 64 * 1024;
+
+}  // namespace
 
 #ifdef Q_OS_ANDROID
 namespace {
@@ -211,6 +219,19 @@ std::shared_ptr<const client::FileSource> deviceFiles()
 #else
     return client::localFiles();
 #endif
+}
+
+Bytes readWhole(const QString& location)
+{
+    const std::unique_ptr<client::FileInput> input = deviceFiles()->open(location.toStdString());
+    Bytes whole;
+    std::array<unsigned char, kReadChunkBytes> buffer{};
+    for (std::size_t got = input->read(buffer.data(), buffer.size()); got > 0;
+        got = input->read(buffer.data(), buffer.size())) {
+        whole.insert(
+            whole.end(), buffer.begin(), buffer.begin() + static_cast<std::ptrdiff_t>(got));
+    }
+    return whole;
 }
 
 std::unique_ptr<client::FileOutput> openOutput(const QString& dest)

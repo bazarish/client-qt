@@ -41,8 +41,6 @@
 #include <ctime>
 #include <exception>
 #include <stdexcept>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -1886,13 +1884,7 @@ void SessionWorker::loadPersonalKey(const QString& path)
         return;
     }
     try {
-        std::ifstream in(path.toStdString(), std::ios::binary);
-        if (!in) {
-            throw std::runtime_error("cannot open key file");
-        }
-        const bazarish::Bytes dat(
-            (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-        session_->loadI2pDestination(dat);
+        session_->loadI2pDestination(readWhole(path));
         emit actionOk(tr("Personal I2P key loaded"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));

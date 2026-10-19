@@ -1295,9 +1295,9 @@ void SessionController::generatePersonalKey()
 
 void SessionController::loadPersonalKey(const QString& fileUrl)
 {
-    const QString localPath = QUrl(fileUrl).toLocalFile();
-    if (!localPath.isEmpty()) {
-        emit commands_.requestLoadPersonalKey(localPath);
+    const QString key = dialogTarget(fileUrl);
+    if (!key.isEmpty()) {
+        emit commands_.requestLoadPersonalKey(key);
     }
 }
 
