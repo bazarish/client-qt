@@ -61,7 +61,17 @@
         <activity-alias
             android:name="sh.bazari.client.NoticeEntry"
             android:targetActivity="sh.bazari.client.BazarishActivity"
-            android:exported="false" />
+            android:exported="false">
+          <meta-data
+                android:name="android.app.lib_name"
+                android:value="-- %%INSERT_APP_LIB_NAME%% --" />
+          <meta-data
+                android:name="android.app.arguments"
+                android:value="--ui" />
+          <meta-data
+                android:name="android.app.background_running"
+                android:value="true" />
+        </activity-alias>
 
         <service
             android:name="sh.bazari.client.BazarishService"
