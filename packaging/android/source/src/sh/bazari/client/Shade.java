@@ -13,7 +13,12 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.PowerManager;
+import android.os.VibrationAttributes;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.os.ResultReceiver;
 import android.service.notification.StatusBarNotification;
 
@@ -24,8 +29,8 @@ import java.util.List;
 // The core's side of Android: the shade, the notices and the ring, all in the :core process.
 public final class Shade {
     static final String CHANNEL_PRESENCE = "status";
-    static final String CHANNEL_MESSAGES = "message";
-    static final String CHANNEL_REACTIONS = "reaction";
+    static final String CHANNEL_MESSAGES = "messages";
+    static final String CHANNEL_REACTIONS = "reactions";
     static final String CHANNEL_CALLS = "calls";
     static final String EXTRA_ACCOUNT = "sh.bazari.client.account";
     static final String EXTRA_PEER = "sh.bazari.client.peer";
@@ -44,6 +49,10 @@ public final class Shade {
     private static final int RING_REQUEST = 2;
     private static final long WAKE_MILLIS = 3000;
     private static MediaPlayer ring = null;
+    private static Vibrator buzzing = null;
+    private static final long RING_PULSE_MILLIS = 800;
+    private static final long RING_PAUSE_MILLIS = 800;
+    private static final int REPEAT_FROM_START = 0;
 
     static Context app;
     static String turnOff = "";
@@ -116,10 +125,17 @@ public final class Shade {
         line = presenceLine;
         NotificationManager manager = app.getSystemService(NotificationManager.class);
         presenceChannel(app, presence);
-        manager.createNotificationChannel(sounding(CHANNEL_MESSAGES, messages,
-            NotificationManager.IMPORTANCE_HIGH, "notify"));
-        manager.createNotificationChannel(sounding(CHANNEL_REACTIONS, reactions,
-            NotificationManager.IMPORTANCE_DEFAULT, "reaction"));
+        NotificationChannel messagesChannel = sounding(CHANNEL_MESSAGES, messages,
+            NotificationManager.IMPORTANCE_HIGH, "notify");
+        // Felt as the phone's own setting for notification vibration decides.
+        messagesChannel.enableVibration(true);
+        manager.createNotificationChannel(messagesChannel);
+        NotificationChannel reactionsChannel = new NotificationChannel(
+            CHANNEL_REACTIONS, reactions, NotificationManager.IMPORTANCE_DEFAULT);
+        // A channel's sound turns into vibration in vibrate mode: the chime is played here instead.
+        reactionsChannel.setSound(null, null);
+        reactionsChannel.enableVibration(false);
+        manager.createNotificationChannel(reactionsChannel);
         NotificationChannel callsChannel = new NotificationChannel(
             CHANNEL_CALLS, calls, NotificationManager.IMPORTANCE_HIGH);
         // The ring is played on the ring stream for as long as the call rings.
@@ -148,6 +164,9 @@ public final class Shade {
             .setContentIntent(opening(account, peer))
             .setAutoCancel(true)
             .build();
+        if (reaction) {
+            chimeForReaction();
+        }
         app.getSystemService(NotificationManager.class)
             .notify(account + "/" + peer, MESSAGE_ID, shown);
         wakeScreen();
@@ -215,6 +234,45 @@ public final class Shade {
             throw new IllegalStateException("the ringtone did not load", e);
         }
         ring.start();
+        vibrateForRinging();
+    }
+
+    // Rung as a ringtone: the phone's own setting for vibrating on calls, and its ringer
+    // mode, decide whether this is felt.
+    private static void vibrateForRinging() {
+        Vibrator vibrator = app.getSystemService(VibratorManager.class).getDefaultVibrator();
+        if (!vibrator.hasVibrator()) {
+            return;
+        }
+        VibrationEffect pulse = VibrationEffect.createWaveform(
+            new long[] {0, RING_PULSE_MILLIS, RING_PAUSE_MILLIS}, REPEAT_FROM_START);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vibrator.vibrate(
+                pulse, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_RINGTONE));
+        } else {
+            vibrator.vibrate(pulse, new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .build());
+        }
+        buzzing = vibrator;
+    }
+
+    // Played on the notification stream, which the ringer mode and Do not disturb silence.
+    private static void chimeForReaction() {
+        MediaPlayer chime = new MediaPlayer();
+        chime.setAudioAttributes(new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build());
+        chime.setOnCompletionListener(MediaPlayer::release);
+        try {
+            chime.setDataSource(app, rawSound("reaction"));
+            chime.prepare();
+        } catch (IOException e) {
+            chime.release();
+            throw new IllegalStateException("the reaction sound did not load", e);
+        }
+        chime.start();
     }
 
     public static void stopRinging() {
@@ -224,6 +282,10 @@ public final class Shade {
         ring.stop();
         ring.release();
         ring = null;
+        if (buzzing != null) {
+            buzzing.cancel();
+            buzzing = null;
+        }
     }
 
     public static void cancelCall() {
