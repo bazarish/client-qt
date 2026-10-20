@@ -9,6 +9,7 @@ import Bazarish
 // before its label, so a menu can be read at a glance and in any language.
 MenuItem {
     id: root
+    focusPolicy: Theme.pressFocus
     // Set on an entry that removes something, so it reads as one.
     property bool danger: false
     // Name from the shared icon set, or empty for a menu of plain words.
