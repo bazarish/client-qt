@@ -430,4 +430,6 @@ ApplicationWindow {
             text: restartDialog.message
         }
     }
+
+    FocusSelection { appWindow: window }
 }

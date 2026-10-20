@@ -9,6 +9,7 @@
 #include <QJniObject>
 #include <QPointingDevice>
 #include <QQuickItem>
+#include <QStyleHints>
 #include <QtCore/qcoreapplication_platform.h>
 
 #pragma push_macro("emit")
@@ -69,7 +70,7 @@ void unlocked(JNIEnv*, jclass)
     inWindowThread<AppController>(gApp, [](AppController& app) { emit app.unlocked(); });
 }
 
-// Android offers Paste on a long press only over a focused field, and Qt focuses one on release.
+// A long press acts on the focused field, and Qt focuses one only on release.
 void focusFieldsOnPress()
 {
     for (const QInputDevice* const device : QInputDevice::devices()) {
@@ -130,6 +131,13 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
 
     QJniObject::callStaticMethod<void>(kWindow, "askNotifications", "()V");
     QJniObject::callStaticMethod<void>(kWindow, "followKeyboard", "()V");
+    // Android's touch-and-hold delay, which its accessibility settings change; Qt keeps 800 ms.
+    const jint longPressMs = QJniObject::callStaticMethod<jint>(
+        "android/view/ViewConfiguration", "getLongPressTimeout", "()I");
+    if (longPressMs <= 0) {
+        throw std::runtime_error("Android gave no long-press delay");
+    }
+    QGuiApplication::styleHints()->setMousePressAndHoldInterval(longPressMs);
     focusFieldsOnPress();
     takeHeld();
 

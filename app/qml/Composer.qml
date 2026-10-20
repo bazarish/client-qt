@@ -287,13 +287,23 @@ Rectangle {
                         selectedTextColor: inputScroll.palette.highlightedText
                         wrapMode: TextEdit.Wrap
                         selectByMouse: true
-                        inputMethodHints: App.mobile ? Qt.ImhNoTextHandles : Qt.ImhNone
+                        // What the app's selection menu offers here beyond any field's.
+                        readonly property var selectionForms: root.kForms
+                        function applyForm(open, close) {
+                            root.wrapSelection(open, close)
+                        }
+                        function pasteFromMenu() {
+                            if (App.clipboardHasImage()) {
+                                root.sendClipboardPicture()
+                            } else {
+                                input.paste()
+                            }
+                        }
                         TapHandler {
                             enabled: App.mobile
                             acceptedDevices: PointerDevice.TouchScreen
-                            longPressThreshold: selectionTools.kLongPressSeconds
-                            onTapped: selectionTools.tapped()
-                            onLongPressed: selectionTools.longPressed()
+                            onTapped: function(point) { TextSelection.tapped(input, point.position) }
+                            onLongPressed: TextSelection.longPressed(input, point.position)
                         }
                         onCursorRectangleChanged: {
                             const view = inputScroll.contentItem
@@ -359,23 +369,6 @@ Rectangle {
                 enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
                 onClicked: root.send()
-            }
-        }
-    }
-
-    SelectionTools {
-        id: selectionTools
-        anchors.fill: parent
-        visible: App.mobile
-        field: input
-        view: inputScroll.contentItem
-        forms: root.kForms
-        onFormChosen: function(open, close) { root.wrapSelection(open, close) }
-        onPasteRequested: {
-            if (App.clipboardHasImage()) {
-                root.sendClipboardPicture()
-            } else {
-                input.paste()
             }
         }
     }

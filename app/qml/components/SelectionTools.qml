@@ -8,11 +8,14 @@ import Bazarish
 Item {
     id: root
 
-    property TextEdit field: null
-    property Flickable view: null
+    // A TextInput or a TextEdit; the view is what scrolls it, or the field itself.
+    property Item field: null
+    property Item view: null
     // What the menu stays inside; the window when unset.
     property Item bounds: null
     property var forms: []
+    // Paste is offered for a picture in the clipboard too, when the field sends one.
+    property bool pastesPictures: false
     signal formChosen(string open, string close)
     signal pasteRequested()
     // A read-only text is done with: copied, tapped beside or its selection gone.
@@ -29,8 +32,6 @@ Item {
     readonly property int kSpacing: 4
     // Android hides an idle cursor handle after about this long.
     readonly property int kCaretHandleMs: 4000
-    // About as long as Android's own long press.
-    readonly property real kLongPressSeconds: 0.5
     // Rich text hands its selection over with these instead of a newline and a space.
     readonly property string kLineSeparator: String.fromCharCode(0x2028)
     readonly property string kParagraphSeparator: String.fromCharCode(0x2029)
@@ -51,10 +52,15 @@ Item {
         root.caretShown = true
         caretTimer.restart()
     }
-    function longPressed() {
-        if (!root.hasSelection) {
+    // The word under the finger, as Android selects one; the menu alone where there is none.
+    function longPressed(at) {
+        root.field.cursorPosition = root.field.positionAt(at.x, at.y)
+        root.field.selectWord()
+        if (root.hasSelection) {
+            App.holdSelection(root.field)
+        } else {
             root.caretMenu = true
-            root.caretShown = true
+            root.caretShown = root.editable
             caretTimer.restart()
         }
     }
@@ -72,6 +78,9 @@ Item {
         return Qt.rect(at.x, at.y, r.width, r.height)
     }
     function viewTop() {
+        if (!root.live || root.view === null) {
+            return 0
+        }
         void [root.view.contentY, root.width, root.height]
         return root.view.mapToItem(root, 0, 0).y
     }
@@ -310,7 +319,8 @@ Item {
                 }
                 Action {
                     text: qsTr("Paste")
-                    visible: root.editable && (root.field.canPaste || App.clipboardHasImage())
+                    visible: root.editable && (root.field.canPaste
+                        || (root.pastesPictures && App.clipboardHasImage()))
                     onClicked: {
                         root.caretMenu = false
                         root.pasteRequested()

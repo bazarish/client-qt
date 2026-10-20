@@ -37,7 +37,7 @@ endif()
 # (imageformats/libqsvg), so we do NOT require the Qt6::Svg CMake component here -
 # requiring it would fail the whole Qt6 find on systems that ship the plugin but
 # not the Svg dev config, and silently skip the GUI target.
-find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Multimedia Widgets Network QUIET)
+find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Multimedia Widgets Network Test QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
 
@@ -138,6 +138,7 @@ if(Qt6_FOUND)
 
     add_library(bazarish_app_ui STATIC
         app/AppController.cpp
+        app/SelectionHold.cpp
         app/PopupStack.cpp
         app/AppController.hpp
         app/I2pController.cpp
@@ -314,6 +315,7 @@ if(Qt6_FOUND)
     )
 
     set_source_files_properties(app/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+    set_source_files_properties(app/qml/components/TextSelection.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
     qt_add_qml_module(bazarish-app
         URI Bazarish
         VERSION 1.0
@@ -376,6 +378,11 @@ if(Qt6_FOUND)
             app/qml/components/ContextMenu.qml
             app/qml/components/FormatChip.qml
             app/qml/components/SelectionTools.qml
+            app/qml/components/TextSelection.qml
+            app/qml/components/TextField.qml
+            app/qml/components/TextArea.qml
+            app/qml/components/PhoneSelection.qml
+            app/qml/components/FocusSelection.qml
             app/qml/components/ContextMenuItem.qml
             app/qml/components/CameraGate.qml
             app/qml/components/Dropdown.qml
@@ -444,6 +451,15 @@ if(Qt6_FOUND)
     add_test(NAME TestPopupStack COMMAND TestPopupStack)
     set_tests_properties(TestPopupStack PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
+
+    if(TARGET Qt6::Test)
+        add_executable(TestSelectionHold tests/TestSelectionHold.cpp app/SelectionHold.cpp)
+        target_include_directories(TestSelectionHold PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+        target_link_libraries(TestSelectionHold PRIVATE Qt6::Quick Qt6::Test)
+        target_compile_options(TestSelectionHold PRIVATE -Wall -Wextra -Werror)
+        add_test(NAME TestSelectionHold COMMAND TestSelectionHold)
+        set_tests_properties(TestSelectionHold PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endif()
 
     add_executable(TestPictureStore tests/TestPictureStore.cpp app/PictureStore.cpp)
     target_include_directories(TestPictureStore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)

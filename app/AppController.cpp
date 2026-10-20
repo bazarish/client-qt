@@ -5,6 +5,7 @@
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
 #include "Documents.hpp"
+#include "SelectionHold.hpp"
 #include "Translations.hpp"
 #include "Markup.hpp"
 #include "PathText.hpp"
@@ -574,6 +575,11 @@ void AppController::copyText(const QString& text) const
     if (QClipboard* const clipboard = QGuiApplication::clipboard()) {
         clipboard->setText(text);
     }
+}
+
+void AppController::holdSelection(QObject* const field) const
+{
+    bazarish::app::holdSelection(field);
 }
 
 void AppController::retranslate()

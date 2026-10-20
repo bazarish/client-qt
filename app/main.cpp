@@ -93,6 +93,8 @@ namespace {
 
 // Qt's SurfaceView: the TextureView it picked for the window re-drew every frame in Java.
 constexpr const char* kSurfaceViewContainer = "0";
+// Qt draws no text handles or menu and selects no word: the app's own selection menu does.
+constexpr const char* kNoQtTextHandles = "1";
 
 }  // namespace
 #endif
@@ -210,6 +212,7 @@ int main(int argc, char** argv)
         return bazarish::app::runCore(argc, argv);
     }
     qputenv("QT_ANDROID_SURFACE_CONTAINER_TYPE", kSurfaceViewContainer);
+    qputenv("QT_QPA_NO_TEXT_HANDLES", kNoQtTextHandles);
 #endif
 #ifdef Q_OS_LINUX
     useTheDesktopsDialogs();
