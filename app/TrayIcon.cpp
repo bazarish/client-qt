@@ -14,6 +14,11 @@
 #include <QPixmap>
 #include <QWindow>
 
+#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
+#include <QDBusConnection>
+#include <QDBusMessage>
+#endif
+
 #include <array>
 
 namespace bazarish::app {
@@ -184,7 +189,28 @@ void TrayIcon::showNotice(const QString& accountId, const QString& peer, const Q
 {
     notifiedAccount_ = accountId;
     notifiedPeer_ = peer;
-    tray_.showMessage(title, body, idleIcon_, kPopupMs);
+    tray_.showMessage(title, bodyReadsMarkup() ? body.toHtmlEscaped() : body, idleIcon_, kPopupMs);
+}
+
+// A notification server that reads markup in the body would read it in a correspondent's words.
+bool TrayIcon::bodyReadsMarkup()
+{
+    if (!bodyReadsMarkup_.has_value()) {
+#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
+        const QDBusMessage reply = QDBusConnection::sessionBus().call(
+            QDBusMessage::createMethodCall(QStringLiteral("org.freedesktop.Notifications"),
+                QStringLiteral("/org/freedesktop/Notifications"),
+                QStringLiteral("org.freedesktop.Notifications"),
+                QStringLiteral("GetCapabilities")));
+        bodyReadsMarkup_ = reply.type() == QDBusMessage::ReplyMessage
+            && !reply.arguments().isEmpty()
+            && reply.arguments().constFirst().toStringList().contains(
+                QStringLiteral("body-markup"));
+#else
+        bodyReadsMarkup_ = false;
+#endif
+    }
+    return *bodyReadsMarkup_;
 }
 
 }  // namespace bazarish::app

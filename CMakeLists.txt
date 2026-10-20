@@ -383,6 +383,7 @@ if(Qt6_FOUND)
             app/qml/components/DialogButtons.qml
             app/qml/components/DialogFrame.qml
             app/qml/components/Hairline.qml
+            app/qml/components/Label.qml
             app/qml/components/Icon.qml
             app/qml/components/IconButton.qml
             app/qml/components/IconLabel.qml

@@ -14,6 +14,7 @@ Rectangle {
     color: Theme.accent
     Text {
         id: label
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: root.count > 99 ? "99+" : root.count
         color: Theme.accentText

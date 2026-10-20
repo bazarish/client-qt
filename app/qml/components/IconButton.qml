@@ -27,6 +27,7 @@ Button {
         }
         Text {
             anchors.centerIn: parent
+            textFormat: Text.PlainText
             visible: control.iconName.length === 0
             text: control.text
             color: control.tint

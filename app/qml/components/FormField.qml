@@ -17,6 +17,7 @@ ColumnLayout {
 
     Text {
         id: lbl
+        textFormat: Text.PlainText
         color: Theme.textDim
         font.pixelSize: Theme.fontSmall
         wrapMode: Text.Wrap

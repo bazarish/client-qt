@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QSystemTrayIcon>
 
+#include <optional>
+
 class QWindow;
 
 namespace bazarish::app {
@@ -33,6 +35,7 @@ private:
     void openNotified();
     void showWindow();
     void toggleWindow();
+    bool bodyReadsMarkup();
 
     AppController& app_;
     QSystemTrayIcon tray_;
@@ -45,6 +48,7 @@ private:
     bool showingUnread_ = false;
     QWindow* window_ = nullptr;
     QElapsedTimer sinceInactive_;
+    std::optional<bool> bodyReadsMarkup_;
 };
 
 }  // namespace bazarish::app

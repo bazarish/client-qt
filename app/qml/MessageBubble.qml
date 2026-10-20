@@ -143,6 +143,8 @@ Item {
 
         Label {
             id: sysLabel
+            // A notice can quote what a correspondent sent: it is never read as markup.
+            textFormat: Text.PlainText
             text: model.text
             color: (delegate.isAddFailed || delegate.isRoutingFailed)
                 ? Theme.danger : Theme.textDim
@@ -191,6 +193,11 @@ Item {
         try { return JSON.parse(wire) } catch (e) { return [] }
     }
     readonly property var keyboardButtons: delegate.parseKeyboard(model.keyboard)
+    // A link's address as it is: without angle brackets it cannot pass for markup.
+    function shownAddress(link) {
+        return link.replace(/</g, "%3C").replace(/>/g, "%3E")
+    }
+
     // The keyboard message's protocol id, sent back as a callback's ref.
     readonly property string msgE2eId: model.e2eId
 
@@ -907,7 +914,7 @@ Item {
                 // Where a web address leads is shown before it is followed; the
                 // dialog says it again, but the cursor gets there first.
                 ToolTip.visible: bodyText.hoveredLink.startsWith("http")
-                ToolTip.text: bodyText.hoveredLink
+                ToolTip.text: delegate.shownAddress(bodyText.hoveredLink)
                 HoverHandler {
                     cursorShape: bodyText.hoveredLink.length > 0
                         ? Qt.PointingHandCursor : Qt.IBeamCursor
