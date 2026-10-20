@@ -402,6 +402,7 @@ Item {
                 topMargin: 10
                 bottomMargin: 10
                 model: listPane.building ? null : (root.session ? root.session.conversation : null)
+                reuseItems: true
                 delegate: MessageBubble {
                     session: root.session
                     // Highlighted by a search jump, or as part of the unread tail that

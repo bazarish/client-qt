@@ -215,6 +215,16 @@ Item {
     readonly property string contentKey: (model.text || "") + "" + (model.keyboard || "")
     onContentKeyChanged: delegate.busy = false
     Timer { id: busyTimer; interval: 6000; onTriggered: delegate.busy = false }
+    // The view hands a scrolled-away bubble to another row: it takes that row's look at once.
+    property bool pooled: false
+    ListView.onPooled: {
+        pooled = true
+        copiedBlock = false
+        copiedBlockFor.stop()
+        busy = false
+        busyTimer.stop()
+    }
+    ListView.onReused: pooled = false
 
     // Single round indicator, coloured by delivery status (see DeliveryStatus).
     function statusColor(s) {
@@ -319,16 +329,18 @@ Item {
     Rectangle {
         id: bubble
         visible: !delegate.isSystem
-        anchors.left: model.outgoing ? undefined : parent.left
-        anchors.right: model.outgoing ? parent.right : undefined
-        anchors.leftMargin: delegate.inGroup ? 12 + delegate.letterSize + delegate.letterGap : 12
-        anchors.rightMargin: 12
+        // One x, not side anchors: a reused bubble changing sides held both anchors and stretched.
+        x: model.outgoing ? parent.width - width - 12
+            : (delegate.inGroup ? 12 + delegate.letterSize + delegate.letterGap : 12)
         width: Math.min(Math.max(content.implicitWidth + 20, 80), delegate.width * 0.72)
         height: content.implicitHeight + 14
         radius: 12
         color: model.outgoing ? (delegate.held ? Theme.bubbleOutHeld : Theme.bubbleOut)
             : (delegate.held ? Theme.bubbleInHeld : Theme.bubbleIn)
-        Behavior on color { ColorAnimation { duration: delegate.heldFadeMs } }
+        Behavior on color {
+            enabled: !delegate.pooled
+            ColorAnimation { duration: delegate.heldFadeMs }
+        }
         // Search-jump flash: a brief accent outline on the targeted message. An
         // incoming contact request keeps a permanent thin green outline, and a
         // group message meant for this member alone a white one, so they stand
@@ -337,7 +349,10 @@ Item {
             : (delegate.isContactRequestIncoming || delegate.onlyForMe ? 1 : 0)
         border.color: delegate.isContactRequestIncoming ? Theme.green
             : (delegate.onlyForMe && !delegate.highlighted ? Theme.text : Theme.accent)
-        Behavior on border.width { NumberAnimation { duration: 220 } }
+        Behavior on border.width {
+            enabled: !delegate.pooled
+            NumberAnimation { duration: 220 }
+        }
 
         ColumnLayout {
             id: content
