@@ -28,10 +28,13 @@ Popup {
     readonly property int kSlideGap: 24
     // At the first or the last picture the pull gives this share of the finger's travel.
     readonly property real kEdgeResistance: 0.35
+    // Lifted this far up, the picture is let go and the viewer closes.
+    readonly property int kDismissLift: 120
     readonly property int kButtonSize: 44
     readonly property int kButtonMargin: 12
     readonly property real kButtonScrim: 0.55
     property real pull: 0
+    property real lift: 0
     property var before: ({found: false})
     property var after: ({found: false})
     property string beforeSource: ""
@@ -49,6 +52,7 @@ Popup {
         root.beforeSource = root.before.found ? root.pictureUrl(root.before.e2eId) : ""
         root.afterSource = root.after.found ? root.pictureUrl(root.after.e2eId) : ""
         root.pull = 0
+        root.lift = 0
         view.fit()
         root.open()
     }
@@ -81,6 +85,7 @@ Popup {
 
     background: Rectangle {
         color: Qt.rgba(0, 0, 0, 0.92)
+        opacity: 1 - Math.min(1, -root.lift / Math.max(1, root.height))
     }
 
     FileDialog {
@@ -129,7 +134,7 @@ Popup {
                 id: picture
                 width: view.contentWidth
                 height: view.contentHeight
-                transform: Translate { x: root.pull }
+                transform: Translate { x: root.pull; y: root.lift }
                 source: root.source
                 fillMode: Image.PreserveAspectFit
                 horizontalAlignment: Image.AlignHCenter
@@ -174,6 +179,24 @@ Popup {
                         onActiveScaleChanged: {
                             const zoom = Math.max(1, Math.min(root.kMaxZoom, fromZoom * activeScale))
                             view.resizeContent(view.width * zoom, view.height * zoom, centroid.position)
+                        }
+                    }
+                    DragHandler {
+                        target: null
+                        enabled: !view.zoomed && !slide.running && !dismiss.running
+                        xAxis.enabled: false
+                        onActiveTranslationChanged: {
+                            const dy = activeTranslation.y
+                            root.lift = dy < 0 ? dy : dy * root.kEdgeResistance
+                        }
+                        onActiveChanged: {
+                            if (active) {
+                                drop.stop()
+                            } else if (root.lift <= -root.kDismissLift) {
+                                dismiss.start()
+                            } else {
+                                drop.start()
+                            }
                         }
                     }
                     DragHandler {
@@ -261,6 +284,25 @@ Popup {
                 const beside = step > 0 ? root.after : root.before
                 root.show(step > 0 ? root.afterSource : root.beforeSource, beside.e2eId, beside.name)
             }
+        }
+        NumberAnimation {
+            id: drop
+            target: root
+            property: "lift"
+            to: 0
+            duration: root.kSettleMs
+            easing.type: Easing.OutCubic
+        }
+        SequentialAnimation {
+            id: dismiss
+            NumberAnimation {
+                target: root
+                property: "lift"
+                to: -root.height
+                duration: root.kSlideMs
+                easing.type: Easing.InCubic
+            }
+            ScriptAction { script: root.close() }
         }
         NumberAnimation {
             id: settle
