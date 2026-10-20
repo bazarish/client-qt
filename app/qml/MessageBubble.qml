@@ -402,6 +402,8 @@ Item {
             Rectangle {
                 id: replyQuote
                 visible: delegate.hasReplyQuote
+                // As wide as the quote reads, so a short reply widens to show what it answers.
+                implicitWidth: replyCol.implicitWidth + 16
                 Layout.fillWidth: true
                 Layout.preferredHeight: delegate.hasReplyQuote ? replyCol.implicitHeight + 8 : 0
                 radius: 6
@@ -425,12 +427,14 @@ Item {
                         Layout.fillWidth: true
                     }
                     Label {
-                        // One line of what was said, not a rendering of it.
+                        // A little of what was said, not a rendering of it.
+                        readonly property int kQuoteLines: 2
                         text: delegate.replyInfo ? App.markupPlain(delegate.replyInfo.text) : ""
                         color: Theme.textDim
                         font.pixelSize: 11
+                        wrapMode: Text.Wrap
                         elide: Text.ElideRight
-                        maximumLineCount: 1
+                        maximumLineCount: kQuoteLines
                         Layout.fillWidth: true
                     }
                 }
