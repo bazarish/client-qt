@@ -1985,11 +1985,11 @@
       "zh": "没有人。屏蔽在联系人面板中开启。",
       "ar": "لا أحد. يُفعَّل الحظر من لوحة جهة الاتصال."
     },
-    "Not a bazarish:// invite. An alias starts with !.": {
-      "ru": "Это не приглашение bazarish://. Алиас начинается с «!».",
-      "es": "No es una invitación bazarish://. Un alias empieza por «!».",
-      "zh": "这不是 bazarish:// 邀请。别名以“!”开头。",
-      "ar": "هذه ليست دعوة bazarish://. يبدأ الاسم المستعار بـ «!»."
+    "An alias must start with \"!\", and a full link with \"bazarish://\".": {
+      "ru": "Алиас должен начинаться с «!», а полная ссылка с «bazarish://».",
+      "es": "Un alias debe empezar por «!», y un enlace completo, por «bazarish://».",
+      "zh": "别名必须以“!”开头，完整链接必须以“bazarish://”开头。",
+      "ar": "يجب أن يبدأ الاسم المستعار بـ «!»، والرابط الكامل بـ «bazarish://»."
     },
     "Not configured": {
       "ru": "Не настроено",

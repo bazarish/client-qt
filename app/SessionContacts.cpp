@@ -67,7 +67,7 @@ QString SessionController::inviteProblem(const QString& uri) const
             return tr("That is a fingerprint, not an invite. An invite starts with "
                       "bazarish://invite?");
         }
-        return tr("Not a bazarish:// invite. An alias starts with !.");
+        return tr("An alias must start with \"!\", and a full link with \"bazarish://\".");
     }
     return {};
 }
