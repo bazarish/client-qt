@@ -18,6 +18,21 @@ Popup {
     readonly property int kCloseSize: 44
     readonly property real kScrim: 0.55
 
+    // Which of the machine's cameras is shown; -1 is the system's default one.
+    property int cameraAt: -1
+    readonly property bool canSwitchCamera: cameras.item !== null
+        && cameras.item.videoInputs.length > 1
+    function switchCamera() {
+        const inputs = cameras.item.videoInputs
+        let from = sheet.cameraAt
+        for (let i = 0; from < 0 && i < inputs.length; ++i) {
+            if (inputs[i].isDefault) {
+                from = i
+            }
+        }
+        sheet.cameraAt = (from + 1) % inputs.length
+    }
+
     parent: Overlay.overlay
     x: 0
     y: 0
@@ -58,6 +73,9 @@ Popup {
                 CaptureSession {
                     camera: Camera {
                         active: sheet.cameraActive
+                        cameraDevice: sheet.cameraAt >= 0
+                            ? cameras.item.videoInputs[sheet.cameraAt % cameras.item.videoInputs.length]
+                            : cameras.item.defaultVideoInput
                         onErrorOccurred: function(error, errorString) {
                             sheet.cameraFailed(errorString)
                         }

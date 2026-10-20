@@ -59,26 +59,51 @@ CameraSheet {
             Layout.fillWidth: true
         }
 
-        Button {
-            id: shutter
-            focusPolicy: Theme.pressFocus
+        RowLayout {
             visible: !root.taken
-            enabled: held.ready
-            Accessible.name: qsTr("Take photo")
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: root.kShutter
-            Layout.preferredHeight: root.kShutter
-            padding: 0
-            background: Rectangle {
-                radius: width / 2
-                color: shutter.down ? Theme.textDim : "white"
-                opacity: shutter.enabled ? 1 : 0.4
-                border.width: root.kShutterRing
-                border.color: Theme.bg
+            Layout.fillWidth: true
+            Item { Layout.fillWidth: true; Layout.preferredWidth: 1 }
+            Button {
+                id: shutter
+                focusPolicy: Theme.pressFocus
+                enabled: held.ready
+                Accessible.name: qsTr("Take photo")
+                Layout.preferredWidth: root.kShutter
+                Layout.preferredHeight: root.kShutter
+                padding: 0
+                background: Rectangle {
+                    radius: width / 2
+                    color: shutter.down ? Theme.textDim : "white"
+                    opacity: shutter.enabled ? 1 : 0.4
+                    border.width: root.kShutterRing
+                    border.color: Theme.bg
+                }
+                onClicked: {
+                    root.errorText = ""
+                    held.take()
+                }
             }
-            onClicked: {
-                root.errorText = ""
-                held.take()
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: root.kShutter
+                Button {
+                    anchors.centerIn: parent
+                    visible: root.canSwitchCamera
+                    focusPolicy: Theme.pressFocus
+                    Accessible.name: qsTr("Switch camera")
+                    width: root.kCloseSize
+                    height: root.kCloseSize
+                    padding: 0
+                    background: Rectangle {
+                        radius: width / 2
+                        color: Qt.rgba(0, 0, 0, root.kScrim)
+                    }
+                    contentItem: Item {
+                        Icon { anchors.centerIn: parent; name: "refresh"; color: "white" }
+                    }
+                    onClicked: root.switchCamera()
+                }
             }
         }
 
