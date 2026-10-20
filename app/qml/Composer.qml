@@ -23,6 +23,9 @@ Rectangle {
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
     // How far the attach menu floats above the input bar.
     readonly property int kAttachMenuGap: 8
+    // The Basic style's text area padding, kept so the field looks the same.
+    readonly property int kFieldPadding: 6
+    readonly property int kFieldLeadPadding: 10
 
     function sendPictures(sources) {
         if (root.session) {
@@ -284,6 +287,7 @@ Rectangle {
                 border.color: (input.activeFocus || root.editing) ? Theme.accent : Theme.border
 
                 ScrollView {
+                    id: inputScroll
                     anchors.fill: parent
                     anchors.leftMargin: 14
                     anchors.rightMargin: 8
@@ -292,19 +296,48 @@ Rectangle {
                     clip: true
                     ScrollBar.vertical.policy: ScrollBar.AsNeeded
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    contentWidth: availableWidth
+                    contentHeight: input.height
 
-                    TextArea {
+                    // A Controls TextArea drops the selection of an Android long press when the finger lifts.
+                    TextEdit {
                         id: input
+                        width: inputScroll.availableWidth
+                        height: Math.max(implicitHeight, inputScroll.availableHeight)
+                        topPadding: root.kFieldPadding
+                        bottomPadding: root.kFieldPadding
+                        rightPadding: root.kFieldPadding
+                        leftPadding: root.kFieldLeadPadding
                         enabled: !root.switchedOff
-                        placeholderText: root.switchedOff
-                            ? qsTr("This account is switched off — switch it on to write")
-                            : (root.editing ? qsTr("Edit message…")
-                                : (root.replying ? qsTr("Reply…") : qsTr("Message…")))
                         color: Theme.text
-                        placeholderTextColor: Theme.textDim
-                        wrapMode: TextArea.Wrap
+                        selectionColor: inputScroll.palette.highlight
+                        selectedTextColor: inputScroll.palette.highlightedText
+                        wrapMode: TextEdit.Wrap
                         selectByMouse: true
-                        background: null
+                        onCursorRectangleChanged: {
+                            const view = inputScroll.contentItem
+                            const at = input.cursorRectangle
+                            if (at.top <= view.contentY + input.topPadding) {
+                                view.contentY = Math.max(0, at.top - input.topPadding)
+                            } else if (at.bottom >= view.contentY + view.height - input.bottomPadding) {
+                                view.contentY = Math.min(view.contentHeight - view.height,
+                                    at.bottom - view.height + input.bottomPadding)
+                            }
+                        }
+
+                        Label {
+                            x: input.leftPadding
+                            y: input.topPadding
+                            width: input.width - input.leftPadding - input.rightPadding
+                            visible: input.length === 0 && input.preeditText.length === 0
+                            text: root.switchedOff
+                                ? qsTr("This account is switched off — switch it on to write")
+                                : (root.editing ? qsTr("Edit message…")
+                                    : (root.replying ? qsTr("Reply…") : qsTr("Message…")))
+                            color: Theme.textDim
+                            font: input.font
+                            elide: Text.ElideRight
+                        }
                         // Enter sends; Shift+Enter inserts a newline. Both the main
                         // Return and the keypad Enter are handled.
                         Keys.onReturnPressed: function(event) {
