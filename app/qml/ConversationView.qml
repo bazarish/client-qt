@@ -400,7 +400,9 @@ Item {
                 visible: !listPane.building
                 spacing: 6
                 topMargin: 10
-                bottomMargin: 10
+                // Twice the gap between bubbles: the end of the chat reads as the end.
+                readonly property int kEndGapInSpacings: 2
+                bottomMargin: spacing * kEndGapInSpacings
                 model: listPane.building ? null : (root.session ? root.session.conversation : null)
                 reuseItems: true
                 delegate: MessageBubble {
@@ -477,6 +479,8 @@ Item {
                 function scrollToEnd() {
                     autoScrolling = true
                     positionViewAtEnd()
+                    // That puts the last row on the edge, leaving out the bottom margin a rebound shows.
+                    contentY = Math.max(originY - topMargin, originY + contentHeight + bottomMargin - height)
                     autoScrolling = false
                 }
 
