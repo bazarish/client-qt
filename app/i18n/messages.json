@@ -4666,6 +4666,12 @@
       "es": "Seleccionar todo",
       "zh": "全选",
       "ar": "تحديد الكل"
+    },
+    "Select text": {
+      "ru": "Выделить текст",
+      "es": "Seleccionar texto",
+      "zh": "选择文本",
+      "ar": "تحديد النص"
     }
   }
 }

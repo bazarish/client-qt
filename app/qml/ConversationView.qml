@@ -64,6 +64,12 @@ Item {
         messages.highlightId = localId
         highlightTimer.restart()
     }
+    function endTextSelection() {
+        if (messages.selectingText) {
+            messages.selectingText.deselect()
+        }
+        messages.selectingText = null
+    }
     function showQuoted(localId) {
         const row = messages.model ? messages.model.rowForId(localId) : -1
         if (row >= 0) {
@@ -397,6 +403,8 @@ Item {
 
             ListView {
                 id: messages
+                // A bubble's text a phone is selecting, null when none.
+                property TextEdit selectingText: null
                 anchors.fill: parent
                 clip: true
                 visible: !listPane.building
@@ -429,6 +437,10 @@ Item {
                     }
                     onForwardRequested: function(e2eId) { forwardSheet.openFor(e2eId) }
                     onQuoteRequested: function(localId) { root.showQuoted(localId) }
+                    onSelectTextRequested: function(text) {
+                        messages.selectingText = text
+                        text.selectAll()
+                    }
                     onImageRequested: function(url, localId, name) {
                         imageViewer.show(url, localId, name)
                     }
@@ -718,5 +730,16 @@ Item {
         session: root.session
         visible: !root.session || (root.session.activeGroupWrite && !root.lookingUp)
     }
+    }
+
+    SelectionTools {
+        id: bubbleSelection
+        anchors.fill: parent
+        visible: App.mobile
+        field: messages.selectingText
+        view: messages
+        bounds: messages
+        active: messages.selectingText !== null
+        onDismissed: root.endTextSelection()
     }
 }

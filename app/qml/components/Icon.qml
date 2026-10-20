@@ -100,6 +100,7 @@ Item {
                     case "bookmark": return "M 7 4 H 17 V 20 L 12 15.5 L 7 20 Z"
                     case "pin":     return "M 9 3 L 15 3 L 14 10 L 18 13 L 6 13 L 10 10 Z M 12 13 L 12 21"
                     case "copy":    return "M 9 9 L 20 9 L 20 20 L 9 20 Z M 5 15 L 4 15 L 4 4 L 15 4 L 15 5"
+                    case "cursor":  return "M 9 4 L 15 4 M 12 4 L 12 20 M 9 20 L 15 20"
                     case "edit":    return "M 4 20 L 4 16 L 16 4 L 20 8 L 8 20 Z M 14 6 L 18 10"
                     case "stop":    return "M 7 7 L 17 7 L 17 17 L 7 17 Z"
                     case "burger":  return "M 4 7 L 20 7 M 4 12 L 20 12 M 4 17 L 20 17"

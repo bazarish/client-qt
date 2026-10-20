@@ -25,6 +25,7 @@ Item {
     // Pass this message on to another chat: the view asks which one.
     signal forwardRequested(string e2eId)
     signal quoteRequested(var localId)
+    signal selectTextRequested(Item text)
     // An alias written in the body was tapped: the view offers the add-a-contact
     // form with the name filled in. Nothing is sent.
     signal aliasRequested(string alias)
@@ -217,7 +218,13 @@ Item {
     Timer { id: busyTimer; interval: 6000; onTriggered: delegate.busy = false }
     // The view hands a scrolled-away bubble to another row: it takes that row's look at once.
     property bool pooled: false
+    // While a bubble's text is being selected the rows give their taps and swipes to the selection.
+    readonly property bool textSelecting: !!(delegate.ListView.view && delegate.ListView.view.selectingText)
     ListView.onPooled: {
+        if (delegate.ListView.view && delegate.ListView.view.selectingText === bodyText) {
+            bodyText.deselect()
+            delegate.ListView.view.selectingText = null
+        }
         pooled = true
         springBack.stop()
         pull = 0
@@ -245,7 +252,7 @@ Item {
     }
     DragHandler {
         target: null
-        enabled: delegate.actionable
+        enabled: delegate.actionable && !delegate.textSelecting
         acceptedDevices: PointerDevice.TouchScreen
         yAxis.enabled: false
         onActiveTranslationChanged: {
@@ -358,7 +365,7 @@ Item {
     }
     TapHandler {
         id: holdHandler
-        enabled: !delegate.isSystem
+        enabled: !delegate.isSystem && !delegate.textSelecting
         acceptedButtons: Qt.LeftButton
         onLongPressed: delegate.openMenu(holdHandler.point.scenePosition)
     }
@@ -381,7 +388,7 @@ Item {
     // On a phone the text takes no touch, so a tap on it reaches the row: a link is followed,
     // a tap anywhere else on the bubble opens the reactions, and one beside it the menu.
     TapHandler {
-        enabled: App.mobile && !delegate.isSystem
+        enabled: App.mobile && !delegate.isSystem && !delegate.textSelecting
         acceptedButtons: Qt.LeftButton
         onTapped: function(point) {
             const scene = point.scenePosition
@@ -1374,6 +1381,14 @@ Item {
                             && delegate.fullText.length > 0
                         height: visible ? implicitHeight : 0
                         onTriggered: App.copyText(delegate.fullText)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Select text")
+                        iconName: "cursor"
+                        // A phone's finger cannot drag across the text the way a mouse does.
+                        visible: App.mobile && bodyText.visible
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.selectTextRequested(bodyText)
                     }
                     ContextMenuItem {
                         text: qsTr("Edit")
