@@ -29,7 +29,8 @@ Popup {
     // At the first or the last picture the pull gives this share of the finger's travel.
     readonly property real kEdgeResistance: 0.35
     // Lifted this far up, the picture is let go and the viewer closes.
-    readonly property int kDismissLift: 120
+    readonly property int kDismissLift: 60
+    readonly property int kDismissMs: 110
     readonly property int kButtonSize: 44
     readonly property int kButtonMargin: 12
     readonly property real kButtonScrim: 0.55
@@ -299,7 +300,7 @@ Popup {
                 target: root
                 property: "lift"
                 to: -root.height
-                duration: root.kSlideMs
+                duration: root.kDismissMs
                 easing.type: Easing.InCubic
             }
             ScriptAction { script: root.close() }
