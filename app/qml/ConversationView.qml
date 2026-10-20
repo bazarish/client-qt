@@ -531,31 +531,8 @@ Item {
                     // the bottom. Left set, the follow rule fires while the page
                     // lands and throws the user back to the newest message.
                     stickToBottom = false
-                    // Where the reader is, exactly: the row at the top of the view
-                    // and how far into it the view has scrolled. Both are known
-                    // rather than guessed - that delegate is on screen, so it
-                    // exists and its position is real. Putting the same row back at
-                    // the same offset afterwards moves nothing on screen at all,
-                    // which is the whole difference from positioning by index: that
-                    // asks the view to place a row by the heights of rows above it,
-                    // and the rows above have never been built.
-                    const topRow = indexAt(width / 2, contentY + topMargin + 2)
-                    const topItem = topRow >= 0 ? itemAtIndex(topRow) : null
-                    const intoItem = topItem ? contentY - topItem.y : 0
-                    const added = root.session.loadOlderMessages()
-                    if (added > 0 && topRow >= 0) {
-                        forceLayout()  // place the inserted rows before reading back
-                        const sameRow = itemAtIndex(topRow + added)
-                        autoScrolling = true
-                        if (sameRow) {
-                            contentY = sameRow.y + intoItem
-                        } else {
-                            positionViewAtIndex(topRow + added, ListView.Beginning)
-                        }
-                        autoScrolling = false
-                    }
-                    // Cleared after this pass, so the reposition above cannot start
-                    // another page inside itself.
+                    // The view keeps the rows on screen in place itself; setting contentY would stop a fling.
+                    root.session.loadOlderMessages()
                     Qt.callLater(function() { messages.paging = false })
                 }
 
