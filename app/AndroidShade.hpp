@@ -23,6 +23,7 @@ public:
     static void startRinging();
     static void stopRinging();
     static void listening();
+    static void buzzForMessage();
 
     void stop();
 

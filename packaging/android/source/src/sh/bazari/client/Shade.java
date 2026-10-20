@@ -15,6 +15,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.os.VibrationAttributes;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -53,6 +54,10 @@ public final class Shade {
     private static final long RING_PULSE_MILLIS = 800;
     private static final long RING_PAUSE_MILLIS = 800;
     private static final int REPEAT_FROM_START = 0;
+    private static final int NO_REPEAT = -1;
+    private static final long MESSAGE_PULSE_MILLIS = 250;
+    private static final long MESSAGE_GAP_MILLIS = 250;
+    private static long lastBuzzAt = 0;
 
     static Context app;
     static String turnOff = "";
@@ -257,8 +262,47 @@ public final class Shade {
         buzzing = vibrator;
     }
 
-    // Played on the notification stream, which the ringer mode and Do not disturb silence.
+    // Asked as a notice on this channel would be: the user's setting for it and Do not disturb.
+    private static boolean mayInterrupt(String channelId) {
+        NotificationManager manager = app.getSystemService(NotificationManager.class);
+        return manager.areNotificationsEnabled()
+            && manager.getNotificationChannel(channelId).getImportance()
+                >= NotificationManager.IMPORTANCE_DEFAULT
+            && manager.getCurrentInterruptionFilter() == NotificationManager.INTERRUPTION_FILTER_ALL;
+    }
+
+    // A message that lands while the window is in front is felt instead of shown.
+    public static void buzzForMessage() {
+        NotificationManager manager = app.getSystemService(NotificationManager.class);
+        if (!mayInterrupt(CHANNEL_MESSAGES)
+                || !manager.getNotificationChannel(CHANNEL_MESSAGES).shouldVibrate()) {
+            return;
+        }
+        long buzzMillis = MESSAGE_PULSE_MILLIS + MESSAGE_GAP_MILLIS + MESSAGE_PULSE_MILLIS;
+        long now = SystemClock.elapsedRealtime();
+        if (now - lastBuzzAt < buzzMillis) {
+            return;
+        }
+        lastBuzzAt = now;
+        Vibrator vibrator = app.getSystemService(VibratorManager.class).getDefaultVibrator();
+        VibrationEffect pulses = VibrationEffect.createWaveform(
+            new long[] {0, MESSAGE_PULSE_MILLIS, MESSAGE_GAP_MILLIS, MESSAGE_PULSE_MILLIS}, NO_REPEAT);
+        // Notification usage: the phone's notification vibration setting and ringer mode apply.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vibrator.vibrate(
+                pulses, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_NOTIFICATION));
+        } else {
+            vibrator.vibrate(pulses, new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build());
+        }
+    }
+
+    // Played on the notification stream, which the ringer mode silences.
     private static void chimeForReaction() {
+        if (!mayInterrupt(CHANNEL_REACTIONS)) {
+            return;
+        }
         MediaPlayer chime = new MediaPlayer();
         chime.setAudioAttributes(new AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_NOTIFICATION)

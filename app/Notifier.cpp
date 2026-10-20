@@ -37,10 +37,13 @@ Notifier::Notifier(CoreHost& core, QObject* const parent)
 void Notifier::announce(const QString& accountId, const QString& peer, const QString& title,
     const QString& body, const bool reaction)
 {
-    if (!core_.notificationsEnabled() || core_.windowActive()) {
+    if (!core_.notificationsEnabled() || !core_.ringingPeer().isEmpty()) {
         return;
     }
-    if (!core_.ringingPeer().isEmpty()) {
+    if (core_.windowActive()) {
+        if (!reaction) {
+            emit arrivedInSight();
+        }
         return;
     }
     emit announced(accountId, peer, title, body, reaction);

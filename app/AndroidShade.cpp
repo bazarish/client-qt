@@ -95,6 +95,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
     QJniObject::callStaticMethod<void>(kShade, "cancelCall", "()V");
 
     connect(&notifier, &Notifier::announced, this, &AndroidShade::notifyMessage);
+    connect(&notifier, &Notifier::arrivedInSight, this, &AndroidShade::buzzForMessage);
     connect(&core_, &CoreHost::notificationsEnabledChanged, this, &AndroidShade::show);
     connect(&core_, &CoreHost::accountsChanged, this, [this]() {
         const QString line = presenceLine();
@@ -147,6 +148,11 @@ void AndroidShade::startRinging()
 void AndroidShade::stopRinging()
 {
     QJniObject::callStaticMethod<void>(kShade, "stopRinging", "()V");
+}
+
+void AndroidShade::buzzForMessage()
+{
+    QJniObject::callStaticMethod<void>(kShade, "buzzForMessage", "()V");
 }
 
 void AndroidShade::listening()

@@ -21,6 +21,7 @@ public:
 signals:
     void announced(const QString& accountId, const QString& peer, const QString& title,
         const QString& body, bool reaction);
+    void arrivedInSight();
 
 private:
     void announce(const QString& accountId, const QString& peer, const QString& title,
