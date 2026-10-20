@@ -87,6 +87,15 @@ void attachConsole()
 
 #endif
 
+#ifdef Q_OS_ANDROID
+namespace {
+
+// Qt's SurfaceView: the TextureView it picked for the window re-drew every frame in Java.
+constexpr const char* kSurfaceViewContainer = "0";
+
+}  // namespace
+#endif
+
 namespace {
 // macOS does not pass a bazarish:// link on the command line: it hands it to the
 // running application as an event, and starts no second copy to do it.
@@ -199,6 +208,7 @@ int main(int argc, char** argv)
     if (argc > 1 && std::strcmp(argv[argc - 1], "--core") == 0) {
         return bazarish::app::runCore(argc, argv);
     }
+    qputenv("QT_ANDROID_SURFACE_CONTAINER_TYPE", kSurfaceViewContainer);
 #endif
 #ifdef Q_OS_LINUX
     useTheDesktopsDialogs();
