@@ -49,6 +49,30 @@ Item {
         deleteMessageDialog.open()
     }
 
+    // A message already on screen is only lit; one off screen is brought to the middle first.
+    function showMessage(row, localId) {
+        const item = messages.itemAtIndex(row)
+        const inSight = item !== null && item.y >= messages.contentY
+            && item.y + item.height <= messages.contentY + messages.height
+        if (!inSight) {
+            pinTimer.stop()
+            messages.stickToBottom = false
+            messages.autoScrolling = true
+            messages.positionViewAtIndex(row, ListView.Center)
+            messages.autoScrolling = false
+        }
+        messages.highlightId = localId
+        highlightTimer.restart()
+    }
+    function showQuoted(localId) {
+        const row = messages.model ? messages.model.rowForId(localId) : -1
+        if (row >= 0) {
+            showMessage(row, localId)
+        } else if (session) {
+            session.openConversationAtMessage(session.activePeer, localId)
+        }
+    }
+
     // A message counts as read only on a genuine read: this view is open, the app
     // window is focused, and the message is within the visible scroll area. We ack
     // the newest incoming message at or before the bottom-most visible row.
@@ -79,16 +103,11 @@ Item {
         target: root.session
         function onContactRetryExhausted(fingerprint) { root.retryPeer = fingerprint }
         function onResendFilePickRequested() { resendPickDialog.open() }
-        // Search jump: scroll the chosen message into view and flash it.
         function onScrollToMessage(localId) {
             Qt.callLater(function() {
                 const r = messages.model ? messages.model.rowForId(localId) : -1
                 if (r >= 0) {
-                    messages.autoScrolling = true
-                    messages.positionViewAtIndex(r, ListView.Center)
-                    messages.autoScrolling = false
-                    messages.highlightId = localId
-                    highlightTimer.restart()
+                    root.showMessage(r, localId)
                 }
             })
         }
@@ -404,6 +423,7 @@ Item {
                         reactionPicker.openAt(e2eId, sceneX, sceneY)
                     }
                     onForwardRequested: function(e2eId) { forwardSheet.openFor(e2eId) }
+                    onQuoteRequested: function(localId) { root.showQuoted(localId) }
                     onImageRequested: function(url, localId, name) {
                         imageViewer.show(url, localId, name)
                     }

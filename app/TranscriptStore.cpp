@@ -567,6 +567,15 @@ QVector<StoredMessage> TranscriptReader::newerMessages(
     return result;
 }
 
+QVector<StoredMessage> TranscriptReader::messagesAround(
+    const QString& peer, const qint64 id, const int perSide) const
+{
+    QVector<StoredMessage> result = olderMessages(peer, id + 1, perSide + 1);
+    result += newerMessages(peer, id, perSide);
+    sortByOrder(result);
+    return result;
+}
+
 bool TranscriptReader::hasMessagesBefore(const QString& peer, qint64 id) const
 {
     Query query(db_);

@@ -142,6 +142,10 @@ int main(int argc, char** argv)
         CHECK(newer.size() == 2);
         CHECK(newer[0].id == ids[3] && newer[1].id == ids[4]);
 
+        const QVector<StoredMessage> around = store.messagesAround("carol", ids[2], 1);
+        CHECK(around.size() == 3);
+        CHECK(around[0].id == ids[1] && around[1].id == ids[2] && around[2].id == ids[3]);
+
         const QVector<SearchHit> alpha = store.searchInPeer("carol", "ALPHA");
         CHECK(alpha.size() == 2);
         CHECK(alpha[0].id == ids[4] && alpha[1].id == ids[0]);

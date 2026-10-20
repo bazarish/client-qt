@@ -24,6 +24,7 @@ Item {
     signal reactRequested(string e2eId, real sceneX, real sceneY)
     // Pass this message on to another chat: the view asks which one.
     signal forwardRequested(string e2eId)
+    signal quoteRequested(var localId)
     // An alias written in the body was tapped: the view offers the add-a-contact
     // form with the name filled in. Nothing is sent.
     signal aliasRequested(string alias)
@@ -420,10 +421,7 @@ Item {
                 }
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
                 TapHandler {
-                    onTapped: if (delegate.session) {
-                        delegate.session.openConversationAtMessage(
-                            delegate.session.activePeer, delegate.replyInfo.localId)
-                    }
+                    onTapped: delegate.quoteRequested(delegate.replyInfo.localId)
                 }
             }
 

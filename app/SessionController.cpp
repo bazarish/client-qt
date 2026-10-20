@@ -602,7 +602,7 @@ QVariantMap SessionController::scrollFor(const QString& peer) const
 void SessionController::openConversationAtMessage(const QString& peer, qint64 localId)
 {
     activateConversation(peer);
-    const QVector<StoredMessage> win = store_.olderMessages(peer, localId + 1, kPageSize);
+    const QVector<StoredMessage> win = store_.messagesAround(peer, localId, kPageSize);
     oldestLoadedId_ = win.isEmpty() ? 0 : lowestId(win);
     newestLoadedId_ = win.isEmpty() ? 0 : highestId(win);
     hasMoreOlder_ = !win.isEmpty() && store_.hasMessagesBefore(peer, oldestLoadedId_);

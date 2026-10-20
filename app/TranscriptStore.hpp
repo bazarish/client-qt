@@ -106,6 +106,7 @@ public:
     QVector<StoredMessage> latestMessages(const QString& peer, int limit) const;
     QVector<StoredMessage> olderMessages(const QString& peer, qint64 beforeId, int limit) const;
     QVector<StoredMessage> newerMessages(const QString& peer, qint64 afterId, int limit) const;
+    QVector<StoredMessage> messagesAround(const QString& peer, qint64 id, int perSide) const;
     StoredMessage nextVoiceAfter(const QString& peer, qint64 afterId) const;
     bool hasMessagesBefore(const QString& peer, qint64 id) const;
     // The chat's auto-delete timer in seconds, 0 when it has none.
