@@ -168,16 +168,23 @@ Item {
     }
     // Open the overlay when a call becomes live (unless it was collapsed), and close
     // it - clearing the collapsed flag - when the call returns to idle.
+    function followCall() {
+        if (!root.session) {
+            return
+        }
+        if (root.session.callState === "idle") {
+            callScreen.close()
+            root.callMinimized = false
+        } else if (!root.callMinimized && !callScreen.opened) {
+            callScreen.open()
+        }
+    }
+    // A window started by the call learns of it before this view exists.
+    Component.onCompleted: followCall()
+    onSessionChanged: followCall()
     Connections {
         target: root.session
-        function onCallChanged() {
-            if (root.session.callState === "idle") {
-                callScreen.close()
-                root.callMinimized = false
-            } else if (!root.callMinimized && !callScreen.opened) {
-                callScreen.open()
-            }
-        }
+        function onCallChanged() { root.followCall() }
     }
 
     Item {
