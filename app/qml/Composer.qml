@@ -26,6 +26,13 @@ Rectangle {
     // The Basic style's text area padding, kept so the field looks the same.
     readonly property int kFieldPadding: 6
     readonly property int kFieldLeadPadding: 10
+    readonly property var kForms: [
+        { glyph: "**", name: "bold", open: "**", close: "**" },
+        { glyph: "*", name: "italic", open: "*", close: "*" },
+        { glyph: "~~", name: "strike", open: "~~", close: "~~" },
+        { glyph: "```", name: "block", open: "```", close: "```" },
+        { glyph: "!!", name: "command", open: "!!", close: "!!" }
+    ]
 
     function sendPictures(sources) {
         if (root.session) {
@@ -178,7 +185,7 @@ Rectangle {
         // recognised on the other side by what it is.
         Flow {
             id: formatBar
-            visible: input.activeFocus && input.selectedText.length > 0
+            visible: !App.mobile && input.activeFocus && input.selectedText.length > 0
             Layout.fillWidth: true
             Layout.leftMargin: 8
             Layout.rightMargin: 8
@@ -186,45 +193,11 @@ Rectangle {
             spacing: 6
 
             Repeater {
-                model: [
-                    { glyph: "**", name: "bold", open: "**", close: "**" },
-                    { glyph: "*", name: "italic", open: "*", close: "*" },
-                    { glyph: "~~", name: "strike", open: "~~", close: "~~" },
-                    { glyph: "```", name: "block", open: "```", close: "```" },
-                    { glyph: "!!", name: "command", open: "!!", close: "!!" }
-                ]
-                delegate: Button {
-                    id: formatButton
+                model: root.kForms
+                delegate: FormatChip {
                     required property var modelData
-                    // The input keeps the focus and therefore the selection:
-                    // these buttons act on it, and a press that took the focus
-                    // would take away the thing being acted on.
-                    focusPolicy: Qt.NoFocus
-                    implicitHeight: 24
-                    padding: 6
-                    background: Rectangle {
-                        radius: Theme.radiusSmall
-                        color: formatButton.hovered ? Theme.surfaceAlt : "transparent"
-                        border.color: Theme.border
-                    }
-                    contentItem: Row {
-                        spacing: 4
-                        Label {
-                            text: formatButton.modelData.glyph
-                            color: Theme.accent
-                            font.pixelSize: Theme.fontSmall
-                            font.family: "monospace"
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        Label {
-                            text: formatButton.modelData.name
-                            color: Theme.textDim
-                            font.pixelSize: Theme.fontSmall
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                    }
-                    onClicked: root.wrapSelection(
-                        formatButton.modelData.open, formatButton.modelData.close)
+                    form: modelData
+                    onClicked: root.wrapSelection(modelData.open, modelData.close)
                 }
             }
         }
@@ -314,6 +287,14 @@ Rectangle {
                         selectedTextColor: inputScroll.palette.highlightedText
                         wrapMode: TextEdit.Wrap
                         selectByMouse: true
+                        inputMethodHints: App.mobile ? Qt.ImhNoTextHandles : Qt.ImhNone
+                        TapHandler {
+                            enabled: App.mobile
+                            acceptedDevices: PointerDevice.TouchScreen
+                            longPressThreshold: selectionTools.kLongPressSeconds
+                            onTapped: selectionTools.tapped()
+                            onLongPressed: selectionTools.longPressed()
+                        }
                         onCursorRectangleChanged: {
                             const view = inputScroll.contentItem
                             const at = input.cursorRectangle
@@ -378,6 +359,23 @@ Rectangle {
                 enabled: !root.switchedOff
                 Layout.alignment: Qt.AlignBottom
                 onClicked: root.send()
+            }
+        }
+    }
+
+    SelectionTools {
+        id: selectionTools
+        anchors.fill: parent
+        visible: App.mobile
+        field: input
+        view: inputScroll.contentItem
+        forms: root.kForms
+        onFormChosen: function(open, close) { root.wrapSelection(open, close) }
+        onPasteRequested: {
+            if (App.clipboardHasImage()) {
+                root.sendClipboardPicture()
+            } else {
+                input.paste()
             }
         }
     }

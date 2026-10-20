@@ -4648,6 +4648,24 @@
       "es": "El sitio no respondió por I2P",
       "zh": "网站没有通过 I2P 回应",
       "ar": "لم يستجب الموقع عبر I2P"
+    },
+    "Cut": {
+      "ru": "Вырезать",
+      "es": "Cortar",
+      "zh": "剪切",
+      "ar": "قص"
+    },
+    "Paste": {
+      "ru": "Вставить",
+      "es": "Pegar",
+      "zh": "粘贴",
+      "ar": "لصق"
+    },
+    "Select all": {
+      "ru": "Выбрать все",
+      "es": "Seleccionar todo",
+      "zh": "全选",
+      "ar": "تحديد الكل"
     }
   }
 }

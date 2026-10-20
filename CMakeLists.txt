@@ -374,6 +374,8 @@ if(Qt6_FOUND)
             app/qml/components/AvatarCropDialog.qml
             app/qml/components/Toggle.qml
             app/qml/components/ContextMenu.qml
+            app/qml/components/FormatChip.qml
+            app/qml/components/SelectionTools.qml
             app/qml/components/ContextMenuItem.qml
             app/qml/components/CameraGate.qml
             app/qml/components/Dropdown.qml
