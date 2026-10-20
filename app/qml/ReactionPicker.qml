@@ -41,6 +41,8 @@ Popup {
         const typing = App.keyboardInset > 0
         root.returnFocusTo = typing && root.parent ? root.parent.Window.activeFocusItem : null
         root.focus = !typing
+        // Left set by a tap into it last time, the window would hand the field its focus again.
+        customField.focus = false
         root.open()
         if (typing) {
             customField.forceActiveFocus()
