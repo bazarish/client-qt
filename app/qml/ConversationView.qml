@@ -371,6 +371,8 @@ Item {
             id: listPane
             Layout.fillWidth: true
             Layout.fillHeight: true
+            // Qt hands a touch to the handlers beneath a popup too: the bubbles took it from the viewer.
+            enabled: !imageViewer.visible
 
             // Building a screenful of bubbles takes a moment, and doing it inside
             // the click that switched accounts made the click itself feel stuck.

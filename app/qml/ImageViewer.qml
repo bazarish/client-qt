@@ -15,6 +15,7 @@ Popup {
     property var session: null
 
     readonly property real kMaxZoom: 4
+    readonly property real kDoubleTapZoom: 2.5
     // One notch of a mouse wheel; a wheel notch is 120 in angleDelta.
     readonly property real kWheelStep: 1.25
     readonly property int kWheelNotch: 120
@@ -128,8 +129,12 @@ Popup {
                         if (mouse.button === Qt.RightButton) {
                             pictureMenu.popup()
                         } else {
-                            root.close()
+                            closing.start()
                         }
+                    }
+                    onDoubleClicked: function(mouse) {
+                        closing.stop()
+                        view.zoomTo(view.zoomed ? 1 : root.kDoubleTapZoom, Qt.point(mouse.x, mouse.y))
                     }
                     onPressAndHold: pictureMenu.popup()
                     onWheel: function(wheel) {
@@ -193,6 +198,12 @@ Popup {
                 Icon { anchors.centerIn: parent; name: "save"; color: "white" }
             }
             onClicked: root.session.savePictureToDownloads(root.e2eId, root.name)
+        }
+        // A tap waits out the double-tap interval: a second one zooms instead of closing.
+        Timer {
+            id: closing
+            interval: Application.styleHints.mouseDoubleClickInterval
+            onTriggered: root.close()
         }
         NumberAnimation {
             id: settle
