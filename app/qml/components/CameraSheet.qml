@@ -11,7 +11,6 @@ Popup {
     default property alias controls: controlLayer.data
     property bool cameraActive: true
     readonly property VideoOutput preview: live.item
-    readonly property ImageCapture imageCapture: live.item ? live.item.shutter : null
     signal cameraFailed(string reason)
 
     readonly property int kFrame: 8
@@ -55,7 +54,6 @@ Popup {
             active: sheet.visible && parent.haveCamera
             sourceComponent: VideoOutput {
                 id: view
-                readonly property ImageCapture shutter: still
                 fillMode: VideoOutput.PreserveAspectCrop
                 CaptureSession {
                     camera: Camera {
@@ -64,7 +62,6 @@ Popup {
                             sheet.cameraFailed(errorString)
                         }
                     }
-                    imageCapture: ImageCapture { id: still }
                     videoOutput: view
                 }
             }

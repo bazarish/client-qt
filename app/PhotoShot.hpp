@@ -3,13 +3,12 @@
 
 #include "Picture.hpp"
 
-#include <QImageCapture>
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QVideoSink>
 #include <QtQml/qqmlregistration.h>
 
-class QVideoFrame;
 class QImage;
 
 namespace bazarish::app {
@@ -17,14 +16,17 @@ namespace bazarish::app {
 class PhotoShot : public QObject {
     Q_OBJECT
     QML_ELEMENT
-    Q_PROPERTY(QImageCapture* capture READ capture WRITE setCapture NOTIFY captureChanged)
+    // The still is the preview's frame: a separate still capture re-metered and overexposed.
+    Q_PROPERTY(QVideoSink* videoSink READ videoSink WRITE setVideoSink NOTIFY videoSinkChanged)
+    Q_PROPERTY(bool ready READ ready NOTIFY readyChanged)
     Q_PROPERTY(QString source READ source NOTIFY shotChanged)
 public:
     explicit PhotoShot(QObject* parent = nullptr);
     ~PhotoShot() override;
 
-    QImageCapture* capture() const { return capture_; }
-    void setCapture(QImageCapture* capture);
+    QVideoSink* videoSink() const { return sink_; }
+    void setVideoSink(QVideoSink* sink);
+    bool ready() const { return ready_; }
 
     QString source() const;
 
@@ -34,16 +36,17 @@ public:
     Q_INVOKABLE void discard();
 
 signals:
-    void captureChanged();
+    void videoSinkChanged();
+    void readyChanged();
     void shotChanged();
     void failed(const QString& reason);
 
 private:
-    void hold(const QVideoFrame& frame);
     void publish(const QImage& image);
     void release();
 
-    QPointer<QImageCapture> capture_;
+    QPointer<QVideoSink> sink_;
+    bool ready_ = false;
     PreparedPicture picture_;
     QString key_;
 };

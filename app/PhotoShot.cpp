@@ -5,6 +5,7 @@
 #include "SessionShared.hpp"
 
 #include <QImage>
+#include <QTransform>
 #include <QVideoFrame>
 
 namespace bazarish::app {
@@ -29,33 +30,39 @@ QString PhotoShot::source() const
     return key_.isEmpty() ? QString() : QStringLiteral("image://picture/") + key_;
 }
 
-void PhotoShot::setCapture(QImageCapture* const capture)
+void PhotoShot::setVideoSink(QVideoSink* const sink)
 {
-    if (capture_ == capture) {
+    if (sink_ == sink) {
         return;
     }
-    if (capture_ != nullptr) {
-        disconnect(capture_, nullptr, this, nullptr);
+    if (sink_ != nullptr) {
+        disconnect(sink_, nullptr, this, nullptr);
     }
-    capture_ = capture;
-    if (capture_ != nullptr) {
-        connect(capture_, &QImageCapture::imageAvailable, this,
-            [this](int, const QVideoFrame& frame) { hold(frame); });
-        connect(capture_, &QImageCapture::errorOccurred, this,
-            [this](int, QImageCapture::Error, const QString& message) { emit failed(message); });
+    sink_ = sink;
+    ready_ = false;
+    if (sink_ != nullptr) {
+        connect(sink_, &QVideoSink::videoFrameChanged, this, [this](const QVideoFrame& frame) {
+            if (!ready_ && frame.isValid()) {
+                ready_ = true;
+                emit readyChanged();
+            }
+        });
     }
-    emit captureChanged();
+    emit videoSinkChanged();
+    emit readyChanged();
 }
 
 void PhotoShot::take()
 {
-    if (capture_ == nullptr) {
+    const QVideoFrame frame = sink_ != nullptr ? sink_->videoFrame() : QVideoFrame();
+    if (!frame.isValid()) {
         emit failed(QStringLiteral("there is no camera to take a photograph with"));
         return;
     }
-    if (capture_->capture() < 0) {
-        emit failed(capture_->errorString());
-    }
+    // toImage() leaves out the frame's own turn and mirror, which only the preview applies.
+    QTransform turn;
+    turn.rotate(static_cast<qreal>(frame.rotation()));
+    publish(frame.toImage().transformed(turn).mirrored(frame.mirrored(), false));
 }
 
 void PhotoShot::discard()
@@ -75,15 +82,6 @@ void PhotoShot::release()
     PictureStore::instance().remove(key_);
     key_.clear();
     picture_ = {};
-}
-
-void PhotoShot::hold(const QVideoFrame& frame)
-{
-    // Delivered from inside the camera's own capture: anything the new still
-    // sets off - stopping the camera among it - has to wait for that to return.
-    const QImage image = frame.toImage();
-    QMetaObject::invokeMethod(
-        this, [this, image]() { publish(image); }, Qt::QueuedConnection);
 }
 
 void PhotoShot::publish(const QImage& image)

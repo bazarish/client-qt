@@ -27,7 +27,7 @@ CameraSheet {
 
     PhotoShot {
         id: held
-        capture: root.imageCapture
+        videoSink: root.preview ? root.preview.videoSink : null
         onShotChanged: root.shotSource = held.source
         onFailed: function(reason) { root.errorText = reason }
     }
@@ -63,7 +63,7 @@ CameraSheet {
             id: shutter
             focusPolicy: Theme.pressFocus
             visible: !root.taken
-            enabled: root.imageCapture !== null && root.imageCapture.readyForCapture
+            enabled: held.ready
             Accessible.name: qsTr("Take photo")
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: root.kShutter
