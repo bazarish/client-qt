@@ -365,7 +365,7 @@ Item {
         return parts.some(part => delegate.within(part, scene))
     }
     // On a phone the text takes no touch, so a tap on it reaches the row: a link is followed,
-    // and a tap anywhere else on the bubble opens the reactions.
+    // a tap anywhere else on the bubble opens the reactions, and one beside it the menu.
     TapHandler {
         enabled: App.mobile && !delegate.isSystem
         acceptedButtons: Qt.LeftButton
@@ -379,8 +379,9 @@ Item {
                     return
                 }
             }
-            if (delegate.reactable && delegate.within(bubble, scene)
-                && !delegate.onTappablePart(scene)) {
+            if (!delegate.within(bubble, scene)) {
+                delegate.openMenu(scene)
+            } else if (delegate.reactable && !delegate.onTappablePart(scene)) {
                 delegate.reactRequested(model.e2eId, scene.x, scene.y)
             }
         }
