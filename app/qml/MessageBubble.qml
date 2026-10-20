@@ -143,8 +143,6 @@ Item {
 
         Label {
             id: sysLabel
-            // A notice can quote what a correspondent sent: it is never read as markup.
-            textFormat: Text.PlainText
             text: model.text
             color: (delegate.isAddFailed || delegate.isRoutingFailed)
                 ? Theme.danger : Theme.textDim
