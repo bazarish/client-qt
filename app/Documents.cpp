@@ -247,6 +247,22 @@ std::unique_ptr<client::FileOutput> openOutput(const QString& dest)
     return client::fileTargetAt(toPath(dest)).open();
 }
 
+void saveIntoFolder(const QDir& folder, const QString& fileName, const QByteArray& bytes)
+{
+    if (!folder.mkpath(QStringLiteral("."))) {
+        throw std::runtime_error("the folder to save into cannot be made");
+    }
+    const QFileInfo wanted(fileName);
+    QString path = folder.filePath(fileName);
+    for (int copy = 1; QFileInfo::exists(path); ++copy) {
+        path = folder.filePath(QStringLiteral("%1 (%2).%3")
+                .arg(wanted.completeBaseName()).arg(copy).arg(wanted.suffix()));
+    }
+    const std::unique_ptr<client::FileOutput> out = openOutput(path);
+    out->write(bytes.constData(), static_cast<std::size_t>(bytes.size()));
+    out->finish();
+}
+
 void saveIntoDownloads(
     const QString& fileName, [[maybe_unused]] const QString& mime, const QByteArray& bytes)
 {
@@ -267,19 +283,8 @@ void saveIntoDownloads(
         throw std::runtime_error("Downloads did not take the file");
     }
 #else
-    const QDir downloads(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
-    if (!downloads.mkpath(QStringLiteral("."))) {
-        throw std::runtime_error("the Downloads folder cannot be made");
-    }
-    const QFileInfo wanted(fileName);
-    QString path = downloads.filePath(fileName);
-    for (int copy = 1; QFileInfo::exists(path); ++copy) {
-        path = downloads.filePath(QStringLiteral("%1 (%2).%3")
-                .arg(wanted.completeBaseName()).arg(copy).arg(wanted.suffix()));
-    }
-    const std::unique_ptr<client::FileOutput> out = openOutput(path);
-    out->write(bytes.constData(), static_cast<std::size_t>(bytes.size()));
-    out->finish();
+    saveIntoFolder(QDir(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)),
+        fileName, bytes);
 #endif
 }
 

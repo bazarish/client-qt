@@ -4,7 +4,6 @@
 #include <QByteArray>
 #include <QDir>
 #include <QFile>
-#include <QStandardPaths>
 #include <QTemporaryDir>
 
 #include <cstdio>
@@ -32,17 +31,14 @@ QByteArray readAll(const QString& path)
 
 int main()
 {
-    const QTemporaryDir home;
-    CHECK(home.isValid());
-    CHECK(qputenv("HOME", home.path().toUtf8()));
-    CHECK(qputenv("XDG_CONFIG_HOME", (home.path() + QStringLiteral("/.config")).toUtf8()));
-    const QDir downloads(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
-    CHECK(downloads.absolutePath().startsWith(home.path()));
+    const QTemporaryDir root;
+    CHECK(root.isValid());
+    const QDir downloads(root.filePath(QStringLiteral("Загрузки")));
 
     const QByteArray first("first picture");
     const QByteArray second("second picture");
-    bazarish::app::saveIntoDownloads(QStringLiteral("Снимок.jpg"), QStringLiteral("image/jpeg"), first);
-    bazarish::app::saveIntoDownloads(QStringLiteral("Снимок.jpg"), QStringLiteral("image/jpeg"), second);
+    bazarish::app::saveIntoFolder(downloads, QStringLiteral("Снимок.jpg"), first);
+    bazarish::app::saveIntoFolder(downloads, QStringLiteral("Снимок.jpg"), second);
 
     CHECK(readAll(downloads.filePath(QStringLiteral("Снимок.jpg"))) == first);
     CHECK(readAll(downloads.filePath(QStringLiteral("Снимок (1).jpg"))) == second);

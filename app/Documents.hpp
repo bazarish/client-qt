@@ -3,6 +3,7 @@
 
 #include "FileTransfer.hpp"
 
+#include <QDir>
 #include <QString>
 #include <QUrl>
 
@@ -41,6 +42,8 @@ Bytes readWhole(const QString& location);
 // What is written whole goes here: a local file, or an Android document through its provider.
 std::unique_ptr<client::FileOutput> openOutput(const QString& dest);
 
+// Writes under the name asked, or "name (n).ext" when the folder already holds it.
+void saveIntoFolder(const QDir& folder, const QString& fileName, const QByteArray& bytes);
 void saveIntoDownloads(const QString& fileName, const QString& mime, const QByteArray& bytes);
 
 // A received file's ciphertext gathers beside a local destination; for a document,
