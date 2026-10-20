@@ -783,7 +783,7 @@ Item {
                             height: Math.max(2, level * wave.kMaxHeight)
                             anchors.verticalCenter: parent.verticalCenter
                             radius: 1
-                            color: index < wave.playedBars ? Theme.accent : Theme.textDim
+                            color: index < wave.playedBars ? Theme.neon : Theme.textDim
                         }
                     }
                     // Pressing the shape plays from there: the drawn audio is the
