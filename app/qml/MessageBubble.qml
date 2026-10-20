@@ -306,6 +306,10 @@ Item {
     readonly property bool fromHost: delegate.inGroup && model.fromHost === true
     readonly property bool onlyForMe: delegate.inGroup && !delegate.fromMember && !delegate.fromHost
     readonly property int letterSize: 30
+    // A bubble takes at most kBubbleShare of the row; its content is kBubbleInset narrower.
+    readonly property real kBubbleShare: 0.72
+    readonly property int kBubbleInset: 20
+    readonly property real contentRoom: delegate.width * kBubbleShare - kBubbleInset
     // A send's error stays a small note on the bubble; the tap still copies all of it.
     readonly property int kErrorPixelSize: 11
     readonly property int kErrorLines: 2
@@ -404,7 +408,8 @@ Item {
         // One x, not side anchors: a reused bubble changing sides held both anchors and stretched.
         x: model.outgoing ? parent.width - width - 12
             : (delegate.inGroup ? 12 + delegate.letterSize + delegate.letterGap : 12)
-        width: Math.min(Math.max(content.implicitWidth + 20, 80), delegate.width * 0.72)
+        width: Math.min(Math.max(content.implicitWidth + delegate.kBubbleInset, 80),
+            delegate.width * delegate.kBubbleShare)
         height: content.implicitHeight + 14
         radius: 12
         color: model.outgoing ? (delegate.held ? Theme.bubbleOutHeld : Theme.bubbleOut)
@@ -789,8 +794,8 @@ Item {
                     // black rectangle the user cannot tell from a picture.
                     visible: model.hasPicture && preview.status !== Image.Ready
                         && preview.status !== Image.Error
-                    Layout.preferredWidth: preview.maxEdge
-                    Layout.preferredHeight: Math.round(preview.maxEdge * 0.6)
+                    Layout.preferredWidth: Math.min(preview.maxEdge, delegate.contentRoom)
+                    Layout.preferredHeight: Math.round(Layout.preferredWidth * 0.6)
                     radius: Theme.radiusSmall
                     color: Theme.deep
                     border.color: Theme.border
@@ -802,12 +807,15 @@ Item {
                     source: delegate.pictureUrl
                     asynchronous: true
                     fillMode: Image.PreserveAspectFit
-                    // Big enough to see, small enough to keep the chat a chat.
+                    // Big enough to see, small enough to keep the chat a chat, and never wider
+                    // than its bubble.
                     readonly property int maxEdge: 320
-                    Layout.preferredWidth: Math.min(maxEdge,
-                        implicitWidth > 0 ? implicitWidth : maxEdge)
-                    Layout.preferredHeight: implicitWidth > 0
-                        ? Layout.preferredWidth * (implicitHeight / implicitWidth) : 0
+                    readonly property real fit: implicitWidth > 0 && implicitHeight > 0
+                        ? Math.min(1, maxEdge / implicitWidth, maxEdge / implicitHeight,
+                            delegate.contentRoom / implicitWidth)
+                        : 0
+                    Layout.preferredWidth: implicitWidth * fit
+                    Layout.preferredHeight: implicitHeight * fit
                     sourceSize.width: maxEdge * 2
                     TapHandler {
                         onTapped: delegate.imageRequested(delegate.pictureUrl,
