@@ -74,10 +74,19 @@ QString SessionController::inviteProblem(const QString& uri) const
 
 QString SessionController::aliasProblem(const QString& typed) const
 {
+    const std::string text = typed.trimmed().toStdString();
     try {
-        bazarish::normalizeAlias(typed.trimmed().toStdString());
-    } catch (const std::exception& error) {
-        return QString::fromUtf8(error.what());
+        bazarish::normalizeAlias(text);
+    } catch (const std::exception&) {
+        // The same two checks as common's, in its order; its own words are not translated.
+        const std::size_t sigil = (!text.empty() && text.front() == bazarish::kAliasSigil) ? 1 : 0;
+        const std::size_t length = text.size() - sigil;
+        if (length < bazarish::kAliasMinLength || length > bazarish::kAliasMaxLength) {
+            return tr("An alias must be %1 to %2 characters long.")
+                .arg(bazarish::kAliasMinLength)
+                .arg(bazarish::kAliasMaxLength);
+        }
+        return tr("An alias may contain only Latin letters and digits.");
     }
     return {};
 }

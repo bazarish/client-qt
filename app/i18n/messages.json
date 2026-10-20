@@ -4672,6 +4672,18 @@
       "es": "Seleccionar texto",
       "zh": "选择文本",
       "ar": "تحديد النص"
+    },
+    "An alias must be %1 to %2 characters long.": {
+      "ru": "Алиас должен быть длиной от %1 до %2 символов.",
+      "es": "Un alias debe tener de %1 a %2 caracteres.",
+      "zh": "别名长度必须为 %1 到 %2 个字符。",
+      "ar": "يجب أن يتكون الاسم المستعار من ⁦%1⁩ إلى ⁦%2⁩ حرفًا."
+    },
+    "An alias may contain only Latin letters and digits.": {
+      "ru": "Алиас может содержать только латинские буквы и цифры.",
+      "es": "Un alias solo puede contener letras latinas y dígitos.",
+      "zh": "别名只能包含拉丁字母和数字。",
+      "ar": "يمكن أن يحتوي الاسم المستعار على أحرف لاتينية وأرقام فقط."
     }
   }
 }
