@@ -219,12 +219,71 @@ Item {
     property bool pooled: false
     ListView.onPooled: {
         pooled = true
+        springBack.stop()
+        pull = 0
         copiedBlock = false
         copiedBlockFor.stop()
         busy = false
         busyTimer.stop()
     }
     ListView.onReused: pooled = false
+
+    // Pulled left by a finger: past kReplyPull, letting go answers this message.
+    property real pull: 0
+    readonly property int kReplyPull: 64
+    readonly property int kMaxPull: 96
+    readonly property real kPullResistance: 0.3
+    readonly property bool replyable: !delegate.isSystem && !delegate.isContactRequest
+        && !!model.e2eId && model.e2eId.length > 0
+    function reply() {
+        const preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
+        const who = model.outgoing ? "You"
+            : (model.author ? model.author
+                : (delegate.session ? delegate.session.activePeerName : ""))
+        delegate.session.beginReply(model.e2eId, preview, who)
+    }
+    DragHandler {
+        target: null
+        enabled: delegate.replyable
+        acceptedDevices: PointerDevice.TouchScreen
+        yAxis.enabled: false
+        onActiveTranslationChanged: {
+            const drawn = Math.max(0, -activeTranslation.x)
+            const eased = drawn <= delegate.kReplyPull ? drawn
+                : delegate.kReplyPull + (drawn - delegate.kReplyPull) * delegate.kPullResistance
+            delegate.pull = -Math.min(delegate.kMaxPull, eased)
+        }
+        onActiveChanged: {
+            if (active) {
+                springBack.stop()
+                return
+            }
+            if (delegate.pull <= -delegate.kReplyPull) {
+                delegate.reply()
+            }
+            springBack.start()
+        }
+    }
+    NumberAnimation {
+        id: springBack
+        target: delegate
+        property: "pull"
+        to: 0
+        duration: 180
+        easing.type: Easing.OutCubic
+    }
+    Icon {
+        readonly property bool armed: delegate.pull <= -delegate.kReplyPull
+        visible: delegate.pull < 0
+        name: "reply"
+        size: 20
+        color: armed ? Theme.green : Theme.textDim
+        opacity: Math.min(1, -delegate.pull / delegate.kReplyPull)
+        scale: armed ? 1.15 : 0.6 + 0.4 * opacity
+        Behavior on scale { NumberAnimation { duration: 90 } }
+        x: Math.min(bubble.x + bubble.width + delegate.pull + 8, delegate.width - width - 12)
+        anchors.verticalCenter: bubble.verticalCenter
+    }
 
     // Single round indicator, coloured by delivery status (see DeliveryStatus).
     function statusColor(s) {
@@ -258,6 +317,7 @@ Item {
 
     Rectangle {
         visible: delegate.fromMember
+        transform: Translate { x: delegate.pull }
         width: delegate.letterSize
         height: delegate.letterSize
         radius: width / 2
@@ -329,6 +389,7 @@ Item {
     Rectangle {
         id: bubble
         visible: !delegate.isSystem
+        transform: Translate { x: delegate.pull }
         // One x, not side anchors: a reused bubble changing sides held both anchors and stretched.
         x: model.outgoing ? parent.width - width - 12
             : (delegate.inGroup ? 12 + delegate.letterSize + delegate.letterGap : 12)
@@ -1274,16 +1335,9 @@ Item {
                         iconName: "reply"
                         // Any real message (text or attachment) can be replied to; service
                         // notices and requests cannot.
-                        visible: !delegate.isSystem && !delegate.isContactRequest
-                            && model.e2eId && model.e2eId.length > 0
+                        visible: delegate.replyable
                         height: visible ? implicitHeight : 0
-                        onTriggered: {
-                            var preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
-                            var who = model.outgoing ? "You"
-                                : (model.author ? model.author
-                                    : (delegate.session ? delegate.session.activePeerName : ""))
-                            delegate.session.beginReply(model.e2eId, preview, who)
-                        }
+                        onTriggered: delegate.reply()
                     }
                     ContextMenuItem {
                         text: qsTr("Copy all")
