@@ -228,12 +228,13 @@ Item {
     }
     ListView.onReused: pooled = false
 
-    // Pulled left by a finger: past kReplyPull, letting go answers this message.
+    // Pulled by a finger past kActionPull, letting go answers the message (left) or passes it on (right).
     property real pull: 0
-    readonly property int kReplyPull: 64
+    readonly property int kActionPull: 64
     readonly property int kMaxPull: 96
     readonly property real kPullResistance: 0.3
-    readonly property bool replyable: !delegate.isSystem && !delegate.isContactRequest
+    // Anything a person wrote or sent; service notices and requests are neither answered nor passed on.
+    readonly property bool actionable: !delegate.isSystem && !delegate.isContactRequest
         && !!model.e2eId && model.e2eId.length > 0
     function reply() {
         const preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
@@ -244,22 +245,24 @@ Item {
     }
     DragHandler {
         target: null
-        enabled: delegate.replyable
+        enabled: delegate.actionable
         acceptedDevices: PointerDevice.TouchScreen
         yAxis.enabled: false
         onActiveTranslationChanged: {
-            const drawn = Math.max(0, -activeTranslation.x)
-            const eased = drawn <= delegate.kReplyPull ? drawn
-                : delegate.kReplyPull + (drawn - delegate.kReplyPull) * delegate.kPullResistance
-            delegate.pull = -Math.min(delegate.kMaxPull, eased)
+            const drawn = Math.abs(activeTranslation.x)
+            const eased = drawn <= delegate.kActionPull ? drawn
+                : delegate.kActionPull + (drawn - delegate.kActionPull) * delegate.kPullResistance
+            delegate.pull = Math.sign(activeTranslation.x) * Math.min(delegate.kMaxPull, eased)
         }
         onActiveChanged: {
             if (active) {
                 springBack.stop()
                 return
             }
-            if (delegate.pull <= -delegate.kReplyPull) {
+            if (delegate.pull <= -delegate.kActionPull) {
                 delegate.reply()
+            } else if (delegate.pull >= delegate.kActionPull) {
+                delegate.forwardRequested(model.e2eId)
             }
             springBack.start()
         }
@@ -273,15 +276,17 @@ Item {
         easing.type: Easing.OutCubic
     }
     Icon {
-        readonly property bool armed: delegate.pull <= -delegate.kReplyPull
-        visible: delegate.pull < 0
-        name: "reply"
+        readonly property bool armed: Math.abs(delegate.pull) >= delegate.kActionPull
+        visible: delegate.pull !== 0
+        name: delegate.pull < 0 ? "reply" : "forward"
         size: 20
         color: armed ? Theme.green : Theme.textDim
-        opacity: Math.min(1, -delegate.pull / delegate.kReplyPull)
+        opacity: Math.min(1, Math.abs(delegate.pull) / delegate.kActionPull)
         scale: armed ? 1.15 : 0.6 + 0.4 * opacity
         Behavior on scale { NumberAnimation { duration: 90 } }
-        x: Math.min(bubble.x + bubble.width + delegate.pull + 8, delegate.width - width - 12)
+        x: delegate.pull < 0
+            ? Math.min(bubble.x + bubble.width + delegate.pull + 8, delegate.width - width - 12)
+            : Math.max(bubble.x + delegate.pull - 8 - width, 12)
         anchors.verticalCenter: bubble.verticalCenter
     }
 
@@ -1324,19 +1329,14 @@ Item {
                     ContextMenuItem {
                         text: qsTr("Forward")
                         iconName: "forward"
-                        // Anything a person wrote or sent can be passed on; service notices
-                        // and requests cannot.
-                        visible: !delegate.isSystem && !delegate.isContactRequest
-                            && model.e2eId && model.e2eId.length > 0
+                        visible: delegate.actionable
                         height: visible ? implicitHeight : 0
                         onTriggered: delegate.forwardRequested(model.e2eId)
                     }
                     ContextMenuItem {
                         text: qsTr("Reply")
                         iconName: "reply"
-                        // Any real message (text or attachment) can be replied to; service
-                        // notices and requests cannot.
-                        visible: delegate.replyable
+                        visible: delegate.actionable
                         height: visible ? implicitHeight : 0
                         onTriggered: delegate.reply()
                     }
