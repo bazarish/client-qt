@@ -12,6 +12,9 @@ Menu {
     margins: Theme.spacing
     // On a phone the menu leaves the focus where it was, so an open keyboard stays open.
     focus: !App.mobile
+    // A tap outside only closes the menu; passed through, it opened the menu or a picker again.
+    modal: true
+    dim: false
 
     // Wide enough for the entry that needs the most room, and no wider. Hidden
     // entries (the delegates collapse to zero height) do not count.
