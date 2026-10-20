@@ -836,6 +836,7 @@ void SessionWorker::drainMailbox()
         map["replyTo"] = QString::fromStdString(m.replyTo);
         map["sentAt"] = static_cast<qint64>(m.sentAt);
         map["pendingId"] = QString::fromStdString(m.pendingId);
+        map["timerSeconds"] = static_cast<qint64>(m.timerSeconds);
         if (m.group) {
             QVariantMap group;
             group["kind"] = m.group->kind == bazarish::client::GroupKind::eChannel
@@ -1602,6 +1603,13 @@ void SessionWorker::clearChatForEveryone(const QString& peer)
 {
     withSession([&] {
         session_->sendChatClear(peer.toStdString());
+    });
+}
+
+void SessionWorker::sendChatTimer(const QString& peer, const qint64 seconds)
+{
+    withSession([&] {
+        session_->sendChatTimer(peer.toStdString(), seconds);
     });
 }
 

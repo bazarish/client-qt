@@ -224,6 +224,35 @@ bool MessageIngest::takeIn(const QVariantMap& message)
         return true;
     }
 
+    if (type == "chat.timer") {
+        if (store_.groupState(peer).has_value()) {
+            bazarish::log::info("an auto-delete timer from a group host ignored");
+            return true;
+        }
+        const qint64 seconds = message.value("timerSeconds").toLongLong();
+        if (!store_.setChatTimer(peer, seconds)) {
+            return false;
+        }
+        StoredMessage sys;
+        sys.peer = peer;
+        sys.e2eId = incomingId;
+        sys.type = QStringLiteral("system");
+        sys.text = chatTimerNote(
+            seconds, message.value("sentByUs").toBool(), contacts_.peerName(peer));
+        const Placement placement
+            = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
+        sys.ts = placement.displayTs;
+        sys.orderKey = placement.orderKey;
+        sys.status = DeliveryStatus::Received;
+        sys.id = store_.append(sys);
+        if (sys.id == 0) {
+            return false;
+        }
+        emit chatTimerChanged(peer, seconds);
+        emit rowAdded(peer, sys.id, message.value("sentByUs").toBool());
+        return true;
+    }
+
     if (type == "contact.accept") {
         StoredMessage sys;
         sys.peer = peer;

@@ -57,6 +57,7 @@ signals:
     void react(const QString& peer, const QString& e2eId, const QString& emoji);
     void pinChat(const QString& peer, bool pinned);
     void clearChat(const QString& peer, bool forEveryone);
+    void setChatTimer(const QString& peer, qint64 seconds);
     void forgetChat(const QString& peer);
     void clearSavedEverywhere();
     void addByInvite(const QString& uri, const QString& intro);
@@ -111,6 +112,7 @@ signals:
     void requestSyncChatClear(const QString& peer);
     void requestEmitSettings();
     void requestClearChatForEveryone(const QString& peer);
+    void requestSendChatTimer(const QString& peer, qint64 seconds);
     void requestAddByInvite(const QString& uri, const QString& intro, const QString& opId,
         const QString& requestId);
     void requestAddByAlias(const QString& alias, const QString& intro, const QString& opId,

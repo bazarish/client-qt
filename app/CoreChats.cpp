@@ -6,6 +6,8 @@
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
 
+#include "Session.hpp"
+
 #include <QJsonArray>
 #include <QJsonDocument>
 
@@ -88,6 +90,46 @@ void CoreAccount::clearChat(const QString& peer, const bool forEveryone)
         reportUnsaved();
     }
     emit events_.peerReset(peer);
+}
+
+void CoreAccount::setChatTimer(const QString& peer, const qint64 seconds)
+{
+    if (peer.isEmpty() || hasAliasSigil(peer) || store_.groupState(peer).has_value()
+        || !client::isChatTimerChoice(seconds) || store_.chatTimer(peer) == seconds) {
+        return;
+    }
+    if (!store_.setChatTimer(peer, seconds)) {
+        reportUnsaved();
+        return;
+    }
+    emit commands_.requestSendChatTimer(peer, seconds);
+    emit events_.chatTimerChanged(peer, seconds);
+    StoredMessage sys;
+    sys.peer = peer;
+    sys.type = QStringLiteral("system");
+    sys.text = chatTimerNote(seconds, /*ours=*/true, contacts_.peerName(peer));
+    sys.ts = nowMillis();
+    sys.orderKey = sys.ts;
+    sys.status = DeliveryStatus::Received;
+    sys.id = store_.append(sys);
+    if (sys.id == 0) {
+        reportUnsaved();
+        return;
+    }
+    emit events_.rowAdded(peer, sys.id, true);
+}
+
+void CoreAccount::sweepExpired()
+{
+    for (const auto& [peer, id] : store_.expiredBy(nowMillis())) {
+        if (!store_.removeById(id)) {
+            reportUnsaved();
+            return;
+        }
+        statusById_.remove(id);
+        emit events_.rowRemoved(peer, id);
+        emit events_.chatChanged(peer);
+    }
 }
 
 void CoreAccount::forgetChat(const QString& peer)

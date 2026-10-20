@@ -671,6 +671,72 @@
       "zh": "正在为双方清空聊天",
       "ar": "جارٍ إفراغ محادثة عند الطرفين"
     },
+    "Auto-delete": {
+      "ru": "Автоудаление",
+      "es": "Borrado automático",
+      "zh": "自动删除",
+      "ar": "الحذف التلقائي"
+    },
+    "Off": {
+      "ru": "Выключен",
+      "es": "Desactivado",
+      "zh": "关闭",
+      "ar": "متوقف"
+    },
+    "1 hour": {
+      "ru": "1 час",
+      "es": "1 hora",
+      "zh": "1 小时",
+      "ar": "ساعة واحدة"
+    },
+    "1 day": {
+      "ru": "1 день",
+      "es": "1 día",
+      "zh": "1 天",
+      "ar": "يوم واحد"
+    },
+    "7 days": {
+      "ru": "7 дней",
+      "es": "7 días",
+      "zh": "7 天",
+      "ar": "7 أيام"
+    },
+    "30 days": {
+      "ru": "30 дней",
+      "es": "30 días",
+      "zh": "30 天",
+      "ar": "30 يومًا"
+    },
+    "You turned off the auto-delete timer": {
+      "ru": "Вы выключили таймер автоудаления",
+      "es": "Desactivaste el temporizador de borrado automático",
+      "zh": "你关闭了自动删除计时器",
+      "ar": "أوقفت مؤقت الحذف التلقائي"
+    },
+    "%1 turned off the auto-delete timer": {
+      "ru": "%1 выключил таймер автоудаления",
+      "es": "%1 desactivó el temporizador de borrado automático",
+      "zh": "%1 关闭了自动删除计时器",
+      "ar": "⁦%1⁩ أوقف مؤقت الحذف التلقائي"
+    },
+    "You set the auto-delete timer to %1": {
+      "ru": "Вы установили таймер автоудаления на %1",
+      "es": "Pusiste el temporizador de borrado automático en %1",
+      "zh": "你将自动删除计时器设为 %1",
+      "ar": "ضبطت مؤقت الحذف التلقائي على ⁦%1⁩"
+    },
+    "%1 set the auto-delete timer to %2": {
+      "ru": "%1 установил таймер автоудаления на %2",
+      "es": "%1 puso el temporizador de borrado automático en %2",
+      "zh": "%1 将自动删除计时器设为 %2",
+      "ar": "⁦%1⁩ ضبط مؤقت الحذف التلقائي على ⁦%2⁩"
+    },
+    "Setting the auto-delete timer": {
+      "ru": "Установка таймера автоудаления",
+      "es": "Configurando el temporizador de borrado automático",
+      "zh": "正在设置自动删除计时器",
+      "ar": "جارٍ ضبط مؤقت الحذف التلقائي"
+    },
     "Clearing a message from the mailbox": {
       "ru": "Удаление сообщения из почтового ящика",
       "es": "Borrando un mensaje del buzón",

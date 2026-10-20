@@ -6,6 +6,7 @@
 #include <QByteArray>
 #include <QMap>
 #include <QString>
+#include <QPair>
 #include <QVector>
 
 #include <cstdint>
@@ -107,6 +108,10 @@ public:
     QVector<StoredMessage> newerMessages(const QString& peer, qint64 afterId, int limit) const;
     StoredMessage nextVoiceAfter(const QString& peer, qint64 afterId) const;
     bool hasMessagesBefore(const QString& peer, qint64 id) const;
+    // The chat's auto-delete timer in seconds, 0 when it has none.
+    qint64 chatTimer(const QString& peer) const;
+    // Messages whose time ran out by then, as (peer, id), oldest first.
+    QVector<QPair<QString, qint64>> expiredBy(qint64 nowMs) const;
     bool hasMessagesAfter(const QString& peer, qint64 id) const;
     QVector<SearchHit> searchInPeer(const QString& peer, const QString& query) const;
     struct LastMessage {
@@ -160,6 +165,7 @@ public:
     [[nodiscard]] bool setLastReadId(const QString& peer, qint64 id);
     [[nodiscard]] bool applyReadThrough(const QString& peer, qint64 sentAtMs);
     [[nodiscard]] bool setPinned(const QString& peer, bool pinned);
+    [[nodiscard]] bool setChatTimer(const QString& peer, qint64 seconds);
     [[nodiscard]] bool setReaction(
         const QString& peer, const QString& target, const QString& reactor, const QString& emoji);
     [[nodiscard]] bool setGroupState(const QString& peer, const GroupState& state);
@@ -172,6 +178,8 @@ public:
 
 private:
     bool failed();
+    bool stampExpiry(qint64 id, const QString& peer, qint64 atMs);
+    bool stampNewlyRead(const QString& peer, qint64 afterId, qint64 uptoId);
     bool clearPeerRows(const QString& peer);
     bool removeMediaOfMessage(const QString& e2eId);
     bool removeMediaOfPeer(const QString& peer);

@@ -4,10 +4,13 @@
 #include "AccountDb.hpp"
 #include "AccountKey.hpp"
 #include "SystemNotes.hpp"
+#include "Session.hpp"
 
 #include <bazarish/Bytes.hpp>
 
 #include <QCoreApplication>
+#include <QDateTime>
+#include <QSet>
 
 #include <sqlcipher/sqlite3.h>
 
@@ -716,6 +719,72 @@ int main(int argc, char** argv)
 
         CHECK(store.append(second) > 0);
         CHECK(reader.latestMessages("gus", 10).size() == 2);
+    }
+
+    {
+        TranscriptStore store;
+        CHECK(store.open("p1", db, "pw"));
+        constexpr qint64 kMsPerSecond = 1000;
+        constexpr qint64 kTimer = client::kSecondsPerHour;
+        constexpr qint64 kTimerMs = kTimer * kMsPerSecond;
+        // Room for the test's own run time around "now".
+        constexpr qint64 kSlackMs = 60 * kMsPerSecond;
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        const auto add = [&store](const char* id, const bool outgoing, const char* type,
+                             const qint64 ts) {
+            StoredMessage m;
+            m.peer = "kate";
+            m.outgoing = outgoing;
+            m.type = type;
+            m.e2eId = id;
+            m.text = "words";
+            m.ts = ts;
+            m.orderKey = ts;
+            const qint64 row = store.append(m);
+            CHECK(row > 0);
+            return row;
+        };
+        const auto due = [&store](const qint64 at) {
+            QSet<qint64> ids;
+            for (const auto& [peer, id] : store.expiredBy(at)) {
+                CHECK(peer == "kate");
+                ids.insert(id);
+            }
+            return ids;
+        };
+
+        const qint64 sentBefore = add("o0", true, "text", now - 2 * kTimerMs);
+        const qint64 readBefore = add("i0", false, "text", now - 2 * kTimerMs);
+        CHECK(store.setLastReadId("kate", readBefore));
+        CHECK(store.chatTimer("kate") == 0);
+        CHECK(store.setChatTimer("kate", kTimer));
+        CHECK(store.chatTimer("kate") == kTimer);
+
+        const qint64 sentLongAgo = add("o1", true, "text", now - 2 * kTimerMs);
+        const qint64 sentNow = add("o2", true, "file", now);
+        const qint64 plate = add("s1", true, "system", now - 2 * kTimerMs);
+        const qint64 unread = add("i1", false, "text", now - 2 * kTimerMs);
+        CHECK(due(now) == QSet<qint64>{sentLongAgo});
+
+        CHECK(store.setLastReadId("kate", unread));
+        CHECK(due(now + kTimerMs - kSlackMs) == QSet<qint64>{sentLongAgo});
+        const QSet<qint64> later = due(now + kTimerMs + kSlackMs);
+        CHECK(later == (QSet<qint64>{sentLongAgo, sentNow, unread}));
+        CHECK(!later.contains(sentBefore) && !later.contains(readBefore)
+            && !later.contains(plate));
+
+        CHECK(store.removeById(sentLongAgo));
+        CHECK(!due(now).contains(sentLongAgo));
+
+        CHECK(store.setChatTimer("kate", client::kChatTimerOff));
+        CHECK(store.chatTimer("kate") == 0);
+        const qint64 untimed = add("o3", true, "text", now - 2 * kTimerMs);
+        CHECK(!due(now).contains(untimed));
+
+        CHECK(store.setChatTimer("kate", kTimer));
+        CHECK(store.forgetPeer("kate"));
+        CHECK(store.chatTimer("kate") == 0);
+        CHECK(due(now + 2 * kTimerMs).isEmpty());
     }
 
     fs::remove_all(dir);

@@ -74,6 +74,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     Q_PROPERTY(QString activePeerName READ activePeerName NOTIFY activePeerNameChanged)
     Q_PROPERTY(bool activeIsGroup READ activeIsGroup NOTIFY activeGroupChanged)
+    Q_PROPERTY(qint64 activeChatTimer READ activeChatTimer NOTIFY activeChatTimerChanged)
     Q_PROPERTY(bool activeAliasLookup READ activeAliasLookup NOTIFY activePeerChanged)
     Q_PROPERTY(bool activeIsChannel READ activeIsChannel NOTIFY activeGroupChanged)
     Q_PROPERTY(qint64 activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
@@ -201,6 +202,7 @@ public:
     int contactsRevision() const { return contactsRevision_; }
     int reactionsRevision() const { return reactionsRevision_; }
     bool activeIsGroup() const { return activeGroup_.has_value(); }
+    qint64 activeChatTimer() const { return activeChatTimer_; }
     bool activeAliasLookup() const;
     bool activeIsChannel() const
     {
@@ -317,6 +319,10 @@ public:
     Q_PROPERTY(QString ownInvite READ ownInvite NOTIFY ownInviteChanged)
     QString ownInvite() const { return ownInvite_; }
     Q_INVOKABLE void clearChat(bool forEveryone);
+    // The auto-delete timers a chat can carry, in seconds, and how each one is named.
+    Q_INVOKABLE QVariantList chatTimerChoices() const;
+    Q_INVOKABLE QString chatTimerLabel(qint64 seconds) const;
+    Q_INVOKABLE void setChatTimer(qint64 seconds);
     Q_INVOKABLE void deleteContact();
     Q_INVOKABLE void retryContactAdd();
     Q_INVOKABLE void sendCallback(
@@ -400,6 +406,7 @@ signals:
     void activePeerChanged();
     void activePeerNameChanged();
     void activeGroupChanged();
+    void activeChatTimerChanged();
     void pagingChanged();
     void scrollToMessage(qint64 localId);
     void scrollToUnread(qint64 firstUnreadId);
@@ -511,6 +518,7 @@ private:
     bool sendReceipts_ = true;
     bool acceptCalls_ = true;
     std::optional<GroupState> activeGroup_;
+    qint64 activeChatTimer_ = 0;
     QVariantList aliasHoldings_;
     QString aliasNote_;
     bool aliasBusy_ = false;

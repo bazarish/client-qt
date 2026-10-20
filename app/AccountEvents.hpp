@@ -153,6 +153,7 @@ signals:
     void rowChanged(const QString& peer, qint64 id);
     void rowRemoved(const QString& peer, qint64 id);
     void peerReset(const QString& peer);
+    void chatTimerChanged(const QString& peer, qint64 seconds);
     void peerForgotten(const QString& peer);
     void chatChanged(const QString& peer);
     void chatsChanged();

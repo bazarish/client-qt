@@ -249,6 +249,13 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
             refreshActiveGroup();
         }
     });
+    connect(&events_, &AccountEvents::chatTimerChanged, this,
+        [this](const QString& peer, const qint64 seconds) {
+            if (peer == activePeer_) {
+                activeChatTimer_ = seconds;
+                emit activeChatTimerChanged();
+            }
+        });
     connect(&events_, &AccountEvents::accountRenamed, this, [this](const QString& name) {
         if (name != displayName_) {
             displayName_ = name;
@@ -453,6 +460,8 @@ void SessionController::activateConversation(const QString& peer)
     emit activePeerChanged();
     emit activePeerNameChanged();
     refreshActiveGroup();
+    activeChatTimer_ = peer.isEmpty() ? 0 : store_.chatTimer(peer);
+    emit activeChatTimerChanged();
 }
 
 void SessionController::refreshActiveGroup()
@@ -837,6 +846,27 @@ void SessionController::clearChat(bool forEveryone)
 {
     if (!activePeer_.isEmpty()) {
         emit commands_.clearChat(activePeer_, forEveryone);
+    }
+}
+
+QVariantList SessionController::chatTimerChoices() const
+{
+    QVariantList choices;
+    for (const std::int64_t seconds : bazarish::client::kChatTimerChoices) {
+        choices << static_cast<qint64>(seconds);
+    }
+    return choices;
+}
+
+QString SessionController::chatTimerLabel(const qint64 seconds) const
+{
+    return systemNoteText(chatTimerDurationNote(seconds));
+}
+
+void SessionController::setChatTimer(const qint64 seconds)
+{
+    if (!activePeer_.isEmpty()) {
+        emit commands_.setChatTimer(activePeer_, seconds);
     }
 }
 

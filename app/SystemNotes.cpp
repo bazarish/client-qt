@@ -1,11 +1,15 @@
 // Bazarish project (c) 2026
 #include "SystemNotes.hpp"
 
+#include "Session.hpp"
+
 #include <QCoreApplication>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+
+#include <stdexcept>
 
 namespace bazarish::app {
 
@@ -56,6 +60,37 @@ QString systemNoteText(const QString& stored)
         text = text.arg(systemNoteText(arg.toString()));
     }
     return text;
+}
+
+QString chatTimerDurationNote(const qint64 seconds)
+{
+    using namespace bazarish::client;
+    switch (seconds) {
+    case kChatTimerOff:
+        return encodeSystemNote(QT_TR_NOOP("Off"));
+    case kSecondsPerHour:
+        return encodeSystemNote(QT_TR_NOOP("1 hour"));
+    case kSecondsPerDay:
+        return encodeSystemNote(QT_TR_NOOP("1 day"));
+    case kDaysPerWeek * kSecondsPerDay:
+        return encodeSystemNote(QT_TR_NOOP("7 days"));
+    case kDaysPerMonth * kSecondsPerDay:
+        return encodeSystemNote(QT_TR_NOOP("30 days"));
+    }
+    throw std::logic_error("not an auto-delete timer a chat can carry");
+}
+
+QString chatTimerNote(const qint64 seconds, const bool ours, const QString& peerName)
+{
+    if (seconds == bazarish::client::kChatTimerOff) {
+        return ours ? encodeSystemNote(QT_TR_NOOP("You turned off the auto-delete timer"))
+                    : encodeSystemNote(
+                          QT_TR_NOOP("%1 turned off the auto-delete timer"), {peerName});
+    }
+    const QString duration = chatTimerDurationNote(seconds);
+    return ours ? encodeSystemNote(QT_TR_NOOP("You set the auto-delete timer to %1"), {duration})
+                : encodeSystemNote(
+                      QT_TR_NOOP("%1 set the auto-delete timer to %2"), {peerName, duration});
 }
 
 }  // namespace bazarish::app

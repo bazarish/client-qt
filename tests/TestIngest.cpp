@@ -2,9 +2,11 @@
 #include "ContactBook.hpp"
 #include "DeliveryStatus.hpp"
 #include "MessageIngest.hpp"
+#include "SystemNotes.hpp"
 #include "TranscriptStore.hpp"
 
 #include "AccountKey.hpp"
+#include "Session.hpp"
 
 #include <bazarish/Bytes.hpp>
 
@@ -80,6 +82,7 @@ int main(int argc, char** argv)
     QObject::connect(&ingest, &MessageIngest::rowChanged, [&] { note("changed"); });
     QObject::connect(&ingest, &MessageIngest::rowRemoved, [&] { note("removed"); });
     QObject::connect(&ingest, &MessageIngest::peerReset, [&] { note("reset"); });
+    QObject::connect(&ingest, &MessageIngest::chatTimerChanged, [&] { note("timer"); });
     QObject::connect(&ingest, &MessageIngest::chatsChanged, [&] { note("chats"); });
     QObject::connect(&ingest, &MessageIngest::deliveredThrough, [&] { note("delivered"); });
     QObject::connect(&ingest, &MessageIngest::reactionArrived, [&] { note("reaction"); });
@@ -156,6 +159,27 @@ int main(int argc, char** argv)
     CHECK(saw({"group", "added", "notify"}));
     CHECK(store.groupState(kClub).has_value());
     CHECK(store.messageByE2e("g1", kClub).author == QStringLiteral("Ann"));
+
+    QVariantMap timer = incoming(kBob, "chat.timer", "t1");
+    timer["timerSeconds"] = static_cast<qint64>(client::kSecondsPerDay);
+    CHECK(took(timer));
+    CHECK(saw({"timer", "added"}));
+    CHECK(store.chatTimer(kBob) == client::kSecondsPerDay);
+    const StoredMessage plate = store.messageByE2e("t1", kBob);
+    CHECK(plate.type == QStringLiteral("system"));
+    CHECK(systemNoteText(plate.text).contains(QStringLiteral("Bob")));
+    CHECK(took(timer));
+    CHECK(saw({}));
+    QVariantMap off = ours(kBob, "chat.timer", "t2");
+    off["timerSeconds"] = static_cast<qint64>(client::kChatTimerOff);
+    CHECK(took(off));
+    CHECK(saw({"timer", "added-own"}));
+    CHECK(store.chatTimer(kBob) == client::kChatTimerOff);
+    QVariantMap fromHost = incoming(kClub, "chat.timer", "t3");
+    fromHost["timerSeconds"] = static_cast<qint64>(client::kSecondsPerHour);
+    CHECK(took(fromHost));
+    CHECK(saw({}));
+    CHECK(store.chatTimer(kClub) == client::kChatTimerOff);
 
     const Bytes key = client::accountkey::keyFor(db.toStdString(), {});
     sqlite3* writer = nullptr;

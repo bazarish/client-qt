@@ -10,6 +10,7 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <QDateTime>
 #include <QFileInfo>
 #include <QStorageInfo>
 #include <QStringList>
@@ -23,6 +24,21 @@
 namespace bazarish::app {
 
 namespace {
+
+constexpr qint64 kMsPerSecond = 1000;
+
+// What the auto-delete timer takes away: what people wrote and sent, never a service note.
+const QStringList kExpiringTypes{QStringLiteral("text"), QStringLiteral("image"),
+    QStringLiteral("audio"), QStringLiteral("file")};
+
+QString expiringTypesSql()
+{
+    QStringList quoted;
+    for (const QString& type : kExpiringTypes) {
+        quoted << QLatin1Char('\'') + type + QLatin1Char('\'');
+    }
+    return quoted.join(QLatin1Char(','));
+}
 
 class Value {
 public:
@@ -341,6 +357,17 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
                     " admin INTEGER, at INTEGER)")) {
         return false;
     }
+    if (!query.exec("CREATE TABLE IF NOT EXISTS chat_timers ("
+                    "peer TEXT PRIMARY KEY, seconds INTEGER NOT NULL)")) {
+        return false;
+    }
+    if (!query.exec("CREATE TABLE IF NOT EXISTS expiries ("
+                    "id INTEGER PRIMARY KEY, peer TEXT NOT NULL, at INTEGER NOT NULL)")) {
+        return false;
+    }
+    if (!query.exec("CREATE INDEX IF NOT EXISTS expiries_by_at ON expiries (at)")) {
+        return false;
+    }
     if (!query.exec("CREATE UNIQUE INDEX IF NOT EXISTS messages_by_e2e"
                     " ON messages (peer, e2eId, outgoing) WHERE e2eId != ''")) {
         return false;
@@ -393,6 +420,12 @@ qint64 TranscriptStore::append(const StoredMessage& message)
         return 0;
     }
     const qint64 id = query.lastInsertId();
+    if (message.outgoing && kExpiringTypes.contains(message.type)) {
+        const qint64 seconds = chatTimer(message.peer);
+        if (seconds > 0 && !stampExpiry(id, message.peer, message.ts + seconds * kMsPerSecond)) {
+            return 0;
+        }
+    }
     if (!message.author.isEmpty() || message.fromHost) {
         Query post(db_);
         post.prepare("INSERT OR REPLACE INTO group_posts (peer, e2eId, author, contactable)"
@@ -830,10 +863,16 @@ bool TranscriptStore::removeById(qint64 id)
             }
         }
     }
-    Query query(db_);
-    query.prepare("DELETE FROM messages WHERE id = ?");
-    query.addBindValue(id);
-    if (!query.exec() || !change.commit()) {
+    for (const char* statement :
+        {"DELETE FROM expiries WHERE id = ?", "DELETE FROM messages WHERE id = ?"}) {
+        Query query(db_);
+        query.prepare(QString::fromUtf8(statement));
+        query.addBindValue(id);
+        if (!query.exec()) {
+            return failed();
+        }
+    }
+    if (!change.commit()) {
         return failed();
     }
     return true;
@@ -845,6 +884,7 @@ bool TranscriptStore::clearPeerRows(const QString& peer)
         return false;
     }
     for (const char* statement : {"DELETE FROM messages WHERE peer = ?",
+             "DELETE FROM expiries WHERE peer = ?",
              "DELETE FROM reactions WHERE peer = ?", "DELETE FROM read_state WHERE peer = ?",
              "DELETE FROM group_posts WHERE peer = ?",
              "DELETE FROM group_reaction_counts WHERE peer = ?"}) {
@@ -883,6 +923,7 @@ bool TranscriptStore::forgetPeer(const QString& peer)
         return false;
     }
     for (const char* statement : {"DELETE FROM pinned_chats WHERE peer = ?",
+             "DELETE FROM chat_timers WHERE peer = ?",
              "DELETE FROM group_state WHERE peer = ?"}) {
         Query query(db_);
         query.prepare(QString::fromUtf8(statement));
@@ -1035,13 +1076,18 @@ bool TranscriptStore::setLastReadId(const QString& peer, qint64 id)
     if (peer.isEmpty() || id <= 0) {
         return true;
     }
+    Transaction change(db_);
+    if (!change.begun()) {
+        return failed();
+    }
+    const qint64 before = lastReadId(peer);
     Query query(db_);
     query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
                   " max(?, coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0)))");
     query.addBindValue(peer);
     query.addBindValue(id);
     query.addBindValue(peer);
-    if (!query.exec()) {
+    if (!query.exec() || !stampNewlyRead(peer, before, lastReadId(peer)) || !change.commit()) {
         return failed();
     }
     return true;
@@ -1052,6 +1098,11 @@ bool TranscriptStore::applyReadThrough(const QString& peer, const qint64 sentAtM
     if (peer.isEmpty() || sentAtMs <= 0) {
         return true;
     }
+    Transaction change(db_);
+    if (!change.begun()) {
+        return failed();
+    }
+    const qint64 before = lastReadId(peer);
     Query query(db_);
     query.prepare("INSERT OR REPLACE INTO read_state (peer, last_read_id) VALUES (?,"
                   " max(coalesce((SELECT last_read_id FROM read_state WHERE peer = ?), 0),"
@@ -1061,10 +1112,77 @@ bool TranscriptStore::applyReadThrough(const QString& peer, const qint64 sentAtM
     query.addBindValue(peer);
     query.addBindValue(peer);
     query.addBindValue(sentAtMs);
-    if (!query.exec()) {
+    if (!query.exec() || !stampNewlyRead(peer, before, lastReadId(peer)) || !change.commit()) {
         return failed();
     }
     return true;
+}
+
+bool TranscriptStore::stampExpiry(const qint64 id, const QString& peer, const qint64 atMs)
+{
+    Query query(db_);
+    query.prepare("INSERT OR IGNORE INTO expiries (id, peer, at) VALUES (?, ?, ?)");
+    query.addBindValue(id);
+    query.addBindValue(peer);
+    query.addBindValue(atMs);
+    return query.exec() || failed();
+}
+
+bool TranscriptStore::stampNewlyRead(const QString& peer, const qint64 afterId, const qint64 uptoId)
+{
+    const qint64 seconds = chatTimer(peer);
+    if (seconds <= 0 || uptoId <= afterId) {
+        return true;
+    }
+    Query query(db_);
+    query.prepare(QStringLiteral("INSERT OR IGNORE INTO expiries (id, peer, at)"
+                                 " SELECT id, peer, ? FROM messages WHERE peer = ? AND outgoing = 0"
+                                 " AND id > ? AND id <= ? AND type IN (%1)")
+                      .arg(expiringTypesSql()));
+    query.addBindValue(QDateTime::currentMSecsSinceEpoch() + seconds * kMsPerSecond);
+    query.addBindValue(peer);
+    query.addBindValue(afterId);
+    query.addBindValue(uptoId);
+    return query.exec() || failed();
+}
+
+qint64 TranscriptReader::chatTimer(const QString& peer) const
+{
+    Query query(db_);
+    query.prepare("SELECT seconds FROM chat_timers WHERE peer = ? LIMIT 1");
+    query.addBindValue(peer);
+    if (query.exec() && query.next()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
+bool TranscriptStore::setChatTimer(const QString& peer, const qint64 seconds)
+{
+    Query query(db_);
+    if (seconds > 0) {
+        query.prepare("INSERT OR REPLACE INTO chat_timers (peer, seconds) VALUES (?, ?)");
+        query.addBindValue(peer);
+        query.addBindValue(seconds);
+    } else {
+        query.prepare("DELETE FROM chat_timers WHERE peer = ?");
+        query.addBindValue(peer);
+    }
+    return query.exec() || failed();
+}
+
+QVector<QPair<QString, qint64>> TranscriptReader::expiredBy(const qint64 nowMs) const
+{
+    QVector<QPair<QString, qint64>> due;
+    Query query(db_);
+    query.prepare("SELECT peer, id FROM expiries WHERE at <= ? ORDER BY at");
+    query.addBindValue(nowMs);
+    if (query.exec()) {
+        while (query.next()) {
+            due.append({query.value(0).toString(), query.value(1).toLongLong()});
+        }
+    }
+    return due;
 }
 
 qint64 TranscriptReader::lastReadId(const QString& peer) const
@@ -1357,6 +1475,16 @@ qint64 TranscriptStore::pruneRowsOf(const QString& peer, const int keep)
         throw std::runtime_error("the conversation could not be trimmed");
     }
     const qint64 removed = messages.numRowsAffected();
+    Query expiries(db_);
+    if (!expiries.prepare("DELETE FROM expiries WHERE peer = ? AND id NOT IN ("
+                          "SELECT id FROM messages WHERE peer = ?)")) {
+        throw std::runtime_error("the timers of trimmed messages could not be removed");
+    }
+    expiries.addBindValue(peer);
+    expiries.addBindValue(peer);
+    if (!expiries.exec()) {
+        throw std::runtime_error("the timers of trimmed messages could not be removed");
+    }
     Query reactions(db_);
     if (!reactions.prepare("DELETE FROM reactions WHERE peer = ? AND target NOT IN ("
                            "SELECT e2eId FROM messages WHERE peer = ? AND e2eId != '')")) {

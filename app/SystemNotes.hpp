@@ -11,4 +11,9 @@ bool isServiceMessage(const QString& type);
 QString encodeSystemNote(const QString& sourceText, const QStringList& args = {});
 QString systemNoteText(const QString& stored);
 
+// An auto-delete timer as a note: its duration, or that there is none.
+QString chatTimerDurationNote(qint64 seconds);
+// The plate that says who set a chat's auto-delete timer, and to what.
+QString chatTimerNote(qint64 seconds, bool ours, const QString& peerName);
+
 }  // namespace bazarish::app

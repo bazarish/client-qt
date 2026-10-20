@@ -96,6 +96,7 @@ public slots:
     void syncChatClear(const QString& peer);
     void emitSettings();
     void clearChatForEveryone(const QString& peer);
+    void sendChatTimer(const QString& peer, qint64 seconds);
     void addByInvite(const QString& uri, const QString& intro, const QString& opId,
         const QString& requestId);
     void addByAlias(const QString& alias, const QString& intro, const QString& opId,

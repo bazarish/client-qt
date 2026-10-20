@@ -217,6 +217,42 @@ Popup {
             }
         }
 
+        RowLayout {
+            visible: !root.inGroup
+            Layout.fillWidth: true
+            spacing: 12
+            Label {
+                text: qsTr("Auto-delete")
+                color: Theme.text
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Dropdown {
+                id: timerBox
+                // Built again when the language changes, so the names follow it.
+                model: root.session
+                    ? root.session.chatTimerChoices().map(seconds => ({
+                        seconds: seconds,
+                        label: Tr.language.length >= 0 ? root.session.chatTimerLabel(seconds) : ""
+                    }))
+                    : []
+                textRole: "label"
+                valueRole: "seconds"
+                Layout.preferredWidth: implicitWidth
+                function follow() {
+                    currentIndex = root.session ? indexOfValue(root.session.activeChatTimer) : -1
+                }
+                onModelChanged: follow()
+                Component.onCompleted: follow()
+                onActivated: root.session.setChatTimer(currentValue)
+                Connections {
+                    target: root.session
+                    function onActiveChatTimerChanged() { timerBox.follow() }
+                }
+            }
+        }
+
         Rectangle {
             // The line divides a contact's identity from what can be done about
             // it. The saved chat has neither, so it has nothing to divide.

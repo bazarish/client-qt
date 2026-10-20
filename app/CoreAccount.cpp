@@ -32,6 +32,8 @@ const int kContactStateMetaType
     = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
 
 constexpr int kReadSyncIdleMs = 4000;
+// How often every chat is looked through for messages whose auto-delete time ran out.
+constexpr int kExpirySweepMs = 5 * 60 * 1000;
 // A reconnect this client asked for is not reported before this much of it.
 constexpr int kLinkRebuildGraceMs = 1500;
 constexpr int kCommandTickMs = 200;
@@ -52,6 +54,7 @@ const char* commandTitle(const QByteArray& signalName)
         {"requestSyncChatPin", QT_TR_NOOP("Pinning a chat")},
         {"requestSyncChatClear", QT_TR_NOOP("Clearing a chat")},
         {"requestClearChatForEveryone", QT_TR_NOOP("Clearing a chat for both sides")},
+        {"requestSendChatTimer", QT_TR_NOOP("Setting the auto-delete timer")},
         {"requestContactsFromDevices", QT_TR_NOOP("Asking your other devices")},
         {"requestSetSync", QT_TR_NOOP("Going online")},
         {"requestRebuildI2p", QT_TR_NOOP("Rebuilding the I2P destinations")},
@@ -156,6 +159,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::syncChatClear);
     connect(&commands_, &AccountCommands::requestEmitSettings, worker_,
         &SessionWorker::emitSettings);
+    connect(&commands_, &AccountCommands::requestSendChatTimer, worker_,
+        &SessionWorker::sendChatTimer);
     connect(&commands_, &AccountCommands::requestClearChatForEveryone, worker_,
         &SessionWorker::clearChatForEveryone);
     connect(&commands_, &AccountCommands::requestAddByInvite, worker_, &SessionWorker::addByInvite);
@@ -363,6 +368,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&ingest_, &MessageIngest::rowChanged, &events_, &AccountEvents::rowChanged);
     connect(&ingest_, &MessageIngest::rowRemoved, &events_, &AccountEvents::rowRemoved);
     connect(&ingest_, &MessageIngest::peerReset, &events_, &AccountEvents::peerReset);
+    connect(&ingest_, &MessageIngest::chatTimerChanged, &events_,
+        &AccountEvents::chatTimerChanged);
     connect(&ingest_, &MessageIngest::peerForgotten, &events_, &AccountEvents::peerForgotten);
     connect(&ingest_, &MessageIngest::chatChanged, &events_, &AccountEvents::chatChanged);
     connect(&ingest_, &MessageIngest::chatsChanged, &events_, &AccountEvents::chatsChanged);
@@ -421,6 +428,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::react, this, &CoreAccount::react);
     connect(&commands_, &AccountCommands::pinChat, this, &CoreAccount::pinChat);
     connect(&commands_, &AccountCommands::clearChat, this, &CoreAccount::clearChat);
+    connect(&commands_, &AccountCommands::setChatTimer, this, &CoreAccount::setChatTimer);
     connect(&commands_, &AccountCommands::forgetChat, this, &CoreAccount::forgetChat);
     connect(&commands_, &AccountCommands::clearSavedEverywhere, this,
         &CoreAccount::clearSavedEverywhere);
@@ -465,6 +473,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
 
     readSyncTimer_.setSingleShot(true);
     connect(&readSyncTimer_, &QTimer::timeout, this, &CoreAccount::flushReadSync);
+    expiryTimer_.setInterval(kExpirySweepMs);
+    connect(&expiryTimer_, &QTimer::timeout, this, &CoreAccount::sweepExpired);
     connect(&thread_, &QThread::finished, &events_, &AccountEvents::closed);
 
     const QMetaObject& meta = AccountCommands::staticMetaObject;
@@ -574,6 +584,8 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
         return;
     }
     unread_ = store_.unreadTotal();
+    sweepExpired();
+    expiryTimer_.start();
     const Bytes key = client::accountkey::keyFor(file.toStdString(), passphrase.toStdString());
     emit events_.transcriptOpened(file,
         QByteArray(reinterpret_cast<const char*>(key.data()), static_cast<qsizetype>(key.size())));
@@ -599,6 +611,7 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
 
 void CoreAccount::close()
 {
+    expiryTimer_.stop();
     accountDb_.reset();
     store_.close();
 }
@@ -634,6 +647,7 @@ void CoreAccount::viewConversation(const QString& peer)
     viewedPeer_ = peer;
     if (!peer.isEmpty()) {
         lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
+        sweepExpired();
     }
 }
 

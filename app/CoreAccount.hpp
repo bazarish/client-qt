@@ -109,6 +109,8 @@ private:
     void rememberReaction(const QString& emoji);
     void pinChat(const QString& peer, bool pinned);
     void clearChat(const QString& peer, bool forEveryone);
+    void setChatTimer(const QString& peer, qint64 seconds);
+    void sweepExpired();
     void forgetChat(const QString& peer);
     void clearSavedEverywhere();
     void addByInvite(const QString& uri, const QString& intro);
@@ -207,6 +209,7 @@ private:
     QHash<QString, qint64> lastReadAckedId_;
     QHash<QString, qint64> pendingReadSync_;
     QTimer readSyncTimer_;
+    QTimer expiryTimer_;
     OperationLog log_;
     QHash<qint64, int> statusById_;
     QSet<qint64> savedSends_;
