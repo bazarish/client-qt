@@ -1049,10 +1049,8 @@ Item {
                     implicitHeight: 1
                 }
                 // Reaction chips, on the same line as the time and to the left of
-                // it: one per distinct emoji with its count. Dark, like every
-                // other surface here: ours the darkest, a contact's a shade
-                // lighter, so whose it is reads without a second colour. Tapping
-                // a chip toggles our reaction to that emoji.
+                // it: one per distinct emoji with its count. Tapping a chip toggles
+                // our reaction to that emoji.
                 Repeater {
                     id: reactionChips
                     model: delegate.reactions
@@ -1066,8 +1064,8 @@ Item {
                         height: 18
                         width: chipRow.implicitWidth + 8
                         radius: 4
-                        color: modelData.mine ? Theme.deep : Theme.surfaceAlt
-                        border.color: modelData.mine ? Theme.border2 : Theme.border
+                        color: modelData.mine ? Theme.reactionMine : Theme.surfaceAlt
+                        border.color: modelData.mine ? Theme.reactionMineEdge : Theme.border
                         // A short neon pulse rather than a steady colour: it says
                         // "this is what you came for" and then leaves the chip
                         // looking like every other one.
@@ -1101,7 +1099,7 @@ Item {
                             spacing: 3
                             Label {
                                 text: modelData.emoji
-                                color: Theme.text
+                                color: modelData.mine ? Theme.reactionMineInk : Theme.text
                                 font.pixelSize: 12
                                 // The emoji font only for what is emoji: it has no
                                 // glyphs for plain digits, which came out blank
@@ -1113,7 +1111,7 @@ Item {
                             Label {
                                 visible: modelData.count > 1
                                 text: modelData.count
-                                color: Theme.textDim
+                                color: modelData.mine ? Theme.reactionMineInk : Theme.textDim
                                 font.pixelSize: 10
                                 anchors.verticalCenter: parent.verticalCenter
                             }

@@ -64,6 +64,10 @@ QtObject {
     readonly property color bubbleOutHeld: light ? "#cbe5c1" : "#1c3524"
     readonly property color bubbleInHeld: surfaceAlt
     readonly property color authorName: light ? green : "#7fd36f"
+    // Our own reaction is filled green; on the dark screen a lighter edge keeps it over 3:1.
+    readonly property color reactionMine: green
+    readonly property color reactionMineEdge: light ? green : authorName
+    readonly property color reactionMineInk: "#f2f4f2"
 
     readonly property int spacing: 12
     readonly property int radius: 10
