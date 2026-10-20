@@ -10,7 +10,8 @@ Item {
     property var session: null
     // Briefly true when a search jump lands on this message, to flash it.
     property bool highlighted: false
-    readonly property bool held: holdHandler.pressed || contextMenu.visible
+    readonly property bool held: holdHandler.pressed
+        || (contextMenu.item !== null && contextMenu.item.menu.visible)
     readonly property int heldFadeMs: 120
     // Asks the view to confirm and delete this message (irreversible; for one's
     // own one-to-one message it is removed at the recipient too).
@@ -268,19 +269,18 @@ Item {
         // A touch carries no button, so a right-button handler would take every tap.
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         acceptedButtons: Qt.RightButton
-        onTapped: function(point) {
-            delegate.menuAt = Qt.point(point.scenePosition.x, point.scenePosition.y)
-            contextMenu.popup()
-        }
+        onTapped: function(point) { delegate.openMenu(point.scenePosition) }
     }
     TapHandler {
         id: holdHandler
         enabled: !delegate.isSystem
         acceptedButtons: Qt.LeftButton
-        onLongPressed: {
-            delegate.menuAt = holdHandler.point.scenePosition
-            contextMenu.popup()
-        }
+        onLongPressed: delegate.openMenu(holdHandler.point.scenePosition)
+    }
+    function openMenu(scene) {
+        delegate.menuAt = Qt.point(scene.x, scene.y)
+        contextMenu.active = true
+        contextMenu.item.menu.popup()
     }
     function within(item, scene) {
         return item.visible && item.contains(item.mapFromItem(null, scene.x, scene.y))
@@ -1200,117 +1200,127 @@ Item {
             fileMode: FileDialog.SaveFile
             onAccepted: delegate.session.savePictureAs(pictureSaveDialog.e2eId, selectedFile)
         }
-        ContextMenu {
+        // Built when first opened: made with every bubble, it cost each one several ms.
+        Loader {
             id: contextMenu
-            ContextMenuItem {
-                id: reactEntry
-                // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
-                // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
-                // these labels into "React_" / "React_ view".
-                text: qsTr("React")
-                iconName: "smile"
-                visible: delegate.reactable
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.reactRequested(model.e2eId,
-                    delegate.menuAt.x, delegate.menuAt.y)
-            }
-            ContextMenuItem {
-                // From the account straight to the clipboard: no file in between.
-                text: qsTr("Copy picture")
-                iconName: "copy"
-                visible: delegate.pictureUrl.length > 0
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.session.copyPicture(model.e2eId)
-            }
-            ContextMenuItem {
-                // A picture lives in the account database; this is how it leaves
-                // it as a file.
-                text: qsTr("Save as")
-                iconName: "save"
-                visible: delegate.pictureUrl.length > 0
-                height: visible ? implicitHeight : 0
-                onTriggered: {
-                    pictureSaveDialog.currentFile = delegate.session.defaultPictureSaveUrl(
-                        model.e2eId, model.attName)
-                    pictureSaveDialog.e2eId = model.e2eId
-                    pictureSaveDialog.open()
+            active: false
+            // Under Menu itself, its own delegate property would hide this bubble's id.
+            sourceComponent: Item {
+                property alias menu: menu
+                ContextMenu {
+                    id: menu
+                    parent: bubble
+                    ContextMenuItem {
+                        id: reactEntry
+                        // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
+                        // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
+                        // these labels into "React_" / "React_ view".
+                        text: qsTr("React")
+                        iconName: "smile"
+                        visible: delegate.reactable
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.reactRequested(model.e2eId,
+                            delegate.menuAt.x, delegate.menuAt.y)
+                    }
+                    ContextMenuItem {
+                        // From the account straight to the clipboard: no file in between.
+                        text: qsTr("Copy picture")
+                        iconName: "copy"
+                        visible: delegate.pictureUrl.length > 0
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.session.copyPicture(model.e2eId)
+                    }
+                    ContextMenuItem {
+                        // A picture lives in the account database; this is how it leaves
+                        // it as a file.
+                        text: qsTr("Save as")
+                        iconName: "save"
+                        visible: delegate.pictureUrl.length > 0
+                        height: visible ? implicitHeight : 0
+                        onTriggered: {
+                            pictureSaveDialog.currentFile = delegate.session.defaultPictureSaveUrl(
+                                model.e2eId, model.attName)
+                            pictureSaveDialog.e2eId = model.e2eId
+                            pictureSaveDialog.open()
+                        }
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Forward")
+                        iconName: "forward"
+                        // Anything a person wrote or sent can be passed on; service notices
+                        // and requests cannot.
+                        visible: !delegate.isSystem && !delegate.isContactRequest
+                            && model.e2eId && model.e2eId.length > 0
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.forwardRequested(model.e2eId)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Reply")
+                        iconName: "reply"
+                        // Any real message (text or attachment) can be replied to; service
+                        // notices and requests cannot.
+                        visible: !delegate.isSystem && !delegate.isContactRequest
+                            && model.e2eId && model.e2eId.length > 0
+                        height: visible ? implicitHeight : 0
+                        onTriggered: {
+                            var preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
+                            var who = model.outgoing ? "You"
+                                : (model.author ? model.author
+                                    : (delegate.session ? delegate.session.activePeerName : ""))
+                            delegate.session.beginReply(model.e2eId, preview, who)
+                        }
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Copy all")
+                        iconName: "copy"
+                        // Only where there is text to copy: an attachment, a request, a
+                        // picture and a voice message carry none.
+                        visible: !delegate.isAttachment && !delegate.isContactRequest
+                            && delegate.fullText.length > 0
+                        height: visible ? implicitHeight : 0
+                        onTriggered: App.copyText(delegate.fullText)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Edit")
+                        iconName: "edit"
+                        visible: delegate.canEdit
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.session.beginEdit(model.msgId, model.e2eId, model.text)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Request contact")
+                        iconName: "person"
+                        visible: delegate.fromMember && model.contactable === true
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.session.sendCommand("contact", model.e2eId, text)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Exclude")
+                        iconName: "signout"
+                        visible: delegate.fromMember && delegate.session.activeGroupAdmin
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.groupActionRequested("exclude", model.e2eId, model.author)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Block")
+                        iconName: "block"
+                        visible: delegate.fromMember && delegate.session.activeGroupAdmin
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.groupActionRequested("block", model.e2eId, model.author)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Delete for everyone")
+                        iconName: "trash"
+                        visible: (delegate.fromMember || delegate.fromHost) && delegate.session.activeGroupAdmin
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.groupActionRequested("delete", model.e2eId, model.author)
+                    }
+                    ContextMenuItem {
+                        text: qsTr("Delete")
+                        iconName: "trash"
+                        onTriggered: delegate.deleteRequested(model.msgId, model.e2eId, model.outgoing)
+                    }
                 }
-            }
-            ContextMenuItem {
-                text: qsTr("Forward")
-                iconName: "forward"
-                // Anything a person wrote or sent can be passed on; service notices
-                // and requests cannot.
-                visible: !delegate.isSystem && !delegate.isContactRequest
-                    && model.e2eId && model.e2eId.length > 0
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.forwardRequested(model.e2eId)
-            }
-            ContextMenuItem {
-                text: qsTr("Reply")
-                iconName: "reply"
-                // Any real message (text or attachment) can be replied to; service
-                // notices and requests cannot.
-                visible: !delegate.isSystem && !delegate.isContactRequest
-                    && model.e2eId && model.e2eId.length > 0
-                height: visible ? implicitHeight : 0
-                onTriggered: {
-                    var preview = delegate.isAttachment ? (model.attName || "") : (model.text || "")
-                    var who = model.outgoing ? "You"
-                        : (model.author ? model.author
-                            : (delegate.session ? delegate.session.activePeerName : ""))
-                    delegate.session.beginReply(model.e2eId, preview, who)
-                }
-            }
-            ContextMenuItem {
-                text: qsTr("Copy all")
-                iconName: "copy"
-                // Only where there is text to copy: an attachment, a request, a
-                // picture and a voice message carry none.
-                visible: !delegate.isAttachment && !delegate.isContactRequest
-                    && delegate.fullText.length > 0
-                height: visible ? implicitHeight : 0
-                onTriggered: App.copyText(delegate.fullText)
-            }
-            ContextMenuItem {
-                text: qsTr("Edit")
-                iconName: "edit"
-                visible: delegate.canEdit
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.session.beginEdit(model.msgId, model.e2eId, model.text)
-            }
-            ContextMenuItem {
-                text: qsTr("Request contact")
-                iconName: "person"
-                visible: delegate.fromMember && model.contactable === true
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.session.sendCommand("contact", model.e2eId, text)
-            }
-            ContextMenuItem {
-                text: qsTr("Exclude")
-                iconName: "signout"
-                visible: delegate.fromMember && delegate.session.activeGroupAdmin
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.groupActionRequested("exclude", model.e2eId, model.author)
-            }
-            ContextMenuItem {
-                text: qsTr("Block")
-                iconName: "block"
-                visible: delegate.fromMember && delegate.session.activeGroupAdmin
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.groupActionRequested("block", model.e2eId, model.author)
-            }
-            ContextMenuItem {
-                text: qsTr("Delete for everyone")
-                iconName: "trash"
-                visible: (delegate.fromMember || delegate.fromHost) && delegate.session.activeGroupAdmin
-                height: visible ? implicitHeight : 0
-                onTriggered: delegate.groupActionRequested("delete", model.e2eId, model.author)
-            }
-            ContextMenuItem {
-                text: qsTr("Delete")
-                iconName: "trash"
-                onTriggered: delegate.deleteRequested(model.msgId, model.e2eId, model.outgoing)
             }
         }
     }
