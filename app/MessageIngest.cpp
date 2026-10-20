@@ -273,6 +273,26 @@ bool MessageIngest::takeIn(const QVariantMap& message)
         return request == 0 || markOutgoingRead(peer, request);
     }
 
+    if (type == "unsupported") {
+        StoredMessage sys;
+        sys.peer = peer;
+        sys.e2eId = incomingId;
+        sys.type = QStringLiteral("system");
+        sys.text = encodeSystemNote(QT_TR_NOOP("Unknown message type %1. Update the client."),
+            {message.value("rawType").toString()});
+        const Placement placement
+            = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
+        sys.ts = placement.displayTs;
+        sys.orderKey = placement.orderKey;
+        sys.status = DeliveryStatus::Received;
+        sys.id = store_.append(sys);
+        if (sys.id == 0) {
+            return false;
+        }
+        emit rowAdded(peer, sys.id, message.value("sentByUs").toBool());
+        return true;
+    }
+
     if (message.value("text").toString().isEmpty()
         && message.value("attName").toString().isEmpty()
         && message.value("attRef").toString().isEmpty()

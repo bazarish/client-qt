@@ -3587,11 +3587,11 @@
       "zh": "正在取消 %1 的指向",
       "ar": "جارٍ إلغاء ربط ⁦%1⁩"
     },
-    "Unsupported message (%1) — update your app": {
-      "ru": "Сообщение не поддерживается (%1) — обновите программу",
-      "es": "Mensaje no admitido (%1): actualiza la aplicación",
-      "zh": "不支持的消息（%1）——请更新程序",
-      "ar": "رسالة غير مدعومة (⁦%1⁩) — حدِّث التطبيق"
+    "Unknown message type %1. Update the client.": {
+      "ru": "Неизвестный тип сообщения %1. Обновите клиент.",
+      "es": "Tipo de mensaje desconocido %1. Actualiza el cliente.",
+      "zh": "未知的消息类型 %1。请更新客户端。",
+      "ar": "نوع رسالة غير معروف ⁦%1⁩. حدِّث العميل."
     },
     "Uploading…": {
       "ru": "Выгрузка…",

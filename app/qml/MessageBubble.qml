@@ -91,7 +91,6 @@ Item {
     readonly property bool isAttachment: !delegate.isPicture && !delegate.isVoice
         && ((model.attName && model.attName.length > 0)
             || (model.outgoing && model.type === "file"))
-    readonly property bool isUnsupported: model.type === "unsupported"
     // A contact add that ended badly. It reads like a system note and carries
     // the two ways out of it, because the chat is where the person was watching.
     readonly property bool isAddFailed: model.type === "contact.failed"
@@ -112,10 +111,9 @@ Item {
     // `content`) so the quote Rectangle's visible/height bindings resolve it.
     readonly property bool hasReplyQuote: delegate.replyInfo !== null && delegate.replyInfo.found
 
-    // A real message can carry reactions (not a service notice, request or
-    // placeholder, and it must have a protocol id to reference).
-    readonly property bool reactable: !delegate.isSystem && !delegate.isUnsupported
-        && !delegate.isContactRequest
+    // A real message can carry reactions (not a service notice or request, and it
+    // must have a protocol id to reference).
+    readonly property bool reactable: !delegate.isSystem && !delegate.isContactRequest
         && model.e2eId && model.e2eId.length > 0
     // The reaction chips for this message: [{ emoji, count, mine }], re-queried
     // whenever any reaction changes (reactionsRevision drives the binding).
@@ -196,10 +194,9 @@ Item {
     // The keyboard message's protocol id, sent back as a callback's ref.
     readonly property string msgE2eId: model.e2eId
 
-    // True for an own text message that can be edited (not an attachment or an
-    // unsupported placeholder).
+    // True for an own text message that can be edited (not an attachment).
     readonly property bool canEdit: model.outgoing && model.type === "text"
-        && !delegate.isAttachment && !delegate.isUnsupported
+        && !delegate.isAttachment
     // The whole message body for "Copy all" (the file name for an attachment).
     readonly property string fullText: delegate.isAttachment
         ? (model.attName || "") : (model.text || "")
@@ -838,16 +835,6 @@ Item {
                 }
             }
 
-            // Unsupported type placeholder (forward compatibility).
-            Label {
-                visible: delegate.isUnsupported
-                text: qsTr("Unsupported message (%1) \u2014 update your app").arg(model.text)
-                color: Theme.textDim
-                font.italic: true
-                wrapMode: Text.Wrap
-                Layout.fillWidth: true
-            }
-
             // The body. A read-only TextEdit (not a Label) so the user can select
             // text with the mouse and copy it (Ctrl+C); "Copy all" in the context
             // menu copies the message as it was written, markers and all.
@@ -900,7 +887,7 @@ Item {
 
             TextEdit {
                 id: bodyText
-                visible: !delegate.isAttachment && !delegate.isUnsupported
+                visible: !delegate.isAttachment
                     && !delegate.isContactRequest && model.text.length > 0
                     && (delegate.invitePlates.length === 0
                         || delegate.session.withoutInvites(model.text).length > 0)
@@ -1249,8 +1236,7 @@ Item {
                 iconName: "forward"
                 // Anything a person wrote or sent can be passed on; service notices
                 // and requests cannot.
-                visible: !delegate.isSystem && !delegate.isUnsupported
-                    && !delegate.isContactRequest
+                visible: !delegate.isSystem && !delegate.isContactRequest
                     && model.e2eId && model.e2eId.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: delegate.forwardRequested(model.e2eId)
@@ -1259,9 +1245,8 @@ Item {
                 text: qsTr("Reply")
                 iconName: "reply"
                 // Any real message (text or attachment) can be replied to; service
-                // notices, requests and unsupported placeholders cannot.
-                visible: !delegate.isSystem && !delegate.isUnsupported
-                    && !delegate.isContactRequest
+                // notices and requests cannot.
+                visible: !delegate.isSystem && !delegate.isContactRequest
                     && model.e2eId && model.e2eId.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: {

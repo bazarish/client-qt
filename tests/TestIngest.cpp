@@ -160,6 +160,21 @@ int main(int argc, char** argv)
     CHECK(store.groupState(kClub).has_value());
     CHECK(store.messageByE2e("g1", kClub).author == QStringLiteral("Ann"));
 
+    QVariantMap future = incoming(kBob, "unsupported", "u1");
+    future["rawType"] = QStringLiteral("poll.vote");
+    CHECK(took(future));
+    CHECK(saw({"added"}));
+    const StoredMessage unknown = store.messageByE2e("u1", kBob);
+    CHECK(unknown.type == QStringLiteral("system"));
+    CHECK(systemNoteText(unknown.text).contains(QStringLiteral("poll.vote")));
+    CHECK(took(future));
+    CHECK(saw({}));
+    QVariantMap worded = incoming(kBob, "unsupported", "u2", "a question for everyone");
+    worded["rawType"] = QStringLiteral("poll");
+    CHECK(took(worded));
+    CHECK(saw({"added"}));
+    CHECK(store.messageByE2e("u2", kBob).type == QStringLiteral("system"));
+
     QVariantMap timer = incoming(kBob, "chat.timer", "t1");
     timer["timerSeconds"] = static_cast<qint64>(client::kSecondsPerDay);
     CHECK(took(timer));
