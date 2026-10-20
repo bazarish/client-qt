@@ -24,26 +24,43 @@ Popup {
     // Pulled this far while not zoomed, the picture turns to the one beside it in the chat.
     readonly property int kTurnPull: 80
     readonly property int kSettleMs: 180
+    readonly property int kSlideMs: 220
+    readonly property int kSlideGap: 24
+    // At the first or the last picture the pull gives this share of the finger's travel.
+    readonly property real kEdgeResistance: 0.35
     readonly property int kButtonSize: 44
     readonly property int kButtonMargin: 12
     readonly property real kButtonScrim: 0.55
     property real pull: 0
+    property var before: ({found: false})
+    property var after: ({found: false})
+    property string beforeSource: ""
+    property string afterSource: ""
 
+    function pictureUrl(e2eId) {
+        return "image://picture/" + e2eId + "?r=" + Pictures.revision
+    }
     function show(url, e2eId, name) {
         root.source = url
         root.e2eId = e2eId
         root.name = name
+        root.before = root.session ? root.session.pictureBeside(e2eId, -1) : {found: false}
+        root.after = root.session ? root.session.pictureBeside(e2eId, 1) : {found: false}
+        root.beforeSource = root.before.found ? root.pictureUrl(root.before.e2eId) : ""
+        root.afterSource = root.after.found ? root.pictureUrl(root.after.e2eId) : ""
+        root.pull = 0
         view.fit()
         root.open()
     }
-    // +1 is the later picture of the chat, -1 the earlier one.
+    // +1 slides to the later picture of the chat, -1 to the earlier one.
     function turn(step) {
-        const beside = root.session ? root.session.pictureBeside(root.e2eId, step) : null
-        if (!beside || !beside.found) {
+        if (slide.running || !(step > 0 ? root.after : root.before).found) {
             return false
         }
-        root.show("image://picture/" + beside.e2eId + "?r=" + Pictures.revision,
-            beside.e2eId, beside.name)
+        settle.stop()
+        slide.step = step
+        slide.to = -step * (view.width + root.kSlideGap)
+        slide.start()
         return true
     }
 
@@ -161,9 +178,13 @@ Popup {
                     }
                     DragHandler {
                         target: null
-                        enabled: !view.zoomed
+                        enabled: !view.zoomed && !slide.running
                         yAxis.enabled: false
-                        onActiveTranslationChanged: root.pull = activeTranslation.x
+                        onActiveTranslationChanged: {
+                            const dx = activeTranslation.x
+                            const open = dx < 0 ? root.after.found : root.before.found
+                            root.pull = open ? dx : dx * root.kEdgeResistance
+                        }
                         onActiveChanged: {
                             if (active) {
                                 settle.stop()
@@ -171,9 +192,7 @@ Popup {
                             }
                             const step = root.pull <= -root.kTurnPull ? 1
                                 : (root.pull >= root.kTurnPull ? -1 : 0)
-                            if (step !== 0 && root.turn(step)) {
-                                root.pull = 0
-                            } else {
+                            if (step === 0 || !root.turn(step)) {
                                 settle.start()
                             }
                         }
@@ -181,6 +200,32 @@ Popup {
                 }
             }
         }
+        // The pictures beside this one ride in with the pull; the same address, so the cache keeps them.
+        Image {
+            x: view.x + root.pull - view.width - root.kSlideGap
+            y: view.y
+            width: view.width
+            height: view.height
+            visible: root.pull > 0
+            source: root.beforeSource
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            sourceSize.width: root.kMaxDecodeEdge
+            sourceSize.height: root.kMaxDecodeEdge
+        }
+        Image {
+            x: view.x + root.pull + view.width + root.kSlideGap
+            y: view.y
+            width: view.width
+            height: view.height
+            visible: root.pull < 0
+            source: root.afterSource
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+            sourceSize.width: root.kMaxDecodeEdge
+            sourceSize.height: root.kMaxDecodeEdge
+        }
+
         Button {
             anchors.top: parent.top
             anchors.right: parent.right
@@ -204,6 +249,18 @@ Popup {
             id: closing
             interval: Application.styleHints.mouseDoubleClickInterval
             onTriggered: root.close()
+        }
+        NumberAnimation {
+            id: slide
+            property int step: 0
+            target: root
+            property: "pull"
+            duration: root.kSlideMs
+            easing.type: Easing.OutCubic
+            onFinished: {
+                const beside = step > 0 ? root.after : root.before
+                root.show(step > 0 ? root.afterSource : root.beforeSource, beside.e2eId, beside.name)
+            }
         }
         NumberAnimation {
             id: settle
