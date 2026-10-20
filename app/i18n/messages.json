@@ -678,7 +678,7 @@
       "ar": "الحذف التلقائي"
     },
     "Off": {
-      "ru": "Выключен",
+      "ru": "Выключено",
       "es": "Desactivado",
       "zh": "关闭",
       "ar": "متوقف"
@@ -2783,11 +2783,11 @@
       "zh": "已保存的消息",
       "ar": "الرسائل المحفوظة"
     },
-    "Scan this code on the new device, or paste the link there.": {
-      "ru": "Отсканируйте код на новом устройстве или вставьте туда ссылку.",
-      "es": "Escanea este código en el nuevo dispositivo, o pega allí el enlace.",
-      "zh": "在新设备上扫描此码，或在那里粘贴链接。",
-      "ar": "امسح هذا الرمز على الجهاز الجديد أو الصِق الرابط هناك."
+    "Scan this QR code on the new device, or paste the link there.": {
+      "ru": "Отсканируйте QR на новом устройстве или вставьте туда ссылку.",
+      "es": "Escanea este QR en el nuevo dispositivo, o pega allí el enlace.",
+      "zh": "在新设备上扫描此二维码，或在那里粘贴链接。",
+      "ar": "امسح رمز QR هذا على الجهاز الجديد أو الصِق الرابط هناك."
     },
     "Sealing the account…": {
       "ru": "Аккаунт запечатывается…",
