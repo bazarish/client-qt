@@ -41,6 +41,8 @@ Bytes readWhole(const QString& location);
 // What is written whole goes here: a local file, or an Android document through its provider.
 std::unique_ptr<client::FileOutput> openOutput(const QString& dest);
 
+void saveIntoDownloads(const QString& fileName, const QString& mime, const QByteArray& bytes);
+
 // A received file's ciphertext gathers beside a local destination; for a document,
 // whose provider offers no neighbour, it gathers in the application's own storage.
 client::FileTarget fileTargetFor(const QString& dest, const QString& partName);

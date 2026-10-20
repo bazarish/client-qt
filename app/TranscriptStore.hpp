@@ -108,6 +108,7 @@ public:
     QVector<StoredMessage> newerMessages(const QString& peer, qint64 afterId, int limit) const;
     QVector<StoredMessage> messagesAround(const QString& peer, qint64 id, int perSide) const;
     StoredMessage nextVoiceAfter(const QString& peer, qint64 afterId) const;
+    StoredMessage pictureBeside(const QString& peer, qint64 id, bool later) const;
     bool hasMessagesBefore(const QString& peer, qint64 id) const;
     // The chat's auto-delete timer in seconds, 0 when it has none.
     qint64 chatTimer(const QString& peer) const;

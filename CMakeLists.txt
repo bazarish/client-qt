@@ -458,6 +458,12 @@ if(Qt6_FOUND)
     target_compile_options(TestTranscript PRIVATE -Wall -Wextra)
     add_test(NAME TestTranscript COMMAND TestTranscript)
 
+    add_executable(TestDownloads tests/TestDownloads.cpp app/Documents.cpp)
+    target_include_directories(TestDownloads PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestDownloads PRIVATE bazarish_client Qt6::Core)
+    target_compile_options(TestDownloads PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestDownloads COMMAND TestDownloads)
+
     add_executable(TestIngest tests/TestIngest.cpp app/MessageIngest.cpp app/ContactBook.cpp
         app/TranscriptStore.cpp app/SystemNotes.cpp app/SessionShared.cpp)
     target_include_directories(TestIngest PRIVATE

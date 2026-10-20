@@ -146,6 +146,29 @@ int main(int argc, char** argv)
         CHECK(around.size() == 3);
         CHECK(around[0].id == ids[1] && around[1].id == ids[2] && around[2].id == ids[3]);
 
+        QVector<qint64> pictures;
+        for (int i = 0; i < 3; ++i) {
+            StoredMessage m;
+            m.peer = "carol";
+            m.type = "image";
+            m.e2eId = QStringLiteral("pic%1").arg(i);
+            m.ts = 200 + i;
+            const qint64 id = store.append(m);
+            CHECK(id > 0);
+            pictures.push_back(id);
+            StoredMessage between;
+            between.peer = "carol";
+            between.type = "text";
+            between.text = "between";
+            between.ts = 201 + i;
+            CHECK(store.append(between) > 0);
+        }
+        CHECK(store.pictureBeside("carol", pictures[0], true).id == pictures[1]);
+        CHECK(store.pictureBeside("carol", pictures[2], false).id == pictures[1]);
+        CHECK(store.pictureBeside("carol", pictures[2], true).id == 0);
+        CHECK(store.pictureBeside("carol", pictures[0], false).id == 0);
+        CHECK(store.pictureBeside("dave", pictures[0], true).id == 0);
+
         const QVector<SearchHit> alpha = store.searchInPeer("carol", "ALPHA");
         CHECK(alpha.size() == 2);
         CHECK(alpha[0].id == ids[4] && alpha[1].id == ids[0]);

@@ -2267,6 +2267,24 @@
       "zh": "图片已保存",
       "ar": "حُفظت الصورة"
     },
+    "Save to Downloads": {
+      "ru": "Сохранить в «Загрузки»",
+      "es": "Guardar en Descargas",
+      "zh": "保存到下载",
+      "ar": "حفظ في التنزيلات"
+    },
+    "Saved to Downloads": {
+      "ru": "Сохранено в «Загрузки»",
+      "es": "Guardado en Descargas",
+      "zh": "已保存到下载",
+      "ar": "تم الحفظ في التنزيلات"
+    },
+    "Could not save to Downloads": {
+      "ru": "Не удалось сохранить в «Загрузки»",
+      "es": "No se pudo guardar en Descargas",
+      "zh": "无法保存到下载",
+      "ar": "تعذّر الحفظ في التنزيلات"
+    },
     "Pin to top": {
       "ru": "Закрепить сверху",
       "es": "Fijar arriba",
@@ -2807,11 +2825,11 @@
       "zh": "发送",
       "ar": "إرسال"
     },
-    "Send a picture": {
-      "ru": "Отправить картинку",
-      "es": "Enviar una imagen",
+    "Send pictures": {
+      "ru": "Отправить картинки",
+      "es": "Enviar imágenes",
       "zh": "发送图片",
-      "ar": "إرسال صورة"
+      "ar": "إرسال صور"
     },
     "Send file": {
       "ru": "Отправить файл",

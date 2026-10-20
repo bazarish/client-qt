@@ -24,9 +24,9 @@ Rectangle {
     // How far the attach menu floats above the input bar.
     readonly property int kAttachMenuGap: 8
 
-    function sendPicture(source) {
+    function sendPictures(sources) {
         if (root.session) {
-            root.session.sendPictureFile(source)
+            root.session.sendPictureFiles(sources)
         }
     }
 
@@ -359,9 +359,10 @@ Rectangle {
     // sent, so a camera original does not sit in a transfer for minutes.
     FileDialog {
         id: imageDialog
-        title: qsTr("Send a picture")
+        title: qsTr("Send pictures")
+        fileMode: FileDialog.OpenFiles
         nameFilters: ["Pictures (*.png *.jpg *.jpeg)", "All files (*)"]
-        onAccepted: root.sendPicture(selectedFile)
+        onAccepted: root.sendPictures(selectedFiles.map(String))
     }
     FileSendDialog {
         id: sendOptions

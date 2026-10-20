@@ -33,6 +33,7 @@
 #include <QClipboard>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QPointer>
 #include <QMetaMethod>
 #include <QSet>
 #include <QImage>
@@ -1004,17 +1005,53 @@ void SessionController::sendFile(const QString& fileUrl)
     emit commands_.sendFile(activePeer_, source, takeReply(), newE2eId());
 }
 
-void SessionController::sendPictureFile(const QString& fileUrl)
+void SessionController::sendPictureFiles(const QStringList& fileUrls)
 {
-    const QUrl url(fileUrl);
-    const QString localPath = url.isLocalFile() ? url.toLocalFile() : fileUrl;
-    const PreparedPicture picture
-        = preparePicture(QImage(localPath), QFileInfo(localPath).completeBaseName());
-    if (picture.isEmpty()) {
-        emit actionFailed(tr("that file is not a picture this can send"));
+    if (activePeer_.isEmpty() || fileUrls.isEmpty()) {
         return;
     }
-    sendPreparedPicture(picture);
+    // Prepared one after another away from the window and sent in the order picked, to the chat
+    // they were picked in; a reply goes with the first.
+    const QPointer<SessionController> self(this);
+    std::thread([self, peer = activePeer_, fileUrls, replyTo = takeReply()]() mutable {
+        for (const QString& fileUrl : fileUrls) {
+            const QUrl url(fileUrl);
+            const QString localPath = url.isLocalFile() ? url.toLocalFile() : fileUrl;
+            const PreparedPicture picture
+                = preparePicture(QImage(localPath), QFileInfo(localPath).completeBaseName());
+            QMetaObject::invokeMethod(qApp, [self, peer, picture, replyTo]() {
+                if (self.isNull()) {
+                    return;
+                }
+                if (picture.isEmpty()) {
+                    emit self->actionFailed(tr("that file is not a picture this can send"));
+                    return;
+                }
+                self->sendPictureTo(peer, picture, replyTo);
+            }, Qt::QueuedConnection);
+            replyTo.clear();
+        }
+    }).detach();
+}
+
+QVariantMap SessionController::pictureBeside(const QString& e2eId, const int step)
+{
+    QVariantMap beside{{QStringLiteral("found"), false}};
+    const StoredMessage from = store_.messageByE2e(e2eId, activePeer_);
+    if (activePeer_.isEmpty() || from.id <= 0 || step == 0) {
+        return beside;
+    }
+    for (StoredMessage next = store_.pictureBeside(activePeer_, from.id, step > 0); next.id > 0;
+         next = store_.pictureBeside(activePeer_, next.id, step > 0)) {
+        requestPicturesFor({next});
+        if (PictureStore::instance().has(next.e2eId)) {
+            beside[QStringLiteral("found")] = true;
+            beside[QStringLiteral("e2eId")] = next.e2eId;
+            beside[QStringLiteral("name")] = next.attName;
+            return beside;
+        }
+    }
+    return beside;
 }
 
 void SessionController::sendClipboardPicture()
@@ -1042,14 +1079,19 @@ void SessionController::sendShot(QObject* const shot)
 
 void SessionController::sendPreparedPicture(const PreparedPicture& picture)
 {
-    if (activePeer_.isEmpty()) {
+    sendPictureTo(activePeer_, picture, takeReply());
+}
+
+void SessionController::sendPictureTo(
+    const QString& peer, const PreparedPicture& picture, const QString& replyTo)
+{
+    if (peer.isEmpty()) {
         return;
     }
-    unblockBeforeWriting(activePeer_);
+    unblockBeforeWriting(peer);
     const QString e2eId = newE2eId();
     PictureStore::instance().put(e2eId, picture.bytes);
-    emit commands_.sendPicture(
-        activePeer_, picture.bytes, picture.name, picture.mime, takeReply(), e2eId);
+    emit commands_.sendPicture(peer, picture.bytes, picture.name, picture.mime, replyTo, e2eId);
 }
 
 void SessionController::sendCallback(
@@ -1498,6 +1540,26 @@ void SessionController::savePictureAs(const QString& e2eId, const QString& fileU
         return;
     }
     emit actionOk(tr("Picture saved"));
+}
+
+void SessionController::savePictureToDownloads(const QString& e2eId, const QString& name)
+{
+    const QByteArray bytes = PictureStore::instance().bytes(e2eId);
+    if (bytes.isEmpty()) {
+        emit actionFailed(tr("This picture is not here to save."));
+        return;
+    }
+    const QString fileName = defaultPictureSaveUrl(e2eId, name).fileName();
+    const QString mime = fileName.endsWith(QStringLiteral(".png")) ? QStringLiteral("image/png")
+                                                                   : QStringLiteral("image/jpeg");
+    try {
+        saveIntoDownloads(fileName, mime, bytes);
+    } catch (const std::exception& error) {
+        bazarish::log::warn("picture not saved to Downloads: {}", error.what());
+        emit actionFailed(tr("Could not save to Downloads"));
+        return;
+    }
+    emit actionOk(tr("Saved to Downloads"));
 }
 
 void SessionController::copyPicture(const QString& e2eId)

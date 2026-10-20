@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 
 #ifdef Q_OS_ANDROID
+#include <QJniEnvironment>
 #include <QJniObject>
 #include <QtCore/qcoreapplication_platform.h>
 
@@ -244,6 +245,42 @@ std::unique_ptr<client::FileOutput> openOutput(const QString& dest)
     }
 #endif
     return client::fileTargetAt(toPath(dest)).open();
+}
+
+void saveIntoDownloads(
+    const QString& fileName, [[maybe_unused]] const QString& mime, const QByteArray& bytes)
+{
+#ifdef Q_OS_ANDROID
+    QJniEnvironment env;
+    const jbyteArray array = env->NewByteArray(static_cast<jsize>(bytes.size()));
+    if (array == nullptr) {
+        throw std::runtime_error("no room to hand the file to Downloads");
+    }
+    env->SetByteArrayRegion(array, 0, static_cast<jsize>(bytes.size()),
+        reinterpret_cast<const jbyte*>(bytes.constData()));
+    const jboolean saved = QJniObject::callStaticMethod<jboolean>(kDocuments, "saveToDownloads",
+        "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;[B)Z",
+        QNativeInterface::QAndroidApplication::context().object(),
+        jniString(fileName).object<jstring>(), jniString(mime).object<jstring>(), array);
+    env->DeleteLocalRef(array);
+    if (!saved) {
+        throw std::runtime_error("Downloads did not take the file");
+    }
+#else
+    const QDir downloads(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
+    if (!downloads.mkpath(QStringLiteral("."))) {
+        throw std::runtime_error("the Downloads folder cannot be made");
+    }
+    const QFileInfo wanted(fileName);
+    QString path = downloads.filePath(fileName);
+    for (int copy = 1; QFileInfo::exists(path); ++copy) {
+        path = downloads.filePath(QStringLiteral("%1 (%2).%3")
+                .arg(wanted.completeBaseName()).arg(copy).arg(wanted.suffix()));
+    }
+    const std::unique_ptr<client::FileOutput> out = openOutput(path);
+    out->write(bytes.constData(), static_cast<std::size_t>(bytes.size()));
+    out->finish();
+#endif
 }
 
 client::FileTarget fileTargetFor(const QString& dest, [[maybe_unused]] const QString& partName)

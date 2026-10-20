@@ -261,7 +261,9 @@ public:
     Q_INVOKABLE void forwardMessage(const QString& e2eId, const QString& toPeer);
     Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& e2eId);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
-    Q_INVOKABLE void sendPictureFile(const QString& fileUrl);
+    Q_INVOKABLE void sendPictureFiles(const QStringList& fileUrls);
+    Q_INVOKABLE QVariantMap pictureBeside(const QString& e2eId, int step);
+    Q_INVOKABLE void savePictureToDownloads(const QString& e2eId, const QString& name);
     Q_INVOKABLE void sendClipboardPicture();
     Q_INVOKABLE void sendShot(QObject* shot);
     Q_INVOKABLE void savePictureAs(const QString& e2eId, const QString& fileUrl);
@@ -535,6 +537,7 @@ private:
     int contactsRevision_ = 0;
     int reactionsRevision_ = 0;
     QString takeReply();
+    void sendPictureTo(const QString& peer, const PreparedPicture& picture, const QString& replyTo);
     void sendPreparedPicture(const PreparedPicture& picture);
     void setAvatarBusy(bool busy);
     qint64 oldestLoadedId_ = 0;

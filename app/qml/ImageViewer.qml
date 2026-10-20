@@ -14,11 +14,36 @@ Popup {
     property string name
     property var session: null
 
+    readonly property real kMaxZoom: 4
+    // One notch of a mouse wheel; a wheel notch is 120 in angleDelta.
+    readonly property real kWheelStep: 1.25
+    readonly property int kWheelNotch: 120
+    // Decoded no bigger than this: this client sends a picture at most 1600 px, a hostile one is capped.
+    readonly property int kMaxDecodeEdge: 2048
+    // Pulled this far while not zoomed, the picture turns to the one beside it in the chat.
+    readonly property int kTurnPull: 80
+    readonly property int kSettleMs: 180
+    readonly property int kButtonSize: 44
+    readonly property int kButtonMargin: 12
+    readonly property real kButtonScrim: 0.55
+    property real pull: 0
+
     function show(url, e2eId, name) {
         root.source = url
         root.e2eId = e2eId
         root.name = name
+        view.fit()
         root.open()
+    }
+    // +1 is the later picture of the chat, -1 the earlier one.
+    function turn(step) {
+        const beside = root.session ? root.session.pictureBeside(root.e2eId, step) : null
+        if (!beside || !beside.found) {
+            return false
+        }
+        root.show("image://picture/" + beside.e2eId + "?r=" + Pictures.revision,
+            beside.e2eId, beside.name)
+        return true
     }
 
     // The window's overlay, so the size below is the window's size and not the
@@ -47,39 +72,135 @@ Popup {
     }
 
     contentItem: Item {
-        Image {
-            id: picture
-            anchors.fill: parent
-            anchors.margins: 16
-            source: root.source
-            fillMode: Image.PreserveAspectFit
-            horizontalAlignment: Image.AlignHCenter
-            verticalAlignment: Image.AlignVCenter
-            asynchronous: true
-            // Decoded at the size it is drawn at, so a large picture is not a
-            // large allocation.
-            sourceSize.width: root.width
-            sourceSize.height: root.height
-        }
+        focus: true
+        Keys.onLeftPressed: root.turn(-1)
+        Keys.onRightPressed: root.turn(1)
 
-        // A plain Item does not accept mouse events, so a press over it was still
-        // delivered to the pointer handlers of the bubbles underneath - which is
-        // how clicking "through" the picture opened another one. A MouseArea
-        // accepts the press as an item, and delivery stops here.
+        // Takes every press the picture leaves, so none reaches the chat behind.
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             hoverEnabled: true
-            preventStealing: true
-            onClicked: function(mouse) {
-                if (mouse.button === Qt.RightButton) {
-                    pictureMenu.popup()
-                } else {
-                    root.close()
+            onWheel: function(wheel) { wheel.accepted = true }
+        }
+
+        Flickable {
+            id: view
+            anchors.fill: parent
+            anchors.margins: 16
+            contentWidth: width
+            contentHeight: height
+            readonly property bool zoomed: contentWidth > width + 1
+            interactive: zoomed
+            boundsBehavior: Flickable.StopAtBounds
+            function fit() {
+                contentWidth = width
+                contentHeight = height
+                contentX = 0
+                contentY = 0
+            }
+            onWidthChanged: fit()
+            onHeightChanged: fit()
+            function zoomTo(zoom, at) {
+                const bounded = Math.max(1, Math.min(root.kMaxZoom, zoom))
+                resizeContent(width * bounded, height * bounded, at)
+                returnToBounds()
+            }
+
+            Image {
+                id: picture
+                width: view.contentWidth
+                height: view.contentHeight
+                transform: Translate { x: root.pull }
+                source: root.source
+                fillMode: Image.PreserveAspectFit
+                horizontalAlignment: Image.AlignHCenter
+                verticalAlignment: Image.AlignVCenter
+                asynchronous: true
+                sourceSize.width: root.kMaxDecodeEdge
+                sourceSize.height: root.kMaxDecodeEdge
+
+                // The press stops here, before anything behind could see it; the gestures ride on it.
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: function(mouse) {
+                        if (mouse.button === Qt.RightButton) {
+                            pictureMenu.popup()
+                        } else {
+                            root.close()
+                        }
+                    }
+                    onPressAndHold: pictureMenu.popup()
+                    onWheel: function(wheel) {
+                        const notches = wheel.angleDelta.y / root.kWheelNotch
+                        view.zoomTo(view.contentWidth / view.width * Math.pow(root.kWheelStep, notches),
+                            Qt.point(wheel.x, wheel.y))
+                    }
+
+                    PinchHandler {
+                        target: null
+                        rotationAxis.enabled: false
+                        property real fromZoom: 1
+                        onActiveChanged: {
+                            if (active) {
+                                fromZoom = view.contentWidth / view.width
+                            } else {
+                                view.returnToBounds()
+                            }
+                        }
+                        onActiveScaleChanged: {
+                            const zoom = Math.max(1, Math.min(root.kMaxZoom, fromZoom * activeScale))
+                            view.resizeContent(view.width * zoom, view.height * zoom, centroid.position)
+                        }
+                    }
+                    DragHandler {
+                        target: null
+                        enabled: !view.zoomed
+                        yAxis.enabled: false
+                        onActiveTranslationChanged: root.pull = activeTranslation.x
+                        onActiveChanged: {
+                            if (active) {
+                                settle.stop()
+                                return
+                            }
+                            const step = root.pull <= -root.kTurnPull ? 1
+                                : (root.pull >= root.kTurnPull ? -1 : 0)
+                            if (step !== 0 && root.turn(step)) {
+                                root.pull = 0
+                            } else {
+                                settle.start()
+                            }
+                        }
+                    }
                 }
             }
-            onPressAndHold: pictureMenu.popup()
-            onWheel: function(wheel) { wheel.accepted = true }
+        }
+        Button {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: root.kButtonMargin
+            width: root.kButtonSize
+            height: root.kButtonSize
+            padding: 0
+            focusPolicy: Theme.pressFocus
+            Accessible.name: qsTr("Save to Downloads")
+            background: Rectangle {
+                radius: width / 2
+                color: Qt.rgba(0, 0, 0, root.kButtonScrim)
+            }
+            contentItem: Item {
+                Icon { anchors.centerIn: parent; name: "save"; color: "white" }
+            }
+            onClicked: root.session.savePictureToDownloads(root.e2eId, root.name)
+        }
+        NumberAnimation {
+            id: settle
+            target: root
+            property: "pull"
+            to: 0
+            duration: root.kSettleMs
+            easing.type: Easing.OutCubic
         }
 
         ContextMenu {
