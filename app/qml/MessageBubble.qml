@@ -770,7 +770,7 @@ Item {
                     Layout.preferredHeight: kMaxHeight
                     spacing: 1
                     Repeater {
-                        model: wave.kBars
+                        model: wave.visible ? wave.kBars : 0
                         delegate: Rectangle {
                             required property int index
                             readonly property real level: {
