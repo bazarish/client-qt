@@ -270,7 +270,7 @@ Rectangle {
                     ScrollBar.vertical.policy: ScrollBar.AsNeeded
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                     contentWidth: availableWidth
-                    contentHeight: input.height
+                    contentHeight: input.implicitHeight
 
                     // A Controls TextArea drops the selection of an Android long press when the finger lifts.
                     TextEdit {
