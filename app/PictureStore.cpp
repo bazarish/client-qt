@@ -39,27 +39,40 @@ PictureStore& PictureStore::instance()
     return store;
 }
 
-bool PictureStore::put(const QString& e2eId, const QByteArray& data)
+PictureStore::Insert PictureStore::insert(const QString& e2eId, const QByteArray& data)
 {
     if (!looksLikeAPicture(data)) {
-        return false;
+        return Insert::eRefused;
     }
-    {
-        const QWriteLocker locker(&lock_);
-        const auto existing = entries_.constFind(e2eId);
-        if (existing != entries_.constEnd()) {
-            return true;
+    const QWriteLocker locker(&lock_);
+    if (entries_.contains(e2eId)) {
+        return Insert::eKept;
+    }
+    Entry entry;
+    entry.bytes = data;
+    entry.usedAt = ++clock_;
+    storedBytes_ += data.size();
+    entries_.insert(e2eId, entry);
+    evictLocked();
+    return Insert::eAdded;
+}
+
+bool PictureStore::put(const QString& e2eId, const QByteArray& data)
+{
+    const Insert result = insert(e2eId, data);
+    if (result == Insert::eAdded) {
+        {
+            const QWriteLocker locker(&lock_);
+            ++revision_;
         }
-        Entry entry;
-        entry.bytes = data;
-        entry.usedAt = ++clock_;
-        storedBytes_ += data.size();
-        entries_.insert(e2eId, entry);
-        evictLocked();
-        ++revision_;
+        emit revisionChanged();
     }
-    emit revisionChanged();
-    return true;
+    return result != Insert::eRefused;
+}
+
+bool PictureStore::restore(const QString& e2eId, const QByteArray& data)
+{
+    return insert(e2eId, data) != Insert::eRefused;
 }
 
 bool PictureStore::has(const QString& e2eId) const
@@ -138,9 +151,16 @@ void PictureStore::evictLocked()
         if (found == entries_.end()) {
             continue;
         }
-        decodedBytes_ -= decodedSize(found->decoded);
-        storedBytes_ -= found->bytes.size();
-        entries_.erase(found);
+        // Over the decoded budget only the decoded copy goes: the bytes are the picture.
+        if (decodedBytes_ > kDecodedBudgetBytes) {
+            decodedBytes_ -= decodedSize(found->decoded);
+            found->decoded = QImage();
+        }
+        if (storedBytes_ > kStoredBudgetBytes) {
+            decodedBytes_ -= decodedSize(found->decoded);
+            storedBytes_ -= found->bytes.size();
+            entries_.erase(found);
+        }
     }
 }
 

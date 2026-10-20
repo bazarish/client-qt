@@ -1034,6 +1034,17 @@ void SessionController::sendPictureFiles(const QStringList& fileUrls)
     }).detach();
 }
 
+QString SessionController::pictureSource(const QString& e2eId, const int revision)
+{
+    if (!PictureStore::instance().has(e2eId)) {
+        const QByteArray bytes = store_.media(QStringLiteral("picture:") + e2eId);
+        if (!PictureStore::instance().restore(e2eId, bytes)) {
+            bazarish::log::warn("picture {} has no drawable bytes here", e2eId.toStdString());
+        }
+    }
+    return QStringLiteral("image://picture/%1?r=%2").arg(e2eId).arg(revision);
+}
+
 QVariantMap SessionController::pictureBeside(const QString& e2eId, const int step)
 {
     QVariantMap beside{{QStringLiteral("found"), false}};

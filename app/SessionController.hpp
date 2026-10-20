@@ -263,6 +263,8 @@ public:
     Q_INVOKABLE void sendFile(const QString& fileUrl);
     Q_INVOKABLE void sendPictureFiles(const QStringList& fileUrls);
     Q_INVOKABLE QVariantMap pictureBeside(const QString& e2eId, int step);
+    // The address a bubble draws its picture from; bytes the cache let go come back first.
+    Q_INVOKABLE QString pictureSource(const QString& e2eId, int revision);
     Q_INVOKABLE void savePictureToDownloads(const QString& e2eId, const QString& name);
     Q_INVOKABLE void sendClipboardPicture();
     Q_INVOKABLE void sendShot(QObject* shot);

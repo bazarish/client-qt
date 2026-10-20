@@ -86,7 +86,7 @@ Item {
     // The picture as this account holds it. The revision in the URL is what makes
     // an Image reload when the bytes arrive.
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
-        ? "image://picture/" + model.e2eId + "?r=" + Pictures.revision : ""
+        ? delegate.session.pictureSource(model.e2eId, Pictures.revision) : ""
     // The account holds no drawable picture for this message: the bytes came with
     // it, so nothing is on its way and there is nothing to ask for. No fallback,
     // no Save button - it says it is broken.

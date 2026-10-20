@@ -445,6 +445,13 @@ if(Qt6_FOUND)
     set_tests_properties(TestPopupStack PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_CONTROLS_STYLE=Basic")
 
+    add_executable(TestPictureStore tests/TestPictureStore.cpp app/PictureStore.cpp)
+    target_include_directories(TestPictureStore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestPictureStore PRIVATE Qt6::Quick)
+    target_compile_options(TestPictureStore PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestPictureStore COMMAND TestPictureStore)
+    set_tests_properties(TestPictureStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)
     target_include_directories(TestLetterAvatar PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestLetterAvatar PRIVATE Qt6::Gui)

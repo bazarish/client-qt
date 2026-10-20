@@ -20,6 +20,8 @@ public:
     int revision() const { return revision_; }
 
     bool put(const QString& e2eId, const QByteArray& bytes);
+    // Brings back bytes the budget let go, without making every picture reload.
+    bool restore(const QString& e2eId, const QByteArray& bytes);
 
     bool has(const QString& e2eId) const;
 
@@ -46,6 +48,8 @@ private:
         quint64 usedAt = 0;
     };
 
+    enum class Insert { eRefused, eKept, eAdded };
+    Insert insert(const QString& e2eId, const QByteArray& bytes);
     void evictLocked();
 
     mutable QReadWriteLock lock_;
