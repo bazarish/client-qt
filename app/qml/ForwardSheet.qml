@@ -66,8 +66,8 @@ Popup {
                 height: visible ? 56 : 0
                 // The filter is on the name the user sees, which is the only thing
                 // they can search a chat by.
-                visible: filter.text.length === 0
-                    || (model.name || "").toLowerCase().indexOf(filter.text.toLowerCase()) >= 0
+                visible: filter.displayText.length === 0
+                    || (model.name || "").toLowerCase().indexOf(filter.displayText.toLowerCase()) >= 0
                 background: Rectangle {
                     color: parent.hovered ? Theme.surfaceAlt : "transparent"
                 }

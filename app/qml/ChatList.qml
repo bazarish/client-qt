@@ -100,12 +100,26 @@ Item {
             color: Theme.text
             placeholderTextColor: Theme.textDim
             leftPadding: 10
+            rightPadding: clearSearch.visible ? clearSearch.width : padding
             selectByMouse: true
-            onTextChanged: if (root.session) { root.session.setChatFilter(text) }
+            // A phone keyboard's word in progress is in displayText and not yet in text.
+            onDisplayTextChanged: if (root.session) { root.session.setChatFilter(displayText) }
             background: Rectangle {
                 radius: 8
                 color: Theme.surface
                 border.color: chatSearch.activeFocus ? Theme.green : Theme.border
+            }
+            IconButton {
+                id: clearSearch
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                height: parent.height
+                width: height
+                visible: chatSearch.displayText.length > 0
+                iconName: "close"
+                focusPolicy: Qt.NoFocus
+                Accessible.name: qsTr("Clear")
+                onClicked: chatSearch.clear()
             }
         }
 
