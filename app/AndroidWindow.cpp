@@ -4,8 +4,11 @@
 #include "AppController.hpp"
 
 #include <QGuiApplication>
+#include <QInputDevice>
 #include <QJniEnvironment>
 #include <QJniObject>
+#include <QPointingDevice>
+#include <QQuickItem>
 #include <QtCore/qcoreapplication_platform.h>
 
 #pragma push_macro("emit")
@@ -66,6 +69,29 @@ void unlocked(JNIEnv*, jclass)
     inWindowThread<AppController>(gApp, [](AppController& app) { emit app.unlocked(); });
 }
 
+// Android offers Paste on a long press only over a focused field, and Qt focuses one on release.
+void focusFieldsOnPress()
+{
+    for (const QInputDevice* const device : QInputDevice::devices()) {
+        if (device->type() != QInputDevice::DeviceType::TouchScreen) {
+            continue;
+        }
+        QObject::connect(static_cast<const QPointingDevice*>(device), &QPointingDevice::grabChanged,
+            qApp, [](QObject* const grabber, const QPointingDevice::GrabTransition transition,
+                      const QPointerEvent*, const QEventPoint& point) {
+                auto* const item = qobject_cast<QQuickItem*>(grabber);
+                if (transition != QPointingDevice::GrabExclusive
+                    || point.state() != QEventPoint::State::Pressed || item == nullptr
+                    || item->hasActiveFocus()
+                    || !item->flags().testFlag(QQuickItem::ItemAcceptsInputMethod)
+                    || item->property("readOnly").toBool()) {
+                    return;
+                }
+                item->forceActiveFocus(Qt::MouseFocusReason);
+            });
+    }
+}
+
 void keyboardCovers(JNIEnv*, jclass, jint pixels)
 {
     inWindowThread<AppController>(gApp, [pixels](AppController& app) {
@@ -104,6 +130,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
 
     QJniObject::callStaticMethod<void>(kWindow, "askNotifications", "()V");
     QJniObject::callStaticMethod<void>(kWindow, "followKeyboard", "()V");
+    focusFieldsOnPress();
     takeHeld();
 
     connect(&app_, &AppController::ringingChanged, this, &AndroidWindow::followCall);
