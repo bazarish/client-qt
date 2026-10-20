@@ -10,6 +10,7 @@
 #include "UrlScheme.hpp"
 #endif
 #include "Identicon.hpp"
+#include "PathText.hpp"
 #include "SingleInstance.hpp"
 #include "Translations.hpp"
 #include "AudioRoute.hpp"
@@ -328,7 +329,7 @@ int main(int argc, char** argv)
 
     const std::filesystem::path accounts = bazarish::app::AppController::accountsFolder();
     std::filesystem::create_directories(accounts);
-    bazarish::app::SingleInstance instance(QString::fromStdString(accounts.string()));
+    bazarish::app::SingleInstance instance(bazarish::app::pathText(accounts));
     // On Android the core's own process holds the folder.
 #ifndef Q_OS_ANDROID
     if (!instance.claim()) {

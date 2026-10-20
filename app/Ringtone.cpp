@@ -3,6 +3,7 @@
 
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
+#include "PathText.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidShade.hpp"
 #endif
@@ -211,7 +212,7 @@ bool Ringtone::loadTrack()
 {
 #ifndef Q_OS_ANDROID
     // Android rings with the packaged sound, so a track of the user's would not be heard.
-    const QString own = QString::fromStdString((appRoot() / kTrackName).string());
+    const QString own = pathText(appRoot() / kTrackName);
     if (QFileInfo(own).isFile() && loadFrom(own)) {
         return true;
     }

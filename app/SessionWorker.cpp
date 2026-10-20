@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "SessionWorker.hpp"
 
+#include "PathText.hpp"
 #include "SessionShared.hpp"
 
 #include "Documents.hpp"
@@ -476,7 +477,7 @@ void SessionWorker::openAccount(
     downloadsCancelled_.store(false);
     try {
         session_ = std::make_unique<Session>(
-            Session::open(dir.toStdString(), passphrase.toStdString()));
+            Session::open(toPath(dir), passphrase.toStdString()));
     } catch (const std::exception& e) {
         emit openFailed(QString::fromUtf8(e.what()));
         return;

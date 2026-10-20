@@ -3,6 +3,7 @@
 
 #include "DeliveryStatus.hpp"
 #include "OperationLog.hpp"
+#include "PathText.hpp"
 #include "SessionShared.hpp"
 #include "SessionWorker.hpp"
 #include "SystemNotes.hpp"
@@ -586,7 +587,7 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
     unread_ = store_.unreadTotal();
     sweepExpired();
     expiryTimer_.start();
-    const Bytes key = client::accountkey::keyFor(file.toStdString(), passphrase.toStdString());
+    const Bytes key = client::accountkey::keyFor(toPath(file), passphrase.toStdString());
     emit events_.transcriptOpened(file,
         QByteArray(reinterpret_cast<const char*>(key.data()), static_cast<qsizetype>(key.size())));
     const QJsonDocument flashes = QJsonDocument::fromJson(
@@ -620,7 +621,7 @@ client::AccountDb& CoreAccount::accountDb()
 {
     if (!accountDb_) {
         accountDb_ = std::make_unique<client::AccountDb>(
-            accountPath_.toStdString(), passphrase_.toStdString());
+            toPath(accountPath_), passphrase_.toStdString());
     }
     return *accountDb_;
 }

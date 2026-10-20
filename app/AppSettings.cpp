@@ -138,7 +138,8 @@ void AppSettings::save() const
         {"audio", {{"input", audioInput_}, {"output", audioOutput_}}},
         {"i2p", i2p},
     };
-    const std::filesystem::path scratch = path_.string() + ".new";
+    std::filesystem::path scratch = path_;
+    scratch += ".new";
     {
         std::ofstream out(scratch, std::ios::trunc);
         out << document.dump(2) << '\n';

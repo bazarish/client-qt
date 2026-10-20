@@ -7,6 +7,7 @@
 #include "Documents.hpp"
 #include "Translations.hpp"
 #include "Markup.hpp"
+#include "PathText.hpp"
 #include "PopupStack.hpp"
 #include "Version.hpp"
 #include "Wire.hpp"
@@ -546,7 +547,7 @@ void AppController::moveToBackground() const
 
 QString AppController::dataLocation() const
 {
-    return QString::fromStdString(client::AccountManager::dataRoot().string());
+    return pathText(client::AccountManager::dataRoot());
 }
 
 bool AppController::clipboardHasImage() const

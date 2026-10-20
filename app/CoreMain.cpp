@@ -5,6 +5,7 @@
 #include "CoreHost.hpp"
 #include "CoreSocket.hpp"
 #include "Notifier.hpp"
+#include "PathText.hpp"
 #include "SingleInstance.hpp"
 #include "Translations.hpp"
 #ifdef Q_OS_ANDROID
@@ -48,7 +49,7 @@ int runCore(int argc, char** argv)
     QCoreApplication::setOrganizationName("Bazarish");
     const std::filesystem::path accounts = accountsRoot();
     std::filesystem::create_directories(accounts);
-    SingleInstance instance(QString::fromStdString(accounts.string()));
+    SingleInstance instance(pathText(accounts));
     if (!instance.claim()) {
         bazarish::log::info("another Bazarish core already has this account folder");
         return EXIT_FAILURE;

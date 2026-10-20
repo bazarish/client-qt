@@ -2,6 +2,7 @@
 #include "TranscriptStore.hpp"
 
 #include "AccountKey.hpp"
+#include "PathText.hpp"
 #include "SystemNotes.hpp"
 
 #include <bazarish/Bytes.hpp>
@@ -296,7 +297,7 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     (void)accountId;
     Bytes key;
     try {
-        key = client::accountkey::keyFor(dbPath.toStdString(), passphrase.toStdString());
+        key = client::accountkey::keyFor(toPath(dbPath), passphrase.toStdString());
     } catch (const std::exception& error) {
         bazarish::log::warn("transcript: {}", error.what());
         return false;

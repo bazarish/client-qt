@@ -7,6 +7,7 @@
 #include "DevicePairing.hpp"
 #include "Documents.hpp"
 #include "I2pRouter.hpp"
+#include "PathText.hpp"
 #include "Wire.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidCallAudio.hpp"
@@ -191,7 +192,7 @@ QString CoreHost::notificationTitle(const CoreAccount* const account) const
 
 QString CoreHost::soundFolder()
 {
-    return QString::fromStdString(appRoot().string());
+    return pathText(appRoot());
 }
 
 void CoreHost::setNotificationsEnabled(const bool on)
@@ -461,7 +462,7 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
 
     QString file;
     try {
-        file = QString::fromStdString(manager_->fileFor(id.toStdString()).string());
+        file = pathText(manager_->fileFor(id.toStdString()));
     } catch (const std::exception& error) {
         removeSession(account);
         if (unlockingId_ == id) {
@@ -923,14 +924,12 @@ void CoreHost::setPortable(const bool on)
                            : client::AccountManager::globalRoot();
     if (on && underTempDirectory(client::AccountManager::portableRoot())) {
         emit events_.createFailed(tr("The application is running from a temporary directory (%1), which is cleared on reboot. Move it to a folder of its own first.")
-                .arg(QString::fromStdString(
-                    client::AccountManager::portableRoot().parent_path().string())));
+                .arg(pathText(client::AccountManager::portableRoot().parent_path())));
         return;
     }
     if (on && !directoryIsWritable(client::AccountManager::portableRoot().parent_path())) {
         emit events_.createFailed(tr("Cannot write beside the application (%1). Move it somewhere writable and try again.")
-                .arg(QString::fromStdString(
-                    client::AccountManager::portableRoot().parent_path().string())));
+                .arg(pathText(client::AccountManager::portableRoot().parent_path())));
         return;
     }
     closeAllSessions();
@@ -939,7 +938,7 @@ void CoreHost::setPortable(const bool on)
         if (fs::exists(to, error) && !fs::is_empty(to, error)) {
             emit events_.createFailed(tr("There is already data at %1 - move or remove it first, so "
                                          "nothing is overwritten.")
-                    .arg(QString::fromStdString(to.string())));
+                    .arg(pathText(to)));
             return;
         }
         fs::create_directories(to.parent_path(), error);

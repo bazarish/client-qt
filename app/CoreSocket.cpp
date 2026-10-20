@@ -2,6 +2,7 @@
 #include "CoreSocket.hpp"
 
 #include "AppSettings.hpp"
+#include "PathText.hpp"
 
 #pragma push_macro("emit")
 #undef emit
@@ -30,7 +31,7 @@ constexpr int kNameBytes = 8;
 QString coreSocketName()
 {
     const QByteArray digest = QCryptographicHash::hash(
-        QByteArray::fromStdString(appRoot().string()), QCryptographicHash::Sha256);
+        pathText(appRoot()).toUtf8(), QCryptographicHash::Sha256);
     return QStringLiteral("bazarish-core-")
         + QString::fromLatin1(digest.left(kNameBytes).toHex());
 }

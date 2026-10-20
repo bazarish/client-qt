@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Documents.hpp"
 
+#include "PathText.hpp"
+
 #include <QDir>
 #include <QFileInfo>
 #include <QStandardPaths>
@@ -241,7 +243,7 @@ std::unique_ptr<client::FileOutput> openOutput(const QString& dest)
         return std::make_unique<DocumentOutput>(dest);
     }
 #endif
-    return client::fileTargetAt(dest.toStdString()).open();
+    return client::fileTargetAt(toPath(dest)).open();
 }
 
 client::FileTarget fileTargetFor(const QString& dest, [[maybe_unused]] const QString& partName)
@@ -253,11 +255,11 @@ client::FileTarget fileTargetFor(const QString& dest, [[maybe_unused]] const QSt
         if (!parts.mkpath(QStringLiteral("."))) {
             throw std::runtime_error("the directory for incoming files cannot be made");
         }
-        return client::FileTarget{parts.filePath(partName).toStdString(),
+        return client::FileTarget{toPath(parts.filePath(partName)),
             [dest]() { return openOutput(dest); }};
     }
 #endif
-    return client::fileTargetAt(dest.toStdString());
+    return client::fileTargetAt(toPath(dest));
 }
 
 }  // namespace bazarish::app
