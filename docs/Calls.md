@@ -30,9 +30,9 @@ Where that lookup happens follows the transport. The embedded engine does it in
 this client's own code, which resolves the blinded address once and remembers it
 for the length of the call - a call is a stream of media, not one message. A
 private gateway does the same, because it runs the same code. Over **SAM** the
-router does it, and i2pd has done so since **2.61.0**, which is the version this
-project requires anyway; against an older one a datagram to a b33 is refused as
-an invalid destination and the call connects and signals with no audio.
+router does it, and i2pd has done so since **2.61.0**; this project requires
+**3.0.0** anyway. Against a router older than 2.61.0 a datagram to a b33 is refused
+as an invalid destination, and the call connects and signals with no audio.
 
 File transfer is not affected either way: it opens a stream, and SAM has
 connected a stream to a b33 since i2pd 2.38.0.
