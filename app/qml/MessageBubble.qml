@@ -306,6 +306,11 @@ Item {
     readonly property bool fromHost: delegate.inGroup && model.fromHost === true
     readonly property bool onlyForMe: delegate.inGroup && !delegate.fromMember && !delegate.fromHost
     readonly property int letterSize: 30
+    // A send's error stays a small note on the bubble; the tap still copies all of it.
+    readonly property int kErrorPixelSize: 11
+    readonly property int kErrorLines: 2
+    readonly property int kResendTarget: 28
+    readonly property int kResendIcon: 16
     readonly property int letterGap: 8
     readonly property var invitePlates: delegate.session && model.text
         ? delegate.session.invitesIn(model.text) : []
@@ -1232,6 +1237,9 @@ Item {
                 reason: model.error
                 textColor: Theme.textDim
                 session: delegate.session
+                font.pixelSize: delegate.kErrorPixelSize
+                maximumLineCount: delegate.kErrorLines
+                elide: Text.ElideRight
             }
 
             // Delivery-failure notice for an outgoing message: the reason and a
@@ -1247,16 +1255,25 @@ Item {
                     reason: (model.error && model.error.length > 0)
                         ? model.error : qsTr("Failed to send")
                     session: delegate.session
+                    font.pixelSize: delegate.kErrorPixelSize
+                    maximumLineCount: delegate.kErrorLines
+                    elide: Text.ElideRight
                 }
                 // Resend covers everything this device can send again by itself.
-                Label {
+                Item {
                     id: resendLink
                     visible: model.type === "text" || model.type === "file"
                         || model.type === "image" || model.type === "audio"
-                    text: qsTr("Resend")
-                    color: Theme.accent
-                    font.pixelSize: Theme.fontSmall
-                    font.weight: Font.Medium
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Resend")
+                    implicitWidth: delegate.kResendTarget
+                    implicitHeight: delegate.kResendTarget
+                    Icon {
+                        anchors.centerIn: parent
+                        name: "refresh"
+                        size: delegate.kResendIcon
+                        color: Theme.accent
+                    }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler {
                         onTapped: {
