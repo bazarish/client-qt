@@ -74,7 +74,10 @@ Item {
             return Qt.rect(0, 0, 0, 0)
         }
         const r = root.field.positionToRectangle(position)
-        const at = root.field.mapToItem(root, r.x, r.y)
+        // A TextInput leaves its padding out of this rectangle; a TextEdit puts it in.
+        const inset = root.field instanceof TextInput
+            ? Qt.point(root.field.leftPadding, root.field.topPadding) : Qt.point(0, 0)
+        const at = root.field.mapToItem(root, r.x + inset.x, r.y + inset.y)
         return Qt.rect(at.x, at.y, r.width, r.height)
     }
     function viewTop() {
