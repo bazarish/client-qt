@@ -134,7 +134,12 @@ Item {
                 Qt.callLater(root.markVisibleRead)
             })
         }
-        function onScrollToBottom() { messages.scrollToEnd() }
+        // Pictures decode after their bubble is built and grow it: the jump keeps following them.
+        function onScrollToBottom() {
+            messages.stickToBottom = true
+            root.session.saveScroll(root.session.activePeer, -1, true)
+            messages.pinToBottom()
+        }
     }
     FileDialog {
         id: resendPickDialog
