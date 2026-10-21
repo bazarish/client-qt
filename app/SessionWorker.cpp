@@ -406,6 +406,8 @@ void SessionWorker::startEventWaiter()
     eventWaiterRunning_ = std::make_shared<std::atomic<bool>>(true);
     eventWaiter_ = std::thread([this, context, running = eventWaiterRunning_]() {
         std::unique_ptr<bazarish::client::Client> waiter;
+        // A held wait answers late by design: until the server has answered, it is not held.
+        bool answered = false;
         while (running->load()) {
             std::vector<bazarish::client::PendingEntry> waiting;
             const auto askedAt = std::chrono::steady_clock::now();
@@ -413,8 +415,10 @@ void SessionWorker::startEventWaiter()
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
                 }
-                waiting = bazarish::client::Session::waitForMail(*waiter, kEventWaitSeconds);
+                waiting = bazarish::client::Session::waitForMail(
+                    *waiter, answered ? kEventWaitSeconds : 0);
             } catch (const std::exception& error) {
+                answered = false;
                 QMetaObject::invokeMethod(
                     this, [this]() { emit syncReachable(false); }, Qt::QueuedConnection);
                 bazarish::log::info("mail wait failed, asking again: {}", error.what());
@@ -426,6 +430,10 @@ void SessionWorker::startEventWaiter()
             if (!running->load()) {
                 return;
             }
+            if (!answered) {
+                bazarish::log::info("the server answered the mail wait");
+            }
+            answered = true;
             QMetaObject::invokeMethod(
                 this, [this]() { emit syncReachable(true); }, Qt::QueuedConnection);
             if (waiting.empty()) {
