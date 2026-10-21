@@ -277,11 +277,17 @@ Popup {
                 rightPadding: 0
                 Layout.preferredWidth: actions.kButton
                 Layout.preferredHeight: actions.kButton
-                enabled: root.takeReady
+                enabled: root.takeReady || root.recording
                 primary: true
                 onClicked: {
-                    root.session.sendVoiceTake()
-                    root.close()
+                    if (root.recording) {
+                        root.session.stopVoiceRecording()
+                    }
+                    // A take too short to send stays here with its error.
+                    if (root.session.voiceTakeReady) {
+                        root.session.sendVoiceTake()
+                        root.close()
+                    }
                 }
             }
         }
