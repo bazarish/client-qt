@@ -4,7 +4,7 @@
 
 The protocol specifies what a call is: the signalling messages, the media
 transport (I2P RAW datagrams to a one-time b33 destination), the per-call key and
-the ring timeouts (`docs-main/api/Calls.md`). This document states how this client
+the answer window (`docs-main/api/Calls.md`). This document states how this client
 carries them, and the choices the protocol leaves to it.
 
 ## What carries the media
