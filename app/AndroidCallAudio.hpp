@@ -42,11 +42,21 @@ public:
     void stop() override;
     void writeFrame(const std::vector<std::int16_t>& pcm) override;
 
+protected:
+    explicit AndroidCallSink(const char* playbackClass);
+
 private:
+    const char* const playbackClass_;
     std::vector<std::int16_t> frame_;
     QJniObject buffer_;
     QJniObject playback_;
     std::atomic<bool> running_ = false;
+};
+
+// A voice note: aloud, and through the earpiece while the phone is at the ear.
+class AndroidVoiceSink : public AndroidCallSink {
+public:
+    AndroidVoiceSink();
 };
 
 namespace AndroidCallAudio {

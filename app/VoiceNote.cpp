@@ -3,6 +3,9 @@
 
 #include "AudioRoute.hpp"
 #include "QtAudioIo.hpp"
+#ifdef Q_OS_ANDROID
+#include "AndroidCallAudio.hpp"
+#endif
 
 #pragma push_macro("emit")
 #undef emit
@@ -170,7 +173,11 @@ void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
     if (frames.empty()) {
         return;
     }
+#ifdef Q_OS_ANDROID
+    sink_ = std::make_unique<AndroidVoiceSink>();
+#else
     sink_ = std::make_unique<QtAudioSink>();
+#endif
     sink_->start();
     playing_.store(true);
     playedMs_.store(std::max<qint64>(0, fromMs));

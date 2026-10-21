@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
+#include <string>
 
 namespace bazarish::app {
 namespace {
@@ -15,6 +16,7 @@ namespace {
 const char* const kCallAudio = "sh/bazari/client/CallAudio";
 const char* const kCapture = "sh/bazari/client/CallAudio$Capture";
 const char* const kPlayback = "sh/bazari/client/CallAudio$Playback";
+const char* const kVoicePlayback = "sh/bazari/client/VoicePlayback";
 constexpr int kFrameBytes = kCallSamplesPerFrame * static_cast<int>(sizeof(std::int16_t));
 
 QJniObject directBuffer(std::vector<std::int16_t>& frame)
@@ -70,8 +72,19 @@ std::vector<std::int16_t> AndroidCallSource::readFrame()
 }
 
 AndroidCallSink::AndroidCallSink()
-    : frame_(static_cast<std::size_t>(kCallSamplesPerFrame))
+    : AndroidCallSink(kPlayback)
+{
+}
+
+AndroidCallSink::AndroidCallSink(const char* const playbackClass)
+    : playbackClass_(playbackClass)
+    , frame_(static_cast<std::size_t>(kCallSamplesPerFrame))
     , buffer_(directBuffer(frame_))
+{
+}
+
+AndroidVoiceSink::AndroidVoiceSink()
+    : AndroidCallSink(kVoicePlayback)
 {
 }
 
@@ -82,9 +95,9 @@ AndroidCallSink::~AndroidCallSink()
 
 void AndroidCallSink::start()
 {
-    playback_ = QJniObject(kPlayback, "(II)V", jint(kCallSampleRate), jint(kFrameBytes));
+    playback_ = QJniObject(playbackClass_, "(II)V", jint(kCallSampleRate), jint(kFrameBytes));
     if (!playback_.isValid()) {
-        throw std::runtime_error("the call audio did not open");
+        throw std::runtime_error(std::string("the audio did not open: ") + playbackClass_);
     }
     running_.store(true);
 }
