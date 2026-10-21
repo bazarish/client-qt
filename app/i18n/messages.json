@@ -4684,6 +4684,24 @@
       "es": "Un alias solo puede contener letras latinas y dígitos.",
       "zh": "别名只能包含拉丁字母和数字。",
       "ar": "يمكن أن يحتوي الاسم المستعار على أحرف لاتينية وأرقام فقط."
+    },
+    "The recipient's server refused this message.": {
+      "ru": "Сервер получателя отклонил сообщение.",
+      "es": "El servidor del destinatario rechazó el mensaje.",
+      "zh": "收件人的服务器拒绝了此消息。",
+      "ar": "رفض خادم المستلم هذه الرسالة."
+    },
+    "The recipient's mailbox is full.": {
+      "ru": "Почтовый ящик получателя переполнен.",
+      "es": "El buzón del destinatario está lleno.",
+      "zh": "收件人的邮箱已满。",
+      "ar": "صندوق بريد المستلم ممتلئ."
+    },
+    "The message is too large for the recipient's server.": {
+      "ru": "Сообщение слишком велико для сервера получателя.",
+      "es": "El mensaje es demasiado grande para el servidor del destinatario.",
+      "zh": "此消息对收件人的服务器来说太大。",
+      "ar": "الرسالة كبيرة جدًا على خادم المستلم."
     }
   }
 }

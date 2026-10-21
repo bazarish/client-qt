@@ -21,6 +21,7 @@
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
+#include <bazarish/Errors.hpp>
 #include <bazarish/Portal.hpp>
 
 #pragma push_macro("emit")
@@ -260,6 +261,26 @@ QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
     return SessionWorker::tr("Your deposit will not cover the next renewal.");
 }
 
+// The recipient's server answers in its own English; what it means is said in the app's language.
+QString refusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
+{
+    const std::optional<bazarish::ErrorCode> code
+        = bazarish::errorCodeFromString(outcome.errorCode);
+    if (code == bazarish::ErrorCode::eDeliveryRejected) {
+        return SessionWorker::tr("The recipient's server refused this message.");
+    }
+    if (code == bazarish::ErrorCode::eStorageFull) {
+        return SessionWorker::tr("The recipient's mailbox is full.");
+    }
+    if (code == bazarish::ErrorCode::eMessageTooLarge) {
+        return SessionWorker::tr("The message is too large for the recipient's server.");
+    }
+    if (outcome.errorMessage.empty() || code == bazarish::ErrorCode::eRecipientServerUnreachable) {
+        return SessionWorker::tr("the recipient's server could not be reached");
+    }
+    return QString::fromStdString(outcome.errorMessage);
+}
+
 bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint64 localId)
 {
     bazarish::client::DeliveryWatch watch;
@@ -277,10 +298,7 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
                   emit worker->sendResult(localId, true, {});
                   return;
               }
-              emit worker->sendResult(localId, false,
-                  outcome.errorMessage.empty()
-                      ? SessionWorker::tr("the recipient's server could not be reached")
-                      : QString::fromStdString(outcome.errorMessage));
+              emit worker->sendResult(localId, false, refusalText(outcome));
           };
     return watch;
 }
