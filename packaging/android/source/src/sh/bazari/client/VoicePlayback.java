@@ -11,11 +11,13 @@ import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.PowerManager;
+import android.util.Log;
 
 import java.nio.ByteBuffer;
 
 // A voice note plays aloud; held to the ear it moves to the earpiece and the screen goes dark.
 public final class VoicePlayback implements SensorEventListener {
+    private static final String TAG = "bazarish";
     // A voice note already plays privately on these, and the ear changes nothing.
     private static final int[] kPersonalDevices = {
         AudioDeviceInfo.TYPE_WIRED_HEADSET,
@@ -46,8 +48,9 @@ public final class VoicePlayback implements SensorEventListener {
         darkAtEar = Window.app.getSystemService(PowerManager.class)
             .newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "bazarish:voice");
         track = open(AudioAttributes.USAGE_MEDIA);
-        if (proximity != null) {
-            sensors.registerListener(this, proximity, SensorManager.SENSOR_DELAY_NORMAL);
+        if (proximity != null
+            && !sensors.registerListener(this, proximity, SensorManager.SENSOR_DELAY_NORMAL)) {
+            Log.w(TAG, "the proximity sensor is not granted: voice notes stay on the speaker");
         }
     }
 
