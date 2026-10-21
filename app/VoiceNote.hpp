@@ -21,8 +21,6 @@ public:
     ~VoiceNote() override;
 
     void startRecording();
-    void startMonitoring();
-    void stopMonitoring();
     Bytes stopRecording();
     void cancelRecording();
     bool recording() const { return recording_.load(); }
@@ -48,10 +46,8 @@ private:
     std::thread playbackThread_;
     std::atomic<bool> recording_{false};
     std::atomic<bool> playing_{false};
-    void begin(bool monitorOnly);
 
     std::atomic<float> inputLevel_{0.0F};
-    std::atomic<bool> monitorOnly_{false};
     std::atomic<std::size_t> encodedBytes_{0};
     std::atomic<qint64> playedMs_{0};
     std::vector<std::int16_t> pcm_;

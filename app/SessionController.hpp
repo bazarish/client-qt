@@ -37,7 +37,6 @@ class SessionController : public QObject {
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
-    Q_PROPERTY(bool voiceMonitoring READ voiceMonitoring NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voiceElapsedMs READ voiceElapsedMs NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voicePositionMs READ voicePositionMs NOTIFY voiceChanged)
     Q_PROPERTY(qreal voiceLevel READ voiceLevel NOTIFY voiceChanged)
@@ -141,10 +140,6 @@ public:
     bool i2pBusy() const { return i2pBusy_; }
     QVariantList devices() const { return devices_; }
     bool voiceRecording() const { return voiceRecording_; }
-    bool voiceMonitoring() const { return voiceMonitoring_; }
-    // Starts and stops that watching; the recorder window owns both ends of it.
-    Q_INVOKABLE void startVoiceMonitor();
-    Q_INVOKABLE void stopVoiceMonitor();
     qint64 voiceElapsedMs() const { return voiceElapsedMs_; }
     qint64 voicePositionMs() const { return voicePositionMs_; }
     qreal voiceLevel() const { return voiceLevel_; }
@@ -569,7 +564,6 @@ private:
     std::unique_ptr<VoiceNote> voice_;
     QTimer voiceTimer_;
     bool voiceRecording_ = false;
-    bool voiceMonitoring_ = false;
     qint64 voiceElapsedMs_ = 0;
     qint64 voicePositionMs_ = 0;
     qint64 voiceSeekMs_ = 0;

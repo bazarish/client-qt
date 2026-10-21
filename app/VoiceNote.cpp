@@ -59,44 +59,26 @@ VoiceNote::~VoiceNote()
     stop();
 }
 
-void VoiceNote::stopMonitoring()
-{
-    if (!monitorOnly_.load()) {
-        return;
-    }
-    stopCaptureThread();
-    monitorOnly_.store(false);
-}
-
 void VoiceNote::startRecording()
 {
-    begin(/*monitorOnly=*/false);
-}
-
-void VoiceNote::startMonitoring()
-{
-    begin(/*monitorOnly=*/true);
-}
-
-void VoiceNote::begin(const bool monitorOnly)
-{
     if (recording_.load()) {
-        if (monitorOnly_.load() == monitorOnly) {
-            return;
-        }
-        stopCaptureThread();
+        return;
     }
-    monitorOnly_.store(monitorOnly);
     {
         const std::lock_guard<std::mutex> lock(pcmMutex_);
         pcm_.clear();
     }
+    inputLevel_.store(0.0F);
+    encodedBytes_.store(0);
+#ifdef Q_OS_ANDROID
+    // The microphone a call speaks into, with the platform's voice processing.
+    source_ = std::make_unique<AndroidCallSource>();
+#else
     if (AudioRoute::instance().input().isNull()) {
         throw std::runtime_error("no microphone to record from");
     }
-    inputLevel_.store(0.0F);
-    encodedBytes_.store(0);
     source_ = std::make_unique<QtAudioSource>();
+#endif
     source_->start();
     startedAtMs_ = QDateTime::currentMSecsSinceEpoch();
     recording_.store(true);
@@ -108,9 +90,6 @@ void VoiceNote::begin(const bool monitorOnly)
                 continue;
             }
             inputLevel_.store(frameLevel(frame));
-            if (monitorOnly_.load()) {
-                continue;
-            }
             encodedBytes_.fetch_add(kFrameBytesEstimate);
             const std::lock_guard<std::mutex> lock(pcmMutex_);
             pcm_.insert(pcm_.end(), frame.begin(), frame.end());

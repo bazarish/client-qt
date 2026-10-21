@@ -83,10 +83,6 @@ VoiceNote* SessionController::voiceNote()
         voiceTimer_.setInterval(kVoiceTickMs);
         connect(&voiceTimer_, &QTimer::timeout, this, [this]() {
             voiceLevel_ = voice_->inputLevel();
-            if (!voiceRecording_) {
-                emit voiceChanged();
-                return;
-            }
             voiceElapsedMs_ = voice_->elapsedMs();
             emit voiceChanged();
             if (voiceElapsedMs_ >= kMaxVoiceMs
@@ -98,47 +94,11 @@ VoiceNote* SessionController::voiceNote()
     return voice_.get();
 }
 
-void SessionController::startVoiceMonitor()
-{
-    if (voiceRecording_ || voiceMonitoring_) {
-        return;
-    }
-    voiceError_.clear();
-    try {
-        voiceNote()->startMonitoring();
-    } catch (const std::exception& error) {
-        voiceError_ = QString::fromUtf8(error.what());
-        emit voiceChanged();
-        return;
-    }
-    voiceMonitoring_ = true;
-    voiceLevel_ = 0.0;
-    voiceTimer_.start();
-    emit voiceChanged();
-}
-
-void SessionController::stopVoiceMonitor()
-{
-    if (!voiceMonitoring_) {
-        return;
-    }
-    voiceMonitoring_ = false;
-    if (voice_) {
-        voice_->stopMonitoring();
-    }
-    if (!voiceRecording_) {
-        voiceTimer_.stop();
-    }
-    voiceLevel_ = 0.0;
-    emit voiceChanged();
-}
-
 void SessionController::startVoiceRecording()
 {
     if (activePeer_.isEmpty() || voiceRecording_) {
         return;
     }
-    stopVoiceMonitor();
     discardVoiceTake();
     voiceError_.clear();
     try {
