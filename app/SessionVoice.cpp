@@ -17,6 +17,7 @@
 #pragma pop_macro("emit")
 
 #include <QByteArray>
+#include <QGuiApplication>
 #include <chrono>
 #include <QTimer>
 #include <cstring>
@@ -63,7 +64,10 @@ VoiceNote* SessionController::voiceNote()
             playbackTimer_.stop();
             voicePositionMs_ = 0;
             emit voiceChanged();
-            if (finished.isEmpty() || activePeer_.isEmpty()) {
+            // Behind another app or the lock screen the chat is not open, whatever is chosen in it.
+            const Qt::ApplicationState shown = QGuiApplication::applicationState();
+            if (finished.isEmpty() || activePeer_.isEmpty() || shown == Qt::ApplicationSuspended
+                || shown == Qt::ApplicationHidden) {
                 return;
             }
             const qint64 playedId = store_.messageByE2e(finished, activePeer_).id;
