@@ -5,8 +5,11 @@
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QThreadPool>
 #include <QVideoSink>
 #include <QtQml/qqmlregistration.h>
+
+#include <atomic>
 
 struct quirc;
 
@@ -36,6 +39,10 @@ private:
     quirc* decoder_ = nullptr;
     int width_ = 0;
     int height_ = 0;
+    // One frame is read at a time, off the window's thread; the ones arriving meanwhile are let
+    // go at once, or they hold the camera's buffers until it has none left to fill.
+    QThreadPool reading_;
+    std::atomic<bool> busy_{false};
 };
 
 }  // namespace bazarish::app

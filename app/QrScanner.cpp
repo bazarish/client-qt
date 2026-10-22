@@ -30,6 +30,7 @@ QrScanner::QrScanner(QObject* parent)
 
 QrScanner::~QrScanner()
 {
+    reading_.waitForDone();
     quirc_destroy(decoder_);
 }
 
@@ -51,13 +52,16 @@ void QrScanner::setSink(QVideoSink* const sink)
 
 void QrScanner::readFrame(const QVideoFrame& frame)
 {
-    if (!frame.isValid()) {
+    if (!frame.isValid() || busy_.exchange(true)) {
         return;
     }
-    const QString text = read(frame.toImage());
-    if (!text.isEmpty()) {
-        emit decoded(text);
-    }
+    reading_.start([this, frame]() {
+        const QString text = read(frame.toImage());
+        busy_.store(false);
+        if (!text.isEmpty()) {
+            emit decoded(text);
+        }
+    });
 }
 
 QString QrScanner::read(const QImage& frame)
