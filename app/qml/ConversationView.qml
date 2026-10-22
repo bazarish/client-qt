@@ -561,7 +561,14 @@ Item {
                 // The active account changed (the user switched local accounts): the
                 // model is now the new account's conversation. Restore that
                 // conversation's last scroll position instead of resetting to the top.
-                onModelChanged: if (model) { autoScrolling = true; Qt.callLater(restoreScroll) }
+                onModelChanged: {
+                    // Qt makes row 0 current; after a prepended page that item kept the boundary row's bubble.
+                    currentIndex = -1
+                    if (model) {
+                        autoScrolling = true
+                        Qt.callLater(restoreScroll)
+                    }
+                }
 
                 function loadOlder() {
                     if (paging || !root.session) {
