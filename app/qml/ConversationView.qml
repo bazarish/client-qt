@@ -55,7 +55,7 @@ Item {
         const inSight = item !== null && item.y >= messages.contentY
             && item.y + item.height <= messages.contentY + messages.height
         if (!inSight) {
-            pinTimer.stop()
+            messages.endPin()
             messages.stickToBottom = false
             messages.autoScrolling = true
             messages.positionViewAtIndex(row, ListView.Center)
@@ -121,7 +121,7 @@ Item {
         // briefly highlight the unread tail, then read what is on screen.
         function onScrollToUnread(firstUnreadId) {
             Qt.callLater(function() {
-                pinTimer.stop()  // cancel any pin-to-bottom from the model reset
+                messages.endPin()
                 const r = messages.model ? messages.model.rowForId(firstUnreadId) : -1
                 if (r >= 0) {
                     messages.stickToBottom = false
@@ -494,6 +494,10 @@ Item {
                 // When >= 0, every unread message (id >= this) is briefly highlighted
                 // right after opening a conversation at its first unread message.
                 property var unreadFlashFromId: -1
+                // A new page is drawn only where it ends up: an opened chat showed the top of
+                // its page, then jumped to the end.
+                property bool settled: true
+                opacity: settled ? 1 : 0
 
                 function scrollToEnd() {
                     autoScrolling = true
@@ -512,6 +516,10 @@ Item {
                     scrollToEnd()
                     pinTimer.restart()
                 }
+                function endPin() {
+                    pinTimer.stop()
+                    settled = true
+                }
                 Timer {
                     id: pinTimer
                     interval: 16
@@ -522,7 +530,7 @@ Item {
                         ticks += 1
                         if (messages.atYEnd || ticks >= 12) {
                             messages.stickToBottom = root.session ? root.session.atNewest : true
-                            stop()
+                            messages.endPin()
                         }
                     }
                 }
@@ -535,6 +543,7 @@ Item {
                 function restoreScroll() {
                     if (!root.session) {
                         autoScrolling = false
+                        settled = true
                         return
                     }
                     const st = root.session.scrollFor(root.session.activePeer)
@@ -546,7 +555,10 @@ Item {
                         stickToBottom = false
                         restoreToRow(st.anchor)
                         // Re-assert next frame once late delegates have measured.
-                        Qt.callLater(function() { messages.restoreToRow(st.anchor) })
+                        Qt.callLater(function() {
+                            messages.restoreToRow(st.anchor)
+                            messages.settled = true
+                        })
                     }
                     Qt.callLater(root.markVisibleRead)
                 }
@@ -565,6 +577,7 @@ Item {
                     // Qt makes row 0 current; after a prepended page that item kept the boundary row's bubble.
                     currentIndex = -1
                     if (model) {
+                        settled = false
                         autoScrolling = true
                         Qt.callLater(restoreScroll)
                     }
@@ -577,7 +590,7 @@ Item {
                     paging = true
                     // A pin-to-bottom still ticking is a scrollToEnd on a timer,
                     // and reading older history says it is no longer wanted.
-                    pinTimer.stop()
+                    endPin()
                     // Reading older history is also proof the view is not following
                     // the bottom. Left set, the follow rule fires while the page
                     // lands and throws the user back to the newest message.

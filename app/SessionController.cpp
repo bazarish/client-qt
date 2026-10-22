@@ -101,7 +101,7 @@ QString facadeHost(const QString& url)
 
 
 
-constexpr int kPageSize = 50;
+constexpr int kPageSize = 25;
 
 constexpr int kBusyPaintDelayMs = 32;
 
