@@ -218,6 +218,8 @@ Rectangle {
             DragHandler {
                 id: gripDrag
                 target: null
+                // A drag that starts on a popup over the grip is the popup's.
+                enabled: !(root.Overlay.overlay && root.Overlay.overlay.visible)
                 xAxis.enabled: false
                 yAxis.enabled: true
                 property int startH: 0

@@ -244,9 +244,11 @@ Item {
                 : (delegate.session ? delegate.session.activePeerName : ""))
         delegate.session.beginReply(model.e2eId, preview, who)
     }
+    // A drag handler below a popup still sees a drag that starts on the popup, and takes it over.
+    readonly property bool covered: !!delegate.Overlay.overlay && delegate.Overlay.overlay.visible
     DragHandler {
         target: null
-        enabled: delegate.actionable && !delegate.textSelecting
+        enabled: delegate.actionable && !delegate.textSelecting && !delegate.covered
         acceptedDevices: PointerDevice.TouchScreen
         yAxis.enabled: false
         onActiveTranslationChanged: {
