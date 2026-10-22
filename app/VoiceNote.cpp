@@ -200,9 +200,17 @@ void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
             std::this_thread::sleep_for(std::chrono::milliseconds(kCallFrameMs));
         }
         playing_.store(false);
-        if (ended) {
-            emit playbackFinished();
+        if (!ended) {
+            return;
         }
+        // The output, and with it the ear sensor, closes on the thread that opened it.
+        QMetaObject::invokeMethod(this, [this]() {
+            if (!sink_ || playing_.load()) {
+                return;
+            }
+            stopPlaybackThread();
+            emit playbackFinished();
+        }, Qt::QueuedConnection);
     });
 }
 
