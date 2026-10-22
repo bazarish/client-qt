@@ -120,12 +120,6 @@ Item {
         && model.e2eId && model.e2eId.length > 0
     // The reaction chips for this message: [{ emoji, count, mine }], re-queried
     // whenever any reaction changes (reactionsRevision drives the binding).
-    // Whether a reaction is ordinary printable text rather than an emoji: the
-    // bundled emoji font carries no glyphs for digits, so text drawn through it
-    // comes out blank. A chip holds one or the other, never both.
-    function plainText(glyph) {
-        return /^[\x20-\x7E]+$/.test(glyph)
-    }
     readonly property var reactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionSummary(model.e2eId) : []
@@ -1192,11 +1186,7 @@ Item {
                                 text: modelData.emoji
                                 color: modelData.mine ? Theme.reactionMineInk : Theme.text
                                 font.pixelSize: 12
-                                // The emoji font only for what is emoji: it has no
-                                // glyphs for plain digits, which came out blank
-                                // when everything was forced through it.
-                                font.family: delegate.plainText(modelData.emoji)
-                                    ? Theme.fontFamily : Theme.emojiFontFamily
+                                font.family: Theme.reactionFont(modelData.emoji)
                                 renderType: Text.NativeRendering
                             }
                             Label {

@@ -155,7 +155,7 @@ Popup {
                         text: recentChip.modelData
                         color: Theme.text
                         font.pixelSize: 18
-                        font.family: Theme.emojiFontFamily
+                        font.family: Theme.reactionFont(recentChip.modelData)
                         renderType: Text.NativeRendering
                     }
                     HoverHandler { id: recentHover; cursorShape: Qt.PointingHandCursor }
