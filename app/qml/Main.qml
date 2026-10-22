@@ -207,6 +207,7 @@ ApplicationWindow {
         z: 1100
     }
     Component.onCompleted: {
+        App.forgetFocusOnClose(Overlay.overlay)
         App.paintSystemBars(Theme.bg)
         if (backgroundAsk.needed) {
             backgroundAsk.open()

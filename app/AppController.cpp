@@ -530,6 +530,11 @@ bool AppController::closeTopPopup(QQuickWindow* const window) const
     return bazarish::app::closeTopPopup(window);
 }
 
+void AppController::forgetFocusOnClose(QQuickItem* const overlay) const
+{
+    bazarish::app::forgetFocusOnClose(overlay);
+}
+
 void AppController::paintSystemBars(const QColor& color) const
 {
 #ifdef Q_OS_ANDROID

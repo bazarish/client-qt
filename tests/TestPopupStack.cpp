@@ -4,6 +4,7 @@
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQuickItem>
 #include <QQuickWindow>
 #include <QVariant>
 
@@ -62,6 +63,51 @@ bool back(QQuickWindow* const window)
     return taken;
 }
 
+const char* const kFields = R"(
+import QtQuick
+import QtQuick.Controls
+ApplicationWindow {
+    width: 400
+    height: 400
+    visible: true
+    property alias account: account
+    property alias name: name
+    property alias days: days
+    property Item overlay: Overlay.overlay
+    Popup {
+        id: account
+        modal: true
+        focus: true
+        Column {
+            TextField { id: name }
+            SpinBox { id: days; editable: true }
+        }
+    }
+}
+)";
+
+QQuickItem* item(QObject* const window, const char* const name)
+{
+    return qvariant_cast<QQuickItem*>(window->property(name));
+}
+
+// Focus a field, close its popup and open it again: true when the field has the focus back.
+bool focusComesBack(QObject* const window, QQuickItem* const field)
+{
+    open(window, "account");
+    field->forceActiveFocus();
+    QCoreApplication::processEvents();
+    CHECK(field->hasActiveFocus());
+    CHECK(QMetaObject::invokeMethod(popup(window, "account"), "close"));
+    QCoreApplication::processEvents();
+    CHECK(!opened(window, "account"));
+    open(window, "account");
+    const bool back = field->hasActiveFocus();
+    CHECK(QMetaObject::invokeMethod(popup(window, "account"), "close"));
+    QCoreApplication::processEvents();
+    return back;
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -89,6 +135,20 @@ int main(int argc, char** argv)
     open(window, "lower");
     CHECK(back(window));
     CHECK(opened(window, "stuck") && opened(window, "lower"));
+
+    QQmlApplicationEngine fieldsEngine;
+    fieldsEngine.loadData(kFields);
+    CHECK(fieldsEngine.rootObjects().size() == 1);
+    QObject* const fields = fieldsEngine.rootObjects().first();
+    QCoreApplication::processEvents();
+    QQuickItem* const days = qvariant_cast<QQuickItem*>(item(fields, "days")->property("contentItem"));
+    CHECK(days != nullptr);
+    // Qt's own behaviour, which the rule is for.
+    CHECK(focusComesBack(fields, item(fields, "name")));
+    CHECK(focusComesBack(fields, days));
+    forgetFocusOnClose(item(fields, "overlay"));
+    CHECK(!focusComesBack(fields, item(fields, "name")));
+    CHECK(!focusComesBack(fields, days));
 
     std::printf("TestPopupStack: all checks passed\n");
     return 0;

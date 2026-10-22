@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <utility>
 
+class QQuickItem;
 class QQuickWindow;
 
 namespace bazarish::app {
@@ -148,6 +149,7 @@ public:
     bool fullScreenCallsRestricted() const;
     Q_INVOKABLE void openFullScreenCallsSettings() const;
     Q_INVOKABLE bool closeTopPopup(QQuickWindow* window) const;
+    Q_INVOKABLE void forgetFocusOnClose(QQuickItem* overlay) const;
     Q_PROPERTY(bool callLive READ callLive NOTIFY callLiveChanged)
     bool callLive() const { return callLive_; }
     Q_INVOKABLE void requestUnlocked();

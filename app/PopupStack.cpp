@@ -1,11 +1,14 @@
 // Bazarish project (c) 2026
 #include "PopupStack.hpp"
 
+#include <QPointer>
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QVariant>
 
+#include <memory>
 #include <stdexcept>
+#include <vector>
 
 namespace bazarish::app {
 namespace {
@@ -21,6 +24,18 @@ QQuickItem* overlayOf(QQuickWindow* const window)
         }
     }
     return nullptr;
+}
+
+void forgetFocusIn(QQuickItem* const scope)
+{
+    std::vector<QQuickItem*> chain;
+    for (QQuickItem* at = scope->scopedFocusItem(); at != nullptr;
+         at = at->isFocusScope() ? at->scopedFocusItem() : nullptr) {
+        chain.push_back(at);
+    }
+    for (QQuickItem* const item : chain) {
+        item->setFocus(false);
+    }
 }
 
 }  // namespace
@@ -60,6 +75,20 @@ bool closeTopPopup(QQuickWindow* const window)
         throw std::runtime_error("a popup did not take close()");
     }
     return true;
+}
+
+void forgetFocusOnClose(QQuickItem* const overlay)
+{
+    const auto shown = std::make_shared<std::vector<QPointer<QQuickItem>>>();
+    QObject::connect(overlay, &QQuickItem::childrenChanged, overlay, [overlay, shown]() {
+        const QList<QQuickItem*> now = overlay->childItems();
+        for (const QPointer<QQuickItem>& item : *shown) {
+            if (item != nullptr && !now.contains(item.data()) && item->isFocusScope()) {
+                forgetFocusIn(item);
+            }
+        }
+        shown->assign(now.begin(), now.end());
+    });
 }
 
 }  // namespace bazarish::app
