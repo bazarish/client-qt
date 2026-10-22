@@ -41,6 +41,9 @@ class SessionWorker : public QObject {
 public:
     ~SessionWorker() override;
 
+    // Any thread: a mail wait resting after a failure asks again at once.
+    void networkChanged();
+
 private:
     template <typename Work>
     void withSession(Work&& work)

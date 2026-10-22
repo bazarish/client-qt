@@ -154,6 +154,15 @@ void CoreHost::declineRinging()
     }
 }
 
+void CoreHost::networkChanged()
+{
+    bazarish::log::info("a network became the default: reconnecting at once");
+    bazarish::i2p::networkChanged();
+    for (CoreAccount* const session : sessions_) {
+        session->networkChanged();
+    }
+}
+
 void CoreHost::start()
 {
     i2p_.announce();

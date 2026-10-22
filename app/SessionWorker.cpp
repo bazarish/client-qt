@@ -22,6 +22,7 @@
 #include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Errors.hpp>
+#include <bazarish/I2p.hpp>
 #include <bazarish/Portal.hpp>
 
 #pragma push_macro("emit")
@@ -411,6 +412,7 @@ void SessionWorker::startEventWaiter()
         while (running->load()) {
             std::vector<bazarish::client::PendingEntry> waiting;
             const auto askedAt = std::chrono::steady_clock::now();
+            const std::uint64_t carryAtAsk = bazarish::i2p::carryReturns();
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
@@ -424,7 +426,9 @@ void SessionWorker::startEventWaiter()
                 bazarish::log::info("mail wait failed, asking again: {}", error.what());
                 std::unique_lock<std::mutex> lock(drainMutex_);
                 drainDone_.wait_until(lock, askedAt + std::chrono::seconds(kEventWaitSeconds),
-                    [&running]() { return !running->load(); });
+                    [&running, carryAtAsk]() {
+                        return !running->load() || bazarish::i2p::carryReturns() != carryAtAsk;
+                    });
                 continue;
             }
             if (!running->load()) {
@@ -466,6 +470,15 @@ void SessionWorker::startEventWaiter()
                 lock, [this, &running]() { return drainSettled_ || !running->load(); });
         }
     });
+}
+
+void SessionWorker::networkChanged()
+{
+    // The waiter tests the carry under this lock: taking it reaches one about to sleep.
+    {
+        const std::lock_guard<std::mutex> lock(drainMutex_);
+    }
+    drainDone_.notify_all();
 }
 
 void SessionWorker::stopEventWaiter()

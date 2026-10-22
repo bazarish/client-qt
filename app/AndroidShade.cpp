@@ -70,6 +70,11 @@ void callDeclined(JNIEnv*, jclass)
     inCoreThread([](CoreHost& core) { core.declineRinging(); });
 }
 
+void networkChanged(JNIEnv*, jclass)
+{
+    inCoreThread([](CoreHost& core) { core.networkChanged(); });
+}
+
 }  // namespace
 
 AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& translations,
@@ -81,6 +86,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
         {"notificationsToggled", "()V", reinterpret_cast<void*>(notificationsToggled)},
         {"quitRequested", "()V", reinterpret_cast<void*>(quitRequested)},
         {"callDeclined", "()V", reinterpret_cast<void*>(callDeclined)},
+        {"networkChanged", "()V", reinterpret_cast<void*>(networkChanged)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kShade, natives, static_cast<int>(std::size(natives)))) {

@@ -12,6 +12,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
@@ -73,6 +75,7 @@ public final class Shade {
     static native void notificationsToggled();
     static native void quitRequested();
     static native void callDeclined();
+    static native void networkChanged();
 
     private Shade() {}
 
@@ -108,6 +111,13 @@ public final class Shade {
             run(action);
         }
         heldActions.clear();
+        app.getSystemService(ConnectivityManager.class).registerDefaultNetworkCallback(
+            new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    networkChanged();
+                }
+            });
     }
 
     private static void run(String action) {

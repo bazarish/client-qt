@@ -51,6 +51,7 @@ public:
     bool windowActive() const { return windowActive_; }
     void declineRinging();
     void prepareForExit();
+    void networkChanged();
     static QString soundFolder();
 
 signals:
