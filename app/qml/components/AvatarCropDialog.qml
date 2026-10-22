@@ -34,6 +34,17 @@ Dialog {
         root.quarterTurns = (root.quarterTurns + by + root.kTurnsPerCircle) % root.kTurnsPerCircle
     }
 
+    // What is shown of the picture, turned; its top-left is the picture's x and y.
+    readonly property real shownWidth: root.quarterTurns % 2 === 0 ? picture.width : picture.height
+    readonly property real shownHeight: root.quarterTurns % 2 === 0 ? picture.height : picture.width
+    // Moved, zoomed or turned, the picture still covers the window: nothing bare gets sent.
+    function keepCovered() {
+        picture.x = Math.max(viewport.width - root.shownWidth, Math.min(0, picture.x))
+        picture.y = Math.max(viewport.height - root.shownHeight, Math.min(0, picture.y))
+    }
+    onShownWidthChanged: root.keepCovered()
+    onShownHeightChanged: root.keepCovered()
+
     anchors.centerIn: Overlay.overlay
     modal: true
     focus: true
@@ -101,7 +112,11 @@ Dialog {
                 DragHandler {
                     target: picture
                     xAxis.enabled: true
+                    xAxis.minimum: viewport.width - root.shownWidth
+                    xAxis.maximum: 0
                     yAxis.enabled: true
+                    yAxis.minimum: viewport.height - root.shownHeight
+                    yAxis.maximum: 0
                 }
             }
 
