@@ -25,6 +25,7 @@ public:
     static void moveToBackground();
     static void dismissKeyguard();
     static void paintSystemBars(bool light, const QColor& color);
+    static void allowScreenCapture(bool on);
 
 signals:
     void coreListening();

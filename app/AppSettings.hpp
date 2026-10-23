@@ -24,6 +24,9 @@ public:
     bool lightTheme() const;
     void setLightTheme(bool on);
 
+    bool screenCapture() const;
+    void setScreenCapture(bool on);
+
     std::vector<std::string> offlineAccounts() const;
     void setOfflineAccounts(std::vector<std::string> ids);
 
@@ -69,6 +72,7 @@ private:
     std::string activeAccount_;
     std::string language_;
     bool lightTheme_ = true;
+    bool screenCapture_ = false;
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;
     bool backgroundTasks_ = false;

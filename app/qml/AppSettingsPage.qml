@@ -86,6 +86,20 @@ Popup {
                         }
                     }
                     RowLayout {
+                        visible: App.mobile
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Allow screen capture")
+                            color: Theme.text
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                        Toggle {
+                            checked: App.screenCapture
+                            onToggled: App.screenCapture = checked
+                        }
+                    }
+                    RowLayout {
                         Layout.fillWidth: true
                         Label {
                             text: qsTr("Theme")

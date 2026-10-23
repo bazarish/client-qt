@@ -15,6 +15,7 @@ public class BazarishActivity extends QtActivity {
     public void onCreate(Bundle savedInstanceState) {
         Window.app = getApplicationContext();
         Window.window = new WeakReference<>(this);
+        Window.guardCapture(this);
         if (fromNotice(getIntent())) {
             Window.hold(this, getIntent());
             showForRinging(getIntent());

@@ -49,6 +49,8 @@ class AppController : public QObject {
     Q_PROPERTY(bool backgroundTasksVisible READ backgroundTasksVisible
             WRITE setBackgroundTasksVisible NOTIFY backgroundTasksVisibleChanged)
     Q_PROPERTY(bool lightTheme READ lightTheme WRITE setLightTheme NOTIFY lightThemeChanged)
+    Q_PROPERTY(bool screenCapture READ screenCapture WRITE setScreenCapture
+            NOTIFY screenCaptureChanged)
     Q_PROPERTY(qreal keyboardInset READ keyboardInset NOTIFY keyboardInsetChanged)
     // The embedded upstream i2pd engine version (e.g.
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
@@ -125,6 +127,8 @@ public:
 
     bool lightTheme() const { return lightTheme_; }
     void setLightTheme(bool on);
+    bool screenCapture() const { return screenCapture_; }
+    void setScreenCapture(bool on);
     qreal keyboardInset() const { return keyboardInset_; }
     void setKeyboardInset(qreal inset);
 
@@ -187,6 +191,7 @@ signals:
     void notificationsEnabledChanged();
     void backgroundTasksVisibleChanged();
     void lightThemeChanged();
+    void screenCaptureChanged();
     void keyboardInsetChanged();
     void ringingChanged();
     void ringLevelChanged();
@@ -234,6 +239,7 @@ private:
     bool notifications_ = true;
     bool backgroundTasks_ = false;
     bool lightTheme_ = true;
+    bool screenCapture_ = false;
     qreal keyboardInset_ = 0;
     QString ringingAccount_;
     QString ringingPeer_;

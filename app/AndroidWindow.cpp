@@ -203,6 +203,11 @@ void AndroidWindow::paintSystemBars(const bool light, const QColor& color)
         static_cast<jint>(color.rgba()));
 }
 
+void AndroidWindow::allowScreenCapture(const bool on)
+{
+    QJniObject::callStaticMethod<void>(kWindow, "allowScreenCapture", "(Z)V", jboolean(on));
+}
+
 void AndroidWindow::followCall()
 {
     const bool overLock = !app_.ringingPeer().isEmpty() || app_.callLive();

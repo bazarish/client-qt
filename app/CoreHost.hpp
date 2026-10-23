@@ -110,6 +110,7 @@ private:
     void rebuildI2pLinks();
     void setLanguage(const QString& code);
     void setLightTheme(bool on);
+    void setScreenCapture(bool on);
     void chooseAudio(const QString& input, const QString& output);
 
     AppCommands commands_;

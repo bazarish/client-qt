@@ -82,6 +82,7 @@ void AppSettings::load()
         activeAccount_ = document.value("activeAccount", std::string());
         language_ = document.value("language", std::string());
         lightTheme_ = document.value("lightTheme", true);
+        screenCapture_ = document.value("screenCapture", false);
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
         backgroundTasks_ = document.value("backgroundTasks", false);
@@ -132,6 +133,7 @@ void AppSettings::save() const
         {"activeAccount", activeAccount_},
         {"language", language_},
         {"lightTheme", lightTheme_},
+        {"screenCapture", screenCapture_},
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
         {"backgroundTasks", backgroundTasks_},
@@ -172,6 +174,17 @@ void AppSettings::setLightTheme(const bool on)
         return;
     }
     lightTheme_ = on;
+    save();
+}
+
+bool AppSettings::screenCapture() const { return screenCapture_; }
+
+void AppSettings::setScreenCapture(const bool on)
+{
+    if (screenCapture_ == on) {
+        return;
+    }
+    screenCapture_ = on;
     save();
 }
 

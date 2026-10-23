@@ -20,6 +20,7 @@ import android.provider.Settings;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.WindowManager;
 
 import java.lang.ref.WeakReference;
 
@@ -35,6 +36,7 @@ public final class Window {
 
     static Context app;
     static WeakReference<Activity> window = new WeakReference<>(null);
+    private static boolean captureAllowed = false;
     private static Integer systemStatusBar;
     private static int systemNavigationBar;
     private static int systemBarsLook;
@@ -58,6 +60,24 @@ public final class Window {
         };
         app.startForegroundService(new Intent(app, BazarishService.class)
             .putExtra(Shade.EXTRA_LISTENER, listener));
+    }
+
+    // Until the user allows it, screenshots, recordings and the recent-apps preview show nothing.
+    static void guardCapture(Activity shown) {
+        if (captureAllowed) {
+            shown.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        } else {
+            shown.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        }
+    }
+
+    public static void allowScreenCapture(boolean on) {
+        captureAllowed = on;
+        Activity shown = window.get();
+        if (shown == null) {
+            return;
+        }
+        shown.runOnUiThread(() -> guardCapture(shown));
     }
 
     // Only while a call rings or runs: the app is not to be read over the lock screen otherwise.

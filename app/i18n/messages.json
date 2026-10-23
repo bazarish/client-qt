@@ -4702,6 +4702,12 @@
       "es": "El mensaje es demasiado grande para el servidor del destinatario.",
       "zh": "此消息对收件人的服务器来说太大。",
       "ar": "الرسالة كبيرة جدًا على خادم المستلم."
+    },
+    "Allow screen capture": {
+      "ru": "Разрешить съёмку экрана",
+      "es": "Permitir capturar la pantalla",
+      "zh": "允许截屏",
+      "ar": "السماح بالتقاط الشاشة"
     }
   }
 }

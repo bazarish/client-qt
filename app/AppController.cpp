@@ -44,7 +44,11 @@ const QString kAppScope = QStringLiteral("app");
 AppController::AppController(Translations& translations, QObject* parent)
     : QObject(parent)
     , lightTheme_(AppSettings::instance().lightTheme())
+    , screenCapture_(AppSettings::instance().screenCapture())
 {
+#ifdef Q_OS_ANDROID
+    AndroidWindow::allowScreenCapture(screenCapture_);
+#endif
     connect(&translations, &Translations::languageChanged, this, [this, &translations]() {
         emit commands_.setLanguage(translations.language());
     });
@@ -266,6 +270,19 @@ void AppController::setLightTheme(const bool on)
     lightTheme_ = on;
     emit lightThemeChanged();
     emit commands_.setLightTheme(on);
+}
+
+void AppController::setScreenCapture(const bool on)
+{
+    if (screenCapture_ == on) {
+        return;
+    }
+    screenCapture_ = on;
+#ifdef Q_OS_ANDROID
+    AndroidWindow::allowScreenCapture(on);
+#endif
+    emit screenCaptureChanged();
+    emit commands_.setScreenCapture(on);
 }
 
 void AppController::setKeyboardInset(const qreal inset)
