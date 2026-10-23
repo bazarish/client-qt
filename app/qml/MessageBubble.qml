@@ -196,6 +196,39 @@ Item {
         try { return JSON.parse(wire) } catch (e) { return [] }
     }
     readonly property var keyboardButtons: delegate.parseKeyboard(model.keyboard)
+    // A keyboard row's buttons in the lines they take at the widest a bubble gets.
+    function keyLines(naturals) {
+        const lines = []
+        for (let at = 0; at < naturals.length; ++at) {
+            const last = lines.length > 0 ? lines[lines.length - 1] : null
+            const joined = last ? last.width + delegate.kKeyGap + naturals[at] : 0
+            if (last && joined <= delegate.contentRoom) {
+                last.keys.push(at)
+                last.width = joined
+            } else {
+                lines.push({keys: [at], width: Math.min(naturals[at], delegate.contentRoom)})
+            }
+        }
+        return lines
+    }
+    // Where a button sits: its line shares out what the bubble has over, the last one the rest.
+    function keyPlace(lines, naturals, index, rowWidth) {
+        for (let line = 0; line < lines.length; ++line) {
+            const keys = lines[line].keys
+            const at = keys.indexOf(index)
+            if (at < 0) {
+                continue
+            }
+            const share = Math.max(0, rowWidth - lines[line].width) / keys.length
+            const widthOf = key => Math.floor(Math.min(naturals[key], rowWidth) + share)
+            let x = 0
+            for (let before = 0; before < at; ++before) {
+                x += widthOf(keys[before]) + delegate.kKeyGap
+            }
+            return {line: line, x: x, width: at === keys.length - 1 ? rowWidth - x : widthOf(index)}
+        }
+        return {line: 0, x: 0, width: 0}
+    }
     // A link's address as it is: without angle brackets it cannot pass for markup.
     function shownAddress(link) {
         return link.replace(/</g, "%3C").replace(/>/g, "%3E")
@@ -1023,7 +1056,7 @@ Item {
                 onLinkActivated: function(link) { delegate.activateLink(link) }
                 // Where a web address leads is shown before it is followed; the
                 // dialog says it again, but the cursor gets there first.
-                ToolTip.visible: bodyText.hoveredLink.startsWith("http")
+                ToolTip.visible: !App.mobile && bodyText.hoveredLink.startsWith("http")
                 ToolTip.text: delegate.shownAddress(bodyText.hoveredLink)
                 HoverHandler {
                     cursorShape: bodyText.hoveredLink.length > 0
@@ -1081,81 +1114,95 @@ Item {
                     property var rows: delegate.keyboardButtons
                     Repeater {
                         model: keysColumn.rows
-                        // A row that fits the bubble fills it; one that does not wraps.
+                        // Lines broken at the widest a bubble gets, each spanning the bubble.
                         Item {
                             id: keyRow
                             Layout.fillWidth: true
-                            implicitWidth: Math.min(natural, delegate.contentRoom)
-                            implicitHeight: keyFlow.implicitHeight
-                            readonly property real natural: {
-                                let sum = 0
+                            readonly property var naturals: {
+                                const out = []
                                 for (let i = 0; i < keys.count; ++i) {
                                     const key = keys.itemAt(i)
-                                    if (key) {
-                                        sum += key.natural
-                                    }
+                                    out.push(key ? key.natural : 0)
                                 }
-                                return sum + delegate.kKeyGap * Math.max(0, keys.count - 1)
+                                return out
                             }
-                            readonly property real spare: keys.count > 0 && natural <= width
-                                ? (width - natural) / keys.count : 0
-                            Flow {
-                                id: keyFlow
-                                width: keyRow.width
-                                spacing: delegate.kKeyGap
-                                Repeater {
-                                    id: keys
-                                    model: modelData
-                                    Button {
-                                        id: kbButton
-                                        focusPolicy: Theme.pressFocus
-                                        readonly property real natural:
-                                            Math.ceil(keyLabel.implicitWidth) + leftPadding + rightPadding
-                                        width: Math.min(natural + Math.floor(keyRow.spare), keyFlow.width)
-                                        height: Math.max(delegate.kKeyHeight, implicitHeight)
-                                        leftPadding: delegate.kKeyPadding
-                                        rightPadding: delegate.kKeyPadding
-                                        text: modelData.text
-                                        hoverEnabled: true
-                                        enabled: !delegate.busy
-                                        opacity: delegate.busy ? 0.5 : 1.0
-                                        onClicked: {
-                                            // The press is dimmed until the reply
-                                            // lands, so it cannot be sent twice; what
-                                            // it is doing is said in the activity
-                                            // panel, not written on the message.
-                                            delegate.busy = true
-                                            busyTimer.restart()
-                                            if (modelData.data !== undefined)
-                                                delegate.session.sendCallback(modelData.data,
-                                                    delegate.msgE2eId, modelData.text)
-                                            else if (modelData.command !== undefined)
-                                                delegate.session.sendCommand(modelData.command, "",
-                                                    modelData.text)
+                            readonly property var lines: delegate.keyLines(naturals)
+                            readonly property var lineTops: {
+                                const tops = []
+                                let top = 0
+                                for (const line of lines) {
+                                    tops.push(top)
+                                    let tallest = delegate.kKeyHeight
+                                    for (const at of line.keys) {
+                                        const key = keys.itemAt(at)
+                                        if (key) {
+                                            tallest = Math.max(tallest, key.height)
                                         }
-                                        // Pointing-hand cursor over the button.
-                                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                        background: Rectangle {
-                                            radius: 8
-                                            // At rest a shade above the bubble it sits
-                                            // on, with a border to match: on the
-                                            // bubble's own surface the buttons read as
-                                            // more text.
-                                            color: kbButton.down ? Theme.accent
-                                                : kbButton.hovered ? Theme.bg : Theme.surfaceAlt
-                                            border.color: kbButton.hovered
-                                                ? Theme.accent : Theme.border2
-                                            Behavior on color { ColorAnimation { duration: 90 } }
-                                        }
-                                        contentItem: Label {
-                                            id: keyLabel
-                                            text: kbButton.text
-                                            color: kbButton.down ? Theme.bg : Theme.accent
-                                            font.weight: Font.Medium
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                            wrapMode: Text.Wrap
-                                        }
+                                    }
+                                    top += tallest + delegate.kKeyGap
+                                }
+                                tops.push(top)
+                                return tops
+                            }
+                            implicitWidth: lines.reduce((widest, line) => Math.max(widest, line.width), 0)
+                            implicitHeight: lines.length > 0
+                                ? lineTops[lines.length] - delegate.kKeyGap : 0
+                            Repeater {
+                                id: keys
+                                model: modelData
+                                Button {
+                                    id: kbButton
+                                    focusPolicy: Theme.pressFocus
+                                    readonly property real natural:
+                                        Math.ceil(keyLabel.implicitWidth) + leftPadding + rightPadding
+                                    readonly property var place: delegate.keyPlace(
+                                        keyRow.lines, keyRow.naturals, index, keyRow.width)
+                                    x: place.x
+                                    y: keyRow.lineTops[place.line] || 0
+                                    width: place.width
+                                    height: Math.max(delegate.kKeyHeight, implicitHeight)
+                                    leftPadding: delegate.kKeyPadding
+                                    rightPadding: delegate.kKeyPadding
+                                    text: modelData.text
+                                    hoverEnabled: true
+                                    enabled: !delegate.busy
+                                    opacity: delegate.busy ? 0.5 : 1.0
+                                    onClicked: {
+                                        // The press is dimmed until the reply
+                                        // lands, so it cannot be sent twice; what
+                                        // it is doing is said in the activity
+                                        // panel, not written on the message.
+                                        delegate.busy = true
+                                        busyTimer.restart()
+                                        if (modelData.data !== undefined)
+                                            delegate.session.sendCallback(modelData.data,
+                                                delegate.msgE2eId, modelData.text)
+                                        else if (modelData.command !== undefined)
+                                            delegate.session.sendCommand(modelData.command, "",
+                                                modelData.text)
+                                    }
+                                    // Pointing-hand cursor over the button.
+                                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                    background: Rectangle {
+                                        radius: 8
+                                        // At rest a shade above the bubble it sits
+                                        // on, with a border to match: on the
+                                        // bubble's own surface the buttons read as
+                                        // more text.
+                                        color: kbButton.down ? Theme.accent
+                                            : kbButton.hovered ? Theme.bg : Theme.surfaceAlt
+                                        border.color: kbButton.hovered
+                                            ? Theme.accent : Theme.border2
+                                        Behavior on color { ColorAnimation { duration: 90 } }
+                                    }
+                                    contentItem: Label {
+                                        id: keyLabel
+                                        text: kbButton.text
+                                        color: kbButton.down ? Theme.bg : Theme.accent
+                                        font.weight: Font.Medium
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        wrapMode: Text.Wrap
                                     }
                                 }
                             }
