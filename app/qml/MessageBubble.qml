@@ -1110,9 +1110,8 @@ Item {
                                         id: kbButton
                                         focusPolicy: Theme.pressFocus
                                         readonly property real natural:
-                                            Math.ceil(keyMetrics.advanceWidth) + leftPadding + rightPadding
-                                        width: Math.floor(
-                                            Math.min(natural + keyRow.spare, keyFlow.width))
+                                            Math.ceil(keyLabel.implicitWidth) + leftPadding + rightPadding
+                                        width: Math.min(natural + Math.floor(keyRow.spare), keyFlow.width)
                                         height: Math.max(delegate.kKeyHeight, implicitHeight)
                                         leftPadding: delegate.kKeyPadding
                                         rightPadding: delegate.kKeyPadding
@@ -1156,11 +1155,6 @@ Item {
                                             horizontalAlignment: Text.AlignHCenter
                                             verticalAlignment: Text.AlignVCenter
                                             wrapMode: Text.Wrap
-                                        }
-                                        TextMetrics {
-                                            id: keyMetrics
-                                            font: keyLabel.font
-                                            text: kbButton.text
                                         }
                                     }
                                 }
