@@ -44,6 +44,7 @@ private:
     bool noteGroupBlock(const QString& peer, const QVariantMap& message);
     bool applyGroupReactions(const QString& peer, const QString& json);
     bool markOutgoingRead(const QString& peer, qint64 uptoId);
+    qint64 orderFloor(const QString& peer, const QVariantMap& message) const;
 
     TranscriptStore& store_;
     const ContactBook& contacts_;

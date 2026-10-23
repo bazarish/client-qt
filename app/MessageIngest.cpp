@@ -11,6 +11,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <algorithm>
+
 #pragma push_macro("emit")
 #undef emit
 #include <bazarish/Log.hpp>
@@ -23,10 +25,11 @@ struct Placement {
     qint64 displayTs = 0;
     qint64 orderKey = 0;
 };
-Placement placeReceived(const qint64 sentAtMs, const qint64 arrivalMs)
+// A row from the other side never goes above what this side had written before it came.
+Placement placeReceived(const qint64 sentAtMs, const qint64 arrivalMs, const qint64 floor)
 {
     const qint64 written = sentAtMs > 0 ? sentAtMs : arrivalMs;
-    return {written, written};
+    return {written, std::max(written, floor)};
 }
 }  // namespace
 
@@ -36,6 +39,15 @@ MessageIngest::MessageIngest(
     , store_(store)
     , contacts_(contacts)
 {
+}
+
+qint64 MessageIngest::orderFloor(const QString& peer, const QVariantMap& message) const
+{
+    if (message.value("sentByUs").toBool()) {
+        return 0;
+    }
+    const qint64 own = store_.newestOwnOrderKey(peer);
+    return own > 0 ? own + 1 : 0;
 }
 
 bool MessageIngest::takeIn(const QVariantMap& message)
@@ -247,8 +259,8 @@ bool MessageIngest::takeIn(const QVariantMap& message)
         sys.type = QStringLiteral("system");
         sys.text = chatTimerNote(
             seconds, message.value("sentByUs").toBool(), contacts_.peerName(peer));
-        const Placement placement
-            = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
+        const Placement placement = placeReceived(
+            message.value("sentAt").toLongLong(), nowMillis(), orderFloor(peer, message));
         sys.ts = placement.displayTs;
         sys.orderKey = placement.orderKey;
         sys.status = DeliveryStatus::Received;
@@ -288,8 +300,8 @@ bool MessageIngest::takeIn(const QVariantMap& message)
         sys.type = QStringLiteral("system");
         sys.text = encodeSystemNote(QT_TR_NOOP("Unknown message type %1. Update the client."),
             {message.value("rawType").toString()});
-        const Placement placement
-            = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
+        const Placement placement = placeReceived(
+            message.value("sentAt").toLongLong(), nowMillis(), orderFloor(peer, message));
         sys.ts = placement.displayTs;
         sys.orderKey = placement.orderKey;
         sys.status = DeliveryStatus::Received;
@@ -330,7 +342,8 @@ bool MessageIngest::takeIn(const QVariantMap& message)
         m.contactable = message.value("contactable").toBool();
         m.fromHost = message.value("fromHost").toBool();
     }
-    const Placement placement = placeReceived(message.value("sentAt").toLongLong(), nowMillis());
+    const Placement placement = placeReceived(
+        message.value("sentAt").toLongLong(), nowMillis(), orderFloor(peer, message));
     m.ts = placement.displayTs;
     m.orderKey = placement.orderKey;
     m.status = m.outgoing

@@ -203,6 +203,28 @@ int main(int argc, char** argv)
     CHECK(saw({"menu"}));
     CHECK(store.botMenu(kBob).isEmpty());
 
+    // A reply stamped by a clock behind ours still goes under what we had written.
+    const QString carl = QStringLiteral("carl");
+    constexpr qint64 kOwnAt = 5 * kSentAt;
+    StoredMessage asked;
+    asked.peer = carl;
+    asked.outgoing = true;
+    asked.type = QStringLiteral("text");
+    asked.text = QStringLiteral("/help");
+    asked.e2eId = QStringLiteral("q1");
+    asked.ts = kOwnAt;
+    asked.orderKey = kOwnAt;
+    CHECK(store.append(asked) != 0);
+    CHECK(took(incoming(carl, "text", "a1", "help text")));
+    const StoredMessage answer = store.messageByE2e("a1", carl);
+    CHECK(answer.orderKey == kOwnAt + 1 && answer.ts == kSentAt);
+    QVariantMap later = incoming(carl, "text", "a2", "later");
+    later["sentAt"] = 2 * kOwnAt;
+    CHECK(took(later));
+    CHECK(store.messageByE2e("a2", carl).orderKey == 2 * kOwnAt);
+    CHECK(took(ours(carl, "text", "q2", "from another device")));
+    CHECK(store.messageByE2e("q2", carl).orderKey == kSentAt);
+
     QVariantMap fromHost = incoming(kClub, "chat.timer", "t3");
     fromHost["timerSeconds"] = static_cast<qint64>(client::kSecondsPerHour);
     CHECK(took(fromHost));

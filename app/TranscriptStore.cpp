@@ -1093,6 +1093,17 @@ TranscriptReader::LastMessage TranscriptReader::lastMessage(const QString& peer)
     return {};
 }
 
+qint64 TranscriptReader::newestOwnOrderKey(const QString& peer) const
+{
+    Query query(db_);
+    query.prepare("SELECT MAX(orderKey) FROM messages WHERE peer = ? AND outgoing = 1");
+    query.addBindValue(peer);
+    if (query.exec() && query.next()) {
+        return query.value(0).toLongLong();
+    }
+    return 0;
+}
+
 qint64 TranscriptReader::lastTime(const QString& peer) const
 {
     Query query(db_);

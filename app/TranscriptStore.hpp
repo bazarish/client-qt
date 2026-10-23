@@ -127,6 +127,8 @@ public:
     };
     LastMessage lastMessage(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
+    // The order key of the newest row this side wrote in the chat, 0 when there is none.
+    qint64 newestOwnOrderKey(const QString& peer) const;
     QStringList conversationPeers() const;
     qint64 lastReadId(const QString& peer) const;
     bool isPinned(const QString& peer) const;
