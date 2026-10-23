@@ -132,16 +132,19 @@ Item {
     // These three open from Settings; their back button returns there.
     InviteSheet { id: inviteSheet; session: root.session; onBack: { inviteSheet.close(); settings.open() } }
     SignWithKeySheet { id: signWithKeySheet; session: root.session; onBack: { signWithKeySheet.close(); settings.open() } }
-    // A signature sent and the window closed: the outcome is still the user's to know.
+    // An accepted signature closes the sign-in window, so its outcome is told here.
     Connections {
         target: root.session
         ignoreUnknownSignals: true
         function onLoginSendChanged() {
-            if (!App.attached || signWithKeySheet.opened || root.session.loginSending) {
+            if (!App.attached || root.session.loginSending) {
                 return
             }
-            window.showToast(root.session.loginAccepted ? qsTr("The site accepted the signature")
-                : qsTr("Not sent: %1").arg(root.session.loginSendStatus))
+            if (root.session.loginAccepted) {
+                window.showToast(qsTr("The site accepted the signature"))
+            } else if (!signWithKeySheet.opened) {
+                window.showToast(qsTr("Not sent: %1").arg(root.session.loginSendStatus))
+            }
         }
     }
     ContactInfo {

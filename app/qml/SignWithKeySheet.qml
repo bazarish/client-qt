@@ -32,6 +32,16 @@ Popup {
         && root.session.loginSendChallenge === challengeArea.text.trim()
     readonly property bool sendPending: root.asking || (root.sendingThis && root.session.loginSending)
     readonly property bool sent: root.sendingThis && root.session.loginAccepted
+    // On the answer itself: a challenge accepted earlier and pasted again stays open.
+    Connections {
+        target: root.session
+        function onLoginSendChanged() {
+            if (root.hasCallback && root.session.loginAccepted
+                    && root.session.loginSendChallenge === challengeArea.text.trim()) {
+                root.close()
+            }
+        }
+    }
     readonly property string sendProblem: root.sendingThis && !root.session.loginSending
         && !root.session.loginAccepted ? root.session.loginSendStatus : ""
     property int sendElapsed: 0
