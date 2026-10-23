@@ -82,7 +82,7 @@ Dialog {
             Layout.rightMargin: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("This is an external link. The site will see your IP address.")
+            text: qsTr("This is an external link. The site will probably learn your IP address.")
         }
         Label {
             visible: root.failure.length > 0

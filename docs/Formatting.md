@@ -85,8 +85,8 @@ filled in. Nothing is sent: the introduction and the request are still the user'
 to write and press.
 
 **An address** opens the warning first. It shows the address and says that the
-site will see this machine's IP address: the client does not fetch it, the browser
-goes there directly over the ordinary internet. On a desktop the address also
+site will probably learn this machine's IP address: the client does not fetch it,
+the browser goes there directly. On a desktop the address also
 shows while the pointer rests on it; a phone has no such pause, so the warning is
 where it is read. Answering "Open" hands it to the desktop, and a desktop with nothing registered
 for `http` is reported rather than passed over in silence.

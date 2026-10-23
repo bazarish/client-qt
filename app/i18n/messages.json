@@ -4733,11 +4733,11 @@
       "zh": "要打开外部网站吗？",
       "ar": "أتريد فتح موقع خارجي؟"
     },
-    "This is an external link. The site will see your IP address.": {
-      "ru": "Это внешняя ссылка. Целевой сайт увидит ваш IP-адрес.",
-      "es": "Es un enlace externo. El sitio verá tu dirección IP.",
-      "zh": "这是一个外部链接。目标网站会看到你的 IP 地址。",
-      "ar": "هذا رابط خارجي. سيرى الموقع عنوان IP الخاص بك."
+    "This is an external link. The site will probably learn your IP address.": {
+      "ru": "Это внешняя ссылка. Целевой сайт, вероятно, узнает ваш IP-адрес.",
+      "es": "Es un enlace externo. Probablemente el sitio conozca tu dirección IP.",
+      "zh": "这是一个外部链接。目标网站可能会得知你的 IP 地址。",
+      "ar": "هذا رابط خارجي. من المحتمل أن يعرف الموقع عنوان IP الخاص بك."
     }
   }
 }
