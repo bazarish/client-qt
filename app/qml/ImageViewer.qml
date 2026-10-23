@@ -45,13 +45,6 @@ Popup {
         return "image://picture/" + e2eId + "?r=" + Pictures.revision
     }
     function show(url, e2eId, name) {
-        // Given back its focus on close, a field under a closed keyboard would open it.
-        if (!root.visible && App.mobile && App.keyboardInset === 0 && root.parent) {
-            const focused = root.parent.Window.activeFocusItem
-            if (focused) {
-                focused.focus = false
-            }
-        }
         root.source = url
         root.e2eId = e2eId
         root.name = name
