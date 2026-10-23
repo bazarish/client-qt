@@ -88,9 +88,8 @@ Popup {
                         text: I2p.samEnabled
                             ? qsTr("No router answering at the address below.")
                             : I2p.knownRouters < I2p.minKnownRouters
-                            ? qsTr("No network database yet. The router starts once your server "
-                              + "hands it one, the first time an account connects.")
-                            : qsTr("The router starts when an account connects.")
+                            ? qsTr("No network database yet.")
+                            : qsTr("Not running")
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
 
@@ -115,7 +114,7 @@ Popup {
                             color: I2p.ready ? Theme.success : Theme.warn
                         }
                         Label {
-                            text: I2p.ready ? qsTr("Running — tunnels are up") : qsTr("Starting — building tunnels…")
+                            text: I2p.ready ? qsTr("Running") : qsTr("Starting")
                             color: Theme.text; Layout.fillWidth: true
                             wrapMode: Text.Wrap
                         }
@@ -155,7 +154,7 @@ Popup {
                     }
                     Label {
                         visible: I2p.destinations.length === 0
-                        text: qsTr("No destination is being served. The router is starting.")
+                        text: qsTr("No destination is being served.")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }

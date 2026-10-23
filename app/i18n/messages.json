@@ -1913,11 +1913,11 @@
       "zh": "未连接到 HTTPS 网关",
       "ar": "لا اتصال ببوابة HTTPS"
     },
-    "No destination is being served. The router is starting.": {
-      "ru": "Ни одно назначение не обслуживается. Роутер запускается.",
-      "es": "No se está sirviendo ningún destino. El router está arrancando.",
-      "zh": "尚未服务任何目的地。路由正在启动。",
-      "ar": "لا تُخدَم أي وجهة. الموجّه قيد البدء."
+    "No destination is being served.": {
+      "ru": "Ни одно назначение не обслуживается.",
+      "es": "No se está sirviendo ningún destino.",
+      "zh": "尚未服务任何目的地。",
+      "ar": "لا تُخدَم أي وجهة."
     },
     "No destination key on this account yet.": {
       "ru": "У этого аккаунта пока нет ключа назначения.",
@@ -1949,11 +1949,11 @@
       "zh": "没有匹配",
       "ar": "لا مطابقات"
     },
-    "No network database yet. The router starts once your server hands it one, the first time an account connects.": {
-      "ru": "Базы сети пока нет. Роутер запустится после её выдачи сервером. Это произойдёт при первом подключении аккаунта.",
-      "es": "Todavía no hay base de datos de red. El router arrancará cuando tu servidor le entregue una, la primera vez que una cuenta se conecte.",
-      "zh": "尚无网络数据库。待服务器在账号首次连接时交付一份，路由便会启动。",
-      "ar": "لا توجد قاعدة بيانات للشبكة بعد. يبدأ الموجّه حين يسلّمه خادمك واحدة، عند أول اتصال لحساب."
+    "No network database yet.": {
+      "ru": "Базы сети пока нет.",
+      "es": "Todavía no hay base de datos de red.",
+      "zh": "尚无网络数据库。",
+      "ar": "لا توجد قاعدة بيانات للشبكة بعد."
     },
     "No open session": {
       "ru": "Нет открытой сессии",
@@ -2729,11 +2729,11 @@
       "zh": "路由已发布：你的名片现在带有这个目的地",
       "ar": "نُشر التوجيه: بطاقتك تحمل الآن هذه الوجهة"
     },
-    "Running — tunnels are up": {
-      "ru": "Работает — туннели построены",
-      "es": "En marcha: los túneles están arriba",
-      "zh": "运行中——隧道已建立",
-      "ar": "يعمل — الأنفاق قائمة"
+    "Running": {
+      "ru": "Работает",
+      "es": "En marcha",
+      "zh": "运行中",
+      "ar": "يعمل"
     },
     "SAM API": {
       "ru": "SAM API",
@@ -3023,11 +3023,11 @@
       "zh": "改用内置引导地址启动",
       "ar": "البدء بعناوين التهيئة المدمجة"
     },
-    "Starting — building tunnels…": {
-      "ru": "Запускается — туннели строятся…",
-      "es": "Arrancando: construyendo túneles…",
-      "zh": "启动中——正在建立隧道…",
-      "ar": "قيد البدء — جارٍ بناء الأنفاق…"
+    "Starting": {
+      "ru": "Запускается",
+      "es": "Arrancando",
+      "zh": "启动中",
+      "ar": "قيد البدء"
     },
     "Starting…": {
       "ru": "Запуск…",
@@ -3299,11 +3299,11 @@
       "zh": "路由位于 %1。",
       "ar": "الموجّه عند ⁦%1⁩."
     },
-    "The router starts when an account connects.": {
-      "ru": "Роутер запускается при подключении аккаунта.",
-      "es": "El router se inicia cuando una cuenta se conecta.",
-      "zh": "账号连接时路由器启动。",
-      "ar": "يبدأ الموجّه عند اتصال حساب."
+    "Not running": {
+      "ru": "Не запущен",
+      "es": "No está en marcha",
+      "zh": "未运行",
+      "ar": "لا يعمل"
     },
     "The two do not match.": {
       "ru": "Они не совпадают.",
