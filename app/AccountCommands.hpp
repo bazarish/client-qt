@@ -39,6 +39,7 @@ signals:
     void viewConversation(const QString& peer);
     void sendLogin(const QString& challenge);
     void fetchLogin(const QString& link);
+    void cancelLoginFetch(const QString& link);
     void markRead(const QString& peer, qint64 id, const QString& e2eId, qint64 sentAtMs);
     void forgetReactionFlash(const QString& peer);
     void sendText(

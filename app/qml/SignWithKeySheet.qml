@@ -79,6 +79,9 @@ Popup {
     // sitting in a closed window: what was pasted goes when the window does.
     onClosed: root.clear()
     function clear() {
+        if (root.consumer.link === true && root.session) {
+            root.session.cancelLoginFetch(challengeArea.text)
+        }
         challengeArea.text = ""
         root.consumer = ({ "ok": false, "problem": "" })
         root.copyPending = false
@@ -218,7 +221,7 @@ Popup {
                     }
 
                     Label {
-                        visible: !root.consumer.ok
+                        visible: !root.consumer.ok && root.consumer.link !== true
                         text: qsTr("Challenge from the site")
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
@@ -226,7 +229,7 @@ Popup {
                         Layout.fillWidth: true
                     }
                     RowLayout {
-                        visible: !root.consumer.ok
+                        visible: !root.consumer.ok && root.consumer.link !== true
                         Layout.fillWidth: true
                         spacing: 8
                         ScrollView {
@@ -293,6 +296,11 @@ Popup {
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
+                            }
+                            BusyIndicator {
+                                visible: root.consumer.link === true && !root.fetchProblem
+                                running: visible
+                                Layout.alignment: Qt.AlignHCenter
                             }
                             Label {
                                 visible: root.consumer.ok

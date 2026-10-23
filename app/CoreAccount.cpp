@@ -260,6 +260,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestSignLoginSig, this, &CoreAccount::signLogin);
     connect(&commands_, &AccountCommands::sendLogin, this, &CoreAccount::sendLogin);
     connect(&commands_, &AccountCommands::fetchLogin, this, &CoreAccount::fetchLogin);
+    connect(&commands_, &AccountCommands::cancelLoginFetch, this, &CoreAccount::cancelLoginFetch);
     connect(&commands_, &AccountCommands::viewConversation, this, &CoreAccount::viewConversation);
     connect(&commands_, &AccountCommands::markRead, this, &CoreAccount::markRead);
     connect(&commands_, &AccountCommands::forgetReactionFlash, this,
@@ -837,13 +838,18 @@ void CoreAccount::fetchLogin(const QString& link)
         emit events_.loginFetchState(link, false, tr("This account is still opening."), {});
         return;
     }
+    cancelLoginFetch(loginFetchLink_);
     const QString op = QStringLiteral("login:") + QString::number(++commandSeq_);
     const QString first = loginStageText(client::FetchStage::eTakingDest);
     log_.begin(op, QStringLiteral("login"), tr("Getting the challenge"), first);
     emit events_.loginFetchState(link, true, first, {});
+    loginFetchOp_ = op;
+    loginFetchLink_ = link;
+    loginFetchCancelled_ = std::make_shared<std::atomic<bool>>(false);
     const std::shared_ptr<client::LoginSigner> signer = loginSigner_;
+    const std::shared_ptr<const std::atomic<bool>> cancelled = loginFetchCancelled_;
     const QPointer<CoreAccount> account(this);
-    overI2p([signer, link]() { return signer->fetch(link.toStdString()); },
+    overI2p([signer, link, cancelled]() { return signer->fetch(link.toStdString(), *cancelled); },
         [account, op, link](const client::FetchStage stage) {
             if (account) {
                 account->showLoginFetchStage(op, link, stage);
@@ -857,10 +863,23 @@ void CoreAccount::fetchLogin(const QString& link)
         });
 }
 
+void CoreAccount::cancelLoginFetch(const QString& link)
+{
+    if (!loginFetchCancelled_ || loginFetchLink_ != link) {
+        return;
+    }
+    loginFetchCancelled_->store(true);
+    loginFetchCancelled_.reset();
+    log_.finish(loginFetchOp_, true, tr("Cancelled"));
+    loginFetchOp_.clear();
+    loginFetchLink_.clear();
+    emit events_.loginFetchState(link, false, {}, {});
+}
+
 void CoreAccount::showLoginFetchStage(
     const QString& op, const QString& link, const client::FetchStage stage)
 {
-    if (!log_.has(op)) {
+    if (op != loginFetchOp_ || !log_.has(op)) {
         return;
     }
     const QString text = loginStageText(stage);
@@ -871,6 +890,12 @@ void CoreAccount::showLoginFetchStage(
 void CoreAccount::finishLoginFetch(const QString& op, const QString& link,
     const std::optional<std::string>& challenge, const QString& problem)
 {
+    if (op != loginFetchOp_) {
+        return;
+    }
+    loginFetchOp_.clear();
+    loginFetchLink_.clear();
+    loginFetchCancelled_.reset();
     const bool received = problem.isEmpty() && challenge.has_value();
     const QString said = !problem.isEmpty() ? problem
         : !challenge                       ? tr("The site did not answer over I2P")

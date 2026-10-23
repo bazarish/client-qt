@@ -354,6 +354,7 @@ public:
     Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void sendLogin(const QString& challenge);
     Q_INVOKABLE void fetchLogin(const QString& link);
+    Q_INVOKABLE void cancelLoginFetch(const QString& link);
     Q_INVOKABLE QVariantMap describeLoginChallenge(const QString& challenge) const;
     Q_INVOKABLE void askForContacts();
     Q_INVOKABLE void refreshConnectionLog();

@@ -23,6 +23,7 @@ Rectangle {
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
     // How far the attach menu floats above the input bar.
     readonly property int kAttachMenuGap: 8
+    readonly property int kPairedButtonWidth: 32
     // The Basic style's text area padding, kept so the field looks the same.
     readonly property int kFieldPadding: 6
     readonly property int kFieldLeadPadding: 10
@@ -239,31 +240,35 @@ Rectangle {
             Layout.bottomMargin: (Theme.barHeight - root.minInputH) / 2
             spacing: 6
 
-            // One way to attach anything: the clip asks what kind.
-            // Taking focus from the field would close a phone's keyboard under the finger.
-            IconButton {
-                id: attachButton
-                iconName: "attach"
-                focusPolicy: Qt.NoFocus
-                visible: !root.editing
-                enabled: !root.switchedOff
+            RowLayout {
+                spacing: 0
                 Layout.alignment: Qt.AlignBottom
-                // Above the bar, over the conversation: opened at the cursor it
-                // covered the field the user is about to type in.
-                onClicked: attachMenu.popup(attachButton, 0,
-                    -attachMenu.implicitHeight - root.kAttachMenuGap)
-            }
-            IconButton {
-                id: emojiButton
-                iconName: "smile"
-                focusPolicy: Qt.NoFocus
-                enabled: !root.switchedOff
-                Layout.alignment: Qt.AlignBottom
-                onClicked: emojiPicker.visible ? emojiPicker.close() : emojiPicker.open()
-                EmojiPicker {
-                    id: emojiPicker
-                    y: -height - root.kAttachMenuGap
-                    onPicked: function(emoji) { input.insert(input.cursorPosition, emoji) }
+                // One way to attach anything: the clip asks what kind.
+                // Taking focus from the field would close a phone's keyboard under the finger.
+                IconButton {
+                    id: attachButton
+                    iconName: "attach"
+                    focusPolicy: Qt.NoFocus
+                    visible: !root.editing
+                    enabled: !root.switchedOff
+                    Layout.preferredWidth: root.kPairedButtonWidth
+                    // Above the bar, over the conversation: opened at the cursor it
+                    // covered the field the user is about to type in.
+                    onClicked: attachMenu.popup(attachButton, 0,
+                        -attachMenu.implicitHeight - root.kAttachMenuGap)
+                }
+                IconButton {
+                    id: emojiButton
+                    iconName: "smile"
+                    focusPolicy: Qt.NoFocus
+                    enabled: !root.switchedOff
+                    Layout.preferredWidth: root.kPairedButtonWidth
+                    onClicked: emojiPicker.visible ? emojiPicker.close() : emojiPicker.open()
+                    EmojiPicker {
+                        id: emojiPicker
+                        y: -height - root.kAttachMenuGap
+                        onPicked: function(emoji) { input.insert(input.cursorPosition, emoji) }
+                    }
                 }
             }
 

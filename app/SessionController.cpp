@@ -1253,6 +1253,11 @@ void SessionController::fetchLogin(const QString& link)
     emit commands_.fetchLogin(link.trimmed());
 }
 
+void SessionController::cancelLoginFetch(const QString& link)
+{
+    emit commands_.cancelLoginFetch(link.trimmed());
+}
+
 void SessionController::sendLogin(const QString& challenge)
 {
     emit commands_.sendLogin(challenge.trimmed());

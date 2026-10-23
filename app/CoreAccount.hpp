@@ -16,6 +16,7 @@
 #include <QThread>
 #include <QTimer>
 
+#include <atomic>
 #include <memory>
 #include <optional>
 
@@ -83,6 +84,7 @@ private:
     void finishLoginSend(const QString& op, const QString& challenge, qint64 startedAtMs,
         std::optional<int> status, const QString& problem);
     void fetchLogin(const QString& link);
+    void cancelLoginFetch(const QString& link);
     void showLoginFetchStage(const QString& op, const QString& link, client::FetchStage stage);
     void finishLoginFetch(const QString& op, const QString& link,
         const std::optional<std::string>& challenge, const QString& problem);
@@ -199,6 +201,10 @@ private:
     QThread thread_;
     SessionWorker* worker_ = nullptr;
     std::shared_ptr<client::LoginSigner> loginSigner_;
+    // The one challenge fetch in flight; a new one or the window's back gives it up.
+    QString loginFetchOp_;
+    QString loginFetchLink_;
+    std::shared_ptr<std::atomic<bool>> loginFetchCancelled_;
     TranscriptStore store_;
     ContactBook contacts_;
     MessageIngest ingest_{store_, contacts_};
