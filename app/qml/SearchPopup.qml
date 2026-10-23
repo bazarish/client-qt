@@ -28,7 +28,9 @@ Popup {
         field.forceActiveFocus()
     }
     function runSearch() {
-        results = (session && field.text.length > 0) ? session.searchMessages(field.text) : []
+        // A keyboard holds the word being typed outside text until it commits it.
+        results = (session && field.displayText.length > 0)
+            ? session.searchMessages(field.displayText) : []
     }
 
     Timer { id: searchDebounce; interval: 200; onTriggered: popup.runSearch() }
@@ -48,7 +50,7 @@ Popup {
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 selectByMouse: true
-                onTextChanged: searchDebounce.restart()
+                onDisplayTextChanged: searchDebounce.restart()
                 background: Rectangle {
                     radius: 8
                     color: Theme.bg
@@ -60,7 +62,7 @@ Popup {
 
         Label {
             Layout.fillWidth: true
-            visible: field.text.length > 0
+            visible: field.displayText.length > 0
             text: popup.results.length === 0
                 ? qsTr("No matches")
                 : qsTr("Matches: %1").arg(popup.results.length)
