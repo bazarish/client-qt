@@ -814,6 +814,28 @@ int main(int argc, char** argv)
         CHECK(due(now + 2 * kTimerMs).isEmpty());
     }
 
+    // A bot's menu: the newest one stands, an empty one takes it away, a cleared chat keeps it.
+    {
+        TranscriptStore store;
+        CHECK(store.open("p4", db, "pw"));
+        CHECK(store.botMenu("bot").isEmpty());
+        CHECK(store.setBotMenu("bot", R"([{"title":"Баланс","command":"balance"}])"));
+        const QVariantList menu = store.botMenu("bot");
+        CHECK(menu.size() == 1);
+        CHECK(menu.front().toMap().value("title").toString() == QStringLiteral("Баланс"));
+        CHECK(menu.front().toMap().value("command").toString() == QStringLiteral("balance"));
+        CHECK(store.setBotMenu("bot", R"([{"title":"Help","command":"help"},)"
+                                      R"({"title":"Prices","command":"prices"}])"));
+        CHECK(store.botMenu("bot").size() == 2);
+        CHECK(store.clearPeer("bot"));
+        CHECK(store.botMenu("bot").size() == 2);
+        CHECK(store.setBotMenu("bot", "[]"));
+        CHECK(store.botMenu("bot").isEmpty());
+        CHECK(store.setBotMenu("bot", R"([{"title":"Help","command":"help"}])"));
+        CHECK(store.forgetPeer("bot"));
+        CHECK(store.botMenu("bot").isEmpty());
+    }
+
     fs::remove_all(dir);
     std::fprintf(stderr, "TestTranscript passed\n");
     return 0;

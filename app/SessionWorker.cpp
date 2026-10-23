@@ -870,6 +870,7 @@ void SessionWorker::drainMailbox()
         }
         map["attRef"] = QString::fromStdString(m.attachmentRef);
         map["keyboard"] = QString::fromStdString(m.keyboardJson);
+        map["menuItems"] = QString::fromStdString(m.menuItemsJson);
         map["e2eId"] = QString::fromStdString(m.e2eId);
         map["forwarded"] = m.forwarded;
         map["ref"] = QString::fromStdString(m.refId);

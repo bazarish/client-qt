@@ -13,6 +13,8 @@
 
 #include <QDateTime>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QStorageInfo>
 #include <QStringList>
 
@@ -360,6 +362,10 @@ bool TranscriptStore::open(const QString& accountId, const QString& dbPath, cons
     }
     if (!query.exec("CREATE TABLE IF NOT EXISTS chat_timers ("
                     "peer TEXT PRIMARY KEY, seconds INTEGER NOT NULL)")) {
+        return false;
+    }
+    if (!query.exec("CREATE TABLE IF NOT EXISTS bot_menus ("
+                    "peer TEXT PRIMARY KEY, items TEXT NOT NULL)")) {
         return false;
     }
     if (!query.exec("CREATE TABLE IF NOT EXISTS expiries ("
@@ -951,7 +957,7 @@ bool TranscriptStore::forgetPeer(const QString& peer)
         return false;
     }
     for (const char* statement : {"DELETE FROM pinned_chats WHERE peer = ?",
-             "DELETE FROM chat_timers WHERE peer = ?",
+             "DELETE FROM chat_timers WHERE peer = ?", "DELETE FROM bot_menus WHERE peer = ?",
              "DELETE FROM group_state WHERE peer = ?"}) {
         Query query(db_);
         query.prepare(QString::fromUtf8(statement));
@@ -1195,6 +1201,31 @@ bool TranscriptStore::setChatTimer(const QString& peer, const qint64 seconds)
     } else {
         query.prepare("DELETE FROM chat_timers WHERE peer = ?");
         query.addBindValue(peer);
+    }
+    return query.exec() || failed();
+}
+
+QVariantList TranscriptReader::botMenu(const QString& peer) const
+{
+    Query query(db_);
+    query.prepare("SELECT items FROM bot_menus WHERE peer = ? LIMIT 1");
+    query.addBindValue(peer);
+    if (!query.exec() || !query.next()) {
+        return {};
+    }
+    return QJsonDocument::fromJson(query.value(0).toString().toUtf8()).array().toVariantList();
+}
+
+bool TranscriptStore::setBotMenu(const QString& peer, const QString& itemsJson)
+{
+    Query query(db_);
+    if (QJsonDocument::fromJson(itemsJson.toUtf8()).array().isEmpty()) {
+        query.prepare("DELETE FROM bot_menus WHERE peer = ?");
+        query.addBindValue(peer);
+    } else {
+        query.prepare("INSERT OR REPLACE INTO bot_menus (peer, items) VALUES (?, ?)");
+        query.addBindValue(peer);
+        query.addBindValue(itemsJson);
     }
     return query.exec() || failed();
 }

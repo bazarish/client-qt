@@ -344,6 +344,7 @@ if(Qt6_FOUND)
             app/qml/ReactionPicker.qml
             app/qml/EmojiPicker.qml
             app/qml/ForwardSheet.qml
+            app/qml/BotMenuSheet.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
             app/qml/VoiceRecorder.qml

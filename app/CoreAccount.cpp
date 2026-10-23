@@ -397,6 +397,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&ingest_, &MessageIngest::peerReset, &events_, &AccountEvents::peerReset);
     connect(&ingest_, &MessageIngest::chatTimerChanged, &events_,
         &AccountEvents::chatTimerChanged);
+    connect(&ingest_, &MessageIngest::botMenuChanged, &events_, &AccountEvents::botMenuChanged);
     connect(&ingest_, &MessageIngest::peerForgotten, &events_, &AccountEvents::peerForgotten);
     connect(&ingest_, &MessageIngest::chatChanged, &events_, &AccountEvents::chatChanged);
     connect(&ingest_, &MessageIngest::chatsChanged, &events_, &AccountEvents::chatsChanged);

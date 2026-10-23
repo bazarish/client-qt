@@ -78,6 +78,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString activePeerName READ activePeerName NOTIFY activePeerNameChanged)
     Q_PROPERTY(bool activeIsGroup READ activeIsGroup NOTIFY activeGroupChanged)
     Q_PROPERTY(qint64 activeChatTimer READ activeChatTimer NOTIFY activeChatTimerChanged)
+    Q_PROPERTY(QVariantList activeBotMenu READ activeBotMenu NOTIFY activeBotMenuChanged)
     Q_PROPERTY(bool activeAliasLookup READ activeAliasLookup NOTIFY activePeerChanged)
     Q_PROPERTY(bool activeIsChannel READ activeIsChannel NOTIFY activeGroupChanged)
     Q_PROPERTY(qint64 activeGroupMembers READ activeGroupMembers NOTIFY activeGroupChanged)
@@ -202,6 +203,7 @@ public:
     int reactionsRevision() const { return reactionsRevision_; }
     bool activeIsGroup() const { return activeGroup_.has_value(); }
     qint64 activeChatTimer() const { return activeChatTimer_; }
+    QVariantList activeBotMenu() const { return activeBotMenu_; }
     bool activeAliasLookup() const;
     bool activeIsChannel() const
     {
@@ -416,6 +418,7 @@ signals:
     void activePeerNameChanged();
     void activeGroupChanged();
     void activeChatTimerChanged();
+    void activeBotMenuChanged();
     void pagingChanged();
     void scrollToMessage(qint64 localId);
     void scrollToUnread(qint64 firstUnreadId);
@@ -529,6 +532,7 @@ private:
     bool acceptCalls_ = true;
     std::optional<GroupState> activeGroup_;
     qint64 activeChatTimer_ = 0;
+    QVariantList activeBotMenu_;
     QVariantList aliasHoldings_;
     QString aliasNote_;
     bool aliasBusy_ = false;

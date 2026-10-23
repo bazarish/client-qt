@@ -257,6 +257,12 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
                 emit activeChatTimerChanged();
             }
         });
+    connect(&events_, &AccountEvents::botMenuChanged, this, [this](const QString& peer) {
+        if (peer == activePeer_) {
+            activeBotMenu_ = store_.botMenu(peer);
+            emit activeBotMenuChanged();
+        }
+    });
     connect(&events_, &AccountEvents::accountRenamed, this, [this](const QString& name) {
         if (name != displayName_) {
             displayName_ = name;
@@ -472,6 +478,8 @@ void SessionController::activateConversation(const QString& peer)
     refreshActiveGroup();
     activeChatTimer_ = peer.isEmpty() ? 0 : store_.chatTimer(peer);
     emit activeChatTimerChanged();
+    activeBotMenu_ = peer.isEmpty() ? QVariantList() : store_.botMenu(peer);
+    emit activeBotMenuChanged();
 }
 
 void SessionController::refreshActiveGroup()

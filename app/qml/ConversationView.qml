@@ -243,6 +243,7 @@ Item {
         }
     }
     ForwardSheet { id: forwardSheet; session: root.session }
+    BotMenuSheet { id: botMenuSheet; session: root.session }
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
     Dialog {
@@ -374,6 +375,30 @@ Item {
             }
         }
         Hairline { }
+
+        RowLayout {
+            id: botMenuStrip
+            visible: root.session !== null && root.session.activeBotMenu.length > 0
+                && App.keyboardInset === 0
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 6
+            Layout.topMargin: 4
+            Layout.bottomMargin: 4
+            spacing: 8
+            Label {
+                text: qsTr("Bot menu")
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
+            MenuButton {
+                text: qsTr("Open")
+                onClicked: botMenuSheet.open()
+            }
+        }
+        Hairline { visible: botMenuStrip.visible }
 
         // The message list shows only a window of the conversation: the newest
         // page on open, with older messages paged in at the top and newer ones at

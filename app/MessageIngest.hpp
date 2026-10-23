@@ -26,6 +26,7 @@ signals:
     void peerReset(const QString& peer);
     void peerForgotten(const QString& peer);
     void chatTimerChanged(const QString& peer, qint64 seconds);
+    void botMenuChanged(const QString& peer);
     void chatChanged(const QString& peer);
     void chatsChanged();
     void deliveredThrough(const QString& peer, qint64 uptoId);

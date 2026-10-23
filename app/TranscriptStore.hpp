@@ -7,6 +7,7 @@
 #include <QMap>
 #include <QString>
 #include <QPair>
+#include <QVariant>
 #include <QVector>
 
 #include <cstdint>
@@ -112,6 +113,8 @@ public:
     bool hasMessagesBefore(const QString& peer, qint64 id) const;
     // The chat's auto-delete timer in seconds, 0 when it has none.
     qint64 chatTimer(const QString& peer) const;
+    // The peer's bot menu as {title, command} maps, empty when it has none.
+    QVariantList botMenu(const QString& peer) const;
     // Messages whose time ran out by then, as (peer, id), oldest first.
     QVector<QPair<QString, qint64>> expiredBy(qint64 nowMs) const;
     bool hasMessagesAfter(const QString& peer, qint64 id) const;
@@ -168,6 +171,7 @@ public:
     [[nodiscard]] bool applyReadThrough(const QString& peer, qint64 sentAtMs);
     [[nodiscard]] bool setPinned(const QString& peer, bool pinned);
     [[nodiscard]] bool setChatTimer(const QString& peer, qint64 seconds);
+    [[nodiscard]] bool setBotMenu(const QString& peer, const QString& itemsJson);
     [[nodiscard]] bool setReaction(
         const QString& peer, const QString& target, const QString& reactor, const QString& emoji);
     [[nodiscard]] bool setGroupState(const QString& peer, const GroupState& state);

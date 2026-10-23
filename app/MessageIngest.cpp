@@ -224,6 +224,14 @@ bool MessageIngest::takeIn(const QVariantMap& message)
         return true;
     }
 
+    if (type == "bot.menu") {
+        if (!store_.setBotMenu(peer, message.value("menuItems").toString())) {
+            return false;
+        }
+        emit botMenuChanged(peer);
+        return true;
+    }
+
     if (type == "chat.timer") {
         if (store_.groupState(peer).has_value()) {
             bazarish::log::info("an auto-delete timer from a group host ignored");

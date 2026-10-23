@@ -83,6 +83,7 @@ int main(int argc, char** argv)
     QObject::connect(&ingest, &MessageIngest::rowRemoved, [&] { note("removed"); });
     QObject::connect(&ingest, &MessageIngest::peerReset, [&] { note("reset"); });
     QObject::connect(&ingest, &MessageIngest::chatTimerChanged, [&] { note("timer"); });
+    QObject::connect(&ingest, &MessageIngest::botMenuChanged, [&] { note("menu"); });
     QObject::connect(&ingest, &MessageIngest::chatsChanged, [&] { note("chats"); });
     QObject::connect(&ingest, &MessageIngest::deliveredThrough, [&] { note("delivered"); });
     QObject::connect(&ingest, &MessageIngest::reactionArrived, [&] { note("reaction"); });
@@ -190,6 +191,18 @@ int main(int argc, char** argv)
     CHECK(took(off));
     CHECK(saw({"timer", "added-own"}));
     CHECK(store.chatTimer(kBob) == client::kChatTimerOff);
+    QVariantMap menu = incoming(kBob, "bot.menu", "bm1");
+    menu["menuItems"] = QStringLiteral(R"([{"title":"Help","command":"help"}])");
+    CHECK(took(menu));
+    CHECK(saw({"menu"}));
+    CHECK(store.botMenu(kBob).size() == 1);
+    CHECK(store.messageByE2e("bm1", kBob).id == 0);
+    QVariantMap gone = incoming(kBob, "bot.menu", "bm2");
+    gone["menuItems"] = QStringLiteral("[]");
+    CHECK(took(gone));
+    CHECK(saw({"menu"}));
+    CHECK(store.botMenu(kBob).isEmpty());
+
     QVariantMap fromHost = incoming(kClub, "chat.timer", "t3");
     fromHost["timerSeconds"] = static_cast<qint64>(client::kSecondsPerHour);
     CHECK(took(fromHost));

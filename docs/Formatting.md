@@ -69,6 +69,12 @@ offers a command inside a sentence; an inline keyboard is the other way, and
 differs in that a keyboard press sends `bot.callback` with a reference to the
 message it was attached to and shows nothing in the conversation.
 
+**An entry of a bot's menu** sends `/command` the same way, as an ordinary
+message to the open chat. The menu is the newest `bot.menu` that contact sent
+(`docs-main` `Bots.md`). While a chat has one, a "Bot menu" strip stands above
+its messages; the strip is hidden while the on-screen keyboard is up, because a
+phone has no height to spare then.
+
 **A block** goes to the clipboard, as it was written. Nothing is sent, and
 nothing leaves the machine; the bubble says "Copied to clipboard" underneath for
 a moment, because a clipboard is somewhere the user cannot see and a press that
