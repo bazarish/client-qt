@@ -16,6 +16,8 @@ Popup {
 
     background: DialogFrame { }
 
+    onOpened: Qt.inputMethod.hide()
+
     contentItem: ColumnLayout {
         spacing: 0
 

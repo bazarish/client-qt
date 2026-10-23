@@ -379,7 +379,6 @@ Item {
         RowLayout {
             id: botMenuStrip
             visible: root.session !== null && root.session.activeBotMenu.length > 0
-                && App.keyboardInset === 0
             Layout.fillWidth: true
             Layout.leftMargin: 12
             Layout.rightMargin: 6
@@ -397,6 +396,7 @@ Item {
                 text: qsTr("Open")
                 onClicked: botMenuSheet.open()
             }
+            TapHandler { onTapped: botMenuSheet.open() }
         }
         Hairline { visible: botMenuStrip.visible }
 
