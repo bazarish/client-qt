@@ -5,8 +5,7 @@ import QtQuick.Layouts
 import Bazarish
 import "Emoji.js" as Emoji
 
-// Emoji for the message being written. It takes no focus: the field keeps its cursor and a
-// phone its keyboard.
+// Takes no focus, so the field keeps its cursor and a phone its keyboard.
 Popup {
     id: root
     signal picked(string emoji)
@@ -18,8 +17,6 @@ Popup {
     readonly property int kTabPixels: 18
     property int group: 0
 
-    focus: false
-    modal: false
     padding: 8
     margins: Theme.spacing
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent

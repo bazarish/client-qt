@@ -120,7 +120,6 @@ Item {
         && model.e2eId && model.e2eId.length > 0
     // The reaction chips for this message: [{ emoji, count, mine }], re-queried
     // whenever any reaction changes (reactionsRevision drives the binding).
-    // An emoji or a few alone read as a picture, the way a sticker does: large, with no bubble.
     readonly property int kStickerMaxEmoji: 3
     readonly property int kStickerOnePixels: 56
     readonly property int kStickerFewPixels: 40
