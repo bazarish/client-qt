@@ -120,6 +120,15 @@ Item {
         && model.e2eId && model.e2eId.length > 0
     // The reaction chips for this message: [{ emoji, count, mine }], re-queried
     // whenever any reaction changes (reactionsRevision drives the binding).
+    // An emoji or a few alone read as a picture, the way a sticker does: large, with no bubble.
+    readonly property int kStickerMaxEmoji: 3
+    readonly property int kStickerOnePixels: 56
+    readonly property int kStickerFewPixels: 40
+    readonly property int emojiCount: delegate.isSystem || delegate.isAttachment
+        || delegate.isContactRequest || (model.replyTo || "").length > 0
+        ? 0 : App.emojiCount(model.text || "")
+    readonly property bool sticker: delegate.emojiCount > 0
+        && delegate.emojiCount <= delegate.kStickerMaxEmoji
     readonly property var reactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionSummary(model.e2eId) : []
@@ -415,7 +424,8 @@ Item {
             delegate.width * delegate.kBubbleShare)
         height: content.implicitHeight + 14
         radius: 12
-        color: model.outgoing ? (delegate.held ? Theme.bubbleOutHeld : Theme.bubbleOut)
+        color: delegate.sticker ? "transparent"
+            : model.outgoing ? (delegate.held ? Theme.bubbleOutHeld : Theme.bubbleOut)
             : (delegate.held ? Theme.bubbleInHeld : Theme.bubbleIn)
         Behavior on color {
             enabled: !delegate.pooled
@@ -1016,6 +1026,17 @@ Item {
                 HoverHandler {
                     cursorShape: bodyText.hoveredLink.length > 0
                         ? Qt.PointingHandCursor : Qt.IBeamCursor
+                }
+                Binding on font.pixelSize {
+                    when: delegate.sticker
+                    value: delegate.emojiCount === 1
+                        ? delegate.kStickerOnePixels : delegate.kStickerFewPixels
+                    restoreMode: Binding.RestoreBindingOrValue
+                }
+                Binding on renderType {
+                    when: delegate.sticker
+                    value: Text.NativeRendering
+                    restoreMode: Binding.RestoreBindingOrValue
                 }
             }
 

@@ -174,6 +174,7 @@ public:
     Q_INVOKABLE QString markupHtml(const QString& text, const QColor& actionColor,
         const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const;
     Q_INVOKABLE QString markupPlain(const QString& text) const;
+    Q_INVOKABLE int emojiCount(const QString& text) const;
 
 signals:
     void attachedChanged();

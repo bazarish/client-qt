@@ -253,6 +253,19 @@ Rectangle {
                 onClicked: attachMenu.popup(attachButton, 0,
                     -attachMenu.implicitHeight - root.kAttachMenuGap)
             }
+            IconButton {
+                id: emojiButton
+                iconName: "smile"
+                focusPolicy: Qt.NoFocus
+                enabled: !root.switchedOff
+                Layout.alignment: Qt.AlignBottom
+                onClicked: emojiPicker.visible ? emojiPicker.close() : emojiPicker.open()
+                EmojiPicker {
+                    id: emojiPicker
+                    y: -height - root.kAttachMenuGap
+                    onPicked: function(emoji) { input.insert(input.cursorPosition, emoji) }
+                }
+            }
 
             Rectangle {
                 Layout.fillWidth: true

@@ -5,6 +5,7 @@
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
 #include "Documents.hpp"
+#include "EmojiText.hpp"
 #include "SelectionHold.hpp"
 #include "Translations.hpp"
 #include "Markup.hpp"
@@ -590,6 +591,11 @@ QString AppController::markupHtml(const QString& text, const QColor& actionColor
 QString AppController::markupPlain(const QString& text) const
 {
     return markup::toPlain(text);
+}
+
+int AppController::emojiCount(const QString& text) const
+{
+    return emojiOnlyCount(text);
 }
 
 void AppController::copyText(const QString& text) const

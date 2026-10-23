@@ -153,6 +153,8 @@ if(Qt6_FOUND)
         app/SessionContacts.cpp
         app/Markup.cpp
         app/Markup.hpp
+        app/EmojiText.cpp
+        app/EmojiText.hpp
         app/Picture.cpp
         app/Picture.hpp
         app/Models.cpp
@@ -328,6 +330,7 @@ if(Qt6_FOUND)
             app/qml/Main.qml
             app/qml/Theme.qml
             app/qml/Format.js
+            app/qml/Emoji.js
             app/qml/AccountPicker.qml
             app/qml/CreateAccountWizard.qml
             app/qml/ConnectServerPage.qml
@@ -339,6 +342,7 @@ if(Qt6_FOUND)
             app/qml/MessageBubble.qml
             app/qml/SearchPopup.qml
             app/qml/ReactionPicker.qml
+            app/qml/EmojiPicker.qml
             app/qml/ForwardSheet.qml
             app/qml/Composer.qml
             app/qml/FileSendDialog.qml
@@ -467,6 +471,12 @@ if(Qt6_FOUND)
     target_compile_options(TestPictureStore PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestPictureStore COMMAND TestPictureStore)
     set_tests_properties(TestPictureStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(TestEmojiText tests/TestEmojiText.cpp app/EmojiText.cpp)
+    target_include_directories(TestEmojiText PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestEmojiText PRIVATE Qt6::Core)
+    target_compile_options(TestEmojiText PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestEmojiText COMMAND TestEmojiText)
 
     # The chat shows one row per stored message, however many times the row reaches it.
     add_executable(TestConversationModel tests/TestConversationModel.cpp app/Models.cpp
