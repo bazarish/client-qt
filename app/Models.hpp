@@ -119,6 +119,7 @@ public:
 
 private:
     void notifyRow(int row, const QList<int>& roles);
+    QVector<StoredMessage> unknownOf(const QVector<StoredMessage>& messages) const;
 
     QVector<StoredMessage> messages_;
     QHash<qint64, LiveMessageState> live_;

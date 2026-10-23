@@ -254,6 +254,12 @@ void ConversationModel::retranslate()
 
 int ConversationModel::appendMessage(const StoredMessage& message)
 {
+    // The core's notice of a row can land after a page that already brought it.
+    if (const int known = rowForId(message.id); known >= 0) {
+        messages_[known] = message;
+        notifyRow(known, {});
+        return known;
+    }
     int row = static_cast<int>(messages_.size());
     while (row > 0) {
         const StoredMessage& prev = messages_[row - 1];
@@ -270,13 +276,24 @@ int ConversationModel::appendMessage(const StoredMessage& message)
     return row;
 }
 
+QVector<StoredMessage> ConversationModel::unknownOf(const QVector<StoredMessage>& messages) const
+{
+    QVector<StoredMessage> unknown;
+    for (const StoredMessage& message : messages) {
+        if (rowForId(message.id) < 0) {
+            unknown.push_back(message);
+        }
+    }
+    return unknown;
+}
+
 void ConversationModel::prependMessages(const QVector<StoredMessage>& messages)
 {
-    if (messages.isEmpty()) {
+    QVector<StoredMessage> merged = unknownOf(messages);
+    if (merged.isEmpty()) {
         return;
     }
-    beginInsertRows({}, 0, static_cast<int>(messages.size()) - 1);
-    QVector<StoredMessage> merged = messages;
+    beginInsertRows({}, 0, static_cast<int>(merged.size()) - 1);
     merged += messages_;
     messages_ = std::move(merged);
     endInsertRows();
@@ -284,12 +301,13 @@ void ConversationModel::prependMessages(const QVector<StoredMessage>& messages)
 
 void ConversationModel::appendMessages(const QVector<StoredMessage>& messages)
 {
-    if (messages.isEmpty()) {
+    const QVector<StoredMessage> fresh = unknownOf(messages);
+    if (fresh.isEmpty()) {
         return;
     }
     const int row = static_cast<int>(messages_.size());
-    beginInsertRows({}, row, row + static_cast<int>(messages.size()) - 1);
-    messages_ += messages;
+    beginInsertRows({}, row, row + static_cast<int>(fresh.size()) - 1);
+    messages_ += fresh;
     endInsertRows();
 }
 

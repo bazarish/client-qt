@@ -536,7 +536,7 @@ void SessionController::showInActiveView(const StoredMessage& m, bool isOwn)
         return;
     }
     conversation_.appendMessage(m);
-    newestLoadedId_ = m.id;
+    newestLoadedId_ = std::max(newestLoadedId_, m.id);
 }
 
 void SessionController::closeConversation()

@@ -468,6 +468,14 @@ if(Qt6_FOUND)
     add_test(NAME TestPictureStore COMMAND TestPictureStore)
     set_tests_properties(TestPictureStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
+    # The chat shows one row per stored message, however many times the row reaches it.
+    add_executable(TestConversationModel tests/TestConversationModel.cpp app/Models.cpp
+        app/Models.hpp)
+    target_link_libraries(TestConversationModel PRIVATE bazarish_app_shared Qt6::Gui Qt6::Qml)
+    target_compile_options(TestConversationModel PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestConversationModel COMMAND TestConversationModel)
+    set_tests_properties(TestConversationModel PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)
     target_include_directories(TestLetterAvatar PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestLetterAvatar PRIVATE Qt6::Gui)
