@@ -35,6 +35,17 @@ ApplicationWindow {
             }
         }
     }
+    // A keyboard put away takes the field's focus with it: kept, the next hand-back raised it again.
+    Connections {
+        target: App
+        function onKeyboardInsetChanged() {
+            const field = window.activeFocusItem
+            if (App.keyboardInset === 0 && field && !field.readOnly
+                    && (field instanceof TextInput || field instanceof TextEdit)) {
+                field.focus = false
+            }
+        }
+    }
 
     // The dim behind every modal, and the thing that makes it modal: the stock
     // overlay dims but lets a pointer handler underneath still see the press, so a
