@@ -132,16 +132,19 @@ public final class CallAudio {
     public static final class Capture {
         private volatile AudioRecord record;
 
-        public Capture(int sampleRate, int frameBytes) {
+        public Capture(int sampleRate, int frameBytes, boolean forCall) {
             int least = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
-            // The voice-communication source brings the platform's echo canceller with it.
-            AudioRecord opened = new AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+            // A call needs the voice-communication source's echo canceller; its noise
+            // suppression would cut the quiet sounds out of a voice note.
+            int source = forCall ? MediaRecorder.AudioSource.VOICE_COMMUNICATION
+                : MediaRecorder.AudioSource.MIC;
+            AudioRecord opened = new AudioRecord(source,
                 sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
                 Math.max(least, frameBytes * kBufferedFrames));
             if (opened.getState() != AudioRecord.STATE_INITIALIZED) {
                 opened.release();
-                throw new IllegalStateException("the microphone did not open for the call");
+                throw new IllegalStateException("the microphone did not open");
             }
             opened.startRecording();
             record = opened;

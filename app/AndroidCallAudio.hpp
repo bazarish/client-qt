@@ -23,11 +23,21 @@ public:
     void stop() override;
     std::vector<std::int16_t> readFrame() override;
 
+protected:
+    explicit AndroidCallSource(bool forCall);
+
 private:
+    const bool forCall_;
     std::vector<std::int16_t> frame_;
     QJniObject buffer_;
     QJniObject capture_;
     std::atomic<bool> running_ = false;
+};
+
+// A voice note: the same microphone without the call's processing, which cuts quiet sounds.
+class AndroidVoiceSource : public AndroidCallSource {
+public:
+    AndroidVoiceSource();
 };
 
 class AndroidCallSink : public bazarish::AudioSink {

@@ -71,8 +71,7 @@ void VoiceNote::startRecording()
     inputLevel_.store(0.0F);
     encodedBytes_.store(0);
 #ifdef Q_OS_ANDROID
-    // The microphone a call speaks into, with the platform's voice processing.
-    source_ = std::make_unique<AndroidCallSource>();
+    source_ = std::make_unique<AndroidVoiceSource>();
 #else
     if (AudioRoute::instance().input().isNull()) {
         throw std::runtime_error("no microphone to record from");

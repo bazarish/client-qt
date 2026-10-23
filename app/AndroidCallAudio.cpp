@@ -32,8 +32,19 @@ QJniObject directBuffer(std::vector<std::int16_t>& frame)
 }  // namespace
 
 AndroidCallSource::AndroidCallSource()
-    : frame_(static_cast<std::size_t>(kCallSamplesPerFrame))
+    : AndroidCallSource(true)
+{
+}
+
+AndroidCallSource::AndroidCallSource(const bool forCall)
+    : forCall_(forCall)
+    , frame_(static_cast<std::size_t>(kCallSamplesPerFrame))
     , buffer_(directBuffer(frame_))
+{
+}
+
+AndroidVoiceSource::AndroidVoiceSource()
+    : AndroidCallSource(false)
 {
 }
 
@@ -44,9 +55,10 @@ AndroidCallSource::~AndroidCallSource()
 
 void AndroidCallSource::start()
 {
-    capture_ = QJniObject(kCapture, "(II)V", jint(kCallSampleRate), jint(kFrameBytes));
+    capture_ = QJniObject(
+        kCapture, "(IIZ)V", jint(kCallSampleRate), jint(kFrameBytes), jboolean(forCall_));
     if (!capture_.isValid()) {
-        throw std::runtime_error("the microphone did not open for the call");
+        throw std::runtime_error("the microphone did not open");
     }
     running_.store(true);
 }
