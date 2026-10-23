@@ -134,6 +134,8 @@ signals:
     void loginSigned(const QString& blob);
     void loginSendState(
         const QString& challenge, int phase, const QString& status, qint64 startedAtMs);
+    void loginFetchState(
+        const QString& link, bool fetching, const QString& status, const QString& challenge);
     void connectionLogReady(const QVariantList& lines);
     void approvalState(bool pending, const QString& note);
     void facadeInfo(const QString& activeUrl, const QStringList& configured,

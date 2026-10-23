@@ -66,6 +66,10 @@ class SessionController : public QObject {
     Q_PROPERTY(bool loginAccepted READ loginAccepted NOTIFY loginSendChanged)
     Q_PROPERTY(QString loginSendStatus READ loginSendStatus NOTIFY loginSendChanged)
     Q_PROPERTY(qint64 loginSendStartedAt READ loginSendStartedAt NOTIFY loginSendChanged)
+    Q_PROPERTY(QString loginFetchLink READ loginFetchLink NOTIFY loginFetchChanged)
+    Q_PROPERTY(bool loginFetching READ loginFetching NOTIFY loginFetchChanged)
+    Q_PROPERTY(QString loginFetchStatus READ loginFetchStatus NOTIFY loginFetchChanged)
+    Q_PROPERTY(QString loginFetchedChallenge READ loginFetchedChallenge NOTIFY loginFetchChanged)
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredReseeds READ configuredReseeds NOTIFY facadeInfoChanged)
     // The server's descriptor link, empty while the account has none.
@@ -349,6 +353,7 @@ public:
     Q_INVOKABLE void requestInvite();
     Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void sendLogin(const QString& challenge);
+    Q_INVOKABLE void fetchLogin(const QString& link);
     Q_INVOKABLE QVariantMap describeLoginChallenge(const QString& challenge) const;
     Q_INVOKABLE void askForContacts();
     Q_INVOKABLE void refreshConnectionLog();
@@ -369,6 +374,10 @@ public:
     bool loginAccepted() const { return loginSendPhase_ == eLoginAccepted; }
     QString loginSendStatus() const { return loginSendStatus_; }
     qint64 loginSendStartedAt() const { return loginSendStartedAt_; }
+    QString loginFetchLink() const { return loginFetchLink_; }
+    bool loginFetching() const { return loginFetching_; }
+    QString loginFetchStatus() const { return loginFetchStatus_; }
+    QString loginFetchedChallenge() const { return loginFetchedChallenge_; }
     double pairProgress() const { return pairProgress_; }
     bool pairing() const { return pairing_; }
     Q_INVOKABLE void changePassphrase(const QString& passphrase);
@@ -450,6 +459,7 @@ signals:
 signals:
     void pairingChanged();
     void loginSendChanged();
+    void loginFetchChanged();
     void pairingFinished(bool ok);
     void aliasChanged();
 
@@ -587,6 +597,10 @@ private:
     int loginSendPhase_ = eLoginRefused;
     QString loginSendStatus_;
     qint64 loginSendStartedAt_ = 0;
+    QString loginFetchLink_;
+    bool loginFetching_ = false;
+    QString loginFetchStatus_;
+    QString loginFetchedChallenge_;
     double pairProgress_ = kProgressUnknown;
     bool pairing_ = false;
     bool i2pHasKey_ = false;

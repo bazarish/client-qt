@@ -112,6 +112,30 @@ QString loginStageText(const client::FetchStage stage)
     throw std::logic_error("no words for this sign-in stage");
 }
 
+// A sign-in step reaches a site over I2P off the core thread; its stages and its end come back.
+template <typename Work, typename Stage, typename Done>
+void overI2p(Work work, Stage stage, Done done)
+{
+    std::thread([work, stage, done]() {
+        client::tellFetchStages([stage](const client::FetchStage reached) {
+            QMetaObject::invokeMethod(
+                QCoreApplication::instance(), [stage, reached]() { stage(reached); },
+                Qt::QueuedConnection);
+        });
+        decltype(work()) result;
+        QString problem;
+        try {
+            result = work();
+        } catch (const std::exception& error) {
+            problem = QString::fromUtf8(error.what());
+        }
+        client::tellFetchStages(nullptr);
+        QMetaObject::invokeMethod(
+            QCoreApplication::instance(), [done, result, problem]() { done(result, problem); },
+            Qt::QueuedConnection);
+    }).detach();
+}
+
 constexpr int kHttpAcceptedFirst = 200;
 constexpr int kHttpAcceptedLast = 299;
 
@@ -235,6 +259,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::closeAccountOnServer);
     connect(&commands_, &AccountCommands::requestSignLoginSig, this, &CoreAccount::signLogin);
     connect(&commands_, &AccountCommands::sendLogin, this, &CoreAccount::sendLogin);
+    connect(&commands_, &AccountCommands::fetchLogin, this, &CoreAccount::fetchLogin);
     connect(&commands_, &AccountCommands::viewConversation, this, &CoreAccount::viewConversation);
     connect(&commands_, &AccountCommands::markRead, this, &CoreAccount::markRead);
     connect(&commands_, &AccountCommands::forgetReactionFlash, this,
@@ -767,34 +792,18 @@ void CoreAccount::sendLogin(const QString& challenge)
     emit events_.loginSendState(challenge, eLoginSending, first, startedAt);
     const std::shared_ptr<client::LoginSigner> signer = loginSigner_;
     const QPointer<CoreAccount> account(this);
-    std::thread([signer, challenge, account, op, startedAt]() {
-        client::tellFetchStages([account, op, challenge, startedAt](const client::FetchStage stage) {
-            QMetaObject::invokeMethod(
-                QCoreApplication::instance(),
-                [account, op, challenge, startedAt, stage]() {
-                    if (account) {
-                        account->showLoginStage(op, challenge, startedAt, stage);
-                    }
-                },
-                Qt::QueuedConnection);
+    overI2p([signer, challenge]() { return signer->send(challenge.toStdString()); },
+        [account, op, challenge, startedAt](const client::FetchStage stage) {
+            if (account) {
+                account->showLoginStage(op, challenge, startedAt, stage);
+            }
+        },
+        [account, op, challenge, startedAt](
+            const std::optional<int> status, const QString& problem) {
+            if (account) {
+                account->finishLoginSend(op, challenge, startedAt, status, problem);
+            }
         });
-        std::optional<int> status;
-        QString problem;
-        try {
-            status = signer->send(challenge.toStdString());
-        } catch (const std::exception& error) {
-            problem = QString::fromUtf8(error.what());
-        }
-        client::tellFetchStages(nullptr);
-        QMetaObject::invokeMethod(
-            QCoreApplication::instance(),
-            [account, op, challenge, startedAt, status, problem]() {
-                if (account) {
-                    account->finishLoginSend(op, challenge, startedAt, status, problem);
-                }
-            },
-            Qt::QueuedConnection);
-    }).detach();
 }
 
 void CoreAccount::showLoginStage(const QString& op, const QString& challenge,
@@ -820,6 +829,55 @@ void CoreAccount::finishLoginSend(const QString& op, const QString& challenge,
     log_.finish(op, accepted, said);
     emit events_.loginSendState(
         challenge, accepted ? eLoginAccepted : eLoginRefused, said, startedAtMs);
+}
+
+void CoreAccount::fetchLogin(const QString& link)
+{
+    if (!loginSigner_) {
+        emit events_.loginFetchState(link, false, tr("This account is still opening."), {});
+        return;
+    }
+    const QString op = QStringLiteral("login:") + QString::number(++commandSeq_);
+    const QString first = loginStageText(client::FetchStage::eTakingDest);
+    log_.begin(op, QStringLiteral("login"), tr("Getting the challenge"), first);
+    emit events_.loginFetchState(link, true, first, {});
+    const std::shared_ptr<client::LoginSigner> signer = loginSigner_;
+    const QPointer<CoreAccount> account(this);
+    overI2p([signer, link]() { return signer->fetch(link.toStdString()); },
+        [account, op, link](const client::FetchStage stage) {
+            if (account) {
+                account->showLoginFetchStage(op, link, stage);
+            }
+        },
+        [account, op, link](
+            const std::optional<std::string>& challenge, const QString& problem) {
+            if (account) {
+                account->finishLoginFetch(op, link, challenge, problem);
+            }
+        });
+}
+
+void CoreAccount::showLoginFetchStage(
+    const QString& op, const QString& link, const client::FetchStage stage)
+{
+    if (!log_.has(op)) {
+        return;
+    }
+    const QString text = loginStageText(stage);
+    log_.update(op, text);
+    emit events_.loginFetchState(link, true, text, {});
+}
+
+void CoreAccount::finishLoginFetch(const QString& op, const QString& link,
+    const std::optional<std::string>& challenge, const QString& problem)
+{
+    const bool received = problem.isEmpty() && challenge.has_value();
+    const QString said = !problem.isEmpty() ? problem
+        : !challenge                       ? tr("The site did not answer over I2P")
+                                           : tr("Received");
+    log_.finish(op, received, said);
+    emit events_.loginFetchState(link, false, received ? QString() : said,
+        received ? QString::fromStdString(*challenge) : QString());
 }
 
 void CoreAccount::noteCommandQueued()

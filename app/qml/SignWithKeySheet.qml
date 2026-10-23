@@ -35,6 +35,12 @@ Popup {
     // On the answer itself: a challenge accepted earlier and pasted again stays open.
     Connections {
         target: root.session
+        function onLoginFetchChanged() {
+            if (!root.session.loginFetching && root.session.loginFetchedChallenge.length > 0
+                    && root.session.loginFetchLink === challengeArea.text.trim()) {
+                challengeArea.text = root.session.loginFetchedChallenge
+            }
+        }
         function onLoginSendChanged() {
             if (root.hasCallback && root.session.loginAccepted
                     && root.session.loginSendChallenge === challengeArea.text.trim()) {
@@ -44,6 +50,10 @@ Popup {
     }
     readonly property string sendProblem: root.sendingThis && !root.session.loginSending
         && !root.session.loginAccepted ? root.session.loginSendStatus : ""
+    readonly property bool fetchingThis: root.consumer.link === true && root.session !== null
+        && root.session.loginFetchLink === challengeArea.text.trim()
+    readonly property string fetchProblem: root.fetchingThis && !root.session.loginFetching
+        ? root.session.loginFetchStatus : ""
     property int sendElapsed: 0
     property int secondsLeft: 0
     readonly property bool expired: root.consumer.ok === true && root.secondsLeft <= 0
@@ -246,6 +256,9 @@ Popup {
                                     } else {
                                         holdTimer.stop()
                                     }
+                                    if (root.consumer.link === true) {
+                                        root.session.fetchLogin(text)
+                                    }
                                 }
                             }
                         }
@@ -263,7 +276,8 @@ Popup {
                         Layout.fillWidth: true
                         radius: Theme.radiusSmall
                         color: Theme.surface
-                        border.color: root.consumer.ok ? Theme.green : Theme.danger
+                        border.color: root.consumer.ok ? Theme.green
+                            : (root.consumer.link === true && !root.fetchProblem ? Theme.border : Theme.danger)
                         implicitHeight: consumerCol.implicitHeight + 16
                         ColumnLayout {
                             id: consumerCol
@@ -272,7 +286,9 @@ Popup {
                             spacing: 2
                             Label {
                                 text: root.consumer.ok ? qsTr("You are signing in to")
-                                    : qsTr("This challenge cannot be signed")
+                                    : root.consumer.link !== true ? qsTr("This challenge cannot be signed")
+                                    : root.fetchProblem ? qsTr("The challenge did not arrive")
+                                    : qsTr("Getting the challenge")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap
@@ -315,8 +331,11 @@ Popup {
                             }
                             Label {
                                 visible: !root.consumer.ok
-                                text: root.consumer.problem ? root.consumer.problem : ""
-                                color: Theme.danger
+                                text: root.consumer.link === true
+                                    ? (root.fetchingThis ? root.session.loginFetchStatus : "")
+                                    : (root.consumer.problem ? root.consumer.problem : "")
+                                color: root.consumer.link === true && !root.fetchProblem
+                                    ? Theme.textDim : Theme.danger
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }

@@ -359,6 +359,15 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
             loginSendStartedAt_ = startedAtMs;
             emit loginSendChanged();
         });
+    connect(&events_, &AccountEvents::loginFetchState, this,
+        [this](const QString& link, const bool fetching, const QString& status,
+            const QString& challenge) {
+            loginFetchLink_ = link;
+            loginFetching_ = fetching;
+            loginFetchStatus_ = status;
+            loginFetchedChallenge_ = challenge;
+            emit loginFetchChanged();
+        });
     connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
     connect(&events_, &AccountEvents::serverHello, this, &SessionController::serverHello);
@@ -1239,6 +1248,11 @@ void SessionController::signLogin(const QString& challenge)
     emit commands_.requestSignLoginSig(challenge);
 }
 
+void SessionController::fetchLogin(const QString& link)
+{
+    emit commands_.fetchLogin(link.trimmed());
+}
+
 void SessionController::sendLogin(const QString& challenge)
 {
     emit commands_.sendLogin(challenge.trimmed());
@@ -1263,6 +1277,11 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
 {
     QVariantMap described;
     try {
+        if (bazarish::service::readLoginChallengeLink(challenge.trimmed().toStdString())) {
+            described["ok"] = false;
+            described["link"] = true;
+            return described;
+        }
         const bazarish::service::LoginConsumer consumer
             = bazarish::service::readLoginConsumer(challenge.trimmed().toStdString());
         described["ok"] = true;

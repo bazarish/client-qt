@@ -82,6 +82,10 @@ private:
         client::FetchStage stage);
     void finishLoginSend(const QString& op, const QString& challenge, qint64 startedAtMs,
         std::optional<int> status, const QString& problem);
+    void fetchLogin(const QString& link);
+    void showLoginFetchStage(const QString& op, const QString& link, client::FetchStage stage);
+    void finishLoginFetch(const QString& op, const QString& link,
+        const std::optional<std::string>& challenge, const QString& problem);
     void onMessageReceived(const QVariantMap& message);
     void viewConversation(const QString& peer);
     void markRead(const QString& peer, qint64 id, const QString& e2eId, qint64 sentAtMs);

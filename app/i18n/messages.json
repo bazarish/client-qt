@@ -4708,6 +4708,24 @@
       "es": "Permitir capturar la pantalla",
       "zh": "允许截屏",
       "ar": "السماح بالتقاط الشاشة"
+    },
+    "Getting the challenge": {
+      "ru": "Получаю запрос",
+      "es": "Obteniendo el reto",
+      "zh": "正在获取质询",
+      "ar": "جارٍ جلب التحدي"
+    },
+    "The challenge did not arrive": {
+      "ru": "Запрос не получен",
+      "es": "El reto no llegó",
+      "zh": "未收到质询",
+      "ar": "لم يصل التحدي"
+    },
+    "Received": {
+      "ru": "Получено",
+      "es": "Recibido",
+      "zh": "已收到",
+      "ar": "تم الاستلام"
     }
   }
 }
