@@ -1697,12 +1697,6 @@
       "zh": "以后再说",
       "ar": "لاحقًا"
     },
-    "Leave Bazarish?": {
-      "ru": "Выйти из Bazarish?",
-      "es": "¿Salir de Bazarish?",
-      "zh": "要退出 Bazarish 吗？",
-      "ar": "أتريد الخروج من Bazarish؟"
-    },
     "Lets contacts see a green mark when you receive.": {
       "ru": "Контакты увидят зелёную отметку, когда вы получите сообщение.",
       "es": "Tus contactos verán una marca verde cuando recibas el mensaje.",
@@ -3419,12 +3413,6 @@
       "zh": "该邀请不包含联系此账号的地址。",
       "ar": "لا يحمل هذا الرابط عنوانًا للوصول إلى ذلك الحساب."
     },
-    "This is an external link. Your internet provider and the site will see your real address.": {
-      "ru": "Это внешняя ссылка. Интернет-провайдер и целевой сайт увидят ваш реальный адрес.",
-      "es": "Es un enlace externo. Tu proveedor de internet y el sitio verán tu dirección real.",
-      "zh": "这是一个外部链接。你的网络服务商和目标站点会看到你的真实地址。",
-      "ar": "هذا رابط خارجي. سيرى مزوّد الإنترنت والموقع عنوانك الحقيقي."
-    },
     "This is not a SOCKS5 proxy.": {
       "ru": "Это не прокси SOCKS5.",
       "es": "Esto no es un proxy SOCKS5.",
@@ -4738,6 +4726,18 @@
       "es": "Menú del bot",
       "zh": "机器人菜单",
       "ar": "قائمة البوت"
+    },
+    "Open an external site?": {
+      "ru": "Открыть внешний сайт?",
+      "es": "¿Abrir un sitio externo?",
+      "zh": "要打开外部网站吗？",
+      "ar": "أتريد فتح موقع خارجي؟"
+    },
+    "This is an external link. The site will see your IP address.": {
+      "ru": "Это внешняя ссылка. Целевой сайт увидит ваш IP-адрес.",
+      "es": "Es un enlace externo. El sitio verá tu dirección IP.",
+      "zh": "这是一个外部链接。目标网站会看到你的 IP 地址。",
+      "ar": "هذا رابط خارجي. سيرى الموقع عنوان IP الخاص بك."
     }
   }
 }

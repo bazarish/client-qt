@@ -84,11 +84,11 @@ changes nothing on screen reads as a press that did nothing.
 filled in. Nothing is sent: the introduction and the request are still the user's
 to write and press.
 
-**An address** opens the warning first. It says that this client does not fetch
-the address - the browser goes to it directly, over the ordinary internet, so the
-site and whoever wrote the link learn the IP address of this machine and the
-moment it was followed; and that nothing about the address has been checked.
-Answering "Open" hands it to the desktop, and a desktop with nothing registered
+**An address** opens the warning first. It shows the address and says that the
+site will see this machine's IP address: the client does not fetch it, the browser
+goes there directly over the ordinary internet. On a desktop the address also
+shows while the pointer rests on it; a phone has no such pause, so the warning is
+where it is read. Answering "Open" hands it to the desktop, and a desktop with nothing registered
 for `http` is reported rather than passed over in silence.
 
 There is no way to give an address a label that differs from where it goes: the

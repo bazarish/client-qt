@@ -27,7 +27,7 @@ Dialog {
     width: Math.min(460, parent ? parent.width - 24 : 460)
     background: DialogFrame { }
     header: Label {
-        text: qsTr("Leave Bazarish?")
+        text: qsTr("Open an external site?")
         color: Theme.warn
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold
@@ -82,8 +82,7 @@ Dialog {
             Layout.rightMargin: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("This is an external link. Your internet provider and the site will see "
-                + "your real address.")
+            text: qsTr("This is an external link. The site will see your IP address.")
         }
         Label {
             visible: root.failure.length > 0
