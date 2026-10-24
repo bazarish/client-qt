@@ -468,7 +468,7 @@ Popup {
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("“For everyone” asks the other side to clear their copy too; their client clears it automatically.")
+                text: qsTr("“For everyone” asks the other side’s app to delete its copy too.")
             }
         }
     }

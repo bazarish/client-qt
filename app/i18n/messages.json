@@ -4223,12 +4223,6 @@
       "zh": "“%1”已加密，只有其中的密钥才能让服务器终止该账号。",
       "ar": "⁦«%1»⁩ مشفّر، ولا يستطيع إبلاغ الخادم بإنهاء الحساب إلا المفتاح الذي بداخله."
     },
-    "“For everyone” asks the other side to clear their copy too; their client clears it automatically.": {
-      "ru": "«У всех» просит собеседника очистить его копию. Его программа сделает это сама.",
-      "es": "«Para todos» pide también a la otra parte que vacíe su copia; su cliente lo hace solo.",
-      "zh": "“为所有人”也会请求对方清空其副本；对方的客户端会自动完成。",
-      "ar": "‏«لدى الجميع» يطلب من الطرف الآخر إفراغ نسخته أيضًا، ويفعل تطبيقه ذلك تلقائيًا."
-    },
     "🔒 Locked": {
       "ru": "🔒 Заблокирован",
       "es": "🔒 Bloqueada",
@@ -4738,6 +4732,12 @@
       "es": "Es un enlace externo. Probablemente el sitio conozca tu dirección IP.",
       "zh": "这是一个外部链接。目标网站可能会得知你的 IP 地址。",
       "ar": "هذا رابط خارجي. من المحتمل أن يعرف الموقع عنوان IP الخاص بك."
+    },
+    "“For everyone” asks the other side’s app to delete its copy too.": {
+      "ru": "«У всех» попросит приложение собеседника также удалить его копию.",
+      "es": "«Para todos» pedirá a la aplicación de la otra parte que también borre su copia.",
+      "zh": "“为所有人”会请求对方的应用也删除其副本。",
+      "ar": "‏«لدى الجميع» سيطلب من تطبيق الطرف الآخر حذف نسخته أيضًا."
     }
   }
 }
