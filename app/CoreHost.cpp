@@ -115,7 +115,12 @@ CoreHost::CoreHost(QObject* const parent)
     i2p_.attach(relay_);
 }
 
-CoreHost::~CoreHost() = default;
+CoreHost::~CoreHost()
+{
+#ifdef Q_OS_ANDROID
+    bazarish::i2p::onCarryReturned({});
+#endif
+}
 
 void CoreHost::attachWindow(ChannelEnd& channel)
 {
@@ -159,13 +164,23 @@ void CoreHost::networkChanged()
 {
     bazarish::log::info("a network became the default: reconnecting at once");
     bazarish::i2p::networkChanged();
-    for (CoreAccount* const session : sessions_) {
-        session->networkChanged();
-    }
 }
 
 void CoreHost::start()
 {
+#ifdef Q_OS_ANDROID
+    // A gateway answering again wakes a mail wait as a new network does.
+    bazarish::i2p::onCarryReturned([this]() {
+        QMetaObject::invokeMethod(
+            this,
+            [this]() {
+                for (CoreAccount* const session : sessions_) {
+                    session->networkChanged();
+                }
+            },
+            Qt::QueuedConnection);
+    });
+#endif
     i2p_.announce();
     notifications_ = AppSettings::instance().notifications();
     backgroundTasks_ = AppSettings::instance().backgroundTasks();
