@@ -30,7 +30,8 @@ signals:
     void quitRequested();
 
 private:
-    void rebuildMenu();
+    void buildMenu();
+    void refreshMenu();
     void refreshIcon();
     void openNotified();
     void showWindow();
@@ -40,6 +41,8 @@ private:
     AppController& app_;
     QSystemTrayIcon tray_;
     QMenu menu_;
+    QList<QAction*> accountActions_;
+    QAction* accountsEnd_ = nullptr;
     QAction* notificationsAction_ = nullptr;
     QString notifiedAccount_;
     QString notifiedPeer_;

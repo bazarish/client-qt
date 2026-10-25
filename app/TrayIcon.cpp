@@ -19,6 +19,7 @@
 #include <QDBusMessage>
 #endif
 
+#include <algorithm>
 #include <array>
 
 namespace bazarish::app {
@@ -54,6 +55,13 @@ QString statusOf(const AccountRow& account)
     return account.connected ? QObject::tr("online") : QObject::tr("connecting");
 }
 
+QString menuLine(const AccountRow& account)
+{
+    const QString unread
+        = account.unread > 0 ? QStringLiteral(" - %1 unread").arg(account.unread) : QString();
+    return QStringLiteral("%1: %2%3").arg(account.name, statusOf(account), unread);
+}
+
 }  // namespace
 
 bool TrayIcon::available()
@@ -70,8 +78,8 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
     unreadIcon_ = iconFromMaster(master, QColor(0x39, 0xff, 0x14, kUnreadTintAlpha));
     tray_.setIcon(idleIcon_);
     tray_.setContextMenu(&menu_);
-    connect(&menu_, &QMenu::aboutToShow, this, &TrayIcon::rebuildMenu);
-    rebuildMenu();
+    buildMenu();
+    refreshMenu();
     refreshIcon();
     tray_.show();
     bazarish::log::info("tray: icon shown, popups {}",
@@ -85,6 +93,10 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
         });
     connect(&tray_, &QSystemTrayIcon::messageClicked, this, &TrayIcon::openNotified);
     connect(&app_, &AppController::accountsChanged, this, &TrayIcon::refreshIcon);
+    // A panel draws the exported menu it last read: rebuilt as it opens, it comes out collapsed.
+    connect(&app_, &AppController::accountsChanged, this, &TrayIcon::refreshMenu);
+    connect(&app_, &AppController::notificationsEnabledChanged, this,
+        [this]() { notificationsAction_->setChecked(app_.notificationsEnabled()); });
 }
 
 void TrayIcon::attachWindow(QWindow* const window)
@@ -129,27 +141,9 @@ void TrayIcon::toggleWindow()
     showWindow();
 }
 
-void TrayIcon::rebuildMenu()
+void TrayIcon::buildMenu()
 {
-    menu_.clear();
-    notificationsAction_ = nullptr;
-
-    const QVector<AccountRow> accounts = app_.accountStatuses();
-    for (const AccountRow& account : accounts) {
-        const QString unread
-            = account.unread > 0 ? QStringLiteral(" - %1 unread").arg(account.unread) : QString();
-        QAction* const action = menu_.addAction(
-            QStringLiteral("%1: %2%3").arg(account.name, statusOf(account), unread));
-        const QString id = account.id;
-        connect(action, &QAction::triggered, this, [this, id]() {
-            app_.switchTo(id);
-            showWindow();
-        });
-    }
-    if (!accounts.isEmpty()) {
-        menu_.addSeparator();
-    }
-
+    accountsEnd_ = menu_.addSeparator();
     notificationsAction_ = menu_.addAction(tr("Notifications"));
     notificationsAction_->setCheckable(true);
     notificationsAction_->setChecked(app_.notificationsEnabled());
@@ -159,6 +153,35 @@ void TrayIcon::rebuildMenu()
     menu_.addSeparator();
     QAction* const quit = menu_.addAction(tr("Quit"));
     connect(quit, &QAction::triggered, this, &TrayIcon::quitRequested);
+}
+
+void TrayIcon::refreshMenu()
+{
+    const QVector<AccountRow> accounts = app_.accountStatuses();
+    const bool sameAccounts = std::equal(accounts.begin(), accounts.end(),
+        accountActions_.begin(), accountActions_.end(),
+        [](const AccountRow& account, const QAction* const action) {
+            return action->data().toString() == account.id;
+        });
+    if (!sameAccounts) {
+        qDeleteAll(accountActions_);
+        accountActions_.clear();
+        for (const AccountRow& account : accounts) {
+            auto* const action = new QAction(&menu_);
+            const QString id = account.id;
+            action->setData(id);
+            connect(action, &QAction::triggered, this, [this, id]() {
+                app_.switchTo(id);
+                showWindow();
+            });
+            menu_.insertAction(accountsEnd_, action);
+            accountActions_.append(action);
+        }
+        accountsEnd_->setVisible(!accounts.isEmpty());
+    }
+    for (qsizetype i = 0; i < accounts.size(); ++i) {
+        accountActions_[i]->setText(menuLine(accounts[i]));
+    }
 }
 
 void TrayIcon::refreshIcon()
