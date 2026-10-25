@@ -5,6 +5,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.app.NotificationManager;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -16,6 +17,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.ResultReceiver;
+import android.os.ext.SdkExtensions;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.view.View;
 import android.view.WindowInsets;
@@ -27,6 +30,9 @@ import java.lang.ref.WeakReference;
 // The window's side of Android: what only an activity can do, in the window's own process.
 public final class Window {
     private static final int ASK_NOTIFICATIONS = 1;
+    static final int PICK_PICTURES = 2;
+    // The R SDK extension that brought the system photo picker to Android 11 and 12.
+    private static final int PICKER_EXTENSION = 2;
     private static final String HELD = "held";
     private static final String HELD_ANSWER = "answer";
     private static final String HELD_LINK = "link";
@@ -47,6 +53,7 @@ public final class Window {
     static native void unlocked();
     static native void coreListening();
     static native void keyboardCovers(int pixels);
+    static native void picturesPicked(String[] uris);
 
     private Window() {}
 
@@ -60,6 +67,38 @@ public final class Window {
         };
         app.startForegroundService(new Intent(app, BazarishService.class)
             .putExtra(Shade.EXTRA_LISTENER, listener));
+    }
+
+    public static boolean canPickPictures() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+            || SdkExtensions.getExtensionVersion(Build.VERSION_CODES.R) >= PICKER_EXTENSION;
+    }
+
+    public static void pickPictures() {
+        Activity shown = window.get();
+        if (shown == null) {
+            return;
+        }
+        Intent pick = new Intent(MediaStore.ACTION_PICK_IMAGES)
+            .putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, MediaStore.getPickImagesMaxLimit());
+        shown.runOnUiThread(() -> shown.startActivityForResult(pick, PICK_PICTURES));
+    }
+
+    // Several pictures come as clip data, a single one as the data itself.
+    static void picked(int resultCode, Intent result) {
+        if (resultCode != Activity.RESULT_OK || result == null) {
+            return;
+        }
+        ClipData clip = result.getClipData();
+        if (clip == null) {
+            picturesPicked(new String[] {result.getData().toString()});
+            return;
+        }
+        String[] uris = new String[clip.getItemCount()];
+        for (int i = 0; i < uris.length; ++i) {
+            uris[i] = clip.getItemAt(i).getUri().toString();
+        }
+        picturesPicked(uris);
     }
 
     // Until the user allows it, screenshots, recordings and the recent-apps preview show nothing.

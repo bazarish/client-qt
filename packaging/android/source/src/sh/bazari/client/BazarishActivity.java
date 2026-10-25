@@ -50,6 +50,15 @@ public class BazarishActivity extends QtActivity {
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == Window.PICK_PICTURES) {
+            Window.picked(resultCode, data);
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
     private static String linkOf(Intent intent) {
         if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())
             || intent.getData() == null || !"bazarish".equals(intent.getData().getScheme())) {

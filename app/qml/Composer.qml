@@ -408,6 +408,10 @@ Rectangle {
         nameFilters: ["Pictures (*.png *.jpg *.jpeg)", "All files (*)"]
         onAccepted: root.sendPictures(selectedFiles.map(String))
     }
+    Connections {
+        target: App
+        function onPicturesPicked(uris) { root.sendPictures(uris) }
+    }
     FileSendDialog {
         id: sendOptions
         session: root.session
@@ -425,7 +429,8 @@ Rectangle {
             // tunnel and shown in the bubble rather than listed as a file.
             text: qsTr("Picture")
             iconName: "image"
-            onTriggered: imageDialog.open()
+            visible: App.canPickPictures
+            onTriggered: App.mobile ? App.pickPictures() : imageDialog.open()
         }
         ContextMenuItem {
             text: qsTr("Photo")

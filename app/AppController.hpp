@@ -13,6 +13,7 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 #include <filesystem>
@@ -152,6 +153,9 @@ public:
             NOTIFY backgroundRestrictedChanged)
     bool fullScreenCallsRestricted() const;
     Q_INVOKABLE void openFullScreenCallsSettings() const;
+    Q_PROPERTY(bool canPickPictures READ canPickPictures CONSTANT)
+    bool canPickPictures() const;
+    Q_INVOKABLE void pickPictures() const;
     Q_INVOKABLE bool closeTopPopup(QQuickWindow* window) const;
     Q_INVOKABLE void forgetFocusOnClose(QQuickItem* overlay) const;
     Q_PROPERTY(bool callLive READ callLive NOTIFY callLiveChanged)
@@ -185,6 +189,7 @@ signals:
     void backgroundRestrictedChanged();
     void callLiveChanged();
     void unlocked();
+    void picturesPicked(const QStringList& uris);
     void speakerOnChanged();
     void restartRequired(const QString& message);
     void accountListChanged();

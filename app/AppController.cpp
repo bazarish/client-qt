@@ -534,6 +534,22 @@ void AppController::openFullScreenCallsSettings() const
 #endif
 }
 
+bool AppController::canPickPictures() const
+{
+#ifdef Q_OS_ANDROID
+    return AndroidWindow::canPickPictures();
+#else
+    return true;
+#endif
+}
+
+void AppController::pickPictures() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidWindow::pickPictures();
+#endif
+}
+
 void AppController::requestUnlocked()
 {
 #ifdef Q_OS_ANDROID

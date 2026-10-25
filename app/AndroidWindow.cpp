@@ -93,6 +93,18 @@ void focusFieldsOnPress()
     }
 }
 
+void picturesPicked(JNIEnv* env, jclass, jobjectArray picked)
+{
+    QStringList uris;
+    const jsize count = env->GetArrayLength(picked);
+    for (jsize i = 0; i < count; ++i) {
+        uris << QJniObject::fromLocalRef(env->GetObjectArrayElement(picked, i)).toString();
+    }
+    inWindowThread<AppController>(gApp, [uris](AppController& app) {
+        emit app.picturesPicked(uris);
+    });
+}
+
 void keyboardCovers(JNIEnv*, jclass, jint pixels)
 {
     inWindowThread<AppController>(gApp, [pixels](AppController& app) {
@@ -121,6 +133,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         {"unlocked", "()V", reinterpret_cast<void*>(unlocked)},
         {"coreListening", "()V", reinterpret_cast<void*>(coreAnswered)},
         {"keyboardCovers", "(I)V", reinterpret_cast<void*>(keyboardCovers)},
+        {"picturesPicked", "([Ljava/lang/String;)V", reinterpret_cast<void*>(picturesPicked)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kWindow, natives, static_cast<int>(std::size(natives)))) {
@@ -180,6 +193,16 @@ void AndroidWindow::openFullScreenCallsSettings()
 void AndroidWindow::openBackgroundSettings()
 {
     QJniObject::callStaticMethod<void>(kWindow, "openBackgroundSettings", "()V");
+}
+
+bool AndroidWindow::canPickPictures()
+{
+    return QJniObject::callStaticMethod<jboolean>(kWindow, "canPickPictures", "()Z");
+}
+
+void AndroidWindow::pickPictures()
+{
+    QJniObject::callStaticMethod<void>(kWindow, "pickPictures", "()V");
 }
 
 void AndroidWindow::moveToBackground()
