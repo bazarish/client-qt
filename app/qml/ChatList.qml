@@ -129,6 +129,7 @@ Item {
             Layout.fillHeight: true
             clip: true
             model: root.session ? root.session.chatList : null
+            ScrollBoost { flickable: list }
             topMargin: Theme.rowInset / 2
             bottomMargin: Theme.rowInset / 2
             delegate: ItemDelegate {

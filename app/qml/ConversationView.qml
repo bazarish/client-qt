@@ -435,6 +435,7 @@ Item {
                 id: messages
                 // A bubble's text a phone is selecting, null when none.
                 property TextEdit selectingText: null
+                ScrollBoost { flickable: messages }
                 anchors.fill: parent
                 clip: true
                 visible: !listPane.building

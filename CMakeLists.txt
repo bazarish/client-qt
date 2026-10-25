@@ -394,6 +394,7 @@ if(Qt6_FOUND)
             app/qml/components/UnreadBadge.qml
             app/qml/components/ButtonRow.qml
             app/qml/components/ScrollColumn.qml
+            app/qml/components/ScrollBoost.qml
             app/qml/components/DialogButtons.qml
             app/qml/components/DialogFrame.qml
             app/qml/components/Hairline.qml
