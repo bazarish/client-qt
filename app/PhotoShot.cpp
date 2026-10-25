@@ -4,15 +4,49 @@
 #include "PictureStore.hpp"
 #include "SessionShared.hpp"
 
+#include <QGuiApplication>
 #include <QImage>
+#include <QScreen>
 #include <QTransform>
 #include <QVideoFrame>
+
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#endif
 
 namespace bazarish::app {
 
 namespace {
 const QString kShotKeyPrefix = QStringLiteral("shot:");
 const QString kShotName = QStringLiteral("photo");
+constexpr int kFullTurn = 360;
+
+#ifdef Q_OS_ANDROID
+const char* const kWindow = "sh/bazari/client/Window";
+#endif
+
+void followTilt(const bool on)
+{
+#ifdef Q_OS_ANDROID
+    QJniObject::callStaticMethod<void>(kWindow, "followTilt", "(Z)V", static_cast<jboolean>(on));
+#else
+    (void)on;
+#endif
+}
+
+// What the shot still has to turn so that up in the room is up in it, clockwise.
+int turnToUpright()
+{
+#ifdef Q_OS_ANDROID
+    const int held = QJniObject::callStaticMethod<jint>(kWindow, "tilt", "()I");
+#else
+    const int held = 0;
+#endif
+    const QScreen* const screen = QGuiApplication::primaryScreen();
+    const int shown
+        = screen ? screen->angleBetween(screen->nativeOrientation(), screen->orientation()) : 0;
+    return ((held - shown) % kFullTurn + kFullTurn) % kFullTurn;
+}
 }  // namespace
 
 PhotoShot::PhotoShot(QObject* const parent)
@@ -22,6 +56,9 @@ PhotoShot::PhotoShot(QObject* const parent)
 
 PhotoShot::~PhotoShot()
 {
+    if (sink_ != nullptr) {
+        followTilt(false);
+    }
     release();
 }
 
@@ -40,6 +77,7 @@ void PhotoShot::setVideoSink(QVideoSink* const sink)
     }
     sink_ = sink;
     ready_ = false;
+    followTilt(sink_ != nullptr);
     if (sink_ != nullptr) {
         connect(sink_, &QVideoSink::videoFrameChanged, this, [this](const QVideoFrame& frame) {
             if (!ready_ && frame.isValid()) {
@@ -62,7 +100,10 @@ void PhotoShot::take()
     // toImage() leaves out the frame's own turn and mirror, which only the preview applies.
     QTransform turn;
     turn.rotate(static_cast<qreal>(frame.rotation()));
-    publish(frame.toImage().transformed(turn).mirrored(frame.mirrored(), false));
+    const QImage shown = frame.toImage().transformed(turn).mirrored(frame.mirrored(), false);
+    QTransform upright;
+    upright.rotate(static_cast<qreal>(turnToUpright()));
+    publish(shown.transformed(upright));
 }
 
 void PhotoShot::discard()

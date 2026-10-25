@@ -20,6 +20,7 @@ import android.os.ResultReceiver;
 import android.os.ext.SdkExtensions;
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.view.OrientationEventListener;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -46,6 +47,10 @@ public final class Window {
     private static Integer systemStatusBar;
     private static int systemNavigationBar;
     private static int systemBarsLook;
+    private static final int QUARTER_TURN = 90;
+    private static final int FULL_TURN = 360;
+    private static OrientationEventListener tiltWatch;
+    private static volatile int tilt = 0;
 
     static native void conversationOpened(String account, String peer);
     static native void callAnswered();
@@ -56,6 +61,35 @@ public final class Window {
     static native void picturesPicked(String[] uris);
 
     private Window() {}
+
+    // How far the phone is turned from upright, in quarter turns clockwise, while a camera is open.
+    public static void followTilt(boolean on) {
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (!on) {
+                if (tiltWatch != null) {
+                    tiltWatch.disable();
+                }
+                return;
+            }
+            if (tiltWatch == null) {
+                tiltWatch = new OrientationEventListener(app) {
+                    @Override
+                    public void onOrientationChanged(int degrees) {
+                        if (degrees != ORIENTATION_UNKNOWN) {
+                            tilt = (degrees + QUARTER_TURN / 2) / QUARTER_TURN * QUARTER_TURN % FULL_TURN;
+                        }
+                    }
+                };
+            }
+            if (tiltWatch.canDetectOrientation()) {
+                tiltWatch.enable();
+            }
+        });
+    }
+
+    public static int tilt() {
+        return tilt;
+    }
 
     // The core may be up already or not at all: either way it answers once it listens.
     public static void startCore() {
