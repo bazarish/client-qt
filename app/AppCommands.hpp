@@ -32,6 +32,7 @@ signals:
     void setPortable(bool on);
     void closeAllSessions();
     void windowActive(bool active);
+    void callScreenShown(bool shown);
     void setLanguage(const QString& code);
     void setLightTheme(bool on);
     void setScreenCapture(bool on);

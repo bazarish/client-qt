@@ -164,6 +164,7 @@ public:
     Q_PROPERTY(bool speakerOn READ speakerOn WRITE setSpeakerOn NOTIFY speakerOnChanged)
     bool speakerOn() const { return speakerOn_; }
     void setSpeakerOn(bool on);
+    Q_INVOKABLE void setCallScreenShown(bool shown);
     Q_INVOKABLE void moveToBackground() const;
     Q_INVOKABLE void paintSystemBars(const QColor& color) const;
     Q_PROPERTY(QString dataLocation READ dataLocation NOTIFY portableChanged)

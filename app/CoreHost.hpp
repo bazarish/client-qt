@@ -49,6 +49,7 @@ public:
     bool callTalking() const { return callTalking_; }
     bool speakerOn() const { return speakerOn_; }
     bool windowActive() const { return windowActive_; }
+    bool callScreenShown() const { return callScreenShown_; }
     void declineRinging();
     void prepareForExit();
     void networkChanged();
@@ -61,6 +62,7 @@ signals:
     void callLiveChanged();
     void speakerOnChanged();
     void windowActiveChanged();
+    void callScreenShownChanged();
     void notificationRequested(const QString& accountId, const QString& peer,
         const QString& title, const QString& body);
     void reactionNotificationRequested(const QString& accountId, const QString& peer,
@@ -88,6 +90,7 @@ private:
     void updateRinging();
     void setSpeakerOn(bool on);
     void setWindowActive(bool active);
+    void setCallScreenShown(bool shown);
     void setBackgroundTasksVisible(bool on);
     void createAccount(const QString& name, const QString& passphrase);
     void openAccount(const QString& id, const QString& passphrase);
@@ -130,6 +133,7 @@ private:
     QSet<QString> pendingRemovals_;
     bool exiting_ = false;
     bool windowActive_ = false;
+    bool callScreenShown_ = false;
     bool notifications_ = true;
     bool backgroundTasks_ = false;
     Ringtone ringtone_;

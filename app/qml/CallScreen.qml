@@ -49,6 +49,8 @@ Popup {
     // A call takes the focus from the message field, so a phone's keyboard does not cover it.
     focus: true
     onOpened: Qt.inputMethod.hide()
+    onOpenedChanged: App.setCallScreenShown(opened)
+    Component.onDestruction: App.setCallScreenShown(false)
     closePolicy: Popup.NoAutoClose  // dismissed only through call actions
     anchors.centerIn: Overlay.overlay
     // On a phone the call is the whole screen, as a phone call is, its frame off the edge.

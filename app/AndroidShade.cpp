@@ -115,6 +115,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
     connect(&core_, &CoreHost::callLiveChanged, this, &AndroidShade::followRinging);
     connect(&core_, &CoreHost::speakerOnChanged, this, &AndroidShade::followRinging);
     connect(&core_, &CoreHost::windowActiveChanged, this, &AndroidShade::followRinging);
+    connect(&core_, &CoreHost::callScreenShownChanged, this, &AndroidShade::followRinging);
 }
 
 AndroidShade::~AndroidShade()
@@ -231,7 +232,9 @@ void AndroidShade::followRinging()
         talking_ = core_.callTalking();
         QJniObject::callStaticMethod<void>(kShade, "callTalking", "(Z)V", jboolean(talking_));
     }
-    AndroidCallAudio::holdNearEar(talking_ && !core_.speakerOn());
+    // Dark at the ear only while the call screen is up, full screen, with the app in front.
+    AndroidCallAudio::holdNearEar(talking_ && !core_.speakerOn() && core_.windowActive()
+        && core_.callScreenShown());
     if (ringing && !callShown_ && !core_.windowActive()) {
         const QJniObject account = javaString(core_.ringingAccount());
         const QJniObject fingerprint = javaString(core_.ringingPeerFingerprint());

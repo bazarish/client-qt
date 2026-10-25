@@ -295,6 +295,11 @@ void AppController::setKeyboardInset(const qreal inset)
     emit keyboardInsetChanged();
 }
 
+void AppController::setCallScreenShown(const bool shown)
+{
+    emit commands_.callScreenShown(shown);
+}
+
 void AppController::setSpeakerOn(const bool on)
 {
     if (speakerOn_ == on) {

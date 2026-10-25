@@ -103,6 +103,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::setPortable, this, &CoreHost::setPortable);
     connect(&commands_, &AppCommands::closeAllSessions, this, &CoreHost::closeAllSessions);
     connect(&commands_, &AppCommands::windowActive, this, &CoreHost::setWindowActive);
+    connect(&commands_, &AppCommands::callScreenShown, this, &CoreHost::setCallScreenShown);
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
     connect(&commands_, &AppCommands::setLanguage, this, &CoreHost::setLanguage);
     connect(&commands_, &AppCommands::setLightTheme, this, &CoreHost::setLightTheme);
@@ -142,6 +143,7 @@ void CoreHost::detachWindow()
 {
     relay_.detach();
     setWindowActive(false);
+    setCallScreenShown(false);
 }
 
 void CoreHost::setWindowActive(const bool active)
@@ -151,6 +153,15 @@ void CoreHost::setWindowActive(const bool active)
     }
     windowActive_ = active;
     emit windowActiveChanged();
+}
+
+void CoreHost::setCallScreenShown(const bool shown)
+{
+    if (callScreenShown_ == shown) {
+        return;
+    }
+    callScreenShown_ = shown;
+    emit callScreenShownChanged();
 }
 
 void CoreHost::declineRinging()
