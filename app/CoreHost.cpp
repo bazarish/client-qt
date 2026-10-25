@@ -207,6 +207,19 @@ CoreAccount* CoreHost::sessionFor(const QString& id) const
     return nullptr;
 }
 
+QString CoreHost::accountName(const CoreAccount* const account) const
+{
+    if (!account->displayName().isEmpty()) {
+        return account->displayName();
+    }
+    for (const AccountListRow& info : accountRows_) {
+        if (info.id == account->accountId()) {
+            return info.name;
+        }
+    }
+    return {};
+}
+
 QString CoreHost::notificationTitle(const CoreAccount* const account) const
 {
     if (account == nullptr || account->displayName().isEmpty()) {
@@ -474,8 +487,9 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
         });
     connect(account, &CoreAccount::messageNotification, this,
         [this, account](const QString& peer, const QString& fromName) {
-            emit notificationRequested(account->accountId(), peer, notificationTitle(account),
-                tr("New message from %1").arg(fromName));
+            const QString body = sessions_.size() > 1
+                ? tr("New message for %1").arg(accountName(account)) : tr("New message");
+            emit notificationRequested(account->accountId(), peer, fromName, body);
         });
     connect(account, &CoreAccount::reactionNotification, this,
         [this, account](const QString& peer, const QString& fromName, const QString& emoji) {
