@@ -493,8 +493,10 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
         });
     connect(account, &CoreAccount::reactionNotification, this,
         [this, account](const QString& peer, const QString& fromName, const QString& emoji) {
-            emit reactionNotificationRequested(account->accountId(), peer,
-                notificationTitle(account), tr("%1 reacted %2").arg(fromName, emoji));
+            const QString body = sessions_.size() > 1
+                ? tr("Reaction %1 for %2").arg(emoji, accountName(account))
+                : tr("Reaction %1").arg(emoji);
+            emit reactionNotificationRequested(account->accountId(), peer, fromName, body);
         });
     connect(account, &CoreAccount::callChanged, this, &CoreHost::updateRinging);
     connect(account, &CoreAccount::changed, this, &CoreHost::refreshAccounts);
