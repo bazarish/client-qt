@@ -7,11 +7,13 @@ Item {
     id: root
     objectName: "mainView"
     property var session: App.session
+    // The open chat, set from inside the page component, whose ids this scope cannot see.
+    property ConversationView conversation: null
 
     // On a narrow window an open chat covers the list, so back closes it.
     function goBack() {
-        if (chatLoader.item && chatLoader.item.choosing) {
-            chatLoader.item.clearChosen()
+        if (root.conversation && root.conversation.choosing) {
+            root.conversation.clearChosen()
             return true
         }
         if (root.width < Theme.narrowWidth && root.session && root.session.activePeer.length > 0) {
@@ -104,9 +106,9 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Loader {
-                        id: chatLoader
                         anchors.fill: parent
                         active: root.session && root.session.activePeer.length > 0
+                        onItemChanged: root.conversation = item
                         sourceComponent: ConversationView {
                             session: root.session
                             narrow: chatPane.narrow
