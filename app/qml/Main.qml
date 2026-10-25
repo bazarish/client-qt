@@ -114,6 +114,9 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.bottomMargin: window.contentInset
         initialItem: attachingComponent
+        // An account opens in place; only pages laid over it slide.
+        replaceEnter: null
+        replaceExit: null
     }
 
     Component { id: attachingComponent; Item { objectName: "attaching" } }
