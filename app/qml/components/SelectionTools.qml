@@ -167,28 +167,28 @@ Item {
         }
     }
 
-    // A handle's knob sits above the line: below it there is only the keyboard.
+    // A knob centred on its stem: off to a side, at a screen edge, it met the back gesture.
     component Handle: Item {
         id: handle
         property rect line
-        // -1 leans left of the line point, 1 right, 0 straight above it.
-        property int lean: 0
+        // The end of a selection hangs its knob under the line, clear of the selection's colour.
+        property bool below: false
         signal moved(int position)
         signal tapped()
-        x: handle.line.x - root.kTarget / 2 + handle.lean * root.kTarget / 2
-        y: handle.line.y - root.kTarget
+        x: handle.line.x - root.kTarget / 2
+        y: handle.below ? handle.line.y + handle.line.height : handle.line.y - root.kTarget
         width: root.kTarget
         height: root.kTarget
         Rectangle {
-            x: root.kTarget / 2 - handle.lean * root.kTarget / 2 - root.kBar / 2
-            y: handle.height
+            x: (root.kTarget - root.kBar) / 2
+            y: handle.below ? -handle.line.height : handle.height
             width: root.kBar
             height: handle.line.height
             color: root.field ? root.field.selectionColor : "transparent"
         }
         Rectangle {
-            x: (root.kTarget - root.kKnob) / 2 - handle.lean * (root.kTarget - root.kKnob) / 2
-            y: handle.height - root.kKnob
+            x: (root.kTarget - root.kKnob) / 2
+            y: handle.below ? 0 : handle.height - root.kKnob
             width: root.kKnob
             height: root.kKnob
             radius: root.kKnob / 2
@@ -203,8 +203,8 @@ Item {
             property point offset
             onActiveChanged: {
                 if (active) {
-                    const point = handle.mapToItem(null, root.kTarget / 2 - handle.lean * root.kTarget / 2,
-                        handle.height + handle.line.height / 2)
+                    const point = handle.mapToItem(null, root.kTarget / 2, handle.below
+                        ? -handle.line.height / 2 : handle.height + handle.line.height / 2)
                     drag.offset = Qt.point(point.x - centroid.scenePressPosition.x,
                         point.y - centroid.scenePressPosition.y)
                     caretTimer.stop()
@@ -244,7 +244,6 @@ Item {
         id: startHandle
         visible: root.hasSelection && root.inView(root.startRect)
         line: root.startRect
-        lean: -1
         onMoved: function(position) {
             const end = root.field.selectionEnd
             root.field.select(end, Math.min(position, end - 1))
@@ -254,7 +253,7 @@ Item {
         id: endHandle
         visible: root.hasSelection && root.inView(root.endRect)
         line: root.endRect
-        lean: 1
+        below: true
         onMoved: function(position) {
             const start = root.field.selectionStart
             root.field.select(start, Math.max(position, start + 1))
@@ -283,7 +282,8 @@ Item {
         width: menu.rowWidth + 2 * root.kMenuPadding
         height: rows.height + 2 * root.kMenuPadding
         readonly property real above: menu.anchorTop - root.kKnob - root.kMenuGap - menu.height
-        readonly property real below: (root.hasSelection ? root.endRect.y + root.endRect.height
+        readonly property real below: (root.hasSelection
+            ? root.endRect.y + root.endRect.height + root.kKnob
             : root.caretRect.y + root.caretRect.height) + root.kMenuGap
         x: Math.max(root.kMenuMargin, Math.min(root.width - menu.width - root.kMenuMargin, menu.anchorX - menu.width / 2))
         y: menu.above >= root.boundsTop() + root.kMenuMargin ? menu.above
