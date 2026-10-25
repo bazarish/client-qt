@@ -14,7 +14,7 @@
 namespace bazarish::app {
 
 namespace {
-constexpr int kRecentReactions = 5;
+constexpr int kRecentReactions = 6;
 }  // namespace
 
 void CoreAccount::react(const QString& peer, const QString& e2eId, const QString& emoji)
