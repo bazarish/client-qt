@@ -220,14 +220,6 @@ QString CoreHost::accountName(const CoreAccount* const account) const
     return {};
 }
 
-QString CoreHost::notificationTitle(const CoreAccount* const account) const
-{
-    if (account == nullptr || account->displayName().isEmpty()) {
-        return QStringLiteral("Bazarish");
-    }
-    return account->displayName();
-}
-
 QString CoreHost::soundFolder()
 {
     return pathText(appRoot());

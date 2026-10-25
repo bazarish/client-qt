@@ -85,7 +85,6 @@ private:
     void persistOfflineSet() const;
     void setAccountOffline(const QString& id, bool offline);
     QString accountName(const CoreAccount* account) const;
-    QString notificationTitle(const CoreAccount* account) const;
     void updateRinging();
     void setSpeakerOn(bool on);
     void setWindowActive(bool active);
