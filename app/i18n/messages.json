@@ -1217,6 +1217,12 @@
       "zh": "要从本设备删除这条消息吗？此操作无法撤销。",
       "ar": "أتريد حذف هذه الرسالة من هذا الجهاز؟ لا يمكن التراجع."
     },
+    "Delete this message? It is removed from your other devices too.": {
+      "ru": "Удалить это сообщение? Оно удалится и на других ваших устройствах.",
+      "es": "¿Eliminar este mensaje? También se elimina de tus otros dispositivos.",
+      "zh": "删除这条消息？它也会从你的其他设备上删除。",
+      "ar": "حذف هذه الرسالة؟ ستُحذف من أجهزتك الأخرى أيضًا."
+    },
     "Deleted on the server": {
       "ru": "Удалён на сервере",
       "es": "Eliminada en el servidor",
@@ -4378,6 +4384,12 @@
       "es": "Se eliminan solo de este dispositivo.",
       "zh": "它们只会从此设备上删除。",
       "ar": "ستُحذف من هذا الجهاز فقط."
+    },
+    "They are removed from your other devices too.": {
+      "ru": "Они удалятся и на других ваших устройствах.",
+      "es": "También se eliminan de tus otros dispositivos.",
+      "zh": "它们也会从你的其他设备上删除。",
+      "ar": "ستُحذف من أجهزتك الأخرى أيضًا."
     },
     "They can join again.": {
       "ru": "Вернуться можно.",

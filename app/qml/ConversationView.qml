@@ -312,7 +312,8 @@ Item {
             padding: 14
         }
         contentItem: Label {
-            text: deleteChosenDialog.own === 0 ? qsTr("They are removed from this device only.")
+            text: root.savedChat ? qsTr("They are removed from your other devices too.")
+                : deleteChosenDialog.own === 0 ? qsTr("They are removed from this device only.")
                 : deleteChosenDialog.own === root.chosenCount
                 ? qsTr("They are removed from the other side too.")
                 : qsTr("Your messages among them (%1) are removed from the other side too, the rest only from this device.").arg(deleteChosenDialog.own)
@@ -353,7 +354,9 @@ Item {
             padding: 14
         }
         contentItem: Label {
-            text: deleteMessageDialog.forEveryone
+            text: root.savedChat
+                ? qsTr("Delete this message? It is removed from your other devices too.")
+                : deleteMessageDialog.forEveryone
                 ? qsTr("Delete this message for everyone? It is removed from the recipient too, with no trace.")
                 : qsTr("Delete this message from this device? This cannot be undone.")
             color: Theme.text
