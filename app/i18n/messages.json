@@ -3083,6 +3083,12 @@
       "zh": "下线",
       "ar": "سحبه من الشبكة"
     },
+    "Take offline?": {
+      "ru": "Снять с публикации?",
+      "es": "¿Retirar de la red?",
+      "zh": "要下线吗？",
+      "ar": "سحبه من الشبكة؟"
+    },
     "Take photo": {
       "ru": "Снять",
       "es": "Hacer la foto",
@@ -3460,6 +3466,12 @@
       "es": "No se pudo abrir este perfil.",
       "zh": "无法打开此配置。",
       "ar": "لم يُفتح هذا الملف."
+    },
+    "This removes your personal I2P address from the server. Your account becomes unreachable for other users. It makes sense if you plan to change servers and are withdrawing your address to publish it in the new place.": {
+      "ru": "Это действие снимет с сервера ваш индивидуальный адрес I2P. Ваш аккаунт станет недосягаем для обращений от других пользователей. Операция имеет смысл, если вы планируете сменить сервер и отзываете ваш адрес, чтобы опубликовать его на новом месте.",
+      "es": "Esto retira del servidor tu dirección I2P personal. Tu cuenta quedará fuera del alcance de otros usuarios. Tiene sentido si piensas cambiar de servidor y retiras tu dirección para publicarla en el nuevo.",
+      "zh": "此操作会从服务器上撤下你的个人 I2P 地址。其他用户将无法联系到你的账号。只有在你打算更换服务器、撤回地址以便在新服务器上发布时，这一操作才有意义。",
+      "ar": "يزيل هذا الإجراء عنوان I2P الشخصي الخاص بك من الخادم. لن يتمكن المستخدمون الآخرون من الوصول إلى حسابك. يكون لهذه العملية معنى إذا كنت تنوي تغيير الخادم وتسحب عنوانك لتنشره في المكان الجديد."
     },
     "This server needs registration": {
       "ru": "Этот сервер требует регистрации",

@@ -609,7 +609,7 @@ Popup {
                             text: root.session && root.session.i2pBusy ? qsTr("Taking offline\u2026")
                                 : qsTr("Take offline")
                             enabled: root.session && !root.session.i2pBusy
-                            onClicked: root.session.disablePersonalDest()
+                            onClicked: takeOfflineDialog.open()
                         }
                     }
                     // Hands the server a new delegation. The status itself is polled while
@@ -982,6 +982,35 @@ Popup {
                 font.pixelSize: Theme.fontSmall
                 text: qsTr("The device registers again the next time it connects.")
             }
+        }
+    }
+
+    Dialog {
+        id: takeOfflineDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        width: Math.min(380, root.width - 24)
+        background: DialogFrame { }
+        header: Label {
+            text: qsTr("Take offline?")
+            color: Theme.text
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: qsTr("Take offline")
+            danger: true
+            onAccepted: takeOfflineDialog.accept()
+            onRejected: takeOfflineDialog.reject()
+        }
+        onAccepted: if (root.session) { root.session.disablePersonalDest() }
+        contentItem: Label {
+            wrapMode: Text.Wrap
+            color: Theme.textDim
+            padding: 14
+            text: qsTr("This removes your personal I2P address from the server. Your account becomes unreachable for other users. It makes sense if you plan to change servers and are withdrawing your address to publish it in the new place.")
         }
     }
 
