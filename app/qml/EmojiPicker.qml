@@ -36,7 +36,6 @@ Popup {
             anchors.centerIn: parent
             text: glyph.emoji
             font.pixelSize: glyph.pixels
-            font.family: Theme.emojiFontFamily
             renderType: Text.NativeRendering
         }
         HoverHandler { id: glyphHover; cursorShape: Qt.PointingHandCursor }

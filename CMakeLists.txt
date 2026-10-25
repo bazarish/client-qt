@@ -155,6 +155,8 @@ if(Qt6_FOUND)
         app/Markup.hpp
         app/EmojiText.cpp
         app/EmojiText.hpp
+        app/AppFont.cpp
+        app/AppFont.hpp
         app/Picture.cpp
         app/Picture.hpp
         app/Models.cpp
@@ -479,6 +481,24 @@ if(Qt6_FOUND)
     target_link_libraries(TestEmojiText PRIVATE Qt6::Core)
     target_compile_options(TestEmojiText PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestEmojiText COMMAND TestEmojiText)
+
+    # Every emoji the picker offers is drawn by the bundled font, as the chat draws it.
+    add_executable(TestEmojiSet tests/TestEmojiSet.cpp app/AppFont.cpp app/EmojiText.cpp)
+    qt_add_resources(TestEmojiSet testfonts
+        PREFIX "/fonts"
+        BASE app/fonts
+        FILES
+            app/fonts/RobotoMono-Regular.ttf
+            app/fonts/RobotoMono-Bold.ttf
+            app/fonts/TwemojiMozilla.ttf
+    )
+    target_include_directories(TestEmojiSet PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_compile_definitions(TestEmojiSet PRIVATE
+        BAZARISH_EMOJI_JS="${CMAKE_CURRENT_SOURCE_DIR}/app/qml/Emoji.js")
+    target_link_libraries(TestEmojiSet PRIVATE bazarish_common Qt6::Gui Qt6::Qml)
+    target_compile_options(TestEmojiSet PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestEmojiSet COMMAND TestEmojiSet)
+    set_tests_properties(TestEmojiSet PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     # The chat shows one row per stored message, however many times the row reaches it.
     add_executable(TestConversationModel tests/TestConversationModel.cpp app/Models.cpp

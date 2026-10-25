@@ -99,9 +99,7 @@ QtObject {
 
     // Monospace everywhere (Roboto Mono, bundled; falls back to the system mono).
     readonly property string fontFamily: "Roboto Mono"
-    // Colour-emoji family (Twemoji Mozilla, bundled). Use it on a Label that shows an
-    // emoji, together with `renderType: Text.NativeRendering` - the default Qt Quick
-    // distance-field renderer draws emoji monochrome (invisible on the dark theme).
+    // Colour-emoji family (Twemoji Mozilla, bundled), also the application font's fallback.
     readonly property string emojiFontFamily: "Twemoji Mozilla"
     // The emoji font only for what is emoji: it has blank glyphs for plain digits.
     function reactionFont(reaction) {

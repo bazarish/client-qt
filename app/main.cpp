@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
+#include "AppFont.hpp"
 #include "CoreHost.hpp"
 #include "Wire.hpp"
 #include "AvatarStore.hpp"
@@ -39,8 +40,6 @@
 #include <QColor>
 #include <QDir>
 #include <QFile>
-#include <QFont>
-#include <QFontDatabase>
 #include <QApplication>
 #include <QFileOpenEvent>
 #include <QEvent>
@@ -271,19 +270,7 @@ int main(int argc, char** argv)
 
     QQuickStyle::setStyle("Basic");
 
-    for (const char* const font :
-        {":/fonts/RobotoMono-Regular.ttf", ":/fonts/RobotoMono-Bold.ttf"}) {
-        if (QFontDatabase::addApplicationFont(QString::fromLatin1(font)) < 0) {
-            bazarish::log::warn("brand font not loaded: {}", font);
-        }
-    }
-    if (QFontDatabase::addApplicationFont(":/fonts/TwemojiMozilla.ttf") < 0) {
-        bazarish::log::warn("emoji font not loaded: reactions will be monochrome");
-    }
-    QFont baseFont("Roboto Mono");
-    baseFont.setStyleHint(QFont::Monospace);
-    baseFont.setPixelSize(14);
-    QGuiApplication::setFont(baseFont);
+    bazarish::app::installAppFont();
 
     constexpr std::array<int, 7> kIconSizes{16, 22, 24, 32, 48, 64, 128};
     const QImage iconMaster(":/icon/bazarish.png");
