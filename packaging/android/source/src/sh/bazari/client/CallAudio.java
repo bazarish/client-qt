@@ -34,7 +34,6 @@ public final class CallAudio {
     private static synchronized void join() {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         if (users++ == 0) {
-            speaker = false;
             manager.setMode(AudioManager.MODE_IN_COMMUNICATION);
         }
         route(manager);
@@ -47,7 +46,6 @@ public final class CallAudio {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         manager.clearCommunicationDevice();
         manager.setMode(AudioManager.MODE_NORMAL);
-        speaker = false;
         holdNearEar(false);
     }
 

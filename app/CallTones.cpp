@@ -25,6 +25,9 @@ namespace bazarish::app {
 namespace {
 
 constexpr double kToneHz = 425.0;
+constexpr double kHangupHz = 300.0;
+constexpr int kHangupMs = 400;
+constexpr int kOnce = 1;
 constexpr double kAmplitude = 0.22;
 constexpr double kRampMs = 8.0;
 constexpr int kMsPerSecond = 1000;
@@ -41,8 +44,9 @@ constexpr int kPrefilledFrames = 2;
 
 class CallTones::Voice : public QIODevice {
 public:
-    Voice(const int onMs, const int offMs, const int bursts)
-        : onMs_(onMs)
+    Voice(const double hz, const int onMs, const int offMs, const int bursts)
+        : hz_(hz)
+        , onMs_(onMs)
         , offMs_(offMs)
         , bursts_(bursts)
     {
@@ -88,12 +92,13 @@ private:
         }
         const double ramp = std::min({1.0, static_cast<double>(phaseMs) / kRampMs,
             static_cast<double>(onMs_ - phaseMs) / kRampMs});
-        const double angle = 2.0 * std::numbers::pi * kToneHz
+        const double angle = 2.0 * std::numbers::pi * hz_
             * static_cast<double>(position) / static_cast<double>(kCallSampleRate);
         const double value = std::sin(angle) * kAmplitude * ramp;
         return static_cast<std::int16_t>(value * std::numeric_limits<std::int16_t>::max());
     }
 
+    const double hz_;
     const int onMs_;
     const int offMs_;
     const int bursts_;
@@ -112,12 +117,17 @@ CallTones::~CallTones()
 
 void CallTones::ringback()
 {
-    play(kRingbackOnMs, kRingbackOffMs, kForever);
+    play(kToneHz, kRingbackOnMs, kRingbackOffMs, kForever);
 }
 
 void CallTones::failure()
 {
-    play(kBusyOnMs, kBusyOffMs, kBusyBursts);
+    play(kToneHz, kBusyOnMs, kBusyOffMs, kBusyBursts);
+}
+
+void CallTones::hangup()
+{
+    play(kHangupHz, kHangupMs, 0, kOnce);
 }
 
 void CallTones::endRingback()
@@ -127,7 +137,7 @@ void CallTones::endRingback()
     }
 }
 
-void CallTones::play(const int onMs, const int offMs, const int bursts)
+void CallTones::play(const double hz, const int onMs, const int offMs, const int bursts)
 {
     if (voice_ && voice_->durationMs() == 0 && bursts == kForever) {
         return;
@@ -135,7 +145,7 @@ void CallTones::play(const int onMs, const int offMs, const int bursts)
     stop();
 #ifdef Q_OS_ANDROID
     // A phone sounds the tones where the call will speak: the earpiece, or the speaker if chosen.
-    voice_ = std::make_unique<Voice>(onMs, offMs, bursts);
+    voice_ = std::make_unique<Voice>(hz, onMs, offMs, bursts);
     voice_->open(QIODevice::ReadOnly);
     phone_ = std::make_unique<AndroidCallSink>();
     phone_->start();
@@ -151,7 +161,7 @@ void CallTones::play(const int onMs, const int offMs, const int bursts)
     if (output.isNull()) {
         return;
     }
-    voice_ = std::make_unique<Voice>(onMs, offMs, bursts);
+    voice_ = std::make_unique<Voice>(hz, onMs, offMs, bursts);
     voice_->open(QIODevice::ReadOnly);
     sink_ = std::make_unique<QAudioSink>(output, callAudioFormat());
     sink_->start(voice_.get());

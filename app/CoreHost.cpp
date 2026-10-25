@@ -295,11 +295,11 @@ void CoreHost::updateRinging()
             || session->callState() == QLatin1String("outgoing");
     }
     if (live != callLive_ || talking != callTalking_) {
-        callLive_ = live;
-        callTalking_ = talking;
-        if (!callLive_) {
+        if (live && !callLive_) {
             setSpeakerOn(false);
         }
+        callLive_ = live;
+        callTalking_ = talking;
         emit events_.call(callLive_);
         emit callLiveChanged();
     }

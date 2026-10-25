@@ -19,13 +19,14 @@ public:
 
     void ringback();
     void failure();
+    void hangup();
     void endRingback();
     void stop();
 
 private:
     class Voice;
 
-    void play(int onMs, int offMs, int bursts);
+    void play(double hz, int onMs, int offMs, int bursts);
     void feed();
 
     std::unique_ptr<QAudioSink> sink_;

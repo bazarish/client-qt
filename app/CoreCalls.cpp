@@ -40,6 +40,7 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
         && call_.connectedAtMs == connectedAtMs) {
         return;
     }
+    const bool wasAnswered = call_.state == QLatin1String("active");
     call_.state = name;
     call_.peer = peer;
     call_.id = callId;
@@ -52,7 +53,11 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
     if (waitingOnThem) {
         callTones_.ringback();
     } else if (name == kIdle) {
-        callTones_.endRingback();
+        if (wasAnswered) {
+            callTones_.hangup();
+        } else {
+            callTones_.endRingback();
+        }
         callEndedLocally_ = false;
     } else {
         callTones_.stop();
