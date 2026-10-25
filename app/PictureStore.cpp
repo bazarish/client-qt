@@ -106,6 +106,7 @@ QImage PictureStore::image(const QString& e2eId)
     QBuffer buffer(&data);
     buffer.open(QIODevice::ReadOnly);
     QImageReader reader(&buffer);
+    reader.setAutoTransform(true);
     const QImage decoded = reader.read();
     if (decoded.isNull()) {
         return {};

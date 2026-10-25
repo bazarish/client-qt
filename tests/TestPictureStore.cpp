@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "PictureStore.hpp"
+#include "TurnedJpeg.hpp"
 
 #include <QBuffer>
 #include <QGuiApplication>
@@ -98,11 +99,24 @@ void keptBytesBudgetLetsTheOldestGoAndRestoreBringsItBack()
 
 }  // namespace
 
+// What another client sent straight from its camera shows the way its gallery did.
+void cameraOrientationIsApplied()
+{
+    PictureStore& store = PictureStore::instance();
+    store.clear();
+    const QString e2eId = QStringLiteral("turned");
+    CHECK(store.restore(e2eId, bazarish::test::turnedLeftJpeg()));
+    const QImage shown = store.image(e2eId);
+    CHECK(shown.width() == bazarish::test::kTurnedHigh);
+    CHECK(shown.height() == bazarish::test::kTurnedWide);
+}
+
 int main(int argc, char** argv)
 {
     QGuiApplication app(argc, argv);
     decodedBudgetKeepsEveryPicture();
     keptBytesBudgetLetsTheOldestGoAndRestoreBringsItBack();
+    cameraOrientationIsApplied();
     std::printf("TestPictureStore: ok\n");
     return 0;
 }
