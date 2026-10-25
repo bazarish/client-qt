@@ -321,6 +321,9 @@ public:
     QStringList standardReactions() const;
     Q_PROPERTY(QStringList recentReactions READ recentReactions NOTIFY recentReactionsChanged)
     QStringList recentReactions() const { return recentReactions_; }
+    Q_PROPERTY(QStringList recentEmoji READ recentEmoji NOTIFY recentEmojiChanged)
+    QStringList recentEmoji() const { return recentEmoji_; }
+    Q_INVOKABLE void rememberEmoji(const QString& emoji);
     Q_INVOKABLE QVariantList reactionSummary(const QString& e2eId) const;
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
@@ -415,6 +418,7 @@ public:
 
 signals:
     void recentReactionsChanged();
+    void recentEmojiChanged();
     void avatarChanged();
     void identityChanged();
     void connectedChanged();
@@ -578,6 +582,7 @@ private:
     void showInActiveView(const StoredMessage& m, bool isOwn);
     ContactBook book_;
     QStringList recentReactions_;
+    QStringList recentEmoji_;
     QString ownInvite_;
     QHash<QString, qint64> pictureOwners_;
     VoiceNote* voiceNote();

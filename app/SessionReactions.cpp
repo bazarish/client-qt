@@ -79,6 +79,11 @@ void SessionController::react(const QString& e2eId, const QString& emoji)
     }
 }
 
+void SessionController::rememberEmoji(const QString& emoji)
+{
+    emit commands_.rememberEmoji(emoji);
+}
+
 QVariantList SessionController::reactionSummary(const QString& e2eId) const
 {
     QVariantList out;

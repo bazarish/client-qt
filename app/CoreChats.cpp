@@ -15,6 +15,25 @@ namespace bazarish::app {
 
 namespace {
 constexpr int kRecentReactions = 6;
+constexpr int kRecentEmoji = 40;
+
+// The newest first, each once, at most `limit` of them.
+QStringList withNewest(QStringList list, const QString& item, const int limit)
+{
+    list.removeAll(item);
+    list.prepend(item);
+    while (list.size() > limit) {
+        list.removeLast();
+    }
+    return list;
+}
+
+std::string asJson(const QStringList& list)
+{
+    return QJsonDocument(QJsonArray::fromStringList(list))
+        .toJson(QJsonDocument::Compact)
+        .toStdString();
+}
 }  // namespace
 
 void CoreAccount::react(const QString& peer, const QString& e2eId, const QString& emoji)
@@ -43,18 +62,19 @@ void CoreAccount::rememberReaction(const QString& emoji)
     if (trimmed.isEmpty()) {
         return;
     }
-    recentReactions_.removeAll(trimmed);
-    recentReactions_.prepend(trimmed);
-    while (recentReactions_.size() > kRecentReactions) {
-        recentReactions_.removeLast();
-    }
-    QJsonArray array;
-    for (const QString& entry : recentReactions_) {
-        array.append(entry);
-    }
-    accountDb().putText("recent-reactions",
-        QJsonDocument(array).toJson(QJsonDocument::Compact).toStdString());
+    recentReactions_ = withNewest(recentReactions_, trimmed, kRecentReactions);
+    accountDb().putText("recent-reactions", asJson(recentReactions_));
     emit events_.recentReactions(recentReactions_);
+}
+
+void CoreAccount::rememberEmoji(const QString& emoji)
+{
+    if (emoji.isEmpty()) {
+        return;
+    }
+    recentEmoji_ = withNewest(recentEmoji_, emoji, kRecentEmoji);
+    accountDb().putText("recent-emoji", asJson(recentEmoji_));
+    emit events_.recentEmoji(recentEmoji_);
 }
 
 void CoreAccount::pinChat(const QString& peer, const bool pinned)

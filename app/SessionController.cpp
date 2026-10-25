@@ -248,6 +248,10 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         recentReactions_ = recent;
         emit recentReactionsChanged();
     });
+    connect(&events_, &AccountEvents::recentEmoji, this, [this](const QStringList& recent) {
+        recentEmoji_ = recent;
+        emit recentEmojiChanged();
+    });
     connect(&events_, &AccountEvents::groupChanged, this, [this](const QString& peer) {
         if (peer == activePeer_) {
             refreshActiveGroup();

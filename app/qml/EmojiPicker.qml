@@ -15,7 +15,10 @@ Popup {
     readonly property int kCell: 40
     readonly property int kGlyphPixels: 24
     readonly property int kTabPixels: 18
+    // What was picked last, newest first; it is tab 0, the groups follow it.
+    property var recent: []
     property int group: 0
+    onAboutToShow: root.group = root.recent.length > 0 ? 0 : 1
 
     padding: 8
     margins: Theme.spacing
@@ -25,6 +28,7 @@ Popup {
     component Glyph: Rectangle {
         id: glyph
         property string emoji
+        property string iconName: ""
         property int pixels: root.kGlyphPixels
         property bool current: false
         signal chosen()
@@ -34,9 +38,16 @@ Popup {
         color: glyphHover.hovered || glyph.current ? Theme.surfaceAlt : "transparent"
         Label {
             anchors.centerIn: parent
+            visible: glyph.iconName.length === 0
             text: glyph.emoji
             font.pixelSize: glyph.pixels
             renderType: Text.NativeRendering
+        }
+        Icon {
+            anchors.centerIn: parent
+            visible: glyph.iconName.length > 0
+            name: glyph.iconName
+            size: glyph.pixels
         }
         HoverHandler { id: glyphHover; cursorShape: Qt.PointingHandCursor }
         TapHandler { onTapped: glyph.chosen() }
@@ -45,6 +56,12 @@ Popup {
     contentItem: ColumnLayout {
         spacing: 6
         Row {
+            Glyph {
+                iconName: "clock"
+                pixels: root.kTabPixels
+                current: root.group === 0
+                onChosen: root.group = 0
+            }
             Repeater {
                 model: Emoji.kGroups
                 Glyph {
@@ -52,8 +69,8 @@ Popup {
                     required property int index
                     emoji: modelData[0]
                     pixels: root.kTabPixels
-                    current: index === root.group
-                    onChosen: root.group = index
+                    current: index + 1 === root.group
+                    onChosen: root.group = index + 1
                 }
             }
         }
@@ -66,7 +83,7 @@ Popup {
             cellHeight: root.kCell
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            model: Emoji.kGroups[root.group]
+            model: root.group === 0 ? root.recent : Emoji.kGroups[root.group - 1]
             ScrollBar.vertical: ScrollBar { }
             delegate: Glyph {
                 required property string modelData

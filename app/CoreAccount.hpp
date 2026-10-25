@@ -114,6 +114,7 @@ private:
     void deleteMessage(const QString& peer, qint64 localId, const QString& e2eId, bool outgoing);
     void react(const QString& peer, const QString& e2eId, const QString& emoji);
     void rememberReaction(const QString& emoji);
+    void rememberEmoji(const QString& emoji);
     void pinChat(const QString& peer, bool pinned);
     void clearChat(const QString& peer, bool forEveryone);
     void setChatTimer(const QString& peer, qint64 seconds);
@@ -212,6 +213,7 @@ private:
     QString passphrase_;
     std::unique_ptr<client::AccountDb> accountDb_;
     QStringList reactionsToFlash_;
+    QStringList recentEmoji_;
     QStringList recentReactions_;
     QString viewedPeer_;
     bool startOnline_ = true;

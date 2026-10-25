@@ -94,6 +94,7 @@ inline constexpr Latch kAccountLatches[] = {
     {"callStateChanged"},
     {"reactionsToFlash"},
     {"recentReactions"},
+    {"recentEmoji"},
     {"aliasHoldings"},
     {"avatarReady", 1},
     {"loginSendState"},
@@ -164,6 +165,7 @@ signals:
     void reactionsChanged();
     void reactionsToFlash(const QStringList& flashing);
     void recentReactions(const QStringList& recent);
+    void recentEmoji(const QStringList& recent);
     void groupChanged(const QString& peer);
     void accountRenamed(const QString& name);
     void contactsRevised();

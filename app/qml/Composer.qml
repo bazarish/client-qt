@@ -267,7 +267,13 @@ Rectangle {
                     EmojiPicker {
                         id: emojiPicker
                         y: -height - root.kAttachMenuGap
-                        onPicked: function(emoji) { input.insert(input.cursorPosition, emoji) }
+                        recent: root.session ? root.session.recentEmoji : []
+                        onPicked: function(emoji) {
+                            input.insert(input.cursorPosition, emoji)
+                            if (root.session) {
+                                root.session.rememberEmoji(emoji)
+                            }
+                        }
                     }
                 }
             }

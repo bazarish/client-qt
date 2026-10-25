@@ -454,6 +454,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::editMessage, this, &CoreAccount::editMessage);
     connect(&commands_, &AccountCommands::deleteMessage, this, &CoreAccount::deleteMessage);
     connect(&commands_, &AccountCommands::react, this, &CoreAccount::react);
+    connect(&commands_, &AccountCommands::rememberEmoji, this, &CoreAccount::rememberEmoji);
     connect(&commands_, &AccountCommands::pinChat, this, &CoreAccount::pinChat);
     connect(&commands_, &AccountCommands::clearChat, this, &CoreAccount::clearChat);
     connect(&commands_, &AccountCommands::setChatTimer, this, &CoreAccount::setChatTimer);
@@ -634,6 +635,12 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
         recentReactions_ << entry.toString();
     }
     emit events_.recentReactions(recentReactions_);
+    const QJsonDocument emoji = QJsonDocument::fromJson(
+        QByteArray::fromStdString(accountDb().text("recent-emoji")));
+    for (const QJsonValue& entry : emoji.array()) {
+        recentEmoji_ << entry.toString();
+    }
+    emit events_.recentEmoji(recentEmoji_);
     QMetaObject::invokeMethod(
         worker_,
         [worker = worker_, file, passphrase, startOnline]() {

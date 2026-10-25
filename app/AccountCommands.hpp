@@ -57,6 +57,7 @@ signals:
         const QString& peer, qint64 localId, const QString& e2eId, const QString& text);
     void deleteMessage(const QString& peer, qint64 localId, const QString& e2eId, bool outgoing);
     void react(const QString& peer, const QString& e2eId, const QString& emoji);
+    void rememberEmoji(const QString& emoji);
     void pinChat(const QString& peer, bool pinned);
     void clearChat(const QString& peer, bool forEveryone);
     void setChatTimer(const QString& peer, qint64 seconds);
