@@ -125,7 +125,7 @@ Item {
                     case "smile":   return "M 12 3 A 9 9 0 1 1 11.99 3 "
                                          + "M 8 14 A 5 5 0 0 0 16 14 M 9 9 V 10 M 15 9 V 10"
                     // A ring with a toothed shaft: the key an account is signed in with.
-                    case "key":     return "M 13.5 10.5 A 3.2 3.2 0 1 1 13.49 10.5 "
+                    case "key":     return "M 18.93 8.25 A 3.18 3.18 0 1 0 12.57 8.25 A 3.18 3.18 0 1 0 18.93 8.25 Z "
                                          + "M 13.5 10.5 L 4.5 19.5 M 6.5 17.5 L 8 19 M 9 15 L 10.5 16.5"
                     case "lock":    return "M 7 11 H 17 V 20 H 7 Z M 9.5 11 V 8 A 2.5 2.5 0 0 1 14.5 8 V 11"
                     // A drum in three bands: what is kept on this machine.
