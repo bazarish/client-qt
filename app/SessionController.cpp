@@ -1034,8 +1034,7 @@ void SessionController::sendPictureFiles(const QStringList& fileUrls)
         for (const QString& fileUrl : fileUrls) {
             const QUrl url(fileUrl);
             const QString localPath = url.isLocalFile() ? url.toLocalFile() : fileUrl;
-            const PreparedPicture picture
-                = preparePicture(QImage(localPath), QFileInfo(localPath).completeBaseName());
+            const PreparedPicture picture = preparePictureFile(localPath);
             QMetaObject::invokeMethod(qApp, [self, peer, picture, replyTo]() {
                 if (self.isNull()) {
                     return;

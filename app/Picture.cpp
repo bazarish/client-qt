@@ -2,6 +2,8 @@
 #include "Picture.hpp"
 
 #include <QBuffer>
+#include <QFileInfo>
+#include <QImageReader>
 
 #include <algorithm>
 
@@ -67,6 +69,13 @@ PreparedPicture preparePicture(const QImage& image, const QString& baseName)
     prepared.mime = format == QStringLiteral("png") ? QStringLiteral("image/png")
                                                     : QStringLiteral("image/jpeg");
     return prepared;
+}
+
+PreparedPicture preparePictureFile(const QString& location)
+{
+    QImageReader reader(location);
+    reader.setAutoTransform(true);
+    return preparePicture(reader.read(), QFileInfo(location).completeBaseName());
 }
 
 }  // namespace bazarish::app

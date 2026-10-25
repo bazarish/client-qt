@@ -16,5 +16,7 @@ struct PreparedPicture {
 };
 
 PreparedPicture preparePicture(const QImage& image, const QString& baseName);
+// The orientation a camera wrote into the file is applied: the re-encoded bytes carry none.
+PreparedPicture preparePictureFile(const QString& location);
 
 }  // namespace bazarish::app
