@@ -10,11 +10,20 @@ Popup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
-    // The message being passed on, by the id the two ends know it as.
+    // The message being passed on, by the id the two ends know it as; or several, by local id.
     property string e2eId: ""
+    property var localIds: []
+    signal forwarded()
 
     function openFor(id) {
         root.e2eId = id
+        root.localIds = []
+        filter.text = ""
+        root.open()
+    }
+    function openForMany(ids) {
+        root.e2eId = ""
+        root.localIds = ids
         filter.text = ""
         root.open()
     }
@@ -102,11 +111,18 @@ Popup {
                     // down the delegate this handler is running in - and then the
                     // sheet goes, before the send, so one left standing cannot
                     // invite the same message being passed on again.
+                    const sheet = root
                     const session = root.session
                     const message = root.e2eId
+                    const many = root.localIds
                     const target = model.fingerprint
                     root.close()
-                    session.forwardMessage(message, target)
+                    if (many.length > 0) {
+                        session.forwardMessages(many, target)
+                    } else {
+                        session.forwardMessage(message, target)
+                    }
+                    sheet.forwarded()
                 }
             }
         }

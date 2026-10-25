@@ -260,6 +260,10 @@ public:
     Q_INVOKABLE void sendText(const QString& text);
     Q_INVOKABLE void sendOffered(const QString& text);
     Q_INVOKABLE void forwardMessage(const QString& e2eId, const QString& toPeer);
+    // Several messages of the open chat, by local id; each is taken in the order the chat shows.
+    Q_INVOKABLE int copyMessages(const QVariantList& localIds) const;
+    Q_INVOKABLE void forwardMessages(const QVariantList& localIds, const QString& toPeer);
+    Q_INVOKABLE void deleteMessages(const QVariantList& localIds);
     Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& e2eId);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
     Q_INVOKABLE void sendPictureFiles(const QStringList& fileUrls);
@@ -494,6 +498,7 @@ private slots:
     void onDevicesReady(const QVariantList& devices);
     void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
     void requestPicturesFor(const QList<StoredMessage>& messages);
+    QVector<StoredMessage> chosenMessages(const QVariantList& localIds) const;
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,

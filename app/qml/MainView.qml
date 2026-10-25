@@ -10,6 +10,10 @@ Item {
 
     // On a narrow window an open chat covers the list, so back closes it.
     function goBack() {
+        if (chatLoader.item && chatLoader.item.choosing) {
+            chatLoader.item.clearChosen()
+            return true
+        }
         if (root.width < Theme.narrowWidth && root.session && root.session.activePeer.length > 0) {
             root.session.closeConversation()
             return true
@@ -100,6 +104,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Loader {
+                        id: chatLoader
                         anchors.fill: parent
                         active: root.session && root.session.activePeer.length > 0
                         sourceComponent: ConversationView {

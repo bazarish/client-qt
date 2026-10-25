@@ -31,6 +31,7 @@
 #include <QBuffer>
 #include <QByteArray>
 #include <QClipboard>
+#include <QDateTime>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QPointer>
@@ -83,6 +84,8 @@ using bazarish::client::Session;
 
 namespace {
 constexpr int kSchemeSeparatorLength = 3;
+const QString kTimeOfDay = QStringLiteral("HH:mm");
+const QString kDayAndTime = QStringLiteral("dd.MM.yyyy HH:mm");
 
 QString facadeHost(const QString& url)
 {
@@ -1545,6 +1548,62 @@ void SessionController::forwardMessage(const QString& e2eId, const QString& toPe
     }
     unblockBeforeWriting(toPeer);
     emit commands_.forwardMessage(activePeer_, e2eId, toPeer, newE2eId());
+}
+
+QVector<StoredMessage> SessionController::chosenMessages(const QVariantList& localIds) const
+{
+    QVector<StoredMessage> chosen;
+    for (const QVariant& id : localIds) {
+        const StoredMessage message = store_.messageById(id.toLongLong());
+        if (message.id != 0 && message.peer == activePeer_) {
+            chosen.push_back(message);
+        }
+    }
+    std::sort(chosen.begin(), chosen.end(), [](const StoredMessage& a, const StoredMessage& b) {
+        return std::pair(a.orderKey, a.id) < std::pair(b.orderKey, b.id);
+    });
+    return chosen;
+}
+
+int SessionController::copyMessages(const QVariantList& localIds) const
+{
+    const QVector<StoredMessage> chosen = chosenMessages(localIds);
+    const auto dayOf = [](const StoredMessage& m) {
+        return QDateTime::fromMSecsSinceEpoch(m.ts).date();
+    };
+    const bool oneDay = std::all_of(chosen.begin(), chosen.end(),
+        [&](const StoredMessage& m) { return dayOf(m) == dayOf(chosen.front()); });
+    QStringList parts;
+    for (const StoredMessage& message : chosen) {
+        if (message.type != QStringLiteral("text") || message.text.isEmpty()) {
+            continue;
+        }
+        const QString own = displayName_.isEmpty() ? tr("You") : displayName_;
+        const QString who = message.outgoing ? own
+            : (message.author.isEmpty() ? book_.peerName(message.peer) : message.author);
+        const QString when = QDateTime::fromMSecsSinceEpoch(message.ts)
+            .toString(oneDay ? kTimeOfDay : kDayAndTime);
+        parts << QStringLiteral("%1, %2: %3").arg(who, when, message.text);
+    }
+    if (!parts.isEmpty()) {
+        QGuiApplication::clipboard()->setText(parts.join(QStringLiteral("\n\n")));
+    }
+    return static_cast<int>(parts.size());
+}
+
+void SessionController::forwardMessages(const QVariantList& localIds, const QString& toPeer)
+{
+    for (const StoredMessage& message : chosenMessages(localIds)) {
+        forwardMessage(message.e2eId, toPeer);
+    }
+}
+
+// Own messages go for everyone as one does; in a group every one goes from this device only.
+void SessionController::deleteMessages(const QVariantList& localIds)
+{
+    for (const StoredMessage& message : chosenMessages(localIds)) {
+        deleteMessage(message.id, message.e2eId, message.outgoing && !activeIsGroup());
+    }
 }
 
 void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)

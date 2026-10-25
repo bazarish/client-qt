@@ -26,6 +26,13 @@ Item {
     signal forwardRequested(string e2eId)
     signal quoteRequested(var localId)
     signal selectTextRequested(Item text)
+    // The chat is choosing several messages: a tap marks this one instead of acting on it.
+    property bool choosing: false
+    property bool chosen: false
+    signal chosenToggled(var msgId, bool outgoing)
+    readonly property int kChoiceSize: 22
+    readonly property int kChoiceMark: 14
+    readonly property real kChosenTint: 0.18
     // An alias written in the body was tapped: the view offers the add-a-contact
     // form with the name filled in. Nothing is sent.
     signal aliasRequested(string alias)
@@ -137,6 +144,13 @@ Item {
     readonly property var freshReactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionsToFlash(model.e2eId) : []
+
+    Rectangle {
+        anchors.fill: parent
+        visible: delegate.chosen
+        color: Theme.green
+        opacity: delegate.kChosenTint
+    }
 
     // Centered system notice (e.g. a cleared-chat note).
     ColumnLayout {
@@ -290,6 +304,7 @@ Item {
     DragHandler {
         target: null
         enabled: delegate.actionable && !delegate.textSelecting && !delegate.covered
+            && !delegate.choosing
         acceptedDevices: PointerDevice.TouchScreen
         yAxis.enabled: false
         onActiveTranslationChanged: {
@@ -397,7 +412,7 @@ Item {
 
     // Right-click or long-press anywhere along the row opens the message's menu.
     TapHandler {
-        enabled: !delegate.isSystem
+        enabled: !delegate.isSystem && !delegate.choosing
         // A touch carries no button, so a right-button handler would take every tap.
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         acceptedButtons: Qt.RightButton
@@ -405,7 +420,7 @@ Item {
     }
     TapHandler {
         id: holdHandler
-        enabled: !delegate.isSystem && !delegate.textSelecting
+        enabled: !delegate.isSystem && !delegate.textSelecting && !delegate.choosing
         acceptedButtons: Qt.LeftButton
         onLongPressed: delegate.openMenu(holdHandler.point.scenePosition)
     }
@@ -428,7 +443,7 @@ Item {
     // On a phone the text takes no touch, so a tap on it reaches the row: a link is followed,
     // a tap anywhere else on the bubble opens the reactions, and one beside it the menu.
     TapHandler {
-        enabled: App.mobile && !delegate.isSystem && !delegate.textSelecting
+        enabled: App.mobile && !delegate.isSystem && !delegate.textSelecting && !delegate.choosing
         acceptedButtons: Qt.LeftButton
         onTapped: function(point) {
             const scene = point.scenePosition
@@ -1514,6 +1529,13 @@ Item {
                         onTriggered: delegate.groupActionRequested("delete", model.e2eId, model.author)
                     }
                     ContextMenuItem {
+                        text: qsTr("Select")
+                        iconName: "check"
+                        visible: delegate.actionable
+                        height: visible ? implicitHeight : 0
+                        onTriggered: delegate.chosenToggled(model.msgId, model.outgoing)
+                    }
+                    ContextMenuItem {
                         text: qsTr("Delete")
                         iconName: "trash"
                         onTriggered: delegate.deleteRequested(model.msgId, model.e2eId, model.outgoing)
@@ -1541,5 +1563,31 @@ Item {
                     saveDialog.token)
             }
         }
+    }
+
+    Rectangle {
+        visible: delegate.choosing && delegate.actionable
+        width: delegate.kChoiceSize
+        height: delegate.kChoiceSize
+        radius: width / 2
+        x: model.outgoing ? bubble.x - width - delegate.kChoiceSize / 2
+            : bubble.x + bubble.width + delegate.kChoiceSize / 2
+        anchors.verticalCenter: bubble.verticalCenter
+        color: delegate.chosen ? Theme.green : "transparent"
+        border.color: Theme.green
+        border.width: 2
+        Icon {
+            anchors.centerIn: parent
+            visible: delegate.chosen
+            name: "check"
+            color: Theme.bg
+            size: delegate.kChoiceMark
+        }
+    }
+    // On top of everything while choosing, so no part of the message answers the tap itself.
+    MouseArea {
+        anchors.fill: parent
+        enabled: delegate.choosing && delegate.actionable
+        onClicked: delegate.chosenToggled(model.msgId, model.outgoing)
     }
 }

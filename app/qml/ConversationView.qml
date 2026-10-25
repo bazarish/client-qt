@@ -42,6 +42,45 @@ Item {
         return d.toLocaleDateString(Qt.locale(language), "d MMMM yyyy")
     }
 
+    // Messages chosen for one action together, by local id; each value says whether it is ours.
+    property var chosen: ({})
+    readonly property int chosenCount: Object.keys(root.chosen).length
+    readonly property int chosenOwn: Object.values(root.chosen).filter(own => own).length
+    readonly property bool choosing: root.chosenCount > 0
+    function toggleChosen(msgId, outgoing) {
+        const next = Object.assign({}, root.chosen)
+        if (next[msgId] !== undefined) {
+            delete next[msgId]
+        } else {
+            next[msgId] = outgoing
+        }
+        root.chosen = next
+    }
+    function clearChosen() {
+        root.chosen = ({})
+    }
+    function chosenIds() {
+        return Object.keys(root.chosen).map(Number)
+    }
+    function copyChosen() {
+        const copied = root.session.copyMessages(root.chosenIds()) > 0
+        if (typeof window !== "undefined") {
+            window.showToast(copied ? qsTr("Copied to clipboard") : qsTr("There is no text among them."))
+        }
+        if (copied) {
+            root.clearChosen()
+        }
+    }
+    Connections {
+        target: root.session
+        function onActivePeerChanged() { root.clearChosen() }
+    }
+    Shortcut {
+        sequences: [StandardKey.Cancel]
+        enabled: root.choosing
+        onActivated: root.clearChosen()
+    }
+
     function confirmDeleteMessage(msgId, e2eId, outgoing) {
         root.pendingDeleteId = msgId
         root.pendingDeleteProtocol = e2eId
@@ -242,7 +281,45 @@ Item {
             wrapMode: Text.Wrap
         }
     }
-    ForwardSheet { id: forwardSheet; session: root.session }
+    ForwardSheet { id: forwardSheet; session: root.session; onForwarded: root.clearChosen() }
+
+    Dialog {
+        id: deleteChosenDialog
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        width: Math.min(360, parent ? parent.width - 24 : 360)
+        // In a group every message goes from this device only.
+        readonly property int own: root.session && !root.session.activeIsGroup ? root.chosenOwn : 0
+        footer: DialogButtons {
+            acceptText: qsTr("Delete")
+            danger: true
+            onAccepted: deleteChosenDialog.accept()
+            onRejected: deleteChosenDialog.reject()
+        }
+        onAccepted: {
+            if (root.session) {
+                root.session.deleteMessages(root.chosenIds())
+            }
+            root.clearChosen()
+        }
+        background: DialogFrame { destructive: true }
+        header: Label {
+            text: qsTr("Delete selected messages?")
+            color: Theme.neon
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        contentItem: Label {
+            text: deleteChosenDialog.own === 0 ? qsTr("They are removed from this device only.")
+                : deleteChosenDialog.own === root.chosenCount
+                ? qsTr("They are removed from the other side too.")
+                : qsTr("Your messages among them (%1) are removed from the other side too, the rest only from this device.").arg(deleteChosenDialog.own)
+            color: Theme.text
+            wrapMode: Text.Wrap
+        }
+    }
     BotMenuSheet { id: botMenuSheet; session: root.session }
     // Confirms an irreversible message delete. For one's own one-to-one message it
     // is removed at the recipient too (no trace); otherwise it is removed locally.
@@ -373,6 +450,41 @@ Item {
                     onClicked: root.contactInfoRequested()
                 }
             }
+            // While messages are chosen, what can be done with them takes the header's place.
+            Rectangle {
+                anchors.fill: parent
+                visible: root.choosing
+                color: Theme.surface
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: root.narrow ? 2 : 12
+                    anchors.rightMargin: 6
+                    spacing: 10
+                    IconButton {
+                        iconName: "close"
+                        onClicked: root.clearChosen()
+                    }
+                    Label {
+                        text: qsTr("Selected: %1").arg(root.chosenCount)
+                        color: Theme.text
+                        font.weight: Font.Medium
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    IconButton {
+                        iconName: "copy"
+                        onClicked: root.copyChosen()
+                    }
+                    IconButton {
+                        iconName: "forward"
+                        onClicked: forwardSheet.openForMany(root.chosenIds())
+                    }
+                    IconButton {
+                        iconName: "trash"
+                        onClicked: deleteChosenDialog.open()
+                    }
+                }
+            }
         }
         Hairline { }
 
@@ -457,6 +569,9 @@ Item {
                     onDeleteRequested: function(msgId, e2eId, outgoing) {
                         root.confirmDeleteMessage(msgId, e2eId, outgoing)
                     }
+                    choosing: root.choosing
+                    chosen: root.chosen[model.msgId] !== undefined
+                    onChosenToggled: function(msgId, outgoing) { root.toggleChosen(msgId, outgoing) }
                     onGroupActionRequested: function(command, postId, author) {
                         groupActionDialog.command = command
                         groupActionDialog.postId = postId

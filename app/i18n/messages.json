@@ -1193,6 +1193,12 @@
       "zh": "删除消息",
       "ar": "حذف الرسالة"
     },
+    "Delete selected messages?": {
+      "ru": "Удалить выбранные сообщения?",
+      "es": "¿Eliminar los mensajes seleccionados?",
+      "zh": "删除所选消息？",
+      "ar": "حذف الرسائل المحددة؟"
+    },
     "Delete this device's copy only": {
       "ru": "Удалить только копию на этом устройстве",
       "es": "Eliminar solo la copia de este dispositivo",
@@ -2813,11 +2819,23 @@
       "zh": "在对话中搜索…",
       "ar": "ابحث داخل المحادثة…"
     },
+    "Select": {
+      "ru": "Выбрать",
+      "es": "Seleccionar",
+      "zh": "选择",
+      "ar": "تحديد"
+    },
     "Select a chat or start a new one": {
       "ru": "Выберите чат или начните новый",
       "es": "Elige una conversación o empieza una nueva",
       "zh": "选择一个对话，或开始新的对话",
       "ar": "اختر محادثة أو ابدأ واحدة جديدة"
+    },
+    "Selected: %1": {
+      "ru": "Выбрано: %1",
+      "es": "Seleccionados: %1",
+      "zh": "已选择：%1",
+      "ar": "المحدد: ⁦%1⁩"
     },
     "Send": {
       "ru": "Отправить",
@@ -3863,6 +3881,12 @@
       "zh": "你的身份是在本设备上生成的一对密钥。",
       "ar": "هويتك زوج مفاتيح أُنشئ على هذا الجهاز."
     },
+    "Your messages among them (%1) are removed from the other side too, the rest only from this device.": {
+      "ru": "Ваши сообщения среди них (%1) удалятся и у собеседника, остальные — только на этом устройстве.",
+      "es": "Tus mensajes entre ellos (%1) también se eliminan para tu interlocutor; el resto, solo de este dispositivo.",
+      "zh": "其中你发送的 %1 条消息在对方那里也会删除，其余只从此设备上删除。",
+      "ar": "رسائلك بينها (⁦%1⁩) ستُحذف لدى الطرف الآخر أيضًا، والباقي من هذا الجهاز فقط."
+    },
     "Your name": {
       "ru": "Ваше имя",
       "es": "Tu nombre",
@@ -4336,6 +4360,24 @@
       "es": "Bloquear a %1",
       "zh": "屏蔽 %1",
       "ar": "حظر ⁦%1⁩"
+    },
+    "There is no text among them.": {
+      "ru": "Среди них нет текста.",
+      "es": "No hay texto entre ellos.",
+      "zh": "其中没有文本。",
+      "ar": "لا يوجد بينها نص."
+    },
+    "They are removed from the other side too.": {
+      "ru": "Они удалятся и у собеседника.",
+      "es": "También se eliminan para tu interlocutor.",
+      "zh": "对方那里也会删除。",
+      "ar": "ستُحذف لدى الطرف الآخر أيضًا."
+    },
+    "They are removed from this device only.": {
+      "ru": "Они удалятся только на этом устройстве.",
+      "es": "Se eliminan solo de este dispositivo.",
+      "zh": "它们只会从此设备上删除。",
+      "ar": "ستُحذف من هذا الجهاز فقط."
     },
     "They can join again.": {
       "ru": "Вернуться можно.",
