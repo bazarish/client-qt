@@ -379,7 +379,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     rebuildGrace_.setInterval(kLinkRebuildGraceMs);
     connect(&rebuildGrace_, &QTimer::timeout, this, [this]() {
         linksRebuilding_ = false;
-        onSyncReachable(false);
+        onSyncReachable(false, gatewayRefusal_);
     });
     connect(worker_, &SessionWorker::accountSettings, this,
         [this](const bool, const bool sendReceipts) { sendReceipts_ = sendReceipts; });
@@ -554,6 +554,7 @@ void CoreAccount::goOffline()
 {
     online_ = false;
     reachable_ = false;
+    gatewayRefusal_.clear();
     announcePresence();
     emit commands_.requestSetSync(false);
 }
@@ -572,7 +573,7 @@ void CoreAccount::rebuildI2pLinks()
     emit commands_.requestRebuildI2p();
 }
 
-void CoreAccount::onSyncReachable(const bool ok)
+void CoreAccount::onSyncReachable(const bool ok, const QString& gatewayRefusal)
 {
     if (ok) {
         linksRebuilding_ = false;
@@ -580,10 +581,12 @@ void CoreAccount::onSyncReachable(const bool ok)
     } else if (linksRebuilding_) {
         return;
     }
-    if (reachable_ == ok) {
+    const QString refusal = ok ? QString() : gatewayRefusal;
+    if (reachable_ == ok && gatewayRefusal_ == refusal) {
         return;
     }
     reachable_ = ok;
+    gatewayRefusal_ = refusal;
     announcePresence();
 }
 
@@ -599,7 +602,7 @@ void CoreAccount::recountUnread()
 
 void CoreAccount::announcePresence()
 {
-    emit events_.presence(online_, reachable_);
+    emit events_.presence(online_, reachable_, gatewayRefusal_);
     emit changed();
 }
 

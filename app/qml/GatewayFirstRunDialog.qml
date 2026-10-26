@@ -23,7 +23,7 @@ Dialog {
     background: DialogFrame { destructive: true }
 
     header: Label {
-        text: qsTr("Use a private gateway?")
+        text: qsTr("Use an external gateway?")
         color: Theme.neon
         font.pixelSize: Theme.fontTitle
         font.weight: Font.DemiBold

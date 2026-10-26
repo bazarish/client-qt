@@ -208,21 +208,145 @@ Popup {
                     TabBar {
                         id: transportTabs
                         Layout.fillWidth: true
-                        currentIndex: I2p.transport === "gateway" ? 2
-                            : I2p.transport === "sam" ? 1 : 0
+                        currentIndex: I2p.transport === "gateway" ? 0
+                            : I2p.transport === "sam" ? 2 : 1
                         background: Rectangle {
                             radius: Theme.radius
                             color: Theme.surface
                             border.color: Theme.border
                         }
+                        ModeTab { text: qsTr("External gateway") }
                         ModeTab { text: qsTr("Embedded") }
                         ModeTab { text: qsTr("SAM API") }
-                        ModeTab { text: qsTr("Private gateway") }
                     }
 
                     StackLayout {
                         Layout.fillWidth: true
                         currentIndex: transportTabs.currentIndex
+
+                        // A host that runs the router so this device does not.
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Enabled"); color: Theme.text; Layout.fillWidth: true }
+                                Toggle {
+                                    checked: I2p.transport === "gateway"
+                                    enabled: !I2p.gatewayChecking
+                                    onToggled: {
+                                        if (checked) {
+                                            // The address is saved by the button
+                                            // below; this only chooses it.
+                                            root.gatewayProblem = ""
+                                            I2p.useGateway(true)
+                                            checked = I2p.transport === "gateway"
+                                        } else {
+                                            checked = true
+                                        }
+                                    }
+                                }
+                            }
+                            Label {
+                                visible: I2p.transport !== "gateway"
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                text: qsTr("The gateway takes connections over HTTPS, so this application looks like ordinary web traffic. It removes the need for a local I2P router. The gateway sees the I2P addresses you reach, so it has to be one you trust. End-to-end protection of your data is unaffected.")
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            // A saved gateway shows its host; the whole address, secret path and
+                            // token included, is handed over by Share.
+                            RowLayout {
+                                visible: !root.gatewayInput
+                                Layout.fillWidth: true
+                                Label {
+                                    text: I2p.gatewayHost
+                                    color: Theme.text
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+                                IconButton {
+                                    iconName: "edit"
+                                    Accessible.name: qsTr("Edit")
+                                    onClicked: {
+                                        gatewayField.text = I2p.gatewayAddress
+                                        root.editingGateway = true
+                                    }
+                                }
+                            }
+                            FormField {
+                                id: gatewayField
+                                visible: root.gatewayInput
+                                Layout.fillWidth: true
+                                placeholder: "https://host/path#token"
+                                text: I2p.gatewayAddress
+                            }
+                            Label {
+                                visible: root.gatewayProblem.length > 0
+                                text: root.gatewayProblem
+                                color: Theme.danger
+                                font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                            RowLayout {
+                                Layout.alignment: Qt.AlignRight
+                                spacing: 8
+                                MenuButton {
+                                    visible: root.gatewayInput
+                                    iconName: "qr"
+                                    leftPadding: 0
+                                    rightPadding: 0
+                                    Layout.preferredWidth: height
+                                    onClicked: gatewayScan.open()
+                                }
+                                MenuButton {
+                                    visible: !root.gatewayInput
+                                    iconName: "link"
+                                    text: qsTr("Share")
+                                    onClicked: gatewayShare.open()
+                                }
+                                MenuButton {
+                                    visible: root.editingGateway
+                                    iconName: "close"
+                                    text: qsTr("Cancel")
+                                    enabled: !I2p.gatewayChecking
+                                    onClicked: {
+                                        root.gatewayProblem = ""
+                                        root.editingGateway = false
+                                    }
+                                }
+                                MenuButton {
+                                    visible: root.gatewayInput
+                                    iconName: "check"
+                                    text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
+                                    enabled: !I2p.gatewayChecking
+                                        && gatewayField.displayText.trim().length > 0
+                                        && gatewayField.displayText.trim() !== I2p.gatewayAddress
+                                    onClicked: {
+                                        root.gatewayProblem = ""
+                                        I2p.checkAndSaveGateway(gatewayField.text)
+                                    }
+                                }
+                            }
+                            QrScanSheet {
+                                id: gatewayScan
+                                onDecoded: function(text) {
+                                    gatewayField.text = text
+                                    root.editingGateway = true
+                                }
+                            }
+                            ShareLinkSheet {
+                                id: gatewayShare
+                                title: qsTr("Share gateway")
+                                note: qsTr("The link connects another device to this gateway.")
+                                link: I2p.gatewayAddress
+                            }
+                        }
 
                         // The engine inside this application.
                         ColumnLayout {
@@ -378,130 +502,6 @@ Popup {
                                     I2p.checkAndSaveSam(samHostField.text,
                                         parseInt(samPortField.text || "0"))
                                 }
-                            }
-                        }
-
-                        // A host that runs the router so this device does not.
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Label { text: qsTr("Enabled"); color: Theme.text; Layout.fillWidth: true }
-                                Toggle {
-                                    checked: I2p.transport === "gateway"
-                                    enabled: !I2p.gatewayChecking
-                                    onToggled: {
-                                        if (checked) {
-                                            // The address is saved by the button
-                                            // below; this only chooses it.
-                                            root.gatewayProblem = ""
-                                            I2p.useGateway(true)
-                                            checked = I2p.transport === "gateway"
-                                        } else {
-                                            checked = true
-                                        }
-                                    }
-                                }
-                            }
-                            Label {
-                                visible: I2p.transport !== "gateway"
-                                Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            }
-                            Label {
-                                text: qsTr("The gateway takes connections over HTTPS, so this application looks like ordinary web traffic. It removes the need for a local I2P router. The gateway sees the I2P addresses you reach, so it has to be one you trust. End-to-end protection of your data is unaffected.")
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                            // A saved gateway shows its host; the whole address, secret path and
-                            // token included, is handed over by Share.
-                            RowLayout {
-                                visible: !root.gatewayInput
-                                Layout.fillWidth: true
-                                Label {
-                                    text: I2p.gatewayHost
-                                    color: Theme.text
-                                    elide: Text.ElideRight
-                                    Layout.fillWidth: true
-                                }
-                                IconButton {
-                                    iconName: "edit"
-                                    Accessible.name: qsTr("Edit")
-                                    onClicked: {
-                                        gatewayField.text = I2p.gatewayAddress
-                                        root.editingGateway = true
-                                    }
-                                }
-                            }
-                            FormField {
-                                id: gatewayField
-                                visible: root.gatewayInput
-                                Layout.fillWidth: true
-                                placeholder: "https://host/path#token"
-                                text: I2p.gatewayAddress
-                            }
-                            Label {
-                                visible: root.gatewayProblem.length > 0
-                                text: root.gatewayProblem
-                                color: Theme.danger
-                                font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.Wrap; Layout.fillWidth: true
-                            }
-                            RowLayout {
-                                Layout.alignment: Qt.AlignRight
-                                spacing: 8
-                                MenuButton {
-                                    visible: root.gatewayInput
-                                    iconName: "qr"
-                                    leftPadding: 0
-                                    rightPadding: 0
-                                    Layout.preferredWidth: height
-                                    onClicked: gatewayScan.open()
-                                }
-                                MenuButton {
-                                    visible: !root.gatewayInput
-                                    iconName: "link"
-                                    text: qsTr("Share")
-                                    onClicked: gatewayShare.open()
-                                }
-                                MenuButton {
-                                    visible: root.editingGateway
-                                    iconName: "close"
-                                    text: qsTr("Cancel")
-                                    enabled: !I2p.gatewayChecking
-                                    onClicked: {
-                                        root.gatewayProblem = ""
-                                        root.editingGateway = false
-                                    }
-                                }
-                                MenuButton {
-                                    visible: root.gatewayInput
-                                    iconName: "check"
-                                    text: I2p.gatewayChecking ? qsTr("Checking\u2026") : qsTr("Save")
-                                    enabled: !I2p.gatewayChecking
-                                        && gatewayField.displayText.trim().length > 0
-                                        && gatewayField.displayText.trim() !== I2p.gatewayAddress
-                                    onClicked: {
-                                        root.gatewayProblem = ""
-                                        I2p.checkAndSaveGateway(gatewayField.text)
-                                    }
-                                }
-                            }
-                            QrScanSheet {
-                                id: gatewayScan
-                                onDecoded: function(text) {
-                                    gatewayField.text = text
-                                    root.editingGateway = true
-                                }
-                            }
-                            ShareLinkSheet {
-                                id: gatewayShare
-                                title: qsTr("Share gateway")
-                                note: qsTr("The link connects another device to this gateway.")
-                                link: I2p.gatewayAddress
                             }
                         }
                     }

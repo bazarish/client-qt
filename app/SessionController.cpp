@@ -314,13 +314,14 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         emit operationsChanged();
     });
     connect(&events_, &AccountEvents::presence, this,
-        [this](const bool online, const bool reachable) {
+        [this](const bool online, const bool reachable, const QString& gatewayRefusal) {
             if (online_ != online) {
                 online_ = online;
                 emit onlineChanged();
             }
-            if (reachable_ != reachable) {
+            if (reachable_ != reachable || gatewayRefusal_ != gatewayRefusal) {
                 reachable_ = reachable;
+                gatewayRefusal_ = gatewayRefusal;
                 emit reachableChanged();
             }
         });

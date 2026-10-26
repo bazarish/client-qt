@@ -34,6 +34,7 @@ class SessionController : public QObject {
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
     Q_PROPERTY(bool online READ online NOTIFY onlineChanged)
     Q_PROPERTY(bool reachable READ reachable NOTIFY reachableChanged)
+    Q_PROPERTY(QString gatewayRefusal READ gatewayRefusal NOTIFY reachableChanged)
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
@@ -142,6 +143,7 @@ public:
     bool connected() const { return connected_; }
     bool online() const { return online_; }
     bool reachable() const { return reachable_; }
+    QString gatewayRefusal() const { return gatewayRefusal_; }
     bool i2pBusy() const { return i2pBusy_; }
     QVariantList devices() const { return devices_; }
     bool voiceRecording() const { return voiceRecording_; }
@@ -526,6 +528,7 @@ private:
     bool connected_ = false;
     bool online_ = false;
     bool reachable_ = false;
+    QString gatewayRefusal_;
     bool i2pBusy_ = false;
     bool flashOnNextStatus_ = false;
     bool awaitingApproval_ = false;

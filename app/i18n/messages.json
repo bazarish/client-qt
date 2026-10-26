@@ -1577,11 +1577,11 @@
       "zh": "I2P 将通过本机的外部路由承载。",
       "ar": "ستمرّ I2P عبر الموجّه الخارجي المحلي."
     },
-    "I2P will be carried by the private gateway.": {
-      "ru": "I2P будет работать через приватный шлюз.",
-      "es": "I2P lo llevará la pasarela privada.",
-      "zh": "I2P 将由私有网关承载。",
-      "ar": "ستحمل I2P البوابة الخاصة."
+    "I2P will be carried by the external gateway.": {
+      "ru": "I2P будет работать через внешний шлюз.",
+      "es": "I2P lo llevará la pasarela externa.",
+      "zh": "I2P 将由外部网关承载。",
+      "ar": "ستحمل I2P البوابة الخارجية."
     },
     "Identity fingerprint": {
       "ru": "Отпечаток личности",
@@ -1913,11 +1913,11 @@
       "zh": "本机没有摄像头。",
       "ar": "لا توجد كاميرا في هذا الجهاز."
     },
-    "No connection to the HTTPS gateway": {
-      "ru": "Нет подключения к HTTPS-шлюзу",
-      "es": "Sin conexión con la pasarela HTTPS",
-      "zh": "未连接到 HTTPS 网关",
-      "ar": "لا اتصال ببوابة HTTPS"
+    "No connection to the external gateway": {
+      "ru": "Нет подключения к внешнему шлюзу",
+      "es": "Sin conexión con la pasarela externa",
+      "zh": "未连接到外部网关",
+      "ar": "لا اتصال بالبوابة الخارجية"
     },
     "No destination is being served.": {
       "ru": "Ни одно назначение не обслуживается.",
@@ -2375,11 +2375,11 @@
       "zh": "隐私",
       "ar": "الخصوصية"
     },
-    "Private gateway": {
-      "ru": "Приватный шлюз",
-      "es": "Pasarela privada",
-      "zh": "私有网关",
-      "ar": "بوابة خاصة"
+    "External gateway": {
+      "ru": "Внешний шлюз",
+      "es": "Pasarela externa",
+      "zh": "外部网关",
+      "ar": "بوابة خارجية"
     },
     "Proxy": {
       "ru": "Прокси",
@@ -3341,6 +3341,18 @@
       "zh": "两者不一致。",
       "ar": "الاثنان غير متطابقين."
     },
+    "The gateway refused a link to the server": {
+      "ru": "Шлюз отказал в связи с сервером",
+      "es": "La pasarela rechazó el enlace con el servidor",
+      "zh": "网关拒绝了到服务器的连接",
+      "ar": "رفضت البوابة الاتصال بالخادم"
+    },
+    "The gateway refused a link to the server: %1": {
+      "ru": "Шлюз отказал в связи с сервером: %1",
+      "es": "La pasarela rechazó el enlace con el servidor: %1",
+      "zh": "网关拒绝了到服务器的连接：%1",
+      "ar": "رفضت البوابة الاتصال بالخادم: ⁦%1⁩"
+    },
     "The saved server address cannot be used.": {
       "ru": "Сохранённый адрес сервера не подходит.",
       "es": "La dirección guardada del servidor no se puede usar.",
@@ -3659,11 +3671,11 @@
       "zh": "正在上传…",
       "ar": "جارٍ الرفع…"
     },
-    "Use a private gateway?": {
-      "ru": "Использовать приватный шлюз?",
-      "es": "¿Usar una pasarela privada?",
-      "zh": "要使用私有网关吗？",
-      "ar": "أتريد استخدام بوابة خاصة؟"
+    "Use an external gateway?": {
+      "ru": "Использовать внешний шлюз?",
+      "es": "¿Usar una pasarela externa?",
+      "zh": "要使用外部网关吗？",
+      "ar": "أتريد استخدام بوابة خارجية؟"
     },
     "Apply": {
       "ru": "Применить",

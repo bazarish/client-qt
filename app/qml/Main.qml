@@ -310,7 +310,7 @@ ApplicationWindow {
             }
             Label {
                 text: (I2p.transport === "gateway"
-                        ? qsTr("I2P will be carried by the private gateway.")
+                        ? qsTr("I2P will be carried by the external gateway.")
                         : (I2p.transport === "sam"
                             ? qsTr("I2P will be carried by the local external router.")
                             : qsTr("I2P will be carried by the engine inside this application.")))

@@ -103,6 +103,14 @@ Popup {
                         text: qsTr("The router is at %1.").arg(I2p.gatewayHost)
                         color: Theme.text
                     }
+                    Label {
+                        visible: App.session !== null && App.session.gatewayRefusal.length > 0
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: App.session ? qsTr("The gateway refused a link to the server: %1")
+                            .arg(App.session.gatewayRefusal) : ""
+                        color: Theme.danger
+                    }
 
                     RowLayout {
                         visible: I2p.running && !I2p.gatewayEnabled

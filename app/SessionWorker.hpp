@@ -201,7 +201,7 @@ signals:
     void loginSigned(const QString& blob);
     void connectionLogReady(const QVariantList& lines);
     void stopped();
-    void syncReachable(bool ok);
+    void syncReachable(bool ok, const QString& gatewayRefusal);
     void approvalState(bool pending, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);

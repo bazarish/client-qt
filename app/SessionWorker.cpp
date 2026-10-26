@@ -421,8 +421,11 @@ void SessionWorker::startEventWaiter()
                     *waiter, answered ? kEventWaitSeconds : 0);
             } catch (const std::exception& error) {
                 answered = false;
+                const QString refusal
+                    = waiter ? QString::fromStdString(waiter->gatewayRefusal()) : QString();
                 QMetaObject::invokeMethod(
-                    this, [this]() { emit syncReachable(false); }, Qt::QueuedConnection);
+                    this, [this, refusal]() { emit syncReachable(false, refusal); },
+                    Qt::QueuedConnection);
                 bazarish::log::info("mail wait failed, asking again: {}", error.what());
                 std::unique_lock<std::mutex> lock(drainMutex_);
                 drainDone_.wait_until(lock, askedAt + std::chrono::seconds(kEventWaitSeconds),
@@ -439,7 +442,7 @@ void SessionWorker::startEventWaiter()
             }
             answered = true;
             QMetaObject::invokeMethod(
-                this, [this]() { emit syncReachable(true); }, Qt::QueuedConnection);
+                this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
             if (waiting.empty()) {
                 continue;
             }
@@ -533,7 +536,7 @@ void SessionWorker::openAccount(
     session_->setAudioBackend(
         []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<CallSource>(); },
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<CallSink>(); });
-    session_->onServerAnswered([this]() { emit syncReachable(true); });
+    session_->onServerAnswered([this]() { emit syncReachable(true, {}); });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     session_->setSelfSendSink(
         [this](std::string deliveryId, bazarish::Bytes sealed, std::string kind) {
@@ -818,10 +821,10 @@ void SessionWorker::drainMailbox()
             session_->registerAccount();
             messages = session_->sync(false, Session::kPendingItemsPerPass);
         }
-        emit syncReachable(true);
+        emit syncReachable(true, {});
     } catch (const std::exception& error) {
         bazarish::log::warn("sync failed: {}", error.what());
-        emit syncReachable(false);
+        emit syncReachable(false, QString::fromStdString(session_->gatewayRefusal()));
         return;
     }
     if (!addsResumed_) {

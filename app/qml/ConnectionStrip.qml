@@ -14,8 +14,11 @@ Rectangle {
         && !root.session.reachable
     readonly property bool heldForApproval: root.session !== null && root.session.awaitingApproval
     // The gateway is only to blame when it is the part that is silent.
-    readonly property string whyNotReachable: (I2p.gatewayEnabled && !I2p.ready)
-        ? qsTr("No connection to the HTTPS gateway")
+    readonly property string whyNotReachable: root.session !== null
+        && root.session.gatewayRefusal.length > 0
+        ? qsTr("The gateway refused a link to the server")
+        : (I2p.gatewayEnabled && !I2p.ready)
+        ? qsTr("No connection to the external gateway")
         : (I2p.tunnelsBuilding ? qsTr("The I2P tunnels are being built")
                                : qsTr("No tunnel to the server"))
     readonly property int transportPollMs: 2000
