@@ -22,7 +22,16 @@ Popup {
 
     padding: 8
     margins: Theme.spacing
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+    // Modal behind a clear shade: a tap beside it closes it and reaches nothing under it.
+    modal: true
+    Overlay.modal: Item {
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.AllButtons
+            preventStealing: true
+        }
+    }
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
 
     component Glyph: Rectangle {
