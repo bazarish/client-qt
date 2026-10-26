@@ -661,7 +661,7 @@ void SessionWorker::emitContacts()
 
 void SessionWorker::emitFacadeInfo()
 {
-    if (!session_ || !session_->isConnected()) {
+    if (!session_) {
         return;
     }
     QStringList configured;

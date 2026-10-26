@@ -67,6 +67,16 @@ Item {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignHCenter
         }
+        Label {
+            visible: root.session !== null && root.session.serverFingerprint.length > 0
+                && root.session.configuredFacades.length === 0
+            text: qsTr("The saved server address cannot be used.")
+            color: Theme.danger
+            font.pixelSize: Theme.fontSmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+            horizontalAlignment: Text.AlignHCenter
+        }
 
         // Which account is being connected: name and fingerprint.
         Rectangle {

@@ -3341,6 +3341,12 @@
       "zh": "两者不一致。",
       "ar": "الاثنان غير متطابقين."
     },
+    "The saved server address cannot be used.": {
+      "ru": "Сохранённый адрес сервера не подходит.",
+      "es": "La dirección guardada del servidor no se puede usar.",
+      "zh": "保存的服务器地址无法使用。",
+      "ar": "لا يمكن استخدام عنوان الخادم المحفوظ."
+    },
     "The window does not answer while this runs.": {
       "ru": "Пока это идёт, окно не отвечает.",
       "es": "La ventana no responde mientras esto se ejecuta.",

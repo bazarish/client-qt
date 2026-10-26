@@ -33,6 +33,13 @@ ColumnLayout {
     Layout.fillWidth: true
 
     Component.onCompleted: reset()
+    // The account's connection can arrive after the form is built; it never overwrites typing.
+    onInitialFingerprintChanged: {
+        if (linkField.text.length === 0 && fpField.text.length === 0
+                && facadeList().length === 0 && reseedList().length === 0) {
+            reset()
+        }
+    }
 
     function reset() {
         fillFrom(initialFacades, initialFingerprint, initialReseeds)
