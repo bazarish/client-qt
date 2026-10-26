@@ -194,9 +194,10 @@ ApplicationWindow {
         }
     }
 
-    // Lightweight toast for transient messages.
+    // On the overlay, so a toast about an action in a modal shows over that modal.
     Rectangle {
         id: toast
+        parent: Overlay.overlay
         opacity: 0
         z: 950
         anchors.bottom: parent.bottom

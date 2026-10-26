@@ -12,6 +12,8 @@ Popup {
     property url source
     property string e2eId
     property string name
+    property bool saved: false
+    onE2eIdChanged: root.saved = false
     property var session: null
 
     readonly property real kMaxZoom: 4
@@ -264,9 +266,13 @@ Popup {
                 color: Qt.rgba(0, 0, 0, root.kButtonScrim)
             }
             contentItem: Item {
-                Icon { anchors.centerIn: parent; name: "save"; color: "white" }
+                Icon { anchors.centerIn: parent; name: root.saved ? "check" : "save"; color: "white" }
             }
-            onClicked: root.session.savePictureToDownloads(root.e2eId, root.name)
+            onClicked: {
+                if (root.session.savePictureToDownloads(root.e2eId, root.name)) {
+                    root.saved = true
+                }
+            }
         }
         // A tap waits out the double-tap interval: a second one zooms instead of closing.
         Timer {

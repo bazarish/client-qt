@@ -271,7 +271,7 @@ public:
     Q_INVOKABLE QVariantMap pictureBeside(const QString& e2eId, int step);
     // The address a bubble draws its picture from; bytes the cache let go come back first.
     Q_INVOKABLE QString pictureSource(const QString& e2eId, int revision);
-    Q_INVOKABLE void savePictureToDownloads(const QString& e2eId, const QString& name);
+    Q_INVOKABLE bool savePictureToDownloads(const QString& e2eId, const QString& name);
     Q_INVOKABLE void sendClipboardPicture();
     Q_INVOKABLE void sendShot(QObject* shot);
     Q_INVOKABLE void savePictureAs(const QString& e2eId, const QString& fileUrl);

@@ -1628,12 +1628,12 @@ void SessionController::savePictureAs(const QString& e2eId, const QString& fileU
     emit actionOk(tr("Picture saved"));
 }
 
-void SessionController::savePictureToDownloads(const QString& e2eId, const QString& name)
+bool SessionController::savePictureToDownloads(const QString& e2eId, const QString& name)
 {
     const QByteArray bytes = PictureStore::instance().bytes(e2eId);
     if (bytes.isEmpty()) {
         emit actionFailed(tr("This picture is not here to save."));
-        return;
+        return false;
     }
     const QString fileName = defaultPictureSaveUrl(e2eId, name).fileName();
     const QString mime = fileName.endsWith(QStringLiteral(".png")) ? QStringLiteral("image/png")
@@ -1643,9 +1643,10 @@ void SessionController::savePictureToDownloads(const QString& e2eId, const QStri
     } catch (const std::exception& error) {
         bazarish::log::warn("picture not saved to Downloads: {}", error.what());
         emit actionFailed(tr("Could not save to Downloads"));
-        return;
+        return false;
     }
     emit actionOk(tr("Saved to Downloads"));
+    return true;
 }
 
 void SessionController::copyPicture(const QString& e2eId)
