@@ -52,7 +52,9 @@ ApplicationWindow {
             const field = window.activeFocusItem
             if (App.keyboardInset === 0 && field && !field.readOnly
                     && (field instanceof TextInput || field instanceof TextEdit)) {
-                field.focus = false
+                // A SpinBox hands its focus straight back to its editor, so the box itself lets go.
+                const owner = field.parent instanceof SpinBox ? field.parent : field
+                owner.focus = false
             }
         }
     }

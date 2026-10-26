@@ -174,7 +174,7 @@ Popup {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: qsTr("A panel on the right edge lists the background operations and the stage each one has reached. Off by default.")
+                                text: qsTr("A panel on the right edge lists the background operations and the stage each one has reached.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }

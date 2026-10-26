@@ -113,11 +113,11 @@
       "zh": "新地址已发布",
       "ar": "نُشر عنوان جديد"
     },
-    "A panel on the right edge lists the background operations and the stage each one has reached. Off by default.": {
-      "ru": "Панель у правого края показывает фоновые операции и стадию каждой. По умолчанию выключена.",
-      "es": "Un panel en el borde derecho lista las operaciones en segundo plano y la fase de cada una. Desactivado por defecto.",
-      "zh": "右侧边缘的面板列出后台操作及各自的阶段。默认关闭。",
-      "ar": "لوحة عند الحافة اليمنى تسرد العمليات في الخلفية والمرحلة التي بلغتها كل واحدة. مُعطَّلة افتراضيًا."
+    "A panel on the right edge lists the background operations and the stage each one has reached.": {
+      "ru": "Панель у правого края показывает фоновые операции и стадию каждой.",
+      "es": "Un panel en el borde derecho lista las operaciones en segundo plano y la fase de cada una.",
+      "zh": "右侧边缘的面板列出后台操作及各自的阶段。",
+      "ar": "لوحة عند الحافة اليمنى تسرد العمليات في الخلفية والمرحلة التي بلغتها كل واحدة."
     },
     "A reseed address must be an https URL: %1": {
       "ru": "Адрес ресида должен быть https-ссылкой: %1",
