@@ -30,30 +30,15 @@ Popup {
     // Kept off the edges by this much when the asked-for spot is too near one.
     readonly property int kEdgeGap: 12
 
-    // Over an open keyboard the focus goes from field to field, never through the window, so
-    // the keyboard stays: into the custom field on open and back where it was on close.
-    property Item returnFocusTo: null
     function openAt(e2eId, sceneX, sceneY) {
         root.target = e2eId
         customField.text = ""
         root.askedX = sceneX
         root.askedY = sceneY
-        const typing = App.keyboardInset > 0
-        root.returnFocusTo = typing && root.parent ? root.parent.Window.activeFocusItem : null
-        root.focus = !typing
         // Left set by a tap into it last time, the window would hand the field its focus again.
         customField.focus = false
         root.open()
-        if (typing) {
-            customField.forceActiveFocus()
-        }
         root.placeInside()
-    }
-    onAboutToHide: {
-        if (root.returnFocusTo !== null) {
-            root.returnFocusTo.forceActiveFocus()
-            root.returnFocusTo = null
-        }
     }
 
     // Placed after opening and again whenever the size settles: before it opens

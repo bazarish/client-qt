@@ -15,8 +15,17 @@ ApplicationWindow {
     LayoutMirroring.enabled: Tr.rightToLeft
     LayoutMirroring.childrenInherit: true
 
-    // The window keeps its size under the keyboard; only the part holding the focus makes room.
-    readonly property real contentInset: holds(stack, activeFocusItem) ? App.keyboardInset : 0
+    // The page makes room for a keyboard it raised until it is put away; a popup's field lifts the popup alone.
+    property bool pageHoldsKeyboard: false
+    readonly property real contentInset: pageHoldsKeyboard ? App.keyboardInset : 0
+    function noteKeyboard() {
+        if (App.keyboardInset === 0) {
+            window.pageHoldsKeyboard = false
+        } else if (holds(stack, activeFocusItem)) {
+            window.pageHoldsKeyboard = true
+        }
+    }
+    onActiveFocusItemChanged: window.noteKeyboard()
     function holds(area, item) {
         for (let at = item; at; at = at.parent) {
             if (at === area) {
@@ -39,6 +48,7 @@ ApplicationWindow {
     Connections {
         target: App
         function onKeyboardInsetChanged() {
+            window.noteKeyboard()
             const field = window.activeFocusItem
             if (App.keyboardInset === 0 && field && !field.readOnly
                     && (field instanceof TextInput || field instanceof TextEdit)) {
