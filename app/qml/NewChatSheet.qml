@@ -35,6 +35,7 @@ Popup {
     }
 
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    onAboutToShow: intro.text = root.kGreeting
     onOpened: {
         targetText.text = root.prefillTarget
         errorText = ""
@@ -45,7 +46,6 @@ Popup {
     onClosed: {
         errorText = ""
         targetText.text = ""
-        intro.text = root.kGreeting
     }
 
     function openAlias(alias) {
