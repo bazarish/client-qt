@@ -38,7 +38,9 @@ Popup {
     onOpened: {
         targetText.text = root.prefillTarget
         errorText = ""
-        targetText.forceActiveFocus()
+        if (!App.mobile) {
+            targetText.forceActiveFocus()
+        }
     }
     onClosed: {
         errorText = ""

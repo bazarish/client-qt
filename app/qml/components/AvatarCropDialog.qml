@@ -78,50 +78,53 @@ Dialog {
         spacing: 10
 
         Item {
-            id: viewport
             Layout.alignment: Qt.AlignHCenter
             implicitWidth: root.kViewport
             implicitHeight: root.kViewport
-            clip: true
 
-            Image {
-                id: picture
-                fillMode: Image.PreserveAspectFit
-                // Filling the window at zoom 1 whichever way the picture is
-                // oriented, so there is never a bare corner to send.
-                width: implicitWidth >= implicitHeight
-                    ? root.kViewport * zoom.value * (implicitWidth / Math.max(1, implicitHeight))
-                    : root.kViewport * zoom.value
-                height: implicitWidth >= implicitHeight
-                    ? root.kViewport * zoom.value
-                    : root.kViewport * zoom.value * (implicitHeight / Math.max(1, implicitWidth))
-                x: (parent.width - width) / 2
-                y: (parent.height - height) / 2
-                // Turned about its corner and shifted back, so x and y stay the top-left of what
-                // is shown: zoom and drag behave as unturned, and the shorter side still fills.
-                transform: [
-                    Rotation { angle: root.quarterTurns * root.kQuarter },
-                    Translate {
-                        x: root.quarterTurns === 1 ? picture.height
-                            : root.quarterTurns === 2 ? picture.width : 0
-                        y: root.quarterTurns === 2 ? picture.height
-                            : root.quarterTurns === 3 ? picture.width : 0
+            Item {
+                id: viewport
+                anchors.fill: parent
+                clip: true
+
+                Image {
+                    id: picture
+                    fillMode: Image.PreserveAspectFit
+                    // Filling the window at zoom 1 whichever way the picture is
+                    // oriented, so there is never a bare corner to send.
+                    width: implicitWidth >= implicitHeight
+                        ? root.kViewport * zoom.value * (implicitWidth / Math.max(1, implicitHeight))
+                        : root.kViewport * zoom.value
+                    height: implicitWidth >= implicitHeight
+                        ? root.kViewport * zoom.value
+                        : root.kViewport * zoom.value * (implicitHeight / Math.max(1, implicitWidth))
+                    x: (parent.width - width) / 2
+                    y: (parent.height - height) / 2
+                    // Turned about its corner and shifted back, so x and y stay the top-left of what
+                    // is shown: zoom and drag behave as unturned, and the shorter side still fills.
+                    transform: [
+                        Rotation { angle: root.quarterTurns * root.kQuarter },
+                        Translate {
+                            x: root.quarterTurns === 1 ? picture.height
+                                : root.quarterTurns === 2 ? picture.width : 0
+                            y: root.quarterTurns === 2 ? picture.height
+                                : root.quarterTurns === 3 ? picture.width : 0
+                        }
+                    ]
+                    smooth: true
+                    DragHandler {
+                        target: picture
+                        xAxis.enabled: true
+                        xAxis.minimum: viewport.width - root.shownWidth
+                        xAxis.maximum: 0
+                        yAxis.enabled: true
+                        yAxis.minimum: viewport.height - root.shownHeight
+                        yAxis.maximum: 0
                     }
-                ]
-                smooth: true
-                DragHandler {
-                    target: picture
-                    xAxis.enabled: true
-                    xAxis.minimum: viewport.width - root.shownWidth
-                    xAxis.maximum: 0
-                    yAxis.enabled: true
-                    yAxis.minimum: viewport.height - root.shownHeight
-                    yAxis.maximum: 0
                 }
             }
 
-            // The grab underneath stays square: the picture is stored as cropped, and
-            // the circle is only how it is shown.
+            // Outside the grabbed item: the picture is stored square, the circle is only shown.
             Canvas {
                 id: mask
                 anchors.fill: parent

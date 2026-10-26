@@ -1373,11 +1373,11 @@
       "zh": "请至少填写一个门面地址",
       "ar": "أدخل عنوان واجهة واحدًا على الأقل"
     },
-    "Enter server details manually": {
-      "ru": "Ввести данные сервера вручную",
-      "es": "Introducir los datos del servidor a mano",
-      "zh": "手动填写服务器信息",
-      "ar": "إدخال بيانات الخادم يدويًا"
+    "More details": {
+      "ru": "Подробнее",
+      "es": "Más detalles",
+      "zh": "更多详情",
+      "ar": "مزيد من التفاصيل"
     },
     "Enter the code shown on the other device": {
       "ru": "Введите код с другого устройства",
@@ -2189,12 +2189,6 @@
       "zh": "粘贴 bazarish://server/… 链接",
       "ar": "الصِق رابط ‎bazarish://server/…‎"
     },
-    "Paste a server link, or edit the facades and fingerprint, then Connect. If your key needs registration, register on the server's portal and Connect again.": {
-      "ru": "Вставьте ссылку на сервер или впишите фасады и отпечаток, затем нажмите «Подключиться». Если ключ требует регистрации, зарегистрируйтесь на портале сервера и подключитесь снова.",
-      "es": "Pega un enlace de servidor, o edita las fachadas y la huella, y pulsa Conectar. Si tu clave necesita registro, regístrate en el portal del servidor y vuelve a conectar.",
-      "zh": "粘贴服务器链接，或填写门面和指纹，然后点击“连接”。若密钥需要注册，请到服务器门户注册后再次连接。",
-      "ar": "الصِق رابط خادم، أو حرّر الواجهات والبصمة، ثم اضغط «اتصال». وإن احتاج مفتاحك تسجيلًا، فسجّل في بوابة الخادم واتصل مرة أخرى."
-    },
     "Paste an invite link or a short alias": {
       "ru": "Вставьте ссылку-приглашение или короткий алиас",
       "es": "Pega un enlace de invitación o un alias corto",
@@ -2686,6 +2680,12 @@
       "es": "Resembrando desde el enlace",
       "zh": "正在按链接中的地址引导",
       "ar": "تهيئة من العنوان في الرابط"
+    },
+    "Reseeds": {
+      "ru": "Ресиды",
+      "es": "Reseeds",
+      "zh": "Reseed 源",
+      "ar": "مصادر إعادة البذر"
     },
     "Reseeds — fetched over clearnet, before I2P is up:": {
       "ru": "Ресиды — загружаются по обычному интернету до запуска I2P:",

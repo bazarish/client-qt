@@ -20,9 +20,9 @@ ColumnLayout {
     property var initialFacades: []
     property string initialFingerprint: ""
     property var initialReseeds: []
-    // Reveal the per-field inputs straight away (true when editing) or keep the
-    // link field as the only surface until a link parses or manual entry is asked.
-    property bool showManual: false
+    property bool detailed: false
+    property string shownFingerprint: ""
+    property var shownReseeds: []
     // Emitted right after the action runs, so a host dialog can close.
     signal submitted()
 
@@ -44,7 +44,7 @@ ColumnLayout {
     function reset() {
         fillFrom(initialFacades, initialFingerprint, initialReseeds)
         linkField.text = ""
-        form.showManual = initialFingerprint.length > 0
+        form.detailed = false
         flashRevert.stop()
         form.linkBorderColor = Theme.border
     }
@@ -53,6 +53,8 @@ ColumnLayout {
         fillModel(facadeModel, facades)
         fillModel(reseedModel, reseeds)
         fpField.text = fingerprint
+        form.shownFingerprint = fingerprint
+        form.shownReseeds = reseeds
     }
 
     function fillModel(model, urls) {
@@ -107,7 +109,6 @@ ColumnLayout {
         var info = form.session ? form.session.parseServerLink(t) : null
         if (info && info.serverFp && info.serverFp.length > 0) {
             form.fillFrom(info.facades || [], info.serverFp, info.reseeds || [])
-            form.showManual = true
             flashGreen()
         } else {
             flashRed()
@@ -147,10 +148,44 @@ ColumnLayout {
         }
     }
 
-    // Opt into the per-field form when there is no link to paste.
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: 4
+        visible: !form.detailed && form.shownFingerprint.length > 0
+
+        Label {
+            text: qsTr("Server fingerprint")
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+        }
+        Label {
+            text: form.shownFingerprint
+            color: Theme.text
+            wrapMode: Text.WrapAnywhere
+            Layout.fillWidth: true
+        }
+        Label {
+            visible: form.shownReseeds.length > 0
+            Layout.topMargin: 6
+            text: qsTr("Reseeds")
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+        }
+        Repeater {
+            model: form.shownReseeds
+            Label {
+                required property string modelData
+                text: modelData
+                color: Theme.text
+                wrapMode: Text.WrapAnywhere
+                Layout.fillWidth: true
+            }
+        }
+    }
+
     Label {
-        visible: !form.showManual
-        text: qsTr("Enter server details manually")
+        visible: !form.detailed
+        text: qsTr("More details")
         color: Theme.accent
         font.pixelSize: Theme.fontSmall
         font.underline: manualMa.containsMouse
@@ -160,18 +195,17 @@ ColumnLayout {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: form.showManual = true
+            onClicked: form.detailed = true
         }
         wrapMode: Text.Wrap
         Layout.fillWidth: true
         horizontalAlignment: Text.AlignHCenter
     }
 
-    // The per-field inputs, hidden until a link parses or manual entry is chosen.
     ColumnLayout {
         Layout.fillWidth: true
         spacing: 14
-        visible: form.showManual
+        visible: form.detailed
 
         Label {
             text: qsTr("Facade addresses, tried in order:")
@@ -246,26 +280,27 @@ ColumnLayout {
         }
 
         FormField { id: fpField; label: qsTr("Server fingerprint") }
+    }
 
-        Button {
-            id: actionButton
-            focusPolicy: Theme.pressFocus
-            Layout.fillWidth: true
-            text: (form.session && form.session.connecting) ? qsTr("Connecting\u2026")
-                : form.actionText
-            hoverEnabled: true
-            enabled: form.session && !form.session.connecting
-                && form.facadeList().length > 0 && fpField.displayText.trim().length > 0
-            onClicked: {
-                form.session.connectServer(form.facadeList(), fpField.text.trim(),
-                    form.reseedList())
-                form.submitted()
-            }
-            background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Theme.accentHover : Theme.accent) }
-            contentItem: IconLabel {
-                name: "server"
-                color: actionButton.enabled ? Theme.accentText : Theme.textDim
-            }
+    Button {
+        id: actionButton
+        visible: form.detailed || form.shownFingerprint.length > 0
+        focusPolicy: Theme.pressFocus
+        Layout.fillWidth: true
+        text: (form.session && form.session.connecting) ? qsTr("Connecting\u2026")
+            : form.actionText
+        hoverEnabled: true
+        enabled: form.session && !form.session.connecting
+            && form.facadeList().length > 0 && fpField.displayText.trim().length > 0
+        onClicked: {
+            form.session.connectServer(form.facadeList(), fpField.text.trim(),
+                form.reseedList())
+            form.submitted()
+        }
+        background: Rectangle { radius: 10; color: !parent.enabled ? Theme.surfaceAlt : (parent.hovered ? Theme.accentHover : Theme.accent) }
+        contentItem: IconLabel {
+            name: "server"
+            color: actionButton.enabled ? Theme.accentText : Theme.textDim
         }
     }
 }

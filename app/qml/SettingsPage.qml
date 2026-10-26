@@ -1183,11 +1183,6 @@ Popup {
         }
         contentItem: ScrollColumn {
             spacing: 12
-            Label {
-                text: qsTr("Paste a server link, or edit the facades and fingerprint, then Connect. If your key needs registration, register on the server's portal and Connect again.")
-                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                wrapMode: Text.Wrap; Layout.fillWidth: true
-            }
             ServerConnectForm {
                 id: connectionForm
                 Layout.fillWidth: true
