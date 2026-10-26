@@ -433,7 +433,7 @@ Rectangle {
         ContextMenuItem {
             // Pictures are their own thing: they are shrunk before they cross a
             // tunnel and shown in the bubble rather than listed as a file.
-            text: qsTr("Picture")
+            text: qsTr("Image")
             iconName: "image"
             visible: App.canPickPictures
             onTriggered: App.mobile ? App.pickPictures() : imageDialog.open()

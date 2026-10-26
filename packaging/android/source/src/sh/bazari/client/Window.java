@@ -114,7 +114,9 @@ public final class Window {
         if (shown == null) {
             return;
         }
+        // Without a type the photo picker lists videos beside the photos.
         Intent pick = new Intent(MediaStore.ACTION_PICK_IMAGES)
+            .setType("image/*")
             .putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, MediaStore.getPickImagesMaxLimit());
         shown.runOnUiThread(() -> shown.startActivityForResult(pick, PICK_PICTURES));
     }

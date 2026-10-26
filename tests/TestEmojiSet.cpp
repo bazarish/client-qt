@@ -2,12 +2,16 @@
 #include "AppFont.hpp"
 #include "EmojiText.hpp"
 
+#include <QCryptographicHash>
 #include <QFile>
 #include <QGlyphRun>
 #include <QGuiApplication>
+#include <QImage>
 #include <QJSEngine>
 #include <QJSValue>
+#include <QPainter>
 #include <QRawFont>
+#include <QSet>
 #include <QTextLayout>
 
 #include <cstdio>
@@ -26,6 +30,8 @@ namespace {
 
 const QString kEmojiFamily = QStringLiteral("Twemoji Mozilla");
 const QString kLibraryPragma = QStringLiteral(".pragma library");
+constexpr int kPictureSide = 64;
+constexpr int kPictureFontPixels = 48;
 
 QJSValue pickerGroups(QJSEngine& engine)
 {
@@ -64,6 +70,21 @@ bool drawnAsOneEmoji(const QString& emoji)
     return shown == 1;
 }
 
+// Two entries the font draws alike, such as a territory under its country's flag, are one choice.
+QByteArray pictureOf(const QString& emoji)
+{
+    QFont font = QGuiApplication::font();
+    font.setPixelSize(kPictureFontPixels);
+    QImage image(kPictureSide, kPictureSide, QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    painter.setFont(font);
+    painter.drawText(image.rect(), Qt::AlignCenter, emoji);
+    painter.end();
+    return QCryptographicHash::hash(
+        QByteArrayView(image.constBits(), image.sizeInBytes()), QCryptographicHash::Sha1);
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -79,6 +100,7 @@ int main(int argc, char** argv)
     const int groupCount = groups.property(QStringLiteral("length")).toInt();
     CHECK(groupCount > 0);
     int listed = 0;
+    QSet<QByteArray> pictures;
     for (int g = 0; g < groupCount; ++g) {
         const QJSValue group = groups.property(g);
         const int size = group.property(QStringLiteral("length")).toInt();
@@ -89,10 +111,17 @@ int main(int argc, char** argv)
                 std::fprintf(stderr, "not drawn as one emoji: %s\n", emoji.toUtf8().constData());
                 return 1;
             }
+            const QByteArray picture = pictureOf(emoji);
+            if (pictures.contains(picture)) {
+                std::fprintf(stderr, "drawn like another listed emoji: %s\n",
+                    emoji.toUtf8().constData());
+                return 1;
+            }
+            pictures.insert(picture);
             ++listed;
         }
     }
-    std::printf("TestEmojiSet: %d emoji in %d groups, all drawn by the emoji font\n", listed,
+    std::printf("TestEmojiSet: %d emoji in %d groups, each drawn apart by the emoji font\n", listed,
         groupCount);
     return 0;
 }
