@@ -54,17 +54,6 @@ void inCoreThread(std::function<void(CoreHost&)> action)
     }
 }
 
-void notificationsToggled(JNIEnv*, jclass)
-{
-    inCoreThread(
-        [](CoreHost& core) { core.setNotificationsEnabled(!core.notificationsEnabled()); });
-}
-
-void quitRequested(JNIEnv*, jclass)
-{
-    inCoreThread([](CoreHost& core) { core.prepareForExit(); });
-}
-
 void callDeclined(JNIEnv*, jclass)
 {
     inCoreThread([](CoreHost& core) { core.declineRinging(); });
@@ -83,8 +72,6 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
     , core_(core)
 {
     const JNINativeMethod natives[] = {
-        {"notificationsToggled", "()V", reinterpret_cast<void*>(notificationsToggled)},
-        {"quitRequested", "()V", reinterpret_cast<void*>(quitRequested)},
         {"callDeclined", "()V", reinterpret_cast<void*>(callDeclined)},
         {"networkChanged", "()V", reinterpret_cast<void*>(networkChanged)},
     };
@@ -102,7 +89,6 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
 
     connect(&notifier, &Notifier::announced, this, &AndroidShade::notifyMessage);
     connect(&notifier, &Notifier::arrivedInSight, this, &AndroidShade::buzzForMessage);
-    connect(&core_, &CoreHost::notificationsEnabledChanged, this, &AndroidShade::show);
     connect(&core_, &CoreHost::accountsChanged, this, [this]() {
         const QString line = presenceLine();
         if (line != line_) {
@@ -199,17 +185,12 @@ void AndroidShade::show()
     const QJniObject messages = javaString(tr("Messages"));
     const QJniObject reactions = javaString(tr("Reactions"));
     const QJniObject calls = javaString(tr("Calls"));
-    const QJniObject turnOff = javaString(tr("Turn off notifications"));
-    const QJniObject turnOn = javaString(tr("Turn on notifications"));
-    const QJniObject quit = javaString(tr("Quit"));
     const QJniObject line = javaString(line_);
     QJniObject::callStaticMethod<void>(kShade, "show",
         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;"
-        "Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZLjava/lang/String;)V",
+        "Ljava/lang/String;)V",
         presence.object<jstring>(), messages.object<jstring>(), reactions.object<jstring>(),
-        calls.object<jstring>(), turnOff.object<jstring>(), turnOn.object<jstring>(),
-        quit.object<jstring>(), static_cast<jboolean>(core_.notificationsEnabled()),
-        line.object<jstring>());
+        calls.object<jstring>(), line.object<jstring>());
 }
 
 void AndroidShade::notifyMessage(const QString& accountId, const QString& peer,

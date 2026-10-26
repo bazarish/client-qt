@@ -99,7 +99,8 @@ public final class Window {
                 coreListening();
             }
         };
-        app.startForegroundService(new Intent(app, BazarishService.class)
+        // The window is in sight, so a plain start is allowed; the core comes forward once, as it is made.
+        app.startService(new Intent(app, BazarishService.class)
             .putExtra(Shade.EXTRA_LISTENER, listener));
     }
 

@@ -51,7 +51,9 @@ and the next window attaches to them in seconds.
 A window starts the core and connects once the core answers that it listens; the
 socket is the name `bazarish-core-` followed by a digest of the installation
 root. A window that loses its core starts it again and attaches anew, unless the
-core said it was quitting: Quit in the shade ends both processes.
+core said it was quitting, which only the restart after a backend change asks
+for. Otherwise only the system stops the core. Its line in the shade carries no
+buttons; swiped away, it stays hidden until the core starts again.
 
 An incoming call opens the window over the lock screen at once, before the window
 has heard of the call; the call screen follows as soon as the window has been

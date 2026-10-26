@@ -4463,18 +4463,6 @@
       "zh": "通话",
       "ar": "المكالمات"
     },
-    "Turn off notifications": {
-      "ru": "Выключить уведомления",
-      "es": "Desactivar notificaciones",
-      "zh": "关闭通知",
-      "ar": "إيقاف الإشعارات"
-    },
-    "Turn on notifications": {
-      "ru": "Включить уведомления",
-      "es": "Activar notificaciones",
-      "zh": "开启通知",
-      "ar": "تشغيل الإشعارات"
-    },
     "Unread: %1": {
       "ru": "Непрочитанных: %1",
       "es": "Sin leer: %1",

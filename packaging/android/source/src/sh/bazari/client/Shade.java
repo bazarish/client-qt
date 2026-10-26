@@ -40,8 +40,6 @@ public final class Shade {
     static final String EXTRA_LISTENER = "sh.bazari.client.listener";
     static final String ACTION_ANSWER = "sh.bazari.client.ANSWER";
     static final String ACTION_RING = "sh.bazari.client.RING";
-    static final String ACTION_TOGGLE = "sh.bazari.client.TOGGLE_NOTIFICATIONS";
-    static final String ACTION_QUIT = "sh.bazari.client.QUIT";
     static final String ACTION_DECLINE = "sh.bazari.client.DECLINE";
     // Not exported: what a notice asks of the window cannot come from another app.
     static final String NOTICE_ENTRY = "sh.bazari.client.NoticeEntry";
@@ -62,18 +60,13 @@ public final class Shade {
     private static long lastBuzzAt = 0;
 
     static Context app;
-    static String turnOff = "";
-    static String turnOn = "";
-    static String quit = "";
     static String line = "";
-    static boolean notificationsOn = true;
+    static volatile boolean presenceHidden = false;
     private static boolean listening = false;
     private static final List<ResultReceiver> waiting = new ArrayList<>();
     private static boolean nativesReady = false;
     private static final List<String> heldActions = new ArrayList<>();
 
-    static native void notificationsToggled();
-    static native void quitRequested();
     static native void callDeclined();
     static native void networkChanged();
 
@@ -121,22 +114,13 @@ public final class Shade {
     }
 
     private static void run(String action) {
-        if (ACTION_TOGGLE.equals(action)) {
-            notificationsToggled();
-        } else if (ACTION_QUIT.equals(action)) {
-            quitRequested();
-        } else if (ACTION_DECLINE.equals(action)) {
+        if (ACTION_DECLINE.equals(action)) {
             callDeclined();
         }
     }
 
     public static void show(String presence, String messages, String reactions, String calls,
-            String turnOffText, String turnOnText, String quitText, boolean notifications,
             String presenceLine) {
-        turnOff = turnOffText;
-        turnOn = turnOnText;
-        quit = quitText;
-        notificationsOn = notifications;
         line = presenceLine;
         NotificationManager manager = app.getSystemService(NotificationManager.class);
         presenceChannel(app, presence);
@@ -156,7 +140,9 @@ public final class Shade {
         // The ring is played on the ring stream for as long as the call rings.
         callsChannel.setSound(null, null);
         manager.createNotificationChannel(callsChannel);
-        manager.notify(PRESENCE_ID, BazarishService.presence(app));
+        if (!presenceHidden) {
+            manager.notify(PRESENCE_ID, BazarishService.presence(app));
+        }
     }
 
     // Low importance is what Android draws collapsed until it is pulled open.

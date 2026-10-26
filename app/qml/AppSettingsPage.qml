@@ -152,6 +152,19 @@ Popup {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Notifications")
+                            color: Theme.text
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
+                        Toggle {
+                            checked: App.notificationsEnabled
+                            onToggled: App.notificationsEnabled = checked
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label {

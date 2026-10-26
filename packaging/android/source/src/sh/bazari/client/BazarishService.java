@@ -6,7 +6,6 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
-import android.graphics.drawable.Icon;
 import android.os.PowerManager;
 import android.os.ResultReceiver;
 
@@ -14,14 +13,12 @@ import java.lang.ref.WeakReference;
 
 import org.qtproject.qt.android.QtServiceBase;
 
-// The core: its own process, started by the window or at boot, and the only way out is Quit.
+// The core: its own process, started by the window or at boot; only the system stops it.
 public class BazarishService extends QtServiceBase {
-    private static final String ACTION_SHOW = "sh.bazari.client.SHOW";
+    private static final String ACTION_HIDDEN = "sh.bazari.client.PRESENCE_HIDDEN";
     private static final int OPEN_REQUEST = 0;
-    private static final int TOGGLE_REQUEST = 1;
-    private static final int QUIT_REQUEST = 2;
-    private static final int DECLINE_REQUEST = 3;
-    private static final int SHOW_REQUEST = 4;
+    private static final int DECLINE_REQUEST = 1;
+    private static final int HIDDEN_REQUEST = 2;
 
     static volatile boolean talking = false;
     static WeakReference<BazarishService> running = new WeakReference<>(null);
@@ -51,8 +48,11 @@ public class BazarishService extends QtServiceBase {
     @Override
     @SuppressWarnings("deprecation")
     public int onStartCommand(Intent intent, int flags, int startId) {
-        comeForward();
         if (intent == null) {
+            return START_NOT_STICKY;
+        }
+        if (ACTION_HIDDEN.equals(intent.getAction())) {
+            Shade.presenceHidden = true;
             return START_NOT_STICKY;
         }
         ResultReceiver listener = intent.getParcelableExtra(Shade.EXTRA_LISTENER);
@@ -66,6 +66,7 @@ public class BazarishService extends QtServiceBase {
     }
 
     void comeForward() {
+        Shade.presenceHidden = false;
         int types = ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING;
         if (talking) {
             types |= ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
@@ -81,23 +82,13 @@ public class BazarishService extends QtServiceBase {
         Notification.Builder shown = new Notification.Builder(context, Shade.CHANNEL_PRESENCE)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(open)
-            .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
-            // Android 14 lets the user swipe even this away; it is put back at once.
-            .setDeleteIntent(acting(context, ACTION_SHOW, SHOW_REQUEST));
+            // Swiped away, the line stays away until the service comes forward again.
+            .setDeleteIntent(acting(context, ACTION_HIDDEN, HIDDEN_REQUEST));
         // A notice with no title still keeps room for one, which leaves a blank band.
         if (!Shade.line.isEmpty()) {
             shown.setContentTitle(Shade.line);
-        }
-        // Until Qt has given its labels there is nothing to name the buttons with.
-        if (!Shade.quit.isEmpty()) {
-            Icon icon = Icon.createWithResource(context, R.drawable.ic_notification);
-            shown.addAction(new Notification.Action.Builder(icon,
-                Shade.notificationsOn ? Shade.turnOff : Shade.turnOn,
-                acting(context, Shade.ACTION_TOGGLE, TOGGLE_REQUEST)).build());
-            shown.addAction(new Notification.Action.Builder(icon, Shade.quit,
-                acting(context, Shade.ACTION_QUIT, QUIT_REQUEST)).build());
         }
         return shown.build();
     }
