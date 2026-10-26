@@ -32,7 +32,7 @@ Popup {
         if (!m.online) {
             return qsTr("Offline")
         }
-        return m.connected ? qsTr("Online") : qsTr("Connecting…")
+        return m.connected ? qsTr("Connected") : qsTr("Connecting…")
     }
     function statusColor(m) {
         if (m.open && m.online && m.connected) {

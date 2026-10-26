@@ -52,7 +52,7 @@ QString statusOf(const AccountRow& account)
     if (!account.open || !account.online) {
         return QObject::tr("disabled");
     }
-    return account.connected ? QObject::tr("online") : QObject::tr("connecting");
+    return account.connected ? QObject::tr("connected") : QObject::tr("connecting");
 }
 
 QString menuLine(const AccountRow& account)

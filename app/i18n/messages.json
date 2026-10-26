@@ -816,7 +816,7 @@
       "ar": "الاتصال بخادم"
     },
     "Connected": {
-      "ru": "Подключено",
+      "ru": "Подключен",
       "es": "Conectado",
       "zh": "已连接",
       "ar": "متصل"
@@ -2110,12 +2110,6 @@
       "es": "Un router de tránsito en el túnel entre tú y el resto de la red. El más rápido.",
       "zh": "隧道中只有一个中转路由，位于你与网络其余部分之间。最快。",
       "ar": "موجّه عابر واحد في النفق بينك وبين بقية الشبكة. الأسرع."
-    },
-    "Online": {
-      "ru": "В сети",
-      "es": "En línea",
-      "zh": "在线",
-      "ar": "متصل"
     },
     "Only updates this device and your invite link.": {
       "ru": "Обновит только это устройство и вашу ссылку-приглашение.",
@@ -4139,10 +4133,10 @@
       "zh": "服务器上没有内容",
       "ar": "لا شيء على الخادم"
     },
-    "online": {
-      "ru": "в сети",
-      "es": "en línea",
-      "zh": "在线",
+    "connected": {
+      "ru": "подключен",
+      "es": "conectado",
+      "zh": "已连接",
       "ar": "متصل"
     },
     "password": {
