@@ -2093,10 +2093,10 @@
       "zh": "关闭时，来电者会自动收到拒绝。",
       "ar": "عند الإيقاف، يتلقى المتصل رفضًا تلقائيًا."
     },
-    "Offline": {
-      "ru": "Не в сети",
-      "es": "Sin conexión",
-      "zh": "离线",
+    "Disconnected": {
+      "ru": "Отключен",
+      "es": "Desconectado",
+      "zh": "已断开",
       "ar": "غير متصل"
     },
     "One or two transit routers, chosen at random.": {

@@ -174,7 +174,7 @@ QString AndroidShade::presenceLine() const
         return tr("Unread: %1").arg(unread);
     }
     if (open == 0) {
-        return tr("Offline");
+        return tr("Disconnected");
     }
     return connected ? tr("Connected") : tr("Connecting…");
 }

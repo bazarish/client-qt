@@ -49,7 +49,7 @@ Rectangle {
         spacing: 8
         Label {
             text: root.heldForApproval ? qsTr("Waiting for approval")
-                : (root.isOffline ? qsTr("Offline") : qsTr("Connecting…"))
+                : (root.isOffline ? qsTr("Disconnected") : qsTr("Connecting…"))
             color: Theme.onWarn
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold

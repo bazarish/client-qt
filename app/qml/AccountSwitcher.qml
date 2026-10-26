@@ -27,10 +27,10 @@ Popup {
 
     function statusText(m) {
         if (!m.open) {
-            return m.encrypted ? qsTr("🔒 Locked") : qsTr("Offline")
+            return m.encrypted ? qsTr("🔒 Locked") : qsTr("Disconnected")
         }
         if (!m.online) {
-            return qsTr("Offline")
+            return qsTr("Disconnected")
         }
         return m.connected ? qsTr("Connected") : qsTr("Connecting…")
     }
