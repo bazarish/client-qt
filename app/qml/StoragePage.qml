@@ -136,11 +136,26 @@ Popup {
                     delegate: RowLayout {
                         id: chatRow
                         required property var modelData
+                        readonly property bool saved: root.session !== null
+                            && root.session.isSavedChat(chatRow.modelData.peer)
                         Layout.fillWidth: true
                         Layout.leftMargin: 14
                         Layout.rightMargin: 14
                         spacing: 10
-                        Avatar { fingerprint: chatRow.modelData.peer; size: 34 }
+                        Rectangle {
+                            visible: chatRow.saved
+                            implicitWidth: 34
+                            implicitHeight: 34
+                            radius: width / 2
+                            color: Theme.surfaceAlt
+                            Icon {
+                                anchors.centerIn: parent
+                                name: "bookmark"
+                                color: Theme.green
+                                size: 18
+                            }
+                        }
+                        Avatar { visible: !chatRow.saved; fingerprint: chatRow.modelData.peer; size: 34 }
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 1
@@ -152,7 +167,7 @@ Popup {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: qsTr("%1 messages  \u00b7  %2")
+                                text: "%1 (%2)"
                                     .arg(chatRow.modelData.messages)
                                     .arg(Format.bytes(chatRow.modelData.bytes))
                                 color: Theme.textDim
