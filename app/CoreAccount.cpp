@@ -370,8 +370,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         });
     connect(worker_, &SessionWorker::syncReachable, this, &CoreAccount::onSyncReachable);
     connect(worker_, &SessionWorker::facadeInfo, this,
-        [this](const QString& activeUrl, const QStringList& configured) {
-            activeFacade_ = activeUrl;
+        [this](const QString& activeAddress, const QStringList& configured) {
+            activeFacade_ = activeAddress;
             hasServer_ = !configured.isEmpty();
             emit changed();
         });

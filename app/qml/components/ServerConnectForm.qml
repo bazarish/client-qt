@@ -167,7 +167,7 @@ ColumnLayout {
         visible: form.showManual
 
         Label {
-            text: qsTr("Facade URL(s) — tried in order, with failover:")
+            text: qsTr("Facade addresses, tried in order:")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
@@ -181,7 +181,7 @@ ColumnLayout {
                 TextField {
                     Layout.fillWidth: true
                     text: model.url
-                    placeholderText: "http://<dest>.b32.i2p/secret-path"
+                    placeholderText: qsTr("<dest>.b32.i2p")
                     color: Theme.text
                     placeholderTextColor: Theme.textDim
                     selectByMouse: true

@@ -95,6 +95,12 @@
       "zh": "1.5 倍",
       "ar": "‎1.5×"
     },
+    "<dest>.b32.i2p": {
+      "ru": "<адрес>.b32.i2p",
+      "es": "<dirección>.b32.i2p",
+      "zh": "<地址>.b32.i2p",
+      "ar": "<العنوان>.b32.i2p"
+    },
     "A SOCKS5 proxy the router reaches the I2P network through. Leave empty to connect straight out.": {
       "ru": "Прокси SOCKS5, через который роутер подключается к сети I2P. Оставьте пустым, чтобы подключаться напрямую.",
       "es": "Un proxy SOCKS5 por el que el router se conecta a la red I2P. Déjalo vacío para conectar directamente.",
@@ -1367,9 +1373,9 @@
       "zh": "正在结束通话…",
       "ar": "جارٍ إنهاء المكالمة…"
     },
-    "Enter at least one facade URL": {
+    "Enter at least one facade address": {
       "ru": "Укажите хотя бы один адрес фасада",
-      "es": "Indica al menos una URL de fachada",
+      "es": "Indica al menos una dirección de fachada",
       "zh": "请至少填写一个门面地址",
       "ar": "أدخل عنوان واجهة واحدًا على الأقل"
     },
@@ -1403,11 +1409,11 @@
       "zh": "正在导出你的备份",
       "ar": "جارٍ تصدير نسختك الاحتياطية"
     },
-    "Facade URL(s) — tried in order, with failover:": {
-      "ru": "Адреса фасадов — перебираются по порядку:",
-      "es": "URL de las fachadas: se prueban en orden, con relevo",
-      "zh": "门面地址——按顺序尝试，失败则换下一个：",
-      "ar": "عناوين الواجهات — تُجرَّب بالترتيب، مع التبديل عند العطل:"
+    "Facade addresses, tried in order:": {
+      "ru": "Адреса фасадов, по порядку:",
+      "es": "Direcciones de las fachadas, por orden:",
+      "zh": "门面地址，按顺序尝试：",
+      "ar": "عناوين الواجهات، بالترتيب:"
     },
     "Failed": {
       "ru": "Не удалось",

@@ -139,7 +139,7 @@ signals:
         const QString& link, bool fetching, const QString& status, const QString& challenge);
     void connectionLogReady(const QVariantList& lines);
     void approvalState(bool pending, const QString& note);
-    void facadeInfo(const QString& activeUrl, const QStringList& configured,
+    void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
     void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
         qint64 transientExpires, const QString& serverState);

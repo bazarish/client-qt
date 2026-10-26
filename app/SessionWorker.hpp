@@ -61,7 +61,7 @@ private:
 public slots:
     void openAccount(const QString& dir, const QString& passphrase, bool startOnline);
     void forgetPendingAdd(const QString& opId);
-    void connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
+    void connectAndRegister(const QStringList& facades, const QString& serverFp,
         const QStringList& reseedUrls);
     void sync();
     void setSyncEnabled(bool on);
@@ -203,7 +203,7 @@ signals:
     void stopped();
     void syncReachable(bool ok);
     void approvalState(bool pending, const QString& note);
-    void facadeInfo(const QString& activeUrl, const QStringList& configured,
+    void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
     void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
         qint64 transientExpires, const QString& serverState);

@@ -83,23 +83,8 @@ using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
 namespace {
-constexpr int kSchemeSeparatorLength = 3;
 const QString kTimeOfDay = QStringLiteral("HH:mm");
 const QString kDayAndTime = QStringLiteral("dd.MM.yyyy HH:mm");
-
-QString facadeHost(const QString& url)
-{
-    QString rest = url.trimmed();
-    const int schemeEnd = rest.indexOf(QStringLiteral("://"));
-    if (schemeEnd >= 0) {
-        rest = rest.mid(schemeEnd + kSchemeSeparatorLength);
-    }
-    const int pathStart = rest.indexOf(QLatin1Char('/'));
-    if (pathStart >= 0) {
-        rest = rest.left(pathStart);
-    }
-    return rest;
-}
 
 
 
@@ -417,7 +402,7 @@ void SessionController::refreshUnreadTotal()
 
 SessionController::~SessionController() = default;
 
-void SessionController::connectServer(const QStringList& facadeUrls, const QString& serverFp,
+void SessionController::connectServer(const QStringList& facades, const QString& serverFp,
     const QStringList& reseedUrls)
 {
     connecting_ = true;
@@ -425,7 +410,7 @@ void SessionController::connectServer(const QStringList& facadeUrls, const QStri
     connectPhase_ = tr("Starting…");
     connectError_.clear();
     emit connectStateChanged();
-    emit commands_.requestConnect(facadeUrls, serverFp, reseedUrls);
+    emit commands_.requestConnect(facades, serverFp, reseedUrls);
 }
 
 void SessionController::onConnectProgress(const int percent, const QString& phase)
@@ -438,15 +423,10 @@ void SessionController::onConnectProgress(const int percent, const QString& phas
     emit connectStateChanged();
 }
 
-QString SessionController::activeFacadeHost() const
-{
-    return facadeHost(activeFacade_);
-}
-
-void SessionController::onFacadeInfo(const QString& activeUrl, const QStringList& configured,
+void SessionController::onFacadeInfo(const QString& activeAddress, const QStringList& configured,
     const QString& serverFp, const QStringList& reseeds)
 {
-    activeFacade_ = activeUrl;
+    activeFacade_ = activeAddress;
     configuredFacades_ = configured;
     serverFp_ = serverFp;
     configuredReseeds_ = reseeds;
@@ -461,8 +441,8 @@ QVariantMap SessionController::parseServerLink(const QString& uri) const
             = bazarish::client::decodeServerLink(uri.trimmed().toStdString());
         result["serverFp"] = QString::fromStdString(link.serverFingerprint);
         QStringList facades;
-        for (const std::string& url : link.facadeUrls) {
-            facades << QString::fromStdString(url);
+        for (const std::string& address : link.facades) {
+            facades << QString::fromStdString(address);
         }
         result["facades"] = facades;
         QStringList reseeds;

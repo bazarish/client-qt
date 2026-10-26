@@ -79,7 +79,7 @@ signals:
     void compact();
     void requestPublishThisDeviceAddress();
     void requestPublishFreshAddress();
-    void requestConnect(const QStringList& facadeUrls, const QString& serverFp,
+    void requestConnect(const QStringList& facades, const QString& serverFp,
         const QStringList& reseedUrls);
     void requestSendText(const QString& peer, const QString& text, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);

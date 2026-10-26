@@ -50,7 +50,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString voicePlaying READ voicePlaying NOTIFY voiceChanged)
     Q_PROPERTY(bool awaitingApproval READ awaitingApproval NOTIFY approvalChanged)
     Q_PROPERTY(QString approvalNote READ approvalNote NOTIFY approvalChanged)
-    Q_PROPERTY(QString activeFacadeHost READ activeFacadeHost NOTIFY facadeInfoChanged)
+    Q_PROPERTY(QString activeFacadeHost READ activeFacade NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredFacades READ configuredFacades NOTIFY facadeInfoChanged)
     Q_PROPERTY(bool connecting READ connecting NOTIFY connectStateChanged)
     Q_PROPERTY(QString connectPhase READ connectPhase NOTIFY connectStateChanged)
@@ -159,7 +159,6 @@ public:
     bool awaitingApproval() const { return awaitingApproval_; }
     QString approvalNote() const { return approvalNote_; }
     QString activeFacade() const { return activeFacade_; }
-    QString activeFacadeHost() const;
     QStringList configuredFacades() const { return configuredFacades_; }
     bool connecting() const { return connecting_; }
     QString connectPhase() const { return connectPhase_; }
@@ -243,7 +242,7 @@ public:
     bool callMuted() const { return callMuted_; }
 
 
-    Q_INVOKABLE void connectServer(const QStringList& facadeUrls, const QString& serverFp,
+    Q_INVOKABLE void connectServer(const QStringList& facades, const QString& serverFp,
         const QStringList& reseedUrls = {});
     Q_INVOKABLE QVariantMap parseServerLink(const QString& uri) const;
     void retranslate();
@@ -494,7 +493,7 @@ private slots:
     void onPairFinished(bool ok, const QString& status);
     void onApprovalState(bool pending, const QString& note);
     void onConnectProgress(int percent, const QString& phase);
-    void onFacadeInfo(const QString& activeUrl, const QStringList& configured,
+    void onFacadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
     void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
         qint64 transientExpires, const QString& serverState);

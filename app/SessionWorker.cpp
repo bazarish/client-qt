@@ -665,18 +665,18 @@ void SessionWorker::emitFacadeInfo()
         return;
     }
     QStringList configured;
-    for (const std::string& url : session_->facadeUrls()) {
-        configured << QString::fromStdString(url);
+    for (const std::string& address : session_->facadeAddresses()) {
+        configured << QString::fromStdString(address);
     }
     QStringList reseeds;
     for (const std::string& url : session_->endpoint().reseeds) {
         reseeds << QString::fromStdString(url);
     }
-    emit facadeInfo(QString::fromStdString(session_->activeFacadeUrl()), configured,
+    emit facadeInfo(QString::fromStdString(session_->activeFacadeAddress()), configured,
         QString::fromStdString(session_->endpoint().serverFingerprint), reseeds);
 }
 
-void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QString& serverFp,
+void SessionWorker::connectAndRegister(const QStringList& facades, const QString& serverFp,
     const QStringList& reseedUrls)
 {
     if (!session_) {
@@ -694,11 +694,11 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
         });
         ServerEndpoint endpoint;
         endpoint.serverFingerprint = serverFp.toStdString();
-        for (const QString& url : facadeUrls) {
-            const QString trimmed = url.trimmed();
+        for (const QString& address : facades) {
+            const QString trimmed = address.trimmed();
             if (!trimmed.isEmpty()) {
                 endpoint.facades.push_back(
-                    bazarish::client::parseFacadeUrl(trimmed.toStdString()));
+                    bazarish::client::parseFacadeAddress(trimmed.toStdString()));
             }
         }
         for (const QString& url : reseedUrls) {
@@ -713,7 +713,7 @@ void SessionWorker::connectAndRegister(const QStringList& facadeUrls, const QStr
             endpoint.reseeds.push_back(trimmed.toStdString());
         }
         if (endpoint.facades.empty()) {
-            throw std::runtime_error(tr("Enter at least one facade URL").toStdString());
+            throw std::runtime_error(tr("Enter at least one facade address").toStdString());
         }
         session_->connectServer(endpoint);
         emitFacadeInfo();
