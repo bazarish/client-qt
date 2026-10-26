@@ -1571,11 +1571,11 @@
       "zh": "I2P 将由本程序内部的引擎承载。",
       "ar": "سيحمل I2P المحرّك الموجود داخل هذا التطبيق."
     },
-    "I2P will be carried by the local external router.": {
-      "ru": "I2P будет работать через локальный внешний роутер.",
-      "es": "I2P irá por el router externo local.",
-      "zh": "I2P 将通过本机的外部路由承载。",
-      "ar": "ستمرّ I2P عبر الموجّه الخارجي المحلي."
+    "I2P will be carried by an external router.": {
+      "ru": "I2P будет работать через внешний роутер.",
+      "es": "I2P lo llevará un router externo.",
+      "zh": "I2P 将由外部路由器承载。",
+      "ar": "سيحمل I2P موجّه خارجي."
     },
     "I2P will be carried by the external gateway.": {
       "ru": "I2P будет работать через внешний шлюз.",
@@ -3161,11 +3161,11 @@
       "zh": "这不是网关地址。网关地址形如 https://host/path#token。",
       "ar": "ليس هذا عنوان بوابة. شكله هكذا: ‎https://host/path#token‎."
     },
-    "The I2P backend is chosen at startup. A restart will be needed.": {
-      "ru": "I2P-бэкенд выбирается на старте. Потребуется перезапуск.",
-      "es": "El backend de I2P se elige al arrancar. Hará falta reiniciar.",
-      "zh": "I2P 后端在启动时选定，需要重启后生效。",
-      "ar": "تُختار خلفية I2P عند البدء. سيلزم إعادة تشغيل."
+    "The I2P backend is chosen at startup: changing it takes a restart.": {
+      "ru": "Бэкенд I2P выбирается при запуске, его смена требует перезапуска.",
+      "es": "El backend de I2P se elige al iniciar: cambiarlo requiere reiniciar.",
+      "zh": "I2P 后端在启动时选定，更换需要重启。",
+      "ar": "تُختار واجهة I2P الخلفية عند التشغيل، وتغييرها يتطلب إعادة التشغيل."
     },
     "The I2P backend is chosen at startup. Your accounts are closed; restart to apply.": {
       "ru": "I2P бекэнд выбирается на старте. Аккаунты закрыты. Перезапустите приложение.",
@@ -3695,11 +3695,11 @@
       "zh": "向右旋转",
       "ar": "تدوير لليمين"
     },
-    "Use the local external I2P router.": {
-      "ru": "Использовать локальный внешний роутер I2P.",
-      "es": "Usar el router I2P externo local.",
-      "zh": "使用本机的外部 I2P 路由。",
-      "ar": "استخدام موجّه I2P الخارجي المحلي."
+    "Use an external I2P router.": {
+      "ru": "Использовать внешний роутер I2P.",
+      "es": "Usar un router I2P externo.",
+      "zh": "使用外部 I2P 路由器。",
+      "ar": "استخدم موجّه I2P خارجيًا."
     },
     "Version": {
       "ru": "Версия",

@@ -312,7 +312,7 @@ ApplicationWindow {
                 text: (I2p.transport === "gateway"
                         ? qsTr("I2P will be carried by the external gateway.")
                         : (I2p.transport === "sam"
-                            ? qsTr("I2P will be carried by the local external router.")
+                            ? qsTr("I2P will be carried by an external router.")
                             : qsTr("I2P will be carried by the engine inside this application.")))
                     + " "
                     + qsTr("The I2P backend is chosen at startup. Your accounts are closed; restart to apply.")

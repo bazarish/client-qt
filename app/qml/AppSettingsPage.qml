@@ -204,6 +204,13 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
+                    Label {
+                        text: qsTr("The I2P backend is chosen at startup: changing it takes a restart.")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
 
                     TabBar {
                         id: transportTabs
@@ -246,13 +253,6 @@ Popup {
                                         }
                                     }
                                 }
-                            }
-                            Label {
-                                visible: I2p.transport !== "gateway"
-                                Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
                             }
                             Label {
                                 text: qsTr("The gateway takes connections over HTTPS, so this application looks like ordinary web traffic. It removes the need for a local I2P router. The gateway sees the I2P addresses you reach, so it has to be one you trust. End-to-end protection of your data is unaffected.")
@@ -366,13 +366,6 @@ Popup {
                                     }
                                 }
                             }
-                            Label {
-                                visible: I2p.transport !== "embedded"
-                                Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            }
                             RowLayout {
                                 Layout.fillWidth: true
                                 Label { text: qsTr("Version"); color: Theme.textDim; font.pixelSize: Theme.fontSmall; Layout.fillWidth: true }
@@ -454,14 +447,7 @@ Popup {
                                 }
                             }
                             Label {
-                                visible: I2p.transport !== "sam"
-                                Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                                text: qsTr("The I2P backend is chosen at startup. A restart will be needed.")
-                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
-                            }
-                            Label {
-                                text: qsTr("Use the local external I2P router.")
+                                text: qsTr("Use an external I2P router.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
