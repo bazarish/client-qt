@@ -19,6 +19,8 @@ Item {
     readonly property real kTypingPencilWeight: 3
     readonly property int kBadgeRing: 2
     readonly property int kVisibleSettleMs: 300
+    // More than any row shows; the label elides at its width, this only spares laying out a long message.
+    readonly property int kPreviewChars: 200
 
     function formatTime(ts) {
         if (!ts) return ""
@@ -32,8 +34,7 @@ Item {
         if (!s) {
             return ""
         }
-        const oneLine = App.markupPlain(s).replace(/\s+/g, " ").trim()
-        return oneLine.length > 30 ? oneLine.substring(0, 30) + "…" : oneLine
+        return App.markupPlain(s).replace(/\s+/g, " ").trim().substring(0, root.kPreviewChars)
     }
 
     ColumnLayout {
@@ -256,8 +257,7 @@ Item {
                             }
                             Label {
                                 Layout.fillWidth: true
-                                text: model.name.length > 14 && !model.saved
-                                    ? model.name.substring(0, 12) + "…" : model.name
+                                text: model.name
                                 color: chatRow.highlighted ? Theme.neon : Theme.text
                                 font.weight: Font.Medium
                                 elide: Text.ElideRight
