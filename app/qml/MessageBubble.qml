@@ -282,7 +282,11 @@ Item {
         busy = false
         busyTimer.stop()
     }
-    ListView.onReused: pooled = false
+    // A reused bubble measures itself at once: the view places it before its layouts' own polish.
+    ListView.onReused: {
+        pooled = false
+        content.ensurePolished()
+    }
 
     // Pulled by a finger past kActionPull, letting go answers the message (left) or passes it on (right).
     property real pull: 0
