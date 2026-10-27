@@ -505,7 +505,13 @@ if(Qt6_FOUND)
     target_link_libraries(TestEmojiSet PRIVATE bazarish_common Qt6::Gui Qt6::Qml)
     target_compile_options(TestEmojiSet PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestEmojiSet COMMAND TestEmojiSet)
-    set_tests_properties(TestEmojiSet PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    # Offscreen draws with CoreText on macOS; the app draws with FreeType there, as everywhere.
+    if(APPLE)
+        set_tests_properties(TestEmojiSet PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=cocoa:fontengine=freetype")
+    else()
+        set_tests_properties(TestEmojiSet PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endif()
 
     # The chat shows one row per stored message, however many times the row reaches it.
     add_executable(TestConversationModel tests/TestConversationModel.cpp app/Models.cpp

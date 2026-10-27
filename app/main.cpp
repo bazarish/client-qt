@@ -231,6 +231,12 @@ int main(int argc, char** argv)
         qputenv("QT_QPA_PLATFORM", "windows:fontengine=freetype");
     }
 #endif
+#ifdef Q_OS_MACOS
+    // Under CoreText the COLR emoji font draws different emoji alike.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+        qputenv("QT_QPA_PLATFORM", "cocoa:fontengine=freetype");
+    }
+#endif
 
     if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORMTHEME")) {
         const QString themes
