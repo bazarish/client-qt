@@ -61,13 +61,6 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
         Label {
-            text: qsTr("A server is needed")
-            color: Theme.textDim
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-            horizontalAlignment: Text.AlignHCenter
-        }
-        Label {
             visible: root.session !== null && root.session.serverFingerprint.length > 0
                 && root.session.configuredFacades.length === 0
             text: qsTr("The saved server address cannot be used.")

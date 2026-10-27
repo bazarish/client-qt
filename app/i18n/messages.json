@@ -3845,12 +3845,6 @@
       "zh": "你的 I2P 目的地",
       "ar": "وجهتك في I2P"
     },
-    "A server is needed": {
-      "ru": "Нужен сервер",
-      "es": "Se necesita un servidor",
-      "zh": "需要服务器",
-      "ar": "يلزم خادم"
-    },
     "Your address changes. Every invite link you have handed out stops working and the old address stops answering at once. Your contacts are sent the new details automatically, and your aliases are repointed by themselves. This helps in the rare case of shaking off spam. Do not take this step unless you are sure why you need it.": {
       "ru": "Адрес изменится. Все выданные ссылки-приглашения перестанут работать, а старый адрес сразу перестанет отвечать. Контактам новые данные разошлются автоматически, алиасы переназначатся сами. Это помогает в редком случае, когда нужно избавиться от спама. Не делайте этого, если не уверены, зачем.",
       "es": "Tu dirección cambia. Todos los enlaces de invitación que hayas repartido dejan de funcionar y la dirección anterior deja de responder de inmediato. Tus contactos reciben los datos nuevos automáticamente y tus alias se reapuntan por sí solos. Esto ayuda en el caso poco frecuente de quitarse el spam de encima. No lo hagas si no tienes claro para qué.",
