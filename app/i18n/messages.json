@@ -3156,7 +3156,7 @@
       "ar": "ليس هذا عنوان بوابة. شكله هكذا: ‎https://host/path#token‎."
     },
     "The I2P backend is chosen at startup: changing it takes a restart.": {
-      "ru": "Бэкенд I2P выбирается при запуске, его смена требует перезапуска.",
+      "ru": "Бэкенд I2P выбирается при старте, его смена требует перезапуск.",
       "es": "El backend de I2P se elige al iniciar: cambiarlo requiere reiniciar.",
       "zh": "I2P 后端在启动时选定，更换需要重启。",
       "ar": "تُختار واجهة I2P الخلفية عند التشغيل، وتغييرها يتطلب إعادة التشغيل."
