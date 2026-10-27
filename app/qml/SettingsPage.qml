@@ -796,6 +796,23 @@ Popup {
                             onToggled: if (root.session) root.session.sendReceipts = checked
                         }
                     }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: qsTr("Show online status")
+                                color: Theme.text
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Label { text: qsTr("Lets contacts see when the app is open and when you type."); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                        }
+                        Toggle {
+                            checked: root.session ? root.session.showPresence : true
+                            onToggled: if (root.session) root.session.showPresence = checked
+                        }
+                    }
                 }
                 Hairline { }
 

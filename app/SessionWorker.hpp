@@ -127,6 +127,11 @@ public slots:
     void retryRoutingTo(const QString& peer);
     void setAcceptCalls(bool accept);
     void setSendReceipts(bool on);
+    void setShowPresence(bool on);
+    void setPresenceFocused(bool focused);
+    void setPresenceOrder(const QStringList& chatOrder);
+    void watchPresence(const QStringList& peers);
+    void presenceTyped(const QString& peer);
     void setDelegationDays(int days);
     void cancelTransfer(const QString& e2eId);
     void publishPersonalDest();
@@ -157,7 +162,8 @@ signals:
     void pairStage(const QString& status, double progress);
     void pairFinished(bool ok, const QString& status);
     void accountClosed(bool ok, const QString& error);
-    void accountSettings(bool acceptCalls, bool sendReceipts);
+    void accountSettings(bool acceptCalls, bool sendReceipts, bool showPresence);
+    void peerPresence(const QString& peer, bool online, bool typing);
     void aliasHoldings(const QVariantList& rows, const QString& note);
     void routingTold(const QString& peer, bool delivered);
     void aliasActivationDone(bool ok, const QString& text);

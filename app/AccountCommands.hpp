@@ -143,6 +143,9 @@ signals:
     void requestRetryRoutingTo(const QString& peer);
     void requestSetAcceptCalls(bool accept);
     void requestSetSendReceipts(bool on);
+    void requestSetShowPresence(bool on);
+    void watchPresence(const QStringList& peers);
+    void presenceTyped(const QString& peer);
     void requestSetDelegationDays(int days);
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();

@@ -13,6 +13,13 @@ Item {
     readonly property bool narrow: width < 300
     signal accountsRequested()
 
+    readonly property int kOnlineDot: 12
+    readonly property int kTypingBadge: 20
+    readonly property int kTypingPencil: 14
+    readonly property real kTypingPencilWeight: 3
+    readonly property int kBadgeRing: 2
+    readonly property int kVisibleSettleMs: 300
+
     function formatTime(ts) {
         if (!ts) return ""
         return new Date(ts).toLocaleTimeString(Qt.locale(), "hh:mm")
@@ -132,8 +139,40 @@ Item {
             ScrollBoost { flickable: list }
             topMargin: Theme.rowInset / 2
             bottomMargin: Theme.rowInset / 2
+            function reportVisible() {
+                if (!root.session) {
+                    return
+                }
+                const peers = []
+                if (list.visible && list.count > 0) {
+                    const first = Math.max(0, list.indexAt(list.width / 2, list.contentY))
+                    const below = list.indexAt(list.width / 2, list.contentY + list.height - 1)
+                    const last = below < 0 ? list.count - 1 : below
+                    for (let row = first; row <= last; ++row) {
+                        const item = list.itemAtIndex(row)
+                        if (item !== null) {
+                            peers.push(item.peer)
+                        }
+                    }
+                }
+                root.session.setVisibleChats(peers)
+            }
+            Timer { id: visibleSettle; interval: root.kVisibleSettleMs; onTriggered: list.reportVisible() }
+            onContentYChanged: visibleSettle.restart()
+            onHeightChanged: visibleSettle.restart()
+            onCountChanged: visibleSettle.restart()
+            onVisibleChanged: visibleSettle.restart()
+            onModelChanged: visibleSettle.restart()
+            Connections {
+                target: list.model
+                ignoreUnknownSignals: true
+                function onRowsMoved() { visibleSettle.restart() }
+                function onModelReset() { visibleSettle.restart() }
+                function onLayoutChanged() { visibleSettle.restart() }
+            }
             delegate: ItemDelegate {
                 id: chatRow
+                readonly property string peer: model.fingerprint
                 width: ListView.view.width
                 height: 66
                 leftInset: Theme.rowInset
@@ -175,6 +214,32 @@ Item {
                         visible: !model.saved
                         fingerprint: model.fingerprint
                         size: 44
+                        Rectangle {
+                            readonly property bool online: root.session !== null
+                                && root.session.presenceRevision >= 0
+                                && root.session.peerOnline(chatRow.peer)
+                            readonly property bool typing: online
+                                && root.session.activePeer !== chatRow.peer
+                                && root.session.peerTyping(chatRow.peer)
+                            readonly property color ring: chatRow.hovered ? Theme.surfaceAlt : Theme.bg
+                            visible: online
+                            width: typing ? root.kTypingBadge : root.kOnlineDot
+                            height: width
+                            radius: width / 2
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            color: typing ? ring : Theme.green
+                            border.width: root.kBadgeRing
+                            border.color: ring
+                            Icon {
+                                visible: parent.typing
+                                anchors.centerIn: parent
+                                name: "edit"
+                                color: Theme.green
+                                size: root.kTypingPencil
+                                weight: root.kTypingPencilWeight
+                            }
+                        }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true

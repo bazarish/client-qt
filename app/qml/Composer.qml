@@ -331,6 +331,11 @@ Rectangle {
                             onTapped: function(point) { TextSelection.tapped(input, point.position) }
                             onLongPressed: TextSelection.longPressed(input, point.position)
                         }
+                        onTextChanged: {
+                            if (input.activeFocus && input.length > 0 && root.session) {
+                                root.session.typed()
+                            }
+                        }
                         onCursorRectangleChanged: {
                             const view = inputScroll.contentItem
                             const at = input.cursorRectangle

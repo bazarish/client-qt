@@ -90,6 +90,7 @@ const QString kDayAndTime = QStringLiteral("dd.MM.yyyy HH:mm");
 
 
 constexpr int kPageSize = 25;
+constexpr qint64 kTypedEveryMs = 1000;
 
 constexpr int kBusyPaintDelayMs = 32;
 
@@ -190,7 +191,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
 
     connect(&events_, &AccountEvents::opened, this, &SessionController::onOpened);
     connect(&events_, &AccountEvents::accountSettings, this,
-        [this](const bool acceptCalls, const bool sendReceipts) {
+        [this](const bool acceptCalls, const bool sendReceipts, const bool showPresence) {
             if (sendReceipts_ != sendReceipts) {
                 sendReceipts_ = sendReceipts;
                 emit sendReceiptsChanged();
@@ -199,6 +200,16 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
                 acceptCalls_ = acceptCalls;
                 emit acceptCallsChanged();
             }
+            if (showPresence_ != showPresence) {
+                showPresence_ = showPresence;
+                emit showPresenceChanged();
+            }
+        });
+    connect(&events_, &AccountEvents::peerPresence, this,
+        [this](const QString& peer, const bool online, const bool typing) {
+            peerPresence_[peer] = {online, typing};
+            ++presenceRevision_;
+            emit presenceChanged();
         });
     connect(&events_, &AccountEvents::renamed, this, [this](const QString& newName) {
         if (newName != displayName_) {
@@ -461,6 +472,7 @@ void SessionController::activateConversation(const QString& peer)
 {
     emit commands_.viewConversation(peer);
     activePeer_ = peer;
+    watchOnScreen();
     emit activePeerChanged();
     emit activePeerNameChanged();
     refreshActiveGroup();
@@ -933,6 +945,57 @@ bool SessionController::contactNotifications(const QString& peer) const
 bool SessionController::contactCalls(const QString& peer) const
 {
     return book_.state(peer).calls;
+}
+
+QString SessionController::contactKind(const QString& peer) const
+{
+    return book_.state(peer).kind;
+}
+
+bool SessionController::peerOnline(const QString& peer) const
+{
+    return peerPresence_.value(peer).first;
+}
+
+bool SessionController::peerTyping(const QString& peer) const
+{
+    return peerPresence_.value(peer).second;
+}
+
+void SessionController::setVisibleChats(const QStringList& peers)
+{
+    visibleChats_ = peers;
+    watchOnScreen();
+}
+
+void SessionController::watchOnScreen()
+{
+    QStringList peers;
+    if (!activePeer_.isEmpty() && !isSavedChat(activePeer_)) {
+        peers << activePeer_;
+    }
+    for (const QString& peer : visibleChats_) {
+        if (!peers.contains(peer) && !isSavedChat(peer)) {
+            peers << peer;
+        }
+    }
+    if (peers == watchedPeers_) {
+        return;
+    }
+    watchedPeers_ = peers;
+    emit commands_.watchPresence(peers);
+}
+
+void SessionController::typed()
+{
+    if (activePeer_.isEmpty() || isSavedChat(activePeer_)) {
+        return;
+    }
+    if (sinceTyped_.isValid() && sinceTyped_.elapsed() < kTypedEveryMs) {
+        return;
+    }
+    sinceTyped_.start();
+    emit commands_.presenceTyped(activePeer_);
 }
 
 void SessionController::setContactNotifications(const QString& peer, const bool on)
@@ -1453,6 +1516,16 @@ void SessionController::setAcceptCalls(const bool on)
     acceptCalls_ = on;
     emit commands_.requestSetAcceptCalls(on);
     emit acceptCallsChanged();
+}
+
+void SessionController::setShowPresence(const bool on)
+{
+    if (showPresence_ == on) {
+        return;
+    }
+    showPresence_ = on;
+    emit commands_.requestSetShowPresence(on);
+    emit showPresenceChanged();
 }
 
 void SessionController::setSendReceipts(const bool on)

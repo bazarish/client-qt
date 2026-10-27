@@ -88,6 +88,7 @@ signals:
     void accountUnlocked(const QString& id);
     void accountOpenFailed(const QString& error);
     void createFailed(const QString& error);
+    void importRefused(const QString& kind);
     void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened);
     void accountDeleteNeedsUnlock(const QString& id, const QString& name);
     void deleting(const QString& id);

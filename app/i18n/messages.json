@@ -4810,6 +4810,84 @@
       "es": "«Para todos» pedirá a la aplicación de la otra parte que también borre su copia.",
       "zh": "“为所有人”会请求对方的应用也删除其副本。",
       "ar": "‏«لدى الجميع» سيطلب من تطبيق الطرف الآخر حذف نسخته أيضًا."
+    },
+    "Account not added": {
+      "ru": "Аккаунт не добавлен",
+      "es": "Cuenta no añadida",
+      "zh": "未添加账户",
+      "ar": "لم تُضف الحساب"
+    },
+    "Changing online status": {
+      "ru": "Смена статуса «в сети»",
+      "es": "Cambiando el estado en línea",
+      "zh": "正在更改在线状态",
+      "ar": "تغيير حالة الاتصال"
+    },
+    "Lets contacts see when the app is open and when you type.": {
+      "ru": "Контакты видят, когда приложение открыто и когда вы набираете текст.",
+      "es": "Los contactos ven cuándo la aplicación está abierta y cuándo escribes.",
+      "zh": "联系人可以看到应用何时打开以及你何时在输入。",
+      "ar": "تتيح لجهات الاتصال رؤية متى يكون التطبيق مفتوحًا ومتى تكتب."
+    },
+    "Not restored.": {
+      "ru": "Не восстановлено.",
+      "es": "No restaurada.",
+      "zh": "未恢复。",
+      "ar": "لم تتم الاستعادة."
+    },
+    "Show online status": {
+      "ru": "Показывать статус «в сети»",
+      "es": "Mostrar el estado en línea",
+      "zh": "显示在线状态",
+      "ar": "إظهار حالة الاتصال"
+    },
+    "This account was created as a bot or a group and cannot be opened here.": {
+      "ru": "Этот аккаунт создан как бот или группа и здесь не открывается.",
+      "es": "Esta cuenta se creó como bot o grupo y no se puede abrir aquí.",
+      "zh": "此账户创建为机器人或群组，无法在此打开。",
+      "ar": "أُنشئ هذا الحساب كبوت أو مجموعة ولا يمكن فتحه هنا."
+    },
+    "This account was created as a bot or a group.": {
+      "ru": "Этот аккаунт создан как бот или группа.",
+      "es": "Esta cuenta se creó como bot o grupo.",
+      "zh": "此账户创建为机器人或群组。",
+      "ar": "أُنشئ هذا الحساب كبوت أو مجموعة."
+    },
+    "This account was created as a bot.": {
+      "ru": "Этот аккаунт создан как бот.",
+      "es": "Esta cuenta se creó como bot.",
+      "zh": "此账户创建为机器人。",
+      "ar": "أُنشئ هذا الحساب كبوت."
+    },
+    "This account was created as a group.": {
+      "ru": "Этот аккаунт создан как группа.",
+      "es": "Esta cuenta se creó como grupo.",
+      "zh": "此账户创建为群组。",
+      "ar": "أُنشئ هذا الحساب كمجموعة."
+    },
+    "This account was made by an earlier version of Bazarish and cannot be opened.": {
+      "ru": "Этот аккаунт создан ранней версией Bazarish и не открывается.",
+      "es": "Esta cuenta se creó con una versión anterior de Bazarish y no se puede abrir.",
+      "zh": "此账户由早期版本的 Bazarish 创建，无法打开。",
+      "ar": "أُنشئ هذا الحساب بإصدار سابق من Bazarish ولا يمكن فتحه."
+    },
+    "bot": {
+      "ru": "бот",
+      "es": "bot",
+      "zh": "机器人",
+      "ar": "بوت"
+    },
+    "online": {
+      "ru": "в сети",
+      "es": "en línea",
+      "zh": "在线",
+      "ar": "متصل"
+    },
+    "typing…": {
+      "ru": "печатает…",
+      "es": "escribiendo…",
+      "zh": "正在输入…",
+      "ar": "يكتب…"
     }
   }
 }

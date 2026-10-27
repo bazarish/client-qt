@@ -160,6 +160,7 @@ ApplicationWindow {
         // the process, so there is nothing to do here but say so and stand down.
         function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
+        function onImportRefused(kind) { importRefusedDialog.show(kind) }
         // The server would not end the account, so nothing was deleted anywhere.
         function onAccountDeleteFailed(id, error, profileNotOpened) {
             deleteFailedDialog.show(id, error, profileNotOpened)
@@ -456,6 +457,37 @@ ApplicationWindow {
             color: Theme.text
             padding: 14
             text: restartDialog.message
+        }
+    }
+
+    Dialog {
+        id: importRefusedDialog
+        property string kind: ""
+        function show(accountKind) { kind = accountKind; open() }
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        width: Math.min(360, parent ? parent.width - 24 : 360)
+        background: DialogFrame { destructive: true }
+        header: Label {
+            text: qsTr("Account not added")
+            color: Theme.neon
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: qsTr("OK")
+            showReject: false
+            onAccepted: importRefusedDialog.accept()
+        }
+        contentItem: Label {
+            wrapMode: Text.Wrap
+            color: Theme.text
+            padding: 14
+            text: importRefusedDialog.kind === "bot"
+                ? qsTr("This account was created as a bot.")
+                : qsTr("This account was created as a group.")
         }
     }
 

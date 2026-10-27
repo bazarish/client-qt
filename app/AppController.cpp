@@ -104,6 +104,7 @@ AppController::AppController(Translations& translations, QObject* parent)
     connect(&events_, &AppEvents::accountUnlocked, this, &AppController::accountUnlocked);
     connect(&events_, &AppEvents::accountOpenFailed, this, &AppController::accountOpenFailed);
     connect(&events_, &AppEvents::createFailed, this, &AppController::createFailed);
+    connect(&events_, &AppEvents::importRefused, this, &AppController::importRefused);
     connect(&events_, &AppEvents::accountDeleteFailed, this, &AppController::accountDeleteFailed);
     connect(&events_, &AppEvents::accountDeleteNeedsUnlock, this,
         &AppController::accountDeleteNeedsUnlock);

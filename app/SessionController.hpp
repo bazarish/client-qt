@@ -13,6 +13,7 @@
 #include <bazarish/Limits.hpp>
 
 #include <QColor>
+#include <QElapsedTimer>
 #include <QHash>
 #include <QSet>
 #include <QSortFilterProxyModel>
@@ -96,6 +97,8 @@ class SessionController : public QObject {
     Q_PROPERTY(int activeOperations READ activeOperations NOTIFY operationsChanged)
     Q_PROPERTY(bool sendReceipts READ sendReceipts WRITE setSendReceipts NOTIFY sendReceiptsChanged)
     Q_PROPERTY(bool acceptCalls READ acceptCalls WRITE setAcceptCalls NOTIFY acceptCallsChanged)
+    Q_PROPERTY(bool showPresence READ showPresence WRITE setShowPresence NOTIFY showPresenceChanged)
+    Q_PROPERTY(int presenceRevision READ presenceRevision NOTIFY presenceChanged)
     Q_PROPERTY(QVariantList aliasHoldings READ aliasHoldings NOTIFY aliasChanged)
     Q_PROPERTY(QString aliasNote READ aliasNote NOTIFY aliasChanged)
     Q_PROPERTY(bool aliasBusy READ aliasBusy NOTIFY aliasChanged)
@@ -195,6 +198,9 @@ public:
     void setAcceptCalls(bool on);
     bool sendReceipts() const { return sendReceipts_; }
     void setSendReceipts(bool on);
+    bool showPresence() const { return showPresence_; }
+    void setShowPresence(bool on);
+    int presenceRevision() const { return presenceRevision_; }
     bool editing() const { return editing_; }
     QString editingText() const { return editingText_; }
     bool replying() const { return replying_; }
@@ -307,6 +313,11 @@ public:
     Q_INVOKABLE QVariantList blockedList() const;
     Q_INVOKABLE bool contactNotifications(const QString& peer) const;
     Q_INVOKABLE bool contactCalls(const QString& peer) const;
+    Q_INVOKABLE QString contactKind(const QString& peer) const;
+    Q_INVOKABLE bool peerOnline(const QString& peer) const;
+    Q_INVOKABLE bool peerTyping(const QString& peer) const;
+    Q_INVOKABLE void typed();
+    Q_INVOKABLE void setVisibleChats(const QStringList& peers);
     Q_INVOKABLE void setContactNotifications(const QString& peer, bool on);
     Q_INVOKABLE void setContactCalls(const QString& peer, bool allowed);
     Q_INVOKABLE QString contactName(const QString& fp) const;
@@ -436,6 +447,8 @@ signals:
     void connectStateChanged();
     void sendReceiptsChanged();
     void acceptCallsChanged();
+    void showPresenceChanged();
+    void presenceChanged();
     void delegationDaysChanged();
     void contactRetryExhausted(const QString& fingerprint);
     void editingChanged();
@@ -511,6 +524,7 @@ private slots:
     bool speakerPresent();
 
 private:
+    void watchOnScreen();
     AccountCommands commands_;
     AccountEvents events_;
     TranscriptReader store_;
@@ -541,6 +555,12 @@ private:
     QString serverFp_;
     bool sendReceipts_ = true;
     bool acceptCalls_ = true;
+    bool showPresence_ = true;
+    QHash<QString, std::pair<bool, bool>> peerPresence_;
+    QStringList visibleChats_;
+    QStringList watchedPeers_;
+    int presenceRevision_ = 0;
+    QElapsedTimer sinceTyped_;
     std::optional<GroupState> activeGroup_;
     qint64 activeChatTimer_ = 0;
     QVariantList activeBotMenu_;

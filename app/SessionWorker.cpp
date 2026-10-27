@@ -518,12 +518,25 @@ void SessionWorker::openAccount(
     downloadPool_.waitForDone();
     downloadsCancelled_.store(false);
     try {
+        const std::optional<bazarish::AccountKind> kind
+            = Session::storedKind(toPath(dir), passphrase.toStdString());
+        if (!kind.has_value()) {
+            emit openFailed(tr("This account was made by an earlier version of Bazarish and cannot be opened."));
+            return;
+        }
+        if (*kind != bazarish::AccountKind::eUser) {
+            emit openFailed(tr("This account was created as a bot or a group and cannot be opened here."));
+            return;
+        }
         session_ = std::make_unique<Session>(
             Session::open(toPath(dir), passphrase.toStdString()));
     } catch (const std::exception& e) {
         emit openFailed(QString::fromUtf8(e.what()));
         return;
     }
+    session_->startPresence([this](const std::string& peer, const bazarish::client::PresenceState& state) {
+        emit peerPresence(QString::fromStdString(peer), state.online, state.typing);
+    });
     session_->setFileSource(deviceFiles());
 #ifdef Q_OS_ANDROID
     // A phone speaks a call as a phone call: the voice stream and the earpiece.
@@ -556,7 +569,8 @@ void SessionWorker::openAccount(
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected);
-    emit accountSettings(session_->acceptCalls(), session_->sendReceipts());
+    emit accountSettings(
+        session_->acceptCalls(), session_->sendReceipts(), session_->showPresence());
     {
         const QVariantList rows = aliasHoldingRows(session_->aliasNames());
         if (!rows.isEmpty()) {
@@ -648,6 +662,7 @@ void SessionWorker::emitContacts()
         contact.writable = session_->canWriteTo(fp);
         contact.notifications = session_->contactNotifications(fp);
         contact.calls = session_->contactCalls(fp);
+        contact.kind = QString::fromUtf8(bazarish::accountKindName(session_->contactKind(fp)));
         contacts.push_back(contact);
     }
     QStringList blocked;
@@ -1562,7 +1577,8 @@ void SessionWorker::emitSettings()
     if (!session_) {
         return;
     }
-    emit accountSettings(session_->acceptCalls(), session_->sendReceipts());
+    emit accountSettings(
+        session_->acceptCalls(), session_->sendReceipts(), session_->showPresence());
 }
 
 void SessionWorker::syncChatClear(const QString& peer)
@@ -1999,6 +2015,51 @@ void SessionWorker::setDelegationDays(const int days)
     withSession([&] {
         session_->setDelegationDays(days);
     });
+}
+
+void SessionWorker::setShowPresence(const bool on)
+{
+    withSession([&] {
+        session_->setShowPresence(on);
+    });
+}
+
+void SessionWorker::setPresenceFocused(const bool focused)
+{
+    if (session_) {
+        session_->setPresenceFocused(focused);
+    }
+}
+
+void SessionWorker::setPresenceOrder(const QStringList& chatOrder)
+{
+    if (!session_) {
+        return;
+    }
+    std::vector<std::string> order;
+    for (const QString& peer : chatOrder) {
+        order.push_back(peer.toStdString());
+    }
+    session_->setPresenceOrder(order);
+}
+
+void SessionWorker::watchPresence(const QStringList& peers)
+{
+    if (!session_) {
+        return;
+    }
+    std::vector<std::string> watched;
+    for (const QString& peer : peers) {
+        watched.push_back(peer.toStdString());
+    }
+    session_->presenceWatch(std::move(watched));
+}
+
+void SessionWorker::presenceTyped(const QString& peer)
+{
+    if (session_) {
+        session_->presenceTyped(peer.toStdString());
+    }
 }
 
 void SessionWorker::setSendReceipts(const bool on)

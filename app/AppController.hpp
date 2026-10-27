@@ -207,6 +207,7 @@ signals:
     void accountOpened();
     void accountOpenFailed(const QString& error);
     void createFailed(const QString& error);
+    void importRefused(const QString& kind);
     void showPicker();
     void needPassphrase(const QString& id, const QString& name);
     void accountDeleteFailed(const QString& id, const QString& error, bool profileNotOpened);

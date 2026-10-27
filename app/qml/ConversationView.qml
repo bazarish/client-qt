@@ -441,6 +441,22 @@ Item {
                         ToolTip.visible: countHover.hovered
                         ToolTip.text: qsTr("Updated from time to time; the server sets the count.")
                     }
+                    Label {
+                        readonly property string peer: root.session ? root.session.activePeer : ""
+                        readonly property string kind: root.session && peer.length > 0
+                            ? root.session.contactKind(peer) : ""
+                        readonly property bool typing: root.session !== null && root.session.presenceRevision >= 0
+                            && root.session.peerTyping(peer)
+                        readonly property bool online: root.session !== null && root.session.presenceRevision >= 0
+                            && root.session.peerOnline(peer)
+                        visible: root.session !== null && !root.session.activeIsGroup && !root.savedChat
+                            && (kind === "bot" || online)
+                        text: kind === "bot" ? qsTr("bot") : (typing ? qsTr("typing…") : qsTr("online"))
+                        color: kind === "bot" ? Theme.textFaint : Theme.green
+                        font.pixelSize: Theme.fontSmall
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
                 }
                 IconButton {
                     visible: !root.lookingUp

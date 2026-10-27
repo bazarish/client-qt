@@ -153,6 +153,14 @@ void CoreHost::setWindowActive(const bool active)
     }
     windowActive_ = active;
     emit windowActiveChanged();
+    tellPresenceFocus();
+}
+
+void CoreHost::tellPresenceFocus()
+{
+    for (CoreAccount* const account : sessions_) {
+        account->setPresenceFocused(windowActive_ && account->accountId() == activeId_);
+    }
 }
 
 void CoreHost::setCallScreenShown(const bool shown)
@@ -437,6 +445,7 @@ void CoreHost::setActive(const QString& id)
     AppSettings::instance().setActiveAccount(id.toStdString());
     emit events_.activeChanged(id);
     refreshAccounts();
+    tellPresenceFocus();
 }
 
 void CoreHost::openSession(const QString& id, const QString& passphrase, const bool makeActive,
@@ -468,6 +477,7 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
 
     connect(&account->events(), &AccountEvents::opened, this, [this, id, makeActive]() {
         refreshAccounts();
+        tellPresenceFocus();
         if (makeActive && id == activeId_) {
             emit events_.accountReady(id);
         }
@@ -585,7 +595,8 @@ void CoreHost::createAccount(const QString& name, const QString& passphrase)
 {
     std::string id;
     try {
-        id = manager_->create(name.toStdString(), passphrase.toStdString()).id;
+        id = manager_->create(
+            name.toStdString(), bazarish::AccountKind::eUser, passphrase.toStdString()).id;
     } catch (const std::exception& error) {
         emit events_.createFailed(QString::fromUtf8(error.what()));
         return;
@@ -751,6 +762,7 @@ void CoreHost::submitPairCode(const QString& code)
     const QString atRest = pairAtRest_;
     std::thread([this, endpoint, cancel, dest, want, atRest]() {
         QString failure;
+        QString refusedKind;
         bool wrongCode = false;
         int triesLeft = 0;
         std::string id;
@@ -775,6 +787,9 @@ void CoreHost::submitPairCode(const QString& code)
             if (got.wrongCode) {
                 wrongCode = true;
                 triesLeft = got.triesLeft;
+            } else if (const bazarish::AccountKind kind = client::Session::bundleKind(got.bundle, want);
+                       kind != bazarish::AccountKind::eUser) {
+                refusedKind = QString::fromUtf8(bazarish::accountKindName(kind));
             } else {
                 id = manager_->import(std::string{}, got.bundle, want, atRest.toStdString()).id;
             }
@@ -783,8 +798,13 @@ void CoreHost::submitPairCode(const QString& code)
         }
         QMetaObject::invokeMethod(
             this,
-            [this, cancel, failure, wrongCode, triesLeft, id, atRest]() {
+            [this, cancel, failure, refusedKind, wrongCode, triesLeft, id, atRest]() {
                 if (pairCancel_ != cancel) {
+                    return;
+                }
+                if (!refusedKind.isEmpty()) {
+                    failPairing(tr("This account was created as a bot or a group."));
+                    emit events_.importRefused(refusedKind);
                     return;
                 }
                 if (wrongCode) {
@@ -836,17 +856,30 @@ void CoreHost::importAccount(const QString& name, const QString& path, const QSt
     std::thread([this, name, path, password, atRestPassphrase]() {
         std::string id;
         QString failure;
+        QString refusedKind;
         try {
-            id = manager_
-                     ->import(name.toStdString(), readWhole(path), password.toStdString(),
-                         atRestPassphrase.toStdString())
-                     .id;
+            const auto sealed = readWhole(path);
+            const bazarish::AccountKind kind
+                = client::Session::bundleKind(sealed, password.toStdString());
+            if (kind != bazarish::AccountKind::eUser) {
+                refusedKind = QString::fromUtf8(bazarish::accountKindName(kind));
+            } else {
+                id = manager_
+                         ->import(name.toStdString(), sealed, password.toStdString(),
+                             atRestPassphrase.toStdString())
+                         .id;
+            }
         } catch (const std::exception& error) {
             failure = QString::fromUtf8(error.what());
         }
         QMetaObject::invokeMethod(
             this,
-            [this, id, failure, atRestPassphrase]() {
+            [this, id, failure, refusedKind, atRestPassphrase]() {
+                if (!refusedKind.isEmpty()) {
+                    log_.finish(kRestoreOperation, false, tr("Not restored."));
+                    emit events_.importRefused(refusedKind);
+                    return;
+                }
                 log_.finish(kRestoreOperation, failure.isEmpty(),
                     failure.isEmpty() ? tr("Restored.") : failure);
                 if (!failure.isEmpty()) {

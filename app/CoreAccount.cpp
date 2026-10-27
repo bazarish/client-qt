@@ -11,6 +11,7 @@
 #include "AccountDb.hpp"
 #include "AccountKey.hpp"
 
+#include <algorithm>
 #include <QCoreApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -33,6 +34,7 @@ const int kContactStateMetaType
     = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
 
 constexpr int kReadSyncIdleMs = 4000;
+constexpr int kPresenceOrderSettleMs = 2000;
 // How often every chat is looked through for messages whose auto-delete time ran out.
 constexpr int kExpirySweepMs = 5 * 60 * 1000;
 // A reconnect this client asked for is not reported before this much of it.
@@ -77,6 +79,7 @@ const char* commandTitle(const QByteArray& signalName)
         {"requestRetryRoutingTo", QT_TR_NOOP("Sending your address to a contact")},
         {"requestSetAcceptCalls", QT_TR_NOOP("Changing incoming calls")},
         {"requestSetSendReceipts", QT_TR_NOOP("Changing read receipts")},
+        {"requestSetShowPresence", QT_TR_NOOP("Changing online status")},
         {"requestSetDelegationDays", QT_TR_NOOP("Changing the delegation term")},
         {"requestDisablePersonalDest", QT_TR_NOOP("Taking your address offline")},
         {"requestForgetPendingAdd", QT_TR_NOOP("Dropping a contact request")},
@@ -236,6 +239,11 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::setAcceptCalls);
     connect(&commands_, &AccountCommands::requestSetSendReceipts, worker_,
         &SessionWorker::setSendReceipts);
+    connect(&commands_, &AccountCommands::requestSetShowPresence, worker_,
+        &SessionWorker::setShowPresence);
+    connect(&commands_, &AccountCommands::watchPresence, worker_, &SessionWorker::watchPresence);
+    connect(&commands_, &AccountCommands::presenceTyped, worker_, &SessionWorker::presenceTyped);
+    connect(worker_, &SessionWorker::peerPresence, &events_, &AccountEvents::peerPresence);
     connect(&commands_, &AccountCommands::requestDisablePersonalDest, worker_,
         &SessionWorker::disablePersonalDest);
     connect(&commands_, &AccountCommands::requestRefreshI2pStatus, worker_,
@@ -354,6 +362,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
             displayName_ = displayName;
             online_ = connected && startOnline_;
             announcePresence();
+            setPresenceFocused(presenceFocused_);
         });
     connect(worker_, &SessionWorker::renamed, this, [this](const QString& name) {
         displayName_ = name;
@@ -367,6 +376,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         [this](const bool connected, const QString&) {
             online_ = connected;
             announcePresence();
+            setPresenceFocused(presenceFocused_);
         });
     connect(worker_, &SessionWorker::syncReachable, this, &CoreAccount::onSyncReachable);
     connect(worker_, &SessionWorker::facadeInfo, this,
@@ -382,12 +392,34 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         onSyncReachable(false, gatewayRefusal_);
     });
     connect(worker_, &SessionWorker::accountSettings, this,
-        [this](const bool, const bool sendReceipts) { sendReceipts_ = sendReceipts; });
+        [this](const bool, const bool sendReceipts, const bool) { sendReceipts_ = sendReceipts; });
     connect(worker_, &SessionWorker::contactsRefreshed, this,
         [this](const QVector<ContactState>& contacts, const QStringList& blocked) {
             contacts_.reset(contacts, blocked);
             syncAgreeingRows();
+            presenceOrderTimer_.start(kPresenceOrderSettleMs);
         });
+    presenceOrderTimer_.setSingleShot(true);
+    connect(&presenceOrderTimer_, &QTimer::timeout, this, [this]() {
+        QStringList order = contacts_.fingerprints();
+        std::stable_sort(order.begin(), order.end(), [this](const QString& a, const QString& b) {
+            const bool pinnedA = store_.isPinned(a);
+            const bool pinnedB = store_.isPinned(b);
+            if (pinnedA != pinnedB) {
+                return pinnedA;
+            }
+            return store_.lastTime(a) > store_.lastTime(b);
+        });
+        QMetaObject::invokeMethod(
+            worker_, [worker = worker_, order]() { worker->setPresenceOrder(order); },
+            Qt::QueuedConnection);
+    });
+    connect(&ingest_, &MessageIngest::chatChanged, this,
+        [this]() { presenceOrderTimer_.start(kPresenceOrderSettleMs); });
+    connect(&ingest_, &MessageIngest::chatsChanged, this,
+        [this]() { presenceOrderTimer_.start(kPresenceOrderSettleMs); });
+    connect(&ingest_, &MessageIngest::rowAdded, this,
+        [this]() { presenceOrderTimer_.start(kPresenceOrderSettleMs); });
     connect(worker_, &SessionWorker::stopped, this, &CoreAccount::close);
     connect(worker_, &SessionWorker::stopped, &thread_, &QThread::quit);
 
@@ -548,6 +580,7 @@ void CoreAccount::goOnline()
     online_ = true;
     announcePresence();
     emit commands_.requestSetSync(true);
+    setPresenceFocused(presenceFocused_);
 }
 
 void CoreAccount::goOffline()
@@ -557,6 +590,7 @@ void CoreAccount::goOffline()
     gatewayRefusal_.clear();
     announcePresence();
     emit commands_.requestSetSync(false);
+    setPresenceFocused(presenceFocused_);
 }
 
 void CoreAccount::replayOperations()
@@ -564,6 +598,15 @@ void CoreAccount::replayOperations()
     for (const OperationRow& row : log_.rows()) {
         emit events_.opChanged(row);
     }
+}
+
+void CoreAccount::setPresenceFocused(const bool focused)
+{
+    presenceFocused_ = focused;
+    const bool shown = presenceFocused_ && online_;
+    QMetaObject::invokeMethod(
+        worker_, [worker = worker_, shown]() { worker->setPresenceFocused(shown); },
+        Qt::QueuedConnection);
 }
 
 void CoreAccount::rebuildI2pLinks()

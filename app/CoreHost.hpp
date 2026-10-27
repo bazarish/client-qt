@@ -111,6 +111,7 @@ private:
     void setPortable(bool on);
     void closeAllSessions();
     void rebuildI2pLinks();
+    void tellPresenceFocus();
     void setLanguage(const QString& code);
     void setLightTheme(bool on);
     void setScreenCapture(bool on);

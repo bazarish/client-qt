@@ -25,6 +25,7 @@ struct ContactState {
     bool writable = false;
     bool notifications = true;
     bool calls = true;
+    QString kind;
     Request request = eAnswered;
 
     friend bool operator==(const ContactState&, const ContactState&) = default;
@@ -46,14 +47,15 @@ struct OperationRow {
 inline QDataStream& operator<<(QDataStream& out, const ContactState& contact)
 {
     return out << contact.fingerprint << contact.name << contact.invite << contact.writable
-               << contact.notifications << contact.calls << static_cast<qint32>(contact.request);
+               << contact.notifications << contact.calls << contact.kind
+               << static_cast<qint32>(contact.request);
 }
 
 inline QDataStream& operator>>(QDataStream& in, ContactState& contact)
 {
     qint32 request = 0;
     in >> contact.fingerprint >> contact.name >> contact.invite >> contact.writable
-        >> contact.notifications >> contact.calls >> request;
+        >> contact.notifications >> contact.calls >> contact.kind >> request;
     contact.request = static_cast<ContactState::Request>(request);
     return in;
 }
@@ -97,6 +99,7 @@ inline constexpr Latch kAccountLatches[] = {
     {"recentEmoji"},
     {"aliasHoldings"},
     {"avatarReady", 1},
+    {"peerPresence", 1},
     {"loginSendState"},
 };
 
@@ -111,7 +114,8 @@ signals:
     void pairStage(const QString& status, double progress);
     void pairFinished(bool ok, const QString& status);
     void accountClosed(bool ok, const QString& error);
-    void accountSettings(bool acceptCalls, bool sendReceipts);
+    void accountSettings(bool acceptCalls, bool sendReceipts, bool showPresence);
+    void peerPresence(const QString& peer, bool online, bool typing);
     void aliasHoldings(const QVariantList& rows, const QString& note);
     void aliasActivationDone(bool ok, const QString& text);
     void opened(const QString& fingerprint, const QString& displayName, bool connected);

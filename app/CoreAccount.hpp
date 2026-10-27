@@ -57,6 +57,7 @@ public:
     void goOffline();
     void networkChanged();
     void rebuildI2pLinks();
+    void setPresenceFocused(bool focused);
     void replayOperations();
     void beginShutdown();
     void shutdown();
@@ -223,6 +224,8 @@ private:
     QHash<QString, qint64> lastReadAckedId_;
     QHash<QString, qint64> pendingReadSync_;
     QTimer readSyncTimer_;
+    QTimer presenceOrderTimer_;
+    bool presenceFocused_ = false;
     QTimer expiryTimer_;
     OperationLog log_;
     QHash<qint64, int> statusById_;
