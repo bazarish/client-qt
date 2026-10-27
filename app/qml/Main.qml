@@ -96,7 +96,7 @@ ApplicationWindow {
 
     function showToast(message) {
         toastLabel.text = message
-        toast.opacity = 1
+        toast.open()
         toastTimer.restart()
     }
 
@@ -196,29 +196,29 @@ ApplicationWindow {
         }
     }
 
-    // On the overlay, so a toast about an action in a modal shows over that modal.
-    Rectangle {
+    // A popup, so it leaves the overlay when closed: any lasting child keeps the overlay visible, and that turns the swipes off.
+    Popup {
         id: toast
         parent: Overlay.overlay
-        opacity: 0
         z: 950
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 24 + window.contentInset
-        radius: 10
-        color: Theme.text
+        closePolicy: Popup.NoAutoClose
+        x: (parent.width - width) / 2
+        y: parent.height - height - 24 - window.contentInset
         width: Math.min(toastLabel.implicitWidth + 32, window.width - 48)
-        height: toastLabel.implicitHeight + 20
-        Behavior on opacity { NumberAnimation { duration: 200 } }
-        Label {
+        leftPadding: 16
+        rightPadding: 16
+        topPadding: 10
+        bottomPadding: 10
+        background: Rectangle { radius: 10; color: Theme.text }
+        enter: Transition { NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 } }
+        exit: Transition { NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 200 } }
+        contentItem: Label {
             id: toastLabel
-            anchors.fill: parent
-            anchors.margins: 10
             color: Theme.bg
             wrapMode: Text.Wrap
             horizontalAlignment: Text.AlignHCenter
         }
-        Timer { id: toastTimer; interval: 3500; onTriggered: toast.opacity = 0 }
+        Timer { id: toastTimer; interval: 3500; onTriggered: toast.close() }
     }
 
     // Background-activity overlay: a right-edge handle + slide-out panel listing
