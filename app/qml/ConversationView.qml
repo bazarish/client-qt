@@ -167,6 +167,13 @@ Item {
                     messages.autoScrolling = true
                     messages.positionViewAtIndex(r, ListView.Beginning)
                     messages.autoScrolling = false
+                    // An unread tail that fits opens at the bottom, which then follows a keyboard and new messages.
+                    const first = messages.itemAtIndex(r)
+                    if (first !== null && root.session.atNewest
+                            && messages.originY + messages.contentHeight - first.y <= messages.height) {
+                        messages.stickToBottom = true
+                        messages.pinToBottom()
+                    }
                     messages.unreadFlashFromId = firstUnreadId
                     unreadFlashTimer.restart()
                 }
