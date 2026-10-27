@@ -8,7 +8,7 @@ import Bazarish
 // the target message's protocol id, so the chat does not pay a popup per bubble.
 Popup {
     id: root
-    bottomMargin: activeFocus ? App.keyboardInset : 0
+    bottomMargin: App.keyboardInset
     property var session: null
     property string target: ""
     modal: true
