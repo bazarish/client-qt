@@ -41,7 +41,8 @@ Item {
     // The owner's active and its field change apart: neither is read without the other.
     readonly property bool live: root.active && root.field !== null
     readonly property bool editable: root.field !== null && !root.field.readOnly
-    readonly property bool hasSelection: root.live && root.field.selectedText.length > 0
+    readonly property bool hasSelection: root.field !== null && root.live
+        && root.field.selectedText.length > 0
     property bool caretMenu: false
     property bool caretShown: false
     property bool dragging: false
@@ -123,9 +124,12 @@ Item {
         return width + Math.max(0, count - 1) * flow.spacing
     }
 
-    readonly property rect startRect: root.live ? root.rectAt(root.field.selectionStart) : Qt.rect(0, 0, 0, 0)
-    readonly property rect endRect: root.live ? root.rectAt(root.field.selectionEnd) : Qt.rect(0, 0, 0, 0)
-    readonly property rect caretRect: root.live ? root.rectAt(root.field.cursorPosition) : Qt.rect(0, 0, 0, 0)
+    readonly property rect startRect: root.field !== null && root.live
+        ? root.rectAt(root.field.selectionStart) : Qt.rect(0, 0, 0, 0)
+    readonly property rect endRect: root.field !== null && root.live
+        ? root.rectAt(root.field.selectionEnd) : Qt.rect(0, 0, 0, 0)
+    readonly property rect caretRect: root.field !== null && root.live
+        ? root.rectAt(root.field.cursorPosition) : Qt.rect(0, 0, 0, 0)
 
     Connections {
         target: root.field
@@ -322,7 +326,7 @@ Item {
                 }
                 Action {
                     text: qsTr("Paste")
-                    visible: root.editable && (root.field.canPaste
+                    visible: root.field !== null && root.editable && (root.field.canPaste
                         || (root.pastesPictures && App.clipboardHasImage()))
                     onClicked: {
                         root.caretMenu = false
