@@ -4817,11 +4817,11 @@
       "zh": "正在更改在线状态",
       "ar": "تغيير حالة الاتصال"
     },
-    "Lets contacts see when the app is open and when you type.": {
-      "ru": "Контакты видят, когда приложение открыто и когда вы набираете текст.",
-      "es": "Los contactos ven cuándo la aplicación está abierta y cuándo escribes.",
-      "zh": "联系人可以看到应用何时打开以及你何时在输入。",
-      "ar": "تتيح لجهات الاتصال رؤية متى يكون التطبيق مفتوحًا ومتى تكتب."
+    "Contacts see when the app is open and when you type, and you see theirs.": {
+      "ru": "Контакты видят, когда приложение открыто и когда вы набираете текст, а вы видите то же у них.",
+      "es": "Los contactos ven cuándo la aplicación está abierta y cuándo escribes, y tú ves lo mismo de ellos.",
+      "zh": "联系人可以看到应用何时打开以及你何时在输入，你也能看到他们的。",
+      "ar": "يرى مراسلوك متى يكون التطبيق مفتوحًا ومتى تكتب، وترى أنت الشيء نفسه منهم."
     },
     "Not restored.": {
       "ru": "Не восстановлено.",

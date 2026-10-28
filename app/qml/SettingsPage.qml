@@ -806,7 +806,7 @@ Popup {
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
-                            Label { text: qsTr("Lets contacts see when the app is open and when you type."); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                            Label { text: qsTr("Contacts see when the app is open and when you type, and you see theirs."); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
                         }
                         Toggle {
                             checked: root.session ? root.session.showPresence : true
