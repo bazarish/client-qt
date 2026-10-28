@@ -331,11 +331,14 @@ Rectangle {
                             onTapped: function(point) { TextSelection.tapped(input, point.position) }
                             onLongPressed: TextSelection.longPressed(input, point.position)
                         }
-                        onTextChanged: {
-                            if (input.activeFocus && input.length > 0 && root.session) {
+                        function noteTyping() {
+                            if (input.activeFocus && root.session
+                                    && (input.length > 0 || input.preeditText.length > 0)) {
                                 root.session.typed()
                             }
                         }
+                        onTextChanged: input.noteTyping()
+                        onPreeditTextChanged: input.noteTyping()
                         onCursorRectangleChanged: {
                             const view = inputScroll.contentItem
                             const at = input.cursorRectangle
