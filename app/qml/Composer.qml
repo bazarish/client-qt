@@ -50,7 +50,7 @@ Rectangle {
     // Height set by dragging the grip (-1 means auto-size to the content).
     property int manualInputH: -1
     readonly property int autoInputH:
-        Math.min(maxInputH, Math.max(minInputH, Math.ceil(input.contentHeight) + 18))
+        Math.min(maxInputH, Math.max(minInputH, Math.ceil(input.laidOutHeight) + 18))
     readonly property int inputH: manualInputH >= 0
         ? Math.min(maxInputH, Math.max(minInputH, manualInputH)) : autoInputH
 
@@ -296,13 +296,14 @@ Rectangle {
                     ScrollBar.vertical.policy: ScrollBar.AsNeeded
                     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                     contentWidth: availableWidth
-                    contentHeight: input.implicitHeight
+                    contentHeight: input.laidOutHeight + input.topPadding + input.bottomPadding
 
                     // A Controls TextArea drops the selection of an Android long press when the finger lifts.
                     TextEdit {
                         id: input
                         width: inputScroll.availableWidth
-                        height: Math.max(implicitHeight, inputScroll.availableHeight)
+                        height: Math.max(laidOutHeight + topPadding + bottomPadding,
+                            inputScroll.availableHeight)
                         topPadding: root.kFieldPadding
                         bottomPadding: root.kFieldPadding
                         rightPadding: root.kFieldPadding
@@ -313,6 +314,10 @@ Rectangle {
                         selectedTextColor: inputScroll.palette.highlightedText
                         wrapMode: TextEdit.Wrap
                         selectByMouse: true
+                        // Qt 6.8 leaves out of contentHeight a composing word that wraps in an empty field.
+                        readonly property real laidOutHeight: lineCount > 0
+                            ? Math.max(contentHeight, positionToRectangle(length).bottom - topPadding)
+                            : contentHeight
                         // What the app's selection menu offers here beyond any field's.
                         readonly property var selectionForms: root.kForms
                         function applyForm(open, close) {
