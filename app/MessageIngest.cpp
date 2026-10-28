@@ -128,7 +128,7 @@ bool MessageIngest::takeIn(const QVariantMap& message)
     }
 
     if (type == "device.contact-block" || type == "device.contact-prefs"
-        || type == "device.contact-accepted") {
+        || type == "device.contact-accepted" || type == "device.contact") {
         emit contactsRevised();
         return true;
     }
