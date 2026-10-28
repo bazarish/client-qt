@@ -491,6 +491,10 @@ void SessionWorker::stopEventWaiter()
         eventWaiterRunning_->store(false);
     }
     drainDone_.notify_all();
+    // The waiter sits inside a held request; only taking its link down ends it before the hold does.
+    if (session_) {
+        session_->releaseI2pLinks();
+    }
     if (eventWaiter_.joinable()) {
         eventWaiter_.join();
     }
@@ -793,18 +797,12 @@ void SessionWorker::setSyncEnabled(bool on)
         if (maintenanceTimer_ != nullptr) {
             maintenanceTimer_->stop();
         }
-        if (session_) {
-            session_->releaseI2pLinks();
-        }
     }
 }
 
 void SessionWorker::rebuildI2pLinks()
 {
     stopEventWaiter();
-    if (session_) {
-        session_->releaseI2pLinks();
-    }
     if (maintenanceTimer_ != nullptr && maintenanceTimer_->isActive()) {
         startEventWaiter();
     }
@@ -1684,9 +1682,6 @@ void SessionWorker::shutdown()
         callTimer_->stop();
     }
     downloadsCancelled_.store(true);
-    if (session_) {
-        session_->releaseI2pLinks();
-    }
     session_.reset();
     emit stopped();
 }
