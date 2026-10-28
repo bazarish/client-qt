@@ -24,6 +24,9 @@ public:
     bool lightTheme() const;
     void setLightTheme(bool on);
 
+    std::string camera() const;
+    void setCamera(const std::string& id);
+
     bool screenCapture() const;
     void setScreenCapture(bool on);
 
@@ -72,6 +75,7 @@ private:
     std::string activeAccount_;
     std::string language_;
     bool lightTheme_ = true;
+    std::string camera_;
     bool screenCapture_ = false;
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;

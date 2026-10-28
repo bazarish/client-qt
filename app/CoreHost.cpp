@@ -107,6 +107,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
     connect(&commands_, &AppCommands::setLanguage, this, &CoreHost::setLanguage);
     connect(&commands_, &AppCommands::setLightTheme, this, &CoreHost::setLightTheme);
+    connect(&commands_, &AppCommands::setCamera, this, &CoreHost::setCamera);
     connect(&commands_, &AppCommands::setScreenCapture, this, &CoreHost::setScreenCapture);
     connect(&commands_, &AppCommands::chooseAudio, this, &CoreHost::chooseAudio);
 
@@ -1057,6 +1058,11 @@ void CoreHost::setLanguage(const QString& code)
 {
     AppSettings::instance().setLanguage(code.toStdString());
     emit languageChosen(code);
+}
+
+void CoreHost::setCamera(const QString& id)
+{
+    AppSettings::instance().setCamera(id.toStdString());
 }
 
 void CoreHost::setLightTheme(const bool on)

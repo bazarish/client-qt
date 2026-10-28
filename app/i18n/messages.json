@@ -4882,6 +4882,18 @@
       "es": "escribiendo…",
       "zh": "正在输入…",
       "ar": "يكتب…"
+    },
+    "Camera": {
+      "ru": "Камера",
+      "es": "Cámara",
+      "zh": "摄像头",
+      "ar": "الكاميرا"
+    },
+    "This build of Bazarish cannot use a camera.": {
+      "ru": "Эта сборка Bazarish не может работать с камерой.",
+      "es": "Esta compilación de Bazarish no puede usar una cámara.",
+      "zh": "此版本的 Bazarish 无法使用摄像头。",
+      "ar": "لا يمكن لهذا الإصدار من Bazarish استخدام الكاميرا."
     }
   }
 }

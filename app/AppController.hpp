@@ -50,6 +50,8 @@ class AppController : public QObject {
     Q_PROPERTY(bool backgroundTasksVisible READ backgroundTasksVisible
             WRITE setBackgroundTasksVisible NOTIFY backgroundTasksVisibleChanged)
     Q_PROPERTY(bool lightTheme READ lightTheme WRITE setLightTheme NOTIFY lightThemeChanged)
+    Q_PROPERTY(QString camera READ camera WRITE setCamera NOTIFY cameraChanged)
+    Q_PROPERTY(bool cameraSupported READ cameraSupported CONSTANT)
     Q_PROPERTY(bool screenCapture READ screenCapture WRITE setScreenCapture
             NOTIFY screenCaptureChanged)
     Q_PROPERTY(qreal keyboardInset READ keyboardInset NOTIFY keyboardInsetChanged)
@@ -128,6 +130,17 @@ public:
 
     bool lightTheme() const { return lightTheme_; }
     void setLightTheme(bool on);
+    QString camera() const { return camera_; }
+    void setCamera(const QString& id);
+    // A static Qt carries no media backend, so no camera is ever listed.
+    static bool cameraSupported()
+    {
+#ifdef BAZARISH_STATIC_QT
+        return false;
+#else
+        return true;
+#endif
+    }
     bool screenCapture() const { return screenCapture_; }
     void setScreenCapture(bool on);
     qreal keyboardInset() const { return keyboardInset_; }
@@ -198,6 +211,7 @@ signals:
     void notificationsEnabledChanged();
     void backgroundTasksVisibleChanged();
     void lightThemeChanged();
+    void cameraChanged();
     void screenCaptureChanged();
     void keyboardInsetChanged();
     void ringingChanged();
@@ -247,6 +261,7 @@ private:
     bool notifications_ = true;
     bool backgroundTasks_ = false;
     bool lightTheme_ = true;
+    QString camera_;
     bool screenCapture_ = false;
     qreal keyboardInset_ = 0;
     QString ringingAccount_;

@@ -35,6 +35,7 @@ signals:
     void callScreenShown(bool shown);
     void setLanguage(const QString& code);
     void setLightTheme(bool on);
+    void setCamera(const QString& id);
     void setScreenCapture(bool on);
     void chooseAudio(const QString& input, const QString& output);
     void quit();

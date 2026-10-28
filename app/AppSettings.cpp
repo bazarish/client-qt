@@ -82,6 +82,7 @@ void AppSettings::load()
         activeAccount_ = document.value("activeAccount", std::string());
         language_ = document.value("language", std::string());
         lightTheme_ = document.value("lightTheme", true);
+        camera_ = document.value("camera", std::string());
         screenCapture_ = document.value("screenCapture", false);
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
@@ -133,6 +134,7 @@ void AppSettings::save() const
         {"activeAccount", activeAccount_},
         {"language", language_},
         {"lightTheme", lightTheme_},
+        {"camera", camera_},
         {"screenCapture", screenCapture_},
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
@@ -174,6 +176,17 @@ void AppSettings::setLightTheme(const bool on)
         return;
     }
     lightTheme_ = on;
+    save();
+}
+
+std::string AppSettings::camera() const { return camera_; }
+
+void AppSettings::setCamera(const std::string& id)
+{
+    if (camera_ == id) {
+        return;
+    }
+    camera_ = id;
     save();
 }
 

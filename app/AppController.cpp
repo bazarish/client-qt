@@ -45,6 +45,7 @@ const QString kAppScope = QStringLiteral("app");
 AppController::AppController(Translations& translations, QObject* parent)
     : QObject(parent)
     , lightTheme_(AppSettings::instance().lightTheme())
+    , camera_(QString::fromStdString(AppSettings::instance().camera()))
     , screenCapture_(AppSettings::instance().screenCapture())
 {
 #ifdef Q_OS_ANDROID
@@ -262,6 +263,16 @@ void AppController::setBackgroundTasksVisible(const bool on)
     backgroundTasks_ = on;
     emit backgroundTasksVisibleChanged();
     emit commands_.setBackgroundTasksVisible(on);
+}
+
+void AppController::setCamera(const QString& id)
+{
+    if (camera_ == id) {
+        return;
+    }
+    camera_ = id;
+    emit cameraChanged();
+    emit commands_.setCamera(id);
 }
 
 void AppController::setLightTheme(const bool on)
