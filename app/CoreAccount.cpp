@@ -231,6 +231,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::replacePersonalKey);
     connect(&commands_, &AccountCommands::requestSetAliasBinding, worker_,
         &SessionWorker::setAliasBinding);
+    connect(&commands_, &AccountCommands::requestSetAliasWord, worker_,
+        &SessionWorker::setAliasWord);
     connect(&commands_, &AccountCommands::requestRetryRoutingTo, worker_,
         &SessionWorker::retryRoutingTo);
     connect(&commands_, &AccountCommands::requestPublishPersonalDest, worker_,

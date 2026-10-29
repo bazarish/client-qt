@@ -366,6 +366,8 @@ public:
     Q_INVOKABLE void deleteMessage(qint64 localId, const QString& e2eId, bool outgoing);
     Q_INVOKABLE QString inviteProblem(const QString& uri) const;
     Q_INVOKABLE QString aliasProblem(const QString& typed) const;
+    // Whatever is not an invite link is an alias, with or without its sigil.
+    Q_INVOKABLE bool typedAlias(const QString& typed) const;
     Q_INVOKABLE void addByInvite(const QString& uri, const QString& intro);
     Q_INVOKABLE void retryContactRequest(const QString& fingerprint);
     Q_INVOKABLE void addByAlias(const QString& alias, const QString& intro);
@@ -411,6 +413,8 @@ public:
     Q_INVOKABLE void loadPersonalKey(const QString& fileUrl);
     Q_INVOKABLE void replacePersonalKey();
     Q_INVOKABLE void setAliasBinding(const QString& alias, bool on);
+    Q_INVOKABLE void setAliasWord(const QString& alias, const QString& word);
+    Q_INVOKABLE QString aliasWordProblem(const QString& word) const;
     Q_INVOKABLE void retryRoutingTo(const QString& peer);
     Q_INVOKABLE void cancelTransfer(const QString& e2eId);
     Q_INVOKABLE void publishPersonalDest();

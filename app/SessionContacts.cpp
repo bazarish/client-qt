@@ -10,6 +10,7 @@
 #include <bazarish/Address.hpp>
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Limits.hpp>
+#include <bazarish/Links.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
 
@@ -52,22 +53,14 @@ void SessionController::activateAliasServicing()
 
 QString SessionController::inviteProblem(const QString& uri) const
 {
-    const QString trimmed = uri.trimmed();
-    if (trimmed.isEmpty()) {
-        return tr("Paste an invite link.");
-    }
     try {
-        const bazarish::Descriptor descriptor = bazarish::parseDescriptor(trimmed.toStdString());
+        const bazarish::Descriptor descriptor
+            = bazarish::parseDescriptor(uri.trimmed().toStdString());
         if (descriptor.dest.empty()) {
             return tr("This invite carries no address to reach that account.");
         }
     } catch (const std::exception&) {
-        static const QRegularExpression fingerprint(QStringLiteral("^[a-z2-7]{52}$"));
-        if (fingerprint.match(trimmed).hasMatch()) {
-            return tr("That is a fingerprint, not an invite. An invite starts with "
-                      "bazarish://invite?");
-        }
-        return tr("An alias must start with \"!\", and a full link with \"bazarish://\".");
+        return tr("This invite link is damaged.");
     }
     return {};
 }
@@ -76,19 +69,43 @@ QString SessionController::aliasProblem(const QString& typed) const
 {
     const std::string text = typed.trimmed().toStdString();
     try {
-        bazarish::normalizeAlias(text);
+        bazarish::parseAliasQuery(text);
     } catch (const std::exception&) {
-        // The same two checks as common's, in its order; its own words are not translated.
+        // The same checks as common's, in its order; its own words are not translated.
         const std::size_t sigil = (!text.empty() && text.front() == bazarish::kAliasSigil) ? 1 : 0;
-        const std::size_t length = text.size() - sigil;
-        if (length < bazarish::kAliasMinLength || length > bazarish::kAliasMaxLength) {
+        const std::size_t dash = text.find(bazarish::kAliasWordSeparator, sigil);
+        const std::string name
+            = text.substr(sigil, dash == std::string::npos ? std::string::npos : dash - sigil);
+        if (name.size() < bazarish::kAliasMinLength || name.size() > bazarish::kAliasMaxLength) {
             return tr("An alias must be %1 to %2 characters long.")
                 .arg(bazarish::kAliasMinLength)
                 .arg(bazarish::kAliasMaxLength);
         }
-        return tr("An alias may contain only Latin letters and digits.");
+        if (dash == std::string::npos
+            || !bazarish::isAlias(QString::fromStdString(name).toLower().toStdString())) {
+            return tr("An alias may contain only Latin letters and digits.");
+        }
+        return tr("The word after the dash is 1 to %1 Latin letters and digits.")
+            .arg(bazarish::kAliasWordMaxLength);
     }
     return {};
+}
+
+QString SessionController::aliasWordProblem(const QString& word) const
+{
+    const QString trimmed = word.trimmed();
+    static const QRegularExpression wordShape(QStringLiteral("^[A-Za-z0-9]*$"));
+    if (trimmed.size() > static_cast<qsizetype>(bazarish::kAliasWordMaxLength)
+        || !wordShape.match(trimmed).hasMatch()) {
+        return tr("A word is up to %1 Latin letters and digits.")
+            .arg(bazarish::kAliasWordMaxLength);
+    }
+    return {};
+}
+
+bool SessionController::typedAlias(const QString& typed) const
+{
+    return !typed.trimmed().startsWith(QLatin1String(bazarish::kInviteUri));
 }
 
 void SessionController::addByInvite(const QString& uri, const QString& intro)
@@ -120,7 +137,7 @@ void SessionController::addByAlias(const QString& alias, const QString& intro)
         emit actionFailed(problem);
         return;
     }
-    emit commands_.addByAlias(alias, intro);
+    emit commands_.addByAlias(aliasChatPeer(alias), intro);
 }
 
 void SessionController::acceptContact()

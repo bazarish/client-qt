@@ -1991,12 +1991,6 @@
       "zh": "没有人。屏蔽在联系人面板中开启。",
       "ar": "لا أحد. يُفعَّل الحظر من لوحة جهة الاتصال."
     },
-    "An alias must start with \"!\", and a full link with \"bazarish://\".": {
-      "ru": "Алиас должен начинаться с «!», а полная ссылка с «bazarish://».",
-      "es": "Un alias debe empezar por «!», y un enlace completo, por «bazarish://».",
-      "zh": "别名必须以“!”开头，完整链接必须以“bazarish://”开头。",
-      "ar": "يجب أن يبدأ الاسم المستعار بـ «!»، والرابط الكامل بـ «bazarish://»."
-    },
     "Not configured": {
       "ru": "Не настроено",
       "es": "Sin configurar",
@@ -2188,12 +2182,6 @@
       "es": "Pega un enlace de invitación o un alias corto",
       "zh": "粘贴邀请链接或短别名",
       "ar": "الصِق رابط دعوة أو اسمًا مستعارًا قصيرًا"
-    },
-    "Paste an invite link.": {
-      "ru": "Вставьте ссылку-приглашение.",
-      "es": "Pega un enlace de invitación.",
-      "zh": "请粘贴邀请链接。",
-      "ar": "الصِق رابط دعوة."
     },
     "Paste the address its operator gave you, or skip. The app will run its built-in router.": {
       "ru": "Вставьте адрес от оператора или пропустите. Приложение запустит встроенный роутер.",
@@ -3142,12 +3130,6 @@
       "es": "Avisando a tu servidor…",
       "zh": "正在通知服务器…",
       "ar": "جارٍ إبلاغ خادمك…"
-    },
-    "That is a fingerprint, not an invite. An invite starts with bazarish://invite?": {
-      "ru": "Это отпечаток, а не приглашение. Приглашение начинается с bazarish://invite?",
-      "es": "Eso es una huella, no una invitación. Una invitación empieza por bazarish://invite?",
-      "zh": "这是指纹，不是邀请。邀请以 bazarish://invite? 开头。",
-      "ar": "هذه بصمة، لا دعوة. تبدأ الدعوة بـ bazarish://invite?"
     },
     "That is not a gateway address. It looks like https://host/path#token.": {
       "ru": "Это не адрес шлюза. Он выглядит так: https://host/path#token.",
@@ -4912,6 +4894,72 @@
       "es": "Las notificaciones emergentes muestran el texto del mensaje.",
       "zh": "弹出通知会显示消息文本。",
       "ar": "تعرض الإشعارات المنبثقة نص الرسالة."
+    },
+    "A word is up to %1 Latin letters and digits.": {
+      "ru": "Слово может содержать до %1 латинских букв и цифр.",
+      "es": "Una palabra puede tener hasta %1 letras latinas y dígitos.",
+      "zh": "口令最多 %1 个拉丁字母和数字。",
+      "ar": "يمكن أن تتكون الكلمة من ⁦%1⁩ أحرف لاتينية وأرقام كحد أقصى."
+    },
+    "No word": {
+      "ru": "Без слова",
+      "es": "Sin palabra",
+      "zh": "无口令",
+      "ar": "بلا كلمة"
+    },
+    "Setting the word of %1": {
+      "ru": "Установка слова для %1",
+      "es": "Fijando la palabra de %1",
+      "zh": "正在设置 %1 的口令",
+      "ar": "جارٍ تعيين كلمة ⁦%1⁩"
+    },
+    "Taking the word off %1": {
+      "ru": "Снятие слова с %1",
+      "es": "Quitando la palabra de %1",
+      "zh": "正在移除 %1 的口令",
+      "ar": "جارٍ إزالة كلمة ⁦%1⁩"
+    },
+    "The alias is then found only with the word after a dash. Empty takes it off.": {
+      "ru": "Тогда алиас находится только со словом через тире. Пустое поле снимает слово.",
+      "es": "Entonces el alias solo se encuentra con la palabra tras un guion. Vacío la quita.",
+      "zh": "此后只有在别名后加连字符和口令才能找到它。留空则移除口令。",
+      "ar": "عندها لا يُعثر على الاسم المستعار إلا مع الكلمة بعد شرطة. الحقل الفارغ يزيلها."
+    },
+    "The alias registry is busy: completing its check…": {
+      "ru": "Реестр алиасов занят: идёт проверка…",
+      "es": "El registro de alias está ocupado: completando su comprobación…",
+      "zh": "别名登记处繁忙：正在完成验证…",
+      "ar": "سجل الأسماء مشغول: جارٍ إكمال التحقق…"
+    },
+    "The word after the dash is 1 to %1 Latin letters and digits.": {
+      "ru": "Слово после тире — от 1 до %1 латинских букв и цифр.",
+      "es": "La palabra tras el guion tiene de 1 a %1 letras latinas y dígitos.",
+      "zh": "连字符后的口令为 1 到 %1 个拉丁字母和数字。",
+      "ar": "الكلمة بعد الشرطة من 1 إلى ⁦%1⁩ أحرف لاتينية وأرقام."
+    },
+    "This invite link is damaged.": {
+      "ru": "Ссылка-приглашение повреждена.",
+      "es": "Este enlace de invitación está dañado.",
+      "zh": "此邀请链接已损坏。",
+      "ar": "رابط الدعوة هذا تالف."
+    },
+    "Word": {
+      "ru": "Слово",
+      "es": "Palabra",
+      "zh": "口令",
+      "ar": "الكلمة"
+    },
+    "Word for %1": {
+      "ru": "Слово для %1",
+      "es": "Palabra para %1",
+      "zh": "%1 的口令",
+      "ar": "كلمة ⁦%1⁩"
+    },
+    "Word set": {
+      "ru": "Слово задано",
+      "es": "Palabra fijada",
+      "zh": "口令已设置",
+      "ar": "عُيّنت الكلمة"
     }
   }
 }

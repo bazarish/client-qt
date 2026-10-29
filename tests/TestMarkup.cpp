@@ -134,6 +134,12 @@ void testAliases()
     const std::vector<Run> stopped = runsOf("ask !bob.");
     CHECK(stopped[1].target == QStringLiteral("bob"));
     CHECK(stopped[2].text == QStringLiteral("."));
+    const std::vector<Run> worded = runsOf("ask !bob-Secret9 now");
+    CHECK(worded[1].action == Action::eAlias);
+    CHECK(worded[1].text == QStringLiteral("!bob-Secret9"));
+    CHECK(worded[1].target == QStringLiteral("bob-Secret9"));
+    CHECK(runsOf("!bob-a-b")[0].action == Action::eNone);
+    CHECK(runsOf("ask !bob- now")[1].target == QStringLiteral("bob"));
     CHECK(runsOf("!bob_smith").size() == 1);
     CHECK(runsOf("!bob_smith")[0].action == Action::eNone);
     CHECK(runsOf("!bob.smith")[0].action == Action::eNone);

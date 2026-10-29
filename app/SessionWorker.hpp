@@ -126,6 +126,7 @@ public slots:
     void loadPersonalKey(const QString& path);
     void replacePersonalKey();
     void setAliasBinding(const QString& alias, bool on);
+    void setAliasWord(const QString& alias, const QString& word);
     void retryRoutingTo(const QString& peer);
     void setAcceptCalls(bool accept);
     void setSendReceipts(bool on);

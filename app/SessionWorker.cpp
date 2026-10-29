@@ -124,6 +124,8 @@ QString noteForCardStep(const bazarish::client::Session::CardStep step, const QS
             ? encodeSystemNote(QT_TR_NOOP("Looking up %1 in the alias registry…"), {alias})
             : encodeSystemNote(QT_TR_NOOP("Looking up %1 in the alias registry: %2"),
                 {alias, fetchStage});
+    case Step::eSolvingPuzzle:
+        return encodeSystemNote(QT_TR_NOOP("The alias registry is busy: completing its check…"));
     case Step::eFetchingCard:
         return fetchStage.isEmpty()
             ? encodeSystemNote(QT_TR_NOOP("Fetching the contact card…"))
@@ -242,6 +244,7 @@ QVariantList aliasHoldingRows(const std::vector<bazarish::client::Session::Alias
         }
         QVariantMap row;
         row[QStringLiteral("alias")] = QString::fromStdString(holding.alias);
+        row[QStringLiteral("word")] = QString::fromStdString(holding.word);
         row[QStringLiteral("resolving")] = holding.bindingWanted;
         row[QStringLiteral("live")] = holding.bindingWanted && holding.bound;
         const QString when = QDateTime::fromSecsSinceEpoch(holding.notAfter).date().toString(
@@ -2106,6 +2109,28 @@ void SessionWorker::setAliasBinding(const QString& alias, const bool on)
         try {
             session_->setAliasBinding(alias.toStdString(), on);
             op.succeed(on ? tr("Points here") : tr("Points nowhere"));
+        } catch (const std::exception& e) {
+            op.fail(QString::fromUtf8(e.what()));
+            emit actionFailed(QString::fromUtf8(e.what()));
+        }
+    }
+    const QVariantList rows = aliasHoldingRows(session_->aliasNames());
+    emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+}
+
+void SessionWorker::setAliasWord(const QString& alias, const QString& word)
+{
+    if (!session_) {
+        return;
+    }
+    {
+        WorkerOp op(this, QStringLiteral("alias-word-") + alias, QStringLiteral("alias"),
+            word.isEmpty() ? tr("Taking the word off %1").arg(alias)
+                           : tr("Setting the word of %1").arg(alias),
+            tr("Asking the alias registry…"));
+        try {
+            session_->setAliasWord(alias.toStdString(), word.toStdString());
+            op.succeed(word.isEmpty() ? tr("No word") : tr("Word set"));
         } catch (const std::exception& e) {
             op.fail(QString::fromUtf8(e.what()));
             emit actionFailed(QString::fromUtf8(e.what()));

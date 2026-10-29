@@ -73,7 +73,8 @@ QString newE2eId()
 QString aliasChatPeer(const QString& alias)
 {
     return QChar::fromLatin1(bazarish::kAliasSigil)
-        + QString::fromStdString(bazarish::normalizeAlias(alias.trimmed().toStdString()));
+        + QString::fromStdString(bazarish::aliasQueryText(
+            bazarish::parseAliasQuery(alias.trimmed().toStdString())));
 }
 
 bool hasAliasSigil(const QString& text)

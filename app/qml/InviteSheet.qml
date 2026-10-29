@@ -121,6 +121,8 @@ Popup {
                     id: aliasRow
                     required property var modelData
                     property bool copied: false
+                    readonly property string shared: "!" + modelData.alias
+                        + (modelData.word.length > 0 ? "-" + modelData.word : "")
                     Layout.fillWidth: true
                     spacing: 8
                     Timer { id: aliasCopied; interval: 1500; onTriggered: aliasRow.copied = false }
@@ -133,7 +135,7 @@ Popup {
                                 if (!root.session) {
                                     return
                                 }
-                                App.copyText("!" + aliasRow.modelData.alias)
+                                App.copyText(aliasRow.shared)
                                 aliasRow.copied = true
                                 aliasCopied.restart()
                             }
@@ -149,7 +151,17 @@ Popup {
                                 ? Theme.green
                                 : (aliasRow.modelData.resolving ? Theme.text : Theme.textDim)
                             font.pixelSize: Theme.fontLarge
+                        }
+                        Label {
+                            visible: aliasRow.modelData.word.length > 0
+                            text: "-" + aliasRow.modelData.word
+                            color: aliasRow.copied ? Theme.green : Theme.textFaint
+                            font.pixelSize: Theme.fontLarge
                             elide: Text.ElideRight
+                            Layout.fillWidth: true
+                        }
+                        Item {
+                            visible: aliasRow.modelData.word.length === 0
                             Layout.fillWidth: true
                         }
                     }
@@ -163,6 +175,12 @@ Popup {
                                 : qsTr("answers nobody"))
                         color: aliasRow.copied ? Theme.green : Theme.textDim
                         font.pixelSize: Theme.fontSmall
+                    }
+                    IconButton {
+                        iconName: "key"
+                        enabled: root.session !== null && root.session.connected
+                            && !root.session.aliasBusy
+                        onClicked: wordDialog.ask(aliasRow.modelData.alias, aliasRow.modelData.word)
                     }
                     Toggle {
                         checked: aliasRow.modelData.resolving
@@ -259,6 +277,59 @@ Popup {
                     : qsTr("Check my aliases")
                 enabled: root.session && root.session.connected && !root.session.aliasBusy
                 onClicked: root.session.activateAliasServicing()
+            }
+        }
+    }
+
+    // The word gates every lookup of the name: without it the registry answers as for a free name.
+    Dialog {
+        id: wordDialog
+        property string alias: ""
+        function ask(name, word) {
+            alias = name
+            wordField.text = word
+            open()
+        }
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        width: Math.min(380, root.width)
+        background: DialogFrame { }
+        header: Label {
+            text: qsTr("Word for %1").arg("!" + wordDialog.alias)
+            color: Theme.text
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: qsTr("Save")
+            onAccepted: wordDialog.accept()
+            onRejected: wordDialog.reject()
+        }
+        onAccepted: if (root.session) {
+            root.session.setAliasWord(wordDialog.alias, wordField.text)
+        }
+        contentItem: ColumnLayout {
+            spacing: 8
+            Label {
+                Layout.fillWidth: true
+                Layout.margins: 14
+                Layout.bottomMargin: 0
+                wrapMode: Text.Wrap
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                text: qsTr("The alias is then found only with the word after a dash. Empty takes it off.")
+            }
+            TextField {
+                id: wordField
+                Layout.fillWidth: true
+                Layout.margins: 14
+                Layout.topMargin: 0
+                maximumLength: App.aliasWordMaxLength
+                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
+                validator: RegularExpressionValidator { regularExpression: /[A-Za-z0-9]*/ }
+                placeholderText: qsTr("Word")
             }
         }
     }

@@ -1464,6 +1464,14 @@ void SessionController::setAliasBinding(const QString& alias, const bool on)
     emit commands_.requestSetAliasBinding(alias, on);
 }
 
+void SessionController::setAliasWord(const QString& alias, const QString& word)
+{
+    if (!aliasWordProblem(word).isEmpty()) {
+        return;
+    }
+    emit commands_.requestSetAliasWord(alias, word.trimmed().toLower());
+}
+
 void SessionController::retryRoutingTo(const QString& peer)
 {
     emit commands_.requestRetryRoutingTo(peer);

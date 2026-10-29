@@ -358,6 +358,17 @@ private:
             || length > static_cast<int>(kAliasMaxLength)) {
             return false;
         }
+        if (end + 1 < to && text_[end] == QChar::fromLatin1(kAliasWordSeparator)
+            && isAliasChar(text_[end + 1])) {
+            int wordEnd = end + 1;
+            while (wordEnd < to && isAliasChar(text_[wordEnd])) {
+                ++wordEnd;
+            }
+            if (wordEnd - end - 1 > static_cast<int>(kAliasWordMaxLength)) {
+                return false;
+            }
+            end = wordEnd;
+        }
         // A name runs to a boundary: what follows may not be a name character in
         // any alphabet, or this is an ordinary exclamation inside a word.
         if (end < to && isWordChar(text_[end])) {

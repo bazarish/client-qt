@@ -44,6 +44,7 @@ class AppController : public QObject {
     Q_PROPERTY(int unreadElsewhere READ unreadElsewhere NOTIFY accountsChanged)
     Q_PROPERTY(int maxGreetingLength READ maxGreetingLength CONSTANT)
     Q_PROPERTY(QString aliasSigil READ aliasSigil CONSTANT)
+    Q_PROPERTY(int aliasWordMaxLength READ aliasWordMaxLength CONSTANT)
     Q_PROPERTY(bool mobile READ mobile CONSTANT)
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled
             NOTIFY notificationsEnabledChanged)
@@ -78,6 +79,7 @@ public:
     int unreadElsewhere() const;
     static int maxGreetingLength() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
     static QString aliasSigil() { return QString(QChar(bazarish::kAliasSigil)); }
+    static int aliasWordMaxLength() { return static_cast<int>(bazarish::kAliasWordMaxLength); }
     static bool mobile()
     {
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)

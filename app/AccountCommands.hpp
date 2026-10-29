@@ -20,6 +20,7 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestRefreshStorageUsage", "requestRefreshDevices", "requestForgetDevice",
     "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
     "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
+    "requestSetAliasWord",
     "requestSetAvatar", "requestClearAvatar",
 };
 
@@ -140,6 +141,7 @@ signals:
     void requestLoadPersonalKey(const QString& path);
     void requestReplacePersonalKey();
     void requestSetAliasBinding(const QString& alias, bool on);
+    void requestSetAliasWord(const QString& alias, const QString& word);
     void requestRetryRoutingTo(const QString& peer);
     void requestSetAcceptCalls(bool accept);
     void requestSetSendReceipts(bool on);
