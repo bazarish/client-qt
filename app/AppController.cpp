@@ -29,6 +29,7 @@
 #include <QClipboard>
 #include <QColor>
 #include <QGuiApplication>
+#include <QScreen>
 #include <QImage>
 
 #include <exception>
@@ -517,6 +518,19 @@ QString AppController::pairLinkProblem(const QString& link) const
 bool AppController::portable() const
 {
     return client::AccountManager::portable();
+}
+
+bool AppController::inBackGestureEdge(const qreal x, const qreal width) const
+{
+#ifdef Q_OS_ANDROID
+    const qreal ratio = QGuiApplication::primaryScreen()->devicePixelRatio();
+    return x < AndroidWindow::gestureEdgeLeft() / ratio
+        || x > width - AndroidWindow::gestureEdgeRight() / ratio;
+#else
+    Q_UNUSED(x);
+    Q_UNUSED(width);
+    return false;
+#endif
 }
 
 bool AppController::backgroundRestricted() const

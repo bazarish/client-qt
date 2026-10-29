@@ -188,6 +188,7 @@ public:
     Q_INVOKABLE void holdSelection(QObject* field) const;
 
     Q_INVOKABLE bool clipboardHasImage() const;
+    Q_INVOKABLE bool inBackGestureEdge(qreal x, qreal width) const;
 
     Q_INVOKABLE QString markupHtml(const QString& text, const QColor& actionColor,
         const QColor& chipColor, const QColor& codeColor, const QColor& codeTextColor) const;

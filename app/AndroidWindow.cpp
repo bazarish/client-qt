@@ -231,6 +231,16 @@ void AndroidWindow::allowScreenCapture(const bool on)
     QJniObject::callStaticMethod<void>(kWindow, "allowScreenCapture", "(Z)V", jboolean(on));
 }
 
+int AndroidWindow::gestureEdgeLeft()
+{
+    return QJniObject::callStaticMethod<jint>(kWindow, "gestureEdgeLeft", "()I");
+}
+
+int AndroidWindow::gestureEdgeRight()
+{
+    return QJniObject::callStaticMethod<jint>(kWindow, "gestureEdgeRight", "()I");
+}
+
 void AndroidWindow::followCall()
 {
     const bool overLock = !app_.ringingPeer().isEmpty() || app_.callLive();

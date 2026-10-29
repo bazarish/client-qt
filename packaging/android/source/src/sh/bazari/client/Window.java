@@ -38,6 +38,8 @@ public final class Window {
     private static final String HELD_ANSWER = "answer";
     private static final String HELD_LINK = "link";
 
+    private static volatile int gestureLeft = 0;
+    private static volatile int gestureRight = 0;
     private static final int LIGHT_BARS = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
         | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
 
@@ -180,10 +182,22 @@ public final class Window {
                 int keyboard = insets.getInsets(WindowInsets.Type.ime()).bottom;
                 int bars = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
                 keyboardCovers(Math.max(0, keyboard - bars));
+                android.graphics.Insets gestures = insets.getInsets(WindowInsets.Type.systemGestures());
+                gestureLeft = gestures.left;
+                gestureRight = gestures.right;
                 return view.onApplyWindowInsets(insets);
             });
             frame.requestApplyInsets();
         });
+    }
+
+    // A touch that starts this close to a side may be the system's back gesture, in pixels.
+    public static int gestureEdgeLeft() {
+        return gestureLeft;
+    }
+
+    public static int gestureEdgeRight() {
+        return gestureRight;
     }
 
     // The bars as the system drew them come back with the dark theme, so it looks as it always did.

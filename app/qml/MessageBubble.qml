@@ -305,7 +305,13 @@ Item {
     }
     // A drag handler below a popup still sees a drag that starts on the popup, and takes it over.
     readonly property bool covered: !!delegate.Overlay.overlay && delegate.Overlay.overlay.visible
+    // Android's back gesture begins as a press at a side of the window, before the system takes it.
+    function systemsTouch(scene) {
+        return App.inBackGestureEdge(scene.x, delegate.Window.width)
+    }
+    property bool swipeFromEdge: false
     DragHandler {
+        id: swipeHandler
         target: null
         enabled: delegate.actionable && !delegate.textSelecting && !delegate.covered
             && !delegate.choosing
@@ -319,7 +325,12 @@ Item {
         }
         onActiveChanged: {
             if (active) {
+                delegate.swipeFromEdge = delegate.systemsTouch(swipeHandler.centroid.scenePressPosition)
                 springBack.stop()
+                return
+            }
+            if (delegate.swipeFromEdge) {
+                springBack.start()
                 return
             }
             if (delegate.pull <= -delegate.kActionPull) {
@@ -426,7 +437,11 @@ Item {
         id: holdHandler
         enabled: !delegate.isSystem && !delegate.textSelecting && !delegate.choosing
         acceptedButtons: Qt.LeftButton
-        onLongPressed: delegate.openMenu(holdHandler.point.scenePosition)
+        onLongPressed: {
+            if (!delegate.systemsTouch(holdHandler.point.scenePressPosition)) {
+                delegate.openMenu(holdHandler.point.scenePosition)
+            }
+        }
     }
     function openMenu(scene) {
         delegate.menuAt = Qt.point(scene.x, scene.y)
@@ -451,6 +466,9 @@ Item {
         acceptedButtons: Qt.LeftButton
         onTapped: function(point) {
             const scene = point.scenePosition
+            if (delegate.systemsTouch(point.scenePressPosition)) {
+                return
+            }
             if (bodyText.visible) {
                 const at = bodyText.mapFromItem(null, scene.x, scene.y)
                 const link = bodyText.linkAt(at.x, at.y)
