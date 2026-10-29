@@ -1509,7 +1509,9 @@ void SessionWorker::requestInvite()
             WorkerOp op(this, QStringLiteral("refresh-card"), QStringLiteral("dest"),
                 tr("Refreshing your contact card"),
                 tr("Asking your server for your destination…"));
-            session_->refreshOwnCard();
+            if (session_->refreshOwnCard()) {
+                session_->announceNewRouting();
+            }
             op.succeed(session_->hasOwnRouting() ? tr("Card updated")
                                                  : tr("Destination not up yet"));
         }
