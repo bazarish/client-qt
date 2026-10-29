@@ -125,6 +125,8 @@ ApplicationWindow {
         id: stack
         anchors.fill: parent
         anchors.bottomMargin: window.contentInset
+        // An item that takes a press does not keep it from the pointer handlers of the items below.
+        enabled: !operations.open
         initialItem: attachingComponent
         // An account opens in place; only pages laid over it slide.
         replaceEnter: null
@@ -225,7 +227,12 @@ ApplicationWindow {
     // Background-activity overlay: a right-edge handle + slide-out panel listing
     // in-flight async operations (contact add, sends, transfers, calls) with live
     // status. Below the error dialog (z 1000), above the app content.
-    OperationsOverlay { anchors.fill: parent; anchors.bottomMargin: window.contentInset; z: 900 }
+    OperationsOverlay {
+        id: operations
+        anchors.fill: parent
+        anchors.bottomMargin: window.contentInset
+        z: 900
+    }
 
     // Asked once, before anything can start a router, because the answer decides
     // which one starts. Skipping is an answer and is recorded as one, so this
