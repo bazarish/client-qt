@@ -879,7 +879,9 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
     emit connectProgress(100, tr("Connected"));
     bazarish::client::setConnectProgressSink({});
     emit connectionChanged(true, "active");
-    startAliasErrand(/*byHand=*/false);
+    if (session_->aliasServicingDue()) {
+        startAliasErrand(/*byHand=*/false);
+    }
     emit actionOk(tr("Connected"));
     emitFacadeInfo();
     startReceiving();
