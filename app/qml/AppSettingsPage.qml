@@ -168,6 +168,27 @@ Popup {
                         ColumnLayout {
                             Layout.fillWidth: true
                             Label {
+                                text: qsTr("Text in notifications")
+                                color: Theme.text
+                                wrapMode: Text.Wrap
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("Pop-up notifications show the message text.")
+                                color: Theme.textDim; font.pixelSize: Theme.fontSmall
+                                wrapMode: Text.Wrap; Layout.fillWidth: true
+                            }
+                        }
+                        Toggle {
+                            checked: App.notificationText
+                            onToggled: App.notificationText = checked
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Label {
                                 text: qsTr("Background tasks")
                                 color: Theme.text
                                 wrapMode: Text.Wrap

@@ -4894,6 +4894,18 @@
       "es": "Esta compilación de Bazarish no puede usar una cámara.",
       "zh": "此版本的 Bazarish 无法使用摄像头。",
       "ar": "لا يمكن لهذا الإصدار من Bazarish استخدام الكاميرا."
+    },
+    "Text in notifications": {
+      "ru": "Текст в уведомлении",
+      "es": "Texto en las notificaciones",
+      "zh": "通知中的文本",
+      "ar": "النص في الإشعارات"
+    },
+    "Pop-up notifications show the message text.": {
+      "ru": "Всплывающие уведомления будут содержать текст сообщения.",
+      "es": "Las notificaciones emergentes muestran el texto del mensaje.",
+      "zh": "弹出通知会显示消息文本。",
+      "ar": "تعرض الإشعارات المنبثقة نص الرسالة."
     }
   }
 }

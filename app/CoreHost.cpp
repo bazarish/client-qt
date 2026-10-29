@@ -37,6 +37,20 @@ namespace {
 
 const QString kAppScope = QStringLiteral("app");
 const QString kRestoreOperation = QStringLiteral("restore");
+constexpr qsizetype kNotificationTextChars = 200;
+
+QString shortened(const QString& text)
+{
+    if (text.size() <= kNotificationTextChars) {
+        return text;
+    }
+    qsizetype cut = kNotificationTextChars;
+    // A cut between the halves of a surrogate pair would leave half a character.
+    if (text.at(cut - 1).isHighSurrogate()) {
+        --cut;
+    }
+    return text.left(cut) + QStringLiteral("…");
+}
 
 const int kAccountListMetaType
     = qRegisterMetaType<QVector<AccountListRow>>("QVector<AccountListRow>");
@@ -97,6 +111,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::cancelUnlock, this, &CoreHost::cancelUnlock);
     connect(&commands_, &AppCommands::setNotificationsEnabled, this,
         &CoreHost::setNotificationsEnabled);
+    connect(&commands_, &AppCommands::setNotificationText, this, &CoreHost::setNotificationText);
     connect(&commands_, &AppCommands::setBackgroundTasksVisible, this,
         &CoreHost::setBackgroundTasksVisible);
     connect(&commands_, &AppCommands::setSpeakerOn, this, &CoreHost::setSpeakerOn);
@@ -203,8 +218,9 @@ void CoreHost::start()
 #endif
     i2p_.announce();
     notifications_ = AppSettings::instance().notifications();
+    notificationText_ = AppSettings::instance().notificationText();
     backgroundTasks_ = AppSettings::instance().backgroundTasks();
-    emit events_.settings(notifications_, backgroundTasks_);
+    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
     refreshAccountList();
     loadOfflineSet();
     openAllAccounts();
@@ -252,9 +268,19 @@ void CoreHost::setNotificationsEnabled(const bool on)
     }
     notifications_ = on;
     AppSettings::instance().setNotifications(notifications_);
-    emit events_.settings(notifications_, backgroundTasks_);
+    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
     emit notificationsEnabledChanged();
     updateRinging();
+}
+
+void CoreHost::setNotificationText(const bool on)
+{
+    if (notificationText_ == on) {
+        return;
+    }
+    notificationText_ = on;
+    AppSettings::instance().setNotificationText(notificationText_);
+    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
 }
 
 void CoreHost::setBackgroundTasksVisible(const bool on)
@@ -264,7 +290,7 @@ void CoreHost::setBackgroundTasksVisible(const bool on)
     }
     backgroundTasks_ = on;
     AppSettings::instance().setBackgroundTasks(backgroundTasks_);
-    emit events_.settings(notifications_, backgroundTasks_);
+    emit events_.settings(notifications_, notificationText_, backgroundTasks_);
 }
 
 void CoreHost::updateRinging()
@@ -500,9 +526,14 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
             emit events_.accountOpenFailed(error);
         });
     connect(account, &CoreAccount::messageNotification, this,
-        [this, account](const QString& peer, const QString& fromName) {
-            const QString body = sessions_.size() > 1
-                ? tr("New message for %1").arg(accountName(account)) : tr("New message");
+        [this, account](const QString& peer, const QString& fromName, const QString& preview) {
+            QString body;
+            if (notificationText_ && !preview.isEmpty()) {
+                body = shortened(preview);
+            } else {
+                body = sessions_.size() > 1 ? tr("New message for %1").arg(accountName(account))
+                                            : tr("New message");
+            }
             emit notificationRequested(account->accountId(), peer, fromName, body);
         });
     connect(account, &CoreAccount::reactionNotification, this,

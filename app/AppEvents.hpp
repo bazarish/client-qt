@@ -94,7 +94,7 @@ signals:
     void deleting(const QString& id);
     void pairing(const QString& status, double progress, bool needsCode, bool active);
     void pairingFinished(bool ok);
-    void settings(bool notifications, bool backgroundTasks);
+    void settings(bool notifications, bool notificationText, bool backgroundTasks);
     void ringing(const QString& account, const QString& peer, const QString& fingerprint,
         const QString& accountName);
     void ringLevel(double level);

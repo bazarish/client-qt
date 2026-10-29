@@ -125,10 +125,14 @@ AppController::AppController(Translations& translations, QObject* parent)
         });
     connect(&events_, &AppEvents::pairingFinished, this, &AppController::pairingFinished);
     connect(&events_, &AppEvents::settings, this,
-        [this](const bool notifications, const bool backgroundTasks) {
+        [this](const bool notifications, const bool notificationText, const bool backgroundTasks) {
             if (notifications_ != notifications) {
                 notifications_ = notifications;
                 emit notificationsEnabledChanged();
+            }
+            if (notificationText_ != notificationText) {
+                notificationText_ = notificationText;
+                emit notificationTextChanged();
             }
             if (backgroundTasks_ != backgroundTasks) {
                 backgroundTasks_ = backgroundTasks;
@@ -254,6 +258,16 @@ void AppController::setNotificationsEnabled(const bool on)
     notifications_ = on;
     emit notificationsEnabledChanged();
     emit commands_.setNotificationsEnabled(on);
+}
+
+void AppController::setNotificationText(const bool on)
+{
+    if (notificationText_ == on) {
+        return;
+    }
+    notificationText_ = on;
+    emit notificationTextChanged();
+    emit commands_.setNotificationText(on);
 }
 
 void AppController::setBackgroundTasksVisible(const bool on)

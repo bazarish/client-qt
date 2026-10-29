@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "CoreAccount.hpp"
 
+#include "ChatPreview.hpp"
 #include "DeliveryStatus.hpp"
 #include "OperationLog.hpp"
 #include "PathText.hpp"
@@ -457,7 +458,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         });
     connect(&ingest_, &MessageIngest::messageArrived, this, [this](const QString& peer) {
         if (contacts_.state(peer).notifications) {
-            emit messageNotification(peer, contacts_.peerName(peer));
+            emit messageNotification(
+                peer, contacts_.peerName(peer), chatPreviewOf(store_.lastMessage(peer)));
         }
     });
     connect(&ingest_, &MessageIngest::reactionArrived, this,

@@ -86,6 +86,7 @@ void AppSettings::load()
         screenCapture_ = document.value("screenCapture", false);
         offlineAccounts_ = document.value("offlineAccounts", std::vector<std::string>());
         notifications_ = document.value("notifications", true);
+        notificationText_ = document.value("notificationText", true);
         backgroundTasks_ = document.value("backgroundTasks", false);
         const nlohmann::json audio = document.value("audio", nlohmann::json::object());
         audioInput_ = audio.value("input", std::string());
@@ -138,6 +139,7 @@ void AppSettings::save() const
         {"screenCapture", screenCapture_},
         {"offlineAccounts", offlineAccounts_},
         {"notifications", notifications_},
+        {"notificationText", notificationText_},
         {"backgroundTasks", backgroundTasks_},
         {"audio", {{"input", audioInput_}, {"output", audioOutput_}}},
         {"i2p", i2p},
@@ -229,6 +231,17 @@ void AppSettings::setNotifications(const bool on)
         return;
     }
     notifications_ = on;
+    save();
+}
+
+bool AppSettings::notificationText() const { return notificationText_; }
+
+void AppSettings::setNotificationText(const bool on)
+{
+    if (notificationText_ == on) {
+        return;
+    }
+    notificationText_ = on;
     save();
 }
 

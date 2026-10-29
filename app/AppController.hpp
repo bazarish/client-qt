@@ -47,6 +47,8 @@ class AppController : public QObject {
     Q_PROPERTY(bool mobile READ mobile CONSTANT)
     Q_PROPERTY(bool notificationsEnabled READ notificationsEnabled WRITE setNotificationsEnabled
             NOTIFY notificationsEnabledChanged)
+    Q_PROPERTY(bool notificationText READ notificationText WRITE setNotificationText
+            NOTIFY notificationTextChanged)
     Q_PROPERTY(bool backgroundTasksVisible READ backgroundTasksVisible
             WRITE setBackgroundTasksVisible NOTIFY backgroundTasksVisibleChanged)
     Q_PROPERTY(bool lightTheme READ lightTheme WRITE setLightTheme NOTIFY lightThemeChanged)
@@ -125,6 +127,8 @@ public:
     bool notificationsEnabled() const { return notifications_; }
     void setNotificationsEnabled(bool on);
 
+    bool notificationText() const { return notificationText_; }
+    void setNotificationText(bool on);
     bool backgroundTasksVisible() const { return backgroundTasks_; }
     void setBackgroundTasksVisible(bool on);
 
@@ -210,6 +214,7 @@ signals:
     void accountListChanged();
     void accountsChanged();
     void notificationsEnabledChanged();
+    void notificationTextChanged();
     void backgroundTasksVisibleChanged();
     void lightThemeChanged();
     void cameraChanged();
@@ -260,6 +265,7 @@ private:
     std::pair<QString, QString> pendingConversation_;
     QString deletingId_;
     bool notifications_ = true;
+    bool notificationText_ = true;
     bool backgroundTasks_ = false;
     bool lightTheme_ = true;
     QString camera_;

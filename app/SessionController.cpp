@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
+#include "ChatPreview.hpp"
 #include "Documents.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
@@ -753,31 +754,9 @@ void SessionController::retranslate()
     conversation_.retranslate();
 }
 
-QString SessionController::attachmentLabel(const QString& type)
-{
-    if (type == QStringLiteral("audio")) {
-        return tr("[voice]");
-    }
-    if (type == QStringLiteral("image")) {
-        return tr("[image]");
-    }
-    return tr("[file]");
-}
-
 QString SessionController::chatPreview(const QString& peer) const
 {
-    const TranscriptStore::LastMessage last = store_.lastMessage(peer);
-    QString preview;
-    if (!last.text.isEmpty()) {
-        preview = isServiceMessage(last.type) ? systemNoteText(last.text) : last.text;
-    } else if (last.type.isEmpty()) {
-        return {};
-    } else if (last.attachment.isEmpty()) {
-        preview = attachmentLabel(last.type);
-    } else {
-        preview = attachmentLabel(last.type) + QLatin1Char(' ') + last.attachment;
-    }
-    return last.author.isEmpty() ? preview : tr("%1: %2").arg(last.author, preview);
+    return chatPreviewOf(store_.lastMessage(peer));
 }
 
 bool SessionController::activeAliasLookup() const

@@ -42,6 +42,7 @@ public:
     QVector<AccountRow> accountStatuses() const { return accountStatuses_; }
     bool notificationsEnabled() const { return notifications_; }
     void setNotificationsEnabled(bool on);
+    void setNotificationText(bool on);
     QString ringingAccount() const { return ringingAccount_; }
     QString ringingPeer() const { return ringingPeer_; }
     QString ringingPeerFingerprint() const { return ringingPeerFingerprint_; }
@@ -137,6 +138,7 @@ private:
     bool windowActive_ = false;
     bool callScreenShown_ = false;
     bool notifications_ = true;
+    bool notificationText_ = true;
     bool backgroundTasks_ = false;
     Ringtone ringtone_;
     QString ringingAccount_;

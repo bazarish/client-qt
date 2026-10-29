@@ -65,7 +65,7 @@ public:
 signals:
     void changed();
     void callChanged();
-    void messageNotification(const QString& peer, const QString& fromName);
+    void messageNotification(const QString& peer, const QString& fromName, const QString& preview);
     void reactionNotification(const QString& peer, const QString& fromName, const QString& emoji);
 
 private slots:

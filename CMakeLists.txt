@@ -85,6 +85,8 @@ if(Qt6_FOUND)
         app/SessionShared.hpp
         app/SystemNotes.cpp
         app/SystemNotes.hpp
+        app/ChatPreview.cpp
+        app/ChatPreview.hpp
         app/Translations.cpp
         app/Translations.hpp
         app/TranscriptStore.cpp

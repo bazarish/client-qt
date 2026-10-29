@@ -36,6 +36,9 @@ public:
     bool notifications() const;
     void setNotifications(bool on);
 
+    bool notificationText() const;
+    void setNotificationText(bool on);
+
     bool backgroundTasks() const;
     void setBackgroundTasks(bool on);
 
@@ -79,6 +82,7 @@ private:
     bool screenCapture_ = false;
     std::vector<std::string> offlineAccounts_;
     bool notifications_ = true;
+    bool notificationText_ = true;
     bool backgroundTasks_ = false;
     std::string audioInput_;
     std::string audioOutput_;

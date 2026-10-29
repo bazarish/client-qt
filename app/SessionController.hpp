@@ -300,7 +300,6 @@ public:
     Q_INVOKABLE QString peerName(const QString& id) const;
     QString savedPeer() const;
     static QString savedChatName();
-    static QString attachmentLabel(const QString& type);
     QString chatPreview(const QString& peer) const;
     Q_INVOKABLE bool isSavedChat(const QString& peer) const
     {
