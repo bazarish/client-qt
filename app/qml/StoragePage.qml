@@ -142,18 +142,10 @@ Popup {
                         Layout.leftMargin: 14
                         Layout.rightMargin: 14
                         spacing: 10
-                        Rectangle {
+                        SavedMark {
                             visible: chatRow.saved
-                            implicitWidth: 34
-                            implicitHeight: 34
-                            radius: width / 2
-                            color: Theme.surfaceAlt
-                            Icon {
-                                anchors.centerIn: parent
-                                name: "bookmark"
-                                color: Theme.green
-                                size: 18
-                            }
+                            size: 34
+                            iconSize: 18
                         }
                         Avatar { visible: !chatRow.saved; fingerprint: chatRow.modelData.peer; size: 34 }
                         ColumnLayout {

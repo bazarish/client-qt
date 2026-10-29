@@ -196,20 +196,9 @@ Item {
                 }
                 contentItem: RowLayout {
                     spacing: 10
-                    // The saved chat is not a correspondent and has no face: it
-                    // carries a bookmark, which is what it is for.
-                    Rectangle {
+                    SavedMark {
                         visible: model.saved
-                        implicitWidth: 44
-                        implicitHeight: 44
-                        radius: width / 2
-                        color: Theme.surfaceAlt
-                        Icon {
-                            anchors.centerIn: parent
-                            name: "bookmark"
-                            color: Theme.green
-                            size: 22
-                        }
+                        size: 44
                     }
                     Avatar {
                         visible: !model.saved

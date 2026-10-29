@@ -400,15 +400,10 @@ Item {
                         count: (root.session ? root.session.unreadTotal : 0) + App.unreadElsewhere
                     }
                 }
-                // The saved chat is nobody's face: it carries the same mark here
-                // as it does in the list.
-                Rectangle {
+                SavedMark {
                     visible: root.savedChat
-                    implicitWidth: 38
-                    implicitHeight: 38
-                    radius: width / 2
-                    color: Theme.surfaceAlt
-                    Icon { anchors.centerIn: parent; name: "bookmark"; color: Theme.green; size: 20 }
+                    size: 38
+                    iconSize: 20
                 }
                 Avatar {
                     visible: !root.savedChat

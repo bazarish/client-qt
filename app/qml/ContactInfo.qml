@@ -60,14 +60,10 @@ Popup {
         }
 
         // --- The saved chat ---
-        Rectangle {
+        SavedMark {
             visible: root.saved
             Layout.alignment: Qt.AlignHCenter
-            implicitWidth: 88
-            implicitHeight: 88
-            radius: width / 2
-            color: Theme.surfaceAlt
-            Icon { anchors.centerIn: parent; name: "bookmark"; color: Theme.green; size: 44 }
+            size: 88
         }
         Label {
             visible: root.saved

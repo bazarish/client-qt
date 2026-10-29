@@ -82,20 +82,10 @@ Popup {
                 }
                 contentItem: RowLayout {
                     spacing: 10
-                    // The saved chat is first in this list, and carries its own
-                    // mark rather than a face.
-                    Rectangle {
+                    SavedMark {
                         visible: model.saved
-                        implicitWidth: 34
-                        implicitHeight: 34
-                        radius: width / 2
-                        color: Theme.surfaceAlt
-                        Icon {
-                            anchors.centerIn: parent
-                            name: "bookmark"
-                            color: Theme.green
-                            size: 18
-                        }
+                        size: 34
+                        iconSize: 18
                     }
                     Avatar { visible: !model.saved; fingerprint: model.fingerprint; size: 34 }
                     Label {
