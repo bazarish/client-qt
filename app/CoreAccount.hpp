@@ -167,6 +167,8 @@ private:
     void endCall();
     void onConnectRequested();
     void onConnectProgress(int percent, const QString& phase);
+    void onSyncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
+    void releaseHeldReads();
     void settleConnect(bool connected, const QString& note);
     void sendCallback(
         const QString& peer, const QString& data, const QString& ref, const QString& label);
@@ -224,6 +226,14 @@ private:
     QHash<QString, qint64> lastReadAckedId_;
     QHash<QString, qint64> pendingReadSync_;
     QTimer readSyncTimer_;
+    // While the backlog comes in nothing about reading leaves; each peer gets one receipt after.
+    bool catchingUp_ = false;
+    struct HeldReceipt {
+        qint64 sentAtMs = 0;
+        QString e2eId;
+    };
+    QHash<QString, HeldReceipt> heldReceipts_;
+    QHash<QString, qint64> readElsewhereAtMs_;
     QTimer presenceOrderTimer_;
     bool presenceFocused_ = false;
     QTimer expiryTimer_;

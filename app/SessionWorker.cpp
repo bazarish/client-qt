@@ -341,6 +341,7 @@ void SessionWorker::startErrands()
     errands_ = std::thread([this]() {
         while (true) {
             Errand errand;
+            std::vector<std::string> acks;
             {
                 std::unique_lock<std::mutex> lock(errandMutex_);
                 errandWake_.wait(
@@ -350,6 +351,14 @@ void SessionWorker::startErrands()
                 }
                 errand = std::move(errandQueue_.front());
                 errandQueue_.pop_front();
+                if (errand.deliveryId.empty()) {
+                    acks.push_back(errand.pendingId);
+                    while (!errandQueue_.empty() && errandQueue_.front().deliveryId.empty()
+                        && acks.size() < bazarish::kMaxAckIdsPerRequest) {
+                        acks.push_back(std::move(errandQueue_.front().pendingId));
+                        errandQueue_.pop_front();
+                    }
+                }
             }
             if (!errand.deliveryId.empty()) {
                 try {
@@ -361,15 +370,17 @@ void SessionWorker::startErrands()
                 continue;
             }
             try {
-                session_->releasePending(errand.pendingId);
+                session_->releasePending(acks);
             } catch (const std::exception& error) {
-                bazarish::log::warn("pending item not given back: {}", error.what());
+                bazarish::log::warn("pending items not given back: {}", error.what());
             }
             QMetaObject::invokeMethod(
                 this,
-                [this, pendingId = errand.pendingId]() {
+                [this, released = std::move(acks)]() {
                     if (session_) {
-                        session_->forgetPending(pendingId);
+                        for (const std::string& pendingId : released) {
+                            session_->forgetPending(pendingId);
+                        }
                     }
                     settleDrain();
                 },
@@ -409,18 +420,44 @@ void SessionWorker::startEventWaiter()
         std::unique_ptr<bazarish::client::Client> waiter;
         // A held wait answers late by design: until the server has answered, it is not held.
         bool answered = false;
+        // What the first answer after coming online lists is the backlog.
+        bool caughtUp = false;
         while (running->load()) {
-            std::vector<bazarish::client::PendingEntry> waiting;
+            {
+                // A list taken before the last pass is acked would name what it already took in.
+                std::unique_lock<std::mutex> lock(drainMutex_);
+                drainDone_.wait(
+                    lock, [this, &running]() { return drainSettled_ || !running->load(); });
+            }
             const auto askedAt = std::chrono::steady_clock::now();
             const std::uint64_t carryAtAsk = bazarish::i2p::carryReturns();
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
                 }
-                waiting = bazarish::client::Session::waitForMail(
-                    *waiter, answered ? kEventWaitSeconds : 0);
+                const std::vector<bazarish::client::PendingEntry> waiting
+                    = bazarish::client::Session::waitForMail(
+                        *waiter, answered ? kEventWaitSeconds : 0);
+                if (!running->load()) {
+                    return;
+                }
+                if (!answered) {
+                    bazarish::log::info("the server answered the mail wait");
+                }
+                answered = true;
+                QMetaObject::invokeMethod(
+                    this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
+                streamMailbox(*waiter, waiting, !caughtUp, *running);
+                caughtUp = true;
             } catch (const std::exception& error) {
                 answered = false;
+                caughtUp = false;
+                if (const auto* apiError = dynamic_cast<const bazarish::client::ApiError*>(&error);
+                    apiError != nullptr
+                    && apiError->code == bazarish::ErrorCode::eClientUnregistered) {
+                    QMetaObject::invokeMethod(
+                        this, [this]() { registerThisDevice(); }, Qt::QueuedConnection);
+                }
                 const QString refusal
                     = waiter ? QString::fromStdString(waiter->gatewayRefusal()) : QString();
                 QMetaObject::invokeMethod(
@@ -429,50 +466,109 @@ void SessionWorker::startEventWaiter()
                 bazarish::log::info("mail wait failed, asking again: {}", error.what());
                 std::unique_lock<std::mutex> lock(drainMutex_);
                 drainDone_.wait_until(lock, askedAt + std::chrono::seconds(kEventWaitSeconds),
-                    [&running, carryAtAsk]() {
-                        return !running->load() || bazarish::i2p::carryReturns() != carryAtAsk;
+                    [this, &running, carryAtAsk]() {
+                        return !running->load() || retryNow_
+                            || bazarish::i2p::carryReturns() != carryAtAsk;
                     });
-                continue;
+                retryNow_ = false;
             }
-            if (!running->load()) {
-                return;
-            }
-            if (!answered) {
-                bazarish::log::info("the server answered the mail wait");
-            }
-            answered = true;
-            QMetaObject::invokeMethod(
-                this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
-            if (waiting.empty()) {
-                continue;
-            }
-            try {
-                std::vector<bazarish::client::Session::MailboxItem> ahead
-                    = bazarish::client::Session::fetchMailbox(
-                        *waiter, waiting, bazarish::client::Session::kPendingItemsPerPass);
-                if (!ahead.empty()) {
-                    QMetaObject::invokeMethod(
-                        this,
-                        [this, items = std::move(ahead)]() mutable {
-                            if (session_) {
-                                session_->holdFetched(std::move(items));
-                            }
-                        },
-                        Qt::QueuedConnection);
-                }
-            } catch (const std::exception& error) {
-                bazarish::log::info("nothing fetched ahead of the pass: {}", error.what());
-            }
-            {
-                const std::lock_guard<std::mutex> lock(drainMutex_);
-                drainSettled_ = false;
-            }
-            QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
-            std::unique_lock<std::mutex> lock(drainMutex_);
-            drainDone_.wait(
-                lock, [this, &running]() { return drainSettled_ || !running->load(); });
         }
     });
+}
+
+void SessionWorker::streamMailbox(bazarish::client::Client& waiter,
+    const std::vector<bazarish::client::PendingEntry>& waiting, const bool catchUp,
+    const std::atomic<bool>& running)
+{
+    std::uint64_t totalBytes = 0;
+    for (const bazarish::client::PendingEntry& entry : waiting) {
+        totalBytes += entry.bytes;
+    }
+    if (!waiting.empty()) {
+        const std::lock_guard<std::mutex> lock(drainMutex_);
+        drainSettled_ = false;
+        streamEnded_ = false;
+    }
+    QMetaObject::invokeMethod(
+        this,
+        [this, catchUp, totalBytes, items = waiting.size()]() {
+            beginStream(catchUp, totalBytes, items);
+        },
+        Qt::QueuedConnection);
+    if (waiting.empty()) {
+        return;
+    }
+    const auto endStream = [this]() {
+        {
+            const std::lock_guard<std::mutex> lock(drainMutex_);
+            streamEnded_ = true;
+        }
+        QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
+    };
+    // The next batch is on its way while the worker takes in the one before it.
+    try {
+        for (std::size_t begin = 0; begin < waiting.size();) {
+            const std::size_t end = bazarish::client::fetchBatchEnd(waiting, begin);
+            std::vector<bazarish::client::Session::MailboxItem> batch
+                = bazarish::client::Session::fetchMailbox(waiter,
+                    std::vector<bazarish::client::PendingEntry>(
+                        waiting.begin() + static_cast<std::ptrdiff_t>(begin),
+                        waiting.begin() + static_cast<std::ptrdiff_t>(end)));
+            {
+                std::unique_lock<std::mutex> lock(drainMutex_);
+                drainDone_.wait(
+                    lock, [this, &running]() { return streamed_.empty() || !running.load(); });
+                if (!running.load()) {
+                    return;
+                }
+                for (bazarish::client::Session::MailboxItem& item : batch) {
+                    streamed_.push_back(std::move(item));
+                }
+            }
+            QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
+            begin = end;
+        }
+    } catch (const std::exception&) {
+        endStream();
+        throw;
+    }
+    endStream();
+    std::unique_lock<std::mutex> lock(drainMutex_);
+    drainDone_.wait(lock, [this, &running]() { return drainSettled_ || !running.load(); });
+}
+
+void SessionWorker::beginStream(
+    const bool catchUp, const std::uint64_t totalBytes, const std::size_t items)
+{
+    streamBytes_ = totalBytes;
+    takenBytes_ = 0;
+    if (!catchUp) {
+        return;
+    }
+    catchingUp_ = items > 0;
+    syncShown_ = items > Session::kPendingItemsPerPass;
+    emit syncProgress(catchingUp_, syncShown_, 0, static_cast<qint64>(totalBytes));
+}
+
+void SessionWorker::registerThisDevice()
+{
+    if (!session_ || !session_->isConnected()
+        || nowMillis() - lastRegisterAttemptMs_ < kRegisterRetryIntervalMs) {
+        return;
+    }
+    lastRegisterAttemptMs_ = nowMillis();
+    bazarish::log::info("this device is not registered with the server: registering it");
+    try {
+        session_->registerAccount();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("this device could not register again: {}", error.what());
+        return;
+    }
+    {
+        const std::lock_guard<std::mutex> lock(drainMutex_);
+        retryNow_ = true;
+    }
+    drainDone_.notify_all();
 }
 
 void SessionWorker::networkChanged()
@@ -500,15 +596,21 @@ void SessionWorker::stopEventWaiter()
     }
     eventWaiter_ = std::thread();
     eventWaiterRunning_.reset();
+    const std::lock_guard<std::mutex> lock(drainMutex_);
+    streamed_.clear();
+    streamEnded_ = true;
+    drainSettled_ = true;
+    retryNow_ = false;
 }
 
 void SessionWorker::settleDrain()
 {
-    if (session_ != nullptr && !session_->morePending() && session_->awaitingAcks() > 0) {
-        return;
-    }
     {
         const std::lock_guard<std::mutex> lock(drainMutex_);
+        if (!streamed_.empty() || !streamEnded_
+            || (session_ != nullptr && session_->awaitingAcks() > 0)) {
+            return;
+        }
         drainSettled_ = true;
     }
     drainDone_.notify_all();
@@ -819,26 +921,29 @@ void SessionWorker::drainMailbox()
     if (!session_ || !session_->isConnected()) {
         return;
     }
+    std::vector<Session::MailboxItem> chunk;
+    bool more = false;
+    bool ended = false;
+    {
+        const std::lock_guard<std::mutex> lock(drainMutex_);
+        while (!streamed_.empty() && chunk.size() < Session::kPendingItemsPerPass) {
+            chunk.push_back(std::move(streamed_.front()));
+            streamed_.pop_front();
+        }
+        more = !streamed_.empty();
+        ended = !more && streamEnded_;
+    }
+    drainDone_.notify_all();
+    std::uint64_t chunkBytes = 0;
+    for (const Session::MailboxItem& item : chunk) {
+        chunkBytes += item.entry.bytes;
+    }
     const bazarish::log::Slow timed("reading the mailbox", kSlowPass);
     std::vector<IncomingMessage> messages;
     try {
-        try {
-            messages = session_->sync(false, Session::kPendingItemsPerPass);
-        } catch (const bazarish::client::ApiError& error) {
-            if (error.code != bazarish::ErrorCode::eClientUnregistered
-                || nowMillis() - lastRegisterAttemptMs_ < kRegisterRetryIntervalMs) {
-                throw;
-            }
-            lastRegisterAttemptMs_ = nowMillis();
-            bazarish::log::info("this device is not registered with the server: registering it");
-            session_->registerAccount();
-            messages = session_->sync(false, Session::kPendingItemsPerPass);
-        }
-        emit syncReachable(true, {});
+        messages = session_->takeIn(std::move(chunk), false);
     } catch (const std::exception& error) {
-        bazarish::log::warn("sync failed: {}", error.what());
-        emit syncReachable(false, QString::fromStdString(session_->gatewayRefusal()));
-        return;
+        bazarish::log::warn("mailbox items not taken in: {}", error.what());
     }
     if (!addsResumed_) {
         addsResumed_ = true;
@@ -914,6 +1019,15 @@ void SessionWorker::drainMailbox()
     emitContacts();
     emitFacadeInfo();
     refreshCalls();
+    takenBytes_ += chunkBytes;
+    if (catchingUp_) {
+        catchingUp_ = !ended;
+        emit syncProgress(catchingUp_, syncShown_, static_cast<qint64>(takenBytes_),
+            static_cast<qint64>(streamBytes_));
+    }
+    if (more) {
+        QMetaObject::invokeMethod(this, "sync", Qt::QueuedConnection);
+    }
 }
 
 void SessionWorker::refreshCalls()

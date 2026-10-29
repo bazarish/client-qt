@@ -159,6 +159,15 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
 
 
     connect(&events_, &AccountEvents::connectProgress, this, &SessionController::onConnectProgress);
+    connect(&events_, &AccountEvents::syncProgress, this,
+        [this](const bool syncing, const bool shown, const qint64 takenBytes,
+            const qint64 totalBytes) {
+            syncing_ = syncing && shown;
+            syncProgress_ = totalBytes > 0
+                ? static_cast<qreal>(takenBytes) / static_cast<qreal>(totalBytes)
+                : 0;
+            emit syncStateChanged();
+        });
     connect(&events_, &AccountEvents::addressMismatch, this,
         [this](const QString& served, const QString& ours) {
             emit addressNeedsChoice(served, ours);

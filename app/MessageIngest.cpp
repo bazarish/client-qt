@@ -140,7 +140,7 @@ bool MessageIngest::takeIn(const QVariantMap& message)
             if (!store_.applyReadThrough(readPeer, through)) {
                 return false;
             }
-            emit readElsewhere(readPeer);
+            emit readElsewhere(readPeer, through);
         }
         return true;
     }

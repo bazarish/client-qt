@@ -58,6 +58,8 @@ class SessionController : public QObject {
     Q_PROPERTY(QString connectPhase READ connectPhase NOTIFY connectStateChanged)
     Q_PROPERTY(int connectPercent READ connectPercent NOTIFY connectStateChanged)
     Q_PROPERTY(QString connectError READ connectError NOTIFY connectStateChanged)
+    Q_PROPERTY(bool syncing READ syncing NOTIFY syncStateChanged)
+    Q_PROPERTY(qreal syncProgress READ syncProgress NOTIFY syncStateChanged)
     Q_PROPERTY(QString pairUri READ pairUri NOTIFY pairingChanged)
     Q_PROPERTY(QString pairCode READ pairCode NOTIFY pairingChanged)
     Q_PROPERTY(QString pairStatus READ pairStatus NOTIFY pairingChanged)
@@ -169,6 +171,8 @@ public:
     QString connectPhase() const { return connectPhase_; }
     int connectPercent() const { return connectPercent_; }
     QString connectError() const { return connectError_; }
+    bool syncing() const { return syncing_; }
+    qreal syncProgress() const { return syncProgress_; }
     QString serverFingerprint() const { return serverFp_; }
     QString serverLink() const;
     QStringList configuredReseeds() const { return configuredReseeds_; }
@@ -458,6 +462,7 @@ signals:
     void operationsChanged();
     void onlineChanged();
     void reachableChanged();
+    void syncStateChanged();
     void approvalChanged();
     void acceptingContactChanged();
     void ownInviteChanged();
@@ -626,6 +631,8 @@ private:
     QString connectPhase_;
     int connectPercent_ = 0;
     QString connectError_;
+    bool syncing_ = false;
+    qreal syncProgress_ = 0;
     QString pairUri_;
     QString pairCode_;
     QString pairStatus_;

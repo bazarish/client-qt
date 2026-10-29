@@ -86,6 +86,7 @@ inline constexpr Latch kAccountLatches[] = {
     {"presence"},
     {"connectionChanged"},
     {"connectProgress"},
+    {"syncProgress"},
     {"facadeInfo"},
     {"contactsRefreshed"},
     {"accountSettings"},
@@ -123,6 +124,7 @@ signals:
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& connectionNote);
     void connectProgress(int percent, const QString& phase);
+    void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
     void contactsRefreshed(const QVector<ContactState>& contacts, const QStringList& blocked);
     void avatarReady(const QString& fingerprint, const QByteArray& data);
     void uploadProgress(qint64 localId, qint64 sent, qint64 total);

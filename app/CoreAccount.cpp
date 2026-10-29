@@ -20,6 +20,7 @@
 #include <QPointer>
 
 #include <exception>
+#include <iterator>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -445,13 +446,16 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &AccountEvents::contactsRevised);
     connect(&ingest_, &MessageIngest::settingsAsked, &commands_,
         &AccountCommands::requestEmitSettings);
-    connect(&ingest_, &MessageIngest::readElsewhere, this, [this](const QString& peer) {
-        lastReadAckedId_[peer] = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
-        emit events_.chatChanged(peer);
-    });
+    connect(&ingest_, &MessageIngest::readElsewhere, this,
+        [this](const QString& peer, const qint64 throughMs) {
+            lastReadAckedId_[peer]
+                = qMax(lastReadAckedId_.value(peer, 0), store_.lastReadId(peer));
+            readElsewhereAtMs_[peer] = qMax(readElsewhereAtMs_.value(peer, 0), throughMs);
+            emit events_.chatChanged(peer);
+        });
     connect(&ingest_, &MessageIngest::editArrived, this,
         [this](const QString& peer, const qint64 localId, const QString& ref) {
-            if (peer == viewedPeer_ && sendReceipts_
+            if (peer == viewedPeer_ && sendReceipts_ && !catchingUp_
                 && localId <= lastReadAckedId_.value(peer, 0)) {
                 emit commands_.requestSendReceipt(peer, ref);
             }
@@ -521,6 +525,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
             tr("Creating your destination key"), tr("Queued…"));
     });
     connect(worker_, &SessionWorker::connectProgress, this, &CoreAccount::onConnectProgress);
+    connect(worker_, &SessionWorker::syncProgress, this, &CoreAccount::onSyncProgress);
     connect(worker_, &SessionWorker::connectionChanged, this, &CoreAccount::settleConnect);
     connect(worker_, &SessionWorker::actionFailed, this,
         [this](const QString& reason) { settleConnect(false, reason); });
@@ -752,6 +757,10 @@ void CoreAccount::markRead(
     lastReadAckedId_[peer] = id;
     emit events_.chatChanged(peer);
     pendingReadSync_[peer] = sentAtMs;
+    if (catchingUp_) {
+        heldReceipts_[peer] = {sentAtMs, e2eId};
+        return;
+    }
     readSyncTimer_.start(kReadSyncIdleMs);
     if (!sendReceipts_ || !online_) {
         return;
@@ -759,9 +768,43 @@ void CoreAccount::markRead(
     emit commands_.requestSendReceipt(peer, e2eId);
 }
 
+void CoreAccount::onSyncProgress(
+    const bool syncing, const bool shown, const qint64 takenBytes, const qint64 totalBytes)
+{
+    emit events_.syncProgress(syncing, shown, takenBytes, totalBytes);
+    if (syncing == catchingUp_) {
+        return;
+    }
+    catchingUp_ = syncing;
+    if (!catchingUp_) {
+        releaseHeldReads();
+    }
+}
+
+void CoreAccount::releaseHeldReads()
+{
+    for (auto it = pendingReadSync_.begin(); it != pendingReadSync_.end();) {
+        it = it.value() <= readElsewhereAtMs_.value(it.key(), 0) ? pendingReadSync_.erase(it)
+                                                                 : std::next(it);
+    }
+    if (sendReceipts_ && online_) {
+        for (auto it = heldReceipts_.constBegin(); it != heldReceipts_.constEnd(); ++it) {
+            if (it.value().sentAtMs > readElsewhereAtMs_.value(it.key(), 0)) {
+                emit commands_.requestSendReceipt(it.key(), it.value().e2eId);
+            }
+        }
+    }
+    heldReceipts_.clear();
+    readElsewhereAtMs_.clear();
+    flushReadSync();
+}
+
 void CoreAccount::flushReadSync()
 {
     readSyncTimer_.stop();
+    if (catchingUp_) {
+        return;
+    }
     if (!online_) {
         pendingReadSync_.clear();
         return;

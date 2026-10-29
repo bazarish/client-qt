@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <map>
@@ -28,6 +29,7 @@
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 class QTimer;
 
@@ -208,6 +210,9 @@ signals:
     void connectionLogReady(const QVariantList& lines);
     void stopped();
     void syncReachable(bool ok, const QString& gatewayRefusal);
+    // The backlog found on coming online, as it is taken in; syncing ends with it.
+    // shown: the backlog is more than one pass of items.
+    void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
     void approvalState(bool pending, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
@@ -263,6 +268,11 @@ private:
     std::thread eventWaiter_;
     std::shared_ptr<std::atomic<bool>> eventWaiterRunning_;
     void startEventWaiter();
+    void streamMailbox(bazarish::client::Client& waiter,
+        const std::vector<bazarish::client::PendingEntry>& waiting, bool catchUp,
+        const std::atomic<bool>& running);
+    void beginStream(bool catchUp, std::uint64_t totalBytes, std::size_t items);
+    void registerThisDevice();
     void stopEventWaiter();
     std::thread errands_;
     std::mutex errandMutex_;
@@ -284,6 +294,13 @@ private:
     std::mutex drainMutex_;
     std::condition_variable drainDone_;
     bool drainSettled_ = true;
+    std::deque<bazarish::client::Session::MailboxItem> streamed_;
+    bool streamEnded_ = true;
+    bool retryNow_ = false;
+    bool catchingUp_ = false;
+    bool syncShown_ = false;
+    std::uint64_t streamBytes_ = 0;
+    std::uint64_t takenBytes_ = 0;
     qint64 lastTransientCheckMs_ = 0;
     qint64 lastAliasServiceMs_ = 0;
     qint64 lastApprovalCheckMs_ = 0;

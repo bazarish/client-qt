@@ -35,7 +35,8 @@ signals:
     void accountRenamed(const QString& name);
     void contactsRevised();
     void settingsAsked();
-    void readElsewhere(const QString& peer);
+    // throughMs is the send time of the newest message another device read.
+    void readElsewhere(const QString& peer, qint64 throughMs);
     void editArrived(const QString& peer, qint64 localId, const QString& ref);
     void messageArrived(const QString& peer);
     void reactionArrived(const QString& peer, const QString& target, const QString& emoji);

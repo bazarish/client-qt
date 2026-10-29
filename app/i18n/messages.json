@@ -4895,6 +4895,12 @@
       "zh": "此版本的 Bazarish 无法使用摄像头。",
       "ar": "لا يمكن لهذا الإصدار من Bazarish استخدام الكاميرا."
     },
+    "Syncing": {
+      "ru": "Синхронизация",
+      "es": "Sincronizando",
+      "zh": "正在同步",
+      "ar": "جارٍ المزامنة"
+    },
     "Text in notifications": {
       "ru": "Текст в уведомлении",
       "es": "Texto en las notificaciones",

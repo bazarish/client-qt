@@ -17,6 +17,9 @@ Item {
     readonly property int kTypingBadge: 20
     readonly property int kTypingPencil: 14
     readonly property real kTypingPencilWeight: 3
+    readonly property int kSyncPadding: 6
+    readonly property int kSyncSideMargin: 12
+    readonly property int kSyncBarHeight: 4
     readonly property int kBadgeRing: 2
     readonly property int kVisibleSettleMs: 300
     // More than any row shows; the label elides at its width, this only spares laying out a long message.
@@ -97,6 +100,34 @@ Item {
             }
         }
         Hairline { }
+
+        Rectangle {
+            Layout.fillWidth: true
+            visible: root.session !== null && root.session.syncing && root.session.reachable
+            implicitHeight: syncLine.implicitHeight + 2 * root.kSyncPadding
+            color: Theme.surface
+            RowLayout {
+                id: syncLine
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: root.kSyncSideMargin
+                anchors.rightMargin: root.kSyncSideMargin
+                spacing: root.kSyncSideMargin
+                Label {
+                    text: qsTr("Syncing")
+                    color: Theme.textDim
+                    font.pixelSize: Theme.fontSmall
+                }
+                ProgressBar {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.kSyncBarHeight
+                    from: 0
+                    to: 1
+                    value: root.session ? root.session.syncProgress : 0
+                }
+            }
+        }
 
         // Search the chat list by name (filters the list as you type). Clears when
         // the field is emptied.
