@@ -9,6 +9,8 @@ namespace bazarish::app {
 bool isServiceMessage(const QString& type);
 
 QString encodeSystemNote(const QString& sourceText, const QStringList& args = {});
+// The placeholder for a type this version cannot show; the body is kept for one that can.
+QString encodeUnsupportedMessage(const QString& type, const QString& keptBody);
 QString systemNoteText(const QString& stored);
 
 // An auto-delete timer as a note: its duration, or that there is none.

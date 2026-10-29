@@ -64,7 +64,8 @@ be reached - the message may well be stored, with only the confirmation missing.
 | No reply (dial failed, stream failed, reply unreadable) | Retried until the attempts or the run bound are exhausted; the failure names how many attempts were made |
 | The envelope was written and no reply came | Retried the same way, and reported as a far side that did not answer rather than one that could not be reached |
 | Confirmation absent or not verifiable against the delivery identifier sent | Treated as no reply |
-| Typed refusal (unknown pass, message too large, contact request too large, storage full, contact rate limit) | Final on the first attempt; reported with its reason |
+| Final refusal (unknown pass, message too large, contact request too large) | Ends the run on the first attempt; reported with its reason |
+| Transient refusal (storage full, contact rate limit) | Ends the run on the first attempt; reported with its reason, and a resend later may be accepted |
 | Signed confirmation | Delivery complete; the message is recorded as stored by the recipient's server |
 
 ## Reported states

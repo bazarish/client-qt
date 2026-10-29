@@ -103,6 +103,7 @@ Item {
             || (model.outgoing && model.type === "file"))
     // A contact add that ended badly. It reads like a system note and carries
     // the two ways out of it, because the chat is where the person was watching.
+    readonly property bool isUnsupported: model.type === "unsupported"
     readonly property bool isAddFailed: model.type === "contact.failed"
     readonly property bool isRoutingFailed: model.type === "routing.failed"
     readonly property bool isSystem: model.type === "system" || delegate.isAddFailed
@@ -1080,8 +1081,9 @@ Item {
                         || delegate.session.withoutInvites(model.text).length > 0)
                 text: App.markupHtml(delegate.invitePlates.length > 0
                         ? delegate.session.withoutInvites(model.text) : model.text,
-                    Theme.accent, Theme.surfaceAlt, Theme.bg, Theme.text)
-                color: Theme.text
+                    Theme.accent, Theme.surfaceAlt, Theme.bg,
+                    delegate.isUnsupported ? Theme.danger : Theme.text)
+                color: delegate.isUnsupported ? Theme.danger : Theme.text
                 enabled: !App.mobile
                 readOnly: true
                 selectByMouse: true
@@ -1486,7 +1488,7 @@ Item {
                     ContextMenuItem {
                         text: qsTr("Forward")
                         iconName: "forward"
-                        visible: delegate.actionable
+                        visible: delegate.actionable && !delegate.isUnsupported
                         height: visible ? implicitHeight : 0
                         onTriggered: delegate.forwardRequested(model.e2eId)
                     }

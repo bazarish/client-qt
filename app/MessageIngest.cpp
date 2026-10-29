@@ -294,22 +294,24 @@ bool MessageIngest::takeIn(const QVariantMap& message)
     }
 
     if (type == "unsupported") {
-        StoredMessage sys;
-        sys.peer = peer;
-        sys.e2eId = incomingId;
-        sys.type = QStringLiteral("system");
-        sys.text = encodeSystemNote(QT_TR_NOOP("Unknown message type %1. Update the client."),
-            {message.value("rawType").toString()});
+        StoredMessage kept;
+        kept.peer = peer;
+        kept.outgoing = message.value("sentByUs").toBool();
+        kept.e2eId = incomingId;
+        kept.type = type;
+        kept.text = encodeUnsupportedMessage(
+            message.value("rawType").toString(), message.value("rawBody").toString());
         const Placement placement = placeReceived(
             message.value("sentAt").toLongLong(), nowMillis(), orderFloor(peer, message));
-        sys.ts = placement.displayTs;
-        sys.orderKey = placement.orderKey;
-        sys.status = DeliveryStatus::Received;
-        sys.id = store_.append(sys);
-        if (sys.id == 0) {
+        kept.ts = placement.displayTs;
+        kept.orderKey = placement.orderKey;
+        kept.status
+            = kept.outgoing ? DeliveryStatus::AtRecipientServer : DeliveryStatus::Received;
+        kept.id = store_.append(kept);
+        if (kept.id == 0) {
             return false;
         }
-        emit rowAdded(peer, sys.id, message.value("sentByUs").toBool());
+        emit rowAdded(peer, kept.id, kept.outgoing);
         return true;
     }
 

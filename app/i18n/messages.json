@@ -3635,11 +3635,11 @@
       "zh": "正在取消 %1 的指向",
       "ar": "جارٍ إلغاء ربط ⁦%1⁩"
     },
-    "Unknown message type %1. Update the client.": {
-      "ru": "Неизвестный тип сообщения %1. Обновите клиент.",
-      "es": "Tipo de mensaje desconocido %1. Actualiza el cliente.",
-      "zh": "未知的消息类型 %1。请更新客户端。",
-      "ar": "نوع رسالة غير معروف ⁦%1⁩. حدِّث العميل."
+    "Unsupported message type %1. Update the app.": {
+      "ru": "Неподдерживаемый тип сообщения %1. Обновите приложение.",
+      "es": "Tipo de mensaje no compatible %1. Actualiza la aplicación.",
+      "zh": "不支持的消息类型 %1。请更新应用。",
+      "ar": "نوع رسالة غير مدعوم ⁦%1⁩. حدِّث التطبيق."
     },
     "Uploading…": {
       "ru": "Выгрузка…",
@@ -4714,6 +4714,24 @@
       "es": "Un alias solo puede contener letras latinas y dígitos.",
       "zh": "别名只能包含拉丁字母和数字。",
       "ar": "يمكن أن يحتوي الاسم المستعار على أحرف لاتينية وأرقام فقط."
+    },
+    "The contact request is too long.": {
+      "ru": "Запрос контакта слишком длинный.",
+      "es": "La solicitud de contacto es demasiado larga.",
+      "zh": "联系人请求过长。",
+      "ar": "طلب الاتصال طويل جدًا."
+    },
+    "The contact's server refused the request.": {
+      "ru": "Сервер контакта отклонил запрос.",
+      "es": "El servidor del contacto rechazó la solicitud.",
+      "zh": "联系人的服务器拒绝了此请求。",
+      "ar": "رفض خادم جهة الاتصال الطلب."
+    },
+    "Too many messages to this contact this minute.": {
+      "ru": "Слишком много сообщений этому контакту за минуту.",
+      "es": "Demasiados mensajes a este contacto en este minuto.",
+      "zh": "这一分钟内发给此联系人的消息过多。",
+      "ar": "رسائل كثيرة جدًا إلى جهة الاتصال هذه في هذه الدقيقة."
     },
     "The recipient's server refused this message.": {
       "ru": "Сервер получателя отклонил сообщение.",

@@ -17,6 +17,7 @@ namespace {
 
 const QString kNoteField = QStringLiteral("note");
 const QString kArgsField = QStringLiteral("args");
+const QString kKeptField = QStringLiteral("kept");
 const char* const kNoteContext = "SystemNote";
 
 // A stored note keeps the wording it was written with.
@@ -33,7 +34,7 @@ QString currentWording(const QString& source)
 bool isServiceMessage(const QString& type)
 {
     return type == QStringLiteral("system") || type == QStringLiteral("contact.failed")
-        || type == QStringLiteral("routing.failed");
+        || type == QStringLiteral("routing.failed") || type == QStringLiteral("unsupported");
 }
 
 QString encodeSystemNote(const QString& sourceText, const QStringList& args)
@@ -42,6 +43,16 @@ QString encodeSystemNote(const QString& sourceText, const QStringList& args)
     if (!args.isEmpty()) {
         note.insert(kArgsField, QJsonArray::fromStringList(args));
     }
+    return QString::fromUtf8(QJsonDocument(note).toJson(QJsonDocument::Compact));
+}
+
+QString encodeUnsupportedMessage(const QString& type, const QString& keptBody)
+{
+    const QJsonObject note{
+        {kNoteField, QString::fromUtf8(QT_TR_NOOP("Unsupported message type %1. Update the app."))},
+        {kArgsField, QJsonArray{type}},
+        {kKeptField, keptBody},
+    };
     return QString::fromUtf8(QJsonDocument(note).toJson(QJsonDocument::Compact));
 }
 

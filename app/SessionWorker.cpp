@@ -268,10 +268,15 @@ QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
 // The recipient's server answers in its own English; what it means is said in the app's language.
 QString refusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
 {
+    if (outcome.errorCode.empty()) {
+        return outcome.errorMessage.empty()
+            ? SessionWorker::tr("the recipient's server could not be reached")
+            : QString::fromStdString(outcome.errorMessage);
+    }
     const std::optional<bazarish::ErrorCode> code
         = bazarish::errorCodeFromString(outcome.errorCode);
-    if (code == bazarish::ErrorCode::eDeliveryRejected) {
-        return SessionWorker::tr("The recipient's server refused this message.");
+    if (code == bazarish::ErrorCode::eRecipientServerUnreachable) {
+        return SessionWorker::tr("the recipient's server could not be reached");
     }
     if (code == bazarish::ErrorCode::eStorageFull) {
         return SessionWorker::tr("The recipient's mailbox is full.");
@@ -279,10 +284,22 @@ QString refusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
     if (code == bazarish::ErrorCode::eMessageTooLarge) {
         return SessionWorker::tr("The message is too large for the recipient's server.");
     }
-    if (outcome.errorMessage.empty() || code == bazarish::ErrorCode::eRecipientServerUnreachable) {
-        return SessionWorker::tr("the recipient's server could not be reached");
+    if (code == bazarish::ErrorCode::eContactRateLimited) {
+        return SessionWorker::tr("Too many messages to this contact this minute.");
     }
-    return QString::fromStdString(outcome.errorMessage);
+    return SessionWorker::tr("The recipient's server refused this message.");
+}
+
+QString contactRefusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
+{
+    if (outcome.errorCode.empty()) {
+        return QString::fromStdString(outcome.errorMessage);
+    }
+    if (bazarish::errorCodeFromString(outcome.errorCode)
+        == bazarish::ErrorCode::eContactRequestTooLarge) {
+        return SessionWorker::tr("The contact request is too long.");
+    }
+    return SessionWorker::tr("The contact's server refused the request.");
 }
 
 bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint64 localId)
@@ -983,6 +1000,10 @@ void SessionWorker::drainMailbox()
         map["type"] = QString::fromStdString(m.contentType);
         map["text"] = QString::fromStdString(m.text);
         map["rawType"] = QString::fromStdString(m.rawType);
+        map["rawBody"] = QString::fromLatin1(
+            QByteArray(reinterpret_cast<const char*>(m.rawBody.data()),
+                static_cast<qsizetype>(m.rawBody.size()))
+                .toBase64());
         map["established"] = m.establishedContact;
         map["attName"] = QString::fromStdString(m.attachmentName);
         map["attMime"] = QString::fromStdString(m.attachmentMime);
@@ -1057,6 +1078,7 @@ void SessionWorker::maintain()
     } catch (const std::exception& error) {
         bazarish::log::warn("self-sync of our own sends failed: {}", error.what());
     }
+    session_->expireFileRequests(nowMillis());
     emitContacts();
     if (!session_->isConnected()) {
         routingFanoutTried_ = false;
@@ -1578,11 +1600,9 @@ void SessionWorker::finishContactRequest(const QString& opId, const QString& fin
     }
     const std::optional<bazarish::ErrorCode> code
         = bazarish::errorCodeFromString(outcome.errorCode);
-    const QString reason = QString::fromStdString(
-        outcome.errorMessage.empty() ? outcome.errorCode : outcome.errorMessage);
     if (code == bazarish::ErrorCode::eRecipientServerUnreachable) {
         bazarish::log::warn("contact request to {} not confirmed: {}",
-            bazarish::log::redact(fingerprint.toStdString()), reason.toStdString());
+            bazarish::log::redact(fingerprint.toStdString()), outcome.errorMessage);
         emit contactRequestUnconfirmed(opId);
         emit actionFailed(tr("The contact's server did not confirm the request."));
         return;
@@ -1595,6 +1615,7 @@ void SessionWorker::finishContactRequest(const QString& opId, const QString& fin
         emit contactAddRateLimited(opId, fingerprint, requestId);
         return;
     }
+    const QString reason = contactRefusalText(outcome);
     emit contactAddDone(opId, false, reason);
     emit actionFailed(reason);
 }

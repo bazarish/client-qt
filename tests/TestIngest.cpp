@@ -11,6 +11,8 @@
 #include <bazarish/Bytes.hpp>
 
 #include <QCoreApplication>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <sqlcipher/sqlite3.h>
 
@@ -163,18 +165,22 @@ int main(int argc, char** argv)
 
     QVariantMap future = incoming(kBob, "unsupported", "u1");
     future["rawType"] = QStringLiteral("poll.vote");
+    future["rawBody"] = QStringLiteral("oWR0eXBlaXBvbGwudm90ZQ==");
     CHECK(took(future));
     CHECK(saw({"added"}));
     const StoredMessage unknown = store.messageByE2e("u1", kBob);
-    CHECK(unknown.type == QStringLiteral("system"));
+    CHECK(unknown.type == QStringLiteral("unsupported"));
+    CHECK(!unknown.outgoing);
     CHECK(systemNoteText(unknown.text).contains(QStringLiteral("poll.vote")));
+    CHECK(QJsonDocument::fromJson(unknown.text.toUtf8()).object().value(QStringLiteral("kept"))
+        == QStringLiteral("oWR0eXBlaXBvbGwudm90ZQ=="));
     CHECK(took(future));
     CHECK(saw({}));
     QVariantMap worded = incoming(kBob, "unsupported", "u2", "a question for everyone");
     worded["rawType"] = QStringLiteral("poll");
     CHECK(took(worded));
     CHECK(saw({"added"}));
-    CHECK(store.messageByE2e("u2", kBob).type == QStringLiteral("system"));
+    CHECK(store.messageByE2e("u2", kBob).type == QStringLiteral("unsupported"));
 
     QVariantMap timer = incoming(kBob, "chat.timer", "t1");
     timer["timerSeconds"] = static_cast<qint64>(client::kSecondsPerDay);
