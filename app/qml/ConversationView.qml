@@ -458,10 +458,11 @@ Item {
                     iconName: "search"
                     onClicked: searchPopup.openSearch()
                 }
-                // There is nobody to call in the saved chat or in a group.
+                // Only a person can be called: not the saved chat, a bot or a group.
                 IconButton {
-                    visible: !root.savedChat && !root.lookingUp
-                        && !(root.session && root.session.activeIsGroup)
+                    readonly property string kind: root.session && root.session.contactsRevision >= 0
+                        ? root.session.contactKind(root.session.activePeer) : ""
+                    visible: !root.savedChat && !root.lookingUp && kind === "user"
                     iconName: "call"
                     onClicked: root.callRequested()
                 }

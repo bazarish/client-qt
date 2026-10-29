@@ -26,7 +26,6 @@ Rectangle {
     readonly property int kPairedButtonWidth: 32
     // The Basic style's text area padding, kept so the field looks the same.
     readonly property int kFieldPadding: 6
-    readonly property int kFieldLeadPadding: 10
     readonly property var kForms: [
         { glyph: "**", name: "bold", open: "**", close: "**" },
         { glyph: "*", name: "italic", open: "*", close: "*" },
@@ -288,7 +287,7 @@ Rectangle {
                 ScrollView {
                     id: inputScroll
                     anchors.fill: parent
-                    anchors.leftMargin: 14
+                    anchors.leftMargin: 8
                     anchors.rightMargin: 8
                     anchors.topMargin: 2
                     anchors.bottomMargin: 2
@@ -307,7 +306,7 @@ Rectangle {
                         topPadding: root.kFieldPadding
                         bottomPadding: root.kFieldPadding
                         rightPadding: root.kFieldPadding
-                        leftPadding: root.kFieldLeadPadding
+                        leftPadding: root.kFieldPadding
                         enabled: !root.switchedOff
                         color: Theme.text
                         selectionColor: inputScroll.palette.highlight

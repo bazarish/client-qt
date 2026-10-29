@@ -377,9 +377,7 @@ Popup {
                                 Label {
                                     // The queue names the device that is holding
                                     // mail without having to know whose id this is.
-                                    text: (modelData.current
-                                            ? qsTr("%1  (this device)").arg(modelData.clientId)
-                                            : modelData.clientId)
+                                    text: modelData.clientId
                                         + (modelData.queue > 0
                                             ? qsTr(" (queue: %1)").arg(modelData.queue) : "")
                                     color: modelData.current ? Theme.text : Theme.textDim
@@ -390,6 +388,12 @@ Popup {
                                 // A link, not a button: one device is one line,
                                 // and a plate here would make the row taller than
                                 // the thing it acts on.
+                                Label {
+                                    text: qsTr("(this device)")
+                                    visible: modelData.current
+                                    color: Theme.textDim
+                                    font.pixelSize: Theme.fontSmall
+                                }
                                 Label {
                                     text: qsTr("Forget")
                                     visible: !modelData.current
