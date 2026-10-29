@@ -46,6 +46,8 @@ Rectangle {
         }
     }
 
+    readonly property bool pickingEmoji: emojiPicker.visible
+
     // Height set by dragging the grip (-1 means auto-size to the content).
     property int manualInputH: -1
     readonly property int autoInputH:

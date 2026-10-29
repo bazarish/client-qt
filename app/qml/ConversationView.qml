@@ -378,6 +378,7 @@ Item {
         // Conversation header.
         Rectangle {
             Layout.fillWidth: true
+            enabled: !composer.pickingEmoji
             implicitHeight: 60
             color: Theme.surface
             RowLayout {
@@ -542,7 +543,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             // Qt hands a touch to the handlers beneath a popup too: the bubbles took it from the viewer.
-            enabled: !imageViewer.visible
+            enabled: !imageViewer.visible && !composer.pickingEmoji
 
             // Building a screenful of bubbles takes a moment, and doing it inside
             // the click that switched accounts made the click itself feel stuck.
@@ -892,6 +893,7 @@ Item {
         // Shown only after the automatic tries are spent; sending again clears it.
     RowLayout {
         visible: root.retryPeer.length > 0 && root.retryPeer === (root.session ? root.session.activePeer : "")
+        enabled: !composer.pickingEmoji
         Layout.fillWidth: true
         Layout.leftMargin: 12
         Layout.rightMargin: 12
@@ -915,6 +917,7 @@ Item {
     }
 
     Composer {
+        id: composer
         session: root.session
         visible: !root.session || (root.session.activeGroupWrite && !root.lookingUp)
     }

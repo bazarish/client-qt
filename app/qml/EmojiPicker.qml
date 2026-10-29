@@ -22,15 +22,8 @@ Popup {
 
     padding: 8
     margins: Theme.spacing
-    // Modal behind a clear shade: a tap beside it closes it and reaches nothing under it.
-    modal: true
-    Overlay.modal: Item {
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.AllButtons
-            preventStealing: true
-        }
-    }
+    // Not modal, so a tap on send still sends; the chat above the composer is switched off meanwhile.
+    modal: false
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
 
