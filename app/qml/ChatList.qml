@@ -208,7 +208,9 @@ Item {
                             readonly property bool online: root.session !== null
                                 && root.session.presenceRevision >= 0
                                 && root.session.peerOnline(chatRow.peer)
+                            // Bound to the revision itself: online stays true when typing starts.
                             readonly property bool typing: online
+                                && root.session.presenceRevision >= 0
                                 && root.session.activePeer !== chatRow.peer
                                 && root.session.peerTyping(chatRow.peer)
                             readonly property color ring: chatRow.hovered ? Theme.surfaceAlt : Theme.bg
