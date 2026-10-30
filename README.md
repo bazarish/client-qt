@@ -37,8 +37,8 @@ ctest --test-dir build
 The version the application shows is stamped on every build from the git tag and
 the short commit; a tree without git reads `dev`.
 
-`packaging/appimage-build.sh` builds the portable Linux AppImage on a Debian 12
-base, carrying its own Qt, OpenSSL and SQLCipher.
+`packaging/appimage-build.sh` builds the portable Linux AppImage, x86_64 on a Debian 12
+base and aarch64 on an Ubuntu 24.04 one, carrying its own Qt, OpenSSL and SQLCipher.
 
 `packaging/android/build.sh <output dir>` builds the Android package for arm64-v8a
 (Android 9 and newer) and signs it with the keystore it is given. It takes the

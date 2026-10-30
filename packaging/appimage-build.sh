@@ -1,23 +1,31 @@
 #!/bin/bash
-# Portable Bazarish AppImage. Built on Debian 12 (glibc 2.36) against an upstream
-# Qt 6.8: the oldest glibc worth supporting, with everything the host would
-# otherwise have to provide - Qt, OpenSSL 3.5, SQLCipher - carried inside. A
-# binary built here runs on Debian 12 and on anything newer; the reverse is not
-# true, which is why the base is the older distribution and not the newer one.
+# Portable Bazarish AppImage, built against an upstream Qt 6.8 on the oldest base
+# that runs it, with everything the host would otherwise have to provide - Qt,
+# OpenSSL 3.5, SQLCipher - carried inside. A binary built here runs on its base and
+# on anything newer; the reverse is not true, which is why the base is the older
+# distribution and not the newer one. Qt's own binaries need glibc 2.28 on x86_64
+# and 2.38 on aarch64, so the base is Debian 12 (2.36) for the one and Ubuntu 24.04
+# (2.39) for the other.
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 export APPIMAGE_EXTRACT_AND_RUN=1
 # A build that scales to the host starves the desktop it runs beside.
 readonly kJobs=4
 
-# x86_64 only, and the reason is not this script: the arm64 Qt packages carry no
-# host tools, so nothing can be built with them here. arm64 is served by
-# linux-tarball.sh, which takes Qt from the distribution instead.
-if [ "$(uname -m)" != "x86_64" ]; then
-    echo "this recipe builds the x86_64 AppImage; arm64 goes through linux-tarball.sh" >&2
+case "$(uname -m)" in
+x86_64)
+    readonly kQtHost=linux kQtArch=linux_gcc_64 kQtDir=gcc_64 kDeploy=x86_64
+    readonly kAlsa=libasound2
+    ;;
+aarch64)
+    readonly kQtHost=linux_arm64 kQtArch=linux_gcc_arm64 kQtDir=gcc_arm64 kDeploy=aarch64
+    readonly kAlsa=libasound2t64
+    ;;
+*)
+    echo "no AppImage for $(uname -m)" >&2
     exit 1
-fi
-readonly kQtHost=linux kQtArch=linux_gcc_64 kQtDir=gcc_64 kDeploy=x86_64
+    ;;
+esac
 
 apt-get update -qq
 # qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
@@ -31,9 +39,8 @@ apt-get install -y -qq --no-install-recommends \
   libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 \
   libwayland-client0 libwayland-cursor0 libwayland-egl1 \
   libxrandr2 libxext6 libxfixes3 libxdamage1 libxi6 libxtst6 libxrender1 libsm6 libice6 \
-  libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 libasound2 libpulse0 libsndfile1
+  libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 "$kAlsa" libpulse0 libsndfile1
 
-# Qt 6.8's own Linux binaries are built for glibc 2.28+, so they run on this base.
 QTDIR="/opt/Qt/6.8.2/$kQtDir"
 if [ ! -x "$QTDIR/bin/qmake" ]; then
     pip install --break-system-packages -q aqtinstall
@@ -46,16 +53,16 @@ test -x "$QTDIR/bin/qmake"
 # Argon2id. Built and bundled here so the host's version does not decide whether
 # an account can be created at all.
 OPENSSL_VERSION=3.5.7
-if [ ! -f /opt/openssl/lib64/libcrypto.so.3 ]; then
+if [ ! -f /opt/openssl/lib/libcrypto.so.3 ]; then
     cd /work-openssl 2>/dev/null || { mkdir -p /work-openssl; cd /work-openssl; }
     wget -q "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
     tar xf "openssl-${OPENSSL_VERSION}.tar.gz"
     cd "openssl-${OPENSSL_VERSION}"
-    ./Configure --prefix=/opt/openssl --openssldir=/opt/openssl/ssl shared no-docs
+    ./Configure --prefix=/opt/openssl --openssldir=/opt/openssl/ssl --libdir=lib shared no-docs
     make -j"$kJobs"
     make install_sw
 fi
-export LD_LIBRARY_PATH=/opt/openssl/lib64:${LD_LIBRARY_PATH:-}
+export LD_LIBRARY_PATH=/opt/openssl/lib:${LD_LIBRARY_PATH:-}
 
 # SQLCipher: this base ships 3.4.1, whose database format is not the one
 # SQLCipher 4 writes - an account made by any build with a 4.x library is simply
@@ -71,7 +78,7 @@ if [ ! -f /opt/sqlcipher/lib/libsqlcipher.so ]; then
     cd "sqlcipher-${SQLCIPHER_VERSION}"
     ./configure --prefix=/opt/sqlcipher --enable-tempstore=yes --disable-tcl \
         CFLAGS="-DSQLITE_HAS_CODEC -I/opt/openssl/include" \
-        LDFLAGS="-L/opt/openssl/lib64 -lcrypto"
+        LDFLAGS="-L/opt/openssl/lib -lcrypto"
     make -j"$kJobs"
     make install
 fi
@@ -122,7 +129,7 @@ chmod +x "linuxdeploy-$kDeploy.AppImage" "linuxdeploy-plugin-qt-$kDeploy.AppImag
 
 export QML_SOURCES_PATHS=/src/app/qml
 export QMAKE="$QTDIR/bin/qmake"
-export LD_LIBRARY_PATH="$QTDIR/lib:/opt/openssl/lib64:${LD_LIBRARY_PATH:-}"
+export LD_LIBRARY_PATH="$QTDIR/lib:/opt/openssl/lib:${LD_LIBRARY_PATH:-}"
 export EXTRA_QT_MODULES="multimedia"
 # The C++ runtime is NOT bundled: this base has the oldest libstdc++ we support,
 # so every host that can run this image already has one at least as new. Carrying
