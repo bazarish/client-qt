@@ -580,7 +580,8 @@ Item {
                 readonly property int kEndGapInSpacings: 2
                 bottomMargin: spacing * kEndGapInSpacings
                 model: listPane.building ? null : (root.session ? root.session.conversation : null)
-                reuseItems: true
+                // A bubble pooled before the model was let go comes back with its bindings left on the old rows.
+                reuseItems: !listPane.building
                 delegate: MessageBubble {
                     session: root.session
                     // Highlighted by a search jump, or as part of the unread tail that
@@ -794,11 +795,13 @@ Item {
                     // the user rather than at the very edge: at the edge the list
                     // stops dead until the page lands, which is what a small page
                     // would otherwise be felt as.
-                    if (!paging && contentY - originY < height && root.session.hasMoreOlder) {
-                        loadOlder()
+                    // A page loads after the view's own layout, never inside it, and not while the view is put at the end.
+                    if (!paging && !pinTimer.running && contentY - originY < height
+                            && root.session.hasMoreOlder) {
+                        Qt.callLater(loadOlder)
                     } else if (!paging && contentY + height > contentHeight - height
                             && !root.session.atNewest) {
-                        loadNewer()
+                        Qt.callLater(loadNewer)
                     }
                 }
                 // Follow the bottom as bubbles settle, but not mid-gesture: a drag past the end re-measures rows above.
