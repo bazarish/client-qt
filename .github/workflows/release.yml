@@ -71,8 +71,6 @@ jobs:
     # Qt and everything under it are built from source, which the first time takes
     # hours; each stage that finished is kept for the runs after it.
     timeout-minutes: 350
-    env:
-      CACHE_KEY: musl-amd64-${{ hashFiles('packaging/musl/**') }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -83,8 +81,8 @@ jobs:
           path: |
             musl-out/prefix
             musl-out/qt
-          key: ${{ env.CACHE_KEY }}-${{ github.run_id }}
-          restore-keys: ${{ env.CACHE_KEY }}-
+          key: musl-amd64-${{ hashFiles('packaging/musl/**') }}-${{ github.run_id }}
+          restore-keys: musl-amd64-${{ hashFiles('packaging/musl/**') }}-
       - name: See what is already built
         id: deps
         run: |
@@ -110,7 +108,7 @@ jobs:
           path: |
             musl-out/prefix
             musl-out/qt
-          key: ${{ env.CACHE_KEY }}-${{ github.run_id }}
+          key: musl-amd64-${{ hashFiles('packaging/musl/**') }}-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         with:
           name: linux-amd64-static
