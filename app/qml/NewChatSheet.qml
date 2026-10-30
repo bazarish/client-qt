@@ -172,15 +172,6 @@ Popup {
             Layout.fillWidth: true
         }
 
-        Label {
-            visible: root.byAlias && root.problem.length === 0
-            text: qsTr("The resolver hands back the descriptor of this alias.")
-            color: Theme.textDim
-            font.pixelSize: Theme.fontSmall
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-        }
-
         // A contact request is admitted by nothing, and the protocol caps what
         // one may carry; the introduction is what is left over to write.
         FormField {

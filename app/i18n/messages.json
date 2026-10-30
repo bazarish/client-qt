@@ -3287,12 +3287,6 @@
       "zh": "请求被拒绝：联系人的服务器正忙。",
       "ar": "رُفض الطلب: خادم جهة الاتصال مشغول."
     },
-    "The resolver hands back the descriptor of this alias.": {
-      "ru": "Резолвер вернёт дескриптор этого алиаса.",
-      "es": "El resolutor devuelve el descriptor de este alias.",
-      "zh": "解析服务会返回该别名的描述符。",
-      "ar": "يعيد المُحلِّل واصف هذا الاسم المستعار."
-    },
     "The router answered": {
       "ru": "Роутер ответил",
       "es": "El router ha respondido",
