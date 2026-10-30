@@ -95,7 +95,8 @@ jobs:
           set -o pipefail
           {
               docker build -q -t bazarish-musl -f packaging/musl/Containerfile packaging/musl
-              docker run --rm -v "$PWD:/host:ro" -v "$PWD/musl-out:/out" bazarish-musl \
+              # Writable: common lays its i2pd patch over the checkout when it configures.
+              docker run --rm -v "$PWD:/host" -v "$PWD/musl-out:/out" bazarish-musl \
                   sh -c 'rm -f /out/prefix/.app && sh /host/packaging/musl/build.sh'
               file musl-out/build/bazarish-app | grep -q 'static' \
                   || { echo "::error::the binary is not statically linked"; exit 1; }
