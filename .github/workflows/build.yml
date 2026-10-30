@@ -42,6 +42,10 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+      # The container runs as root over a checkout the runner's user owns, and git
+      # reads the version only from a repository it trusts.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Configure
         run: .github/ci/build.sh configure
       - name: Build

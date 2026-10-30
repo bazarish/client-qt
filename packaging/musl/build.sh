@@ -250,6 +250,9 @@ qt_module qtsvg
 
 if step app; then
     rm -rf /out/build
+    # The version is read from git, which answers only in a repository it trusts,
+    # and /host belongs to whoever mounted it.
+    git config --global --add safe.directory /host
     cmake -S /host -B /out/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_PROJECT_INCLUDE=/host/packaging/musl/static-only.cmake \
         -DCMAKE_PREFIX_PATH="$kQt;$kPrefix" \
