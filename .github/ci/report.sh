@@ -51,18 +51,20 @@ if [ -n "$failures" ]; then
             / Test +#[0-9]+: / { flush(); if ($0 ~ /\*\*\*(Timeout|Failed|Exception)/) head = $0; next }
             head != "" { lines[++n] = $0 }
             END { flush() }')
-    said=$(printf '%s\n%s' "$told" "$failures")
+    body=$(printf '%s\n%s' "$told" "$failures" | grep -v '^[[:space:]]*$' | head -n "$kLines")
+    body=${body:0:kShownChars}
 else
-    said=$(window 'CHECK failed|error:|ERROR:|error [A-Z]+[0-9]+|CMake Error' 6 3 "$whole")
-fi
-body=$(printf '%s\n' "$said" | grep -v '^[[:space:]]*$' | head -n "$kLines")
-body=${body:0:kShownChars}
-if [ -z "${body//[[:space:]]/}" ]; then
-    # Nothing marked: the step stopped at its last lines, so the end is what fits.
-    body=$(tail -n "$kLines" "$log" | grep -v '^[[:space:]]*$')
-    if [ "${#body}" -gt "$kShownChars" ]; then
-        body=${body: -kShownChars}
+    # The first mark is where a compile went wrong; a tool that warns on its way
+    # stops at its last, so the lines the step ended with follow it.
+    marked=$(window 'CHECK failed|error:|ERROR:|error [A-Z]+[0-9]+|CMake Error' 6 3 "$whole" \
+        | grep -v '^[[:space:]]*$' | head -n "$kLines")
+    marked=${marked:0:kShownChars/2}
+    ending=$(tail -n "$kLines" "$log" | grep -v '^[[:space:]]*$')
+    room=$((kShownChars - ${#marked}))
+    if [ "${#ending}" -gt "$room" ]; then
+        ending=${ending: -room}
     fi
+    body=$(printf '%s\n...\n%s' "$marked" "$ending")
 fi
 body=${body//%/%25}
 body=${body//$'\r'/%0D}
