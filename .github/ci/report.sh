@@ -10,6 +10,9 @@ set -u
 # reads as a line break.
 readonly kLines=120
 readonly kTailLines=40
+# GitHub cuts an annotation at 4096 characters, so what it shows is fitted to that,
+# less room for the line that names the log.
+readonly kShownChars=4000
 
 # Each step writes its own log, so the newest one is the step that just failed.
 log=$(ls -t ci-*.log 2>/dev/null | head -n 1)
@@ -50,13 +53,17 @@ if [ -n "$failures" ]; then
             END { flush() }')
     said=$(printf '%s\n%s' "$told" "$failures")
 else
-    said=$(window 'CHECK failed|error:|error [A-Z]+[0-9]+|CMake Error' 6 3 "$whole")
+    said=$(window 'CHECK failed|error:|ERROR:|error [A-Z]+[0-9]+|CMake Error' 6 3 "$whole")
 fi
-if [ -z "${said//[[:space:]]/}" ]; then
-    said=$(tail -n "$kLines" "$log")
-fi
-
 body=$(printf '%s\n' "$said" | grep -v '^[[:space:]]*$' | head -n "$kLines")
+body=${body:0:kShownChars}
+if [ -z "${body//[[:space:]]/}" ]; then
+    # Nothing marked: the step stopped at its last lines, so the end is what fits.
+    body=$(tail -n "$kLines" "$log" | grep -v '^[[:space:]]*$')
+    if [ "${#body}" -gt "$kShownChars" ]; then
+        body=${body: -kShownChars}
+    fi
+fi
 body=${body//%/%25}
 body=${body//$'\r'/%0D}
 body=${body//$'\n'/%0A}
