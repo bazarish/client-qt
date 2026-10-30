@@ -522,6 +522,7 @@ QVariantList SessionController::invitesIn(const QString& text) const
             plate[QStringLiteral("fingerprint")] = QString::fromStdString(descriptor.fingerprint);
             found << plate;
         } catch (const std::exception&) {
+            // error-hiding: allowed - a link that does not parse stays plain text
             continue;
         }
     }
