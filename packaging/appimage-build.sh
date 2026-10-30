@@ -72,7 +72,8 @@ export LD_LIBRARY_PATH=/opt/openssl/lib:${LD_LIBRARY_PATH:-}
 SQLCIPHER_VERSION=4.6.1
 if [ ! -f /opt/sqlcipher/lib/libsqlcipher.so ]; then
     cd /work-sqlcipher 2>/dev/null || { mkdir -p /work-sqlcipher; cd /work-sqlcipher; }
-    wget -q -O "sqlcipher-${SQLCIPHER_VERSION}.tar.gz" \
+    # Ubuntu's wget is linked against OpenSSL, and the one built above has no CA store.
+    env -u LD_LIBRARY_PATH wget -q -O "sqlcipher-${SQLCIPHER_VERSION}.tar.gz" \
         "https://github.com/sqlcipher/sqlcipher/archive/refs/tags/v${SQLCIPHER_VERSION}.tar.gz"
     tar xf "sqlcipher-${SQLCIPHER_VERSION}.tar.gz"
     cd "sqlcipher-${SQLCIPHER_VERSION}"
