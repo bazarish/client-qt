@@ -36,7 +36,7 @@ Switch {
             width: parent.height - 2 * root.kHandleInset
             height: width
             radius: height / 2
-            color: root.checked ? Theme.text : Theme.textDim
+            color: root.checked ? Theme.knobOn : Theme.textDim
             Behavior on x { NumberAnimation { duration: root.kSlideMs; easing.type: Easing.OutCubic } }
         }
     }

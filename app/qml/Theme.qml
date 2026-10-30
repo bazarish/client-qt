@@ -20,18 +20,20 @@ QtObject {
     readonly property color surface:   light ? "#ffffff" : "#1b2026"  // cards, list rows
     readonly property color surfaceAlt: light ? "#e9eeea" : "#232a31"  // elevated rows / hover
     readonly property color border:    light ? "#cfd6d0" : "#262b2f"  // hairline borders
-    readonly property color border2:   light ? "#a3ada5" : "#333a40"  // stronger dividers
+    readonly property color border2:   light ? "#a3ada5" : "#5f6c77"  // stronger dividers
+    readonly property color pressed:   light ? "#a3ada5" : "#333a40"  // a pressed row or button
 
     // Ink - text.
     readonly property color text:      light ? "#16191c" : "#d7dbd8"  // primary
-    readonly property color textDim:   light ? "#4c554f" : "#8b948c"  // secondary
-    readonly property color textFaint: light ? "#5d665f" : "#5e676a"  // tertiary / comments
+    readonly property color textDim:   light ? "#4c554f" : "#9ea59e"  // secondary
+    readonly property color textFaint: light ? "#5d665f" : "#879195"  // tertiary / comments
 
     // Green - the brand's dim-phosphor green (brandbook --bz-green-dim), the
     // workhorse accent reserved for emphasis: titles/headers and positive status
     // (a good state). Everything else stays gray; the primary buttons are the
     // accent (below), so this is the main hue that draws the eye. Not the bright one.
-    readonly property color green:     "#1f7a14"
+    readonly property color green:     light ? "#1f7a14" : "#2aa61b"  // the brand's own fails AA as text on the dark grounds
+    readonly property color onGreen:   light ? "#f2f4f2" : accentInk
     // Neon - the brightest brand phosphor green (brandbook --bz-green, the cursor
     // accent). Reserved for the rare, must-be-unmistakable highlights: the active
     // conversation/account name, and exceptional or destructive dialogs (e.g.
@@ -67,7 +69,8 @@ QtObject {
     // Our own reaction is filled green; on the dark screen a lighter edge keeps it over 3:1.
     readonly property color reactionMine: green
     readonly property color reactionMineEdge: light ? green : authorName
-    readonly property color reactionMineInk: "#f2f4f2"
+    readonly property color reactionMineInk: onGreen
+    readonly property color knobOn: light ? text : onGreen
 
     readonly property int spacing: 12
     readonly property int radius: 10

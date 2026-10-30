@@ -143,7 +143,7 @@ Popup {
                 radius: Theme.radiusSmall
                 readonly property bool copied: root.copiedKey === root.lineKey(modelData)
                 color: logRow.copied ? Theme.bubbleOut
-                    : (rowTap.pressed ? Theme.border2
+                    : (rowTap.pressed ? Theme.pressed
                         : (rowHover.hovered ? Theme.surfaceAlt : "transparent"))
                 Behavior on color { ColorAnimation { duration: 120 } }
 

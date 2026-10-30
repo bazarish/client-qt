@@ -235,7 +235,7 @@ Popup {
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     background: Rectangle {
                         radius: width / 2
-                        color: recordButton.down ? Theme.border2
+                        color: recordButton.down ? Theme.pressed
                             : (recordButton.hovered ? Theme.surfaceAlt : Theme.surface)
                         border.color: recordButton.hovered ? Theme.danger : Theme.border
                     }

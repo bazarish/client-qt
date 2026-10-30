@@ -40,7 +40,7 @@ ComboBox {
 
     background: Rectangle {
         radius: 8
-        color: root.pressed ? Theme.border2 : (root.hovered ? Theme.surfaceAlt : Theme.surface)
+        color: root.pressed ? Theme.pressed : (root.hovered ? Theme.surfaceAlt : Theme.surface)
         border.color: root.activeFocus ? Theme.accent : Theme.border
     }
 

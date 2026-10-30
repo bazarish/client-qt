@@ -249,7 +249,7 @@ Item {
                 Icon {
                     anchors.centerIn: parent
                     name: "call"
-                    color: "white"
+                    color: Theme.onGreen
                     size: callBadge.kIconSize
                 }
             }

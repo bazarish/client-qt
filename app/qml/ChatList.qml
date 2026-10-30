@@ -362,7 +362,7 @@ Item {
             anchors.fill: parent
             anchors.margins: 4
             radius: 8
-            color: tap.pressed ? Theme.border2 : (hover.hovered ? Theme.surfaceAlt : "transparent")
+            color: tap.pressed ? Theme.pressed : (hover.hovered ? Theme.surfaceAlt : "transparent")
             ColumnLayout {
                 anchors.centerIn: parent
                 spacing: 2

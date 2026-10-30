@@ -38,6 +38,6 @@ Button {
     }
     background: Rectangle {
         radius: 8
-        color: control.down ? Theme.border2 : (control.hovered ? Theme.surfaceAlt : "transparent")
+        color: control.down ? Theme.pressed : (control.hovered ? Theme.surfaceAlt : "transparent")
     }
 }
