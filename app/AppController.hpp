@@ -178,6 +178,7 @@ public:
     Q_PROPERTY(bool canPickPictures READ canPickPictures CONSTANT)
     bool canPickPictures() const;
     Q_INVOKABLE void pickPictures() const;
+    Q_INVOKABLE void pickAvatar() const;
     Q_INVOKABLE bool closeTopPopup(QQuickWindow* window) const;
     Q_INVOKABLE void forgetFocusOnClose(QQuickItem* overlay) const;
     Q_PROPERTY(bool callLive READ callLive NOTIFY callLiveChanged)
@@ -214,6 +215,7 @@ signals:
     void callLiveChanged();
     void unlocked();
     void picturesPicked(const QStringList& uris);
+    void avatarPicked(const QString& uri);
     void speakerOnChanged();
     void restartRequired(const QString& message);
     void accountListChanged();

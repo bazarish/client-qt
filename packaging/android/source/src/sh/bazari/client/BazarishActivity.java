@@ -56,6 +56,10 @@ public class BazarishActivity extends QtActivity {
             Window.picked(resultCode, data);
             return;
         }
+        if (requestCode == Window.PICK_AVATAR) {
+            Window.avatarChosen(resultCode, data);
+            return;
+        }
         super.onActivityResult(requestCode, resultCode, data);
     }
 

@@ -24,6 +24,7 @@ public:
     static void openFullScreenCallsSettings();
     static bool canPickPictures();
     static void pickPictures();
+    static void pickAvatar();
     static void moveToBackground();
     static void dismissKeyguard();
     static void paintSystemBars(bool light, const QColor& color);

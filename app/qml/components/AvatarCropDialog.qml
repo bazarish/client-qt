@@ -89,6 +89,7 @@ Dialog {
 
                 Image {
                     id: picture
+                    autoTransform: true
                     fillMode: Image.PreserveAspectFit
                     // Filling the window at zoom 1 whichever way the picture is
                     // oriented, so there is never a bare corner to send.

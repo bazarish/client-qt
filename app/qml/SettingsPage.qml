@@ -137,7 +137,8 @@ Popup {
                             }
                             TapHandler {
                                 enabled: !avatarSlot.busy
-                                onTapped: avatarDialog.open()
+                                onTapped: App.mobile && App.canPickPictures
+                                    ? App.pickAvatar() : avatarDialog.open()
                             }
                             HoverHandler {
                                 enabled: !avatarSlot.busy
@@ -945,6 +946,17 @@ Popup {
         // the only other reading is that they meant nothing at all, and that is
         // what the dialog asks.
         onRejected: if (root.session && root.session.hasAvatar) { dropAvatarDialog.open() }
+    }
+
+    Connections {
+        target: App
+        function onAvatarPicked(uri) {
+            if (uri.length > 0) {
+                avatarCrop.openFor(uri)
+            } else if (root.session && root.session.hasAvatar) {
+                dropAvatarDialog.open()
+            }
+        }
     }
 
     // Picking the part of the picture that becomes the avatar.

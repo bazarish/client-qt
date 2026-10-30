@@ -595,6 +595,13 @@ void AppController::pickPictures() const
 #endif
 }
 
+void AppController::pickAvatar() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidWindow::pickAvatar();
+#endif
+}
+
 void AppController::requestUnlocked()
 {
 #ifdef Q_OS_ANDROID

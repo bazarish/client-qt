@@ -32,6 +32,7 @@ import java.lang.ref.WeakReference;
 public final class Window {
     private static final int ASK_NOTIFICATIONS = 1;
     static final int PICK_PICTURES = 2;
+    static final int PICK_AVATAR = 3;
     // The R SDK extension that brought the system photo picker to Android 11 and 12.
     private static final int PICKER_EXTENSION = 2;
     private static final String HELD = "held";
@@ -61,6 +62,7 @@ public final class Window {
     static native void coreListening();
     static native void keyboardCovers(int pixels);
     static native void picturesPicked(String[] uris);
+    static native void avatarPicked(String uri);
 
     private Window() {}
 
@@ -121,6 +123,21 @@ public final class Window {
             .setType("image/*")
             .putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, MediaStore.getPickImagesMaxLimit());
         shown.runOnUiThread(() -> shown.startActivityForResult(pick, PICK_PICTURES));
+    }
+
+    public static void pickAvatar() {
+        Activity shown = window.get();
+        if (shown == null) {
+            return;
+        }
+        Intent pick = new Intent(MediaStore.ACTION_PICK_IMAGES).setType("image/*");
+        shown.runOnUiThread(() -> shown.startActivityForResult(pick, PICK_AVATAR));
+    }
+
+    // Backing out of the picker comes as an empty address.
+    static void avatarChosen(int resultCode, Intent result) {
+        boolean chosen = resultCode == Activity.RESULT_OK && result != null && result.getData() != null;
+        avatarPicked(chosen ? result.getData().toString() : "");
     }
 
     // Several pictures come as clip data, a single one as the data itself.

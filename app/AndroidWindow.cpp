@@ -105,6 +105,14 @@ void picturesPicked(JNIEnv* env, jclass, jobjectArray picked)
     });
 }
 
+void avatarPicked(JNIEnv*, jclass, jstring uri)
+{
+    const QString picked = QJniObject(uri).toString();
+    inWindowThread<AppController>(gApp, [picked](AppController& app) {
+        emit app.avatarPicked(picked);
+    });
+}
+
 void keyboardCovers(JNIEnv*, jclass, jint pixels)
 {
     inWindowThread<AppController>(gApp, [pixels](AppController& app) {
@@ -134,6 +142,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
         {"coreListening", "()V", reinterpret_cast<void*>(coreAnswered)},
         {"keyboardCovers", "(I)V", reinterpret_cast<void*>(keyboardCovers)},
         {"picturesPicked", "([Ljava/lang/String;)V", reinterpret_cast<void*>(picturesPicked)},
+        {"avatarPicked", "(Ljava/lang/String;)V", reinterpret_cast<void*>(avatarPicked)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kWindow, natives, static_cast<int>(std::size(natives)))) {
@@ -203,6 +212,11 @@ bool AndroidWindow::canPickPictures()
 void AndroidWindow::pickPictures()
 {
     QJniObject::callStaticMethod<void>(kWindow, "pickPictures", "()V");
+}
+
+void AndroidWindow::pickAvatar()
+{
+    QJniObject::callStaticMethod<void>(kWindow, "pickAvatar", "()V");
 }
 
 void AndroidWindow::moveToBackground()
