@@ -65,9 +65,6 @@ Popup {
     readonly property var common: root.session ? root.session.standardReactions : []
     // What this user reached for that is not in that set, newest first.
     readonly property var recent: root.session ? root.session.recentReactions : []
-    // Matches the protocol's cap; the field cannot hold more, and a longer one
-    // would be dropped by the other side anyway.
-    readonly property int kMaxChars: 4
     // The grid the chips are built on: a cell, and the gap between cells. A wide
     // chip spans two cells AND the gap they sit either side of, or it would come
     // up short of the column next to it.
@@ -157,7 +154,6 @@ Popup {
             TextField {
                 id: customField
                 Layout.fillWidth: true
-                maximumLength: root.kMaxChars
                 placeholderText: qsTr("Any unicode…")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
@@ -172,6 +168,17 @@ Popup {
                 font.family: Theme.fontFamily
                 renderType: Text.NativeRendering
                 onAccepted: root.pick(customField.text)
+                // The cap counts code points, as the protocol does, and the word a keyboard is still composing.
+                onDisplayTextChanged: {
+                    const held = []
+                    for (const point of customField.displayText) {
+                        held.push(point)
+                    }
+                    if (held.length > App.maxReactionChars) {
+                        Qt.inputMethod.commit()
+                        customField.text = held.slice(0, App.maxReactionChars).join("")
+                    }
+                }
                 background: Rectangle { radius: 8; color: Theme.surface; border.color: customField.activeFocus ? Theme.accent : Theme.border }
             }
             MenuButton {
