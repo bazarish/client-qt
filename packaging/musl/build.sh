@@ -10,6 +10,7 @@ readonly kPrefix=/out/prefix
 readonly kQt=/out/qt
 readonly kWork=/out/work
 readonly kOpenSsl=3.5.7
+readonly kOpenSslTarget="linux-$(uname -m)"
 readonly kQtVersion=6.8.2
 readonly kSqlCipher=4.6.1
 readonly kOpus=1.5.2
@@ -57,7 +58,7 @@ if step openssl; then
     cd "openssl-$kOpenSsl"
     # Everything under one libdir: on x86_64 OpenSSL would otherwise install into
     # lib64, where nothing else here looks.
-    ./Configure linux-x86_64 no-shared no-async no-autoload-config no-docs \
+    ./Configure "$kOpenSslTarget" no-shared no-async no-autoload-config no-docs \
         --prefix="$kPrefix" --openssldir="$kPrefix/ssl" --libdir=lib
     make -j"$kJobs"
     make install_sw

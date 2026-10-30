@@ -66,11 +66,19 @@ jobs:
         run: .github/ci/report.sh
 
   linux-static:
-    name: Linux amd64 static
-    runs-on: ubuntu-24.04
+    name: Linux ${{ matrix.arch }} static
+    runs-on: ${{ matrix.runner }}
     # Qt and everything under it are built from source, which the first time takes
     # hours; each stage that finished is kept for the runs after it.
     timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v5
         with:
@@ -81,8 +89,8 @@ jobs:
           path: |
             musl-out/prefix
             musl-out/qt
-          key: musl-amd64-${{ hashFiles('packaging/musl/**') }}-${{ github.run_id }}
-          restore-keys: musl-amd64-${{ hashFiles('packaging/musl/**') }}-
+          key: musl-${{ matrix.arch }}-${{ hashFiles('packaging/musl/**') }}-${{ github.run_id }}
+          restore-keys: musl-${{ matrix.arch }}-${{ hashFiles('packaging/musl/**') }}-
       - name: See what is already built
         id: deps
         run: |
@@ -100,7 +108,7 @@ jobs:
                   sh -c 'rm -f /out/prefix/.app && sh /host/packaging/musl/build.sh'
               file musl-out/build/bazarish-app | grep -q 'static' \
                   || { echo "::error::the binary is not statically linked"; exit 1; }
-              cp musl-out/build/bazarish-app out/Bazarish-x86_64-static
+              cp musl-out/build/bazarish-app "out/Bazarish-$(uname -m)-static"
           } 2>&1 | tee -a ci-package.log
       # Kept even when the run is cut short, so a cold build gets further each time.
       - if: always() && steps.deps.outputs.complete != 'true'
@@ -109,11 +117,11 @@ jobs:
           path: |
             musl-out/prefix
             musl-out/qt
-          key: musl-amd64-${{ hashFiles('packaging/musl/**') }}-${{ github.run_id }}
+          key: musl-${{ matrix.arch }}-${{ hashFiles('packaging/musl/**') }}-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-amd64-static
-          path: out/Bazarish-x86_64-static
+          name: linux-${{ matrix.arch }}-static
+          path: out/Bazarish-*-static
           if-no-files-found: error
       - name: Say what broke
         if: failure()
