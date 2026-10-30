@@ -180,7 +180,7 @@ if(Qt6_FOUND)
     target_link_libraries(bazarish_app_ui PUBLIC bazarish_app_shared quirc ${QRENCODE_LIBRARY}
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Widgets)
     target_compile_options(bazarish_app_ui PRIVATE -Wall -Wextra)
-    add_dependencies(bazarish_app_ui stamp-version)
+    bazarish_stamp_version(bazarish_app_ui)
 
     qt_add_executable(bazarish-app
         app/main.cpp
@@ -224,7 +224,6 @@ if(Qt6_FOUND)
         target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp
             app/AndroidWindow.cpp app/AndroidWindow.hpp
             app/AndroidCallAudio.cpp app/AndroidCallAudio.hpp)
-        include(tools/GitVersion.cmake)
         bazarish_git_version(${CMAKE_CURRENT_SOURCE_DIR} kAndroidVersionName kAndroidVersionCode)
         set_target_properties(bazarish-app PROPERTIES
             QT_ANDROID_VERSION_NAME "${kAndroidVersionName}"
@@ -281,18 +280,6 @@ if(Qt6_FOUND)
         COMMENT "Checking that every string shown has every language"
         VERBATIM)
     add_dependencies(bazarish-app check-translations)
-
-    # Stamped on every build and not at configure time: a tag made or a commit
-    # written after this build directory was configured still reaches the window.
-    add_custom_target(stamp-version ALL
-        COMMAND ${CMAKE_COMMAND}
-            -DBAZARISH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-            -DBAZARISH_VERSION_HEADER=${CMAKE_CURRENT_BINARY_DIR}/Version.hpp
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/tools/StampVersion.cmake
-        BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/Version.hpp
-        COMMENT "Stamping the version from the git tag"
-        VERBATIM)
-    add_dependencies(bazarish-app stamp-version)
 
     # The message catalog. Carried in the binary: the build has already checked
     # that every string the code shows has every language.

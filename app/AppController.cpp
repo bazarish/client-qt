@@ -11,12 +11,12 @@
 #include "Markup.hpp"
 #include "PathText.hpp"
 #include "PopupStack.hpp"
-#include "Version.hpp"
 #include "Wire.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidWindow.hpp"
 #endif
 
+#include <BuildVersion.hpp>
 #include <bazarish/I2p.hpp>
 #include <bazarish/Links.hpp>
 #include <bazarish/PairLink.hpp>
@@ -469,7 +469,7 @@ QString AppController::i2pdVersion() const
 
 QString AppController::appVersion() const
 {
-    return QString::fromLatin1(kAppVersion);
+    return QString::fromLatin1(bazarish::kBuildVersion);
 }
 
 void AppController::applyPendingLink()
