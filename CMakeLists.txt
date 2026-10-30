@@ -224,7 +224,11 @@ if(Qt6_FOUND)
         target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp
             app/AndroidWindow.cpp app/AndroidWindow.hpp
             app/AndroidCallAudio.cpp app/AndroidCallAudio.hpp)
+        include(tools/GitVersion.cmake)
+        bazarish_git_version(${CMAKE_CURRENT_SOURCE_DIR} kAndroidVersionName kAndroidVersionCode)
         set_target_properties(bazarish-app PROPERTIES
+            QT_ANDROID_VERSION_NAME "${kAndroidVersionName}"
+            QT_ANDROID_VERSION_CODE ${kAndroidVersionCode}
             QT_ANDROID_PACKAGE_NAME sh.bazari.client
             QT_ANDROID_MIN_SDK_VERSION ${kAndroidMinSdk}
             QT_ANDROID_TARGET_SDK_VERSION ${kAndroidTargetSdk}
