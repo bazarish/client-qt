@@ -27,6 +27,9 @@ if(Qt6_FOUND)
     # Separate: a missing DBus dev config must not fail the Qt6 find above.
     find_package(Qt6 COMPONENTS DBus QUIET)
 
+    find_library(QRENCODE_LIBRARY NAMES qrencode REQUIRED)
+    find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
+
     # Vendored QR reader (libqrencode only writes codes); not ours to lint.
     add_library(quirc STATIC
         third_party/quirc/quirc.c
