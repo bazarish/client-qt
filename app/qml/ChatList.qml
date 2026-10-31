@@ -23,10 +23,41 @@ Item {
     readonly property int kBadgeRing: 2
     readonly property int kVisibleSettleMs: 300
     readonly property int kPreviewChars: 200
+    readonly property int kMillisPerDay: 86400000
+    readonly property int kDayTurnGraceMs: 1000
 
-    function formatTime(ts) {
+    property date today: new Date()
+    readonly property string yesterdayLabel: qsTr("yesterday")
+    readonly property string dayMonthPattern: qsTr("%1 %2")
+    readonly property var shortMonths: [qsTr("Jan"), qsTr("Feb"), qsTr("Mar"), qsTr("Apr"),
+        qsTr("May"), qsTr("Jun"), qsTr("Jul"), qsTr("Aug"), qsTr("Sep"), qsTr("Oct"), qsTr("Nov"),
+        qsTr("Dec")]
+
+    function untilNextDay(from) {
+        const next = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 1)
+        return next.getTime() - from.getTime() + root.kDayTurnGraceMs
+    }
+
+    function formatTime(ts, today) {
         if (!ts) return ""
-        return new Date(ts).toLocaleTimeString(Qt.locale(), "hh:mm")
+        const at = new Date(ts)
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+        const startOfThatDay = new Date(at.getFullYear(), at.getMonth(), at.getDate())
+        const daysAgo = Math.round((startOfToday - startOfThatDay) / root.kMillisPerDay)
+        if (daysAgo <= 0) {
+            return at.toLocaleTimeString(Qt.locale(), "hh:mm")
+        }
+        if (daysAgo === 1) {
+            return root.yesterdayLabel
+        }
+        return root.dayMonthPattern.arg(at.getDate()).arg(root.shortMonths[at.getMonth()])
+    }
+
+    Timer {
+        running: true
+        repeat: true
+        interval: root.untilNextDay(root.today)
+        onTriggered: root.today = new Date()
     }
 
     function previewText(s) {
@@ -270,7 +301,7 @@ Item {
                                 font.weight: Font.Medium
                                 elide: Text.ElideRight
                             }
-                            Label { text: root.formatTime(model.lastTime); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                            Label { text: root.formatTime(model.lastTime, root.today); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                         }
                         RowLayout {
                             Layout.fillWidth: true
