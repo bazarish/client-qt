@@ -1,12 +1,9 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Shown when a server refuses this key (usually "not registered
-// yet"). Carries the server's full onboarding message and registration link(s),
-// which the user can copy or open. It is top-layer and closes only on the
-// explicit button - never on a click-away or Escape - so the links are not lost.
 Popup {
     id: root
     property string reason: ""
@@ -23,8 +20,6 @@ Popup {
     modal: true
     focus: true
     closePolicy: Popup.NoAutoClose
-    // Sit above any other open popup (settings, sheets) so the error is never
-    // covered by another window.
     z: 1000
     anchors.centerIn: Overlay.overlay
     width: Math.min(520, (Overlay.overlay ? Overlay.overlay.width : 520) - 32)
@@ -35,7 +30,7 @@ Popup {
 
     function copyText(t) {
         App.copyText(t)
-        if (typeof window !== "undefined") window.showToast(qsTr("Copied"))
+        window.showToast(qsTr("Copied"))
     }
 
     contentItem: Flickable {
@@ -66,7 +61,6 @@ Popup {
                 wrapMode: Text.Wrap; Layout.fillWidth: true
             }
 
-            // The server's own message, selectable so it can be copied.
             ScrollView {
                 visible: root.message.length > 0
                 Layout.fillWidth: true

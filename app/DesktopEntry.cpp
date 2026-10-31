@@ -46,8 +46,7 @@ bool writeIfChanged(const QString& path, const QByteArray& content)
 
 void ensureDesktopEntry()
 {
-    // An AppImage is launched through a path of the runtime's making, so it says
-    // where it really is; anything else stands where it stands.
+    // An AppImage runs from the runtime's mount; APPIMAGE names the image file itself.
     const QByteArray image = qgetenv("APPIMAGE");
     const QString binary = image.isEmpty() ? QCoreApplication::applicationFilePath()
                                            : QString::fromLocal8Bit(image);

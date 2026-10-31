@@ -1,51 +1,15 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
-#include "SessionShared.hpp"
-#include "SystemNotes.hpp"
-
 #include "AvatarStore.hpp"
-#include "PictureStore.hpp"
-#include "DeliveryStatus.hpp"
-
-#include <bazarish/Crypto.hpp>
-#include <bazarish/Limits.hpp>
-#include <bazarish/Descriptor.hpp>
-#include <bazarish/Portal.hpp>
-
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-
-#pragma push_macro("emit")
-#undef emit
-#include <bazarish/Log.hpp>
-#pragma pop_macro("emit")
 
 #include <QByteArray>
-#include <chrono>
-#include <cstring>
-
-#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#endif
-
-#include <algorithm>
-#include <array>
-#include <ctime>
-#include <exception>
-#include <fstream>
-#include <iterator>
-#include <memory>
-#include <mutex>
-#include <thread>
-#include <utility>
-#include <vector>
 
 namespace bazarish::app {
 
 void SessionController::refreshChatRow(const QString& peer)
 {
-    contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer), false);
+    contacts_.touch(peer, peerName(peer), chatPreview(peer), store_.lastTime(peer));
     contacts_.setUnread(peer, store_.unreadCount(peer));
 }
 

@@ -13,7 +13,6 @@
 
 #include "AvatarStore.hpp"
 #include "PictureStore.hpp"
-#include "DeliveryStatus.hpp"
 #include "LetterAvatar.hpp"
 #include "PhotoShot.hpp"
 #include "Session.hpp"
@@ -46,9 +45,6 @@
 #include <cstring>
 #include <QRegularExpression>
 #include <QUrl>
-
-#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#endif
 
 #include <algorithm>
 #include <array>
@@ -172,8 +168,6 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         [this](const QString& served, const QString& ours) {
             emit addressNeedsChoice(served, ours);
         });
-    connect(&events_, &AccountEvents::downloadProgress, this,
-        &SessionController::onDownloadProgress);
     connect(&events_, &AccountEvents::servedProgress, this, &SessionController::onServedProgress);
     connect(&events_, &AccountEvents::transferStage, this, &SessionController::onTransferStage);
     connect(&events_, &AccountEvents::servedFinished, this, &SessionController::onServedFinished);
@@ -295,7 +289,6 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
             emit contactsRevisionChanged();
         });
     connect(&events_, &AccountEvents::avatarReady, this, &SessionController::onAvatarReady);
-    connect(&events_, &AccountEvents::uploadProgress, this, &SessionController::onUploadProgress);
     connect(&events_, &AccountEvents::messageError, this,
         [this](const qint64 localId, const QString& error) {
             conversation_.setErrorForId(localId, error);
@@ -1067,8 +1060,6 @@ void SessionController::sendPictureFiles(const QStringList& fileUrls)
     if (activePeer_.isEmpty() || fileUrls.isEmpty()) {
         return;
     }
-    // Prepared one after another away from the window and sent in the order picked, to the chat
-    // they were picked in; a reply goes with the first.
     const QPointer<SessionController> self(this);
     std::thread([self, peer = activePeer_, fileUrls, replyTo = takeReply()]() mutable {
         for (const QString& fileUrl : fileUrls) {
@@ -1563,7 +1554,7 @@ void SessionController::onI2pKeyState(const bool hasKey, const QString& address)
     emit i2pStatusChanged();
 }
 
-void SessionController::onI2pStatus(const bool hasKey, const bool delegated, const bool live,
+void SessionController::onI2pStatus(const bool hasKey, const bool delegated,
     const QString& address, const qint64 transientExpires, const QString& serverState)
 {
     i2pBusy_ = false;
@@ -1572,7 +1563,6 @@ void SessionController::onI2pStatus(const bool hasKey, const bool delegated, con
     i2pServerState_ = serverState;
     i2pHasKey_ = hasKey;
     i2pEnabled_ = delegated;
-    i2pActive_ = live;
     i2pAddress_ = address;
     i2pTransientExpires_ = transientExpires;
     emit i2pStatusChanged();
@@ -1667,13 +1657,12 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
         if (!message.hasPicture || message.e2eId.isEmpty()) {
             continue;
         }
-        pictureOwners_.insert(message.e2eId, message.id);
         if (PictureStore::instance().has(message.e2eId)) {
             continue;
         }
         const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.e2eId);
         if (bytes.isEmpty() || !PictureStore::instance().put(message.e2eId, bytes)) {
-            conversation_.setPictureReadyForId(message.id, false);
+            conversation_.markPictureMissingForId(message.id);
         }
     }
 }

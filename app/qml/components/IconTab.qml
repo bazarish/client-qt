@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// A chooser pill that shows a drawing for its words; the words stay its name.
 ModeTab {
     id: tab
     property string iconName: ""

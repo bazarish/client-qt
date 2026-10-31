@@ -34,7 +34,6 @@ class I2pController : public QObject {
     Q_PROPERTY(bool samChecking READ samChecking NOTIFY samChanged)
     Q_PROPERTY(QString samHost READ samHost NOTIFY samChanged)
     Q_PROPERTY(int samPort READ samPort NOTIFY samChanged)
-    Q_PROPERTY(QString proxyNtcp2 READ proxyNtcp2 NOTIFY statusChanged)
     Q_PROPERTY(bool gatewayAsked READ gatewayAsked NOTIFY gatewayChanged)
     Q_PROPERTY(bool gatewayEnabled READ gatewayEnabled NOTIFY gatewayChanged)
     Q_PROPERTY(QString gatewayAddress READ gatewayAddress NOTIFY gatewayChanged)
@@ -58,7 +57,6 @@ public:
     int minKnownRouters() const { return state_.minKnownRouters; }
     QString proxyHost() const { return state_.proxyHost; }
     int proxyPort() const { return state_.proxyPort; }
-    QString proxyNtcp2() const { return state_.proxyNtcp2; }
     bool proxyChecking() const { return state_.proxyChecking; }
     Q_INVOKABLE void checkAndSaveProxy(const QString& host, int port);
     bool samEnabled() const { return state_.samEnabled; }
@@ -84,7 +82,6 @@ public:
     bool restartNeeded() const { return state_.restartNeeded; }
     Q_INVOKABLE void checkAndSaveGateway(const QString& address);
     Q_INVOKABLE void skipGateway();
-    Q_INVOKABLE void clearGateway();
     Q_INVOKABLE void useEmbedded();
 
     Q_INVOKABLE void refresh();

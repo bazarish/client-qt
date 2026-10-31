@@ -46,7 +46,7 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(store.open("p1", db, "pw"));
+        CHECK(store.open(db, "pw"));
         StoredMessage m;
         m.peer = "bob";
         m.outgoing = true;
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(store.open("p2", db, "pw"));
+        CHECK(store.open(db, "pw"));
         const QVector<StoredMessage> msgs = store.messagesFor("bob");
         CHECK(msgs.size() == 1);
         CHECK(msgs[0].text == "secret-hello");
@@ -99,18 +99,18 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(!store.open("p3", db, "wrong"));
+        CHECK(!store.open(db, "wrong"));
     }
     {
         TranscriptStore store;
-        CHECK(store.open("p4", db, "pw"));
+        CHECK(store.open(db, "pw"));
         CHECK(store.messagesFor("bob").size() == 1);
     }
 
     {
         const QString pdb = QString::fromStdString((dir / "paged.db").string());
         TranscriptStore store;
-        CHECK(store.open("pg", pdb, ""));
+        CHECK(store.open(pdb, ""));
         QVector<qint64> ids;
         const char* const texts[]
             = {"alpha one", "beta two", "Gamma THREE", "\xd0\xb4\xd0\xb5\xd0\xbb\xd1\x8c\xd1\x82\xd0\xb0 four", "alpha five"};
@@ -176,8 +176,6 @@ int main(int argc, char** argv)
         CHECK(store.searchInPeer("carol", QString::fromUtf8("\xd0\x94\xd0\x95\xd0\x9b\xd0\xac\xd0\xa2\xd0\x90")).size() == 1);
         CHECK(store.searchInPeer("carol", "nomatch").isEmpty());
 
-        CHECK(store.sourcePathFor(ids[0]).isEmpty());
-
         StoredMessage onItsWay;
         onItsWay.peer = "carol";
         onItsWay.outgoing = true;
@@ -196,7 +194,7 @@ int main(int argc, char** argv)
     {
         const QString rdb = QString::fromStdString((dir / "reorder.db").string());
         TranscriptStore store;
-        CHECK(store.open("ro", rdb, ""));
+        CHECK(store.open(rdb, ""));
         struct In {
             const char* text;
             qint64 ts;
@@ -233,7 +231,7 @@ int main(int argc, char** argv)
         QVector<qint64> ids;
         {
             TranscriptStore store;
-            CHECK(store.open("rs", sdb, "pw"));
+            CHECK(store.open(sdb, "pw"));
             for (int i = 0; i < 5; ++i) {
                 StoredMessage m;
                 m.peer = "erin";
@@ -262,7 +260,7 @@ int main(int argc, char** argv)
         }
         {
             TranscriptStore store;
-            CHECK(store.open("rs2", sdb, "pw"));
+            CHECK(store.open(sdb, "pw"));
             CHECK(store.lastReadId("erin") == ids[3]);
             CHECK(store.unreadCount("erin") == 1);
             CHECK(store.firstUnreadId("erin") == ids[4]);
@@ -275,7 +273,7 @@ int main(int argc, char** argv)
     {
         const QString sdb = QString::fromStdString((dir / "sysunread.db").string());
         TranscriptStore store;
-        CHECK(store.open("su", sdb, ""));
+        CHECK(store.open(sdb, ""));
         StoredMessage note;
         note.peer = "frank";
         note.outgoing = false;
@@ -300,28 +298,10 @@ int main(int argc, char** argv)
     }
 
     {
-        const QString sdb = QString::fromStdString((dir / "reopened.db").string());
-        {
-            TranscriptStore fresh;
-            CHECK(fresh.open("ver", sdb, QString()));
-            StoredMessage m;
-            m.peer = "heidi";
-            m.type = "text";
-            m.text = "kept across a reopen";
-            m.ts = 500;
-            m.orderKey = m.ts;
-            CHECK(fresh.append(m) > 0);
-        }
-        TranscriptStore again;
-        CHECK(again.open("ver", sdb, QString()));
-        CHECK(again.latestMessages("heidi", 10).size() == 1);
-    }
-
-    {
         const fs::path file = dir / "weights.db";
         const QString wdb = QString::fromStdString(file.string());
         TranscriptStore store;
-        CHECK(store.open("w", wdb, "pw"));
+        CHECK(store.open(wdb, "pw"));
 
         const auto write = [&store](const char* const peer, const char* const id,
                                const char* const text) {
@@ -449,14 +429,14 @@ int main(int argc, char** argv)
         store.close();
 
         TranscriptStore reopened;
-        CHECK(reopened.open("w", wdb, "pw"));
+        CHECK(reopened.open(wdb, "pw"));
         CHECK(reopened.conversationPeers().isEmpty());
     }
 
     {
         const QString rdb = QString::fromStdString((dir / "readmark.db").string());
         TranscriptStore store;
-        CHECK(store.open("r", rdb, "pw"));
+        CHECK(store.open(rdb, "pw"));
         const auto incoming = [&store](const char* const id, const qint64 sentAt) {
             StoredMessage m;
             m.peer = "ivan";
@@ -493,7 +473,7 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(store.open("p1", db, "pw"));
+        CHECK(store.open(db, "pw"));
         CHECK(store.setReaction("bob", "m1", "them", "\xF0\x9F\x91\x8D"));
         CHECK(store.setReaction("bob", "m1", "us", "\xE2\x9D\xA4"));
         const QVector<Reaction> both = store.reactionsFor("bob", "m1");
@@ -515,7 +495,7 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(store.open("p1", db, "pw"));
+        CHECK(store.open(db, "pw"));
         const auto plate = [&](const bool outgoing, const QString& id) {
             StoredMessage m;
             m.peer = "asker";
@@ -541,7 +521,7 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(store.open("p-cols", QString::fromStdString((dir / "columns.db").string()), "pw"));
+        CHECK(store.open(QString::fromStdString((dir / "columns.db").string()), "pw"));
         StoredMessage full;
         full.peer = "dana";
         full.outgoing = true;
@@ -592,7 +572,7 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(store.open("p-del", QString::fromStdString((dir / "delete.db").string()), "pw"));
+        CHECK(store.open(QString::fromStdString((dir / "delete.db").string()), "pw"));
         const auto write = [&](const QString& peer, const QString& e2eId) {
             StoredMessage m;
             m.peer = peer;
@@ -625,17 +605,16 @@ int main(int argc, char** argv)
 
         CHECK(store.forgetPeer("carol"));
         CHECK(!store.isPinned("carol"));
-        CHECK(store.pinnedPeers().isEmpty());
     }
 
     {
         const QString ndb = QString::fromStdString((dir / "notes.db").string());
         TranscriptStore store;
-        CHECK(store.open("nt", ndb, ""));
+        CHECK(store.open(ndb, ""));
         StoredMessage note;
         note.peer = "dave";
         note.type = "system";
-        note.text = encodeSystemNote(QStringLiteral("Request sent, awaiting delivery…"));
+        note.text = encodeSystemNote(QStringLiteral("Request sent."));
         note.ts = 300;
         note.orderKey = note.ts;
         CHECK(store.append(note) > 0);
@@ -654,7 +633,7 @@ int main(int argc, char** argv)
     {
         const QString gdb = QString::fromStdString((dir / "group.db").string());
         TranscriptStore store;
-        CHECK(store.open("gr", gdb, ""));
+        CHECK(store.open(gdb, ""));
         StoredMessage post;
         post.peer = "club";
         post.type = "text";
@@ -715,7 +694,7 @@ int main(int argc, char** argv)
     {
         const QString shared = QString::fromStdString((dir / "shared.db").string());
         TranscriptStore store;
-        CHECK(store.open("p3", shared, "pw"));
+        CHECK(store.open(shared, "pw"));
         StoredMessage first;
         first.peer = "gus";
         first.type = "text";
@@ -750,7 +729,7 @@ int main(int argc, char** argv)
 
     {
         TranscriptStore store;
-        CHECK(store.open("p1", db, "pw"));
+        CHECK(store.open(db, "pw"));
         constexpr qint64 kMsPerSecond = 1000;
         constexpr qint64 kTimer = client::kSecondsPerHour;
         constexpr qint64 kTimerMs = kTimer * kMsPerSecond;
@@ -817,7 +796,7 @@ int main(int argc, char** argv)
     // A bot's menu: the newest one stands, an empty one takes it away, a cleared chat keeps it.
     {
         TranscriptStore store;
-        CHECK(store.open("p4", db, "pw"));
+        CHECK(store.open(db, "pw"));
         CHECK(store.botMenu("bot").isEmpty());
         CHECK(store.setBotMenu("bot", R"([{"title":"Баланс","command":"balance"}])"));
         const QVariantList menu = store.botMenu("bot");

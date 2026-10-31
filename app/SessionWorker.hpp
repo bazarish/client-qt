@@ -113,7 +113,6 @@ public slots:
     void clearConnectionLog();
     void askDevicesForContacts();
     void noteCommandDone();
-    // Stops everything this worker owns and closes the account.
     void shutdown();
     void saveAttachment(const QString& peer, const QString& e2eId,
         const QString& announcedSha256, const QString& destPath, qint64 token);
@@ -160,7 +159,6 @@ signals:
     void opBegin(const QString& opId, const QString& kind, const QString& title,
         const QString& status);
     void opDone(const QString& opId, bool ok, const QString& status);
-    void opProgress(const QString& opId, const QString& status);
     void pairOfferReady(const QString& uri, const QString& code);
     void pairStage(const QString& status, double progress);
     void pairFinished(bool ok, const QString& status);
@@ -182,8 +180,6 @@ signals:
     void sendProgress(qint64 localId, int state);
     void sendResult(qint64 localId, bool ok, const QString& error);
     void sendPhase(qint64 localId, const QString& phase);
-    void uploadProgress(qint64 localId, qint64 sent, qint64 total);
-    void downloadProgress(qint64 token, qint64 received, qint64 total);
     void servedProgress(const QString& peer, const QString& e2eId, qint64 sent, qint64 total);
     void transferStage(const QString& peer, const QString& e2eId, const QString& stage);
     void servedFinished(const QString& peer, const QString& e2eId, bool ok,
@@ -211,14 +207,13 @@ signals:
     void connectionLogReady(const QVariantList& lines);
     void stopped();
     void syncReachable(bool ok, const QString& gatewayRefusal);
-    // The backlog found on coming online, as it is taken in; syncing ends with it.
     // shown: the backlog is more than one pass of items.
     void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
     void approvalState(bool pending, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
-    void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
-        qint64 transientExpires, const QString& serverState);
+    void i2pStatus(bool hasKey, bool delegated, const QString& address, qint64 transientExpires,
+        const QString& serverState);
     void i2pKeyState(bool hasKey, const QString& address);
     void i2pServedAddress(const QString& address);
     void devicesReady(const QVariantList& devices);
@@ -230,7 +225,7 @@ signals:
     void callLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
 
 private:
-    QString beginOp(const QString& kind, const QString& title, const QString& status);
+    QString beginOp(const QString& title, const QString& status);
     QString coreText(const QString& reported);
     void reportPairing(const bazarish::client::Session::PairingEvent& event);
     int opSeq_ = 0;

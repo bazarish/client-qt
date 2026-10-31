@@ -1,24 +1,18 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Settings that belong to the app rather than to any one account: the embedded
-// I2P router is one engine for every account, and the privacy switch here
-// overrides what each account is allowed to do. They live in their own window so
-// a per-account setting and an app-wide one can never be read as the same thing.
 Popup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
-    // A window of its own: it is opened from several places and belongs to none
-    // of them, so it closes rather than going back to one.
     signal showRouterStatus()
 
     modal: true
     focus: true
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
-    // As tall as what it holds, not a fixed box: there are two settings here.
     height: Math.min(parent ? parent.height - 40 : 520, body.implicitHeight + 60)
     padding: 0
     background: DialogFrame { }
@@ -136,7 +130,6 @@ Popup {
                             checked: App.portable
                             onToggled: {
                                 portableConfirm.turningOn = checked
-                                // Put the switch back until the move is agreed to.
                                 checked = App.portable
                                 portableConfirm.open()
                             }
@@ -222,10 +215,6 @@ Popup {
                 }
                 Hairline { }
 
-                // One choice, three ways of making it. Each tab carries the
-                // description of a transport and its settings, and the switch
-                // that turns it on: turning one on turns the others off, which
-                // is why there is no way to turn the current one off on its own.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -265,7 +254,6 @@ Popup {
                         Layout.fillWidth: true
                         currentIndex: transportTabs.currentIndex
 
-                        // A host that runs the router so this device does not.
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
@@ -277,8 +265,6 @@ Popup {
                                     enabled: !I2p.gatewayChecking
                                     onToggled: {
                                         if (checked) {
-                                            // The address is saved by the button
-                                            // below; this only chooses it.
                                             root.gatewayProblem = ""
                                             I2p.useGateway(true)
                                             checked = I2p.transport === "gateway"
@@ -293,8 +279,6 @@ Popup {
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
-                            // A saved gateway shows its host; the whole address, secret path and
-                            // token included, is handed over by Share.
                             RowLayout {
                                 visible: !root.gatewayInput
                                 Layout.fillWidth: true
@@ -382,7 +366,6 @@ Popup {
                             }
                         }
 
-                        // The engine inside this application.
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
@@ -395,7 +378,7 @@ Popup {
                                         if (checked) {
                                             I2p.useEmbedded()
                                         } else {
-                                            checked = true  // something has to carry the traffic
+                                            checked = true
                                         }
                                     }
                                 }
@@ -457,7 +440,6 @@ Popup {
                             }
                         }
 
-                        // A router already running on this machine.
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
@@ -465,17 +447,14 @@ Popup {
                                 Layout.fillWidth: true
                                 Label { text: qsTr("Enabled"); color: Theme.text; Layout.fillWidth: true }
                                 Toggle {
-                                    id: samToggle
                                     checked: I2p.transport === "sam"
                                     enabled: !I2p.samChecking
                                     onToggled: {
                                         if (checked) {
-                                            // The address is saved by the button
-                                            // below; this only chooses it.
                                             I2p.useSam(true)
                                             checked = I2p.transport === "sam"
                                         } else {
-                                            checked = true  // something has to carry the traffic
+                                            checked = true
                                         }
                                     }
                                 }
@@ -538,13 +517,11 @@ Popup {
         }
     }
 
-    // Why the last gateway address was refused, cleared when a new one is tried.
     property string gatewayProblem: ""
     property bool editingGateway: false
     onClosed: root.editingGateway = false
     readonly property bool gatewayInput: I2p.gatewayAddress.length === 0 || root.editingGateway
     property string proxyProblem: ""
-    // The verdict on the SAM address: whether the router at it answered.
     property string samNote: ""
     property bool samAnswered: false
     Connections {
@@ -565,7 +542,6 @@ Popup {
         }
     }
 
-    // Moving the data is not something to do on a stray tap.
     Dialog {
         id: portableConfirm
         property bool turningOn: false

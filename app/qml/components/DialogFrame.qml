@@ -2,9 +2,6 @@
 import QtQuick
 import Bazarish
 
-// The frame every dialog and sheet is drawn in: a thin edge, and a black glow beneath so the
-// window lies on a dark patch instead of melting into the screen behind it. An
-// account-ending dialog carries the neon edge, so it cannot be mistaken for an ordinary question.
 Rectangle {
     id: frame
     property bool destructive: false
@@ -12,7 +9,6 @@ Rectangle {
     readonly property int kGlowLayers: 10
     readonly property int kGlowStep: 3
     readonly property real kGlowOpacityOnDark: 0.14
-    // Paper needs a softer shadow than a dark screen needs to be lifted off.
     readonly property real kGlowOpacityOnLight: 0.04
     readonly property real kGlowOpacity: Theme.light ? kGlowOpacityOnLight : kGlowOpacityOnDark
 

@@ -1,12 +1,8 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// Asked when the server is serving an address this device has no keys for and no
-// other device of the account answered with them - the state a second device used
-// to create silently by publishing an address of its own. Nothing is published
-// until this is answered, because either answer takes the account's address away
-// from the contacts holding the served one.
 Dialog {
     id: root
     property string servedHost: ""

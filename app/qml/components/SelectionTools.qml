@@ -3,22 +3,16 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// A phone's selection handles and menu for one text field. Qt's own sit right
-// over the selection, hide anything the app shows there and take no entries.
 Item {
     id: root
 
-    // A TextInput or a TextEdit; the view is what scrolls it, or the field itself.
     property Item field: null
     property Item view: null
-    // What the menu stays inside; the window when unset.
     property Item bounds: null
     property var forms: []
-    // Paste is offered for a picture in the clipboard too, when the field sends one.
     property bool pastesPictures: false
     signal formChosen(string open, string close)
     signal pasteRequested()
-    // A read-only text is done with: copied, tapped beside or its selection gone.
     signal dismissed()
 
     readonly property int kTarget: 44
@@ -38,7 +32,6 @@ Item {
     readonly property string kNoBreakSpace: String.fromCharCode(0xa0)
 
     property bool active: root.field !== null && root.field.activeFocus && root.field.enabled
-    // The owner's active and its field change apart: neither is read without the other.
     readonly property bool live: root.active && root.field !== null
     readonly property bool editable: root.field !== null && !root.field.readOnly
     readonly property bool hasSelection: root.field !== null && root.live
@@ -53,7 +46,6 @@ Item {
         root.caretShown = true
         caretTimer.restart()
     }
-    // The word under the finger, as Android selects one; the menu alone where there is none.
     function longPressed(at) {
         root.field.cursorPosition = root.field.positionAt(at.x, at.y)
         root.field.selectWord()
@@ -66,7 +58,7 @@ Item {
         }
     }
 
-    // The field's geometry in this item; the reads name what moves it.
+    // The void reads make the binding track whatever moves the field.
     function rectAt(position) {
         void [root.field.text, root.field.width, root.view.contentY, root.view.contentHeight,
             root.view.originY, root.width, root.height]
@@ -152,7 +144,6 @@ Item {
             }
         }
     }
-    // Over everything, so it sees a tap the rows below take.
     TapHandler {
         enabled: root.live && !root.editable
         onTapped: function(point) {
@@ -171,11 +162,9 @@ Item {
         }
     }
 
-    // A knob centred on its stem: off to a side, at a screen edge, it met the back gesture.
     component Handle: Item {
         id: handle
         property rect line
-        // The end of a selection hangs its knob under the line, clear of the selection's colour.
         property bool below: false
         signal moved(int position)
         signal tapped()

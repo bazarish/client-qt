@@ -3,16 +3,11 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// One entry of a ContextMenu. A menu styles only the entries it creates itself,
-// so entries written by hand need their own look or they come out in the stock
-// white; this is that look, in one place. An entry may carry an icon, drawn
-// before its label, so a menu can be read at a glance and in any language.
+// A Menu styles only the entries it creates; hand-written ones need their own look.
 MenuItem {
     id: root
     focusPolicy: Theme.pressFocus
-    // Set on an entry that removes something, so it reads as one.
     property bool danger: false
-    // Name from the shared icon set, or empty for a menu of plain words.
     property string iconName: ""
     readonly property int kIconSize: 15
     readonly property int kIconGap: 8

@@ -124,13 +124,13 @@ void ContactListModel::resort()
 }
 
 void ContactListModel::touch(const QString& fingerprint, const QString& name,
-    const QString& lastText, qint64 lastTime, bool incrementUnread)
+    const QString& lastText, qint64 lastTime)
 {
     const int i = indexOf(fingerprint);
     if (i < 0) {
         beginInsertRows({}, 0, 0);
-        contacts_.prepend(ContactRow{fingerprint, name.isEmpty() ? fingerprint : name, lastText,
-            lastTime, incrementUnread ? 1 : 0});
+        contacts_.prepend(
+            ContactRow{fingerprint, name.isEmpty() ? fingerprint : name, lastText, lastTime});
         endInsertRows();
         resort();
         return;
@@ -144,9 +144,6 @@ void ContactListModel::touch(const QString& fingerprint, const QString& name,
     }
     if (lastTime > 0) {
         c.lastTime = lastTime;
-    }
-    if (incrementUnread) {
-        ++c.unread;
     }
     resort();
 }
@@ -361,36 +358,6 @@ bool ConversationModel::newestIncomingThrough(
     return false;
 }
 
-void ConversationModel::setStatusForId(qint64 id, int status)
-{
-    const int row = rowForId(id);
-    if (row < 0) {
-        return;
-    }
-    messages_[row].status = status;
-    notifyRow(row, {StatusRole});
-}
-
-void ConversationModel::setTextForId(qint64 id, const QString& text)
-{
-    const int row = rowForId(id);
-    if (row < 0) {
-        return;
-    }
-    messages_[row].text = text;
-    notifyRow(row, {TextRole});
-}
-
-void ConversationModel::setTypeForId(qint64 id, const QString& type)
-{
-    const int row = rowForId(id);
-    if (row < 0) {
-        return;
-    }
-    messages_[row].type = type;
-    notifyRow(row, {TypeRole});
-}
-
 void ConversationModel::setErrorForId(qint64 id, const QString& error)
 {
     live_[id].error = error;
@@ -432,23 +399,13 @@ void ConversationModel::finishDownloadForId(qint64 id, bool ok, const QString& e
         {DownloadingRole, DownloadReceivedRole, DownloadTotalRole, DownloadErrorRole});
 }
 
-void ConversationModel::setSavedPathForId(qint64 id, const QString& path)
+void ConversationModel::markPictureMissingForId(qint64 id)
 {
     const int row = rowForId(id);
     if (row < 0) {
         return;
     }
-    messages_[row].savedPath = path;
-    notifyRow(row, {SavedPathRole});
-}
-
-void ConversationModel::setPictureReadyForId(qint64 id, const bool ready)
-{
-    const int row = rowForId(id);
-    if (row < 0) {
-        return;
-    }
-    messages_[row].hasPicture = ready;
+    messages_[row].hasPicture = false;
     notifyRow(row, {PictureRole});
 }
 
@@ -460,18 +417,6 @@ void ConversationModel::replaceById(const StoredMessage& message)
     }
     messages_[row] = message;
     notifyRow(row, {});
-}
-
-void ConversationModel::editById(qint64 id, const QString& text, const QString& keyboard)
-{
-    const int row = rowForId(id);
-    if (row < 0) {
-        return;
-    }
-    messages_[row].text = text;
-    messages_[row].keyboard = keyboard;
-    messages_[row].edited = true;
-    notifyRow(row, {TextRole, KeyboardRole, EditedRole});
 }
 
 void ConversationModel::removeById(qint64 id)
@@ -587,35 +532,6 @@ void OperationListModel::upsert(const OperationRow& row)
     ops_[i] = row;
     const QModelIndex idx = index(i);
     emit dataChanged(idx, idx);
-}
-
-void OperationListModel::update(const QString& id, const QString& status, const QString& detail,
-    double progress, int state)
-{
-    const int i = indexOf(id);
-    if (i < 0) {
-        return;
-    }
-    OperationRow& o = ops_[i];
-    o.status = status;
-    o.detail = detail;
-    if (progress >= 0.0) {
-        o.progress = progress;
-    }
-    o.state = state;
-    const QModelIndex idx = index(i);
-    emit dataChanged(idx, idx, {StatusRole, DetailRole, ProgressRole, StateRole});
-}
-
-void OperationListModel::setCancelId(const QString& id, const QString& cancelId)
-{
-    const int i = indexOf(id);
-    if (i < 0 || ops_[i].cancelId == cancelId) {
-        return;
-    }
-    ops_[i].cancelId = cancelId;
-    const QModelIndex idx = index(i);
-    emit dataChanged(idx, idx, {CancelIdRole});
 }
 
 void OperationListModel::remove(const QString& id)

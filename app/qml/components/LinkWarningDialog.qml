@@ -1,18 +1,12 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// What stands between a link in a message and the browser. Following one leaves
-// I2P entirely: the request goes out over the ordinary internet from this
-// machine, so the address is worth reading before it is followed rather than
-// after.
 Dialog {
     id: root
-    // The address as it stands in the message. What is shown is what is opened:
-    // this markup has no way to give a link a label that differs from its target.
     property string address: ""
-    // Set when the desktop had nothing to open it with.
     property string failure: ""
 
     function ask(url) {
@@ -38,8 +32,6 @@ Dialog {
         rejectText: qsTr("Cancel")
         onRejected: root.close()
         onAccepted: {
-            // Said out loud rather than assumed: a desktop with nothing
-            // registered for http otherwise answers the press with silence.
             if (Qt.openUrlExternally(root.address)) {
                 root.close()
             } else {

@@ -1,11 +1,8 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// A full-size avatar preview: the same face the thumbnail shows (a real photo or
-// the deterministic identicon), rendered large and centered over the whole
-// window, and square: opened full size, the whole picture is worth seeing, not
-// the circle the chip crops it to. Tap the image, tap outside, or press Esc.
 Popup {
     id: viewer
     property string fingerprint: ""
@@ -18,7 +15,6 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: 10
 
-    // A square box bounded to the smaller window dimension, so it fits any screen.
     readonly property int box: {
         const ov = Overlay.overlay
         const limit = ov ? Math.min(ov.width, ov.height) : 400
@@ -35,9 +31,6 @@ Popup {
     }
 
     contentItem: Image {
-        // Request a large render: the provider scales the stored photo (or draws
-        // the identicon) to this size, so the full format looks crisp, not a
-        // stretched thumbnail. The "?r=" revision busts the cache like the thumbnail.
         source: viewer.fingerprint.length > 0
             ? "image://avatar/" + viewer.fingerprint + "?r=" + Avatars.revision : ""
         sourceSize: Qt.size(512, 512)

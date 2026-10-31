@@ -18,8 +18,7 @@ namespace bazarish::app {
 
 inline constexpr QDataStream::Version kWireStreamVersion = QDataStream::Qt_6_8;
 
-// An event that states something rather than reports it: a window that attaches later is
-// told its last value, one per distinct value of its first keyArgs arguments.
+// Replayed to a window attaching later: the last value per distinct first keyArgs arguments.
 struct Latch {
     const char* name;
     int keyArgs = 0;

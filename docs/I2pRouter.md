@@ -111,7 +111,7 @@ installation-wide and is read before any account is unlocked - so anybody who
 can read the file can read that key.
 
 All application settings are held in one JSON document, `settings.json`, at the
-root of the installation; see the repository `README.md`. The accounts directory
+root of the installation ([Installation.md](Installation.md)). The accounts directory
 and the router's state directory (`i2p/`) are beside it. An empty proxy host or a
 port of zero is stored as "no proxy": neither half is retained on its own.
 
@@ -159,7 +159,8 @@ Disabled by default. Configuration consists of a host (name or address) and a
 port. When set, the following router traffic is directed through the proxy:
 
 - connections to other I2P routers (NTCP2 transport);
-- retrieval of the initial network database from libi2pd's built-in reseed hosts.
+- retrieval of the initial network database, from the descriptor's reseed
+  addresses or from libi2pd's built-in hosts.
 
 ### Constraints
 
@@ -177,25 +178,19 @@ port. When set, the following router traffic is directed through the proxy:
 3. **The router publishes no transport address.** With a proxy configured,
    libi2pd does not publish an NTCP2 address, so the router accepts no inbound
    connections. This is the expected condition for a client installation.
-4. **Application requests are not proxied.** The single clearnet request the
-   application performs itself - retrieving a network database from a server's
-   clearnet address before an I2P transport exists - uses the application HTTP
-   stack, which does not implement proxy support. Only router traffic is subject
-   to the proxy setting.
+4. **Only router traffic is proxied.** The application makes no clearnet request
+   of its own: the API is spoken over I2P, and the reseed is fetched by the
+   engine. A facade reached over clearnet - on loopback, or under the developer
+   flag - is not proxied.
 
 ### Application of a change
 
-The transports read the proxy configuration when they start. Saving the setting
-therefore offers two outcomes:
-
-| Choice | Effect |
-|---|---|
-| Save and restart | The setting is stored and the router's network is stopped and started, which applies it immediately. Tunnels are rebuilt, which typically takes one to two minutes. |
-| Save only | The setting is stored and applied the next time the router starts. |
-
-The value reported under the input fields is read back from the engine, so a
-setting that has been stored but not yet applied is distinguishable from one in
-force.
+The transports read the proxy configuration when they start. **Save** first asks
+the address for a SOCKS5 handshake without credentials; a refusal is reported
+under the fields and nothing is stored. An accepted proxy is stored, as is an
+empty host or port that removes one, and a running engine's network is stopped
+and started at once.
+Tunnels are rebuilt, which typically takes one to two minutes.
 
 ### Residual exposure
 

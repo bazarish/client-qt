@@ -24,7 +24,7 @@ this client performs before reporting failure is not.
 | [AccountStorage.md](AccountStorage.md) | The account database: SQLCipher version and profile, the key sidecar, what a failed open reports, what a conversation weighs on this device and what trimming it removes |
 | [Devices.md](Devices.md) | The devices of one account: how a second one starts, what it takes from the backup and from its siblings, and what forgetting one does |
 | [SavedAndBlocking.md](SavedAndBlocking.md) | The saved-messages chat, blocking a correspondent, and the per-contact notification and call switches |
-| [Calls.md](Calls.md) | Calls: what carries the media, the router patch a b33 datagram needs, the lane kept for real time, and why a call leaves nothing in the chat |
+| [Calls.md](Calls.md) | Calls: what carries the media, how a datagram reaches a b33, the lane kept for real time, and why a call leaves nothing in the chat |
 | [Sounds.md](Sounds.md) | The notification sound and the ringtone: where a recording of the user's own goes, what the ringtone has to be, and what the call window's pulse follows |
 | [Processes.md](Processes.md) | The core that keeps the accounts and the window that shows them: what each holds, the frames between them, and what a window attaching is told |
 | [BackgroundActivity.md](BackgroundActivity.md) | The activity panel: what is reported there while it runs, and what a row says |

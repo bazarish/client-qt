@@ -3,7 +3,6 @@
 
 #include "SessionShared.hpp"
 
-#include "DeliveryStatus.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -21,9 +20,6 @@
 #include <chrono>
 #include <QTimer>
 #include <cstring>
-
-#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#endif
 
 #include <algorithm>
 #include <array>

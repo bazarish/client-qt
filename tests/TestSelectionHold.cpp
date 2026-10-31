@@ -70,7 +70,6 @@ int main(int argc, char** argv)
     CHECK(edit != nullptr && shown != nullptr);
 
     CHECK(heldAfterRelease(view, touch, edit, 1) == "world");
-    CHECK(heldAfterRelease(view, touch, edit, 1) == "world");
     CHECK(heldAfterRelease(view, touch, shown, 0) == "world");
 
     QObject notAField;

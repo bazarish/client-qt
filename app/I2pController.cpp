@@ -18,7 +18,7 @@ auto statusOf(const I2pState& state)
 {
     return std::tie(state.running, state.ready, state.knownRouters, state.minKnownRouters,
         state.floodfills, state.inboundTunnels, state.outboundTunnels, state.transports,
-        state.destinations, state.proxyNtcp2);
+        state.destinations);
 }
 
 auto samOf(const I2pState& state)
@@ -155,11 +155,6 @@ void I2pController::checkAndSaveGateway(const QString& address)
 void I2pController::skipGateway()
 {
     emit commands_.skipGateway();
-}
-
-void I2pController::clearGateway()
-{
-    emit commands_.clearGateway();
 }
 
 void I2pController::useEmbedded()

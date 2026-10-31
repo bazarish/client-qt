@@ -90,10 +90,9 @@ actually are:
   every other device of the account, which sees it arrive through the server that
   already holds it.
 - **An echo of what another device sent** appears there only once that device's
-  send was stored by the recipient's server. Echoing at the moment of writing put
-  a copy on every other device for a message that never arrived - and one per
-  retry - so the echo now waits for the delivery it echoes, and arrives in the
-  same amber state the sender is showing. Green follows on its own: the read
+  send was stored by the recipient's server, so a message that never arrives
+  leaves no copy on the other devices. It arrives in the same amber state the
+  sender is showing. Green follows on its own: the read
   receipt is delivered to the account, not to a device, so every device that
   holds the message marks it read when the receipt arrives.
 
@@ -137,10 +136,8 @@ exactly as able to write as it was before:
 | `RECIPIENT_SERVER_UNREACHABLE` | nothing was presented at all |
 | `MESSAGE_TOO_LARGE` | the message is the problem |
 
-`DELIVERY_REJECTED` used to be worth retrying, because a stash held many
-capabilities and one of them being stale said nothing about the others. With one
-pass per correspondent there is nothing else to offer, so the message is reported
-failed with a resend control and no ladder is walked.
+`DELIVERY_REJECTED` is not retried: with one pass per correspondent there is
+nothing else to offer, so the message is reported failed with a resend control.
 
 ## Contact requests in a conversation
 

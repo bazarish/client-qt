@@ -60,7 +60,6 @@ class AppController : public QObject {
     Q_PROPERTY(bool screenCapture READ screenCapture WRITE setScreenCapture
             NOTIFY screenCaptureChanged)
     Q_PROPERTY(qreal keyboardInset READ keyboardInset NOTIFY keyboardInsetChanged)
-    // The embedded upstream i2pd engine version (e.g.
     Q_PROPERTY(QString i2pdVersion READ i2pdVersion CONSTANT)
     Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
 
@@ -100,7 +99,6 @@ public:
     // A bazarish:// link handed over by the desktop or by a second copy.
     Q_INVOKABLE void openLink(const QString& link);
 
-    Q_INVOKABLE void refreshAccountList();
     Q_INVOKABLE void createAccount(const QString& name, const QString& passphrase);
     Q_INVOKABLE void openAccount(const QString& id, const QString& passphrase);
     Q_INVOKABLE void cancelUnlock();

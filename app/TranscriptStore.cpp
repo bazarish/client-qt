@@ -294,9 +294,8 @@ bool TranscriptReader::open(const QString& dbPath, const Bytes& key)
     return true;
 }
 
-bool TranscriptStore::open(const QString& accountId, const QString& dbPath, const QString& passphrase)
+bool TranscriptStore::open(const QString& dbPath, const QString& passphrase)
 {
-    (void)accountId;
     Bytes key;
     try {
         key = client::accountkey::keyFor(toPath(dbPath), passphrase.toStdString());
@@ -702,17 +701,6 @@ bool TranscriptStore::markOutgoingReadUpTo(
     return true;
 }
 
-QString TranscriptReader::sourcePathFor(qint64 id) const
-{
-    Query query(db_);
-    query.prepare("SELECT attSrcPath FROM messages WHERE id = ? LIMIT 1");
-    query.addBindValue(id);
-    if (query.exec() && query.next()) {
-        return query.value(0).toString();
-    }
-    return {};
-}
-
 bool TranscriptStore::setSavedPath(qint64 id, const QString& path)
 {
     Query query(db_);
@@ -789,21 +777,6 @@ qint64 TranscriptReader::oldestOfType(
     query.addBindValue(peer);
     query.addBindValue(type);
     query.addBindValue(outgoing ? 1 : 0);
-    if (query.exec() && query.next()) {
-        return query.value(0).toLongLong();
-    }
-    return 0;
-}
-
-qint64 TranscriptReader::idForAnyProtocol(const QString& e2eId, const QString& peer) const
-{
-    if (e2eId.isEmpty()) {
-        return 0;
-    }
-    Query query(db_);
-    query.prepare("SELECT id FROM messages WHERE e2eId = ? AND peer = ? ORDER BY id LIMIT 1");
-    query.addBindValue(e2eId);
-    query.addBindValue(peer);
     if (query.exec() && query.next()) {
         return query.value(0).toLongLong();
     }
@@ -1290,18 +1263,6 @@ bool TranscriptReader::isPinned(const QString& peer) const
     query.prepare("SELECT 1 FROM pinned_chats WHERE peer = ? LIMIT 1");
     query.addBindValue(peer);
     return query.exec() && query.next();
-}
-
-QStringList TranscriptReader::pinnedPeers() const
-{
-    QStringList peers;
-    Query query(db_);
-    if (query.exec("SELECT peer FROM pinned_chats")) {
-        while (query.next()) {
-            peers << query.value(0).toString();
-        }
-    }
-    return peers;
 }
 
 int TranscriptReader::unreadCount(const QString& peer) const

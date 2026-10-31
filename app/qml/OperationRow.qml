@@ -4,13 +4,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// One row in the background-activity panel: a kind glyph, the operation title, its
-// live human-readable status (and optional detail), a determinate progress bar
-// when known, and a state badge - a ticking elapsed time while running, a green
-// check when done, a red cross when failed.
 Item {
     id: row
-    // Model roles from OperationListModel.
     required property string kind
     required property string title
     required property string status
@@ -18,7 +13,6 @@ Item {
     required property double progress
     required property int state
     required property double startedAt
-    // Non-empty when this operation can be stopped (a file transfer).
     required property string cancelId
 
     implicitHeight: col.implicitHeight + 18
@@ -38,7 +32,6 @@ Item {
         return "dot"
     }
 
-    // Live elapsed seconds while running (drives the badge below).
     property int elapsed: 0
     Timer {
         running: row.state === 0
@@ -56,7 +49,6 @@ Item {
         anchors.bottomMargin: 9
         spacing: 10
 
-        // Kind glyph in a small rounded chip.
         Rectangle {
             Layout.alignment: Qt.AlignTop
             width: 26; height: 26; radius: 6
@@ -88,7 +80,6 @@ Item {
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
-            // Determinate progress bar (files); hidden when progress is unknown.
             Rectangle {
                 visible: row.progress >= 0
                 Layout.fillWidth: true
@@ -106,7 +97,6 @@ Item {
             }
         }
 
-        // Stop, for the operations that can be stopped: a running file transfer.
         Button {
             id: stopButton
             focusPolicy: Theme.pressFocus
@@ -114,8 +104,7 @@ Item {
             hoverEnabled: true
             implicitWidth: 26
             implicitHeight: 22
-            // The glyph is centred in the content rectangle, and the default
-            // padding of a button leaves less of one than the glyph needs.
+            // A button's default padding leaves the glyph too small a content rectangle.
             padding: 0
             Accessible.name: qsTr("Stop")
             onClicked: if (App.session) { App.session.cancelTransfer(row.cancelId) }
@@ -131,7 +120,6 @@ Item {
             }
         }
 
-        // State badge: ticking elapsed while running, else a terminal mark.
         Label {
             visible: row.state === 0
             Layout.alignment: Qt.AlignVCenter

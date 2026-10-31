@@ -10,8 +10,6 @@
 
 namespace bazarish::app {
 
-// The microphone and the speaker the user picked; a device that is gone leaves
-// the system default in its place.
 class AudioRoute : public QObject {
     Q_OBJECT
 public:

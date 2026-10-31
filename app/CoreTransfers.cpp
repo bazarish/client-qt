@@ -92,20 +92,6 @@ void CoreAccount::saveAttachment(
     emit commands_.requestSaveAttachment(peer, e2eId, message.attRef, dest, token);
 }
 
-void CoreAccount::onUploadProgress(const qint64 localId, const qint64 sent, const qint64 total)
-{
-    log_.update(QStringLiteral("send:") + QString::number(localId), tr("Uploading…"),
-        humanBytes(sent) + QStringLiteral(" / ") + humanBytes(total),
-        fractionOf(sent, total, 0.0));
-}
-
-void CoreAccount::onDownloadProgress(const qint64 token, const qint64 received, const qint64 total)
-{
-    log_.update(downloadOpId(token), tr("Downloading…"),
-        total > 0 ? humanBytes(received) + QStringLiteral(" / ") + humanBytes(total) : QString(),
-        fractionOf(received, total, kProgressUnknown));
-}
-
 void CoreAccount::onTransferStage(const QString& peer, const QString& e2eId, const QString& stage)
 {
     transferStages_[e2eId] = stage;

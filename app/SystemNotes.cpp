@@ -4,7 +4,6 @@
 #include "Session.hpp"
 
 #include <QCoreApplication>
-#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -19,15 +18,6 @@ const QString kNoteField = QStringLiteral("note");
 const QString kArgsField = QStringLiteral("args");
 const QString kKeptField = QStringLiteral("kept");
 const char* const kNoteContext = "SystemNote";
-
-// A stored note keeps the wording it was written with.
-QString currentWording(const QString& source)
-{
-    static const QHash<QString, QString> kReworded{
-        {QStringLiteral("Request sent, awaiting delivery…"), QStringLiteral("Request sent.")},
-    };
-    return kReworded.value(source, source);
-}
 
 }  // namespace
 
@@ -63,8 +53,7 @@ QString systemNoteText(const QString& stored)
     if (source.isEmpty()) {
         return stored;
     }
-    QString text = QCoreApplication::translate(
-        kNoteContext, currentWording(source).toUtf8().constData());
+    QString text = QCoreApplication::translate(kNoteContext, source.toUtf8().constData());
     const QJsonArray args = note.value(kArgsField).toArray();
     // An argument may be a note of its own, translated in turn.
     for (const QJsonValue& arg : args) {

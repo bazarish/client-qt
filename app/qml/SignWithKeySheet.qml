@@ -1,38 +1,24 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Sign-in-with-key: paste a challenge from any Bazarish portal, see who it is
-// for, and copy the signature back or send it. Signing is not a step of its own -
-// copying or sending the signature is what asks for it - so the window is a field,
-// what the challenge says about its consumer, and its buttons.
-//
-// The account's own server plays no part, so it works even before one is connected.
 Popup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
-    // Return to the page this opened from (Settings); the close button exits.
     signal back()
-    // What the pasted challenge says about who will consume the signature. Read
-    // again on every keystroke: it is what stands between the user and signing
-    // in to somewhere they have never been.
     property var consumer: ({ "ok": false, "problem": "" })
-    // Set while the signature this account was asked for is on its way back, so
-    // the blob lands in the clipboard rather than in a box nobody reads.
     property bool copyPending: false
     readonly property int kSendHoldSeconds: 5
     readonly property bool hasCallback: root.consumer.ok === true && !!root.consumer.callback
-    // Send stays out of reach for a moment: long enough to read where the signature goes.
     property int holdLeft: 0
-    // Pressed, and the core has not said so yet: a second press must not send twice.
     property bool asking: false
     readonly property bool sendingThis: root.hasCallback && root.session !== null
         && root.session.loginSendChallenge === challengeArea.text.trim()
     readonly property bool sendPending: root.asking || (root.sendingThis && root.session.loginSending)
     readonly property bool sent: root.sendingThis && root.session.loginAccepted
-    // On the answer itself: a challenge accepted earlier and pasted again stays open.
     Connections {
         target: root.session
         function onLoginFetchChanged() {
@@ -72,15 +58,11 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 600,
         headerRow.implicitHeight + body.implicitHeight + 32)
     padding: 0
-    // The one thing to do here is paste a challenge, so the cursor is already in
-    // the field that takes it.
     onOpened: {
         if (!App.mobile) {
             challengeArea.forceActiveFocus()
         }
     }
-    // A challenge names the place it lets its holder into, and it has no business
-    // sitting in a closed window: what was pasted goes when the window does.
     onClosed: root.clear()
     function clear() {
         if (root.consumer.link === true && root.session) {
@@ -138,9 +120,6 @@ Popup {
             copyBtn.copied = true
             copiedTimer.restart()
         }
-        // The account said no (a locked key, a challenge the core refuses): the
-        // button goes back to asking rather than waiting for a blob that is not
-        // coming. What went wrong is reported where every other failure is.
         function onActionFailed(message) { root.copyPending = false }
         function onLoginSendChanged() {
             if (root.sendingThis) {
@@ -194,7 +173,6 @@ Popup {
                     Layout.margins: 16
                     spacing: 12
 
-                    // Which identity will sign: the active account's name and fingerprint.
                     Rectangle {
                         visible: root.session && root.session.fingerprint.length > 0
                         Layout.fillWidth: true
@@ -239,8 +217,6 @@ Popup {
                         ScrollView {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 96
-                            // The challenge wraps, so the only scrolling that means
-                            // anything here is downwards.
                             contentWidth: availableWidth
                             ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                             TextArea {
@@ -275,9 +251,6 @@ Popup {
                         }
                     }
 
-                    // Who the signature is for. The signature is bound to this,
-                    // and a place can only put its own words here, so comparing
-                    // them with where the challenge came from is the whole check.
                     Rectangle {
                         visible: challengeArea.text.trim().length > 0
                         Layout.fillWidth: true

@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Layouts
 
 GridLayout {
-    id: root
     columnSpacing: 8
     rowSpacing: 8
     readonly property real sideBySideWidth: {

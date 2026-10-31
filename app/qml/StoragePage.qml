@@ -5,13 +5,8 @@ import QtQuick.Layouts
 import Bazarish
 import "Format.js" as Format
 
-// What one account keeps on this machine, conversation by conversation, and the
-// one thing that can be done about it: keep the newest messages of a chat and
-// drop the rest. The figures are what the messages and their pictures hold; the
-// file is larger, because it also holds indexes, page overhead and free space.
 Popup {
     id: root
-    // Return to the page this opened from (Account); close exits.
     signal back()
 
     readonly property var session: App.session
@@ -27,8 +22,6 @@ Popup {
     padding: 0
     background: DialogFrame { }
 
-    // A full pass over the transcript, so it runs when the window opens and when
-    // a trim changes what there is to count - never on a timer.
     onOpened: if (root.session) { root.session.measureDeviceStorage() }
 
     contentItem: ColumnLayout {
@@ -47,7 +40,6 @@ Popup {
                     font.pixelSize: Theme.fontTitle
                     font.weight: Font.DemiBold
                 }
-                // Several accounts can be open at once, and this measures one.
                 Label {
                     visible: root.session !== null
                     text: root.session ? root.session.displayName : ""
@@ -96,8 +88,6 @@ Popup {
                         Layout.fillWidth: true
                         Layout.topMargin: 6
                         spacing: 8
-                        // Removes nothing: it only hands back what deleting
-                        // already freed, so it is not a destructive action.
                         MenuButton {
                             Layout.fillWidth: true
                             iconName: "disk"
@@ -268,12 +258,7 @@ Popup {
         }
     }
 
-    // Everything here holds the drawing thread for as long as it runs, so this is
-    // painted first and stands until it is over. It carries no percentage: a
-    // database rewrite reports none, and an invented one would be a lie about how
-    // far along it is.
     Popup {
-        id: working
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true

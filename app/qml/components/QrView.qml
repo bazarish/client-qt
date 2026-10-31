@@ -1,8 +1,8 @@
+// Bazarish project (c) 2026
 import QtQuick
 import Bazarish
 
-// Renders `text` as a single QR code. For data too large for one symbol the
-// provider returns a blank image and the caller should show the link instead.
+// The provider draws a blank image for data too large for one symbol.
 Rectangle {
     property string text: ""
     property int dim: 240

@@ -1,7 +1,6 @@
 // Bazarish project (c) 2026
 import QtQuick
 
-// Gestures and wheel notches that follow one another the same way go faster and faster.
 Item {
     id: boost
     required property Flickable flickable

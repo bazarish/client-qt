@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -7,23 +8,18 @@ import Bazarish
 Item {
     id: root
     property var session: null
-    // Set by the window when the chat is the only pane.
     property bool narrow: false
     signal contactInfoRequested()
     signal callRequested()
-    // The chat with ourselves: no face, no call, and its own panel behind the i.
     readonly property bool savedChat: root.session !== null
         && root.session.isSavedChat(root.session.activePeer)
     readonly property bool lookingUp: root.session !== null && root.session.activeAliasLookup
-    // An alias tapped in a message: the window offers the add-a-contact form.
     signal addByNameRequested(string alias)
 
-    // The message awaiting delete confirmation (set when a bubble asks to delete).
     property var pendingDeleteId: null
     property string pendingDeleteProtocol: ""
     property bool pendingDeleteOutgoing: false
 
-    // Humanises a "yyyy-MM-dd" day key into a date-separator label.
     function formatDaySection(iso, language) {
         if (!iso || iso.length < 10) {
             return ""
@@ -42,7 +38,6 @@ Item {
         return d.toLocaleDateString(Qt.locale(language), "d MMMM yyyy")
     }
 
-    // Messages chosen for one action together, by local id; each value says whether it is ours.
     property var chosen: ({})
     readonly property int chosenCount: Object.keys(root.chosen).length
     readonly property int chosenOwn: Object.values(root.chosen).filter(own => own).length
@@ -64,9 +59,7 @@ Item {
     }
     function copyChosen() {
         const copied = root.session.copyMessages(root.chosenIds()) > 0
-        if (typeof window !== "undefined") {
-            window.showToast(copied ? qsTr("Copied to clipboard") : qsTr("There is no text among them."))
-        }
+        window.showToast(copied ? qsTr("Copied to clipboard") : qsTr("There is no text among them."))
         if (copied) {
             root.clearChosen()
         }
@@ -88,7 +81,6 @@ Item {
         deleteMessageDialog.open()
     }
 
-    // A message already on screen is only lit; one off screen is brought to the middle first.
     function showMessage(row, localId) {
         const item = messages.itemAtIndex(row)
         const inSight = item !== null && item.y >= messages.contentY
@@ -118,9 +110,6 @@ Item {
         }
     }
 
-    // A message counts as read only on a genuine read: this view is open, the app
-    // window is focused, and the message is within the visible scroll area. We ack
-    // the newest incoming message at or before the bottom-most visible row.
     function markVisibleRead() {
         if (!session || !visible || messages.count === 0) {
             return
@@ -130,19 +119,15 @@ Item {
         }
         var row = messages.indexAt(messages.width / 2, messages.contentY + messages.height - 2)
         if (row < 0) {
-            row = messages.count - 1  // content shorter than the view: all visible
+            row = messages.count - 1
         }
         session.markReadThroughRow(row)
     }
-    // Reading also resumes when the app regains focus on an already-open chat.
     Connections {
         target: Qt.application
         function onStateChanged() { root.markVisibleRead() }
     }
 
-    // A failed file whose saved source is gone: let the user pick a file to send.
-    // The automatic tries of a refused contact request are spent: offer to send
-    // it again by hand, in the chat the user is already looking at.
     property string retryPeer: ""
     Connections {
         target: root.session
@@ -156,8 +141,6 @@ Item {
                 }
             })
         }
-        // Open-at-first-unread: land on the first unread message (near the top) and
-        // briefly highlight the unread tail, then read what is on screen.
         function onScrollToUnread(firstUnreadId) {
             Qt.callLater(function() {
                 messages.endPin()
@@ -167,7 +150,6 @@ Item {
                     messages.autoScrolling = true
                     messages.positionViewAtIndex(r, ListView.Beginning)
                     messages.autoScrolling = false
-                    // An unread tail that fits opens at the bottom, which then follows a keyboard and new messages.
                     const first = messages.itemAtIndex(r)
                     if (first !== null && root.session.atNewest
                             && messages.originY + messages.contentHeight - first.y <= messages.height) {
@@ -180,7 +162,6 @@ Item {
                 Qt.callLater(root.markVisibleRead)
             })
         }
-        // Pictures decode after their bubble is built and grow it: the jump keeps following them.
         function onScrollToBottom() {
             messages.stickToBottom = true
             root.session.saveScroll(root.session.activePeer, -1, true)
@@ -196,20 +177,12 @@ Item {
         session: root.session
     }
     Timer { id: highlightTimer; interval: 1800; onTriggered: messages.highlightId = -1 }
-    // Clears the brief unread highlight a couple of seconds after opening at the
-    // first unread message.
     Timer { id: unreadFlashTimer; interval: 2500; onTriggered: messages.unreadFlashFromId = -1 }
-    // Reactions that arrived while nobody was looking flash once when the chat is
-    // opened, then stop being new. The wait is what the flash lasts plus a moment
-    // to be seen at all: forgetting them re-reads the chips, and doing it too
-    // early would take the colour away mid-animation.
     Timer {
         id: reactionFlashTimer
         interval: 1600
         onTriggered: if (root.session) { root.session.forgetReactionFlash() }
     }
-    // Whenever this chat becomes the open one, and whenever a reaction lands in
-    // it, anything pending gets its flash and the clock above starts.
     Connections {
         target: root.session
         function onActivePeerChanged() { reactionFlashTimer.restart() }
@@ -232,13 +205,9 @@ Item {
         }
     }
 
-    // Single shared reaction picker, opened by any bubble with its message's
-    // protocol id (so the chat pays no popup per row).
     ImageViewer { id: imageViewer; session: root.session }
 
     ReactionPicker { id: reactionPicker; session: root.session }
-    // One warning for the whole conversation: every web address in it is followed
-    // through here.
     LinkWarningDialog { id: linkWarning }
     Dialog {
         id: groupActionDialog
@@ -296,7 +265,6 @@ Item {
         modal: true
         focus: true
         width: Math.min(360, parent ? parent.width - 24 : 360)
-        // In a group every message goes from this device only.
         readonly property int own: root.session && !root.session.activeIsGroup ? root.chosenOwn : 0
         footer: DialogButtons {
             acceptText: qsTr("Delete")
@@ -329,8 +297,6 @@ Item {
         }
     }
     BotMenuSheet { id: botMenuSheet; session: root.session }
-    // Confirms an irreversible message delete. For one's own one-to-one message it
-    // is removed at the recipient too (no trace); otherwise it is removed locally.
     Dialog {
         id: deleteMessageDialog
         anchors.centerIn: Overlay.overlay
@@ -375,7 +341,6 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // Conversation header.
         Rectangle {
             Layout.fillWidth: true
             enabled: !composer.pickingEmoji
@@ -386,14 +351,10 @@ Item {
                 anchors.leftMargin: root.narrow ? 2 : 12
                 anchors.rightMargin: 6
                 spacing: 10
-                // The only pane on a narrow window, so this is the way back.
                 IconButton {
                     visible: root.narrow
                     iconName: "back"
                     onClicked: if (root.session) { root.session.closeConversation() }
-                    // Everything this chat is covering: the account's other
-                    // conversations and the other accounts, whose switcher is
-                    // behind the list too.
                     UnreadBadge {
                         anchors.right: parent.right
                         anchors.top: parent.top
@@ -412,8 +373,6 @@ Item {
                     size: 38
                     enlargeable: true
                 }
-                // The name alone: the identity behind it is one tap away, under
-                // the info button, where it can be read and copied properly.
                 ColumnLayout {
                     spacing: 0
                     Layout.fillWidth: true
@@ -459,7 +418,6 @@ Item {
                     iconName: "search"
                     onClicked: searchPopup.openSearch()
                 }
-                // Only a person can be called: not the saved chat, a bot or a group.
                 IconButton {
                     readonly property string kind: root.session && root.session.contactsRevision >= 0
                         ? root.session.contactKind(root.session.activePeer) : ""
@@ -473,7 +431,6 @@ Item {
                     onClicked: root.contactInfoRequested()
                 }
             }
-            // While messages are chosen, what can be done with them takes the header's place.
             Rectangle {
                 anchors.fill: parent
                 visible: root.choosing
@@ -535,9 +492,6 @@ Item {
         }
         Hairline { visible: botMenuStrip.visible }
 
-        // The message list shows only a window of the conversation: the newest
-        // page on open, with older messages paged in at the top and newer ones at
-        // the bottom (after a search jump), so even a huge dialog stays cheap.
         Item {
             id: listPane
             Layout.fillWidth: true
@@ -545,10 +499,6 @@ Item {
             // Qt hands a touch to the handlers beneath a popup too: the bubbles took it from the viewer.
             enabled: !imageViewer.visible && !composer.pickingEmoji
 
-            // Building a screenful of bubbles takes a moment, and doing it inside
-            // the click that switched accounts made the click itself feel stuck.
-            // The switch happens now; the bubbles are built on the next turn of
-            // the loop, with this in their place until they are.
             property bool building: false
             readonly property string openChat:
                 (root.session ? root.session.accountId : "") + "/"
@@ -568,7 +518,6 @@ Item {
 
             ListView {
                 id: messages
-                // A bubble's text a phone is selecting, null when none.
                 property TextEdit selectingText: null
                 ScrollBoost { flickable: messages }
                 anchors.fill: parent
@@ -576,7 +525,6 @@ Item {
                 visible: !listPane.building
                 spacing: 6
                 topMargin: 10
-                // Twice the gap between bubbles: the end of the chat reads as the end.
                 readonly property int kEndGapInSpacings: 2
                 bottomMargin: spacing * kEndGapInSpacings
                 model: listPane.building ? null : (root.session ? root.session.conversation : null)
@@ -584,8 +532,6 @@ Item {
                 reuseItems: !listPane.building
                 delegate: MessageBubble {
                     session: root.session
-                    // Highlighted by a search jump, or as part of the unread tail that
-                    // flashes briefly when the chat opens at its first unread message.
                     highlighted: ListView.view
                         && (ListView.view.highlightId === model.msgId
                             || (ListView.view.unreadFlashFromId >= 0 && !model.outgoing
@@ -618,9 +564,6 @@ Item {
                     onAliasRequested: function(alias) { root.addByNameRequested(alias) }
                 }
 
-                // Section messages by calendar day and show a centered date
-                // separator wherever the day changes (driven by the model's "day"
-                // role; the header text is humanised to Today / Yesterday / a date).
                 section.property: "day"
                 section.criteria: ViewSection.FullString
                 section.delegate: Item {
@@ -645,37 +588,22 @@ Item {
                     }
                 }
 
-                // Whether the view is pinned to the bottom and follows new messages;
-                // only true at the real newest (not while viewing older history).
                 property bool stickToBottom: true
-                // Set while a programmatic scroll runs so it is not mistaken for the
-                // user moving the view.
                 property bool autoScrolling: false
-                // Set while a paging load runs so the new rows do not trigger the
-                // new-message autoscroll.
                 property bool paging: false
-                // Message id to flash after a search jump (-1 = none).
                 property var highlightId: -1
-                // When >= 0, every unread message (id >= this) is briefly highlighted
-                // right after opening a conversation at its first unread message.
                 property var unreadFlashFromId: -1
-                // A new page is drawn only where it ends up: an opened chat showed the top of
-                // its page, then jumped to the end.
                 property bool settled: true
                 opacity: settled ? 1 : 0
 
                 function scrollToEnd() {
                     autoScrolling = true
                     positionViewAtEnd()
-                    // That puts the last row on the edge, leaving out the bottom margin a rebound shows.
                     contentY = Math.max(originY - topMargin, originY + contentHeight + bottomMargin - height)
                     autoScrolling = false
                 }
 
-                // Reliably land on the newest message after a (re)load. A single
-                // positionViewAtEnd is unreliable until the freshly created
-                // delegates have been measured, so re-scroll for a few frames
-                // until the bottom is actually reached.
+                // positionViewAtEnd misses until freshly created delegates are measured.
                 function pinToBottom() {
                     pinTimer.ticks = 0
                     scrollToEnd()
@@ -700,11 +628,7 @@ Item {
                     }
                 }
 
-                // Restore where the user left this conversation after the active
-                // account changes under us: at the bottom (and keep following new
-                // messages) if it was pinned there, otherwise anchored on the row
-                // that was at the top. Anchoring by row index (not by a raw contentY)
-                // forces the delegate to be built, so the view never lands blank.
+                // By row, not by contentY: positioning on a row builds its delegate.
                 function restoreScroll() {
                     if (!root.session) {
                         autoScrolling = false
@@ -712,14 +636,13 @@ Item {
                         return
                     }
                     const st = root.session.scrollFor(root.session.activePeer)
-                    forceLayout()  // build delegates now so positioning is reliable
+                    forceLayout()
                     if (!st.has || st.stick || st.anchor < 0) {
                         stickToBottom = true
                         pinToBottom()
                     } else {
                         stickToBottom = false
                         restoreToRow(st.anchor)
-                        // Re-assert next frame once late delegates have measured.
                         Qt.callLater(function() {
                             messages.restoreToRow(st.anchor)
                             messages.settled = true
@@ -735,9 +658,6 @@ Item {
                     positionViewAtIndex(Math.min(count - 1, Math.max(0, idx)), ListView.Beginning)
                     autoScrolling = false
                 }
-                // The active account changed (the user switched local accounts): the
-                // model is now the new account's conversation. Restore that
-                // conversation's last scroll position instead of resetting to the top.
                 onModelChanged: {
                     // Qt makes row 0 current; after a prepended page that item kept the boundary row's bubble.
                     currentIndex = -1
@@ -753,12 +673,7 @@ Item {
                         return
                     }
                     paging = true
-                    // A pin-to-bottom still ticking is a scrollToEnd on a timer,
-                    // and reading older history says it is no longer wanted.
                     endPin()
-                    // Reading older history is also proof the view is not following
-                    // the bottom. Left set, the follow rule fires while the page
-                    // lands and throws the user back to the newest message.
                     stickToBottom = false
                     // The view keeps the rows on screen in place itself; setting contentY would stop a fling.
                     root.session.loadOlderMessages()
@@ -770,32 +685,21 @@ Item {
                         return
                     }
                     paging = true
-                    root.session.loadNewerMessages()  // appended below; view stays put
+                    root.session.loadNewerMessages()
                     Qt.callLater(function() { messages.paging = false })
                 }
 
                 onContentYChanged: {
-                    root.markVisibleRead()  // scrolling a message into view reads it
+                    root.markVisibleRead()
                     if (autoScrolling || !root.session) {
                         return
                     }
-                    // Only a genuine user gesture (drag/flick/wheel) updates the
-                    // follow flag and the saved position. Programmatic scrolls and
-                    // the settle that happens while a model is swapped in must not, or
-                    // they would wrongly record the view as "scrolled up" and break
-                    // the restore on the next switch. The saved anchor is the row at
-                    // the top of the view (-1 when pinned to the bottom).
                     if (moving || dragging || flicking) {
                         stickToBottom = atYEnd && root.session.atNewest
                         const anchor = stickToBottom
                             ? -1 : indexAt(width / 2, contentY + topMargin + 2)
                         root.session.saveScroll(root.session.activePeer, anchor, stickToBottom)
                     }
-                    // Fetch the next page while there is still a screenful above
-                    // the user rather than at the very edge: at the edge the list
-                    // stops dead until the page lands, which is what a small page
-                    // would otherwise be felt as.
-                    // A page loads after the view's own layout, never inside it, and not while the view is put at the end.
                     if (!paging && !pinTimer.running && contentY - originY < height
                             && root.session.hasMoreOlder) {
                         Qt.callLater(loadOlder)
@@ -807,13 +711,10 @@ Item {
                 // Follow the bottom as bubbles settle, but not mid-gesture: a drag past the end re-measures rows above.
                 onContentHeightChanged: if (stickToBottom && !paging && !moving) { scrollToEnd() }
                 onMovementEnded: if (stickToBottom && !paging) { scrollToEnd() }
-                // A phone's keyboard shortens the list from below: the newest stays in sight.
                 onHeightChanged: if (stickToBottom && !paging) { scrollToEnd() }
 
                 Connections {
                     target: messages.model
-                    // A genuine new message (not a paging batch): an own message
-                    // always scrolls into view; an incoming one only when pinned.
                     function onRowsInserted() {
                         if (messages.paging) {
                             return
@@ -822,20 +723,13 @@ Item {
                             messages.stickToBottom = true
                         }
                         if (messages.stickToBottom && root.session) {
-                            // Keep the saved position in sync when our own send
-                            // re-pins us to the bottom, so a switch restores there.
                             root.session.saveScroll(root.session.activePeer, -1, true)
                         }
                         if (messages.stickToBottom) {
                             Qt.callLater(messages.scrollToEnd)
                         }
-                        // A new incoming message in the open, focused, bottom-pinned
-                        // chat is read on arrival.
                         Qt.callLater(root.markVisibleRead)
                     }
-                    // Switching/reloading a conversation: land on the newest, unless
-                    // a search jump positioned the window back in history (handled by
-                    // onScrollToMessage).
                     function onModelReset() {
                         if (root.session && root.session.atNewest) {
                             messages.stickToBottom = true
@@ -843,7 +737,6 @@ Item {
                         } else {
                             messages.stickToBottom = false
                         }
-                        // Opening a chat reads what is on screen.
                         Qt.callLater(root.markVisibleRead)
                     }
                 }
@@ -851,21 +744,14 @@ Item {
                 Component.onCompleted: { Qt.callLater(restoreScroll) }
             }
 
-            // Jump-to-latest: shown whenever the view is not resting at the true
-            // bottom (scrolled up, or viewing older history after a search jump).
             RoundButton {
                 id: jumpButton
                 focusPolicy: Theme.pressFocus
-                // Shown only when scrolled up more than half a screen above the
-                // content end, so it never overlaps the latest messages. Measured
-                // by distance (the bottom can sit below the visible area, so atYEnd
-                // is not a reliable gate); the binding tracks contentY so it stays
-                // current as the user scrolls.
+                // Measured by distance: the bottom can sit below the visible area, so atYEnd is unreliable.
                 visible: messages.count > 0
                     && (messages.contentHeight + messages.originY
                         - messages.contentY - messages.height) > messages.height / 2
                 hoverEnabled: true
-                // Semi-transparent at rest, fully opaque on hover.
                 opacity: jumpButton.hovered ? 1.0 : 0.45
                 Behavior on opacity { NumberAnimation { duration: 120 } }
                 width: 40
@@ -879,8 +765,7 @@ Item {
                     color: Theme.surface
                     border.color: Theme.border
                 }
-                // Centred by hand: RoundButton's own padding pulls a small
-                // content item off-centre in a 40px circle.
+                // RoundButton's own padding pulls a small content item off-centre.
                 padding: 0
                 contentItem: Item {
                     Icon {
@@ -893,7 +778,6 @@ Item {
             }
         }
 
-        // Shown only after the automatic tries are spent; sending again clears it.
     RowLayout {
         visible: root.retryPeer.length > 0 && root.retryPeer === (root.session ? root.session.activePeer : "")
         enabled: !composer.pickingEmoji
@@ -927,7 +811,6 @@ Item {
     }
 
     SelectionTools {
-        id: bubbleSelection
         anchors.fill: parent
         visible: App.mobile
         field: messages.selectingText

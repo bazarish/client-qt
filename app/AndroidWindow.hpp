@@ -10,7 +10,6 @@ namespace bazarish::app {
 
 class AppController;
 
-// What only the window's process can do on Android: the activity, the lock and the core's start.
 class AndroidWindow : public QObject {
     Q_OBJECT
 public:

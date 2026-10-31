@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,20 +9,13 @@ import Bazarish
 Rectangle {
     id: root
     property var session: null
-    // An account the user switched off is opened to be read: it fetches no mail
-    // and tells its own other devices nothing, so it does not write either. Said
-    // here rather than found out by pressing send.
     readonly property bool switchedOff: root.session ? !root.session.online : false
     readonly property bool editing: root.session ? root.session.editing : false
     readonly property bool replying: root.session ? root.session.replying : false
 
-    // Multi-line auto-growing input: it grows with the text up to a cap of 30% of
-    // the window height, can be resized by dragging the top grip (like an html
-    // textarea handle), and scrolls once the text exceeds the visible height.
     readonly property int minInputH: 38
     readonly property int maxInputH:
         Math.max(minInputH, Math.round((Window.height > 0 ? Window.height : 600) * 0.30))
-    // How far the attach menu floats above the input bar.
     readonly property int kAttachMenuGap: 8
     readonly property int kPairedButtonWidth: 32
     // The Basic style's text area padding, kept so the field looks the same.
@@ -48,7 +42,6 @@ Rectangle {
 
     readonly property bool pickingEmoji: emojiPicker.visible
 
-    // Height set by dragging the grip (-1 means auto-size to the content).
     property int manualInputH: -1
     readonly property int autoInputH:
         Math.min(maxInputH, Math.max(minInputH, Math.ceil(input.laidOutHeight) + 18))
@@ -59,10 +52,6 @@ Rectangle {
     implicitHeight: col.implicitHeight
     color: Theme.surface
 
-    // Puts the markers of one form around what is selected in the input. The
-    // selection is kept, so two forms can be applied one after the other without
-    // reaching for the mouse again, and nothing is sent by pressing these - what
-    // travels is the text with the markers in it, exactly as if they were typed.
     function wrapSelection(open, close) {
         const from = input.selectionStart
         const to = input.selectionEnd
@@ -82,38 +71,31 @@ Rectangle {
         }
         const t = input.text.trim()
         if (root.editing) {
-            root.session.commitEdit(t)   // empty/unchanged just cancels
+            root.session.commitEdit(t)
         } else if (t.length > 0) {
             root.session.sendText(t)
         }
         input.text = ""
-        root.manualInputH = -1  // collapse back to auto-size after sending
+        root.manualInputH = -1
     }
 
-    // Mirror the controller's edit state into the input field.
     Connections {
         target: root.session
         function onEditingChanged() {
             if (root.session.editing) {
                 input.text = root.session.editingText
                 input.forceActiveFocus()
-                // Place the caret at the end without selecting the prefilled text,
-                // so the first keystroke edits rather than replacing the message.
                 input.cursorPosition = input.length
                 input.deselect()
             } else {
                 input.text = ""
             }
         }
-        // Focus the composer when a reply starts (the field keeps its draft).
         function onReplyingChanged() {
             if (root.session.replying) {
                 input.forceActiveFocus()
             }
         }
-        // Opening a chat means wanting to write in it: the caret starts there
-        // rather than after a click nobody should have to make. A phone would
-        // raise its keyboard over the chat for it, so there the tap decides.
         function onActivePeerChanged() {
             if (root.session.activePeer.length > 0 && !App.mobile) {
                 Qt.callLater(function() { input.forceActiveFocus() })
@@ -126,7 +108,6 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // Edit banner (shown while editing one's own message).
         RowLayout {
             visible: root.editing
             Layout.fillWidth: true
@@ -147,7 +128,6 @@ Rectangle {
             IconButton { iconName: "close"; onClicked: root.session.cancelEdit() }
         }
 
-        // Reply banner (shown while composing a reply): the quoted author + preview.
         RowLayout {
             visible: root.replying
             Layout.fillWidth: true
@@ -169,7 +149,6 @@ Rectangle {
                 }
                 Label {
                     visible: root.session && root.session.replyingText.length > 0
-                    // The line being replied to, said rather than rendered.
                     text: root.session ? App.markupPlain(root.session.replyingText) : ""
                     color: Theme.textDim
                     font.pixelSize: 11
@@ -181,12 +160,7 @@ Rectangle {
             IconButton { iconName: "close"; onClicked: root.session.cancelReply() }
         }
 
-        // What can be done to the selected fragment. Only the forms this client
-        // draws are here, and only while something is selected - they act on a
-        // selection and on nothing else. An address needs no button: it is
-        // recognised on the other side by what it is.
         Flow {
-            id: formatBar
             visible: !App.mobile && input.activeFocus && input.selectedText.length > 0
             Layout.fillWidth: true
             Layout.leftMargin: 8
@@ -204,8 +178,6 @@ Rectangle {
             }
         }
 
-        // Resize grip: drag up to enlarge the composer, down to shrink it.
-        // Dragging back below the minimum returns it to auto-size.
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 8
@@ -244,7 +216,6 @@ Rectangle {
             RowLayout {
                 spacing: 0
                 Layout.alignment: Qt.AlignBottom
-                // One way to attach anything: the clip asks what kind.
                 // Taking focus from the field would close a phone's keyboard under the finger.
                 IconButton {
                     id: attachButton
@@ -253,13 +224,10 @@ Rectangle {
                     visible: !root.editing
                     enabled: !root.switchedOff
                     Layout.preferredWidth: root.kPairedButtonWidth
-                    // Above the bar, over the conversation: opened at the cursor it
-                    // covered the field the user is about to type in.
                     onClicked: attachMenu.popup(attachButton, 0,
                         -attachMenu.implicitHeight - root.kAttachMenuGap)
                 }
                 IconButton {
-                    id: emojiButton
                     iconName: "smile"
                     focusPolicy: Qt.NoFocus
                     enabled: !root.switchedOff
@@ -319,7 +287,6 @@ Rectangle {
                         readonly property real laidOutHeight: lineCount > 0
                             ? Math.max(contentHeight, positionToRectangle(length).bottom - topPadding)
                             : contentHeight
-                        // What the app's selection menu offers here beyond any field's.
                         readonly property var selectionForms: root.kForms
                         function applyForm(open, close) {
                             root.wrapSelection(open, close)
@@ -369,8 +336,6 @@ Rectangle {
                             font: input.font
                             elide: Text.ElideRight
                         }
-                        // Enter sends; Shift+Enter inserts a newline. Both the main
-                        // Return and the keypad Enter are handled.
                         Keys.onReturnPressed: function(event) {
                             if (event.modifiers & Qt.ShiftModifier) {
                                 event.accepted = false
@@ -387,8 +352,6 @@ Rectangle {
                                 event.accepted = true
                             }
                         }
-                        // A picture in the clipboard is pasted as a picture; text
-                        // pastes the way it always did.
                         Keys.onPressed: function(event) {
                             const paste = (event.key === Qt.Key_V
                                     && (event.modifiers & Qt.ControlModifier))
@@ -413,14 +376,11 @@ Rectangle {
         }
     }
 
-    // Pick a file, then choose its retention (TTL / download count) before sending.
     FileDialog {
         id: fileDialog
         onAccepted: { sendOptions.fileUrl = selectedFile; sendOptions.open() }
     }
 
-    // Pictures only: whatever comes back is scaled and re-encoded before it is
-    // sent, so a camera original does not sit in a transfer for minutes.
     FileDialog {
         id: imageDialog
         title: qsTr("Send pictures")
@@ -445,8 +405,6 @@ Rectangle {
             onTriggered: fileDialog.open()
         }
         ContextMenuItem {
-            // Pictures are their own thing: they are shrunk before they cross a
-            // tunnel and shown in the bubble rather than listed as a file.
             text: qsTr("Image")
             iconName: "image"
             visible: App.canPickPictures
@@ -469,8 +427,6 @@ Rectangle {
         onConfirmed: function(shot) { if (root.session) { root.session.sendShot(shot) } }
     }
 
-    // Recording happens in a window of its own: what the microphone hears is
-    // drawn while it records, and the take is heard before it is sent.
     VoiceRecorder {
         id: voiceSheet
         session: root.session

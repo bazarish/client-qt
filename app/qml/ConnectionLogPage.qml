@@ -1,28 +1,17 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// What this account said on the wire and what came back: server calls with their
-// status, mail to correspondents with the far side's answer, and the service
-// traffic in between (self-messages, receipts, delivery passes).
-//
-// A debugging window, so it says what happened rather than what it means. It
-// carries no message text and no full fingerprints - it is meant to be
-// screenshotted into a bug report.
 Popup {
     id: root
     property var session: null
-    // Return to the page this opened from (the account window).
     signal back()
 
-    // The tail the core keeps; the window shows it newest first.
     property var lines: []
 
-    // The line that has just been copied, and how long it says so. Held here and
-    // not in the delegate: the poll below hands the list a brand-new array every
-    // half second, which rebuilds every delegate, and an index is no identity
-    // either - newest-first means one new event shifts every row down.
+    // Held here, not in the delegate: every poll hands a new array, which rebuilds every delegate.
     property string copiedKey: ""
     property bool allCopied: false
     readonly property int copiedFlashMs: 1500
@@ -42,8 +31,6 @@ Popup {
     padding: 0
     background: DialogFrame { }
 
-    // Live enough to watch a send go out, without a worker thread reaching into
-    // the interface: the window asks, the account answers.
     Timer {
         id: poll
         interval: 500
@@ -55,7 +42,6 @@ Popup {
     Connections {
         target: root.session
         ignoreUnknownSignals: true
-        // The core keeps them oldest first; the window reads newest first.
         function onConnectionLogUpdated(lines) { root.lines = lines.slice().reverse() }
     }
 
@@ -69,8 +55,6 @@ Popup {
         return line.at + "|" + line.what
     }
 
-    // One line as text, for the clipboard. A row and "Copy all" write the same
-    // shape because they call the same function.
     function lineText(line) {
         return stamp(line.at) + (line.outgoing ? "  ->  " : "  <-  ") + line.what
             + (line.status ? "  " + line.status : "")
@@ -134,8 +118,6 @@ Popup {
             model: root.lines
             ScrollBar.vertical: ScrollBar {}
 
-            // A whole row is the click target: this window exists to be quoted in a
-            // bug report, and one line of it is usually what is wanted.
             delegate: Rectangle {
                 id: logRow
                 width: list.width
@@ -182,8 +164,6 @@ Popup {
                         color: Theme.text
                         font.pixelSize: Theme.fontSmall
                         elide: Text.ElideRight
-                        // One column, so the eye runs down the kinds rather than
-                        // hunting for where each line's status begins.
                         Layout.preferredWidth: rowLine.stacked ? -1 : 300
                         Layout.fillWidth: rowLine.stacked
                     }
@@ -193,7 +173,6 @@ Popup {
                         text: modelData.status
                         elide: Text.ElideRight
                         Layout.fillWidth: true
-                        // A refusal is the line the user came here for.
                         color: modelData.status.indexOf("failed") === 0 || modelData.status === "dropped"
                             ? Theme.danger : Theme.textDim
                         font.pixelSize: Theme.fontSmall

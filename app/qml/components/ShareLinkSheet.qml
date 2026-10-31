@@ -4,7 +4,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// A link to hand over, as a QR code, as text and to the clipboard.
 Popup {
     id: root
     property string title: ""

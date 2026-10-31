@@ -34,6 +34,6 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Calls and voice messages are recorded with the microphone.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>The camera reads an invite from a QR code.</string>
+	<string>The camera reads QR codes and takes photos.</string>
 </dict>
 </plist>

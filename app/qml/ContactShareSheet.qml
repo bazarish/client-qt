@@ -1,19 +1,14 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// A contact's own card, offered so they can be passed on: a fingerprint alone
-// reaches nobody. It is a page of its own because a QR plus a link plus the
-// contact's details do not fit one dialog on a short screen, and this way the
-// content decides the height instead of being squeezed beside everything else.
 Popup {
     id: root
     property var session: null
-    // Read when the sheet opens, from routing the session already holds.
     property string link: ""
     property bool copied: false
-    // Back to the contact card this came from; the close button exits.
     signal back()
 
     modal: true

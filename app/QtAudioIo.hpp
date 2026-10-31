@@ -16,7 +16,6 @@ namespace bazarish::app {
 
 QAudioFormat callAudioFormat();
 
-// Microphone capture via Qt Multimedia.
 class QtAudioSource : public bazarish::AudioSource {
 public:
     QtAudioSource();
@@ -34,7 +33,6 @@ private:
     std::unique_ptr<CaptureDevice> device_;
 };
 
-// Speaker playback via Qt Multimedia.
 class QtAudioSink : public bazarish::AudioSink {
 public:
     QtAudioSink();

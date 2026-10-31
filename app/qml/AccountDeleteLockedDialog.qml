@@ -1,12 +1,9 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// A locked profile: the key inside it is the only thing that can end the account
-// on its server, so unlocking is the difference between deleting the account and
-// deleting this device's copy of it. Both are offered, and what the second one
-// leaves behind is said plainly rather than discovered later.
 Dialog {
     id: root
     property string accountId: ""

@@ -4,36 +4,24 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// The server descriptor entry, shared by the first-connect page and the Settings
-// connection editor so both offer the same flow. Accepts a bazarish://server/...
-// link (parsed into the fields) or manual entry: an ordered facade list (tried
-// with failover) and the server fingerprint. The action calls connectServer on
-// the session, which binds the endpoint and registers this client; the user
-// registers separately on the server's own portal (there is no automatic
-// registration here). Re-running it after a portal registration finishes setup.
 ColumnLayout {
     id: form
     property var session: null
-    // Label of the primary action button.
     property string actionText: qsTr("Connect")
-    // Prefill, used when editing an existing connection from Settings.
     property var initialFacades: []
     property string initialFingerprint: ""
     property var initialReseeds: []
     property bool detailed: false
     property string shownFingerprint: ""
     property var shownReseeds: []
-    // Emitted right after the action runs, so a host dialog can close.
     signal submitted()
 
-    // Animated border of the link field: red on a bad paste, green on a good one.
     property color linkBorderColor: Theme.border
 
     spacing: 14
     Layout.fillWidth: true
 
     Component.onCompleted: reset()
-    // The account's connection can arrive after the form is built; it never overwrites typing.
     onInitialFingerprintChanged: {
         if (linkField.text.length === 0 && fpField.text.length === 0
                 && facadeList().length === 0 && reseedList().length === 0) {
@@ -92,8 +80,6 @@ ColumnLayout {
         flashRevert.start()
     }
 
-    // Parses the link field; on success fills the inputs and reveals them, on a
-    // non-empty failure just flashes red (the fields are left untouched).
     function takeLink(uri) {
         linkField.text = uri
         form.parseLink()
@@ -121,8 +107,6 @@ ColumnLayout {
     ListModel { id: facadeModel }
     ListModel { id: reseedModel }
 
-    // One-link import: paste a bazarish://server/... link; it parses automatically
-    // and fills everything below.
     RowLayout {
         Layout.fillWidth: true
         TextField {

@@ -3,12 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// The app's right-click / long-press menu. The stock one is a white box as wide
-// as the style's minimum, which reads as a different application on a dark
-// window; this one takes the theme's surface and is only as wide as its widest
-// entry.
 Menu {
-    id: root
     margins: Theme.spacing
     // On a phone the menu leaves the focus where it was, so an open keyboard stays open.
     focus: !App.mobile
@@ -16,8 +11,6 @@ Menu {
     modal: true
     dim: false
 
-    // Wide enough for the entry that needs the most room, and no wider. Hidden
-    // entries (the delegates collapse to zero height) do not count.
     implicitWidth: {
         let widest = 0
         for (let i = 0; i < count; ++i) {

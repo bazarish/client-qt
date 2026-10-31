@@ -17,7 +17,6 @@ namespace {
 constexpr int kRecentReactions = 6;
 constexpr int kRecentEmoji = 40;
 
-// The newest first, each once, at most `limit` of them.
 QStringList withNewest(QStringList list, const QString& item, const int limit)
 {
     list.removeAll(item);

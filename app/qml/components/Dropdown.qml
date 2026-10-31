@@ -21,8 +21,7 @@ ComboBox {
     implicitWidth: root.widestText + root.kTextEdge + root.kChevronEdge + root.kSlack
 
     property int widestText: 0
-    // Measured on demand: a binding that drives the ruler would depend on what
-    // it writes.
+    // Measured on demand: as a binding it would depend on what it writes.
     function measure() {
         let widest = 0
         for (let i = 0; i < root.count; ++i) {

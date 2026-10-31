@@ -38,7 +38,6 @@ int main(int argc, char** argv)
     ConversationModel model;
     model.setMessages({row(2), row(3), row(4)});
 
-    // The core's notice of a row can land after a page that already brought it.
     StoredMessage edited = row(4);
     edited.text = QStringLiteral("edited");
     CHECK(model.appendMessage(edited) == 2);

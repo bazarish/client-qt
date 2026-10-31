@@ -71,11 +71,12 @@ What the link carries decides where it opens:
 
 | Link | Where it goes |
 |---|---|
-| `bazarish://invite?…` | the add-contact sheet, with the invite in it |
-| `bazarish://server?…` | the connect form, with the server in it |
-| `bazarish://pair?…` | the wizard that enrols this device, with the link in it |
+| `bazarish://invite?...` | the add-contact sheet, with the invite in it |
+| `bazarish://server?...` | the connect form, with the server in it |
+| `bazarish://sign?...` | the sign-with-key sheet, with the challenge in it |
+| `bazarish://pair?...` | the wizard that enrols this device, with the link in it |
 
-The first two act on an open account, so a link that arrives before one is open
+The first three act on an open account, so a link that arrives before one is open
 waits for it rather than going nowhere. A link of any other shape is refused on
 screen and written to the log.
 

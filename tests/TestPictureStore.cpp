@@ -97,8 +97,6 @@ void keptBytesBudgetLetsTheOldestGoAndRestoreBringsItBack()
     CHECK(!store.restore(QStringLiteral("text"), QByteArrayLiteral("not a picture")));
 }
 
-}  // namespace
-
 // What another client sent straight from its camera shows the way its gallery did.
 void cameraOrientationIsApplied()
 {
@@ -110,6 +108,8 @@ void cameraOrientationIsApplied()
     CHECK(shown.width() == bazarish::test::kTurnedHigh);
     CHECK(shown.height() == bazarish::test::kTurnedWide);
 }
+
+}  // namespace
 
 int main(int argc, char** argv)
 {

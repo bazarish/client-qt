@@ -99,10 +99,7 @@ constexpr const char* kNoQtTextHandles = "1";
 #endif
 
 namespace {
-// macOS does not pass a bazarish:// link on the command line: it hands it to the
-// running application as an event, and starts no second copy to do it.
-// A keyboard keeps the word being typed out of a field until it is committed, and a button
-// that leaves the focus in the field would act on the text without that word.
+// An input method holds the word being typed out of the field until it is committed.
 class PressCommitsWord : public QObject {
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override
@@ -116,6 +113,7 @@ protected:
     }
 };
 
+// macOS hands a bazarish:// link to the running application as an event, not as an argument.
 class LinkCatcher : public QObject {
 public:
     void handOverTo(bazarish::app::AppController& controller)
@@ -254,9 +252,7 @@ int main(int argc, char** argv)
     }
 
 #ifdef BAZARISH_STATIC_QT
-    // A statically linked musl binary has no dlopen, so no graphics driver can
-    // be loaded and the scene graph has to be drawn on the processor. Left to
-    // choose, it picks the one that cannot work here and the window stays empty.
+    // A static musl binary cannot dlopen a graphics driver; left to choose, Qt draws nothing.
     qputenv("QT_QUICK_BACKEND", "software");
 #endif
     QApplication app(argc, argv);

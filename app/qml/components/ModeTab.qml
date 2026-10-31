@@ -1,9 +1,8 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// One tab of the transport chooser: a rounded pill in a rounded bar, because
-// nothing else in this interface has a square corner.
 TabButton {
     id: tab
     focusPolicy: Theme.pressFocus

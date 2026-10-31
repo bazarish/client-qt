@@ -1,12 +1,9 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Asked once, before anything starts an I2P router, because the answer decides
-// which one starts. A gateway is a host somebody already trusted runs; with one,
-// this device speaks https to it and never builds a tunnel of its own. Without
-// one, the router inside this application comes up as it always did.
 Dialog {
     id: root
 
@@ -48,9 +45,6 @@ Dialog {
         target: I2p
         enabled: root.opened
         function onGatewaySaved() {
-            // Asked before any engine is up, so choosing here is what this run
-            // will use rather than a change to anything: saving the address and
-            // using it are one act at this door, and two everywhere else.
             I2p.useGateway(true)
             root.close()
         }
@@ -93,9 +87,6 @@ Dialog {
             }
         }
 
-        // Why it was refused. An address that does not answer is not saved:
-        // there is nothing useful to do with one, and keeping it would move the
-        // failure somewhere this dialog cannot show it.
         Label {
             visible: root.problem.length > 0
             Layout.fillWidth: true

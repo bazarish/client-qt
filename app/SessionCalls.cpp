@@ -2,46 +2,11 @@
 #include "SessionController.hpp"
 
 #include "AudioRoute.hpp"
-#include "SessionShared.hpp"
 #include "SystemNotes.hpp"
-
-#include "Session.hpp"
-
-#include <bazarish/Crypto.hpp>
-#include <bazarish/Limits.hpp>
-#include <bazarish/Descriptor.hpp>
-#include <bazarish/Portal.hpp>
-
-#pragma push_macro("emit")
-#undef emit
-#include <bazarish/Log.hpp>
-#pragma pop_macro("emit")
 
 #include <QAudioDevice>
 
-#include <chrono>
-#include <cstring>
-
-#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#endif
-
-#include <algorithm>
-#include <array>
-#include <ctime>
-#include <exception>
-#include <fstream>
-#include <iterator>
-#include <memory>
-#include <mutex>
-#include <thread>
-#include <utility>
-#include <vector>
-
 namespace bazarish::app {
-
-using bazarish::client::IncomingMessage;
-using bazarish::client::ServerEndpoint;
-using bazarish::client::Session;
 
 bool SessionController::speakerPresent()
 {

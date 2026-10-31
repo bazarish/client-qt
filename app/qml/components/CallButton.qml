@@ -4,9 +4,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// An action in a call - answer, decline, hang up. One width for every one of
-// them: a row of buttons that size themselves to their labels is a row that is
-// never centred under the avatar.
 Button {
     id: control
     focusPolicy: Theme.pressFocus
@@ -25,8 +22,6 @@ Button {
 
     background: Rectangle {
         radius: control.kHeight / 2
-        // A request in flight dims its button, so a press that is already being
-        // carried out does not look like one that was ignored.
         color: !control.enabled ? Theme.surfaceAlt
             : control.down ? Qt.darker(control.fill, 1.2)
             : control.hovered ? Qt.lighter(control.fill, 1.15)

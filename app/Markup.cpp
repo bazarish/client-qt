@@ -87,15 +87,11 @@ bool isAliasChar(const QChar c)
     return (c >= u'a' && c <= u'z') || (c >= u'A' && c <= u'Z') || (c >= u'0' && c <= u'9');
 }
 
-// What joins the parts of a name elsewhere in the project. A name that carries
-// one is not a name this form can look up.
 bool isNameSeparator(const QChar c)
 {
     return c == u'_' || c == u'.' || c == u'-';
 }
 
-// A span never crosses a line: an unclosed marker then costs one line rather
-// than swallowing the rest of the message.
 int lineEnd(const QString& text, const int from, const int to)
 {
     const int found = text.indexOf(QChar(u'\n'), from);
@@ -147,9 +143,6 @@ private:
         runs_.push_back(std::move(run));
     }
 
-    // A style span holds text and the clickable forms, but not another style: two
-    // levels are what the client renders, and nesting emphasis inside emphasis
-    // reads as a parser that guessed rather than as formatting.
     void scan(const int from, const int to, const Style style, const bool allowStyles)
     {
         QString buffer;
@@ -208,8 +201,6 @@ private:
             if (!matchesAt(text_, at, limit, marker.text)) {
                 continue;
             }
-            // Opens at a word boundary and against text, not against a space:
-            // "2*3*4" is arithmetic and stays as typed.
             if (at > 0 && isWordChar(text_[at - 1])) {
                 continue;
             }
@@ -233,10 +224,6 @@ private:
         return false;
     }
 
-    // The one span that crosses lines: keeping the line breaks is what it is
-    // for. Nothing inside is markup - what is written there is what is copied,
-    // character for character - and an unclosed marker is text, like every other
-    // marker that does not pair off.
     bool matchCode(const int at, const int to, int& contentFrom, int& contentTo, int& after) const
     {
         if (!matchesAt(text_, at, to, kCodeMarker)) {
@@ -247,8 +234,6 @@ private:
             if (!matchesAt(text_, j, to, kCodeMarker)) {
                 continue;
             }
-            // Nothing between the markers is not a block; the six characters are
-            // what was typed and stay as they are.
             if (text_.sliced(at + length, j - at - length).trimmed().isEmpty()) {
                 return false;
             }
@@ -271,7 +256,6 @@ private:
             if (!matchesAt(text_, j, limit, kSendMarker)) {
                 continue;
             }
-            // Nothing to send is not an offer to send it.
             if (text_.sliced(at + length, j - at - length).trimmed().isEmpty()) {
                 return false;
             }
@@ -299,7 +283,6 @@ private:
                 break;
             }
         }
-        // A scheme with no host behind it is not an address.
         if (start < 0 || start >= limit || !isWordChar(text_[start])) {
             return false;
         }
@@ -313,7 +296,6 @@ private:
         return end > start;
     }
 
-    // Drops what closes the sentence rather than the address.
     int trimTail(const int from, int end) const
     {
         bool trimmed = true;
@@ -369,14 +351,10 @@ private:
             }
             end = wordEnd;
         }
-        // A name runs to a boundary: what follows may not be a name character in
-        // any alphabet, or this is an ordinary exclamation inside a word.
         if (end < to && isWordChar(text_[end])) {
             return false;
         }
-        // "!bob_smith" is one word to whoever wrote it. Marking "bob" out of it
-        // would open the form on a name nobody typed, so it is left as text; a
-        // stop that ends a sentence still ends the name.
+        // "!bob_smith" is one word: no alias is marked out of it.
         if (end + 1 < to && isNameSeparator(text_[end]) && isAliasChar(text_[end + 1])) {
             return false;
         }
@@ -411,8 +389,7 @@ QString escaped(const QString& text)
             out += QLatin1String("<br>");
             break;
         case u' ':
-            // A rich text document folds a run of spaces into one; a message that
-            // lined something up with spaces keeps its shape.
+            // Qt rich text folds a run of spaces into one.
             out += (i > 0 && text[i - 1] == QChar(u' ')) ? QLatin1String("&nbsp;")
                                                          : QLatin1String(" ");
             break;
@@ -424,9 +401,6 @@ QString escaped(const QString& text)
     return out;
 }
 
-// A block as it was written: every space is its own, a tab is worth kTabWidth of
-// them, and a line break is a line break. The ordinary escape folds runs of
-// spaces the way a document does, which is right for a sentence and wrong here.
 QString escapedVerbatim(const QString& text)
 {
     QString out;
@@ -492,8 +466,6 @@ QString toHtml(const QString& text, const Colors& colors)
 {
     QString out;
     for (const Run& run : parse(text)) {
-        // A block keeps its own shape and is drawn in a face where a column of
-        // characters lines up; a click on it is what puts it on the clipboard.
         if (run.action == Action::eCopy) {
             const QString style = QLatin1String("font-family:monospace;background-color:")
                 + colors.code + QLatin1String(";color:") + colors.codeText

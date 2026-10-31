@@ -12,7 +12,6 @@ public:
     using QObject::QObject;
 
 signals:
-    void refreshAccountList();
     void openAccount(const QString& id, const QString& passphrase);
     void switchTo(const QString& id);
     void setOnline(const QString& id, bool on);

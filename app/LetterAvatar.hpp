@@ -12,7 +12,6 @@ namespace bazarish::app {
 inline constexpr std::size_t kLetterPaletteSize = 8;
 
 const std::array<QColor, kLetterPaletteSize>& letterPalette();
-QColor letterInk();
 QString letterOf(const QString& name);
 QColor letterFill(const QString& name);
 

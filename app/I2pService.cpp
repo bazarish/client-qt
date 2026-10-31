@@ -57,11 +57,9 @@ I2pService::I2pService(QObject* parent)
     connect(&commands_, &I2pCommands::checkAndSaveGateway, this,
         &I2pService::checkAndSaveGateway);
     connect(&commands_, &I2pCommands::skipGateway, this, &I2pService::skipGateway);
-    connect(&commands_, &I2pCommands::clearGateway, this, &I2pService::clearGateway);
     connect(&commands_, &I2pCommands::useEmbedded, this, &I2pService::useEmbedded);
     connect(&commands_, &I2pCommands::refresh, this, &I2pService::refresh);
 
-    // libi2pd logging is off by default: fully silent.
     state_.loggingEnabled = AppSettings::instance().i2pLogging();
     state_.privacyLevel = std::clamp(
         AppSettings::instance().i2pTunnelLength(), kMinimalPrivacyLevel, kMaxPrivacyLevel);
@@ -93,7 +91,6 @@ I2pService::I2pService(QObject* parent)
     if (state_.samEnabled) {
         client::setSamTransport(state_.samHost.toStdString(), state_.samPort);
     }
-    client::setI2pEnabled(true);
     bazarish::i2p::setI2pLogging(state_.loggingEnabled);
     client::setTunnelPrivacy(privacyForLevel(state_.privacyLevel));
     refresh();
@@ -230,8 +227,7 @@ void I2pService::saveProxy(const QString& host, const int port)
     AppSettings::instance().setI2pProxy(state_.proxyHost.toStdString(), state_.proxyPort);
     client::setI2pSocksProxy(state_.proxyHost.toStdString(), state_.proxyPort);
     announce();
-    const std::filesystem::path dataDir = i2pRoot();
-    std::thread([dataDir]() { client::restartI2pRouter(dataDir); }).detach();
+    std::thread([]() { client::restartI2pRouter(); }).detach();
     refresh();
 }
 
@@ -321,13 +317,6 @@ void I2pService::skipGateway()
     noteChoiceInForce();
 }
 
-void I2pService::clearGateway()
-{
-    AppSettings::instance().skipGateway();
-    state_.gatewayEnabled = false;
-    noteChoiceInForce();
-}
-
 void I2pService::refresh()
 {
     bazarish::i2p::Router* const router = client::sharedI2pRouterIfRunning();
@@ -340,11 +329,6 @@ void I2pService::refresh()
     int outboundTunnels = 0;
     QStringList transports;
     QVariantList destinations;
-    QString proxyNtcp2;
-    if (const std::optional<bazarish::i2p::ProxyState> proxy = client::i2pProxyState();
-        proxy.has_value()) {
-        proxyNtcp2 = QString::fromStdString(proxy->ntcp2);
-    }
     if (running) {
         ready = router->ready();
     }
@@ -387,7 +371,6 @@ void I2pService::refresh()
         }
     }
     I2pState now = state_;
-    now.proxyNtcp2 = proxyNtcp2;
     now.running = running;
     now.ready = ready;
     now.knownRouters = knownRouters;

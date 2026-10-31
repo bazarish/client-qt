@@ -10,7 +10,6 @@ class CoreHost;
 class Notifier;
 class Translations;
 
-// The core's notices on Android: the shade line, messages, the ring and the call.
 class AndroidShade : public QObject {
     Q_OBJECT
 public:

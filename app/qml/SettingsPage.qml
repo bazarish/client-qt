@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -11,7 +12,6 @@ Popup {
     property var session: null
     signal showInvite()
     signal showSignWithKey()
-    // What this account keeps on this machine, and trimming it.
     signal showStorage()
     signal showRouterStatus()
     signal showConnectionLog()
@@ -23,18 +23,9 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
 
-    // Refresh the per-user I2P destination status and storage usage on open.
     onOpened: if (session) { session.refreshI2pStatus(); session.refreshStorageUsage();
         session.refreshDevices(); delegationDaysBox.value = session.delegationDays }
 
-    // Ticks every few seconds while Settings is open so the storage "updated N ago"
-    // age stays current without the user reopening the page.
-    property int agoTick: 0
-    Timer { running: root.visible; interval: 5000; repeat: true; onTriggered: root.agoTick++ }
-
-    // And asks the server again while the page is open: the quota, the devices
-    // collecting mail and whether this account's address is published are all
-    // things that change while somebody is watching them.
     Timer {
         running: root.visible && root.session
         interval: 10000
@@ -44,30 +35,6 @@ Popup {
             root.session.refreshStorageUsage()
             root.session.refreshDevices()
         }
-    }
-
-    // Human-readable byte count (B / KB / MB / GB).
-    // "updated N ago" from a wall-clock-ms timestamp (0 = never). Reads agoTick so it
-    // re-evaluates as the timer ticks.
-    function agoText(updatedAtMs) {
-        void root.agoTick
-        if (!updatedAtMs || updatedAtMs <= 0) {
-            return qsTr("never updated")
-        }
-        var s = Math.max(0, Math.floor((Date.now() - updatedAtMs) / 1000))
-        if (s < 5) {
-            return qsTr("updated just now")
-        }
-        if (s < 60) {
-            return qsTr("updated %1s ago").arg(s)
-        }
-        if (s < 3600) {
-            return qsTr("updated %1m ago").arg(Math.floor(s / 60))
-        }
-        if (s < 86400) {
-            return qsTr("updated %1h ago").arg(Math.floor(s / 3600))
-        }
-        return qsTr("updated %1d ago").arg(Math.floor(s / 86400))
     }
 
     background: DialogFrame { }
@@ -93,15 +60,10 @@ Popup {
             contentWidth: availableWidth
             clip: true
             ColumnLayout {
-                // Bound to what the scroll view actually offers. Taking the
-                // popup's width instead left the column wider than the visible
-                // area, and everything on its right - toggles, values, buttons -
-                // was cut off at the panel edge; taking `parent.width` is
-                // circular here, because the parent sizes to the content.
+                // Not parent.width: the parent sizes to the content, so that binding is circular.
                 width: settingsScroll.availableWidth
                 spacing: 14
 
-                // Account
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -109,10 +71,6 @@ Popup {
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 12
-                        // The picture and the name are their own controls: tap the
-                        // picture to choose a new one, the name to rename. Two
-                        // buttons repeating what the things themselves can do were
-                        // just the same actions written twice.
                         Item {
                             id: avatarSlot
                             implicitWidth: 56
@@ -124,10 +82,6 @@ Popup {
                                 size: 56
                                 opacity: avatarSlot.busy ? 0.35 : 1.0
                             }
-                            // Compressing the picture and handing it to every
-                            // contact runs over I2P: the wait belongs on the
-                            // picture that is changing, not only in the activity
-                            // panel behind this window.
                             BusyIndicator {
                                 anchors.centerIn: parent
                                 running: avatarSlot.busy
@@ -163,9 +117,6 @@ Popup {
                                 }
                                 HoverHandler { cursorShape: Qt.PointingHandCursor }
                             }
-                            // Tap the fingerprint to copy the whole thing; the line
-                            // says what happened for a moment, so the click is not
-                            // a guess.
                             Label {
                                 id: fingerprintLine
                                 property bool copied: false
@@ -196,7 +147,6 @@ Popup {
                                 Layout.fillWidth: true
                             }
                         }
-                        // Sharing yourself lives at the far edge of the same row.
                         IconButton {
                             iconName: "link"
                             Layout.alignment: Qt.AlignVCenter
@@ -216,9 +166,6 @@ Popup {
                 }
                 Hairline { }
 
-                // App & privacy — GLOBAL settings, shared by every account on this
-                // device (the per-account sections are below).
-                // Connection
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -269,16 +216,10 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
-                    // What this account is holding on its server, as one line and a
-                    // bar. Tapping it re-polls the server and tints the row, so the
-                    // figures are refreshed where they are read.
                     ColumnLayout {
                         id: storageSection
                         Layout.fillWidth: true
                         spacing: 3
-                        // An account that has just been closed leaves this with
-                        // nothing to read, so every field says so itself rather
-                        // than handing undefined to a typed property.
                         readonly property var info: root.session ? root.session.storageInfo : ({})
                         readonly property bool ok: info.mailboxOk === true
                         readonly property double used: info.mailboxUsed !== undefined
@@ -344,10 +285,6 @@ Popup {
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
-                    // The devices registered on this account. Mail is deleted only
-                    // once every one of them has acked it, so a device that is gone
-                    // for good holds the mailbox until retention runs out - which is
-                    // why its owner needs to be able to drop it.
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 6
@@ -376,8 +313,6 @@ Popup {
                                 Layout.fillWidth: true
                                 spacing: 8
                                 Label {
-                                    // The queue names the device that is holding
-                                    // mail without having to know whose id this is.
                                     text: modelData.clientId
                                         + (modelData.queue > 0
                                             ? qsTr(" (queue: %1)").arg(modelData.queue) : "")
@@ -386,9 +321,6 @@ Popup {
                                     elide: Text.ElideMiddle
                                     Layout.fillWidth: true
                                 }
-                                // A link, not a button: one device is one line,
-                                // and a plate here would make the row taller than
-                                // the thing it acts on.
                                 Label {
                                     text: qsTr("(this device)")
                                     visible: modelData.current
@@ -426,9 +358,6 @@ Popup {
                         }
                     }
 
-                    // Full descriptor editor (link / facades / fingerprint), the
-                    // same flow as first connect: lets the user re-point the server
-                    // or, after registering on the portal, Connect again to finish.
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -439,9 +368,6 @@ Popup {
                             text: qsTr("Server connection")
                             onClicked: serverChoice.open()
                         }
-                        // What the account actually did on the wire: the one
-                        // place that shows a refusal, a delivery nobody signed
-                        // for, or a device sync that never left.
                         MenuButton {
                             Layout.preferredWidth: serverConnectionButton.height
                             Layout.preferredHeight: serverConnectionButton.height
@@ -452,8 +378,6 @@ Popup {
                             onClicked: { root.close(); root.showConnectionLog() }
                         }
                     }
-                    // A device asks for the address book once, on its first sync.
-                    // If no other device was online to answer, this asks again.
                     MenuButton {
                         Layout.fillWidth: true
                         iconName: "devices"
@@ -464,7 +388,6 @@ Popup {
                 }
                 Hairline { }
 
-                // Personal I2P destination
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -476,8 +399,6 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
-                    // The box is tinted when the server's answer arrives, not when
-                    // the button is pressed.
                     Connections {
                         target: root.session
                         ignoreUnknownSignals: true
@@ -502,9 +423,6 @@ Popup {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.margins: 6
                             spacing: 4
-                            // Two facts, not one verdict: what the server holds (the
-                            // delegation, with its term) and whether the destination
-                            // is actually up. "Not published" said neither.
                             Label {
                                 readonly property bool delegated: root.session
                                     && root.session.i2pTransientExpires > 0
@@ -529,8 +447,6 @@ Popup {
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
-                            // The address is the answer to "do I even have a key",
-                            // so it is shown whenever there is one - published or not.
                             Label {
                                 visible: root.session && root.session.i2pAddress.length > 0
                                 text: root.session ? root.session.i2pAddress : ""
@@ -542,10 +458,6 @@ Popup {
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
-                            // The server's answer, when it is not the address above.
-                            // Mail sent to the address this device shows is not
-                            // arriving anywhere, and nothing else on this page
-                            // would say so.
                             ColumnLayout {
                                 visible: root.session && root.session.i2pAddressMismatch
                                 Layout.fillWidth: true
@@ -582,7 +494,6 @@ Popup {
                             }
                         }
                     }
-                    // Set up a master key first (generate or load a .dat), then turn it on.
                     ButtonRow {
                         visible: root.session && !root.session.i2pHasKey
                         Layout.fillWidth: true
@@ -597,10 +508,6 @@ Popup {
                             Layout.fillWidth: true
                             visible: root.session && !root.session.i2pEnabled
                             iconName: "broadcast"
-                            // Not the normal path: connecting publishes on its own and
-                            // the delegation is re-issued in the background. This is for
-                            // a key loaded from elsewhere, a revoked destination, or a
-                            // publish that did not finish.
                             text: root.session && root.session.i2pBusy ? qsTr("Publishing\u2026")
                                 : qsTr("Publish address")
                             enabled: root.session && root.session.connected
@@ -617,9 +524,6 @@ Popup {
                             onClicked: takeOfflineDialog.open()
                         }
                     }
-                    // Hands the server a new delegation. The status itself is polled while
-                    // this page is open, with no button for it. A line of its own: beside the
-                    // other buttons its changing label pushed it onto the next row and back.
                     MenuButton {
                         visible: root.session && root.session.i2pHasKey
                         Layout.fillWidth: true
@@ -676,14 +580,10 @@ Popup {
                                     to: root.session ? root.session.maxDelegationDays : 30
                                     value: root.session ? root.session.delegationDays : 14
                                     editable: true
-                                    // A step, or typing finished: each change re-issues the
-                                    // delegation, so "30" must not pass through 3 days.
+                                    // Fires on a step or when typing ends, so "30" never passes through 3 days.
                                     onValueModified: if (root.session) {
                                         root.session.delegationDays = value
                                     }
-                                    // The stock control is a white box the height
-                                    // of three lines: on this palette it reads as
-                                    // the brightest thing on the page.
                                     readonly property int fieldHeight: 30
                                     implicitHeight: fieldHeight
                                     topPadding: 0
@@ -743,7 +643,6 @@ Popup {
                                     Layout.alignment: Qt.AlignVCenter
                                 }
                             }
-                            // A term this account's other devices set shows up here too.
                             Connections {
                                 target: root.session
                                 function onDelegationDaysChanged() {
@@ -755,9 +654,6 @@ Popup {
                 }
                 Hairline { }
 
-                // Backup
-                // What this account alone does. The switches above are the app's;
-                // these follow the account wherever it is opened.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -872,8 +768,6 @@ Popup {
                 }
                 Hairline { }
 
-                // Who is not heard here. A block is per account and reaches its
-                // other devices; unblocking does not bring back what was dropped.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -913,9 +807,6 @@ Popup {
         }
     }
 
-    // The whole account (keys, routing meta and contacts) exports to one
-    // password-protected file, named from the display name on this device; the
-    // same file restores it.
     property string backupName: (root.session && root.session.displayName.length > 0
         ? root.session.displayName.replace(/[^A-Za-z0-9._-]+/g, "_") : "bazarish")
     FileDialog {
@@ -923,8 +814,7 @@ Popup {
         fileMode: FileDialog.SaveFile
         defaultSuffix: "bazarish"
         nameFilters: ["Bazarish backup (*.bazarish)", "All files (*)"]
-        // Downloads, like every other save here. A bare "file:///name" would
-        // open the chooser at the filesystem root.
+        // A bare "file:///name" opens the chooser at the filesystem root.
         currentFile: root.session
             ? root.session.defaultSaveUrl(root.backupName + ".bazarish") : ""
         onAccepted: { root.pendingExportFile = selectedFile; exportPassDialog.open() }
@@ -935,16 +825,11 @@ Popup {
         nameFilters: ["I2P destination key (*.dat)", "All files (*)"]
         onAccepted: if (root.session) root.session.loadPersonalKey(selectedFile)
     }
-    // Pick an image for the avatar; the app squares and compresses it to within
-    // the 500 KB protocol cap before storing and distributing it.
     FileDialog {
         id: avatarDialog
         fileMode: FileDialog.OpenFile
         nameFilters: ["Images (*.png *.jpg *.jpeg *.webp *.bmp)", "All files (*)"]
         onAccepted: if (root.session) { avatarCrop.openFor(selectedFile) }
-        // Backing out of the picker is how someone with an avatar asks to have none:
-        // the only other reading is that they meant nothing at all, and that is
-        // what the dialog asks.
         onRejected: if (root.session && root.session.hasAvatar) { dropAvatarDialog.open() }
     }
 
@@ -959,18 +844,12 @@ Popup {
         }
     }
 
-    // Picking the part of the picture that becomes the avatar.
     AvatarCropDialog {
         id: avatarCrop
         session: root.session
         onCropped: function(grab) { if (root.session) { root.session.setAvatarFromGrab(grab) } }
     }
 
-    // Remove the account's avatar.
-    // Forgetting a device is not a small thing while it is unread: the server
-    // stops holding mail for it and drops what it is already holding. It is also
-    // not a permanent thing, and saying both is what makes the choice an informed
-    // one rather than a scare.
     Dialog {
         id: forgetConfirm
         property string clientId: ""
@@ -1075,24 +954,18 @@ Popup {
             text: qsTr("Your contacts keep the copy they already have until you set a new one.")
         }
     }
-    // Change the account's own display name. Local only: it updates this device and
-    // the name carried in future invite descriptors; existing contacts keep the
-    // local name they have for us (it is never sent to them).
     Dialog {
         id: renameSelfDialog
         bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
-        // Narrow on purpose: with no width of its own the dialog grew to fit its
-        // explanation on one line, which made a two-field form as wide as the app.
+        // Without a width of its own the dialog grows to fit its text on one line.
         width: Math.min(320, parent ? parent.width - 24 : 320)
         title: qsTr("Change name")
         onAccepted: if (root.session) root.session.setDisplayName(renameSelfField.text)
         background: DialogFrame { }
         header: Label { text: qsTr("Change name"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
-        // An account with no name is one the user cannot tell from another, here
-        // or on their other devices, so Save has nothing to save.
         footer: DialogButtons {
             acceptText: qsTr("Save")
             acceptEnabled: renameSelfField.displayText.trim().length > 0
@@ -1105,9 +978,7 @@ Popup {
                 id: renameSelfField
                 Layout.fillWidth: true
                 placeholderText: qsTr("Your name")
-                // The name travels in a contact request, whose size is capped by
-                // the protocol; the core counts bytes, this counts characters,
-                // which is the coarse half of the same limit.
+                // Characters here; the core enforces the contact request's byte cap.
                 maximumLength: 64
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
@@ -1136,9 +1007,6 @@ Popup {
             background: Rectangle { radius: 8; color: Theme.surface; border.color: exportPass.activeFocus ? Theme.accent : Theme.border } }
     }
 
-    // The password this account is kept under at rest. Asked twice, because a
-    // mistyped one would lock the account against its owner - only the sealed key
-    // beside the database changes, so nothing open on it is disturbed.
     Dialog {
         id: passwordDialog
         bottomMargin: activeFocus ? App.keyboardInset : 0
@@ -1190,10 +1058,6 @@ Popup {
         }
     }
 
-    // Full server-connection editor: the same descriptor flow as first connect,
-    // reachable any time so an account stuck unconnected can be repaired (re-point
-    // the server, or Connect again once registered on the portal). The form
-    // carries its own Connect action, so the dialog has no footer.
     Dialog {
         id: connectionDialog
         anchors.centerIn: Overlay.overlay
@@ -1220,8 +1084,6 @@ Popup {
                 id: connectionForm
                 Layout.fillWidth: true
                 session: root.session
-                // A switched-off account is not going to register with anything:
-                // the action saves the endpoint and says so.
                 actionText: (root.session && !root.session.online) ? qsTr("Save") : qsTr("Connect")
                 initialFacades: root.session ? root.session.configuredFacades : []
                 initialFingerprint: root.session ? root.session.serverFingerprint : ""
@@ -1231,7 +1093,6 @@ Popup {
         }
     }
 
-    // What the server connection is opened for: to change it, or to hand it to a friend.
     Dialog {
         id: serverChoice
         anchors.centerIn: Overlay.overlay

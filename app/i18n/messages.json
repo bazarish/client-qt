@@ -1313,12 +1313,6 @@
       "zh": "完成",
       "ar": "تم"
     },
-    "Downloading…": {
-      "ru": "Загрузка…",
-      "es": "Descargando…",
-      "zh": "正在下载…",
-      "ar": "جارٍ التنزيل…"
-    },
     "Edit": {
       "ru": "Изменить",
       "es": "Editar",
@@ -3635,12 +3629,6 @@
       "zh": "不支持的消息类型 %1。请更新应用。",
       "ar": "نوع رسالة غير مدعوم ⁦%1⁩. حدِّث التطبيق."
     },
-    "Uploading…": {
-      "ru": "Выгрузка…",
-      "es": "Subiendo…",
-      "zh": "正在上传…",
-      "ar": "جارٍ الرفع…"
-    },
     "Use an external gateway?": {
       "ru": "Использовать внешний шлюз?",
       "es": "¿Usar una pasarela externa?",
@@ -4061,12 +4049,6 @@
       "zh": "名字",
       "ar": "اسم"
     },
-    "never updated": {
-      "ru": "не обновлялось",
-      "es": "sin actualizar",
-      "zh": "从未更新",
-      "ar": "لم يُحدَّث"
-    },
     "new password": {
       "ru": "новый пароль",
       "es": "contraseña nueva",
@@ -4204,36 +4186,6 @@
       "es": "no disponible",
       "zh": "不可用",
       "ar": "غير متاح"
-    },
-    "updated %1d ago": {
-      "ru": "обновлено %1 дн назад",
-      "es": "actualizado hace %1 d",
-      "zh": "%1 天前更新",
-      "ar": "حُدِّث قبل ⁦%1⁩ يوم"
-    },
-    "updated %1h ago": {
-      "ru": "обновлено %1 ч назад",
-      "es": "actualizado hace %1 h",
-      "zh": "%1 小时前更新",
-      "ar": "حُدِّث قبل ⁦%1⁩ ساعة"
-    },
-    "updated %1m ago": {
-      "ru": "обновлено %1 мин назад",
-      "es": "actualizado hace %1 min",
-      "zh": "%1 分钟前更新",
-      "ar": "حُدِّث قبل ⁦%1⁩ دقيقة"
-    },
-    "updated %1s ago": {
-      "ru": "обновлено %1 с назад",
-      "es": "actualizado hace %1 s",
-      "zh": "%1 秒前更新",
-      "ar": "حُدِّث قبل ⁦%1⁩ ثانية"
-    },
-    "updated just now": {
-      "ru": "обновлено только что",
-      "es": "actualizado ahora mismo",
-      "zh": "刚刚更新",
-      "ar": "حُدِّث للتو"
     },
     "via %1": {
       "ru": "через %1",

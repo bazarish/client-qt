@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,58 +9,36 @@ import "Format.js" as Format
 Item {
     id: delegate
     property var session: null
-    // Briefly true when a search jump lands on this message, to flash it.
     property bool highlighted: false
     readonly property bool held: holdHandler.pressed
         || (contextMenu.item !== null && contextMenu.item.menu.visible)
     readonly property int heldFadeMs: 120
-    // Asks the view to confirm and delete this message (irreversible; for one's
-    // own one-to-one message it is removed at the recipient too).
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
     signal groupActionRequested(string command, string postId, string author)
-    // Asks the view to open the emoji picker for this message (handled by a single
-    // shared popup, not one per bubble).
     signal imageRequested(url source, string e2eId, string name)
-    // Carries where the message is on screen, so the picker opens beside it.
     signal reactRequested(string e2eId, real sceneX, real sceneY)
-    // Pass this message on to another chat: the view asks which one.
     signal forwardRequested(string e2eId)
     signal quoteRequested(var localId)
     signal selectTextRequested(Item text)
-    // The chat is choosing several messages: a tap marks this one instead of acting on it.
     property bool choosing: false
     property bool chosen: false
     signal chosenToggled(var msgId, bool outgoing)
     readonly property int kChoiceSize: 22
     readonly property int kChoiceMark: 14
     readonly property real kChosenTint: 0.18
-    // An alias written in the body was tapped: the view offers the add-a-contact
-    // form with the name filled in. Nothing is sent.
     signal aliasRequested(string alias)
-    // A web address in the body was tapped: the view warns before anything leaves.
     signal linkRequested(string url)
-    // Where the context menu was opened, in scene coordinates: what the window
-    // that opens from it anchors to. Taken from the event rather than mapped from
-    // this delegate - the handlers sit on the bubble, which is pushed to the right
-    // for one's own messages, and mapping through the delegate dropped exactly
-    // that offset.
+    // Taken from the event: mapping through the delegate drops an own bubble's offset.
     property point menuAt: Qt.point(0, 0)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysBlock.implicitHeight + 12) : (bubble.height + 4)
 
-    // How the body's clickable parts name themselves. The document is built from
-    // the message here, so these are the only schemes a tap can carry; a
-    // correspondent's own text is escaped and never becomes a reference.
     readonly property string kSendScheme: "bz-send:"
     readonly property string kAliasScheme: "bz-alias:"
     readonly property string kCopyScheme: "bz-copy:"
-    // Briefly true after a verbatim block was copied, so the press has an answer
-    // on the message itself rather than none at all.
     property bool copiedBlock: false
     Timer { id: copiedBlockFor; interval: 1500; onTriggered: delegate.copiedBlock = false }
 
-    // What a tap inside the body means: send back what the message offered, offer
-    // a name to the add-a-contact form, or ask the view about a web address.
     function activateLink(link) {
         if (link.startsWith(delegate.kSendScheme)) {
             if (delegate.session) {
@@ -80,54 +59,30 @@ Item {
         }
     }
 
-    // Human-readable byte count for the download progress line.
-    // An attachment card is shown both for an incoming message (which carries a
-    // content-store ref) and for one's own outgoing file (which has the type set
-    // locally before the upload finishes, so the ref is not there yet).
-    // A picture is its own kind of message: its bytes are in the account, it is
-    // drawn where it stands, and it never becomes a file card.
     readonly property bool isPicture: model.type === "image"
     readonly property bool isVoice: model.type === "audio"
     readonly property bool voicePlaying: delegate.isVoice && delegate.session
         && delegate.session.voicePlaying === model.e2eId
-    // The picture as this account holds it. The revision in the URL is what makes
-    // an Image reload when the bytes arrive.
     readonly property string pictureUrl: (delegate.isPicture && model.hasPicture)
         ? delegate.session.pictureSource(model.e2eId, Pictures.revision) : ""
-    // The account holds no drawable picture for this message: the bytes came with
-    // it, so nothing is on its way and there is nothing to ask for. No fallback,
-    // no Save button - it says it is broken.
     readonly property bool pictureBroken: delegate.isPicture && !model.hasPicture
     readonly property bool isAttachment: !delegate.isPicture && !delegate.isVoice
         && ((model.attName && model.attName.length > 0)
             || (model.outgoing && model.type === "file"))
-    // A contact add that ended badly. It reads like a system note and carries
-    // the two ways out of it, because the chat is where the person was watching.
     readonly property bool isUnsupported: model.type === "unsupported"
     readonly property bool isAddFailed: model.type === "contact.failed"
     readonly property bool isRoutingFailed: model.type === "routing.failed"
     readonly property bool isSystem: model.type === "system" || delegate.isAddFailed
         || delegate.isRoutingFailed
-    // A contact request. Incoming ones render green with an "Agree" button; our own
-    // outgoing one is a "request sent" note.
     readonly property bool isContactRequest: model.type === "contact.request"
     readonly property bool isContactRequestIncoming: isContactRequest && !model.outgoing
 
-    // The message this one replies to, resolved against local history:
-    // { found, localId, text, sender }. Null when this is not a reply.
     readonly property var replyInfo: (model.replyTo && model.replyTo.length > 0 && delegate.session)
         ? delegate.session.replyPreview(model.replyTo) : null
-    // The reply quote is shown ONLY when the original is in local history; an
-    // unresolved reference shows no quote at all. Declared on the delegate (not on
-    // `content`) so the quote Rectangle's visible/height bindings resolve it.
     readonly property bool hasReplyQuote: delegate.replyInfo !== null && delegate.replyInfo.found
 
-    // A real message can carry reactions (not a service notice or request, and it
-    // must have a protocol id to reference).
     readonly property bool reactable: !delegate.isSystem && !delegate.isContactRequest
         && model.e2eId && model.e2eId.length > 0
-    // The reaction chips for this message: [{ emoji, count, mine }], re-queried
-    // whenever any reaction changes (reactionsRevision drives the binding).
     readonly property int kStickerMaxEmoji: 3
     readonly property int kStickerOnePixels: 56
     readonly property int kStickerFewPixels: 40
@@ -139,9 +94,6 @@ Item {
     readonly property var reactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionSummary(model.e2eId) : []
-    // The emoji on this message that arrived while nobody was looking at them.
-    // They flash once, so that somebody who came here from a notification is
-    // shown what it was about instead of having to find it.
     readonly property var freshReactions: (delegate.session && delegate.reactable
         && delegate.session.reactionsRevision >= 0)
         ? delegate.session.reactionsToFlash(model.e2eId) : []
@@ -153,7 +105,6 @@ Item {
         opacity: delegate.kChosenTint
     }
 
-    // Centered system notice (e.g. a cleared-chat note).
     ColumnLayout {
         id: sysBlock
         visible: delegate.isSystem
@@ -162,7 +113,6 @@ Item {
         spacing: 8
 
         Label {
-            id: sysLabel
             text: model.text
             color: (delegate.isAddFailed || delegate.isRoutingFailed)
                 ? Theme.danger : Theme.textDim
@@ -202,8 +152,6 @@ Item {
         }
     }
 
-    // The inline keyboard attached to this message (rows of buttons), parsed
-    // from its JSON wire form; empty when there is none.
     function parseKeyboard(wire) {
         if (!wire || wire.length === 0) {
             return []
@@ -211,7 +159,6 @@ Item {
         try { return JSON.parse(wire) } catch (e) { return [] }
     }
     readonly property var keyboardButtons: delegate.parseKeyboard(model.keyboard)
-    // A keyboard row's buttons in the lines they take at the widest a bubble gets.
     function keyLines(naturals) {
         const lines = []
         for (let at = 0; at < naturals.length; ++at) {
@@ -226,7 +173,6 @@ Item {
         }
         return lines
     }
-    // Where a button sits: its line shares out what the bubble has over, the last one the rest.
     function keyPlace(lines, naturals, index, rowWidth) {
         for (let line = 0; line < lines.length; ++line) {
             const keys = lines[line].keys
@@ -244,18 +190,14 @@ Item {
         }
         return {line: 0, x: 0, width: 0}
     }
-    // A link's address as it is: without angle brackets it cannot pass for markup.
     function shownAddress(link) {
         return link.replace(/</g, "%3C").replace(/>/g, "%3E")
     }
 
-    // The keyboard message's protocol id, sent back as a callback's ref.
     readonly property string msgE2eId: model.e2eId
 
-    // True for an own text message that can be edited (not an attachment).
     readonly property bool canEdit: model.outgoing && model.type === "text"
         && !delegate.isAttachment
-    // The whole message body for "Copy all" (the file name for an attachment).
     readonly property string fullText: delegate.isAttachment
         ? (model.attName || "") : (model.text || "")
 
@@ -266,9 +208,7 @@ Item {
     readonly property string contentKey: (model.text || "") + "" + (model.keyboard || "")
     onContentKeyChanged: delegate.busy = false
     Timer { id: busyTimer; interval: 6000; onTriggered: delegate.busy = false }
-    // The view hands a scrolled-away bubble to another row: it takes that row's look at once.
     property bool pooled: false
-    // While a bubble's text is being selected the rows give their taps and swipes to the selection.
     readonly property bool textSelecting: !!(delegate.ListView.view && delegate.ListView.view.selectingText)
     ListView.onPooled: {
         if (delegate.ListView.view && delegate.ListView.view.selectingText === bodyText) {
@@ -283,18 +223,15 @@ Item {
         busy = false
         busyTimer.stop()
     }
-    // A reused bubble measures itself at once: the view places it before its layouts' own polish.
     ListView.onReused: {
         pooled = false
         content.ensurePolished()
     }
 
-    // Pulled by a finger past kActionPull, letting go answers the message (left) or passes it on (right).
     property real pull: 0
     readonly property int kActionPull: 64
     readonly property int kMaxPull: 96
     readonly property real kPullResistance: 0.3
-    // Anything a person wrote or sent; service notices and requests are neither answered nor passed on.
     readonly property bool actionable: !delegate.isSystem && !delegate.isContactRequest
         && !!model.e2eId && model.e2eId.length > 0
     function reply() {
@@ -365,13 +302,12 @@ Item {
         anchors.verticalCenter: bubble.verticalCenter
     }
 
-    // Single round indicator, coloured by delivery status (see DeliveryStatus).
     function statusColor(s) {
-        if (s === DeliveryStatus.Delivering) return Theme.textDim       // grey
-        if (s === DeliveryStatus.AtRecipientServer) return Theme.warn    // amber
-        if (s === DeliveryStatus.Delivered) return Theme.success        // green
-        if (s === DeliveryStatus.Failed) return Theme.danger            // red
-        return "transparent"                                            // preparing (hollow ring)
+        if (s === DeliveryStatus.Delivering) return Theme.textDim
+        if (s === DeliveryStatus.AtRecipientServer) return Theme.warn
+        if (s === DeliveryStatus.Delivered) return Theme.success
+        if (s === DeliveryStatus.Failed) return Theme.danger
+        return "transparent"
     }
     readonly property bool toSelf: delegate.session !== null
         && delegate.session.isSavedChat(delegate.session.activePeer)
@@ -381,14 +317,12 @@ Item {
     readonly property bool fromHost: delegate.inGroup && model.fromHost === true
     readonly property bool onlyForMe: delegate.inGroup && !delegate.fromMember && !delegate.fromHost
     readonly property int letterSize: 30
-    // A bubble takes at most kBubbleShare of the row; its content is kBubbleInset narrower.
     readonly property real kBubbleShare: 0.72
     readonly property int kBubbleInset: 20
     readonly property real contentRoom: delegate.width * kBubbleShare - kBubbleInset
     readonly property int kKeyHeight: 34
     readonly property int kKeyGap: 4
     readonly property int kKeyPadding: 10
-    // A send's error stays a small note on the bubble; the tap still copies all of it.
     readonly property int kErrorPixelSize: 11
     readonly property int kErrorLines: 2
     readonly property int kResendTarget: 28
@@ -426,7 +360,6 @@ Item {
         }
     }
 
-    // Right-click or long-press anywhere along the row opens the message's menu.
     TapHandler {
         enabled: !delegate.isSystem && !delegate.choosing
         // A touch carries no button, so a right-button handler would take every tap.
@@ -452,7 +385,6 @@ Item {
     function within(item, scene) {
         return item.visible && item.contains(item.mapFromItem(null, scene.x, scene.y))
     }
-    // A tap on a part that answers taps itself stays that part's.
     function onTappablePart(scene) {
         const parts = [replyQuote, preview, wave, speedChip, resendLink]
         for (let i = 0; i < reactionChips.count; ++i) {
@@ -460,8 +392,6 @@ Item {
         }
         return parts.some(part => delegate.within(part, scene))
     }
-    // On a phone the text takes no touch, so a tap on it reaches the row: a link is followed,
-    // a tap anywhere else on the bubble opens the reactions, and one beside it the menu.
     TapHandler {
         enabled: App.mobile && !delegate.isSystem && !delegate.textSelecting && !delegate.choosing
         acceptedButtons: Qt.LeftButton
@@ -504,10 +434,6 @@ Item {
             enabled: !delegate.pooled
             ColorAnimation { duration: delegate.heldFadeMs }
         }
-        // Search-jump flash: a brief accent outline on the targeted message. An
-        // incoming contact request keeps a permanent thin green outline, and a
-        // group message meant for this member alone a white one, so they stand
-        // apart.
         border.width: delegate.highlighted ? 2
             : (delegate.isContactRequestIncoming || delegate.onlyForMe ? 1 : 0)
         border.color: delegate.isContactRequestIncoming ? Theme.green
@@ -541,10 +467,6 @@ Item {
                 Layout.fillWidth: true
             }
 
-            // Passed on, not written here - said before the content rather than
-            // after it, because it is what the content should be read in the
-            // light of. The mark is all it is: it names nobody and says nothing
-            // about who wrote what follows.
             RowLayout {
                 visible: model.forwarded === true
                 Layout.fillWidth: true
@@ -559,13 +481,9 @@ Item {
                 }
             }
 
-            // Reply quote: the message this one replies to. Shown ONLY when the
-            // original is in local history (then it is a clickable jump to it); a
-            // reference we cannot resolve shows no quote at all.
             Rectangle {
                 id: replyQuote
                 visible: delegate.hasReplyQuote
-                // As wide as the quote reads, so a short reply widens to show what it answers.
                 implicitWidth: replyCol.implicitWidth + 16
                 Layout.fillWidth: true
                 Layout.preferredHeight: delegate.hasReplyQuote ? replyCol.implicitHeight + 8 : 0
@@ -573,7 +491,6 @@ Item {
                 color: Theme.surface
                 border.color: Theme.border
                 border.width: 1
-                // A neon accent bar on the leading edge, like a quote rule.
                 Rectangle { width: 3; height: parent.height - 8; y: 4; x: 0; radius: 1; color: Theme.accent }
                 ColumnLayout {
                     id: replyCol
@@ -590,7 +507,6 @@ Item {
                         Layout.fillWidth: true
                     }
                     Label {
-                        // A little of what was said, not a rendering of it.
                         readonly property int kQuoteLines: 2
                         text: delegate.replyInfo ? App.markupPlain(delegate.replyInfo.text) : ""
                         color: Theme.textDim
@@ -607,9 +523,6 @@ Item {
                 }
             }
 
-            // Contact request: an incoming one reads green with an "Agree" button
-            // (no decline - ignoring it is the decline); our own outgoing one is a
-            // "request sent" note.
             ColumnLayout {
                 visible: delegate.isContactRequest
                 Layout.fillWidth: true
@@ -625,8 +538,6 @@ Item {
                     Layout.fillWidth: true
                 }
                 Label {
-                    // Written by someone who is not a contact yet: their words are
-                    // shown, their markup is not. Nothing here is tappable.
                     visible: model.text.length > 0
                     text: App.markupPlain(model.text)
                     color: Theme.text
@@ -636,13 +547,9 @@ Item {
                 Button {
                     id: agreeButton
                     focusPolicy: Theme.pressFocus
-                    // Re-evaluated on contact changes via contactsRevision.
                     visible: delegate.isContactRequestIncoming && delegate.session
                         && delegate.session.contactsRevision >= 0
                         && delegate.session.contactCanAccept(delegate.session.activePeer)
-                    // The press, and the account's own answer to it: the button
-                    // says "Agreeing" until the acceptance is confirmed stored by
-                    // their server, and reads as pressable again if it never was.
                     readonly property bool inFlight: delegate.session
                         && delegate.session.contactsRevision >= 0
                         && (delegate.session.acceptingContact === delegate.session.activePeer
@@ -667,8 +574,6 @@ Item {
                 }
             }
 
-            // Attachment card. Built only for a message that carries a file: it
-            // is the heaviest thing in this delegate, and a chat is mostly text.
             Loader {
                 active: delegate.isAttachment
                 visible: active
@@ -677,13 +582,6 @@ Item {
                     spacing: 2
                     Label { text: "" + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
                     Label { visible: model.attSize > 0; text: Format.bytes(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
-                    // Upload feedback on one's own file while it is actively being
-                    // sent (status stays Sending only during the live upload; an
-                    // interrupted send is demoted to Failed on load). Shows the real
-                    // byte percentage once known, falling back to an indeterminate bar
-                    // before the first progress callback arrives.
-                    // The stages differ in length, so the block is sized once for the
-                    // longest of them: a bubble that resizes on every step is unreadable.
                     TextMetrics {
                         id: stageMetrics
                         font.pixelSize: Theme.fontSmall
@@ -691,12 +589,6 @@ Item {
                     }
 
                     ColumnLayout {
-                        // A file is served on demand, so this block also carries the
-                        // steps before any byte moves: the request arriving, the
-                        // one-time address being built and published.
-                        // Only while bytes are actually moving. The message that
-                        // announces a transfer is a small message like any other,
-                        // and a progress bar on it says something untrue.
                         visible: model.outgoing && model.transferStage.length > 0
                         Layout.fillWidth: true
                         Layout.minimumWidth: stageMetrics.width
@@ -719,10 +611,6 @@ Item {
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                             }
-                            // Stop, beside the bar it belongs to: a transfer the
-                            // user has changed their mind about ends here as well
-                            // as in the activity panel, and this is where they are
-                            // looking while it runs.
                             Button {
                                 id: stopUpload
                                 focusPolicy: Theme.pressFocus
@@ -751,14 +639,7 @@ Item {
                             elide: Text.ElideRight
                         }
                     }
-                    // Download progress for an incoming attachment being saved: a real
-                    // bytes received / total bar with a percentage (the I2P stream is
-                    // read in chunks). Indeterminate only briefly, before the first
-                    // byte arrives.
                     ColumnLayout {
-                        id: dlProgress
-                        // Incoming only: an outgoing file has its own block above, and
-                        // showing both put two bars in the sender's bubble.
                         visible: !model.outgoing
                             && (model.downloading || model.transferStage.length > 0)
                         Layout.fillWidth: true
@@ -772,8 +653,6 @@ Item {
                                 Layout.preferredHeight: 4
                                 from: 0
                                 to: 1
-                                // Hold the bar at the bytes we have while reconnecting,
-                                // rather than dropping back to an indeterminate sweep.
                                 indeterminate: model.downloadTotal <= 0
                                 value: model.downloadTotal > 0
                                     ? model.downloadReceived / model.downloadTotal : 0
@@ -785,10 +664,6 @@ Item {
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                             }
-                            // Stop, beside the bar it belongs to: a transfer the
-                            // user has changed their mind about ends here as well
-                            // as in the activity panel, and this is where they are
-                            // looking while it runs.
                             Button {
                                 id: stopDownload
                                 focusPolicy: Theme.pressFocus
@@ -821,8 +696,6 @@ Item {
                             elide: Text.ElideRight
                         }
                     }
-                    // A failed save: the reason, inline and copyable. The Save
-                    // button reappears so the user can retry.
                     CopyableError {
                         visible: model.downloadError.length > 0
                         Layout.fillWidth: true
@@ -833,24 +706,16 @@ Item {
                         id: saveButton
                         focusPolicy: Theme.pressFocus
                         visible: !model.outgoing && !model.downloading
-                        // Once saved and the file is still on disk, offer to open it;
-                        // otherwise (never saved, or the file is gone) offer Save.
                         readonly property bool savedExists: model.savedPath.length > 0
                             && delegate.session && delegate.session.fileExists(model.savedPath)
                         text: savedExists ? qsTr("Open") : qsTr("Save")
                         onClicked: {
-                            // Re-check on click so a file deleted since the last load
-                            // falls back to re-saving rather than revealing a stale path.
                             if (model.savedPath.length > 0 && delegate.session
                                     && delegate.session.fileExists(model.savedPath)) {
                                 delegate.session.showInFolder(model.savedPath)
                                 return
                             }
-                            // Snapshot the attachment onto the shared dialog and seed the
-                            // native picker with the message's file name in Downloads.
-                            // currentFile (not selectedFile) is what pre-fills the
-                            // suggested name in SaveFile mode here - matching the export
-                            // backup dialog, which is the pattern that actually pre-fills.
+                            // In SaveFile mode only currentFile pre-fills the suggested name.
                             saveDialog.peer = delegate.session.activePeer
                             saveDialog.e2eId = model.e2eId
                             saveDialog.token = model.msgId
@@ -866,18 +731,12 @@ Item {
                 }
             }
 
-            // A picture: the image itself and its size. Between arriving and
-            // being decoded it holds its place rather than collapsing the bubble
-            // to nothing.
             ColumnLayout {
                 visible: delegate.isPicture
                 Layout.fillWidth: true
                 spacing: 2
 
                 Rectangle {
-                    // Holds the place while the bytes are decoded - but not when
-                    // the decode failed: a placeholder that never resolves is a
-                    // black rectangle the user cannot tell from a picture.
                     visible: model.hasPicture && preview.status !== Image.Ready
                         && preview.status !== Image.Error
                     Layout.preferredWidth: Math.min(preview.maxEdge, delegate.contentRoom)
@@ -893,8 +752,6 @@ Item {
                     source: delegate.pictureUrl
                     asynchronous: true
                     fillMode: Image.PreserveAspectFit
-                    // Big enough to see, small enough to keep the chat a chat, and never wider
-                    // than its bubble.
                     readonly property int maxEdge: 320
                     readonly property real fit: implicitWidth > 0 && implicitHeight > 0
                         ? Math.min(1, maxEdge / implicitWidth, maxEdge / implicitHeight,
@@ -918,10 +775,6 @@ Item {
 
             }
 
-            // A voice message: the shape of what was said, how long it runs and
-            // what it weighs. The audio is in the account, decoded straight into
-            // the speaker; the waveform was drawn from that same audio when the
-            // message was stored.
             RowLayout {
                 visible: delegate.isVoice
                 Layout.fillWidth: true
@@ -933,16 +786,11 @@ Item {
                     onClicked: delegate.session.playVoice(model.e2eId)
                 }
 
-                // One bar per slice of the recording, read out of the stored hex
-                // account. A message stored without one draws nothing rather
-                // than an invented shape.
                 Row {
                     id: wave
                     readonly property string hex: model.attWave || ""
                     readonly property int kBars: 32
                     readonly property int kMaxHeight: 26
-                    // How much of it has been played, in bars. Only the message
-                    // actually playing has any: the rest sit unlit.
                     readonly property int playedBars: {
                         if (!delegate.voicePlaying || !(model.attDurationMs > 0)) {
                             return 0
@@ -969,8 +817,6 @@ Item {
                             color: index < wave.playedBars ? Theme.neon : Theme.textDim
                         }
                     }
-                    // Pressing the shape plays from there: the drawn audio is the
-                    // only place in the bubble that knows where "there" is.
                     TapHandler {
                         onTapped: function(point) {
                             if (!(model.attDurationMs > 0)) {
@@ -985,9 +831,6 @@ Item {
                 }
 
                 Label {
-                    // How long it runs, and while it is running how much of it is
-                    // left - in the time that is actually still to wait, so a
-                    // message played at 2x counts down twice as fast.
                     text: {
                         const durationMs = model.attDurationMs || 0
                         const speed = delegate.session ? delegate.session.voiceSpeed : 1
@@ -999,18 +842,13 @@ Item {
                     color: Theme.text
                     font.pixelSize: Theme.fontSmall
                 }
-                // What it weighs is footer material; this row is for playing it.
                 Item { Layout.fillWidth: true }
-                // Playback speed, stepped through by pressing it. It belongs to
-                // the session, so the choice holds for the next one too.
                 Label {
                     id: speedChip
                     text: qsTr("%1x").arg(delegate.session ? delegate.session.voiceSpeed : 1)
                     color: (delegate.session && delegate.session.voiceSpeed > 1)
                         ? Theme.accent : Theme.textDim
                     font.pixelSize: Theme.fontSmall
-                    // As wide as the widest label it will ever hold: stepping
-                    // 1x -> 1.5x otherwise widened the bubble under the cursor.
                     Layout.preferredWidth: Math.ceil(speedWidth.advanceWidth)
                     horizontalAlignment: Text.AlignRight
                     TextMetrics {
@@ -1023,15 +861,6 @@ Item {
                 }
             }
 
-            // The body. A read-only TextEdit (not a Label) so the user can select
-            // text with the mouse and copy it (Ctrl+C); "Copy all" in the context
-            // menu copies the message as it was written, markers and all.
-            //
-            // The document is built from the message rather than handed the
-            // message: a body drawn as rich text as it arrived would let a
-            // correspondent name a picture in it, and the picture would be
-            // fetched - from this machine, over the ordinary internet - as the
-            // bubble drew.
             Repeater {
                 model: delegate.invitePlates
                 Rectangle {
@@ -1093,8 +922,6 @@ Item {
                 selectedTextColor: Theme.bg
                 Layout.fillWidth: true
                 onLinkActivated: function(link) { delegate.activateLink(link) }
-                // Where a web address leads is shown before it is followed; the
-                // dialog says it again, but the cursor gets there first.
                 ToolTip.visible: !App.mobile && bodyText.hoveredLink.startsWith("http")
                 ToolTip.text: delegate.shownAddress(bodyText.hoveredLink)
                 HoverHandler {
@@ -1114,9 +941,6 @@ Item {
                 }
             }
 
-            // A press on a verbatim block has an answer where the block is: the
-            // clipboard is somewhere else, and a press that changes nothing on
-            // screen reads as a press that did nothing.
             Label {
                 visible: delegate.copiedBlock
                 text: qsTr("Copied to clipboard")
@@ -1127,33 +951,20 @@ Item {
                 Layout.fillWidth: true
             }
 
-            // Inline keyboard (interactive message): rows of tappable buttons.
-            // Shown on incoming messages; a tap sends a bot.callback (data) or a
-            // bot.command (command) back to the sender. Built only when there are
-            // buttons - almost no message has any.
             Loader {
                 active: !model.outgoing && delegate.keyboardButtons.length > 0
                 visible: active
                 Layout.fillWidth: true
                 Layout.topMargin: 2
-                // A Loader does not take its height from the layout it loads: the
-                // layout sizes itself to its parent, and its parent is this
-                // Loader, which is nothing high until it is told what to be. The
-                // buttons were built and given no room, which reads exactly like a
-                // bot whose keyboard does not arrive.
+                // A Loader in a layout takes no height from what it loads.
                 Layout.preferredHeight: active && item ? item.implicitHeight : 0
                 sourceComponent: ColumnLayout {
                     id: keysColumn
                     spacing: delegate.kKeyGap
-                    // The rows are held here rather than read straight out of the
-                    // delegate: a Repeater inside a loaded component takes nothing
-                    // from an array reached through an outer id - measured, the
-                    // same expression reads fine everywhere else in this component
-                    // and builds no rows at all as a model.
+                    // A Repeater in a loaded component builds no rows from an array read through an outer id.
                     property var rows: delegate.keyboardButtons
                     Repeater {
                         model: keysColumn.rows
-                        // Lines broken at the widest a bubble gets, each spanning the bubble.
                         Item {
                             id: keyRow
                             Layout.fillWidth: true
@@ -1207,10 +1018,6 @@ Item {
                                     enabled: !delegate.busy
                                     opacity: delegate.busy ? 0.5 : 1.0
                                     onClicked: {
-                                        // The press is dimmed until the reply
-                                        // lands, so it cannot be sent twice; what
-                                        // it is doing is said in the activity
-                                        // panel, not written on the message.
                                         delegate.busy = true
                                         busyTimer.restart()
                                         if (modelData.data !== undefined)
@@ -1220,14 +1027,9 @@ Item {
                                             delegate.session.sendCommand(modelData.command, "",
                                                 modelData.text)
                                     }
-                                    // Pointing-hand cursor over the button.
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                                     background: Rectangle {
                                         radius: 8
-                                        // At rest a shade above the bubble it sits
-                                        // on, with a border to match: on the
-                                        // bubble's own surface the buttons read as
-                                        // more text.
                                         color: kbButton.down ? Theme.accent
                                             : kbButton.hovered ? Theme.bg : Theme.surfaceAlt
                                         border.color: kbButton.hovered
@@ -1250,9 +1052,6 @@ Item {
                 }
             }
 
-            // Footer: edited marker + time + outgoing status, and for a voice
-            // message what it weighs - on this line rather than on the one with
-            // the waveform, the speed and the play button.
             RowLayout {
                 readonly property bool spread: delegate.isVoice || delegate.isPicture
                     || delegate.reactions.length > 0
@@ -1270,17 +1069,12 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: 1
                 }
-                // Reaction chips, on the same line as the time and to the left of
-                // it: one per distinct emoji with its count. Tapping a chip toggles
-                // our reaction to that emoji.
                 Repeater {
                     id: reactionChips
                     model: delegate.reactions
                     Rectangle {
                         id: chip
                         required property var modelData
-                        // New since this chat was last looked at: it is given the
-                        // brand's one accent for a moment and then let go.
                         readonly property bool fresh:
                             delegate.freshReactions.indexOf(modelData.emoji) >= 0
                         height: 18
@@ -1288,9 +1082,6 @@ Item {
                         radius: 4
                         color: modelData.mine ? Theme.reactionMine : Theme.surfaceAlt
                         border.color: modelData.mine ? Theme.reactionMineEdge : Theme.border
-                        // A short neon pulse rather than a steady colour: it says
-                        // "this is what you came for" and then leaves the chip
-                        // looking like every other one.
                         Rectangle {
                             id: pulse
                             anchors.fill: parent
@@ -1300,10 +1091,7 @@ Item {
                             border.width: 1
                             visible: opacity > 0
                             opacity: 0
-                            // The animation names what it drives rather than
-                            // taking the property over: written as a value source
-                            // it would be fighting the nought above for it, and
-                            // which of the two won would be anybody's guess.
+                            // target/property, not a value source: that would fight the binding above.
                             SequentialAnimation {
                                 running: chip.fresh
                                 loops: 2
@@ -1348,7 +1136,6 @@ Item {
                     font.italic: true
                 }
                 Label {
-                    id: timeLabel
                     text: model.time ? new Date(model.time).toLocaleTimeString(Qt.locale(), "hh:mm") : ""
                     color: Theme.textDim
                     font.pixelSize: 10
@@ -1368,9 +1155,6 @@ Item {
                 }
             }
 
-            // What is happening to a send that has not gone through yet, in the same
-            // grey as the chip: a message being tried again says so on itself,
-            // instead of looking like one nobody is carrying.
             CopyableError {
                 visible: model.outgoing && model.status === DeliveryStatus.Delivering
                     && model.error && model.error.length > 0
@@ -1384,9 +1168,6 @@ Item {
                 elide: Text.ElideRight
             }
 
-            // Delivery-failure notice for an outgoing message: the reason and a
-            // resend action, shown on the message itself rather than as an
-            // application-wide banner.
             RowLayout {
                 visible: model.outgoing && model.status === DeliveryStatus.Failed
                 Layout.fillWidth: true
@@ -1401,7 +1182,6 @@ Item {
                     maximumLineCount: delegate.kErrorLines
                     elide: Text.ElideRight
                 }
-                // Resend covers everything this device can send again by itself.
                 Item {
                     id: resendLink
                     visible: model.type === "text" || model.type === "file"
@@ -1441,7 +1221,6 @@ Item {
             fileMode: FileDialog.SaveFile
             onAccepted: delegate.session.savePictureAs(pictureSaveDialog.e2eId, selectedFile)
         }
-        // Built when first opened: made with every bubble, it cost each one several ms.
         Loader {
             id: contextMenu
             active: false
@@ -1452,10 +1231,6 @@ Item {
                     id: menu
                     parent: bubble
                     ContextMenuItem {
-                        id: reactEntry
-                        // Plain ASCII, no "…" / "&": the default MenuItem renderer draws the
-                        // ellipsis as a tofu box and treats "&" as a mnemonic, which mangled
-                        // these labels into "React_" / "React_ view".
                         text: qsTr("React")
                         iconName: "smile"
                         visible: delegate.reactable
@@ -1464,7 +1239,6 @@ Item {
                             delegate.menuAt.x, delegate.menuAt.y)
                     }
                     ContextMenuItem {
-                        // From the account straight to the clipboard: no file in between.
                         text: qsTr("Copy picture")
                         iconName: "copy"
                         visible: delegate.pictureUrl.length > 0
@@ -1472,8 +1246,6 @@ Item {
                         onTriggered: delegate.session.copyPicture(model.e2eId)
                     }
                     ContextMenuItem {
-                        // A picture lives in the account database; this is how it leaves
-                        // it as a file.
                         text: qsTr("Save as")
                         iconName: "save"
                         visible: delegate.pictureUrl.length > 0
@@ -1502,8 +1274,6 @@ Item {
                     ContextMenuItem {
                         text: qsTr("Copy all")
                         iconName: "copy"
-                        // Only where there is text to copy: an attachment, a request, a
-                        // picture and a voice message carry none.
                         visible: !delegate.isAttachment && !delegate.isContactRequest
                             && delegate.fullText.length > 0
                         height: visible ? implicitHeight : 0
@@ -1512,7 +1282,6 @@ Item {
                     ContextMenuItem {
                         text: qsTr("Select text")
                         iconName: "cursor"
-                        // A phone's finger cannot drag across the text the way a mouse does.
                         visible: App.mobile && bodyText.visible
                         height: visible ? implicitHeight : 0
                         onTriggered: delegate.selectTextRequested(bodyText)
@@ -1569,10 +1338,7 @@ Item {
         }
     }
 
-    // Native Save dialog: the OS file picker pre-filled with the message's file
-    // name, so it resolves any name conflict itself. On accept the download runs in
-    // the background with its byte progress shown on this bubble. peer/e2eId/token
-    // are snapshotted on open so a recycled delegate cannot misroute the result.
+    // Snapshotted on open: a reused delegate would misroute the result.
     FileDialog {
         id: saveDialog
         property string peer: ""
@@ -1608,7 +1374,6 @@ Item {
             size: delegate.kChoiceMark
         }
     }
-    // On top of everything while choosing, so no part of the message answers the tap itself.
     MouseArea {
         anchors.fill: parent
         enabled: delegate.choosing && delegate.actionable

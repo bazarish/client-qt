@@ -94,7 +94,6 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&log_, &OperationLog::changed, &events_, &AppEvents::opChanged);
     connect(&log_, &OperationLog::removed, &events_, &AppEvents::opRemoved);
 
-    connect(&commands_, &AppCommands::refreshAccountList, this, &CoreHost::refreshAccountList);
     connect(&commands_, &AppCommands::openAccount, this, &CoreHost::openAccount);
     connect(&commands_, &AppCommands::switchTo, this, &CoreHost::switchTo);
     connect(&commands_, &AppCommands::setOnline, this, &CoreHost::setOnline);

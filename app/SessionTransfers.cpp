@@ -1,28 +1,12 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
-#include "SessionShared.hpp"
-
 #include "Documents.hpp"
-
-#include "Session.hpp"
-
-#include <bazarish/Crypto.hpp>
-#include <bazarish/Limits.hpp>
-#include <bazarish/Descriptor.hpp>
-#include <bazarish/Portal.hpp>
-
-#pragma push_macro("emit")
-#undef emit
-#include <bazarish/Log.hpp>
-#pragma pop_macro("emit")
 
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
 #include <QStandardPaths>
-#include <chrono>
-#include <cstring>
 #include <QUrl>
 
 #if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
@@ -31,23 +15,7 @@
 #include <QDBusReply>
 #endif
 
-#include <algorithm>
-#include <array>
-#include <ctime>
-#include <exception>
-#include <fstream>
-#include <iterator>
-#include <memory>
-#include <mutex>
-#include <thread>
-#include <utility>
-#include <vector>
-
 namespace bazarish::app {
-
-using bazarish::client::IncomingMessage;
-using bazarish::client::ServerEndpoint;
-using bazarish::client::Session;
 
 void SessionController::saveAttachmentToFile(const QString& peer, const QString& e2eId,
     const QString& fileUrl, qint64 token)
@@ -70,17 +38,6 @@ QUrl SessionController::defaultSaveUrl(const QString& fileName) const
     }
     const QString name = fileName.isEmpty() ? QStringLiteral("file") : fileName;
     return QUrl::fromLocalFile(QDir(dir).filePath(name));
-}
-
-void SessionController::onUploadProgress(qint64 localId, qint64 sent, qint64 total)
-{
-    const double fraction = total > 0 ? static_cast<double>(sent) / static_cast<double>(total) : 0.0;
-    conversation_.setUploadProgressForId(localId, fraction);
-}
-
-void SessionController::onDownloadProgress(qint64 token, qint64 received, qint64 total)
-{
-    conversation_.setDownloadProgressForId(token, received, total);
 }
 
 void SessionController::onTransferStage(

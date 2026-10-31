@@ -117,7 +117,6 @@ class SessionController : public QObject {
     Q_PROPERTY(int reactionsRevision READ reactionsRevision NOTIFY reactionsRevisionChanged)
     Q_PROPERTY(bool i2pHasKey READ i2pHasKey NOTIFY i2pStatusChanged)
     Q_PROPERTY(bool i2pEnabled READ i2pEnabled NOTIFY i2pStatusChanged)
-    Q_PROPERTY(bool i2pActive READ i2pActive NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pAddress READ i2pAddress NOTIFY i2pStatusChanged)
     Q_PROPERTY(QString i2pServedAddress READ i2pServedAddress NOTIFY i2pStatusChanged)
     Q_PROPERTY(bool i2pAddressMismatch READ i2pAddressMismatch NOTIFY i2pStatusChanged)
@@ -229,7 +228,6 @@ public:
     Q_INVOKABLE QString withoutInvites(const QString& text) const;
     bool i2pHasKey() const { return i2pHasKey_; }
     bool i2pEnabled() const { return i2pEnabled_; }
-    bool i2pActive() const { return i2pActive_; }
     QString i2pAddress() const { return i2pAddress_; }
     QString i2pServedAddress() const { return i2pServedAddress_; }
     bool i2pAddressMismatch() const
@@ -503,8 +501,6 @@ private slots:
     void onAvatarReady(const QString& fingerprint, const QByteArray& data);
     void dropChat(const QString& peer);
     void onContactAccepted(const QString& peer, bool ok, const QString& reason);
-    void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
-    void onDownloadProgress(qint64 token, qint64 received, qint64 total);
     void onServedProgress(const QString& peer, const QString& e2eId, qint64 sent,
         qint64 total);
     void onTransferStage(const QString& peer, const QString& e2eId, const QString& stage);
@@ -518,8 +514,8 @@ private slots:
     void onConnectProgress(int percent, const QString& phase);
     void onFacadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
-    void onI2pStatus(bool hasKey, bool enabled, bool active, const QString& address,
-        qint64 transientExpires, const QString& serverState);
+    void onI2pStatus(bool hasKey, bool enabled, const QString& address, qint64 transientExpires,
+        const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
     void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
@@ -614,7 +610,6 @@ private:
     QStringList recentReactions_;
     QStringList recentEmoji_;
     QString ownInvite_;
-    QHash<QString, qint64> pictureOwners_;
     VoiceNote* voiceNote();
     std::unique_ptr<VoiceNote> voice_;
     QTimer voiceTimer_;
@@ -652,7 +647,6 @@ private:
     bool pairing_ = false;
     bool i2pHasKey_ = false;
     bool i2pEnabled_ = false;
-    bool i2pActive_ = false;
     QString i2pAddress_;
     QString i2pServedAddress_;
     QVariantList devices_;

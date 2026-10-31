@@ -1,12 +1,9 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// A deletion that did not go through, in one of two ways: the server never
-// answered, or the profile itself would not open. Nothing has been removed
-// either way, and the choice between trying later and walking away belongs to
-// the user - but only one of the two is worth trying again.
 Dialog {
     id: root
     property string accountId: ""
@@ -14,8 +11,6 @@ Dialog {
     signal retryRequested(string id)
     signal localOnlyRequested(string id)
 
-    // The profile could not be opened at all, so there was nothing to ask the
-    // server with and nothing a second attempt would do differently.
     property bool profileNotOpened: false
 
     function show(id, error, notOpened) {
@@ -40,7 +35,6 @@ Dialog {
     footer: DialogButtons {
         acceptText: qsTr("Try again")
         rejectText: qsTr("Close")
-        // Nothing about a profile that will not open changes between attempts.
         acceptEnabled: !root.profileNotOpened
         onAccepted: root.accept()
         onRejected: root.reject()
@@ -59,9 +53,6 @@ Dialog {
                   + "not ended:")
                 : qsTr("Your server did not answer, so the account was not ended:")
         }
-        // The reason comes from the transport and can be any length; past a few
-        // lines it would push the buttons out of a small window, and the whole of
-        // it is in the log either way.
         Label {
             Layout.fillWidth: true
             Layout.leftMargin: 14

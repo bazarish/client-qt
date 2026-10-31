@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -63,10 +64,6 @@ Popup {
 
     background: DialogFrame { }
 
-    // The add-contact actions run on the worker thread (a lookup plus a sealed
-    // delivery with retries - slow over I2P). The conversation the request belongs
-    // to opens right away and the progress is written into it, so this sheet has
-    // nothing left to wait for: it fires the request and closes.
     function startRequest(fn) { errorText = ""; fn(); close() }
 
     function submit() {
@@ -82,8 +79,6 @@ Popup {
         })
     }
 
-    // Primary action button: near-white accent fill, darker on hover/press, so it
-    // reads clearly against the dark popup (the default Basic Button blends in).
     component ActionButton: Button {
         id: ctl
         focusPolicy: Theme.pressFocus
@@ -172,8 +167,6 @@ Popup {
             Layout.fillWidth: true
         }
 
-        // A contact request is admitted by nothing, and the protocol caps what
-        // one may carry; the introduction is what is left over to write.
         FormField {
             id: intro
             label: qsTr("Introduction")

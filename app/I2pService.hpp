@@ -31,7 +31,6 @@ private:
     void useGateway(bool on);
     void checkAndSaveGateway(const QString& address);
     void skipGateway();
-    void clearGateway();
     void useEmbedded();
     void refresh();
     void noteChoiceInForce();

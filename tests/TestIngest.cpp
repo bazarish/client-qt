@@ -67,7 +67,7 @@ int main(int argc, char** argv)
     const QString db = QString::fromStdString((dir / "account.db").string());
 
     TranscriptStore store;
-    CHECK(store.open({}, db, {}));
+    CHECK(store.open(db));
     ContactBook book;
     book.setOwnFingerprint(kMe);
     ContactState bob;

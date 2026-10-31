@@ -2,8 +2,7 @@
 import QtQuick
 import Bazarish
 
-// A field's press-and-hold, listened to only on a phone. A listened press-and-hold
-// keeps Qt from handing the field the release that would drop the selection made.
+// Listening to the press-and-hold keeps Qt from handing the field a release that drops the selection.
 Connections {
     property Item field: null
     property bool held: false

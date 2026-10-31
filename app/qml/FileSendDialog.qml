@@ -1,17 +1,12 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Shown right after a file is picked. There is nothing to configure: a file goes
-// straight to the recipient over a one-time I2P destination, encrypted with a key
-// only they hold, and the message that passes through the servers carries the
-// name, the size and where to fetch it - never the bytes. So this asks for a
-// confirmation and says what is about to happen.
 Dialog {
     id: root
     property var session: null
-    // The picked file (a file:// URL). Set this, then open().
     property url fileUrl: ""
 
     readonly property string fileName: {

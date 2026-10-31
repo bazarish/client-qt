@@ -2,7 +2,6 @@
 import QtQuick
 import Bazarish
 
-// The saved chat is nobody's face: it carries a bookmark wherever a contact shows an avatar.
 Rectangle {
     id: root
     property int size: Theme.avatar

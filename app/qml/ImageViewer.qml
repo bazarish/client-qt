@@ -4,9 +4,6 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import Bazarish
 
-// A picture over the whole window. It takes the window, not the column it was
-// opened from: a wide picture in a narrow chat pane was the reason to open it in
-// the first place. Nothing under it can be clicked while it is up.
 Popup {
     id: root
     property url source
@@ -18,19 +15,16 @@ Popup {
 
     readonly property real kMaxZoom: 4
     readonly property real kDoubleTapZoom: 2.5
-    // One notch of a mouse wheel; a wheel notch is 120 in angleDelta.
+    // A wheel notch is 120 in angleDelta.
     readonly property real kWheelStep: 1.25
     readonly property int kWheelNotch: 120
-    // Decoded no bigger than this: this client sends a picture at most 1600 px, a hostile one is capped.
+    // This client sends at most 1600 px; a bigger, hostile picture is capped here.
     readonly property int kMaxDecodeEdge: 2048
-    // Pulled this far while not zoomed, the picture turns to the one beside it in the chat.
     readonly property int kTurnPull: 80
     readonly property int kSettleMs: 180
     readonly property int kSlideMs: 220
     readonly property int kSlideGap: 24
-    // At the first or the last picture the pull gives this share of the finger's travel.
     readonly property real kEdgeResistance: 0.35
-    // Lifted this far up, the picture is let go and the viewer closes.
     readonly property int kDismissLift: 60
     readonly property int kDismissMs: 110
     readonly property int kButtonSize: 44
@@ -59,7 +53,6 @@ Popup {
         view.fit()
         root.open()
     }
-    // +1 slides to the later picture of the chat, -1 to the earlier one.
     function turn(step) {
         if (slide.running || !(step > 0 ? root.after : root.before).found) {
             return false
@@ -71,8 +64,6 @@ Popup {
         return true
     }
 
-    // The window's overlay, so the size below is the window's size and not the
-    // size of whatever opened this.
     parent: Overlay.overlay
     modal: true
     focus: true
@@ -82,8 +73,6 @@ Popup {
     y: 0
     width: parent ? parent.width : 0
     height: parent ? parent.height : 0
-    // Only Escape: a press anywhere is handled inside, so it never reaches the
-    // chat behind.
     closePolicy: Popup.CloseOnEscape
 
     background: Rectangle {
@@ -226,7 +215,6 @@ Popup {
                 }
             }
         }
-        // The pictures beside this one ride in with the pull; the same address, so the cache keeps them.
         Image {
             x: view.x + root.pull - view.width - root.kSlideGap
             y: view.y
@@ -274,7 +262,6 @@ Popup {
                 }
             }
         }
-        // A tap waits out the double-tap interval: a second one zooms instead of closing.
         Timer {
             id: closing
             interval: Application.styleHints.mouseDoubleClickInterval

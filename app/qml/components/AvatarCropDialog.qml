@@ -4,10 +4,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Choosing which part of a picture becomes the avatar. The stock behaviour was
-// a centre crop decided for the user, which cuts heads off portraits; here the
-// picture is dragged and zoomed under a round window and what is inside it is
-// what gets sent.
 Dialog {
     id: root
 
@@ -34,10 +30,8 @@ Dialog {
         root.quarterTurns = (root.quarterTurns + by + root.kTurnsPerCircle) % root.kTurnsPerCircle
     }
 
-    // What is shown of the picture, turned; its top-left is the picture's x and y.
     readonly property real shownWidth: root.quarterTurns % 2 === 0 ? picture.width : picture.height
     readonly property real shownHeight: root.quarterTurns % 2 === 0 ? picture.height : picture.width
-    // Moved, zoomed or turned, the picture still covers the window: nothing bare gets sent.
     function keepCovered() {
         picture.x = Math.max(viewport.width - root.shownWidth, Math.min(0, picture.x))
         picture.y = Math.max(viewport.height - root.shownHeight, Math.min(0, picture.y))
@@ -63,8 +57,7 @@ Dialog {
         onRejected: root.reject()
     }
 
-    // The keyboard path (Enter) goes through accept(), which closes first; commit
-    // reopens the dialog if the crop could not be written.
+    // Enter goes through accept(), which closes first; commit reopens the dialog on failure.
     onAccepted: root.commit()
 
     function commit() {
@@ -91,8 +84,6 @@ Dialog {
                     id: picture
                     autoTransform: true
                     fillMode: Image.PreserveAspectFit
-                    // Filling the window at zoom 1 whichever way the picture is
-                    // oriented, so there is never a bare corner to send.
                     width: implicitWidth >= implicitHeight
                         ? root.kViewport * zoom.value * (implicitWidth / Math.max(1, implicitHeight))
                         : root.kViewport * zoom.value
@@ -101,8 +92,6 @@ Dialog {
                         : root.kViewport * zoom.value * (implicitHeight / Math.max(1, implicitWidth))
                     x: (parent.width - width) / 2
                     y: (parent.height - height) / 2
-                    // Turned about its corner and shifted back, so x and y stay the top-left of what
-                    // is shown: zoom and drag behave as unturned, and the shorter side still fills.
                     transform: [
                         Rotation { angle: root.quarterTurns * root.kQuarter },
                         Translate {
@@ -146,8 +135,6 @@ Dialog {
                         0, 2 * Math.PI)
                     ctx.stroke()
                 }
-                // Nothing here reacts to the pointer: the picture underneath is
-                // what is dragged.
                 enabled: false
                 Connections {
                     target: Theme

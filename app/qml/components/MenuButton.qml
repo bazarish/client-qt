@@ -1,27 +1,18 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// A menu / list action button in the shared "terminal" style: a solid surface
-// that lifts on hover (surfaceAlt fill + neon outline) and darkens on press, so
-// choices are contrasty and clearly react to the cursor. Set `danger: true` for
-// a destructive action (it keeps a red outline and red text instead).
 Button {
     id: control
     focusPolicy: Theme.pressFocus
     hoverEnabled: true
     property bool danger: false
-    // Set positive: true for a brief success/confirmation state - a green outline
-    // and green text on a green-tinted fill (e.g. an "Add" button flashing
-    // "Requested" after a contact request is sent).
     property bool positive: false
-    // The one action the window is for, filled once it can be taken.
     property bool primary: false
     readonly property bool filled: primary && enabled
     readonly property real kDisabledOpacity: 0.4
     opacity: enabled ? 1 : kDisabledOpacity
-    // A drawn shape to the left of the label, naming what the button does; empty
-    // leaves the label alone in the middle as before.
     property string iconName: ""
     property real iconSize: Theme.iconInline
     leftPadding: 14

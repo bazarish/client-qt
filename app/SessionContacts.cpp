@@ -2,9 +2,7 @@
 #include "SessionController.hpp"
 
 #include "SessionShared.hpp"
-#include "SystemNotes.hpp"
 
-#include "DeliveryStatus.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Address.hpp>
@@ -23,9 +21,6 @@
 #include <chrono>
 #include <QTimer>
 #include <cstring>
-
-#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#endif
 
 #include <algorithm>
 #include <array>

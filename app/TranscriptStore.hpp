@@ -94,13 +94,11 @@ public:
     bool isOpen() const { return db_ != nullptr; }
     bool open(const QString& dbPath, const Bytes& key);
 
-    QString sourcePathFor(qint64 id) const;
     QByteArray media(const QString& key) const;
     qint64 idForE2e(const QString& e2eId) const;
     qint64 idForKey(const QString& peer, const QString& e2eId, bool outgoing) const;
     qint64 idForIncomingE2e(const QString& e2eId, const QString& peer) const;
     qint64 oldestOfType(const QString& peer, const QString& type, bool outgoing) const;
-    qint64 idForAnyProtocol(const QString& e2eId, const QString& peer) const;
     StoredMessage messageByE2e(const QString& e2eId, const QString& peer) const;
     StoredMessage messageById(qint64 id) const;
     QVector<StoredMessage> messagesFor(const QString& peer) const;
@@ -132,7 +130,6 @@ public:
     QStringList conversationPeers() const;
     qint64 lastReadId(const QString& peer) const;
     bool isPinned(const QString& peer) const;
-    QStringList pinnedPeers() const;
     int unreadCount(const QString& peer) const;
     int unreadTotal() const;
     qint64 firstUnreadId(const QString& peer) const;
@@ -151,7 +148,7 @@ protected:
 
 class TranscriptStore : public TranscriptReader {
 public:
-    bool open(const QString& accountId, const QString& dbPath, const QString& passphrase = {});
+    bool open(const QString& dbPath, const QString& passphrase = {});
     QString lastError() const { return lastError_; }
 
     [[nodiscard]] qint64 append(const StoredMessage& message);

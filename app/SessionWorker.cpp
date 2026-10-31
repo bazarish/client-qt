@@ -36,9 +36,6 @@
 #include <QTimer>
 #include <cstring>
 
-#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#endif
-
 #include <algorithm>
 #include <array>
 #include <ctime>
@@ -833,9 +830,6 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
             [this](const int percent, const std::string& text) {
                 emit connectProgress(percent, coreText(QString::fromStdString(text)));
             });
-        bazarish::client::setBootstrapNoticeSink([this](const std::string& text) {
-            emit actionFailed(QString::fromStdString(text));
-        });
         ServerEndpoint endpoint;
         endpoint.serverFingerprint = serverFp.toStdString();
         for (const QString& address : facades) {
@@ -1286,8 +1280,7 @@ void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
 
 void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
 {
-    const QString op = beginOp(
-        QStringLiteral("service"), tr("Read receipt"), tr("Sending…"));
+    const QString op = beginOp(tr("Read receipt"), tr("Sending…"));
     try {
         session_->sendReceipt(peer.toStdString(), refId.toStdString());
         emit opDone(op, true, tr("Receipt sent"));
@@ -1323,9 +1316,8 @@ void SessionWorker::ackPending(const QString& pendingId)
 
 void SessionWorker::sendReaction(const QString& peer, const QString& refId, const QString& emoji)
 {
-    const QString op = beginOp(QStringLiteral("service"),
-        emoji.isEmpty() ? tr("Removing reaction") : tr("Reaction %1").arg(emoji),
-        tr("Sending…"));
+    const QString op = beginOp(
+        emoji.isEmpty() ? tr("Removing reaction") : tr("Reaction %1").arg(emoji), tr("Sending…"));
     try {
         session_->sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
         emit opDone(op, true, tr("Accepted by your server"));
@@ -1401,10 +1393,10 @@ QString SessionWorker::coreText(const QString& reported)
     return reported;
 }
 
-QString SessionWorker::beginOp(const QString& kind, const QString& title, const QString& status)
+QString SessionWorker::beginOp(const QString& title, const QString& status)
 {
     const QString opId = QStringLiteral("op:") + QString::number(++opSeq_);
-    emit opBegin(opId, kind, title, status);
+    emit opBegin(opId, QStringLiteral("service"), title, status);
     return opId;
 }
 
@@ -1666,8 +1658,7 @@ void SessionWorker::setAvatar(const QByteArray& bytes)
     if (!session_) {
         return;
     }
-    const QString op = beginOp(
-        QStringLiteral("service"), tr("Setting your avatar"), tr("Sending to your contacts…"));
+    const QString op = beginOp(tr("Setting your avatar"), tr("Sending to your contacts…"));
     try {
         session_->setAvatar(bazarish::Bytes(bytes.begin(), bytes.end()), "image/jpeg");
         emit avatarReady(QString::fromStdString(session_->fingerprint()), bytes);
@@ -1683,8 +1674,7 @@ void SessionWorker::clearAvatar()
     if (!session_) {
         return;
     }
-    const QString op
-        = beginOp(QStringLiteral("service"), tr("Removing your avatar"), tr("Working…"));
+    const QString op = beginOp(tr("Removing your avatar"), tr("Working…"));
     try {
         session_->setAvatar({}, {});
         emit avatarReady(QString::fromStdString(session_->fingerprint()), {});
@@ -1966,7 +1956,7 @@ void SessionWorker::refreshI2pStatus()
     op.succeed(summary);
     const Session::ApprovalState approval = session_->approvalState();
     emit approvalState(approval.pending, QString::fromStdString(approval.message));
-    emit i2pStatus(hasKey, delegated, live, address, transientExpires, serverState);
+    emit i2pStatus(hasKey, delegated, address, transientExpires, serverState);
 }
 
 void SessionWorker::refreshStorageUsage()

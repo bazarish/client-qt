@@ -9,10 +9,6 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # The runners carry four cores, and a build is capped at them, not above.
-  BAZARISH_JOBS: 4
-
 jobs:
   linux:
     name: Linux ${{ matrix.arch }}

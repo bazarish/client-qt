@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// One form for the selected fragment: its markers and its name.
 Button {
     id: chip
     property var form: ({})

@@ -176,8 +176,6 @@ private:
         const QString& peer, const QString& command, const QString& args, const QString& label);
     void saveAttachment(
         const QString& peer, const QString& e2eId, const QString& dest, qint64 token);
-    void onUploadProgress(qint64 localId, qint64 sent, qint64 total);
-    void onDownloadProgress(qint64 token, qint64 received, qint64 total);
     void onTransferStage(const QString& peer, const QString& e2eId, const QString& stage);
     void onServedProgress(const QString& peer, const QString& e2eId, qint64 sent, qint64 total);
     void onServedFinished(const QString& peer, const QString& e2eId, bool ok, const QString& error);

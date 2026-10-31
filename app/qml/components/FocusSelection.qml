@@ -3,8 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// One selection menu for whichever text field a phone has the focus in. It sits in that
-// field's popup: a tap on it outside the popup would read as a tap beside and close it.
+// Sits in the field's popup: outside it, a tap on the menu reads as a tap beside and closes it.
 SelectionTools {
     id: root
     property ApplicationWindow appWindow: null

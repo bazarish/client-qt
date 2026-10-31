@@ -5,9 +5,6 @@ import QtQuick.Layouts
 import QtMultimedia
 import Bazarish
 
-// Taking a photograph to send. The shot is looked at before it goes anywhere: a
-// frame nobody confirmed is not a message, and the shutter is the only place a
-// camera is held open.
 CameraSheet {
     id: root
 

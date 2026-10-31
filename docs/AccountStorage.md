@@ -70,13 +70,10 @@ indexes, per-page overhead and free space, and no query can attribute a page bac
 to a conversation. The free figure is the freelist counted at the plaintext page
 size, so it is a little under what a rewrite actually returns.
 
-**Deletion takes the media with it.** It did not before: clearing a chat removed
-its rows and left every picture and voice note it held in the database
-permanently. A message is what names its media, so the media goes when the
-message does - read from the row before it is removed, in the same statement
-sequence. There is no separate collection pass looking for what nothing points
-at, and a blob a database already carries under a name no message holds is
-therefore not anybody's to remove.
+**Deletion takes the media with it.** A message is what names its media, so the
+media goes when the message does - read from the row before it is removed, in the
+same statement sequence. There is no separate collection pass looking for what
+nothing points at.
 
 **What a trim does.** It keeps the newest 100 or 1000 messages of a conversation
 and removes the rest, with their reactions and their media, in one transaction:
@@ -147,10 +144,7 @@ copy the account folder, keys included, to Google.
 | **each conversation's delivery pass** | see below |
 
 A delivery pass is not spent, so the bundle **copies** it: the exporting device
-goes on writing and the restored one can write from its first sync. This is the
-one place the pass inverted an older rule - a one-time token could not be in two
-places, so the bundle had to hand one over and the restored device had to buy
-itself more before it could say anything.
+goes on writing and the restored one can write from its first sync.
 
 A device that ends up without the account's address anyway - an older bundle, or
 an account moved another way - does not publish one of its own. On connect it

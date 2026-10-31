@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,10 +9,8 @@ Item {
     id: root
     objectName: "createWizard"
 
-    // A pair link the desktop handed over, waiting for the passphrase above it.
     property string pairLink: ""
 
-    // The chosen .bazarish file while the backup password is being entered.
     property string pendingBackupFile: ""
 
     IconButton {
@@ -22,8 +21,6 @@ Item {
         onClicked: root.StackView.view.pop()
     }
 
-    // The same gear as on the account list: a client waiting on I2P needs the
-    // router status, and there is no account open to reach it through.
     IconButton {
         iconName: "gear"
         anchors.top: parent.top
@@ -95,10 +92,6 @@ Item {
             }
         }
 
-        // Restore everything (keys, routing and contacts) from a .bazarish backup
-        // instead of creating a fresh identity. Uses the name and passphrase above.
-        // The display name is restored from the backup itself, so a name is not
-        // required here; if one is typed it only picks the on-disk account id.
         Button {
             focusPolicy: Theme.pressFocus
             Layout.fillWidth: true
@@ -154,8 +147,6 @@ Item {
         modal: true
         focus: true
         title: qsTr("Backup password")
-        // name + at-rest passphrase come from the wizard fields; this asks only
-        // for the password the backup file was sealed with.
         onAccepted: App.importAccount(nameField.text.trim(), root.pendingBackupFile,
             backupPass.text, passField.text)
         background: DialogFrame { }

@@ -74,7 +74,6 @@ int main(int argc, char** argv)
     settings.setI2pTunnelLength(2);
     settings.setI2pProxy("127.0.0.1", 9050);
     CHECK(fs::exists(file));
-    CHECK(!fs::exists(root / "accounts" / "settings.json"));
 
     {
         std::ifstream in(file);

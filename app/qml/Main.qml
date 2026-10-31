@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -15,7 +16,6 @@ ApplicationWindow {
     LayoutMirroring.enabled: Tr.rightToLeft
     LayoutMirroring.childrenInherit: true
 
-    // The page makes room for a keyboard it raised until it is put away; a popup's field lifts the popup alone.
     property bool pageHoldsKeyboard: false
     readonly property real contentInset: pageHoldsKeyboard ? App.keyboardInset : 0
     function noteKeyboard() {
@@ -59,9 +59,7 @@ ApplicationWindow {
         }
     }
 
-    // The dim behind every modal, and the thing that makes it modal: the stock
-    // overlay dims but lets a pointer handler underneath still see the press, so a
-    // click on a dialog reached the chat behind it. This one swallows the lot.
+    // The stock modal overlay lets pointer handlers beneath still see the press.
     Overlay.modal: Rectangle {
         color: Qt.rgba(0, 0, 0, 0.45)
         MouseArea {
@@ -100,16 +98,11 @@ ApplicationWindow {
         toastTimer.restart()
     }
 
-    // A failed action (i2p activation, a server error, ...) surfaces here on the
-    // top layer and stays until dismissed - never covered by another window and
-    // never auto-hidden, unlike a toast.
     function showError(message) {
         errorText.text = message
         errorDialog.open()
     }
 
-    // Errors and onboarding info come from whichever account is active; the
-    // binding re-targets when the user switches accounts.
     Connections {
         target: App.session
         ignoreUnknownSignals: true
@@ -117,8 +110,6 @@ ApplicationWindow {
         function onServerHello(reason, message, links) { helloDialog.show(reason, message, links) }
     }
 
-    // The incoming call, announced outside this window: it stands over the desktop
-    // while a call rings, unless the user is already looking at the application.
     IncomingCallWindow { mainWindowActive: window.active }
 
     StackView {
@@ -128,7 +119,6 @@ ApplicationWindow {
         // An item that takes a press does not keep it from the pointer handlers of the items below.
         enabled: !operations.open
         initialItem: attachingComponent
-        // An account opens in place; only pages laid over it slide.
         replaceEnter: null
         replaceExit: null
     }
@@ -151,25 +141,19 @@ ApplicationWindow {
                 gatewayFirstRun.open()
             }
         }
-        // The picker over a running account steps aside on selection; that view takes the new session.
         function onAccountOpened() {
             if (stack.currentItem.objectName !== "mainView") {
                 stack.replace(null, mainComponent)
             }
         }
         function onAccountOpenFailed(error) { window.showToast(error) }
-        // The data moved: the embedded router holds its directory for the life of
-        // the process, so there is nothing to do here but say so and stand down.
         function onRestartRequired(message) { restartDialog.show(message) }
         function onCreateFailed(error) { window.showToast(error) }
         function onImportRefused(kind) { importRefusedDialog.show(kind) }
-        // The server would not end the account, so nothing was deleted anywhere.
         function onAccountDeleteFailed(id, error, profileNotOpened) {
             deleteFailedDialog.show(id, error, profileNotOpened)
         }
-        // The profile is locked, and its key is what ends the account on the server.
         function onAccountDeleteNeedsUnlock(id, name) { deleteLockedDialog.show(id, name) }
-        // A pair link makes a new account, so it goes to the wizard that does.
         function onPairLinkOpened(link) {
             let page = stack.currentItem
             if (page && page.objectName === "createWizard") {
@@ -184,14 +168,12 @@ ApplicationWindow {
             page.openPairing(link)
         }
         function onLinkRefused(reason) { window.showToast(reason) }
-        // "Add account": show the picker over the running session(s).
         function onShowPicker() {
             if (stack.currentItem && stack.currentItem.objectName !== "accountPicker") {
                 stack.push(pickerComponent)
             }
         }
         function onSessionChanged() {
-            // Last account signed out: back to the picker.
             if (!App.session && stack.depth > 0 && stack.currentItem
                     && stack.currentItem.objectName === "mainView") {
                 stack.replace(null, pickerComponent)
@@ -224,9 +206,6 @@ ApplicationWindow {
         Timer { id: toastTimer; interval: 3500; onTriggered: toast.close() }
     }
 
-    // Background-activity overlay: a right-edge handle + slide-out panel listing
-    // in-flight async operations (contact add, sends, transfers, calls) with live
-    // status. Below the error dialog (z 1000), above the app content.
     OperationsOverlay {
         id: operations
         anchors.fill: parent
@@ -234,9 +213,6 @@ ApplicationWindow {
         z: 900
     }
 
-    // Asked once, before anything can start a router, because the answer decides
-    // which one starts. Skipping is an answer and is recorded as one, so this
-    // appears once and not on every launch.
     GatewayFirstRunDialog {
         id: gatewayFirstRun
         z: 1100
@@ -253,7 +229,6 @@ ApplicationWindow {
         function onLightChanged() { App.paintSystemBars(Theme.bg) }
     }
 
-    // What a phone must allow for the app to keep working and ring: asked one at a time.
     Popup {
         id: backgroundAsk
         readonly property bool needed: App.backgroundRestricted || App.fullScreenCallsRestricted
@@ -300,14 +275,7 @@ ApplicationWindow {
         }
     }
 
-    // The engine that carries I2P is settled when this application starts, so a
-    // different one is a different run. Nothing is left half-switched: every
-    // account is closed the moment the choice changes - an open one would go on
-    // riding the engine that is no longer chosen - and this stands in front of
-    // the window until Bazarish is started again. It cannot be dismissed,
-    // because there is nothing useful left to do here.
     Popup {
-        id: transportRestart
         parent: Overlay.overlay
         anchors.centerIn: Overlay.overlay
         modal: true
@@ -346,21 +314,14 @@ ApplicationWindow {
                 iconName: "close"
                 text: qsTr("Quit")
                 Layout.alignment: Qt.AlignRight
-                // The way out this application has: it lets the accounts close
-                // and ends the process itself. Qt.quit() instead unwinds the
-                // engine and joins every thread, including one that may be
-                // halfway through a request meant to hang - which is a window
-                // that does not close when it is told to.
+                // Not Qt.quit(): it joins every thread, one of them maybe inside a request meant to hang.
                 onClicked: App.prepareForExit()
             }
         }
     }
 
-    // Server onboarding / hello (unregistered-key connect): its own top-layer
-    // window with copyable links, dismissed only by its button.
     ServerHelloDialog { id: helloDialog }
 
-    // Generic top-layer error surface (see showError).
     Popup {
         id: errorDialog
         parent: Overlay.overlay
@@ -408,15 +369,12 @@ ApplicationWindow {
         }
     }
 
-    // Deleting an account has three ways to go, and only one of them is a
-    // question for the user (the other two are handled where they happen).
     AccountDeleteLockedDialog {
         id: deleteLockedDialog
         onUnlockRequested: (id) => App.deleteAccountAfterUnlock(id)
         onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
     }
 
-    // The account's address, when the server and this device disagree about it.
     AddressChoiceDialog { id: addressChoiceDialog }
 
     Connections {
@@ -450,9 +408,6 @@ ApplicationWindow {
             font.weight: Font.DemiBold
             padding: 14
         }
-        // No way out but out: the data has already moved, every account is
-        // closed, and the embedded router still points at the directory that is
-        // no longer there. Carrying on in this window would be pretending.
         footer: DialogButtons {
             acceptText: qsTr("Quit")
             showReject: false

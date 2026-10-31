@@ -21,11 +21,6 @@ const std::array<QColor, kLetterPaletteSize>& letterPalette()
     return kPalette;
 }
 
-QColor letterInk()
-{
-    return QColor(0xd7, 0xdb, 0xd8);
-}
-
 QString letterOf(const QString& name)
 {
     const QString trimmed = name.trimmed();

@@ -3,10 +3,7 @@
 
 #include "AccountManager.hpp"
 
-#pragma push_macro("emit")
-#undef emit
 #include <bazarish/Log.hpp>
-#pragma pop_macro("emit")
 
 #include <nlohmann/json.hpp>
 

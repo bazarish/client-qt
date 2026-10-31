@@ -17,7 +17,6 @@ ScrollView {
     onFocusedItemChanged: revealFocused()
     onAvailableHeightChanged: revealFocused()
 
-    // The keyboard shrinks the window under the field that raised it.
     function revealFocused() {
         let inside = false
         for (let up = root.focusedItem; up; up = up.parent) {

@@ -1,14 +1,11 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Status of the embedded I2P router plus the persistent on/off switch. Counts
-// come from libi2pd (netDb size, floodfills, our tunnels); they are live only
-// while the router is running (it starts lazily on first I2P use).
 Popup {
     id: root
-    // Return to the page this opened from (Settings); the close button exits.
     signal back()
 
     modal: true
@@ -19,8 +16,6 @@ Popup {
     padding: 0
     background: DialogFrame { }
 
-    // The slider is drawn small: the stock handle is a touch target and swamped
-    // a settings row.
     readonly property int kSliderHandle: 14
     readonly property int kSliderTrackHeight: 4
     readonly property int kSliderHeight: 18
@@ -36,7 +31,6 @@ Popup {
         return qsTr("Three transit routers in the tunnels, the I2P default. The highest latency.")
     }
 
-    // Poll the router diagnostics while the window is open.
     Timer {
         interval: 2000
         repeat: true
@@ -75,7 +69,6 @@ Popup {
                 width: root.width
                 spacing: 14
 
-                // Live status.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -93,9 +86,6 @@ Popup {
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
 
-                    // With a gateway the router is somewhere else, and where is
-                    // the only thing worth saying: a light for a state this
-                    // device does not hold would be guessing.
                     Label {
                         visible: I2p.gatewayEnabled
                         Layout.fillWidth: true
@@ -128,13 +118,7 @@ Popup {
                         }
                     }
 
-                    // A gateway's router is shared by everyone using it: its
-                    // network database and its connections describe that machine
-                    // and its other clients, not this account. What belongs here
-                    // is further down - the destinations this account runs.
                     ColumnLayout {
-                        // An external router keeps its own counsel about the
-                        // network it is on, so there is nothing truthful to show.
                         visible: I2p.running && !I2p.samEnabled && !I2p.gatewayEnabled
                         Layout.fillWidth: true
                         spacing: 6
@@ -146,9 +130,6 @@ Popup {
                 }
                 Hairline { visible: I2p.running }
 
-                // The destinations this router serves right now. The tunnel counts
-                // above are router-wide, so without this it is impossible to tell
-                // whether they belong to one address or to six.
                 ColumnLayout {
                     visible: I2p.running
                     Layout.fillWidth: true
@@ -186,8 +167,6 @@ Popup {
                                     Rectangle {
                                         Layout.alignment: Qt.AlignVCenter
                                         implicitWidth: 8; implicitHeight: 8; radius: 4
-                                        // Coming up is amber, going away is grey, serving
-                                        // is green: three different things, three colours.
                                         color: modelData.state === "building" ? Theme.warn
                                             : modelData.state === "closing" ? Theme.textDim
                                             : Theme.success
@@ -198,12 +177,8 @@ Popup {
                                         Layout.fillWidth: true; elide: Text.ElideRight
                                     }
                                 }
-                                // Its own line: the counts do not fit beside a name that
-                                // may already carry an account prefix.
                                 Label {
-                                    // LeaseSets, not peers: one encrypted address costs two
-                                    // of them, so the count is not a headcount of who is on
-                                    // the other side.
+                                    // LeaseSets, not peers: one encrypted address costs two of them.
                                     text: modelData.localRoute
                                         ? qsTr("gateway routing")
                                         : qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
@@ -214,8 +189,6 @@ Popup {
                                     wrapMode: Text.Wrap; Layout.fillWidth: true
                                 }
                                 Label {
-                                    // One line, shortened: the head identifies the address
-                                    // and a wrapped 56-character base32 dwarfs the row.
                                     text: modelData.host
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     elide: Text.ElideRight; Layout.fillWidth: true
@@ -306,9 +279,6 @@ Popup {
                     Layout.fillWidth: true; height: 1; color: Theme.border
                 }
 
-                // Active direct transport connections (NTCP2 / SSU2 sessions).
-                // A gateway's are the gateway's, made on behalf of everyone
-                // using it.
                 ColumnLayout {
                     visible: I2p.running && !I2p.gatewayEnabled
                     Layout.fillWidth: true
@@ -334,7 +304,6 @@ Popup {
                         padding: 4
                         background: Rectangle { color: Theme.surface; radius: Theme.radiusSmall; border.color: Theme.border }
                         ListView {
-                            id: connList
                             anchors.fill: parent
                             clip: true
                             model: I2p.transports
@@ -352,7 +321,6 @@ Popup {
                 }
                 Hairline { visible: !I2p.samEnabled && !I2p.gatewayEnabled }
 
-                // libi2pd's own logging - off by default, on demand for debugging.
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16

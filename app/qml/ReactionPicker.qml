@@ -1,11 +1,9 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// A small emoji picker for reacting to a message: a grid of common emoji plus a
-// field for any other emoji. A single shared instance is opened (openFor) with
-// the target message's protocol id, so the chat does not pay a popup per bubble.
 Popup {
     id: root
     bottomMargin: App.keyboardInset
@@ -14,20 +12,14 @@ Popup {
     modal: true
     focus: true
     parent: Overlay.overlay
-    // As wide as the chips it holds and no wider: a fixed width left a gap on
-    // the right that was not enough for another chip.
     readonly property int kColumns: 6
     width: Math.min(parent ? parent.width - 24 : 400,
         kColumns * kChipSize + (kColumns - 1) * kChipSpacing + 2 * padding)
     padding: 12
     background: DialogFrame { }
 
-    // Where the user pressed "React", in scene coordinates. The window opens
-    // there rather than in the middle of the screen, which made the user find
-    // the message they were reacting to all over again.
     property real askedX: 0
     property real askedY: 0
-    // Kept off the edges by this much when the asked-for spot is too near one.
     readonly property int kEdgeGap: 12
 
     function openAt(e2eId, sceneX, sceneY) {
@@ -41,9 +33,7 @@ Popup {
         root.placeInside()
     }
 
-    // Placed after opening and again whenever the size settles: before it opens
-    // the window has no height to keep inside anything, which is how it ended up
-    // hanging off the bottom.
+    // Placed again once open: before that the popup has no height to keep inside.
     function placeInside() {
         const area = root.parent
         if (!area) {
@@ -54,20 +44,13 @@ Popup {
     }
     onHeightChanged: if (root.opened) { root.placeInside() }
     onWidthChanged: if (root.opened) { root.placeInside() }
-    // A resized window keeps the field and its button inside.
     Connections {
         target: root.parent
         function onHeightChanged() { if (root.opened) { root.placeInside() } }
     }
 
-    // The set comes from the session, which also decides what counts as one of
-    // the user's own - the two must not drift apart.
     readonly property var common: root.session ? root.session.standardReactions : []
-    // What this user reached for that is not in that set, newest first.
     readonly property var recent: root.session ? root.session.recentReactions : []
-    // The grid the chips are built on: a cell, and the gap between cells. A wide
-    // chip spans two cells AND the gap they sit either side of, or it would come
-    // up short of the column next to it.
     readonly property int kChipSize: 36
     readonly property int kChipSpacing: 6
 
@@ -108,7 +91,6 @@ Popup {
                 }
             }
         }
-        // Reactions this user has used before that are not in the set above.
         Flow {
             Layout.fillWidth: true
             spacing: root.kChipSpacing
@@ -118,9 +100,6 @@ Popup {
                 Rectangle {
                     id: recentChip
                     required property var modelData
-                    // A saved reaction can be four characters of plain text, which
-                    // does not fit the square an emoji sits in. Two sizes only, so
-                    // the row still reads as a grid: one square, or two.
                     width: recentLabel.implicitWidth + 12 > root.kChipSize
                         ? root.kChipSize * 2 + root.kChipSpacing : root.kChipSize
                     height: root.kChipSize
@@ -157,14 +136,7 @@ Popup {
                 placeholderText: qsTr("Any unicode…")
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
-                // The brand font, and whatever it lacks is found by the engine's
-                // own fallback. A field holds emoji and plain characters at once,
-                // and setting the emoji font by what it holds so far left a digit
-                // typed after an emoji invisible - that font has no digits.
-                // Measured: a glyph the brand font lacks is drawn in colour here,
-                // except for the few (a heart, a tick) that a monochrome system
-                // font also carries and wins; those come out in colour once sent,
-                // where the chip picks the emoji font outright.
+                // The emoji font has no digits, so the field keeps the brand font and the engine's fallback.
                 font.family: Theme.fontFamily
                 renderType: Text.NativeRendering
                 onAccepted: root.pick(customField.text)

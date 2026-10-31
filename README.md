@@ -34,14 +34,15 @@ cmake -S . -B build && cmake --build build -j4
 ctest --test-dir build
 ```
 
-The version the application shows is stamped on every build from the git tag and
-the short commit; a tree without git reads `dev`.
+The version the application shows is stamped on every build from git: the tag on
+a tagged commit, `dev (<short hash>)` on any other. A tree without git does not
+build.
 
 `packaging/appimage-build.sh` builds the portable Linux AppImage, x86_64 on a Debian 12
 base and aarch64 on an Ubuntu 24.04 one, carrying its own Qt, OpenSSL and SQLCipher.
 
 `packaging/android/build.sh <output dir>` builds the Android package for arm64-v8a
-(Android 9 and newer) and signs it with the keystore it is given. It takes the
+(Android 12 and newer) and signs it with the keystore it is given. It takes the
 toolchain from the environment: `ANDROID_SDK_ROOT`, `ANDROID_NDK_ROOT` (NDK r27c),
 `ANDROID_BUILD_TOOLS`, `QT_ANDROID_ROOT` and `QT_HOST_ROOT` (Qt 6.8.3 for Android and
 for the desktop), `JAVA_HOME` (a JDK 17), and `BAZARISH_ANDROID_KEYSTORE`,

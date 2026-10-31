@@ -1,19 +1,13 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// The confirmation before an account is ended. One wording in one place: the two
-// ways into it - the account list and the account's own settings - are asking
-// the same question, and the answer costs the same either way.
 Dialog {
     id: root
     property string accountId: ""
-    // Empty when the caller is inside the account already and naming it would
-    // only repeat what the window is showing.
     property string accountName: ""
     signal confirmed(string id)
-    // "Remove from this device": the account stays on its server and on the
-    // user's other devices; this device stops being one of them.
     signal localOnlyRequested(string id)
 
     function show(id, name) { accountId = id; accountName = name ? name : ""; open() }
@@ -26,8 +20,6 @@ Dialog {
     footer: DialogButtons {
         acceptText: qsTr("Delete everywhere")
         danger: true
-        // The third answer: neither ending the account nor leaving things as
-        // they are.
         showCancel: true
         cancelOnOwnLine: true
         cancelText: qsTr("Remove from this device only")
@@ -36,7 +28,6 @@ Dialog {
         onRejected: root.reject()
     }
     onAccepted: root.confirmed(root.accountId)
-    // Destructive: brightest-neon outline, dark surface, light text.
     background: DialogFrame { destructive: true }
     header: Label {
         text: qsTr("Delete account")

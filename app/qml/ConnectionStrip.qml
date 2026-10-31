@@ -13,7 +13,6 @@ Rectangle {
     readonly property bool isConnecting: root.session !== null && root.session.online
         && !root.session.reachable
     readonly property bool heldForApproval: root.session !== null && root.session.awaitingApproval
-    // The gateway is only to blame when it is the part that is silent.
     readonly property string whyNotReachable: root.session !== null
         && root.session.gatewayRefusal.length > 0
         ? qsTr("The gateway refused a link to the server")

@@ -3,8 +3,6 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// A switch sized for a desktop settings row. The stock control is drawn for
-// touch and swallows the line it sits on, so the track is drawn here instead.
 Switch {
     id: root
     focusPolicy: Theme.pressFocus

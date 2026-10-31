@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,7 +10,6 @@ Item {
     signal newChatRequested()
     signal settingsRequested()
     signal appSettingsRequested()
-    // Too narrow for two panes and a row of labelled actions: one menu instead.
     readonly property bool narrow: width < 300
     signal accountsRequested()
 
@@ -22,7 +22,6 @@ Item {
     readonly property int kSyncBarHeight: 4
     readonly property int kBadgeRing: 2
     readonly property int kVisibleSettleMs: 300
-    // More than any row shows; the label elides at its width, this only spares laying out a long message.
     readonly property int kPreviewChars: 200
 
     function formatTime(ts) {
@@ -30,9 +29,6 @@ Item {
         return new Date(ts).toLocaleTimeString(Qt.locale(), "hh:mm")
     }
 
-    // One-line, length-capped preview so a long or multi-line message never
-    // breaks the chat row: newlines/whitespace collapse to single spaces and the
-    // text is cut to 30 characters.
     function previewText(s) {
         if (!s) {
             return ""
@@ -44,7 +40,6 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // Header: own account + actions.
         Rectangle {
             Layout.fillWidth: true
             implicitHeight: 60
@@ -54,7 +49,6 @@ Item {
                 anchors.leftMargin: 12
                 anchors.rightMargin: 6
                 spacing: 10
-                // Tap the avatar or name to open the account switcher.
                 Avatar {
                     fingerprint: root.session ? root.session.fingerprint : ""
                     size: 36
@@ -73,8 +67,6 @@ Item {
                             Layout.maximumWidth: 180
                         }
                         Icon { name: "chevron"; color: Theme.textDim; size: 14 }
-                        // Unread in the accounts that are not on screen: this is
-                        // the control that leads to them.
                         UnreadBadge { count: App.unreadElsewhere }
                     }
                     TapHandler { onTapped: root.accountsRequested() }
@@ -129,8 +121,6 @@ Item {
             }
         }
 
-        // Search the chat list by name (filters the list as you type). Clears when
-        // the field is emptied.
         TextField {
             id: chatSearch
             Layout.fillWidth: true
@@ -216,9 +206,6 @@ Item {
                 highlighted: root.session && root.session.activePeer === model.fingerprint
                 onClicked: root.session.openConversation(model.fingerprint)
                 onPressAndHold: pinMenu.popup()
-                // The default highlight paints a solid near-white fill that breaks
-                // the dark look; mark the active chat with a white outline instead
-                // (the name turns neon below), and keep a subtle hover tint only.
                 background: Rectangle {
                     color: chatRow.hovered ? Theme.surfaceAlt : "transparent"
                     radius: Theme.radiusSmall
@@ -269,7 +256,6 @@ Item {
                         spacing: 2
                         RowLayout {
                             Layout.fillWidth: true
-                            // Pin marker: a pinned chat stays at the top of the list.
                             Icon {
                                 visible: model.pinned
                                 name: "pin"
@@ -307,9 +293,6 @@ Item {
                         }
                     }
                 }
-                // Pin/unpin via right-click or long-press (a left tap still opens the
-                // chat). Pin state syncs to the account's other devices, and the
-                // saved chat is pinned like any other.
                 TapHandler {
                     // A touch carries no button, so a right-button handler would take every tap.
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
@@ -350,7 +333,6 @@ Item {
             }
         }
     }
-    // A bar action: the icon says it at a glance, the word says it exactly.
     component BarButton: Item {
         id: barButton
         property string iconName: ""

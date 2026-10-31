@@ -284,7 +284,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
 
     connect(worker_, &SessionWorker::connectProgress, &events_, &AccountEvents::connectProgress);
     connect(worker_, &SessionWorker::addressMismatch, &events_, &AccountEvents::addressMismatch);
-    connect(worker_, &SessionWorker::downloadProgress, &events_, &AccountEvents::downloadProgress);
     connect(worker_, &SessionWorker::servedProgress, &events_, &AccountEvents::servedProgress);
     connect(worker_, &SessionWorker::transferStage, &events_, &AccountEvents::transferStage);
     connect(worker_, &SessionWorker::servedFinished, &events_, &AccountEvents::servedFinished);
@@ -307,7 +306,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &AccountEvents::contactsRefreshed);
     connect(worker_, &SessionWorker::avatarReady, &events_, &AccountEvents::avatarReady);
     connect(worker_, &SessionWorker::sendProgress, this, &CoreAccount::onSendProgress);
-    connect(worker_, &SessionWorker::uploadProgress, &events_, &AccountEvents::uploadProgress);
     connect(worker_, &SessionWorker::sendResult, this, &CoreAccount::onSendResult);
     connect(worker_, &SessionWorker::sendPhase, this, &CoreAccount::onSendPhase);
     connect(worker_, &SessionWorker::contactRequestSent, this, &CoreAccount::onContactRequestSent);
@@ -329,8 +327,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         [this](const QString& id, const QString& kind, const QString& title,
             const QString& status) { log_.begin(id, kind, title, status); });
     connect(worker_, &SessionWorker::opDone, &log_, &OperationLog::finish);
-    connect(worker_, &SessionWorker::opProgress, &log_,
-        [this](const QString& id, const QString& status) { log_.update(id, status); });
     connect(worker_, &SessionWorker::approvalState, &events_, &AccountEvents::approvalState);
     connect(worker_, &SessionWorker::devicesReady, &events_, &AccountEvents::devicesReady);
     connect(worker_, &SessionWorker::accountClosed, &events_, &AccountEvents::accountClosed);
@@ -533,8 +529,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         [this](const QString& reason) { settleConnect(false, reason); });
     connect(worker_, &SessionWorker::aliasActivationDone, this,
         [this](const bool ok, const QString& text) { log_.finish(kAliasOperationId, ok, text); });
-    connect(worker_, &SessionWorker::uploadProgress, this, &CoreAccount::onUploadProgress);
-    connect(worker_, &SessionWorker::downloadProgress, this, &CoreAccount::onDownloadProgress);
     connect(worker_, &SessionWorker::transferStage, this, &CoreAccount::onTransferStage);
     connect(worker_, &SessionWorker::servedProgress, this, &CoreAccount::onServedProgress);
     connect(worker_, &SessionWorker::servedFinished, this, &CoreAccount::onServedFinished);
@@ -663,7 +657,7 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
     accountPath_ = file;
     passphrase_ = passphrase;
     startOnline_ = startOnline;
-    if (!store_.open({}, file, passphrase)
+    if (!store_.open(file, passphrase)
         || !store_.failUnsentOnLoad(
             DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed)
         || !store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,

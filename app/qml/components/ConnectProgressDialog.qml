@@ -4,17 +4,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Shown while a connect runs. A first connect over I2P is minutes of real work -
-// fetching a network database, starting the router, building tunnels, finding the
-// server - so the user watches it progress instead of a button that looks dead.
-// The steps come from the core, not from a timer.
 Dialog {
     id: root
     property var session: null
 
-    // Hiding does not cancel: the connect keeps running and is watchable in the
-    // background-activity panel, so the dialog must not pop back up on the next
-    // milestone. The suppression lasts until this attempt ends.
     property bool suppressed: false
 
     modal: true
@@ -25,7 +18,6 @@ Dialog {
     width: Math.min(parent ? parent.width - 2 * Theme.spacing : 420, 460)
     padding: 0
 
-    // Open while connecting; close as soon as the attempt ends either way.
     Connections {
         target: root.session
         function onConnectStateChanged() {
@@ -64,7 +56,6 @@ Dialog {
             spacing: 8
 
             ProgressBar {
-                id: bar
                 Layout.fillWidth: true
                 from: 0; to: 100
                 value: root.session ? root.session.connectPercent : 0

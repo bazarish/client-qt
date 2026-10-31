@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Refuses a build that would show a string nobody translated.
 
-Two things are checked, both fatal:
+Four things are checked, all fatal:
 
   * every text the interface puts on screen goes through qsTr()/tr(), so a
     literal written straight into a visible property is an error;
-  * every string those calls name is in the catalog, in every language.
+  * every string those calls name is in the catalog;
+  * every catalog entry has every language, with the same %N values;
+  * every catalog entry is still shown by some source.
 """
 import json
 import pathlib
@@ -19,24 +21,22 @@ SOURCE_LANGUAGE = "en"
 # Properties and calls that put text in front of a reader.
 QML_TEXT_PROPERTIES = (
     "text", "placeholderText", "placeholder", "title", "label", "description", "acceptText",
-    "actionText",
-    "rejectText", "cancelText", "toolTipText", "unitLabel", "emptyText", "hint", "caption",
-    "reason", "failure", "unavailable", r"Accessible\.name", r"ToolTip\.text",
+    "actionText", "rejectText", "cancelText", "caption", "reason", "failure", "unavailable",
+    r"Accessible\.name", r"ToolTip\.text",
 )
-QML_TEXT_CALLS = ("showError", "showToast", "showInfo")
+QML_TEXT_CALLS = ("showError", "showToast")
 
 # Members and variables whose value is read out as prose later.
-CPP_TEXT_FIELDS = ("title", "status", "text", "summary", "connectPhase_", "servingKeyStage_",
-    "status_", "preview", "pairStatus_")
+CPP_TEXT_FIELDS = ("title", "status", "text", "summary", "connectPhase_", "status_", "preview",
+    "pairStatus_")
 
 # Signals and helpers whose argument reaches the user as prose.
 CPP_TEXT_CALLS = (
     "actionFailed", "actionOk", "createFailed", "accountOpenFailed", "restartRequired",
-    "writeConversationNote", "opDone", "opProgress", "opBegin", "beginOperation",
-    "updateOperation", "finishOperation", "sendResult", "contactAddDone", "openFailed",
-    "accountClosed", "servingKeyDone", "servingKeyStage", "aliasActivationDone",
-    "contactAddStage", "downloadFinished", "connectProgress", "beginOp", "succeed", "fail",
-    "beginStorageWork", "settleUnfinishedNotes", "writeContactProgress", "aliasHoldings", "pairStage", "pairFinished",
+    "writeConversationNote", "opDone", "opBegin", "sendResult", "contactAddDone", "openFailed",
+    "accountClosed", "aliasActivationDone", "contactAddStage", "downloadFinished",
+    "connectProgress", "beginOp", "succeed", "fail", "beginStorageWork", "settleUnfinishedNotes",
+    "writeContactProgress", "aliasHoldings", "pairStage", "pairFinished",
 )
 
 STRING = r'"(?:[^"\\]|\\.)*"'

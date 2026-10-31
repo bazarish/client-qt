@@ -58,7 +58,8 @@ slow enough to be worth watching - the bundle is unsealed, a keyed database is
 written, and the account is laid out - so it runs off the interface thread and is
 listed in the background-activity panel while it does, like every other slow
 thing. The panel shows account-level work even when no account is open yet - when
-it is switched on, which it is not by default (`../README.md`).
+it is switched on, which it is not by default
+([BackgroundActivity.md](BackgroundActivity.md)).
 
 What the restored device then does, in order:
 
@@ -122,6 +123,4 @@ Deleting the account offers the same distinction. **Delete everywhere** ends the
 account on its server: the address, the mailbox, everything in it. **This device
 only** asks the server for nothing at all, and leaves the account, its address
 and its mail standing for the user's other devices - the server works out that
-this device is gone when it stops collecting mail. The
-second was previously reachable only for a profile that could not be unlocked; it
-is now a choice on its own.
+this device is gone when it stops collecting mail.

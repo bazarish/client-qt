@@ -369,11 +369,6 @@ int AppController::unreadElsewhere() const
     return total;
 }
 
-void AppController::refreshAccountList()
-{
-    emit commands_.refreshAccountList();
-}
-
 void AppController::createAccount(const QString& name, const QString& passphrase)
 {
     emit commands_.createAccount(name, passphrase);
@@ -498,8 +493,6 @@ void AppController::openLink(const QString& link)
         return;
     }
     emit raiseRequested();
-    // These act on an open account, so a link that arrives before one is
-    // open waits for it rather than going nowhere.
     if (sessions_.isEmpty()) {
         pendingLink_ = uri;
         return;

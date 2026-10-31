@@ -5,11 +5,6 @@ import QtQuick.Layouts
 import Bazarish
 import "Format.js" as Format
 
-// Recording a voice message. What the microphone is picking up is drawn while it
-// records, so a microphone that is not working shows itself as a flat line
-// rather than as a message that turns out to be silence. The take is heard
-// before it goes, and confirming sends it as it stands - a voice message carries
-// no text, so there is nothing else to fill in.
 Popup {
     id: root
     property var session: null
@@ -28,14 +23,9 @@ Popup {
     readonly property bool takeReady: root.session ? root.session.voiceTakeReady : false
     readonly property bool takePlaying: root.session ? root.session.voiceTakePlaying : false
 
-    // The rolling picture of the microphone, one entry a tick, oldest first.
     readonly property int kBars: 48
     property var levels: []
 
-    // Live loudness is read as decibels, not as a raw ratio: speech and a quiet
-    // room are an order of magnitude apart in amplitude and a hair apart on a
-    // linear bar. Below the floor there is nothing to draw - which is exactly
-    // what a dead microphone gives.
     readonly property real kFloorDb: -50
     function levelHeight(rms) {
         if (rms <= 0) {
@@ -57,7 +47,6 @@ Popup {
         root.clearLevels()
         if (root.session) {
             root.session.discardVoiceTake()
-            // Opening the window is asking to record, as in other messengers.
             voiceMicrophone.whenGranted(() => root.session.startVoiceRecording())
         }
     }
@@ -69,7 +58,6 @@ Popup {
         }
     }
 
-    // Leaving throws the take away: a recording nobody confirmed is not a draft.
     onClosed: if (root.session) {
         root.session.cancelVoiceRecording()
     }
@@ -104,8 +92,6 @@ Popup {
         }
         Hairline { }
 
-        // The one picture this window is for: live while recording, the take's
-        // own shape once there is one, and a flat line when there is neither.
         Rectangle {
             Layout.fillWidth: true
             Layout.margins: 14
@@ -139,8 +125,6 @@ Popup {
                         color: root.recording ? Theme.danger : Theme.accent
                         opacity: root.recording || root.takeReady ? 1.0 : 0.35
 
-                        // Reads one bar out of the stored hex account, stretched
-                        // over however many bars are drawn here.
                         function waveBar(hex, at, bars) {
                             if (!hex || hex.length === 0) {
                                 return 0
@@ -193,7 +177,6 @@ Popup {
             Layout.margins: root.kEdge
             spacing: 24
 
-            // Where to press first: the light under it breathes until a take exists.
             Item {
                 id: recordSpot
                 readonly property int kDiameter: actions.kButton
@@ -283,7 +266,6 @@ Popup {
                     if (root.recording) {
                         root.session.stopVoiceRecording()
                     }
-                    // A take too short to send stays here with its error.
                     if (root.session.voiceTakeReady) {
                         root.session.sendVoiceTake()
                         root.close()

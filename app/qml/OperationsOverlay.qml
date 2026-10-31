@@ -4,28 +4,16 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// The background-activity overlay: a small translucent handle pinned to the right
-// edge (centre), shown only while at least one operation is running, that opens a
-// panel sliding in from the right. The panel lists every long-running async
-// operation - a contact add, a message or file transfer, a call - with a live
-// human-readable status, so a slow operation reads as progress instead of a frozen
-// UI. Driven by App.session.operations (the model) and activeOperations (count).
 Item {
     id: overlay
     anchors.fill: parent
-    // Off unless the user asks for it (Global settings), except while a connect
-    // runs: the handle is there to be opened, and opening it stays the user's move.
     visible: App.backgroundTasksVisible || overlay.connecting
 
     property bool open: false
     readonly property bool connecting: App.session ? App.session.connecting : false
-    // Account-level work - restoring a backup - has no session behind it and
-    // still belongs here, so the panel lists both and the handle counts both.
     readonly property int active: (App.session ? App.session.activeOperations : 0)
         + App.activeOperations
 
-    // Closing the session (sign-out) tears the panel down, and so does switching
-    // the panel off while it is open - otherwise it would vanish mid-slide.
     Connections {
         target: App
         function onSessionChanged() { overlay.open = false }
@@ -45,10 +33,7 @@ Item {
         }
     }
 
-    // The right-edge handle: translucent until hovered, hidden when nothing is
-    // running (unless the panel is open). Tapping it opens the panel.
     Rectangle {
-        id: handle
         visible: overlay.active > 0 && !overlay.open
         width: 30
         height: 72
@@ -64,7 +49,6 @@ Item {
         ColumnLayout {
             anchors.centerIn: parent
             spacing: 3
-            // A small activity glyph over the running count.
             Icon {
                 Layout.alignment: Qt.AlignHCenter
                 name: "refresh"
@@ -88,7 +72,6 @@ Item {
         }
     }
 
-    // Dim scrim behind the open panel; tapping it closes the panel.
     MouseArea {
         anchors.fill: parent
         enabled: overlay.open
@@ -98,7 +81,6 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 180 } } }
     }
 
-    // The slide-out panel.
     Rectangle {
         id: panel
         width: Math.min(380, overlay.width)
@@ -109,7 +91,7 @@ Item {
         border.color: Theme.border
         Behavior on x { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
-        // Swallow clicks so they do not fall through to the scrim and close it.
+        // Swallows clicks that would fall through to the scrim and close the panel.
         MouseArea { anchors.fill: parent }
 
         ColumnLayout {
@@ -131,7 +113,6 @@ Item {
             }
             Hairline { }
 
-            // Empty state.
             Label {
                 visible: opsList.count === 0
                 Layout.fillWidth: true
@@ -142,8 +123,6 @@ Item {
                 wrapMode: Text.Wrap
             }
 
-            // Account-level rows first: a restore is what everything else is
-            // waiting for while it runs.
             ListView {
                 id: accountOps
                 Layout.fillWidth: true

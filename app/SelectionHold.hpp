@@ -5,8 +5,7 @@ class QObject;
 
 namespace bazarish::app {
 
-// Sends a text field's selection again as the input method's: a field then keeps it when the
-// finger that made it lifts, where a touch release would otherwise put the cursor there.
+// A touch release would otherwise put the cursor where the selecting finger lifts.
 void holdSelection(QObject* field);
 
 }  // namespace bazarish::app

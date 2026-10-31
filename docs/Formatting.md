@@ -19,7 +19,7 @@ The list is closed. What is not named here is text.
 | `~~text~~` | struck through |
 | ` ```text``` ` | a block kept exactly as written, copied when pressed |
 | `!!text!!` | a marked word that sends `text` to this chat when pressed |
-| `!name` | a marked name that opens the add-a-contact form for `name` |
+| `!name`, `!name-word` | a marked alias that opens the add-a-contact form for it |
 | `http://...`, `https://...` | an underlined address, followed only after a warning |
 
 Bold, italic and struck-through are drawn where they stand. The clickable forms
@@ -47,10 +47,12 @@ is written there is what is drawn and what is copied, spacing and line breaks
 included. A tab is drawn four spaces wide, a rich text document having no tab
 stops of its own; the character copied back out is still a tab.
 
-An alias is `!` followed by letters and digits, at most 16 of them - the grammar
-the add-a-contact form resolves. `!bob.` marks `bob` and leaves the stop;
-`!bob_smith` is left alone entirely, because marking `bob` out of it would open
-the form on a name nobody typed. `Wow!Great` is an exclamation, not a name.
+An alias is `!` followed by Latin letters and digits, at most 16 of them, and
+optionally by `-` and a word of at most 16 more - the grammar the add-a-contact
+form resolves. `!bob.` marks `bob` and leaves the stop, and `!bob-` leaves the
+hyphen; `!bob_smith` and `!bob-a-b` are left alone entirely, because marking
+`bob` out of them would open the form on a name nobody typed. `Wow!Great` is an
+exclamation, not a name.
 
 An address ends at the first space. A full stop, comma or closing bracket that
 the address did not open is punctuation and is left out of it. Only `http` and

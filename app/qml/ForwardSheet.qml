@@ -1,16 +1,13 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// Where to pass a message on to. The chats this account already has, nothing
-// else: forwarding is a convenience for content the user already holds, not a way
-// to start a conversation.
 Popup {
     id: root
     bottomMargin: activeFocus ? App.keyboardInset : 0
     property var session: null
-    // The message being passed on, by the id the two ends know it as; or several, by local id.
     property string e2eId: ""
     property var localIds: []
     signal forwarded()
@@ -73,8 +70,6 @@ Popup {
             delegate: ItemDelegate {
                 width: chats.width
                 height: visible ? 56 : 0
-                // The filter is on the name the user sees, which is the only thing
-                // they can search a chat by.
                 visible: filter.displayText.length === 0
                     || (model.name || "").toLowerCase().indexOf(filter.displayText.toLowerCase()) >= 0
                 background: Rectangle {
@@ -97,10 +92,7 @@ Popup {
                     }
                 }
                 onClicked: {
-                    // Everything this needs is taken first, because closing tears
-                    // down the delegate this handler is running in - and then the
-                    // sheet goes, before the send, so one left standing cannot
-                    // invite the same message being passed on again.
+                    // Taken first: closing tears down the delegate this handler runs in.
                     const sheet = root
                     const session = root.session
                     const message = root.e2eId

@@ -1,9 +1,7 @@
+// Bazarish project (c) 2026
 import QtQuick
 import Bazarish
 
-// The count of messages waiting somewhere the user is not looking. Same shape
-// wherever it appears, so a number on a back arrow and one on the account
-// switcher read as the same thing.
 Rectangle {
     id: root
     property int count: 0

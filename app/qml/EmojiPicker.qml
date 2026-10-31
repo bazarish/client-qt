@@ -15,14 +15,12 @@ Popup {
     readonly property int kCell: 40
     readonly property int kGlyphPixels: 24
     readonly property int kTabPixels: 18
-    // What was picked last, newest first; it is tab 0, the groups follow it.
     property var recent: []
     property int group: 0
     onAboutToShow: root.group = root.recent.length > 0 ? 0 : 1
 
     padding: 8
     margins: Theme.spacing
-    // Not modal, so a tap on send still sends; the chat above the composer is switched off meanwhile.
     modal: false
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     background: DialogFrame { }
@@ -78,7 +76,6 @@ Popup {
         }
         Hairline { Layout.fillWidth: true }
         GridView {
-            id: grid
             Layout.preferredWidth: root.kColumns * root.kCell
             Layout.preferredHeight: root.kRows * root.kCell
             cellWidth: root.kCell

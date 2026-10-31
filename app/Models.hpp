@@ -53,7 +53,7 @@ public:
 
     void setContacts(QVector<ContactRow> contacts);
     void touch(const QString& fingerprint, const QString& name, const QString& lastText,
-        qint64 lastTime, bool incrementUnread);
+        qint64 lastTime);
     void setUnread(const QString& fingerprint, int count);
     int totalUnread() const;
     void remove(const QString& fingerprint);
@@ -101,18 +101,12 @@ public:
     Q_INVOKABLE int rowForId(qint64 id) const;
     QVector<qint64> markDeliveredThrough(qint64 uptoId);
     bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol, qint64& outSentAt) const;
-    void setStatusForId(qint64 id, int status);
-    void setTextForId(qint64 id, const QString& text);
-    void setTypeForId(qint64 id, const QString& type);
-
     void setErrorForId(qint64 id, const QString& error);
     void setUploadProgressForId(qint64 id, double fraction);
     void setDownloadProgressForId(qint64 id, qint64 received, qint64 total);
     void setTransferStageForId(qint64 id, const QString& stage);
     void finishDownloadForId(qint64 id, bool ok, const QString& error);
-    void setSavedPathForId(qint64 id, const QString& path);
-    void setPictureReadyForId(qint64 id, bool ready);
-    void editById(qint64 id, const QString& text, const QString& keyboard);
+    void markPictureMissingForId(qint64 id);
     void replaceById(const StoredMessage& message);
     void removeById(qint64 id);
     Q_INVOKABLE bool lastMessageOutgoing() const;
@@ -158,9 +152,6 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void upsert(const OperationRow& row);
-    void update(const QString& id, const QString& status, const QString& detail, double progress,
-        int state);
-    void setCancelId(const QString& id, const QString& cancelId);
     void remove(const QString& id);
     int runningCount() const;
     int indexOf(const QString& id) const;

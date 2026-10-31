@@ -3,27 +3,19 @@ import QtQuick
 import QtQuick.Controls
 import Bazarish
 
-// What a button holds: the drawing that names the action and the label, centred
-// as one pair. Meant as a Button's `contentItem`, so the words come from the
-// button itself unless they are given here, and the colour is set once for both.
 Item {
     id: root
-    // Which shape to draw (see Icon.qml); empty leaves the label on its own.
     property string name: ""
     property string text: parent && parent.text !== undefined ? parent.text : ""
     property color color: Theme.text
     property int weight: Font.Normal
-    // What the button offers its content. The label elides inside what the icon
-    // leaves of it, so it is the words that give way, never the drawing.
     property real available: width
     property real iconSize: Theme.iconInline
     readonly property int kGap: 8
     readonly property int kMaxLines: 2
     readonly property bool worded: root.text.length > 0
 
-    // From the parts, not from the row: the label's width is bound to what the
-    // button offers, so asking the row how wide it wants to be would ask the
-    // button a question that depends on the answer.
+    // From the parts, not the row: the row's width depends on this one, a binding loop.
     implicitWidth: (root.worded ? label.implicitWidth : 0)
         + (icon.visible ? icon.width + (root.worded ? root.kGap : 0) : 0)
     implicitHeight: Math.max(label.implicitHeight, icon.visible ? icon.height : 0)

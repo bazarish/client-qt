@@ -6,50 +6,26 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# The common library is this repository's own submodule, named and not searched
-# for: a checkout beside the repository must not be able to take its place.
-set(BAZARISH_COMMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/common" CACHE PATH
-    "Path to the bazarish common library repository")
-if(NOT EXISTS "${BAZARISH_COMMON_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "no common library at ${BAZARISH_COMMON_DIR}"
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/common/CMakeLists.txt")
+    message(FATAL_ERROR "no common library at ${CMAKE_CURRENT_SOURCE_DIR}/common"
         " - run: git submodule update --init --recursive")
 endif()
-if(NOT TARGET bazarish_common)
-    add_subdirectory(${BAZARISH_COMMON_DIR} bazarish-common)
-endif()
+add_subdirectory(common bazarish-common)
 
-# The client core lives in common: it has two front-ends, this application and
-# the daemon, and neither owns it. What stays here is the user interface.
-find_package(OpenSSL 3.5 REQUIRED)
-
-# Sanitizer build (address / undefined), for chasing a crash rather than for
-# shipping: BAZARISH_SANITIZE=address. It also drops -Werror, because under a
-# sanitizer GCC raises maybe-uninitialized inside libstdc++ headers.
+# -Wno-error: under a sanitizer GCC raises maybe-uninitialized inside libstdc++ headers.
 set(BAZARISH_SANITIZE "" CACHE STRING "Build with a sanitizer: address | undefined | address,undefined")
 if(BAZARISH_SANITIZE)
     add_compile_options(-fsanitize=${BAZARISH_SANITIZE} -fno-omit-frame-pointer -g -Wno-error)
     add_link_options(-fsanitize=${BAZARISH_SANITIZE})
 endif()
 
-# The Qt6 Quick (QML) desktop app - what this repository builds. Built only when
-# Qt6 Quick is available.
-# SVG (the brand logo) is rendered by Qt's runtime image-format plugin
-# (imageformats/libqsvg), so we do NOT require the Qt6::Svg CMake component here -
-# requiring it would fail the whole Qt6 find on systems that ship the plugin but
-# not the Svg dev config, and silently skip the GUI target.
+# No Svg: the qsvg plugin draws the logo, and a missing Svg dev config would fail this find.
 find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Multimedia Widgets Network Test QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
 
-    # Optional: revealing a saved file selected in the system file manager uses the
-    # freedesktop.org FileManager1 D-Bus interface on Linux. Found separately (not a
-    # required component) so a system without the DBus dev config still builds the
-    # GUI; the code falls back to opening the containing folder when it is absent.
+    # Separate: a missing DBus dev config must not fail the Qt6 find above.
     find_package(Qt6 COMPONENTS DBus QUIET)
-
-    # The transcript store talks to SQLCipher's C API directly rather than through
-    # Qt's QSQLITE driver: that driver links plain libsqlite3, and two SQLite
-    # implementations exporting the same symbols must not meet in one process.
 
     # Vendored QR reader (libqrencode only writes codes); not ours to lint.
     add_library(quirc STATIC
@@ -99,6 +75,7 @@ if(Qt6_FOUND)
     )
     target_include_directories(bazarish_app_shared PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/app
         ${SQLCIPHER_INCLUDE_DIR})
+    # No Qt6::Sql: its QSQLITE driver links plain libsqlite3, whose symbols SQLCipher exports too.
     target_link_libraries(bazarish_app_shared PUBLIC bazarish_client ${SQLCIPHER_LIBRARY}
         Qt6::Core Qt6::Multimedia Qt6::Network)
     target_compile_options(bazarish_app_shared PRIVATE -Wall -Wextra)
@@ -175,8 +152,7 @@ if(Qt6_FOUND)
         app/PictureStore.cpp
         app/AvatarStore.hpp
     )
-    target_include_directories(bazarish_app_ui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
-        ${QRENCODE_INCLUDE_DIR})
+    target_include_directories(bazarish_app_ui PRIVATE ${QRENCODE_INCLUDE_DIR})
     target_link_libraries(bazarish_app_ui PUBLIC bazarish_app_shared quirc ${QRENCODE_LIBRARY}
         Qt6::Quick Qt6::QuickControls2 Qt6::Qml Qt6::Gui Qt6::Widgets)
     target_compile_options(bazarish_app_ui PRIVATE -Wall -Wextra)
@@ -192,7 +168,6 @@ if(Qt6_FOUND)
     )
     target_link_libraries(bazarish-app PRIVATE bazarish_app_core bazarish_app_ui)
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
-        ${CMAKE_CURRENT_BINARY_DIR}
         ${QRENCODE_INCLUDE_DIR} ${SQLCIPHER_INCLUDE_DIR})
     target_compile_options(bazarish-app PRIVATE -Wall -Wextra)
     if(NOT QT6_IS_SHARED_LIBS_BUILD)
@@ -204,9 +179,6 @@ if(Qt6_FOUND)
     endif()
 
     if(APPLE)
-        # The bundle's own property list: what carries the bazarish:// scheme here,
-        # and the two sentences macOS shows before it lets the client at the
-        # microphone and the camera.
         set_target_properties(bazarish-app PROPERTIES
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST
@@ -217,8 +189,7 @@ if(Qt6_FOUND)
     endif()
 
     if(ANDROID)
-        # Android 12 and newer: an incoming call is drawn with its call style. The
-        # package name is the one the Mac bundle carries.
+        # 31 is Android 12, the first with Notification.CallStyle for the incoming call.
         set(kAndroidMinSdk 31)
         set(kAndroidTargetSdk 34)
         target_sources(bazarish-app PRIVATE app/AndroidShade.cpp app/AndroidShade.hpp
@@ -235,32 +206,20 @@ if(Qt6_FOUND)
     endif()
 
     if(WIN32)
-        # Without the language enabled the resource file is not compiled at all,
-        # and the shell draws its default icon for the binary.
+        # Without RC enabled the .rc file is silently skipped and the binary gets no icon.
         enable_language(RC)
-        # A GUI binary: started from the shell it opens no console window, and
-        # --console is what attaches one when the log has to be read. The icon
-        # the shell draws is the resource compiled in here.
         set_target_properties(bazarish-app PROPERTIES WIN32_EXECUTABLE TRUE)
         target_sources(bazarish-app PRIVATE app/icon/bazarish.rc)
         set_source_files_properties(app/icon/bazarish.rc PROPERTIES
             COMPILE_OPTIONS "-I${CMAKE_CURRENT_SOURCE_DIR}/app/icon")
-        # The bazarish:// association lives in the registry here; a desktop entry
-        # carries it everywhere else.
         target_sources(bazarish-app PRIVATE app/UrlScheme.cpp app/UrlScheme.hpp)
     endif()
 
-    # Reveal-in-file-manager (FileManager1 over D-Bus) when the optional module is
-    # present; otherwise the code path is compiled out and falls back gracefully.
     if(TARGET Qt6::DBus)
         target_link_libraries(bazarish_app_ui PRIVATE Qt6::DBus)
         target_compile_definitions(bazarish_app_ui PRIVATE BAZARISH_HAVE_QTDBUS)
     endif()
 
-    # Bundle the brand font (Roboto Mono, Latin, Greek and Cyrillic) so the
-    # terminal/neon look renders identically regardless of what is installed.
-    # A script the font does not cover falls back to the system monospace, and
-    # what that is differs enough between desktops to be visible.
     qt_add_resources(bazarish-app appfonts
         PREFIX "/fonts"
         BASE app/fonts
@@ -270,9 +229,6 @@ if(Qt6_FOUND)
             app/fonts/TwemojiMozilla.ttf
     )
 
-    # No build gets past a string the interface would show untranslated, and none
-    # gets past a translation nothing shows any more. Required, not optional: a
-    # missing interpreter would quietly take the guarantee away.
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
     add_custom_target(check-translations ALL
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check-translations.py
@@ -281,8 +237,6 @@ if(Qt6_FOUND)
         VERBATIM)
     add_dependencies(bazarish-app check-translations)
 
-    # The message catalog. Carried in the binary: the build has already checked
-    # that every string the code shows has every language.
     qt_add_resources(bazarish_app_shared appi18n
         PREFIX "/i18n"
         BASE app/i18n
@@ -290,8 +244,6 @@ if(Qt6_FOUND)
             app/i18n/messages.json
     )
 
-    # The notification sound, carried rather than looked for: a system sound theme
-    # is not something this application can count on being installed.
     qt_add_resources(bazarish_app_core appsound
         PREFIX "/sound"
         BASE app/sound
@@ -301,8 +253,6 @@ if(Qt6_FOUND)
             app/sound/ringtone.wav
     )
 
-    # The brand app icon (rendered from the brand kit's icon.svg) and the brand
-    # wordmark logo as SVG (scales crisply at any size / DPI).
     qt_add_resources(bazarish-app appicon
         PREFIX "/icon"
         BASE app/icon
@@ -317,10 +267,9 @@ if(Qt6_FOUND)
     qt_add_qml_module(bazarish-app
         URI Bazarish
         VERSION 1.0
-        # Said rather than left to the default, which moved in Qt 6.5: the engine
-        # is handed one URL, and it has to name the same place on either version.
+        # Explicit: the default prefix moved in Qt 6.5, and the engine loads one fixed URL.
         RESOURCE_PREFIX "/qt/qml"
-        # QrScanner's sink is a QVideoSink, a type no QML file here imports.
+        # QrScanner's C++ sink property is a QVideoSink.
         DEPENDENCIES QtMultimedia
         QML_FILES
             app/qml/Main.qml
@@ -419,25 +368,19 @@ endif()
 
 enable_testing()
 
-# The settings document is plain JSON on disk, so it needs no Qt.
 add_executable(TestAppSettings tests/TestAppSettings.cpp app/AppSettings.cpp)
 target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(TestAppSettings PRIVATE bazarish_client)
 target_compile_options(TestAppSettings PRIVATE -Wall -Wextra)
 add_test(NAME TestAppSettings COMMAND TestAppSettings)
 
-# The transcript store needs Qt SQL and direct SQLite, so it has its own target.
 if(Qt6_FOUND)
-    # Message formatting: what a body is split into and the rich text built from
-    # it. Strings only - no window, no session.
     add_executable(TestMarkup tests/TestMarkup.cpp app/Markup.cpp)
     target_include_directories(TestMarkup PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestMarkup PRIVATE bazarish_client Qt6::Core)
     target_compile_options(TestMarkup PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestMarkup COMMAND TestMarkup)
 
-    # No camera in a test: what is checked is the reader, on an invite rendered
-    # the way this client renders one.
     add_executable(TestQrScan tests/TestQrScan.cpp app/QrScanner.cpp)
     target_include_directories(TestQrScan PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${QRENCODE_INCLUDE_DIR})
@@ -484,7 +427,6 @@ if(Qt6_FOUND)
     target_compile_options(TestEmojiText PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestEmojiText COMMAND TestEmojiText)
 
-    # Every emoji the picker offers is drawn by the bundled font, as the chat draws it.
     add_executable(TestEmojiSet tests/TestEmojiSet.cpp app/AppFont.cpp app/EmojiText.cpp)
     qt_add_resources(TestEmojiSet testfonts
         PREFIX "/fonts"
@@ -508,7 +450,6 @@ if(Qt6_FOUND)
         set_tests_properties(TestEmojiSet PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     endif()
 
-    # The chat shows one row per stored message, however many times the row reaches it.
     add_executable(TestConversationModel tests/TestConversationModel.cpp app/Models.cpp
         app/Models.hpp)
     target_link_libraries(TestConversationModel PRIVATE bazarish_app_shared Qt6::Gui Qt6::Qml)

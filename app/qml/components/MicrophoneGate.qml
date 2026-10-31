@@ -2,7 +2,6 @@
 import QtCore
 import QtQuick
 
-// Asked when a call or a voice note first needs the microphone, not at start-up.
 MicrophonePermission {
     id: gate
     signal refused()

@@ -13,9 +13,8 @@ applies where the protocol names none.
 Mail is heard about in exactly one way: a request held open by the server. There
 is no periodic poll of the mailbox, and no second mechanism behind the first - a
 wait that ends in an error is asked again immediately, on the same connection the
-loop already holds. A client that fell back to asking every few seconds would
-turn a momentary transport failure into permanently late mail, which is what it
-did before this was settled.
+loop already holds. Asking every few seconds as well would turn a momentary
+transport failure into permanently late mail.
 
 The same request is also what the account's connection state is drawn from: an
 answer means the server is there, an error means it is not.
@@ -25,8 +24,8 @@ to report the loss itself**. Rebuilding the I2P links - which is what moving the
 tunnel-length slider does - tears the loop down, releases the links and starts a
 new loop that cannot answer until fresh tunnels are up; the state is set to
 unreachable at the moment the links go, and the first answer from the new loop
-puts it back. Without that the status strip at the top of the window kept the
-last answer's verdict and claimed a connection that no longer existed.
+puts it back. Without that the status strip at the top of the window would keep
+the last answer's verdict and claim a connection that no longer exists.
 
 ## Procedure
 

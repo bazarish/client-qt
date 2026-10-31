@@ -63,9 +63,7 @@ QImage IdenticonProvider::requestImage(
 
 namespace {
 
-// The shape every avatar in this application is. It is cut here rather than in
-// the scene graph because a mask there is a shader effect, and the software
-// renderer - the only one a statically linked build has - draws none.
+// Cut here: a scene-graph mask is a shader effect, which the software renderer does not draw.
 QImage circled(const QImage& square)
 {
     QImage mask(square.size(), QImage::Format_ARGB32_Premultiplied);

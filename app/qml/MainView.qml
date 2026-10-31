@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -10,7 +11,6 @@ Item {
     // The open chat, set from inside the page component, whose ids this scope cannot see.
     property ConversationView conversation: null
 
-    // On a narrow window an open chat covers the list, so back closes it.
     function goBack() {
         if (root.conversation && root.conversation.choosing) {
             root.conversation.clearChosen()
@@ -23,12 +23,10 @@ Item {
         return false
     }
 
-    // Positive results stay as transient toasts; failures are routed to the
-    // top-layer error dialog in Main.qml (so they are never covered or missed).
     Connections {
         target: root.session
         ignoreUnknownSignals: true
-        function onActionOk(info) { if (typeof window !== "undefined") window.showToast(info) }
+        function onActionOk(info) { window.showToast(info) }
     }
 
     ConnectionStrip {
@@ -72,15 +70,11 @@ Item {
             RowLayout {
                 anchors.fill: parent
                 spacing: 0
-                // Below the narrow threshold this is the only pane until a chat
-                // is opened, and the conversation replaces it rather than sharing
-                // a width neither can use.
                 id: panes
                 readonly property bool narrow: width < Theme.narrowWidth
                 readonly property bool chatOpen: root.session
                     && root.session.activePeer.length > 0
                 ChatList {
-                    id: chatList
                     session: root.session
                     visible: !panes.narrow || !panes.chatOpen
                     Layout.preferredWidth: panes.narrow
@@ -119,8 +113,6 @@ Item {
                     }
                     Label {
                         anchors.centerIn: parent
-                        // Bounded and wrapped: unbounded, it drew past its pane and
-                        // over the list whenever the window left it little room.
                         width: Math.max(0, parent.width - 32)
                         horizontalAlignment: Text.AlignHCenter
                         wrapMode: Text.Wrap
@@ -136,10 +128,8 @@ Item {
     }
 
     NewChatSheet { id: newChat; session: root.session }
-    // These three open from Settings; their back button returns there.
     InviteSheet { id: inviteSheet; session: root.session; onBack: { inviteSheet.close(); settings.open() } }
     SignWithKeySheet { id: signWithKeySheet; session: root.session; onBack: { signWithKeySheet.close(); settings.open() } }
-    // An accepted signature closes the sign-in window, so its outcome is told here.
     Connections {
         target: root.session
         ignoreUnknownSignals: true
@@ -164,8 +154,6 @@ Item {
         session: root.session
         onBack: { contactShare.close(); contactInfo.open() }
     }
-    // A live call opens the full-screen overlay; the user can collapse it to the
-    // compact banner below (root.callMinimized) and keep using the app.
     property bool callMinimized: false
     MicrophoneGate {
         id: callMicrophone
@@ -176,8 +164,6 @@ Item {
         session: root.session
         onMinimizeRequested: { root.callMinimized = true; callScreen.close() }
     }
-    // Open the overlay when a call becomes live (unless it was collapsed), and close
-    // it - clearing the collapsed flag - when the call returns to idle.
     function followCall() {
         if (!root.session) {
             return
@@ -278,7 +264,6 @@ Item {
         onShowConnectionLog: connectionLog.open()
     }
 
-    // Unlock prompt for an encrypted account the user brings online/switches to.
     property string unlockId: ""
     Connections {
         target: App
@@ -289,9 +274,6 @@ Item {
             unlockDialog.title = qsTr("Unlock %1").arg(name)
             unlockDialog.open()
         }
-        // A wrong passphrase belongs here, on the screen where it was typed. The
-        // prompt has not closed - it closes when the account opens, or when the
-        // user says Cancel - so the reason lands on it.
         function onUnlockFailed(error) {
             unlockError.text = error
             unlockField.text = ""
@@ -309,17 +291,13 @@ Item {
         modal: true
         focus: true
         closePolicy: Popup.CloseOnEscape
-        // Submitting is not closing: Dialog.accept() would take the prompt away
-        // before anyone knew whether the passphrase worked.
+        // Not Dialog.accept(): that closes the prompt before the passphrase is known to work.
         function submit() {
             if (root.unlockId.length > 0) {
                 App.openAccount(root.unlockId, unlockField.text)
             }
         }
-        // Dismissed: whatever was waiting on it does not happen, and the account's
-        // switch goes back to what is on disk.
         onRejected: App.cancelUnlock()
-        // The one thing to do here is type a passphrase.
         onOpened: unlockField.forceActiveFocus()
         background: DialogFrame { }
         header: Label { text: unlockDialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }

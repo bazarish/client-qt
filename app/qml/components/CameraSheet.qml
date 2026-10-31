@@ -4,7 +4,6 @@ import QtQuick.Controls
 import QtMultimedia
 import Bazarish
 
-// The camera takes the whole window: a preview inside a dialog is too small to aim with.
 Popup {
     id: sheet
 
@@ -19,7 +18,7 @@ Popup {
     readonly property real kScrim: 0.55
     readonly property int kPickerWidth: 320
 
-    // Which of the machine's cameras is shown; -1 is the one chosen in settings, or the system's default.
+    // -1: the camera chosen in settings, or the system's default.
     property int cameraAt: -1
     readonly property var inputs: cameras.item !== null ? cameras.item.videoInputs : []
     readonly property bool canSwitchCamera: sheet.inputs.length > 1

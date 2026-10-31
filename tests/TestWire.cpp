@@ -99,7 +99,6 @@ void* sample(const QMetaType type, const int seed)
     return value;
 }
 
-// No Q_OBJECT: qt_metacall is overridden so one object can hear every signal of another.
 class Recorder : public QObject {
 public:
     explicit Recorder(QObject& target)

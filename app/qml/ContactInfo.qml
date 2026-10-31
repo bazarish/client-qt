@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,13 +10,8 @@ Popup {
     property var session: null
     readonly property string shareLink: (session && session.activePeer.length > 0
         && session.contactsRevision >= 0) ? session.contactInvite(session.activePeer) : ""
-    // Whether the contact said no, rather than simply not having told us yet.
-    // The saved chat is not a contact: this panel says what it is and offers the
-    // one thing that can be done to it.
     readonly property bool saved: session !== null && session.isSavedChat(session.activePeer)
     readonly property bool inGroup: session !== null && session.activeIsGroup
-    // Re-read whenever anything about the contacts changes, so a switch flipped on
-    // another device shows here too.
     readonly property bool blocked: session !== null && session.contactsRevision >= 0
         && session.isBlocked(session.activePeer)
     signal shareRequested()
@@ -29,7 +25,6 @@ Popup {
 
     background: DialogFrame { }
 
-    // Prefill the rename field with the current local name each time it opens.
     onOpened: nameField.text = (session ? session.contactName(session.activePeer) : "")
 
     function saveName() {
@@ -59,7 +54,6 @@ Popup {
             IconButton { iconName: "close"; onClicked: root.close() }
         }
 
-        // --- The saved chat ---
         SavedMark {
             visible: root.saved
             Layout.alignment: Qt.AlignHCenter
@@ -98,20 +92,15 @@ Popup {
             size: 88
             enlargeable: true
         }
-        // The contact's display name (the local label, or a short fingerprint).
         Label {
             visible: !root.saved
             Layout.alignment: Qt.AlignHCenter
-            // Re-read on every contact change: a rename here is stored through the
-            // worker, and the name that comes back may not be the one typed.
             text: (root.session && root.session.contactsRevision >= 0)
                 ? root.session.peerName(root.session.activePeer) : ""
             color: Theme.text
             font.weight: Font.Medium
             font.pixelSize: Theme.fontTitle
         }
-        // Rename: a purely local label, mirrored only to your own other devices -
-        // the contact is never told the name you keep them under.
         Label {
             visible: !root.saved
             text: qsTr("Display name:")
@@ -134,8 +123,6 @@ Popup {
             }
             MenuButton { iconName: "check"; text: qsTr("Save"); onClicked: root.saveName() }
         }
-        // The identity itself, on one line: the middle gives way when it does not
-        // fit, and a tap anywhere on it copies the whole thing.
         RowLayout {
             visible: !root.saved
             Layout.fillWidth: true
@@ -173,8 +160,6 @@ Popup {
             }
         }
 
-        // What this contact may do here. The global settings still apply on top:
-        // these only take something away, never add it back.
         GridLayout {
             id: contactSwitches
             visible: !root.saved
@@ -226,7 +211,6 @@ Popup {
             }
             Dropdown {
                 id: timerBox
-                // Built again when the language changes, so the names follow it.
                 model: root.session
                     ? root.session.chatTimerChoices().map(seconds => ({
                         seconds: seconds,
@@ -250,8 +234,6 @@ Popup {
         }
 
         Rectangle {
-            // The line divides a contact's identity from what can be done about
-            // it. The saved chat has neither, so it has nothing to divide.
             visible: !root.saved
             Layout.fillWidth: true
             height: 1
@@ -279,10 +261,6 @@ Popup {
 
         Rectangle { visible: !root.saved; Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
 
-        // Destructive chat actions. Clearing empties the history (the chat stays);
-        // deleting removes the contact and the whole conversation for good.
-        // Three labels with a drawing each do not fit one line of this panel, so
-        // the one that only touches the history keeps a line to itself.
         ColumnLayout {
             visible: !root.saved
             Layout.fillWidth: true
@@ -318,9 +296,6 @@ Popup {
             }
         }
 
-        // Whether this account may write to them: whether it holds the pass they
-        // issued. Nothing runs it down, so this is a yes or a no rather than a
-        // number, and it is the same answer on every device of yours.
         Label {
             Layout.fillWidth: true
             Layout.topMargin: 2
@@ -329,9 +304,7 @@ Popup {
             font.pixelSize: Theme.fontSmall
             visible: !root.saved && root.session && root.session.activePeer.length > 0
             text: {
-                // Named so the binding depends on it: the answer is read through a
-                // call, and without something that changes when the contacts do,
-                // it is whatever it was when this panel was built.
+                // Read so the binding re-evaluates on contact changes: the call alone is not tracked.
                 const revision = root.session ? root.session.contactsRevision : 0
                 const may = root.session ? root.session.canWriteTo(root.session.activePeer) : false
                 return may ? qsTr("You can write to this contact")
@@ -341,9 +314,6 @@ Popup {
         }
     }
 
-    // Clear-chat choice: only your copy, or ask the peer to clear theirs too.
-    // Emptying the saved chat is one action on every device of this account, so it
-    // is confirmed rather than offered as a plain button.
     Dialog {
         id: clearSavedDialog
         anchors.centerIn: Overlay.overlay
@@ -377,8 +347,6 @@ Popup {
         }
     }
 
-    // Blocking says what it does and what it leaves alone, because it leaves the
-    // conversation alone - which is not what the word usually promises.
     Dialog {
         id: blockDialog
         anchors.centerIn: Overlay.overlay
@@ -469,7 +437,6 @@ Popup {
         }
     }
 
-    // Irreversible contact deletion.
     Dialog {
         id: deleteContactDialog
         anchors.centerIn: Overlay.overlay

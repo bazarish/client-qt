@@ -1,10 +1,9 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
 
-// In-conversation full-text search. Lists matching messages (newest first);
-// clicking one asks the conversation to jump to it (and closes the popup).
 Popup {
     id: popup
     bottomMargin: activeFocus ? App.keyboardInset : 0

@@ -3,47 +3,7 @@
 
 #include "SessionShared.hpp"
 
-#include <QJsonDocument>
-
-#include <QJsonArray>
-
-#include "Session.hpp"
-
-#include <bazarish/Crypto.hpp>
-#include <bazarish/Limits.hpp>
-#include <bazarish/Descriptor.hpp>
-#include <bazarish/Portal.hpp>
-
-#pragma push_macro("emit")
-#undef emit
-#include <bazarish/Log.hpp>
-#pragma pop_macro("emit")
-
-#include <QByteArray>
-#include <chrono>
-#include <cstring>
-
-#if defined(Q_OS_LINUX) && defined(BAZARISH_HAVE_QTDBUS)
-#endif
-
-#include <algorithm>
-#include <array>
-#include <ctime>
-#include <exception>
-#include <fstream>
-#include <iterator>
-#include <memory>
-#include <mutex>
-#include <thread>
-#include <utility>
-#include <vector>
-
 namespace bazarish::app {
-
-
-using bazarish::client::IncomingMessage;
-using bazarish::client::ServerEndpoint;
-using bazarish::client::Session;
 
 QStringList SessionController::standardReactions() const
 {

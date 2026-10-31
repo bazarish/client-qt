@@ -127,8 +127,6 @@ signals:
     void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
     void contactsRefreshed(const QVector<ContactState>& contacts, const QStringList& blocked);
     void avatarReady(const QString& fingerprint, const QByteArray& data);
-    void uploadProgress(qint64 localId, qint64 sent, qint64 total);
-    void downloadProgress(qint64 token, qint64 received, qint64 total);
     void servedProgress(const QString& peer, const QString& e2eId, qint64 sent, qint64 total);
     void transferStage(const QString& peer, const QString& e2eId, const QString& stage);
     void servedFinished(const QString& peer, const QString& e2eId, bool ok, const QString& error);
@@ -147,8 +145,8 @@ signals:
     void approvalState(bool pending, const QString& note);
     void facadeInfo(const QString& activeAddress, const QStringList& configured,
         const QString& serverFp, const QStringList& reseeds);
-    void i2pStatus(bool hasKey, bool delegated, bool live, const QString& address,
-        qint64 transientExpires, const QString& serverState);
+    void i2pStatus(bool hasKey, bool delegated, const QString& address, qint64 transientExpires,
+        const QString& serverState);
     void i2pKeyState(bool hasKey, const QString& address);
     void i2pServedAddress(const QString& address);
     void devicesReady(const QVariantList& devices);

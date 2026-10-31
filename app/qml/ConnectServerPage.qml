@@ -1,3 +1,4 @@
+// Bazarish project (c) 2026
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -11,7 +12,6 @@ Item {
         connectForm.takeLink(uri)
     }
 
-    // Back to the account list (no server needed to switch/create an account).
     IconButton {
         iconName: "back"
         anchors.left: parent.left
@@ -20,13 +20,9 @@ Item {
         onClicked: App.requestAddAccount()
     }
 
-    // There is no page behind this one to go back to here, so back is close.
     SignWithKeySheet { id: signSheet; session: root.session; onBack: signSheet.close() }
-    // Connecting is minutes of real work over I2P: show it, with steps.
     ConnectProgressDialog { id: connectDialog; session: root.session }
 
-    // The same gear as on the account list: a client waiting on I2P needs the
-    // router status, and there is no account open to reach it through.
     IconButton {
         iconName: "gear"
         anchors.top: parent.top
@@ -71,7 +67,6 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        // Which account is being connected: name and fingerprint.
         Rectangle {
             visible: root.session && root.session.fingerprint.length > 0
             Layout.fillWidth: true
@@ -100,11 +95,6 @@ Item {
             }
         }
 
-        // The descriptor form (link paste or manual facades + fingerprint). The
-        // user registers on the server's portal; this only connects.
-        // Prefilled from what the account already holds: a connect that failed
-        // does not throw the server away - it is stored the moment it is
-        // entered - and asking for the descriptor again reads as if it had.
         ServerConnectForm {
             id: connectForm
             Layout.fillWidth: true
@@ -115,7 +105,6 @@ Item {
             initialReseeds: root.session ? root.session.configuredReseeds : []
         }
 
-        // The dialog can be hidden while the connect runs; this is the way back.
         Label {
             visible: root.session && root.session.connecting && connectDialog.suppressed
             text: qsTr("Connecting (%1%)").arg(root.session ? root.session.connectPercent : 0)
@@ -142,8 +131,6 @@ Item {
         }
     }
 
-    // Footer: the key is the user's sign-in to every portal and any
-    // sign-in-with-key site, available with or without a server.
     Button {
         id: signatureButton
         focusPolicy: Theme.pressFocus
