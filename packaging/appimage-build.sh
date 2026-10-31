@@ -15,11 +15,11 @@ readonly kJobs=4
 case "$(uname -m)" in
 x86_64)
     readonly kQtHost=linux kQtArch=linux_gcc_64 kQtDir=gcc_64 kDeploy=x86_64
-    readonly kAlsa=libasound2
+    readonly kAlsa=libasound2 kGstPhotography=libgstreamer-plugins-bad1.0-0
     ;;
 aarch64)
     readonly kQtHost=linux_arm64 kQtArch=linux_gcc_arm64 kQtDir=gcc_arm64 kDeploy=aarch64
-    readonly kAlsa=libasound2t64
+    readonly kAlsa=libasound2t64 kGstPhotography=libgstreamer-plugins-good1.0-0
     ;;
 *)
     echo "no AppImage for $(uname -m)" >&2
@@ -30,8 +30,8 @@ esac
 apt-get update -qq
 # qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
 # fontconfig, audio); the build itself uses the Qt under /opt. The GStreamer
-# libraries are what Qt's own GStreamer media plugin links against: GStreamer 1.24
-# moved libgstphotography from the bad set to the good one, hence both.
+# libraries are what Qt's own GStreamer media plugin links against; GStreamer 1.24
+# moved libgstphotography from the bad set to the good one.
 apt-get install -y -qq --no-install-recommends \
   build-essential cmake git ca-certificates wget file rsync patchelf python3-pip tcl \
   libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
@@ -42,7 +42,7 @@ apt-get install -y -qq --no-install-recommends \
   libwayland-client0 libwayland-cursor0 libwayland-egl1 \
   libxrandr2 libxext6 libxfixes3 libxdamage1 libxi6 libxtst6 libxrender1 libsm6 libice6 \
   libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 "$kAlsa" libpulse0 libsndfile1 \
-  libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-good1.0-0 libgstreamer-gl1.0-0
+  libgstreamer-plugins-bad1.0-0 libgstreamer-gl1.0-0 "$kGstPhotography"
 
 QTDIR="/opt/Qt/6.8.2/$kQtDir"
 if [ ! -x "$QTDIR/bin/qmake" ]; then
