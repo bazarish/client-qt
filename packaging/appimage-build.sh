@@ -29,7 +29,9 @@ esac
 
 apt-get update -qq
 # qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
-# fontconfig, audio); the build itself uses the Qt under /opt.
+# fontconfig, audio); the build itself uses the Qt under /opt. The GStreamer
+# libraries are what Qt's own GStreamer media plugin links against: GStreamer 1.24
+# moved libgstphotography from the bad set to the good one, hence both.
 apt-get install -y -qq --no-install-recommends \
   build-essential cmake git ca-certificates wget file rsync patchelf python3-pip tcl \
   libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
@@ -39,7 +41,8 @@ apt-get install -y -qq --no-install-recommends \
   libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0 \
   libwayland-client0 libwayland-cursor0 libwayland-egl1 \
   libxrandr2 libxext6 libxfixes3 libxdamage1 libxi6 libxtst6 libxrender1 libsm6 libice6 \
-  libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 "$kAlsa" libpulse0 libsndfile1
+  libva2 libva-drm2 libva-x11-2 libvdpau1 libdrm2 "$kAlsa" libpulse0 libsndfile1 \
+  libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-good1.0-0 libgstreamer-gl1.0-0
 
 QTDIR="/opt/Qt/6.8.2/$kQtDir"
 if [ ! -x "$QTDIR/bin/qmake" ]; then
