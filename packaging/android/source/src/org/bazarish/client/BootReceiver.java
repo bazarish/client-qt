@@ -1,5 +1,5 @@
 // Bazarish project (c) 2026
-package sh.bazari.client;
+package org.bazarish.client;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

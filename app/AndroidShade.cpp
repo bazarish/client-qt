@@ -29,7 +29,7 @@
 namespace bazarish::app {
 namespace {
 
-const char* const kShade = "sh/bazari/client/Shade";
+const char* const kShade = "org/bazarish/client/Shade";
 const char* const kLogTag = "bazarish";
 constexpr int kLogChunkBytes = 1024;
 

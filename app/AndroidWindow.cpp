@@ -25,7 +25,7 @@
 namespace bazarish::app {
 namespace {
 
-const char* const kWindow = "sh/bazari/client/Window";
+const char* const kWindow = "org/bazarish/client/Window";
 
 std::atomic<AndroidWindow*> gWindow{nullptr};
 std::atomic<AppController*> gApp{nullptr};

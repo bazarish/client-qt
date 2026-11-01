@@ -13,10 +13,10 @@
 namespace bazarish::app {
 namespace {
 
-const char* const kCallAudio = "sh/bazari/client/CallAudio";
-const char* const kCapture = "sh/bazari/client/CallAudio$Capture";
-const char* const kPlayback = "sh/bazari/client/CallAudio$Playback";
-const char* const kVoicePlayback = "sh/bazari/client/VoicePlayback";
+const char* const kCallAudio = "org/bazarish/client/CallAudio";
+const char* const kCapture = "org/bazarish/client/CallAudio$Capture";
+const char* const kPlayback = "org/bazarish/client/CallAudio$Playback";
+const char* const kVoicePlayback = "org/bazarish/client/VoicePlayback";
 constexpr int kFrameBytes = kCallSamplesPerFrame * static_cast<int>(sizeof(std::int16_t));
 
 QJniObject directBuffer(std::vector<std::int16_t>& frame)

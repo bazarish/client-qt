@@ -1,5 +1,5 @@
 // Bazarish project (c) 2026
-package sh.bazari.client;
+package org.bazarish.client;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -35,14 +35,14 @@ public final class Shade {
     static final String CHANNEL_MESSAGES = "messages";
     static final String CHANNEL_REACTIONS = "reactions";
     static final String CHANNEL_CALLS = "calls";
-    static final String EXTRA_ACCOUNT = "sh.bazari.client.account";
-    static final String EXTRA_PEER = "sh.bazari.client.peer";
-    static final String EXTRA_LISTENER = "sh.bazari.client.listener";
-    static final String ACTION_ANSWER = "sh.bazari.client.ANSWER";
-    static final String ACTION_RING = "sh.bazari.client.RING";
-    static final String ACTION_DECLINE = "sh.bazari.client.DECLINE";
+    static final String EXTRA_ACCOUNT = "org.bazarish.client.account";
+    static final String EXTRA_PEER = "org.bazarish.client.peer";
+    static final String EXTRA_LISTENER = "org.bazarish.client.listener";
+    static final String ACTION_ANSWER = "org.bazarish.client.ANSWER";
+    static final String ACTION_RING = "org.bazarish.client.RING";
+    static final String ACTION_DECLINE = "org.bazarish.client.DECLINE";
     // Not exported: what a notice asks of the window cannot come from another app.
-    static final String NOTICE_ENTRY = "sh.bazari.client.NoticeEntry";
+    static final String NOTICE_ENTRY = "org.bazarish.client.NoticeEntry";
     static final int PRESENCE_ID = 1;
     private static final int CALL_ID = 2;
     private static final int MESSAGE_ID = 3;

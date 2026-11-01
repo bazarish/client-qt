@@ -1,5 +1,5 @@
 // Bazarish project (c) 2026
-package sh.bazari.client;
+package org.bazarish.client;
 
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -15,7 +15,7 @@ import org.qtproject.qt.android.QtServiceBase;
 
 // The core: its own process, started by the window or at boot; only the system stops it.
 public class BazarishService extends QtServiceBase {
-    private static final String ACTION_HIDDEN = "sh.bazari.client.PRESENCE_HIDDEN";
+    private static final String ACTION_HIDDEN = "org.bazarish.client.PRESENCE_HIDDEN";
     private static final int OPEN_REQUEST = 0;
     private static final int DECLINE_REQUEST = 1;
     private static final int HIDDEN_REQUEST = 2;

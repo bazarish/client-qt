@@ -22,7 +22,7 @@ const QString kShotName = QStringLiteral("photo");
 constexpr int kFullTurn = 360;
 
 #ifdef Q_OS_ANDROID
-const char* const kWindow = "sh/bazari/client/Window";
+const char* const kWindow = "org/bazarish/client/Window";
 #endif
 
 void followTilt(const bool on)

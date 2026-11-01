@@ -1,5 +1,5 @@
 // Bazarish project (c) 2026
-package sh.bazari.client;
+package org.bazarish.client;
 
 import android.content.Intent;
 import android.os.Bundle;

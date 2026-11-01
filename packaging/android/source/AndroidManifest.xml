@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="sh.bazari.client"
+    package="org.bazarish.client"
     android:installLocation="auto"
     android:versionCode="-- %%INSERT_VERSION_CODE%% --"
     android:versionName="-- %%INSERT_VERSION_NAME%% --">
@@ -30,7 +30,7 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="false">
         <activity
-            android:name="sh.bazari.client.BazarishActivity"
+            android:name="org.bazarish.client.BazarishActivity"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustNothing"
@@ -60,8 +60,8 @@
         </activity>
 
         <activity-alias
-            android:name="sh.bazari.client.NoticeEntry"
-            android:targetActivity="sh.bazari.client.BazarishActivity"
+            android:name="org.bazarish.client.NoticeEntry"
+            android:targetActivity="org.bazarish.client.BazarishActivity"
             android:exported="false">
           <meta-data
                 android:name="android.app.lib_name"
@@ -75,7 +75,7 @@
         </activity-alias>
 
         <service
-            android:name="sh.bazari.client.BazarishService"
+            android:name="org.bazarish.client.BazarishService"
             android:process=":core"
             android:exported="false"
             android:foregroundServiceType="remoteMessaging|microphone">
@@ -91,7 +91,7 @@
         </service>
 
         <receiver
-            android:name="sh.bazari.client.BootReceiver"
+            android:name="org.bazarish.client.BootReceiver"
             android:process=":core"
             android:exported="true">
             <intent-filter>

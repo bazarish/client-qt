@@ -39,7 +39,7 @@ constexpr std::size_t kReadChunkBytes = 64 * 1024;
 #ifdef Q_OS_ANDROID
 namespace {
 
-const char* const kDocuments = "sh/bazari/client/Documents";
+const char* const kDocuments = "org/bazarish/client/Documents";
 
 QJniObject jniString(const QString& text)
 {
