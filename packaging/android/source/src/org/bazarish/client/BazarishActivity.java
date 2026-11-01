@@ -65,7 +65,7 @@ public class BazarishActivity extends QtActivity {
 
     private static String linkOf(Intent intent) {
         if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction())
-            || intent.getData() == null || !"bazarish".equals(intent.getData().getScheme())) {
+            || intent.getData() == null) {
             return null;
         }
         return intent.getDataString();

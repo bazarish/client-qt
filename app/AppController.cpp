@@ -63,7 +63,7 @@ AppController::AppController(Translations& translations, QObject* parent)
     }
     // Coming back from the system settings is when the answer may have changed.
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
-        &AppController::backgroundRestrictedChanged);
+        &AppController::systemPermissionsChanged);
     connect(qApp, &QGuiApplication::applicationStateChanged, this,
         [this](const Qt::ApplicationState state) {
             emit commands_.windowActive(state == Qt::ApplicationActive);
@@ -482,17 +482,24 @@ void AppController::applyPendingLink()
     openLink(link);
 }
 
+bool AppController::isAppLink(const QString& link) const
+{
+    return !bazarish::linkTail(link.trimmed().toStdString()).empty();
+}
+
 void AppController::openLink(const QString& link)
 {
-    const QString uri = link.trimmed();
-    if (uri.startsWith(QLatin1String(bazarish::kPairUri))) {
+    const std::string tail = bazarish::linkTail(link.trimmed().toStdString());
+    const auto kindIs = [&tail](const char* const kind) { return tail.rfind(kind, 0) == 0; };
+    const QString uri = QString::fromStdString(bazarish::webLink(tail));
+    if (kindIs(bazarish::kPairKind)) {
         emit raiseRequested();
         emit pairLinkOpened(uri);
         return;
     }
-    const bool invite = uri.startsWith(QLatin1String(bazarish::kInviteUri));
-    const bool sign = uri.startsWith(QLatin1String(bazarish::kSignUri));
-    if (!invite && !sign && !uri.startsWith(QLatin1String(bazarish::kServerUri))) {
+    const bool invite = kindIs(bazarish::kInviteKind);
+    const bool sign = kindIs(bazarish::kSignKind);
+    if (!invite && !sign && !kindIs(bazarish::kServerKind)) {
         bazarish::log::warn("asked to open a link this client does not know");
         emit linkRefused(tr("This link is not one Bazarish knows."));
         return;
@@ -574,6 +581,22 @@ void AppController::openFullScreenCallsSettings() const
 {
 #ifdef Q_OS_ANDROID
     AndroidWindow::openFullScreenCallsSettings();
+#endif
+}
+
+bool AppController::linksHandled() const
+{
+#ifdef Q_OS_ANDROID
+    return AndroidWindow::linksHandled();
+#else
+    return true;
+#endif
+}
+
+void AppController::openLinkSettings() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidWindow::openLinkSettings();
 #endif
 }
 

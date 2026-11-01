@@ -21,6 +21,8 @@ public:
     static void openBackgroundSettings();
     static bool fullScreenCallsRestricted();
     static void openFullScreenCallsSettings();
+    static bool linksHandled();
+    static void openLinkSettings();
     static bool canPickPictures();
     static void pickPictures();
     static void pickAvatar();

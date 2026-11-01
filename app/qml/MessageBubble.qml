@@ -54,6 +54,8 @@ Item {
                 delegate.copiedBlock = true
                 copiedBlockFor.restart()
             }
+        } else if (App.isAppLink(link)) {
+            App.openLink(link)
         } else {
             delegate.linkRequested(link)
         }

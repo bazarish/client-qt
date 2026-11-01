@@ -199,6 +199,16 @@ void AndroidWindow::openFullScreenCallsSettings()
     QJniObject::callStaticMethod<void>(kWindow, "openFullScreenCallsSettings", "()V");
 }
 
+bool AndroidWindow::linksHandled()
+{
+    return QJniObject::callStaticMethod<jboolean>(kWindow, "linksHandled", "()Z");
+}
+
+void AndroidWindow::openLinkSettings()
+{
+    QJniObject::callStaticMethod<void>(kWindow, "openLinkSettings", "()V");
+}
+
 void AndroidWindow::openBackgroundSettings()
 {
     QJniObject::callStaticMethod<void>(kWindow, "openBackgroundSettings", "()V");

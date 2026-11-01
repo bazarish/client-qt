@@ -143,7 +143,7 @@ Popup {
                         anchors.topMargin: targetText.topPadding
                         visible: targetText.length === 0 && targetText.preeditText.length === 0
                         // U+2060 keeps the sigil on the line of the word it marks.
-                        text: qsTr("bazarish://invite?...  or  %1alias").arg(App.aliasSigil + "\u2060")
+                        text: qsTr("Invite link  or  %1alias").arg(App.aliasSigil + "\u2060")
                         color: Theme.textDim
                         font: targetText.font
                         wrapMode: Text.Wrap

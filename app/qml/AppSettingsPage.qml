@@ -49,6 +49,14 @@ Popup {
                     Layout.margins: 16
                     spacing: 10
 
+                    MenuButton {
+                        visible: !App.linksHandled
+                        primary: true
+                        text: qsTr("Open links in the app")
+                        Layout.fillWidth: true
+                        onClicked: App.openLinkSettings()
+                    }
+
                     Label {
                         text: qsTr("Version %1").arg(App.appVersion)
                         color: Theme.textFaint

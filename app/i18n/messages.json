@@ -71,6 +71,12 @@
       "zh": "%1 · 隧道 %2 入 / %3 出 · %4 个租约集",
       "ar": "⁦%1⁩ · الأنفاق ⁦%2⁩ واردة / ⁦%3⁩ صادرة · ⁦%4⁩ مجموعة عقود"
     },
+    "Allow bazari.sh links to open in the app.": {
+      "ru": "Разрешите открывать ссылки bazari.sh в приложении.",
+      "es": "Permite abrir los enlaces de bazari.sh en la app.",
+      "zh": "允许在应用中打开 bazari.sh 链接。",
+      "ar": "اسمح بفتح روابط ⁦bazari.sh⁩ في التطبيق."
+    },
     "Apr": {
       "ru": "апр",
       "es": "abr",
@@ -389,6 +395,12 @@
       "zh": "正在加密…",
       "ar": "جارٍ التشفير…"
     },
+    "Invite link  or  %1alias": {
+      "ru": "Ссылка-приглашение  или  %1алиас",
+      "es": "Enlace de invitación  o  %1alias",
+      "zh": "邀请链接  或  %1别名",
+      "ar": "رابط دعوة  أو  ⁦%1⁩اسم"
+    },
     "Jan": {
       "ru": "янв",
       "es": "ene",
@@ -436,6 +448,24 @@
       "es": "oct",
       "zh": "10月",
       "ar": "أكتوبر"
+    },
+    "Open links in the app": {
+      "ru": "Открывать ссылки в приложении",
+      "es": "Abrir los enlaces en la app",
+      "zh": "在应用中打开链接",
+      "ar": "فتح الروابط في التطبيق"
+    },
+    "Pairing link": {
+      "ru": "Ссылка подключения",
+      "es": "Enlace de vinculación",
+      "zh": "配对链接",
+      "ar": "رابط الاقتران"
+    },
+    "Paste a server link": {
+      "ru": "Вставьте ссылку на сервер",
+      "es": "Pega un enlace del servidor",
+      "zh": "粘贴服务器链接",
+      "ar": "الصِق رابط الخادم"
     },
     "Sep": {
       "ru": "сен",
@@ -2255,12 +2285,6 @@
       "zh": "密码已更改",
       "ar": "تغيّرت كلمة المرور"
     },
-    "Paste a bazarish://server/… link": {
-      "ru": "Вставьте ссылку bazarish://server/…",
-      "es": "Pega un enlace bazarish://server/…",
-      "zh": "粘贴 bazarish://server/… 链接",
-      "ar": "الصِق رابط ‎bazarish://server/…‎"
-    },
     "Paste an invite link or a short alias": {
       "ru": "Вставьте ссылку-приглашение или короткий алиас",
       "es": "Pega un enlace de invitación o un alias corto",
@@ -4042,18 +4066,6 @@
       "es": "como %1",
       "zh": "身份：%1",
       "ar": "بصفة ⁦%1⁩"
-    },
-    "bazarish://invite?...  or  %1alias": {
-      "ru": "bazarish://invite?…  или  %1алиас",
-      "es": "bazarish://invite?…  o  %1alias",
-      "zh": "bazarish://invite?…  或  %1别名",
-      "ar": "‎bazarish://invite?…‎  أو  ⁦%1⁩اسم"
-    },
-    "bazarish://pair?...": {
-      "ru": "bazarish://pair?…",
-      "es": "bazarish://pair?…",
-      "zh": "bazarish://pair?…",
-      "ar": "‎bazarish://pair?…‎"
     },
     "connecting": {
       "ru": "подключается",

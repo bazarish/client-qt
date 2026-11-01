@@ -83,7 +83,7 @@ Popup {
                     selectByMouse: true
                     color: Theme.text
                     placeholderTextColor: Theme.textDim
-                    placeholderText: qsTr("bazarish://pair?...")
+                    placeholderText: qsTr("Pairing link")
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
                 }
             }

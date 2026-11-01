@@ -100,7 +100,7 @@ QString SessionController::aliasWordProblem(const QString& word) const
 
 bool SessionController::typedAlias(const QString& typed) const
 {
-    return !typed.trimmed().startsWith(QLatin1String(bazarish::kInviteUri));
+    return bazarish::linkQuery(typed.trimmed().toStdString(), bazarish::kInviteKind).empty();
 }
 
 void SessionController::addByInvite(const QString& uri, const QString& intro)

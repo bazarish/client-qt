@@ -112,7 +112,7 @@ ColumnLayout {
         TextField {
             id: linkField
             Layout.fillWidth: true
-            placeholderText: qsTr("Paste a bazarish://server/… link")
+            placeholderText: qsTr("Paste a server link")
             color: Theme.text
             placeholderTextColor: Theme.textDim
             selectByMouse: true

@@ -96,8 +96,8 @@ public:
     QString i2pdVersion() const;
     QString appVersion() const;
 
-    // A bazarish:// link handed over by the desktop or by a second copy.
     Q_INVOKABLE void openLink(const QString& link);
+    Q_INVOKABLE bool isAppLink(const QString& link) const;
 
     Q_INVOKABLE void createAccount(const QString& name, const QString& passphrase);
     Q_INVOKABLE void openAccount(const QString& id, const QString& passphrase);
@@ -167,13 +167,16 @@ public:
     Q_PROPERTY(bool portable READ portable NOTIFY portableChanged)
     bool portable() const;
     Q_PROPERTY(bool backgroundRestricted READ backgroundRestricted
-            NOTIFY backgroundRestrictedChanged)
+            NOTIFY systemPermissionsChanged)
     bool backgroundRestricted() const;
     Q_INVOKABLE void openBackgroundSettings() const;
     Q_PROPERTY(bool fullScreenCallsRestricted READ fullScreenCallsRestricted
-            NOTIFY backgroundRestrictedChanged)
+            NOTIFY systemPermissionsChanged)
     bool fullScreenCallsRestricted() const;
     Q_INVOKABLE void openFullScreenCallsSettings() const;
+    Q_PROPERTY(bool linksHandled READ linksHandled NOTIFY systemPermissionsChanged)
+    bool linksHandled() const;
+    Q_INVOKABLE void openLinkSettings() const;
     Q_PROPERTY(bool canPickPictures READ canPickPictures CONSTANT)
     bool canPickPictures() const;
     Q_INVOKABLE void pickPictures() const;
@@ -210,7 +213,7 @@ signals:
     void pairingChanged();
     void pairingFinished(bool ok);
     void portableChanged();
-    void backgroundRestrictedChanged();
+    void systemPermissionsChanged();
     void callLiveChanged();
     void unlocked();
     void picturesPicked(const QStringList& uris);

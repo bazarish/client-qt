@@ -504,7 +504,8 @@ QColor SessionController::letterFill(const QString& name) const
 QVariantList SessionController::invitesIn(const QString& text) const
 {
     QVariantList found;
-    static const QRegularExpression kInvite(QStringLiteral("bazarish://invite\\?\\S+"));
+    static const QRegularExpression kInvite(
+        QStringLiteral("(?:https://bazari\\.sh/#|bazarish://)invite\\?\\S+"));
     for (QRegularExpressionMatchIterator it = kInvite.globalMatch(text); it.hasNext();) {
         const QString uri = it.next().captured(0);
         try {

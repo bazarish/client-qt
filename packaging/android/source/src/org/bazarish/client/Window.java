@@ -10,6 +10,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.verify.domain.DomainVerificationManager;
+import android.content.pm.verify.domain.DomainVerificationUserState;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -38,6 +40,7 @@ public final class Window {
     private static final String HELD = "held";
     private static final String HELD_ANSWER = "answer";
     private static final String HELD_LINK = "link";
+    private static final String LINK_HOST = "bazari.sh";
 
     private static volatile int gestureLeft = 0;
     private static volatile int gestureRight = 0;
@@ -275,6 +278,22 @@ public final class Window {
 
     public static void openFullScreenCallsSettings() {
         app.startActivity(new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                Uri.parse("package:" + app.getPackageName()))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+    }
+
+    public static boolean linksHandled() throws PackageManager.NameNotFoundException {
+        DomainVerificationUserState state = app.getSystemService(DomainVerificationManager.class)
+            .getDomainVerificationUserState(app.getPackageName());
+        if (state == null || !state.isLinkHandlingAllowed()) {
+            return false;
+        }
+        Integer chosen = state.getHostToStateMap().get(LINK_HOST);
+        return chosen != null && chosen != DomainVerificationUserState.DOMAIN_STATE_NONE;
+    }
+
+    public static void openLinkSettings() {
+        app.startActivity(new Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS,
                 Uri.parse("package:" + app.getPackageName()))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }

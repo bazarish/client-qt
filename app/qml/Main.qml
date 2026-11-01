@@ -222,6 +222,8 @@ ApplicationWindow {
         App.paintSystemBars(Theme.bg)
         if (backgroundAsk.needed) {
             backgroundAsk.open()
+        } else if (!App.linksHandled) {
+            linksAsk.open()
         }
     }
     Connections {
@@ -240,9 +242,10 @@ ApplicationWindow {
         width: Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 32)
         padding: 14
         background: DialogFrame { }
+        onClosed: if (!App.linksHandled) { linksAsk.open() }
         Connections {
             target: App
-            function onBackgroundRestrictedChanged() {
+            function onSystemPermissionsChanged() {
                 if (!backgroundAsk.needed) {
                     backgroundAsk.close()
                 }
@@ -271,6 +274,48 @@ ApplicationWindow {
                 Layout.alignment: Qt.AlignRight
                 onClicked: App.backgroundRestricted ? App.openBackgroundSettings()
                                                     : App.openFullScreenCallsSettings()
+            }
+        }
+    }
+
+    Popup {
+        id: linksAsk
+        parent: Overlay.overlay
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        z: 1050
+        width: Math.min(420, (Overlay.overlay ? Overlay.overlay.width : 420) - 32)
+        padding: 14
+        background: DialogFrame { }
+        Connections {
+            target: App
+            function onSystemPermissionsChanged() {
+                if (App.linksHandled) {
+                    linksAsk.close()
+                }
+            }
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: qsTr("Allow bazari.sh links to open in the app.")
+                color: Theme.text
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+                MenuButton {
+                    text: qsTr("Later")
+                    onClicked: linksAsk.close()
+                }
+                MenuButton {
+                    text: qsTr("Settings")
+                    primary: true
+                    onClicked: App.openLinkSettings()
+                }
             }
         }
     }
