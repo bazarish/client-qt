@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "CoreHost.hpp"
 
+#include "AccountKey.hpp"
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
 #include "CoreAccount.hpp"
@@ -107,6 +108,7 @@ CoreHost::CoreHost(QObject* const parent)
         &CoreHost::deleteAccountAfterUnlock);
     connect(&commands_, &AppCommands::forgetAccountLocally, this,
         &CoreHost::forgetAccountLocally);
+    connect(&commands_, &AppCommands::lockAccount, this, &CoreHost::lockAccount);
     connect(&commands_, &AppCommands::cancelUnlock, this, &CoreHost::cancelUnlock);
     connect(&commands_, &AppCommands::setNotificationsEnabled, this,
         &CoreHost::setNotificationsEnabled);
@@ -597,6 +599,7 @@ void CoreHost::removeSession(CoreAccount* const account)
 
 void CoreHost::onSessionClosed(const QString& id)
 {
+    client::accountkey::forget(manager_->fileFor(id.toStdString()));
     if (pendingRemovals_.remove(id)) {
         removeAccountFiles(id);
     }
@@ -984,6 +987,13 @@ void CoreHost::forgetAccountLocally(const QString& id)
         return;
     }
     removeAccountFiles(id);
+}
+
+void CoreHost::lockAccount(const QString& id)
+{
+    if (CoreAccount* const account = sessionFor(id)) {
+        removeSession(account);
+    }
 }
 
 void CoreHost::switchTo(const QString& id)

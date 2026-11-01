@@ -15,9 +15,10 @@ Item {
     }
 
     property string pendingId: ""
-    property string pendingDeleteId: ""
-    property string pendingDeleteName: ""
+    property string rowId: ""
+    property string rowName: ""
     property string rowFingerprint: ""
+    property bool rowLockable: false
 
     function closeIfSwitching() {
         const view = root.StackView.view
@@ -136,8 +137,9 @@ Item {
                             iconName: "more"
                             onClicked: {
                                 root.rowFingerprint = model.fingerprint
-                                root.pendingDeleteId = model.accountId
-                                root.pendingDeleteName = model.name
+                                root.rowId = model.accountId
+                                root.rowName = model.name
+                                root.rowLockable = model.encrypted && model.open
                                 rowMenu.popup()
                             }
                         }
@@ -171,7 +173,10 @@ Item {
             passError.text = ""
             App.openAccount(root.pendingId, passField.text)
         }
-        onRejected: App.cancelUnlock()
+        onRejected: {
+            passField.text = ""
+            App.cancelUnlock()
+        }
         onOpened: passField.forceActiveFocus()
         background: DialogFrame { }
         header: Label { text: qsTr("Unlock account"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
@@ -211,6 +216,7 @@ Item {
         }
         function onAccountUnlocked(id) {
             passError.text = ""
+            passField.text = ""
             passDialog.close()
             root.closeIfSwitching()
         }
@@ -229,9 +235,15 @@ Item {
             onTriggered: root.copyFingerprint(root.rowFingerprint)
         }
         ContextMenuItem {
+            text: qsTr("Lock account")
+            visible: root.rowLockable
+            height: visible ? implicitHeight : 0
+            onTriggered: App.lockAccount(root.rowId)
+        }
+        ContextMenuItem {
             text: qsTr("Delete account")
             danger: true
-            onTriggered: deleteDialog.show(root.pendingDeleteId, root.pendingDeleteName)
+            onTriggered: deleteDialog.show(root.rowId, root.rowName)
         }
     }
 }

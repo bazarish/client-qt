@@ -281,6 +281,7 @@ Item {
         }
         function onAccountUnlocked(id) {
             unlockError.text = ""
+            unlockField.text = ""
             unlockDialog.close()
         }
     }
@@ -297,7 +298,10 @@ Item {
                 App.openAccount(root.unlockId, unlockField.text)
             }
         }
-        onRejected: App.cancelUnlock()
+        onRejected: {
+            unlockField.text = ""
+            App.cancelUnlock()
+        }
         onOpened: unlockField.forceActiveFocus()
         background: DialogFrame { }
         header: Label { text: unlockDialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }

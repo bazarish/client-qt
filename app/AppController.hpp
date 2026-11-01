@@ -123,6 +123,7 @@ public:
     QString deletingId() const { return deletingId_; }
     Q_INVOKABLE void deleteAccountAfterUnlock(const QString& id);
     Q_INVOKABLE void forgetAccountLocally(const QString& id);
+    Q_INVOKABLE void lockAccount(const QString& id);
     Q_INVOKABLE void switchTo(const QString& id);
     void openConversationOf(const QString& accountId, const QString& peer);
     Q_INVOKABLE void setOnline(const QString& id, bool on);

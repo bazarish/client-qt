@@ -8,6 +8,7 @@
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QProcess>
+#include <QStringList>
 #include <QTemporaryDir>
 
 #include <cstdio>
@@ -40,6 +41,8 @@ QProcess* gCore = nullptr;
 
 constexpr int kCoreStartMs = 30000;
 constexpr int kSettleMs = 10000;
+constexpr const char* kLockedName = "locked";
+constexpr const char* kLockedPassphrase = "correct horse";
 
 bool settleUntil(const std::function<bool()>& done, const int limitMs = kSettleMs)
 {
@@ -130,6 +133,40 @@ int main(int argc, char** argv)
     CHECK(settleUntil([&]() { return second.started == 1; }));
     CHECK(second.lists == 1);
     CHECK(second.i2pState);
+
+    {
+        QString id;
+        bool open = false;
+        QStringList ended;
+        QStringList asked;
+        QObject::connect(&second.events, &AppEvents::accountList,
+            [&](const QVector<AccountListRow>& rows) {
+                for (const AccountListRow& row : rows) {
+                    if (row.name == QLatin1String(kLockedName)) {
+                        id = row.id;
+                        open = row.open;
+                    }
+                }
+            });
+        QObject::connect(&second.events, &AppEvents::sessionEnded,
+            [&](const QString& gone) { ended << gone; });
+        QObject::connect(&second.events, &AppEvents::needPassphrase,
+            [&](const QString& locked, const QString&) { asked << locked; });
+
+        emit second.commands.createAccount(
+            QLatin1String(kLockedName), QLatin1String(kLockedPassphrase));
+        CHECK(settleUntil([&]() { return !id.isEmpty() && open; }));
+
+        emit second.commands.lockAccount(id);
+        CHECK(settleUntil([&]() { return !open && ended.contains(id); }));
+
+        emit second.commands.openAccount(id, QString());
+        CHECK(settleUntil([&]() { return asked.contains(id); }));
+        CHECK(!open);
+
+        emit second.commands.openAccount(id, QLatin1String(kLockedPassphrase));
+        CHECK(settleUntil([&]() { return open; }));
+    }
 
     Window third;
     third.connectTo(path);

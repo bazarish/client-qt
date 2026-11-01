@@ -107,6 +107,7 @@ private:
     void deleteAccount(const QString& id);
     void deleteAccountAfterUnlock(const QString& id);
     void forgetAccountLocally(const QString& id);
+    void lockAccount(const QString& id);
     void cancelUnlock();
     void setDeleting(const QString& id);
     void setPortable(bool on);

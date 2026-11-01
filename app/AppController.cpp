@@ -430,6 +430,11 @@ void AppController::forgetAccountLocally(const QString& id)
     emit commands_.forgetAccountLocally(id);
 }
 
+void AppController::lockAccount(const QString& id)
+{
+    emit commands_.lockAccount(id);
+}
+
 void AppController::switchTo(const QString& id)
 {
     emit commands_.switchTo(id);
