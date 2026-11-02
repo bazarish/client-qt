@@ -491,14 +491,15 @@ void AppController::openLink(const QString& link)
 {
     const std::string tail = bazarish::linkTail(link.trimmed().toStdString());
     const auto kindIs = [&tail](const char* const kind) { return tail.rfind(kind, 0) == 0; };
-    const QString uri = QString::fromStdString(bazarish::webLink(tail));
+    const bool sign = kindIs(bazarish::kSignKind);
+    const QString uri
+        = QString::fromStdString(sign ? bazarish::schemeLink(tail) : bazarish::webLink(tail));
     if (kindIs(bazarish::kPairKind)) {
         emit raiseRequested();
         emit pairLinkOpened(uri);
         return;
     }
     const bool invite = kindIs(bazarish::kInviteKind);
-    const bool sign = kindIs(bazarish::kSignKind);
     if (!invite && !sign && !kindIs(bazarish::kServerKind)) {
         bazarish::log::warn("asked to open a link this client does not know");
         emit linkRefused(tr("This link is not one Bazarish knows."));
