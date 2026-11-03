@@ -454,7 +454,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         });
     connect(&ingest_, &MessageIngest::editArrived, this,
         [this](const QString& peer, const qint64 localId, const QString& ref) {
-            if (peer == viewedPeer_ && sendReceipts_ && !catchingUp_
+            if (peer == viewedPeer_ && receiptsGoTo(peer) && !catchingUp_
                 && localId <= lastReadAckedId_.value(peer, 0)) {
                 emit commands_.requestSendReceipt(peer, ref);
             }
@@ -731,6 +731,12 @@ void CoreAccount::onMessageReceived(const QVariantMap& message)
     }
 }
 
+// A group host ignores receipts.
+bool CoreAccount::receiptsGoTo(const QString& peer) const
+{
+    return sendReceipts_ && !store_.groupState(peer).has_value();
+}
+
 void CoreAccount::viewConversation(const QString& peer)
 {
     flushReadSync();
@@ -759,7 +765,7 @@ void CoreAccount::markRead(
         return;
     }
     readSyncTimer_.start(kReadSyncIdleMs);
-    if (!sendReceipts_ || !online_) {
+    if (!receiptsGoTo(peer) || !online_) {
         return;
     }
     emit commands_.requestSendReceipt(peer, e2eId);
@@ -786,7 +792,8 @@ void CoreAccount::releaseHeldReads()
     }
     if (sendReceipts_ && online_) {
         for (auto it = heldReceipts_.constBegin(); it != heldReceipts_.constEnd(); ++it) {
-            if (it.value().sentAtMs > readElsewhereAtMs_.value(it.key(), 0)) {
+            if (it.value().sentAtMs > readElsewhereAtMs_.value(it.key(), 0)
+                && receiptsGoTo(it.key())) {
                 emit commands_.requestSendReceipt(it.key(), it.value().e2eId);
             }
         }

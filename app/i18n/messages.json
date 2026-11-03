@@ -71,6 +71,12 @@
       "zh": "%1 · 隧道 %2 入 / %3 出 · %4 个租约集",
       "ar": "⁦%1⁩ · الأنفاق ⁦%2⁩ واردة / ⁦%3⁩ صادرة · ⁦%4⁩ مجموعة عقود"
     },
+    "Account settings": {
+      "ru": "Настройки аккаунта",
+      "es": "Ajustes de la cuenta",
+      "zh": "账户设置",
+      "ar": "إعدادات الحساب"
+    },
     "Allow bazari.sh links to open in the app.": {
       "ru": "Разрешите открывать ссылки bazari.sh в приложении.",
       "es": "Permite abrir los enlaces de bazari.sh en la app.",

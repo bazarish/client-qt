@@ -169,6 +169,7 @@ private:
     void onConnectProgress(int percent, const QString& phase);
     void onSyncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
     void releaseHeldReads();
+    bool receiptsGoTo(const QString& peer) const;
     void settleConnect(bool connected, const QString& note);
     void sendCallback(
         const QString& peer, const QString& data, const QString& ref, const QString& label);

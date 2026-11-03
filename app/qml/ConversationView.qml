@@ -492,6 +492,33 @@ Item {
         }
         Hairline { visible: botMenuStrip.visible }
 
+        RowLayout {
+            id: groupSettingsStrip
+            visible: root.session !== null && root.session.activeIsGroup
+            Layout.fillWidth: true
+            Layout.leftMargin: 12
+            Layout.rightMargin: 6
+            Layout.topMargin: 4
+            Layout.bottomMargin: 4
+            spacing: 8
+            function ask() {
+                root.session.sendCommand("settings", "", qsTr("Account settings"))
+            }
+            Label {
+                text: qsTr("Account settings")
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                elide: Text.ElideRight
+                Layout.fillWidth: true
+            }
+            MenuButton {
+                text: qsTr("Open")
+                onClicked: groupSettingsStrip.ask()
+            }
+            TapHandler { onTapped: groupSettingsStrip.ask() }
+        }
+        Hairline { visible: groupSettingsStrip.visible }
+
         Item {
             id: listPane
             Layout.fillWidth: true
