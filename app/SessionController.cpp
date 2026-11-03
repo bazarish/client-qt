@@ -506,6 +506,11 @@ QColor SessionController::letterFill(const QString& name) const
     return bazarish::app::letterFill(name);
 }
 
+QColor SessionController::letterInk(const QString& name) const
+{
+    return bazarish::app::letterInk(bazarish::app::letterFill(name));
+}
+
 namespace {
 
 QVariantMap linkPlate(const QString& kind, const std::string& uri)

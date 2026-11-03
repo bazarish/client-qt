@@ -39,6 +39,13 @@ int main()
         used.insert(letterFill(QString::fromLatin1(name)).rgb());
     }
     CHECK(used.size() > 1);
+
+    // WCAG 2.2 AA for normal text.
+    constexpr double kReadable = 4.5;
+    for (const QColor& fill : letterPalette()) {
+        CHECK(contrastRatio(fill, letterInk(fill)) >= kReadable);
+    }
+    CHECK(letterInk(QColor(Qt::white)).lightness() < letterInk(QColor(Qt::black)).lightness());
     std::printf("TestLetterAvatar passed\n");
     return 0;
 }

@@ -368,7 +368,7 @@ Item {
         Label {
             anchors.centerIn: parent
             text: delegate.fromMember ? delegate.session.letterOf(model.author) : ""
-            color: Theme.text
+            color: delegate.fromMember ? delegate.session.letterInk(model.author) : Theme.text
             font.pixelSize: Theme.fontSmall + 1
             font.weight: Font.DemiBold
         }
