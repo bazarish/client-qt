@@ -321,6 +321,9 @@ public:
     Q_INVOKABLE bool peerOnline(const QString& peer) const;
     Q_INVOKABLE bool peerTyping(const QString& peer) const;
     Q_INVOKABLE void typed();
+    Q_INVOKABLE void stoppedTyping();
+    Q_INVOKABLE QString draftFor(const QString& peer) const;
+    Q_INVOKABLE void keepDraft(const QString& peer, const QString& text);
     Q_INVOKABLE void setVisibleChats(const QStringList& peers);
     Q_INVOKABLE void setContactNotifications(const QString& peer, bool on);
     Q_INVOKABLE void setContactCalls(const QString& peer, bool allowed);
@@ -568,6 +571,8 @@ private:
     QStringList watchedPeers_;
     int presenceRevision_ = 0;
     QElapsedTimer sinceTyped_;
+    QString typingTo_;
+    QHash<QString, QString> drafts_;
     std::optional<GroupState> activeGroup_;
     qint64 activeChatTimer_ = 0;
     QVariantList activeBotMenu_;

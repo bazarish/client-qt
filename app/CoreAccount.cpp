@@ -247,6 +247,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::setShowPresence);
     connect(&commands_, &AccountCommands::watchPresence, worker_, &SessionWorker::watchPresence);
     connect(&commands_, &AccountCommands::presenceTyped, worker_, &SessionWorker::presenceTyped);
+    connect(&commands_, &AccountCommands::presenceStoppedTyping, worker_,
+        &SessionWorker::presenceStoppedTyping);
     connect(worker_, &SessionWorker::peerPresence, &events_, &AccountEvents::peerPresence);
     connect(&commands_, &AccountCommands::requestDisablePersonalDest, worker_,
         &SessionWorker::disablePersonalDest);

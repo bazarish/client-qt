@@ -65,30 +65,55 @@ Rectangle {
         input.forceActiveFocus()
     }
 
+    property string draftPeer: ""
+    property bool restoring: false
+
+    function showText(text) {
+        root.restoring = true
+        input.text = text
+        input.cursorPosition = input.length
+        root.restoring = false
+    }
+
     function send() {
         if (!root.session) {
             return
         }
         const t = input.text.trim()
+        root.manualInputH = -1
         if (root.editing) {
             root.session.commitEdit(t)
-        } else if (t.length > 0) {
+            return
+        }
+        if (t.length > 0) {
             root.session.sendText(t)
         }
-        input.text = ""
-        root.manualInputH = -1
+        root.session.keepDraft(root.session.activePeer, "")
+        root.showText("")
+    }
+
+    Component.onCompleted: {
+        if (root.session) {
+            root.draftPeer = root.session.activePeer
+            root.showText(root.session.draftFor(root.draftPeer))
+        }
+    }
+    Component.onDestruction: {
+        if (root.session && !root.editing) {
+            root.session.keepDraft(root.draftPeer, input.text)
+        }
     }
 
     Connections {
         target: root.session
         function onEditingChanged() {
             if (root.session.editing) {
-                input.text = root.session.editingText
+                root.session.keepDraft(root.session.activePeer, input.text)
+                root.showText(root.session.editingText)
                 input.forceActiveFocus()
-                input.cursorPosition = input.length
                 input.deselect()
             } else {
-                input.text = ""
+                root.showText(root.session.draftFor(root.session.activePeer))
             }
         }
         function onReplyingChanged() {
@@ -97,6 +122,14 @@ Rectangle {
             }
         }
         function onActivePeerChanged() {
+            if (root.session.editing) {
+                root.session.cancelEdit()
+            } else {
+                root.session.keepDraft(root.draftPeer, input.text)
+            }
+            root.session.stoppedTyping()
+            root.draftPeer = root.session.activePeer
+            root.showText(root.session.draftFor(root.draftPeer))
             if (root.session.activePeer.length > 0 && !App.mobile) {
                 Qt.callLater(function() { input.forceActiveFocus() })
             }
@@ -305,13 +338,23 @@ Rectangle {
                             onLongPressed: TextSelection.longPressed(input, point.position)
                         }
                         function noteTyping() {
-                            if (input.activeFocus && root.session
+                            if (!root.session || root.restoring) {
+                                return
+                            }
+                            if (input.activeFocus
                                     && (input.length > 0 || input.preeditText.length > 0)) {
                                 root.session.typed()
+                            } else {
+                                root.session.stoppedTyping()
                             }
                         }
                         onTextChanged: input.noteTyping()
                         onPreeditTextChanged: input.noteTyping()
+                        onActiveFocusChanged: {
+                            if (!input.activeFocus && root.session) {
+                                root.session.stoppedTyping()
+                            }
+                        }
                         onCursorRectangleChanged: {
                             const view = inputScroll.contentItem
                             const at = input.cursorRectangle

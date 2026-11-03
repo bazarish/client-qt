@@ -148,6 +148,7 @@ signals:
     void requestSetShowPresence(bool on);
     void watchPresence(const QStringList& peers);
     void presenceTyped(const QString& peer);
+    void presenceStoppedTyping(const QString& peer);
     void requestSetDelegationDays(int days);
     void requestPublishPersonalDest();
     void requestDisablePersonalDest();

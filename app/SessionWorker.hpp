@@ -134,6 +134,7 @@ public slots:
     void setPresenceOrder(const QStringList& chatOrder);
     void watchPresence(const QStringList& peers);
     void presenceTyped(const QString& peer);
+    void presenceStoppedTyping(const QString& peer);
     void setDelegationDays(int days);
     void cancelTransfer(const QString& e2eId);
     void publishPersonalDest();

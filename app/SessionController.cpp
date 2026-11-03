@@ -1014,7 +1014,35 @@ void SessionController::typed()
         return;
     }
     sinceTyped_.start();
+    typingTo_ = activePeer_;
     emit commands_.presenceTyped(activePeer_);
+}
+
+QString SessionController::draftFor(const QString& peer) const
+{
+    return drafts_.value(peer);
+}
+
+void SessionController::keepDraft(const QString& peer, const QString& text)
+{
+    if (peer.isEmpty()) {
+        return;
+    }
+    if (text.isEmpty()) {
+        drafts_.remove(peer);
+        return;
+    }
+    drafts_.insert(peer, text);
+}
+
+void SessionController::stoppedTyping()
+{
+    if (typingTo_.isEmpty()) {
+        return;
+    }
+    sinceTyped_.invalidate();
+    emit commands_.presenceStoppedTyping(typingTo_);
+    typingTo_.clear();
 }
 
 void SessionController::setContactNotifications(const QString& peer, const bool on)

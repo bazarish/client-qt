@@ -2204,6 +2204,13 @@ void SessionWorker::watchPresence(const QStringList& peers)
     session_->presenceWatch(std::move(watched));
 }
 
+void SessionWorker::presenceStoppedTyping(const QString& peer)
+{
+    if (session_) {
+        session_->presenceStoppedTyping(peer.toStdString());
+    }
+}
+
 void SessionWorker::presenceTyped(const QString& peer)
 {
     if (session_) {
