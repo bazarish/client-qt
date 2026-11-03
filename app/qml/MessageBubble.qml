@@ -330,8 +330,23 @@ Item {
     readonly property int kResendTarget: 28
     readonly property int kResendIcon: 16
     readonly property int letterGap: 8
-    readonly property var invitePlates: delegate.session && model.text
-        ? delegate.session.invitesIn(model.text) : []
+    readonly property var linkPlates: delegate.session && model.text
+        ? delegate.session.linkPlatesIn(model.text) : []
+    function plateTitle(plate) {
+        if (plate.kind === "invite") return plate.name || qsTr("Contact")
+        if (plate.kind === "server") return qsTr("Server")
+        if (plate.kind === "pair") return qsTr("Device pairing")
+        return plate.name || qsTr("Sign-in request")
+    }
+    function plateAction(plate) {
+        if (plate.kind === "invite") return qsTr("Write")
+        if (plate.kind === "server") return qsTr("Connect")
+        if (plate.kind === "pair") return qsTr("Pair")
+        return qsTr("Sign")
+    }
+    readonly property var plateIcons: ({
+        "invite": "person", "server": "server", "pair": "devices", "sign": "key"
+    })
     function statusText(s) {
         if (s === DeliveryStatus.Delivering) {
             return delegate.toSelf ? qsTr("Sending…")
@@ -864,7 +879,7 @@ Item {
             }
 
             Repeater {
-                model: delegate.invitePlates
+                model: delegate.linkPlates
                 Rectangle {
                     Layout.fillWidth: true
                     implicitWidth: plateRow.implicitWidth + 16
@@ -881,22 +896,31 @@ Item {
                             spacing: 0
                             Layout.fillWidth: true
                             Label {
-                                text: modelData.name || qsTr("Contact")
+                                text: delegate.plateTitle(modelData)
                                 color: Theme.text
                                 font.weight: Font.DemiBold
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
                             Fingerprint {
-                                value: modelData.fingerprint
+                                visible: (modelData.fingerprint || "").length > 0
+                                value: modelData.fingerprint || ""
                                 color: Theme.textFaint
                                 font.pixelSize: Theme.fontSmall
                                 Layout.fillWidth: true
                             }
+                            Label {
+                                visible: text.length > 0
+                                text: modelData.role || modelData.host || ""
+                                color: Theme.textFaint
+                                font.pixelSize: Theme.fontSmall
+                                elide: Text.ElideMiddle
+                                Layout.fillWidth: true
+                            }
                         }
                         MenuButton {
-                            iconName: "person"
-                            text: qsTr("Write")
+                            iconName: delegate.plateIcons[modelData.kind]
+                            text: delegate.plateAction(modelData)
                             onClicked: App.openLink(modelData.uri)
                         }
                     }
@@ -907,10 +931,10 @@ Item {
                 id: bodyText
                 visible: !delegate.isAttachment
                     && !delegate.isContactRequest && model.text.length > 0
-                    && (delegate.invitePlates.length === 0
-                        || delegate.session.withoutInvites(model.text).length > 0)
-                text: App.markupHtml(delegate.invitePlates.length > 0
-                        ? delegate.session.withoutInvites(model.text) : model.text,
+                    && (delegate.linkPlates.length === 0
+                        || delegate.session.withoutLinkPlates(model.text).length > 0)
+                text: App.markupHtml(delegate.linkPlates.length > 0
+                        ? delegate.session.withoutLinkPlates(model.text) : model.text,
                     Theme.accent, Theme.surfaceAlt, Theme.bg,
                     delegate.isUnsupported ? Theme.danger : Theme.text)
                 color: delegate.isUnsupported ? Theme.danger : Theme.text

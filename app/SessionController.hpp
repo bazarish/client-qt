@@ -224,8 +224,8 @@ public:
     bool activeGroupAdmin() const { return activeGroup_ && activeGroup_->admin; }
     Q_INVOKABLE QString letterOf(const QString& name) const;
     Q_INVOKABLE QColor letterFill(const QString& name) const;
-    Q_INVOKABLE QVariantList invitesIn(const QString& text) const;
-    Q_INVOKABLE QString withoutInvites(const QString& text) const;
+    Q_INVOKABLE QVariantList linkPlatesIn(const QString& text) const;
+    Q_INVOKABLE QString withoutLinkPlates(const QString& text) const;
     bool i2pHasKey() const { return i2pHasKey_; }
     bool i2pEnabled() const { return i2pEnabled_; }
     QString i2pAddress() const { return i2pAddress_; }

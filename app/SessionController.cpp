@@ -21,6 +21,7 @@
 #include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
+#include <bazarish/PairLink.hpp>
 #include <bazarish/ServerDescriptor.hpp>
 
 #pragma push_macro("emit")
@@ -501,19 +502,45 @@ QColor SessionController::letterFill(const QString& name) const
     return bazarish::app::letterFill(name);
 }
 
-QVariantList SessionController::invitesIn(const QString& text) const
+namespace {
+
+QVariantMap linkPlate(const QString& kind, const std::string& uri)
+{
+    QVariantMap plate;
+    plate[QStringLiteral("kind")] = kind;
+    if (kind == QLatin1String("invite")) {
+        const bazarish::Descriptor descriptor = bazarish::parseDescriptor(uri);
+        plate[QStringLiteral("name")] = QString::fromStdString(descriptor.name);
+        plate[QStringLiteral("fingerprint")] = QString::fromStdString(descriptor.fingerprint);
+    } else if (kind == QLatin1String("server")) {
+        const bazarish::ServerDescriptor server = bazarish::parseServerDescriptor(uri);
+        plate[QStringLiteral("fingerprint")] = QString::fromStdString(server.fingerprint);
+    } else if (kind == QLatin1String("pair")) {
+        plate[QStringLiteral("host")] = QString::fromStdString(bazarish::parsePairLink(uri).dest);
+    } else if (const std::optional<bazarish::service::LoginCallback> at
+               = bazarish::service::readLoginChallengeLink(uri)) {
+        plate[QStringLiteral("host")] = QString::fromStdString(at->host);
+    } else {
+        const bazarish::service::LoginConsumer consumer = bazarish::service::readLoginConsumer(uri);
+        plate[QStringLiteral("name")] = QString::fromStdString(consumer.name);
+        plate[QStringLiteral("role")] = QString::fromStdString(consumer.role);
+    }
+    return plate;
+}
+
+}  // namespace
+
+QVariantList SessionController::linkPlatesIn(const QString& text) const
 {
     QVariantList found;
-    static const QRegularExpression kInvite(
-        QStringLiteral("(?:https://bazari\\.sh/#|bazarish://)invite\\?\\S+"));
-    for (QRegularExpressionMatchIterator it = kInvite.globalMatch(text); it.hasNext();) {
-        const QString uri = it.next().captured(0);
+    static const QRegularExpression kLink(QStringLiteral(
+        "(?:https://bazari\\.sh/#|bazarish://)(invite|server|pair|sign)\\?\\S+"));
+    for (QRegularExpressionMatchIterator it = kLink.globalMatch(text); it.hasNext();) {
+        const QRegularExpressionMatch match = it.next();
+        const QString uri = match.captured(0);
         try {
-            const bazarish::Descriptor descriptor = bazarish::parseDescriptor(uri.toStdString());
-            QVariantMap plate;
+            QVariantMap plate = linkPlate(match.captured(1), uri.toStdString());
             plate[QStringLiteral("uri")] = uri;
-            plate[QStringLiteral("name")] = QString::fromStdString(descriptor.name);
-            plate[QStringLiteral("fingerprint")] = QString::fromStdString(descriptor.fingerprint);
             found << plate;
         } catch (const std::exception&) {
             // error-hiding: allowed - a link that does not parse stays plain text
@@ -523,10 +550,10 @@ QVariantList SessionController::invitesIn(const QString& text) const
     return found;
 }
 
-QString SessionController::withoutInvites(const QString& text) const
+QString SessionController::withoutLinkPlates(const QString& text) const
 {
     QString rest = text;
-    for (const QVariant& plate : invitesIn(text)) {
+    for (const QVariant& plate : linkPlatesIn(text)) {
         rest.remove(plate.toMap().value(QStringLiteral("uri")).toString());
     }
     return rest.trimmed();

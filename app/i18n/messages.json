@@ -95,6 +95,12 @@
       "zh": "12月",
       "ar": "ديسمبر"
     },
+    "Device pairing": {
+      "ru": "Подключение устройства",
+      "es": "Vinculación de dispositivo",
+      "zh": "设备配对",
+      "ar": "اقتران جهاز"
+    },
     "Feb": {
       "ru": "фев",
       "es": "feb",
@@ -455,6 +461,12 @@
       "zh": "在应用中打开链接",
       "ar": "فتح الروابط في التطبيق"
     },
+    "Pair": {
+      "ru": "Подключить",
+      "es": "Vincular",
+      "zh": "配对",
+      "ar": "اقتران"
+    },
     "Pairing link": {
       "ru": "Ссылка подключения",
       "es": "Enlace de vinculación",
@@ -472,6 +484,24 @@
       "es": "sept",
       "zh": "9月",
       "ar": "سبتمبر"
+    },
+    "Server": {
+      "ru": "Сервер",
+      "es": "Servidor",
+      "zh": "服务器",
+      "ar": "خادم"
+    },
+    "Sign": {
+      "ru": "Подписать",
+      "es": "Firmar",
+      "zh": "签名",
+      "ar": "توقيع"
+    },
+    "Sign-in request": {
+      "ru": "Запрос на вход",
+      "es": "Solicitud de inicio de sesión",
+      "zh": "登录请求",
+      "ar": "طلب تسجيل الدخول"
     },
     "Waiting for the recipient…": {
       "ru": "Ожидание получателя…",
