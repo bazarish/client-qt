@@ -81,16 +81,8 @@ I2pService::I2pService(QObject* parent)
     const std::optional<client::GatewayAddress> gateway
         = client::GatewayAddress::parse(state_.gatewayAddress.toStdString());
     state_.gatewayHost = gateway.has_value() ? QString::fromStdString(gateway->host) : QString();
-    if (state_.gatewayEnabled) {
-        if (gateway.has_value()) {
-            client::setGatewayTransport(gateway.value(), AppSettings::instance().gatewayPin());
-        } else {
-            state_.gatewayEnabled = false;
-        }
-    }
-    if (state_.samEnabled) {
-        client::setSamTransport(state_.samHost.toStdString(), state_.samPort);
-    }
+    state_.gatewayEnabled = state_.gatewayEnabled && gateway.has_value();
+    applyTransport();
     bazarish::i2p::setI2pLogging(state_.loggingEnabled);
     client::setTunnelPrivacy(privacyForLevel(state_.privacyLevel));
     refresh();
@@ -149,9 +141,26 @@ void I2pService::checkAndSaveSam(const QString& host, const int port)
     }).detach();
 }
 
+void I2pService::applyTransport()
+{
+    const std::optional<client::GatewayAddress> gateway
+        = client::GatewayAddress::parse(state_.gatewayAddress.toStdString());
+    if (state_.gatewayEnabled && gateway.has_value()) {
+        client::setGatewayTransport(gateway.value(), AppSettings::instance().gatewayPin());
+    } else {
+        client::clearGatewayTransport();
+    }
+    if (state_.samEnabled) {
+        client::setSamTransport(state_.samHost.toStdString(), state_.samPort);
+    } else {
+        client::setSamTransport(std::string(), 0);
+    }
+}
+
 void I2pService::noteChoiceInForce()
 {
     if (client::sharedI2pRouterIfRunning() == nullptr) {
+        applyTransport();
         transportAtStart_ = transport();
     }
     state_.restartNeeded = transport() != transportAtStart_;

@@ -498,6 +498,12 @@ if(Qt6_FOUND)
     target_compile_options(TestWire PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestWire COMMAND TestWire)
 
+    add_executable(TestTransportChoice tests/TestTransportChoice.cpp)
+    target_include_directories(TestTransportChoice PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestTransportChoice PRIVATE bazarish_app_core)
+    target_compile_options(TestTransportChoice PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestTransportChoice COMMAND TestTransportChoice)
+
     add_executable(TestSocketChannel tests/TestSocketChannel.cpp app/CoreSocket.cpp app/Wire.cpp
         app/AppSettings.cpp)
     target_include_directories(TestSocketChannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
