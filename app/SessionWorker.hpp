@@ -217,6 +217,7 @@ signals:
     void i2pKeyState(bool hasKey, const QString& address);
     void i2pServedAddress(const QString& address);
     void devicesReady(const QVariantList& devices);
+    void devicesFailed();
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,

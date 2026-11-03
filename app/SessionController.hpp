@@ -38,6 +38,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString gatewayRefusal READ gatewayRefusal NOTIFY reachableChanged)
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
+    Q_PROPERTY(bool devicesFailed READ devicesFailed NOTIFY devicesChanged)
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voiceElapsedMs READ voiceElapsedMs NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voicePositionMs READ voicePositionMs NOTIFY voiceChanged)
@@ -150,6 +151,7 @@ public:
     QString gatewayRefusal() const { return gatewayRefusal_; }
     bool i2pBusy() const { return i2pBusy_; }
     QVariantList devices() const { return devices_; }
+    bool devicesFailed() const { return devicesFailed_; }
     bool voiceRecording() const { return voiceRecording_; }
     qint64 voiceElapsedMs() const { return voiceElapsedMs_; }
     qint64 voicePositionMs() const { return voicePositionMs_; }
@@ -650,6 +652,7 @@ private:
     QString i2pAddress_;
     QString i2pServedAddress_;
     QVariantList devices_;
+    bool devicesFailed_ = false;
     QString i2pServerState_;
     QString acceptingContact_;
     struct TransferProgress {
@@ -665,6 +668,7 @@ private:
     void replayTransfersForActivePeer();
     qint64 i2pTransientExpires_ = 0;
     bool storageMailboxOk_ = false;
+    bool storageFailed_ = false;
     quint64 storageMailboxUsed_ = 0;
     quint64 storageMailboxQuota_ = 0;
     qint64 storageUpdatedAtMs_ = 0;

@@ -1998,7 +1998,7 @@ void SessionWorker::refreshDevices()
         emit devicesReady(devices);
     } catch (const std::exception& error) {
         op.fail(QString::fromUtf8(error.what()));
-        emit actionFailed(QString::fromUtf8(error.what()));
+        emit devicesFailed();
     }
 }
 

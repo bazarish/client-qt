@@ -23,6 +23,16 @@ Popup {
     height: Math.min(parent ? parent.height - 40 : 600, 640)
     padding: 0
 
+    function awaitingText(failed) {
+        if (!session || !session.reachable) {
+            return qsTr("Connecting…")
+        }
+        return failed ? qsTr("Your server did not answer") : qsTr("Asking your server…")
+    }
+    function awaitingColor(failed) {
+        return session && session.reachable && failed ? Theme.warn : Theme.textDim
+    }
+
     onOpened: if (session) { session.refreshI2pStatus(); session.refreshStorageUsage();
         session.refreshDevices(); delegationDaysBox.value = session.delegationDays }
 
@@ -255,12 +265,14 @@ Popup {
                                         text: storageSection.ok
                                             ? (Format.bytes(storageSection.used) + " / "
                                                 + Format.bytes(storageSection.quota))
-                                            : qsTr("unavailable")
-                                        color: storageSection.ok ? Theme.textDim : Theme.warn
+                                            : root.awaitingText(storageSection.info.failed === true)
+                                        color: storageSection.ok ? Theme.textDim
+                                            : root.awaitingColor(storageSection.info.failed === true)
                                         font.pixelSize: Theme.fontSmall
                                     }
                                 }
                                 ProgressBar {
+                                    visible: storageSection.ok
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 5
                                     from: 0
@@ -346,8 +358,8 @@ Popup {
 
                         Label {
                             visible: root.session && root.session.devices.length === 0
-                            text: qsTr("Nothing yet - open this while connected to ask your server.")
-                            color: Theme.textFaint
+                            text: root.awaitingText(root.session && root.session.devicesFailed)
+                            color: root.awaitingColor(root.session && root.session.devicesFailed)
                             font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap
                             Layout.fillWidth: true

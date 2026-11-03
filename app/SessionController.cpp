@@ -342,6 +342,10 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         });
     connect(&events_, &AccountEvents::approvalState, this, &SessionController::onApprovalState);
     connect(&events_, &AccountEvents::devicesReady, this, &SessionController::onDevicesReady);
+    connect(&events_, &AccountEvents::devicesFailed, this, [this]() {
+        devicesFailed_ = true;
+        emit devicesChanged();
+    });
     connect(&events_, &AccountEvents::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(&events_, &AccountEvents::actionOk, this, &SessionController::actionOk);
     connect(&events_, &AccountEvents::actionFailed, this, [this](const QString& reason) {
@@ -1764,13 +1768,16 @@ QUrl SessionController::defaultPictureSaveUrl(const QString& e2eId, const QStrin
 void SessionController::onDevicesReady(const QVariantList& devices)
 {
     devices_ = devices;
+    devicesFailed_ = false;
     emit devicesChanged();
 }
 
 void SessionController::onStorageUsageReady(
     const bool mailboxOk, const qulonglong mailboxUsed, const qulonglong mailboxQuota)
 {
+    storageFailed_ = !mailboxOk;
     if (!mailboxOk) {
+        emit storageChanged();
         return;
     }
     storageMailboxOk_ = true;
@@ -1788,6 +1795,7 @@ QVariantMap SessionController::storageInfo() const
     m[QStringLiteral("mailboxQuota")] = static_cast<qulonglong>(storageMailboxQuota_);
     m[QStringLiteral("updatedAt")] = storageUpdatedAtMs_;
     m[QStringLiteral("everFetched")] = (storageUpdatedAtMs_ > 0);
+    m[QStringLiteral("failed")] = storageFailed_;
     return m;
 }
 

@@ -329,6 +329,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::opDone, &log_, &OperationLog::finish);
     connect(worker_, &SessionWorker::approvalState, &events_, &AccountEvents::approvalState);
     connect(worker_, &SessionWorker::devicesReady, &events_, &AccountEvents::devicesReady);
+    connect(worker_, &SessionWorker::devicesFailed, &events_, &AccountEvents::devicesFailed);
     connect(worker_, &SessionWorker::accountClosed, &events_, &AccountEvents::accountClosed);
     connect(worker_, &SessionWorker::facadeInfo, &events_, &AccountEvents::facadeInfo);
     connect(worker_, &SessionWorker::actionOk, &events_, &AccountEvents::actionOk);

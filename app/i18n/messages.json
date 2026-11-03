@@ -2195,12 +2195,6 @@
       "zh": "什么也没有删除。待服务器可达时再试：只有这个配置文件持有可以提出该请求的密钥。",
       "ar": "لم يُحذف شيء. أعد المحاولة حين يصبح قابلًا للبلوغ: فهذا الملف الشخصي يحمل المفتاح الوحيد الذي يطلب ذلك منه."
     },
-    "Nothing yet - open this while connected to ask your server.": {
-      "ru": "Пока пусто. Откройте это при подключении, чтобы спросить сервер.",
-      "es": "Todavía nada. Abre esto con la conexión activa para preguntar a tu servidor.",
-      "zh": "暂无内容。在已连接时打开此处即可向服务器询问。",
-      "ar": "لا شيء بعد. افتح هذا أثناء الاتصال لتسأل خادمك."
-    },
     "Nothing yet.": {
       "ru": "Пока пусто.",
       "es": "Todavía nada.",
@@ -4312,12 +4306,6 @@
       "es": "este mensaje de voz ya no está en este dispositivo",
       "zh": "这条语音消息已不在本设备上",
       "ar": "لم تعد هذه الرسالة الصوتية على هذا الجهاز"
-    },
-    "unavailable": {
-      "ru": "недоступно",
-      "es": "no disponible",
-      "zh": "不可用",
-      "ar": "غير متاح"
     },
     "via %1": {
       "ru": "через %1",
