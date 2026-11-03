@@ -192,9 +192,6 @@ Item {
         }
         return {line: 0, x: 0, width: 0}
     }
-    function shownAddress(link) {
-        return link.replace(/</g, "%3C").replace(/>/g, "%3E")
-    }
 
     readonly property string msgE2eId: model.e2eId
 
@@ -947,8 +944,6 @@ Item {
                 selectedTextColor: Theme.bg
                 Layout.fillWidth: true
                 onLinkActivated: function(link) { delegate.activateLink(link) }
-                ToolTip.visible: !App.mobile && bodyText.hoveredLink.startsWith("http")
-                ToolTip.text: delegate.shownAddress(bodyText.hoveredLink)
                 HoverHandler {
                     cursorShape: bodyText.hoveredLink.length > 0
                         ? Qt.PointingHandCursor : Qt.IBeamCursor
