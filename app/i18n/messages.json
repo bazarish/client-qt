@@ -3359,12 +3359,6 @@
       "zh": "数据库未被压缩：%1",
       "ar": "لم تُضغط قاعدة البيانات: ⁦%1⁩"
     },
-    "The device registers again the next time it connects.": {
-      "ru": "Устройство зарегистрируется снова при следующем подключении.",
-      "es": "El dispositivo se registra de nuevo la próxima vez que se conecte.",
-      "zh": "该设备下次连接时会重新注册。",
-      "ar": "يسجّل الجهاز نفسه من جديد في اتصاله التالي."
-    },
     "The file goes straight between you and your contact. Your contact asks for a one-time I2P tunnel. Your app has to be online to hand the file over when they ask.": {
       "ru": "Файл передаётся напрямую между вами и собеседником. Контакт запросит одноразовый туннель I2P. Ваше приложение должно быть онлайн, чтобы отдать файл в момент запроса.",
       "es": "El archivo va directo entre tú y tu contacto. Tu contacto pedirá un túnel I2P de un solo uso. Tu aplicación debe estar en línea para entregarlo en ese momento.",
@@ -4055,11 +4049,11 @@
       "zh": "服务器现在服务该地址",
       "ar": "يخدم خادمك هذا العنوان الآن"
     },
-    "Your server stops keeping mail for %1 and drops the queue it holds. Anything in it that no other device collected is gone.": {
-      "ru": "Сервер перестанет хранить почту для %1 и сбросит её очередь. Не забранное другим устройством будет потеряно.",
-      "es": "Tu servidor deja de guardar correo para %1 y descarta su cola. Lo que no haya recogido otro dispositivo se pierde.",
-      "zh": "服务器将不再为 %1 保留邮件，并丢弃其队列。其中未被其他设备取走的内容都会消失。",
-      "ar": "يتوقف خادمك عن حفظ البريد لـ ⁦%1⁩ ويُسقط طابوره. وكل ما لم يسحبه جهاز آخر يضيع."
+    "The server deletes the mail for %1. The device registers again the next time it connects.": {
+      "ru": "Сервер удалит почту для %1. Устройство зарегистрируется снова при следующем подключении.",
+      "es": "El servidor borra el correo de %1. El dispositivo se registra de nuevo la próxima vez que se conecte.",
+      "zh": "服务器将删除 %1 的邮件。该设备下次连接时会重新注册。",
+      "ar": "يحذف الخادم بريد ⁦%1⁩. يسجّل الجهاز نفسه من جديد في اتصاله التالي."
     },
     "Your server will serve this address instead. Contacts holding the old one cannot write to you until your next message. If another device of yours is offline, wait until it is on.": {
       "ru": "Сервер станет обслуживать этот адрес. Контакты со старым адресом не смогут вам написать до вашего следующего сообщения. Если другое ваше устройство не в сети, дождитесь его включения.",

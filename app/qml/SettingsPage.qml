@@ -887,20 +887,10 @@ Popup {
             Label {
                 Layout.fillWidth: true
                 Layout.margins: 14
-                Layout.bottomMargin: 0
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("Your server stops keeping mail for %1 and drops the queue it holds. Anything in it that no other device collected is gone.").arg(forgetConfirm.clientId)
-            }
-            Label {
-                Layout.fillWidth: true
-                Layout.margins: 14
-                Layout.topMargin: 0
-                wrapMode: Text.Wrap
-                color: Theme.textFaint
-                font.pixelSize: Theme.fontSmall
-                text: qsTr("The device registers again the next time it connects.")
+                text: qsTr("The server deletes the mail for %1. The device registers again the next time it connects.").arg(forgetConfirm.clientId)
             }
         }
     }
