@@ -304,6 +304,12 @@ ApplicationWindow {
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
+            Label {
+                text: qsTr("In the settings, tap Add link and check bazari.sh.")
+                color: Theme.textDim
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
                 spacing: 8

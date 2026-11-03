@@ -56,6 +56,14 @@ Popup {
                         Layout.fillWidth: true
                         onClicked: App.openLinkSettings()
                     }
+                    Label {
+                        visible: !App.linksHandled
+                        text: qsTr("In the settings, tap Add link and check bazari.sh.")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
 
                     Label {
                         text: qsTr("Version %1").arg(App.appVersion)

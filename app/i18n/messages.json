@@ -401,6 +401,12 @@
       "zh": "正在加密…",
       "ar": "جارٍ التشفير…"
     },
+    "In the settings, tap Add link and check bazari.sh.": {
+      "ru": "В настройках нажмите «Добавить ссылку» и отметьте bazari.sh.",
+      "es": "En los ajustes, toca «Añadir enlace» y marca bazari.sh.",
+      "zh": "在设置中点按“添加链接”，然后勾选 bazari.sh。",
+      "ar": "في الإعدادات، اضغط «إضافة رابط» وحدِّد ⁦bazari.sh⁩."
+    },
     "Invite link  or  %1alias": {
       "ru": "Ссылка-приглашение  или  %1алиас",
       "es": "Enlace de invitación  o  %1alias",
