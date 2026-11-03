@@ -6,9 +6,18 @@
 namespace bazarish::app {
 
 namespace {
-constexpr int kShortFingerprintAbove = 14;
-constexpr int kShortFingerprintHead = 8;
-constexpr int kShortFingerprintTail = 4;
+constexpr int kFingerprintGroup = 4;
+constexpr int kShortFingerprintHeadGroups = 2;
+constexpr int kShortFingerprintTailGroups = 1;
+
+QStringList fingerprintGroups(const QString& fingerprint)
+{
+    QStringList groups;
+    for (int at = 0; at < fingerprint.size(); at += kFingerprintGroup) {
+        groups.append(fingerprint.mid(at, kFingerprintGroup));
+    }
+    return groups;
+}
 }  // namespace
 
 void ContactBook::reset(const QVector<ContactState>& contacts, const QStringList& blocked)
@@ -77,11 +86,12 @@ QString ContactBook::savedChatName()
 
 QString ContactBook::shortFingerprint(const QString& fingerprint)
 {
-    if (fingerprint.size() <= kShortFingerprintAbove) {
-        return fingerprint;
+    const QStringList groups = fingerprintGroups(fingerprint);
+    if (groups.size() <= kShortFingerprintHeadGroups + kShortFingerprintTailGroups) {
+        return groups.join(QLatin1Char(' '));
     }
-    return fingerprint.left(kShortFingerprintHead) + QStringLiteral("…")
-        + fingerprint.right(kShortFingerprintTail);
+    return groups.mid(0, kShortFingerprintHeadGroups).join(QLatin1Char(' ')) + QStringLiteral(" … ")
+        + groups.mid(groups.size() - kShortFingerprintTailGroups).join(QLatin1Char(' '));
 }
 
 }  // namespace bazarish::app

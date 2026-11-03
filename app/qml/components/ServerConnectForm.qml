@@ -142,10 +142,10 @@ ColumnLayout {
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
         }
-        Label {
-            text: form.shownFingerprint
+        Fingerprint {
+            whole: true
+            value: form.shownFingerprint
             color: Theme.text
-            wrapMode: Text.WrapAnywhere
             Layout.fillWidth: true
         }
         Label {

@@ -83,9 +83,9 @@ Popup {
                         iconSize: 18
                     }
                     Avatar { visible: !model.saved; fingerprint: model.fingerprint; size: 34 }
-                    Label {
-                        text: model.name && model.name.length > 0
-                            ? model.name : model.fingerprint.substring(0, 12)
+                    Fingerprint {
+                        value: model.fingerprint
+                        replacement: model.name && model.name.length > 0 ? model.name : ""
                         color: Theme.text
                         elide: Text.ElideRight
                         Layout.fillWidth: true

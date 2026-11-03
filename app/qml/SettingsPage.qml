@@ -117,14 +117,12 @@ Popup {
                                 }
                                 HoverHandler { cursorShape: Qt.PointingHandCursor }
                             }
-                            Label {
+                            Fingerprint {
                                 id: fingerprintLine
                                 property bool copied: false
-                                text: copied
-                                    ? qsTr("Copied to clipboard")
-                                    : (root.session
-                                        ? root.session.shortFingerprint(root.session.fingerprint)
-                                        : "")
+                                Layout.fillWidth: true
+                                value: root.session ? root.session.fingerprint : ""
+                                replacement: copied ? qsTr("Copied to clipboard") : ""
                                 color: copied ? Theme.green : Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 Timer {
@@ -143,8 +141,6 @@ Popup {
                                     }
                                 }
                                 HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                wrapMode: Text.Wrap
-                                Layout.fillWidth: true
                             }
                         }
                         IconButton {

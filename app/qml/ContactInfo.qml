@@ -132,15 +132,14 @@ Popup {
                 color: fingerprintLine.copied ? Theme.green : Theme.textDim
                 font.pixelSize: Theme.fontSmall
             }
-            Label {
+            Fingerprint {
                 id: fingerprintLine
                 property bool copied: false
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignRight
-                text: root.session ? root.session.activePeer : ""
+                value: root.session ? root.session.activePeer : ""
                 color: Theme.text
                 font.pixelSize: Theme.fontSmall
-                elide: Text.ElideMiddle
                 Timer {
                     id: fingerprintCopied
                     interval: 1500

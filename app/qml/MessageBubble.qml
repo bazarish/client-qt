@@ -887,11 +887,10 @@ Item {
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
-                            Label {
-                                text: modelData.fingerprint.slice(0, 16) + "…"
+                            Fingerprint {
+                                value: modelData.fingerprint
                                 color: Theme.textFaint
                                 font.pixelSize: Theme.fontSmall
-                                elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
                         }

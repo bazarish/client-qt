@@ -192,11 +192,11 @@ Popup {
                                 color: Theme.text
                                 font.weight: Font.Medium
                             }
-                            Label {
-                                text: root.session ? root.session.fingerprint : ""
+                            Fingerprint {
+                                whole: true
+                                value: root.session ? root.session.fingerprint : ""
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
-                                wrapMode: Text.WrapAnywhere
                                 Layout.fillWidth: true
                             }
                         }

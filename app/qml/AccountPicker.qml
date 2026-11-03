@@ -116,12 +116,11 @@ Item {
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
                             }
-                            Label {
-                                text: goingAway
+                            Fingerprint {
+                                value: model.fingerprint
+                                replacement: goingAway
                                     ? qsTr("Deleting…")
-                                    : (model.fingerprint.length > 0
-                                        ? model.fingerprint.substring(0, 12) + "…"
-                                        : qsTr("locked"))
+                                    : (model.fingerprint.length > 0 ? "" : qsTr("locked"))
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 Layout.fillWidth: true
