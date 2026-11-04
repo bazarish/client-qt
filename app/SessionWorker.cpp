@@ -1549,7 +1549,7 @@ void SessionWorker::finishContactRequest(const QString& opId, const QString& fin
         return;
     }
     if (session_ && recordedHere) {
-        session_->forgetUnansweredContact(fingerprint.toStdString());
+        session_->settleContactRequest(fingerprint.toStdString(), outcome);
         emitContacts();
     }
     if (code == bazarish::ErrorCode::eContactRateLimited) {
