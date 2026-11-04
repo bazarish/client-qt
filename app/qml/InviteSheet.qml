@@ -15,6 +15,10 @@ Popup {
     readonly property bool hasAliases: aliasRows.length > 0
     property bool showQr: false
     readonly property int kLinkLines: 4
+    readonly property int kTagPadding: 10
+    readonly property string kI2pHost: ".i2p"
+    readonly property int tagWidth: Math.ceil(Math.max(botTag.advanceWidth, wwwTag.advanceWidth,
+        i2pTag.advanceWidth)) + 2 * kTagPadding
     signal back()
 
     component RegistryItem: Rectangle {
@@ -24,6 +28,30 @@ Popup {
         color: Theme.surface
         border.color: Theme.border
     }
+
+    component RegistryTag: Rectangle {
+        property alias text: tagLabel.text
+        Layout.preferredWidth: root.tagWidth
+        Layout.fillHeight: true
+        radius: 8
+        color: Theme.surfaceAlt
+        border.color: Theme.border
+        Label {
+            id: tagLabel
+            anchors.centerIn: parent
+            color: Theme.textDim
+            font.pixelSize: Theme.fontSmall
+            font.weight: Font.DemiBold
+        }
+    }
+
+    component TagMetrics: TextMetrics {
+        font.pixelSize: Theme.fontSmall
+        font.weight: Font.DemiBold
+    }
+    TagMetrics { id: botTag; text: qsTr("Bot") }
+    TagMetrics { id: wwwTag; text: qsTr("WWW") }
+    TagMetrics { id: i2pTag; text: qsTr("I2P") }
 
     component RegistrySite: RegistryItem {
         id: site
@@ -310,36 +338,45 @@ Popup {
             }
         }
 
+        Hairline {
+            visible: root.session !== null
+        }
         Label {
             visible: root.session !== null
-            text: qsTr("An alias can be bought in the registry.")
+            text: qsTr("A short name (alias) can be bought in the registry:")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
         }
-        RegistryItem {
+        RowLayout {
             visible: root.session !== null
-            Label {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 12
-                text: root.session ? root.session.registryBot : ""
-                color: Theme.accent
-                font.underline: botHover.hovered
-                HoverHandler { id: botHover; cursorShape: Qt.PointingHandCursor }
-                TapHandler {
-                    onTapped: {
-                        root.session.addByAlias(root.session.registryBot, "")
-                        root.close()
+            Layout.fillWidth: true
+            RegistryTag { text: qsTr("Bot") }
+            RegistryItem {
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    text: root.session ? root.session.registryBot : ""
+                    color: Theme.accent
+                    font.underline: botHover.hovered
+                    HoverHandler { id: botHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        onTapped: {
+                            root.session.addByAlias(root.session.registryBot, "")
+                            root.close()
+                        }
                     }
                 }
             }
         }
         Repeater {
             model: root.session ? root.session.registrySites : []
-            RegistrySite {
+            RowLayout {
                 required property string modelData
-                address: modelData
+                Layout.fillWidth: true
+                RegistryTag { text: modelData.includes(root.kI2pHost) ? i2pTag.text : wwwTag.text }
+                RegistrySite { address: modelData }
             }
         }
     }

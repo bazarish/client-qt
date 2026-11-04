@@ -83,11 +83,29 @@
       "zh": "允许在应用中打开 bazari.sh 链接。",
       "ar": "اسمح بفتح روابط ⁦bazari.sh⁩ في التطبيق."
     },
-    "An alias can be bought in the registry.": {
-      "ru": "Алиас можно купить в реестре.",
-      "es": "Un alias se compra en el registro.",
-      "zh": "别名可以在注册处购买。",
-      "ar": "يمكن شراء الاسم المستعار من السجل."
+    "A short name (alias) can be bought in the registry:": {
+      "ru": "Короткое имя (алиас) можно купить в реестре:",
+      "es": "Un nombre corto (alias) se compra en el registro:",
+      "zh": "短名称（别名）可以在注册处购买：",
+      "ar": "يمكن شراء اسم قصير (اسم مستعار) من السجل:"
+    },
+    "I2P": {
+      "ru": "I2P",
+      "es": "I2P",
+      "zh": "I2P",
+      "ar": "I2P"
+    },
+    "WWW": {
+      "ru": "WWW",
+      "es": "WWW",
+      "zh": "WWW",
+      "ar": "WWW"
+    },
+    "Bot": {
+      "ru": "Бот",
+      "es": "Bot",
+      "zh": "机器人",
+      "ar": "بوت"
     },
     "Apr": {
       "ru": "апр",
