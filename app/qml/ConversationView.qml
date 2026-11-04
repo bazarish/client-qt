@@ -501,9 +501,12 @@ Item {
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             spacing: 8
+            readonly property int kAskHoldMs: 10000
             function ask() {
                 root.session.sendCommand("settings", "", qsTr("Account settings"))
+                askHold.restart()
             }
+            Timer { id: askHold; interval: groupSettingsStrip.kAskHoldMs }
             Label {
                 text: qsTr("Account settings")
                 color: Theme.textDim
@@ -512,10 +515,14 @@ Item {
                 Layout.fillWidth: true
             }
             MenuButton {
-                text: qsTr("Open")
+                text: qsTr("Request")
+                enabled: !askHold.running
                 onClicked: groupSettingsStrip.ask()
             }
-            TapHandler { onTapped: groupSettingsStrip.ask() }
+            TapHandler {
+                enabled: !askHold.running
+                onTapped: groupSettingsStrip.ask()
+            }
         }
         Hairline { visible: groupSettingsStrip.visible }
 
