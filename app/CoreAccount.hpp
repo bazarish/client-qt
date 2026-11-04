@@ -188,7 +188,6 @@ private:
     void onSendProgress(qint64 localId, int state);
     void onSendResult(qint64 localId, bool ok, const QString& error);
     void onSendPhase(qint64 localId, const QString& phase);
-    void noteDeliveredThrough(const QString& peer, qint64 uptoId);
     client::AccountDb& accountDb();
 
     QString accountId_;
@@ -237,7 +236,6 @@ private:
     bool presenceFocused_ = false;
     QTimer expiryTimer_;
     OperationLog log_;
-    QHash<qint64, int> statusById_;
     QSet<qint64> savedSends_;
     struct ContactProgressRow {
         qint64 id = 0;

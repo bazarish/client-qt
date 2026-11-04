@@ -145,7 +145,6 @@ void CoreAccount::sweepExpired()
             reportUnsaved();
             return;
         }
-        statusById_.remove(id);
         emit events_.rowRemoved(peer, id);
         emit events_.chatChanged(peer);
     }

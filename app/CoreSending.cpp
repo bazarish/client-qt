@@ -81,7 +81,6 @@ void CoreAccount::sendText(
         reportUnsaved();
         return;
     }
-    statusById_[m.id] = m.status;
     if (saved) {
         savedSends_.insert(m.id);
     }
@@ -100,7 +99,6 @@ qint64 CoreAccount::beginAttachmentSend(StoredMessage m)
         reportUnsaved();
         return 0;
     }
-    statusById_[m.id] = m.status;
     emit events_.rowAdded(m.peer, m.id, true);
     log_.begin(sendOpId(m.id), QStringLiteral("file-up"), m.attName, tr("Sending…"), m.peer);
     return m.id;
@@ -155,7 +153,6 @@ void CoreAccount::sendVoice(const QString& peer, const QByteArray& opus, const q
         reportUnsaved();
         return;
     }
-    statusById_[m.id] = m.status;
     emit events_.rowAdded(peer, m.id, true);
     log_.begin(sendOpId(m.id), QStringLiteral("send"), tr("To %1").arg(contacts_.peerName(peer)),
         tr("Sending…"), peer);
@@ -227,7 +224,6 @@ void CoreAccount::forwardMessage(
     if (m.hasPicture && !store_.setHasPicture(m.id, true)) {
         reportUnsaved();
     }
-    statusById_[m.id] = DeliveryStatus::Preparing;
     const bool saved = isSavedChat(toPeer);
     if (saved) {
         savedSends_.insert(m.id);
@@ -323,7 +319,6 @@ void CoreAccount::deleteMessage(
     if (!e2eId.isEmpty()) {
         emit commands_.requestUnsend(e2eId);
     }
-    statusById_.remove(localId);
     emit events_.rowRemoved(peer, localId);
     if (outgoing && !e2eId.isEmpty()) {
         emit commands_.requestSendDelete(peer, e2eId);
@@ -332,7 +327,6 @@ void CoreAccount::deleteMessage(
 
 void CoreAccount::restartDelivery(const QString& peer, const qint64 localId)
 {
-    statusById_[localId] = DeliveryStatus::Preparing;
     if (!store_.updateStatus(localId, DeliveryStatus::Preparing)) {
         reportUnsaved();
     }
@@ -342,16 +336,14 @@ void CoreAccount::restartDelivery(const QString& peer, const qint64 localId)
 
 void CoreAccount::bumpStatus(const qint64 localId, const int status)
 {
-    const int current = statusById_.value(localId, DeliveryStatus::Preparing);
-    if (status != DeliveryStatus::Failed && status <= current) {
+    const std::optional<bool> moved = store_.core().advanceStatus(localId, status);
+    if (!moved) {
+        reportUnsaved();
         return;
     }
-    statusById_[localId] = status;
-    if (!store_.updateStatus(localId, status)) {
-        reportUnsaved();
+    if (*moved) {
+        emit events_.rowChanged(store_.messageById(localId).peer, localId);
     }
-    const StoredMessage row = store_.messageById(localId);
-    emit events_.rowChanged(row.peer, localId);
 }
 
 void CoreAccount::onSendProgress(const qint64 localId, const int state)
@@ -388,18 +380,6 @@ void CoreAccount::onSendPhase(const qint64 localId, const QString& phase)
     log_.update(sendOpId(localId), human);
     if (isRetryPhase(phase)) {
         emit events_.messageError(localId, human);
-    }
-}
-
-void CoreAccount::noteDeliveredThrough(const QString& peer, const qint64 uptoId)
-{
-    for (auto it = statusById_.begin(); it != statusById_.end(); ++it) {
-        if (it.key() <= uptoId) {
-            const StoredMessage row = store_.messageById(it.key());
-            if (row.peer == peer) {
-                it.value() = row.status;
-            }
-        }
     }
 }
 

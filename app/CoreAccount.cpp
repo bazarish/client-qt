@@ -436,7 +436,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&ingest_, &MessageIngest::peerForgotten, &events_, &AccountEvents::peerForgotten);
     connect(&ingest_, &MessageIngest::chatChanged, &events_, &AccountEvents::chatChanged);
     connect(&ingest_, &MessageIngest::chatsChanged, &events_, &AccountEvents::chatsChanged);
-    connect(&ingest_, &MessageIngest::deliveredThrough, this, &CoreAccount::noteDeliveredThrough);
     connect(&ingest_, &MessageIngest::deliveredThrough, &events_,
         &AccountEvents::deliveredThrough);
     connect(&ingest_, &MessageIngest::reactionsChanged, &events_,
