@@ -2,6 +2,7 @@
 #include "SessionShared.hpp"
 
 #include "AudioCodec.hpp"
+#include "Session.hpp"
 
 #include <bazarish/Address.hpp>
 
@@ -13,7 +14,6 @@
 #include <QChar>
 #include <QStringList>
 #include <QDateTime>
-#include <QRandomGenerator>
 
 #include <cstdint>
 #include <vector>
@@ -59,7 +59,7 @@ QString waveformHex(const Bytes& opus)
 
 QString newE2eId()
 {
-    return QString::number(QRandomGenerator::global()->generate64(), 16);
+    return QString::fromStdString(bazarish::client::newMessageId());
 }
 
 QString aliasChatPeer(const QString& alias)
