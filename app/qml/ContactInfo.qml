@@ -64,7 +64,7 @@ Popup {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("What you keep here reaches your other devices.")
+            text: qsTr("What you keep here reaches your other devices")
         }
         Label {
             visible: root.saved
@@ -73,7 +73,7 @@ Popup {
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             text: qsTr("A device that joins later starts empty: to have something on a new device, "
-                + "send or forward it again.")
+                + "send or forward it again")
         }
         MenuButton {
             visible: root.saved
@@ -342,7 +342,7 @@ Popup {
             padding: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("Everything kept here goes, on this device and on every other device of this account.")
+            text: qsTr("Everything kept here goes, on this device and on every other device of this account")
         }
     }
 
@@ -431,7 +431,7 @@ Popup {
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("“For everyone” asks the other side’s app to delete its copy too.")
+                text: qsTr("“For everyone” asks the other side’s app to delete its copy too")
             }
         }
     }

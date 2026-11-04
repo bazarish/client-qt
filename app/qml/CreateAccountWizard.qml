@@ -51,7 +51,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
         }
         Label {
-            text: qsTr("Your identity is a key pair generated on this device.")
+            text: qsTr("Your identity is a key pair generated on this device")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
@@ -79,7 +79,7 @@ Item {
             enabled: nameField.displayText.trim().length > 0
             onClicked: {
                 if (passField.text !== confirmField.text) {
-                    errorLabel.text = qsTr("Passphrases do not match.")
+                    errorLabel.text = qsTr("Passphrases do not match")
                     return
                 }
                 errorLabel.text = ""
@@ -99,7 +99,7 @@ Item {
             hoverEnabled: true
             onClicked: {
                 if (passField.text !== confirmField.text) {
-                    errorLabel.text = qsTr("Passphrases do not match.")
+                    errorLabel.text = qsTr("Passphrases do not match")
                     return
                 }
                 errorLabel.text = ""
@@ -116,7 +116,7 @@ Item {
             hoverEnabled: true
             onClicked: {
                 if (passField.text !== confirmField.text) {
-                    errorLabel.text = qsTr("Passphrases do not match.")
+                    errorLabel.text = qsTr("Passphrases do not match")
                     return
                 }
                 errorLabel.text = ""

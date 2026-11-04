@@ -100,7 +100,7 @@ Dialog {
             wrapMode: Text.Wrap
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
-            text: qsTr("The account would stay on the server with no key left to end it.")
+            text: qsTr("The account would stay on the server with no key left to end it")
         }
     }
 }

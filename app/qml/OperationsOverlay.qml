@@ -118,7 +118,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.margins: 24
                 horizontalAlignment: Text.AlignHCenter
-                text: qsTr("Nothing running right now.")
+                text: qsTr("Nothing running right now")
                 color: Theme.textDim
                 wrapMode: Text.Wrap
             }

@@ -52,7 +52,7 @@ Item {
         function onSignLinkOpened(link) { signWithKeySheet.openWith(link) }
         function onServerLinkOpened(link) {
             if (root.session && root.session.connected) {
-                window.showToast(qsTr("This account already has a server."))
+                window.showToast(qsTr("This account already has a server"))
                 return
             }
             pageLoader.item.takeLink(link)
@@ -157,7 +157,7 @@ Item {
     property bool callMinimized: false
     MicrophoneGate {
         id: callMicrophone
-        onRefused: window.showToast(qsTr("No access to the microphone."))
+        onRefused: window.showToast(qsTr("No access to the microphone"))
     }
     CallScreen {
         id: callScreen

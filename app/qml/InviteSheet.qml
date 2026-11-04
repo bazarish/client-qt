@@ -147,8 +147,8 @@ Popup {
         }
         Label {
             text: root.hasAliases
-                ? qsTr("You can be added as a contact by alias or by the full descriptor.")
-                : qsTr("Anyone with the link can reach you.")
+                ? qsTr("You can be added as a contact by alias or by the full descriptor")
+                : qsTr("Anyone with the link can reach you")
             color: Theme.textDim
             wrapMode: Text.Wrap
             Layout.fillWidth: true
@@ -158,7 +158,7 @@ Popup {
             Layout.fillWidth: true
             spacing: 8
             Label {
-                text: qsTr("No invite yet: %1.").arg(root.unavailable)
+                text: qsTr("No invite yet: %1").arg(root.unavailable)
                 color: Theme.warn
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true

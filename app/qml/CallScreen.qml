@@ -284,7 +284,7 @@ Popup {
                 id: acceptMicrophone
                 onRefused: {
                     root.pending = ""
-                    window.showToast(qsTr("No access to the microphone."))
+                    window.showToast(qsTr("No access to the microphone"))
                 }
             }
         }

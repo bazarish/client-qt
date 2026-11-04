@@ -23,7 +23,7 @@ void SessionController::saveAttachmentToFile(const QString& peer, const QString&
     const QString dest = dialogTarget(fileUrl);
     if (dest.isEmpty()) {
         conversation_.finishDownloadForId(
-            token, false, tr("Choose where to save the file."));
+            token, false, tr("Choose where to save the file"));
         return;
     }
     conversation_.setDownloadProgressForId(token, 0, 0);

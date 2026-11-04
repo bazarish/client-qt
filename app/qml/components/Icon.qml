@@ -14,6 +14,9 @@ Item {
     implicitWidth: size
     implicitHeight: size
 
+    // The software renderer paints a Shape past the clip of the view it scrolls in; a layer is clipped.
+    layer.enabled: GraphicsInfo.api === GraphicsInfo.Software
+
     Shape {
         id: shape
         anchors.centerIn: parent

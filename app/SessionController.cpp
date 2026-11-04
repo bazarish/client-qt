@@ -307,7 +307,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     connect(&events_, &AccountEvents::transcriptOpened, this,
         [this](const QString& path, const QByteArray& key) {
             if (!store_.open(path, Bytes(key.begin(), key.end()))) {
-                emit openFailed(tr("This profile could not be opened."));
+                emit openFailed(tr("This profile could not be opened"));
                 return;
             }
             emit historyOpened();
@@ -833,7 +833,7 @@ void SessionController::setAvatarFromGrab(QObject* const grab)
         ? QByteArray()
         : compressAvatarJpeg(grabbed->image());
     if (jpeg.isEmpty()) {
-        emit actionFailed(tr("The cropped avatar could not be read."));
+        emit actionFailed(tr("The cropped avatar could not be read"));
         return;
     }
     setAvatarBusy(true);
@@ -1749,7 +1749,7 @@ void SessionController::savePictureAs(const QString& e2eId, const QString& fileU
     const QString path = dialogTarget(fileUrl);
     const QByteArray bytes = PictureStore::instance().bytes(e2eId);
     if (path.isEmpty() || bytes.isEmpty()) {
-        emit actionFailed(tr("This picture is not here to save."));
+        emit actionFailed(tr("This picture is not here to save"));
         return;
     }
     try {
@@ -1768,7 +1768,7 @@ bool SessionController::savePictureToDownloads(const QString& e2eId, const QStri
 {
     const QByteArray bytes = PictureStore::instance().bytes(e2eId);
     if (bytes.isEmpty()) {
-        emit actionFailed(tr("This picture is not here to save."));
+        emit actionFailed(tr("This picture is not here to save"));
         return false;
     }
     const QString fileName = defaultPictureSaveUrl(e2eId, name).fileName();
@@ -1789,12 +1789,12 @@ void SessionController::copyPicture(const QString& e2eId)
 {
     const QImage picture = PictureStore::instance().image(e2eId);
     if (picture.isNull()) {
-        emit actionFailed(tr("This picture is not here to copy."));
+        emit actionFailed(tr("This picture is not here to copy"));
         return;
     }
     QClipboard* const clipboard = QGuiApplication::clipboard();
     if (clipboard == nullptr) {
-        emit actionFailed(tr("There is no clipboard to copy to."));
+        emit actionFailed(tr("There is no clipboard to copy to"));
         return;
     }
     clipboard->setImage(picture);

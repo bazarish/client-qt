@@ -102,7 +102,7 @@ Popup {
             Layout.fillWidth: true
             Layout.margins: 14
             Layout.bottomMargin: 0
-            text: qsTr("The last %1 events of this account, newest first.").arg(root.lines.length)
+            text: qsTr("The last %1 events of this account, newest first").arg(root.lines.length)
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap
@@ -190,7 +190,7 @@ Popup {
             Label {
                 anchors.centerIn: parent
                 visible: root.lines.length === 0
-                text: qsTr("Nothing yet.")
+                text: qsTr("Nothing yet")
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall
             }

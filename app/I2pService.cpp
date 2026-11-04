@@ -106,7 +106,7 @@ void I2pService::checkAndSaveSam(const QString& host, const int port)
     }
     const QString wanted = host.trimmed();
     if (wanted.isEmpty() || port <= 0) {
-        emit events_.samRefused(tr("Give the router's address first."));
+        emit events_.samRefused(tr("Give the router's address first"));
         return;
     }
     state_.samChecking = true;
@@ -170,7 +170,7 @@ void I2pService::noteChoiceInForce()
 void I2pService::useGateway(const bool on)
 {
     if (on && state_.gatewayAddress.isEmpty()) {
-        emit events_.gatewayRefused(tr("Save a gateway address first."));
+        emit events_.gatewayRefused(tr("Save a gateway address first"));
         return;
     }
     AppSettings::instance().useGateway(on);
@@ -182,7 +182,7 @@ void I2pService::useGateway(const bool on)
 void I2pService::useSam(const bool on)
 {
     if (on && state_.samHost.isEmpty()) {
-        emit events_.samRefused(tr("Give the router's address first."));
+        emit events_.samRefused(tr("Give the router's address first"));
         return;
     }
     state_.samEnabled = on;
@@ -217,10 +217,10 @@ void I2pService::checkAndSaveProxy(const QString& host, const int port)
                     }
                     announce();
                     emit events_.proxyRefused(check.answer == client::SocksAnswer::eUnreachable
-                            ? tr("Could not connect to this address.")
+                            ? tr("Could not connect to this address")
                             : check.answer == client::SocksAnswer::eNeedsAuthentication
-                            ? tr("The proxy requires authentication.")
-                            : tr("This is not a SOCKS5 proxy."));
+                            ? tr("The proxy requires authentication")
+                            : tr("This is not a SOCKS5 proxy"));
                     return;
                 }
                 saveProxy(wantedHost, port);
@@ -287,7 +287,7 @@ void I2pService::checkAndSaveGateway(const QString& address)
                 if (!check.ok) {
                     bazarish::log::warn("i2p: gateway check: {}", check.error);
                     announce();
-                    emit events_.gatewayRefused(tr("Could not connect to this address."));
+                    emit events_.gatewayRefused(tr("Could not connect to this address"));
                     return;
                 }
                 AppSettings::instance().rememberGateway(parsed->toString(), check.pin);

@@ -54,7 +54,7 @@ Popup {
         id: voiceMicrophone
         onRefused: {
             root.close()
-            window.showToast(qsTr("No access to the microphone."))
+            window.showToast(qsTr("No access to the microphone"))
         }
     }
 

@@ -113,9 +113,9 @@ Popup {
         Label {
             anchors.centerIn: parent
             visible: cameraGate.refused || (cameraGate.granted && !parent.haveCamera)
-            text: cameraGate.refused ? qsTr("No access to the camera.")
-                : (App.cameraSupported ? qsTr("No camera on this machine.")
-                                       : qsTr("This build of Bazarish cannot use a camera."))
+            text: cameraGate.refused ? qsTr("No access to the camera")
+                : (App.cameraSupported ? qsTr("No camera on this machine")
+                                       : qsTr("This build of Bazarish cannot use a camera"))
             color: Theme.textDim
         }
 
@@ -186,8 +186,8 @@ Popup {
                     width: parent.width
                     wrapMode: Text.Wrap
                     color: Theme.textDim
-                    text: App.cameraSupported ? qsTr("No camera on this machine.")
-                                              : qsTr("This build of Bazarish cannot use a camera.")
+                    text: App.cameraSupported ? qsTr("No camera on this machine")
+                                              : qsTr("This build of Bazarish cannot use a camera")
                 }
                 Repeater {
                     model: sheet.inputs

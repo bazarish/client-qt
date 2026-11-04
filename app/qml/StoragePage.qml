@@ -77,7 +77,7 @@ Popup {
                     }
                     Label {
                         visible: root.info.freeBytes > 0
-                        text: qsTr("About %1 of it is free space compacting returns to the disk.")
+                        text: qsTr("About %1 of it is free space compacting returns to the disk")
                             .arg(Format.bytes(root.info.freeBytes))
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
@@ -115,7 +115,7 @@ Popup {
                     visible: root.chats.length === 0
                     Layout.fillWidth: true
                     Layout.margins: 14
-                    text: root.session ? qsTr("Nothing stored yet.") : qsTr("No account is open.")
+                    text: root.session ? qsTr("Nothing stored yet") : qsTr("No account is open")
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
@@ -184,7 +184,7 @@ Popup {
                     Layout.fillWidth: true
                     Layout.margins: 14
                     Layout.topMargin: 4
-                    text: qsTr("Trimming happens only on this device.")
+                    text: qsTr("Trimming happens only on this device")
                     color: Theme.textFaint
                     font.pixelSize: Theme.fontSmall
                     wrapMode: Text.Wrap
@@ -241,7 +241,7 @@ Popup {
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("The app may not respond for a few seconds during the operation.")
+                text: qsTr("The app may not respond for a few seconds during the operation")
             }
         }
 
@@ -273,7 +273,7 @@ Popup {
                 color: Theme.text
             }
             Label {
-                text: qsTr("The window does not answer while this runs.")
+                text: qsTr("The window does not answer while this runs")
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap

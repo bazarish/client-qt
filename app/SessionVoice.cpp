@@ -133,7 +133,7 @@ void SessionController::stopVoiceRecording()
         return;
     }
     if (audio.empty() || durationMs < kMinVoiceMs) {
-        voiceError_ = tr("Too short to send.");
+        voiceError_ = tr("Too short to send");
         emit voiceChanged();
         return;
     }
@@ -266,7 +266,7 @@ void SessionController::onVoiceLoaded(const QString& e2eId, const QByteArray& by
         voice_->play(Bytes(bytes.begin(), bytes.end()), voiceSpeed(), voiceSeekMs_);
         playbackTimer_.start();
     } catch (const std::exception& error) {
-        emit actionFailed(tr("This voice message is broken."));
+        emit actionFailed(tr("This voice message is broken"));
         bazarish::log::warn("voice audio did not unpack: {}", error.what());
         voicePlaying_.clear();
         emit voiceChanged();

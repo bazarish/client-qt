@@ -82,7 +82,7 @@ Popup {
                         readOnly: true
                         wrapMode: TextArea.WrapAnywhere
                         text: root.link
-                        placeholderText: qsTr("No address held for this contact yet.")
+                        placeholderText: qsTr("No address held for this contact yet")
                         color: Theme.text
                         font.pixelSize: Theme.fontSmall
                         selectByMouse: true

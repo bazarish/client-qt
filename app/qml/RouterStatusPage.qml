@@ -26,7 +26,7 @@ Popup {
                 + "network. The fastest.")
         }
         if (level === 1) {
-            return qsTr("One or two transit routers, chosen at random.")
+            return qsTr("One or two transit routers, chosen at random")
         }
         return qsTr("Three transit routers in the tunnels, the I2P default. The highest latency.")
     }
@@ -79,9 +79,9 @@ Popup {
                     Label {
                         visible: !I2p.running && !I2p.gatewayEnabled
                         text: I2p.samEnabled
-                            ? qsTr("No router answering at the address below.")
+                            ? qsTr("No router answering at the address below")
                             : I2p.knownRouters < I2p.minKnownRouters
-                            ? qsTr("No network database yet.")
+                            ? qsTr("No network database yet")
                             : qsTr("Not running")
                         color: Theme.textDim; wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -90,7 +90,7 @@ Popup {
                         visible: I2p.gatewayEnabled
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
-                        text: qsTr("The router is at %1.").arg(I2p.gatewayHost)
+                        text: qsTr("The router is at %1").arg(I2p.gatewayHost)
                         color: Theme.text
                     }
                     Label {
@@ -143,7 +143,7 @@ Popup {
                     }
                     Label {
                         visible: I2p.destinations.length === 0
-                        text: qsTr("No destination is being served.")
+                        text: qsTr("No destination is being served")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap; Layout.fillWidth: true
                     }
@@ -268,7 +268,7 @@ Popup {
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                         Label {
-                            text: qsTr("Calls always use the shortest tunnel to keep latency down.")
+                            text: qsTr("Calls always use the shortest tunnel to keep latency down")
                             color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
@@ -292,7 +292,7 @@ Popup {
                     }
                     Label {
                         visible: I2p.transports.length === 0
-                        text: qsTr("No direct transport connections yet.")
+                        text: qsTr("No direct transport connections yet")
                         color: Theme.textDim; font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
@@ -332,7 +332,7 @@ Popup {
                             Layout.fillWidth: true
                             Label { text: qsTr("Show I2P logs"); color: Theme.text }
                             Label {
-                                text: qsTr("Surface libi2pd's own logging (debugging).")
+                                text: qsTr("Surface libi2pd's own logging (debugging)")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }

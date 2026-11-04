@@ -90,7 +90,7 @@ Dialog {
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             Label {
-                text: qsTr("The panel on the right shows the progress.")
+                text: qsTr("The panel on the right shows the progress")
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap

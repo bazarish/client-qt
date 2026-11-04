@@ -28,9 +28,9 @@ public:
 
     std::string chatCleared(const bool ours, const std::string& peer) const override
     {
-        return (ours ? encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone."))
+        return (ours ? encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone"))
                      : encodeSystemNote(
-                           QT_TR_NOOP("%1 cleared the chat."), {contacts_.peerName(qt(peer))}))
+                           QT_TR_NOOP("%1 cleared the chat"), {contacts_.peerName(qt(peer))}))
             .toStdString();
     }
 
@@ -43,7 +43,7 @@ public:
     std::string contactAccepted(const std::string& peer) const override
     {
         return encodeSystemNote(
-            QT_TR_NOOP("%1 accepted your contact request."), {contacts_.peerName(qt(peer))})
+            QT_TR_NOOP("%1 accepted your contact request"), {contacts_.peerName(qt(peer))})
             .toStdString();
     }
 

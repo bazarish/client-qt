@@ -52,10 +52,10 @@ QString SessionController::inviteProblem(const QString& uri) const
         const bazarish::Descriptor descriptor
             = bazarish::parseDescriptor(uri.trimmed().toStdString());
         if (descriptor.dest.empty()) {
-            return tr("This invite carries no address to reach that account.");
+            return tr("This invite carries no address to reach that account");
         }
     } catch (const std::exception&) {
-        return tr("This invite link is damaged.");
+        return tr("This invite link is damaged");
     }
     return {};
 }
@@ -72,15 +72,15 @@ QString SessionController::aliasProblem(const QString& typed) const
         const std::string name
             = text.substr(sigil, dash == std::string::npos ? std::string::npos : dash - sigil);
         if (name.size() < bazarish::kAliasMinLength || name.size() > bazarish::kAliasMaxLength) {
-            return tr("An alias must be %1 to %2 characters long.")
+            return tr("An alias must be %1 to %2 characters long")
                 .arg(bazarish::kAliasMinLength)
                 .arg(bazarish::kAliasMaxLength);
         }
         if (dash == std::string::npos
             || !bazarish::isAlias(QString::fromStdString(name).toLower().toStdString())) {
-            return tr("An alias may contain only Latin letters and digits.");
+            return tr("An alias may contain only Latin letters and digits");
         }
-        return tr("The word after the dash is 1 to %1 Latin letters and digits.")
+        return tr("The word after the dash is 1 to %1 Latin letters and digits")
             .arg(bazarish::kAliasWordMaxLength);
     }
     return {};
@@ -92,7 +92,7 @@ QString SessionController::aliasWordProblem(const QString& word) const
     static const QRegularExpression wordShape(QStringLiteral("^[A-Za-z0-9]*$"));
     if (trimmed.size() > static_cast<qsizetype>(bazarish::kAliasWordMaxLength)
         || !wordShape.match(trimmed).hasMatch()) {
-        return tr("A word is up to %1 Latin letters and digits.")
+        return tr("A word is up to %1 Latin letters and digits")
             .arg(bazarish::kAliasWordMaxLength);
     }
     return {};

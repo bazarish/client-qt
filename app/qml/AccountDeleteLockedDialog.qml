@@ -40,7 +40,7 @@ Dialog {
             Layout.bottomMargin: 0
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("\u201c%1\u201d is encrypted, and only the key inside can tell the server to end the account.").arg(root.accountName)
+            text: qsTr("\u201c%1\u201d is encrypted, and only the key inside can tell the server to end the account").arg(root.accountName)
         }
         Label {
             Layout.fillWidth: true

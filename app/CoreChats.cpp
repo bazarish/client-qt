@@ -101,7 +101,7 @@ void CoreAccount::clearChat(const QString& peer, const bool forEveryone)
     StoredMessage sys;
     sys.peer = peer;
     sys.type = QStringLiteral("system");
-    sys.text = encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone."));
+    sys.text = encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone"));
     sys.ts = nowMillis();
     sys.orderKey = sys.ts;
     sys.status = DeliveryStatus::Received;

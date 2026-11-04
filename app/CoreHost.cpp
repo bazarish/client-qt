@@ -743,7 +743,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
                 if (!endpoint->waitReady(
                         std::chrono::seconds(client::kPairOwnTunnelsSeconds))) {
                     endpoint.reset();
-                    failure = tr("This device could not build I2P tunnels.");
+                    failure = tr("This device could not build I2P tunnels");
                 }
             }
             if (endpoint) {
@@ -752,7 +752,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
                     = endpoint->connect(dest, std::chrono::seconds(client::kPairDialSeconds));
                 if (!reached) {
                     endpoint.reset();
-                    failure = tr("Cannot reach the other device.");
+                    failure = tr("Cannot reach the other device");
                 } else {
                     reached->close();
                 }
@@ -837,7 +837,7 @@ void CoreHost::submitPairCode(const QString& code)
                     return;
                 }
                 if (!refusedKind.isEmpty()) {
-                    failPairing(tr("This account was created as a bot or a group."));
+                    failPairing(tr("This account was created as a bot or a group"));
                     emit events_.importRefused(refusedKind);
                     return;
                 }
@@ -910,12 +910,12 @@ void CoreHost::importAccount(const QString& name, const QString& path, const QSt
             this,
             [this, id, failure, refusedKind, atRestPassphrase]() {
                 if (!refusedKind.isEmpty()) {
-                    log_.finish(kRestoreOperation, false, tr("Not restored."));
+                    log_.finish(kRestoreOperation, false, tr("Not restored"));
                     emit events_.importRefused(refusedKind);
                     return;
                 }
                 log_.finish(kRestoreOperation, failure.isEmpty(),
-                    failure.isEmpty() ? tr("Restored.") : failure);
+                    failure.isEmpty() ? tr("Restored") : failure);
                 if (!failure.isEmpty()) {
                     emit events_.createFailed(failure);
                     return;
@@ -1055,7 +1055,7 @@ void CoreHost::setPortable(const bool on)
     if (fs::exists(from, error) && !fs::is_empty(from, error)) {
         if (fs::exists(to, error) && !fs::is_empty(to, error)) {
             emit events_.createFailed(tr("There is already data at %1 - move or remove it first, so "
-                                         "nothing is overwritten.")
+                                         "nothing is overwritten")
                     .arg(pathText(to)));
             return;
         }

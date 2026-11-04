@@ -59,7 +59,7 @@ Item {
     }
     function copyChosen() {
         const copied = root.session.copyMessages(root.chosenIds()) > 0
-        window.showToast(copied ? qsTr("Copied to clipboard") : qsTr("There is no text among them."))
+        window.showToast(copied ? qsTr("Copied to clipboard") : qsTr("There is no text among them"))
         if (copied) {
             root.clearChosen()
         }
@@ -249,10 +249,10 @@ Item {
         }
         contentItem: Label {
             text: groupActionDialog.command === "exclude"
-                ? qsTr("They can join again.")
+                ? qsTr("They can join again")
                 : groupActionDialog.command === "block"
-                    ? qsTr("They cannot come back.")
-                    : qsTr("The post is removed for every member.")
+                    ? qsTr("They cannot come back")
+                    : qsTr("The post is removed for every member")
             color: Theme.text
             wrapMode: Text.Wrap
         }
@@ -287,11 +287,11 @@ Item {
             padding: 14
         }
         contentItem: Label {
-            text: root.savedChat ? qsTr("They are removed from your other devices too.")
-                : deleteChosenDialog.own === 0 ? qsTr("They are removed from this device only.")
+            text: root.savedChat ? qsTr("They are removed from your other devices too")
+                : deleteChosenDialog.own === 0 ? qsTr("They are removed from this device only")
                 : deleteChosenDialog.own === root.chosenCount
-                ? qsTr("They are removed from the other side too.")
-                : qsTr("Your messages among them (%1) are removed from the other side too, the rest only from this device.").arg(deleteChosenDialog.own)
+                ? qsTr("They are removed from the other side too")
+                : qsTr("Your messages among them (%1) are removed from the other side too, the rest only from this device").arg(deleteChosenDialog.own)
             color: Theme.text
             wrapMode: Text.Wrap
         }
@@ -394,7 +394,7 @@ Item {
                         Layout.fillWidth: true
                         HoverHandler { id: countHover }
                         ToolTip.visible: countHover.hovered
-                        ToolTip.text: qsTr("Updated from time to time; the server sets the count.")
+                        ToolTip.text: qsTr("Updated from time to time; the server sets the count")
                     }
                     Label {
                         readonly property string peer: root.session ? root.session.activePeer : ""
@@ -814,7 +814,7 @@ Item {
         Layout.bottomMargin: 4
         spacing: 8
         Label {
-            text: qsTr("The request was refused - their server is busy.")
+            text: qsTr("The request was refused - their server is busy")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

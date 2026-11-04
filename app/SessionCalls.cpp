@@ -11,7 +11,7 @@ namespace bazarish::app {
 bool SessionController::speakerPresent()
 {
     if (AudioRoute::instance().output().isNull()) {
-        emit actionFailed(tr("No audio output device."));
+        emit actionFailed(tr("No audio output device"));
         return false;
     }
     return true;

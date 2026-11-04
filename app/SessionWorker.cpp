@@ -259,7 +259,7 @@ QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
     if (rows.isEmpty() || depositCovers) {
         return QString();
     }
-    return SessionWorker::tr("Your deposit will not cover the next renewal.");
+    return SessionWorker::tr("Your deposit will not cover the next renewal");
 }
 
 // The recipient's server answers in its own English; what it means is said in the app's language.
@@ -276,15 +276,15 @@ QString refusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
         return SessionWorker::tr("the recipient's server could not be reached");
     }
     if (code == bazarish::ErrorCode::eStorageFull) {
-        return SessionWorker::tr("The recipient's mailbox is full.");
+        return SessionWorker::tr("The recipient's mailbox is full");
     }
     if (code == bazarish::ErrorCode::eMessageTooLarge) {
-        return SessionWorker::tr("The message is too large for the recipient's server.");
+        return SessionWorker::tr("The message is too large for the recipient's server");
     }
     if (code == bazarish::ErrorCode::eContactRateLimited) {
-        return SessionWorker::tr("Too many messages to this contact this minute.");
+        return SessionWorker::tr("Too many messages to this contact this minute");
     }
-    return SessionWorker::tr("The recipient's server refused this message.");
+    return SessionWorker::tr("The recipient's server refused this message");
 }
 
 QString contactRefusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
@@ -294,9 +294,9 @@ QString contactRefusalText(const bazarish::client::OutboundCourier::Outcome& out
     }
     if (bazarish::errorCodeFromString(outcome.errorCode)
         == bazarish::ErrorCode::eContactRequestTooLarge) {
-        return SessionWorker::tr("The contact request is too long.");
+        return SessionWorker::tr("The contact request is too long");
     }
-    return SessionWorker::tr("The contact's server refused the request.");
+    return SessionWorker::tr("The contact's server refused the request");
 }
 
 bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint64 localId)
@@ -644,11 +644,11 @@ void SessionWorker::openAccount(
         const std::optional<bazarish::AccountKind> kind
             = Session::storedKind(toPath(dir), passphrase.toStdString());
         if (!kind.has_value()) {
-            emit openFailed(tr("This account was made by an earlier version of Bazarish and cannot be opened."));
+            emit openFailed(tr("This account was made by an earlier version of Bazarish and cannot be opened"));
             return;
         }
         if (*kind != bazarish::AccountKind::eUser) {
-            emit openFailed(tr("This account was created as a bot or a group and cannot be opened here."));
+            emit openFailed(tr("This account was created as a bot or a group and cannot be opened here"));
             return;
         }
         session_ = std::make_unique<Session>(
@@ -1468,7 +1468,7 @@ void SessionWorker::drainResolvedAdds()
         const bazarish::client::Session::ContactCardResolved& resolved = entry.resolved;
         if (!resolved.ok) {
             const QString error = resolved.aliasUnknown
-                ? tr("No such alias.")
+                ? tr("No such alias")
                 : QString::fromStdString(resolved.error);
             if (resolved.aliasUnknown) {
                 emit contactAliasUnknown(entry.opId, error);
@@ -1536,7 +1536,7 @@ void SessionWorker::finishContactRequest(const QString& opId, const QString& fin
     if (outcome.stored) {
         emit actionOk(tr("Contact request sent"));
         emit contactRequestSent(fingerprint, intro, requestId, sentAtMs);
-        emit contactAddDone(opId, true, encodeSystemNote(QT_TR_NOOP("Request sent.")));
+        emit contactAddDone(opId, true, encodeSystemNote(QT_TR_NOOP("Request sent")));
         return;
     }
     const std::optional<bazarish::ErrorCode> code
@@ -1545,7 +1545,7 @@ void SessionWorker::finishContactRequest(const QString& opId, const QString& fin
         bazarish::log::warn("contact request to {} not confirmed: {}",
             bazarish::log::redact(fingerprint.toStdString()), outcome.errorMessage);
         emit contactRequestUnconfirmed(opId);
-        emit actionFailed(tr("The contact's server did not confirm the request."));
+        emit actionFailed(tr("The contact's server did not confirm the request"));
         return;
     }
     if (session_ && recordedHere) {
@@ -1885,22 +1885,22 @@ void SessionWorker::refreshI2pStatus()
         delegated = transientExpires != 0;
         live = s.approved() && delegated;
         if (live && serverState == QStringLiteral("building")) {
-            summary = tr("Delegated — your server is bringing the destination up.");
+            summary = tr("Delegated — your server is bringing the destination up");
         } else if (live) {
-            summary = tr("Published — your destination is live.");
+            summary = tr("Published — your destination is live");
         } else if (s.approval == "pending") {
             summary = s.registrationMessage.empty()
-                ? tr("Awaiting operator approval — no destination until then.")
+                ? tr("Awaiting operator approval — no destination until then")
                 : QString::fromStdString(s.registrationMessage);
         } else if (hasKey) {
-            summary = tr("Not published — nobody can reach you yet.");
+            summary = tr("Not published — nobody can reach you yet");
         } else {
-            summary = tr("No destination key yet.");
+            summary = tr("No destination key yet");
         }
     } catch (const std::exception& error) {
         bazarish::log::warn("destination status poll failed: {}", error.what());
-        summary = hasKey ? tr("Destination key ready; connect to publish it.")
-                         : tr("No destination key yet.");
+        summary = hasKey ? tr("Destination key ready; connect to publish it")
+                         : tr("No destination key yet");
     }
     op.succeed(summary);
     const Session::ApprovalState approval = session_->approvalState();
@@ -2331,7 +2331,7 @@ void SessionWorker::startAliasErrand(const bool byHand)
 {
     if (session_ == nullptr) {
         if (byHand) {
-            emit aliasActivationDone(false, tr("No account is open."));
+            emit aliasActivationDone(false, tr("No account is open"));
         }
         return;
     }

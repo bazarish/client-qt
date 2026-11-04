@@ -100,6 +100,16 @@ def is_prose(literal, shown=False):
     return any(c.isalpha() for c in body) and len(body) > 1
 
 
+# A text of one sentence carries no full stop; a text of several keeps them all.
+LAST_STOP = re.compile(r'(?<![.])[.\u3002]$')
+INNER_STOP = re.compile(r'[.!?\u3002\uff01\uff1f](?:\s|$)|[\u3002\uff01\uff1f]')
+
+
+def stops_one_sentence(text):
+    text = text.rstrip()
+    return bool(LAST_STOP.search(text)) and not INNER_STOP.search(text[:-1])
+
+
 def read_catalog():
     document = json.loads(CATALOG.read_text(encoding="utf-8"))
     languages = [entry["code"] for entry in document["languages"]]
@@ -227,6 +237,8 @@ def main():
                 f"{where}: {key!r} is shown but the catalog does not carry it - add it to "
                 f"{CATALOG.relative_to(ROOT)}")
             continue
+        if stops_one_sentence(key):
+            problems.append(f"{', '.join(sorted(used[key]))}: {key!r} is one sentence - drop its full stop")
         slots = set(re.findall(r'%\d', key))
         for code in wanted:
             text = entry.get(code, "")
@@ -236,6 +248,10 @@ def main():
                     f"{CATALOG.relative_to(ROOT)}: {key!r} has no {code} translation, and "
                     f"{where} shows it")
                 continue
+            if stops_one_sentence(text):
+                problems.append(
+                    f"{CATALOG.relative_to(ROOT)}: the {code} text of {key!r} is one sentence - "
+                    f"drop its full stop")
             if set(re.findall(r'%\d', text)) != slots:
                 problems.append(
                     f"{CATALOG.relative_to(ROOT)}: the {code} text of {key!r} does not carry "

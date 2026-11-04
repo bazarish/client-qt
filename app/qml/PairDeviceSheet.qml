@@ -42,7 +42,7 @@ Popup {
         }
 
         Label {
-            text: qsTr("Scan this QR code on the new device, or paste the link there.")
+            text: qsTr("Scan this QR code on the new device, or paste the link there")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

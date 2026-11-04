@@ -257,8 +257,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Label {
                     text: App.backgroundRestricted
-                        ? qsTr("Allow unrestricted background work to get notifications.")
-                        : qsTr("Allow full-screen notifications to see incoming calls on the lock screen.")
+                        ? qsTr("Allow unrestricted background work to get notifications")
+                        : qsTr("Allow full-screen notifications to see incoming calls on the lock screen")
                     color: Theme.text
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true
@@ -299,13 +299,13 @@ ApplicationWindow {
         contentItem: ColumnLayout {
             spacing: 12
             Label {
-                text: qsTr("Allow bazari.sh links to open in the app.")
+                text: qsTr("Allow bazari.sh links to open in the app")
                 color: Theme.text
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
             Label {
-                text: qsTr("In the settings, tap Add link and check bazari.sh.")
+                text: qsTr("In the settings, tap Add link and check bazari.sh")
                 color: Theme.textDim
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
@@ -349,13 +349,14 @@ ApplicationWindow {
                 wrapMode: Text.Wrap
             }
             Label {
-                text: (I2p.transport === "gateway"
-                        ? qsTr("I2P will be carried by the external gateway.")
-                        : (I2p.transport === "sam"
-                            ? qsTr("I2P will be carried by an external router.")
-                            : qsTr("I2P will be carried by the engine inside this application.")))
-                    + " "
-                    + qsTr("The I2P backend is chosen at startup. Your accounts are closed; restart to apply.")
+                text: I2p.transport === "gateway"
+                    ? qsTr("I2P will be carried by the external gateway. The I2P backend is chosen at "
+                        + "startup. Your accounts are closed; restart to apply.")
+                    : (I2p.transport === "sam"
+                        ? qsTr("I2P will be carried by an external router. The I2P backend is chosen at "
+                            + "startup. Your accounts are closed; restart to apply.")
+                        : qsTr("I2P will be carried by the engine inside this application. The I2P "
+                            + "backend is chosen at startup. Your accounts are closed; restart to apply."))
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap
@@ -499,8 +500,8 @@ ApplicationWindow {
             color: Theme.text
             padding: 14
             text: importRefusedDialog.kind === "bot"
-                ? qsTr("This account was created as a bot.")
-                : qsTr("This account was created as a group.")
+                ? qsTr("This account was created as a bot")
+                : qsTr("This account was created as a group")
         }
     }
 

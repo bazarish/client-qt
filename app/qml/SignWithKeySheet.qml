@@ -306,7 +306,7 @@ Popup {
                             Label {
                                 visible: root.consumer.ok
                                 text: (root.consumer.place && root.consumer.place.length > 1)
-                                    ? qsTr("If the address you came to is not in the list, do not sign.")
+                                    ? qsTr("If the address you came to is not in the list, do not sign")
                                     : qsTr("Compare this with where you got it. If they differ, do not sign.")
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall

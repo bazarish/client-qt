@@ -666,8 +666,8 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
             DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed)
         || !store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
             DeliveryStatus::Received,
-            encodeSystemNote(QT_TR_NOOP("The contact request did not finish.")))) {
-        emit events_.openFailed(tr("This profile could not be opened."));
+            encodeSystemNote(QT_TR_NOOP("The contact request did not finish")))) {
+        emit events_.openFailed(tr("This profile could not be opened"));
         return;
     }
     unread_ = store_.unreadTotal();
@@ -890,7 +890,7 @@ void CoreAccount::sendLogin(const QString& challenge)
     const qint64 startedAt = nowMillis();
     if (!loginSigner_) {
         emit events_.loginSendState(
-            challenge, eLoginRefused, tr("This account is still opening."), startedAt);
+            challenge, eLoginRefused, tr("This account is still opening"), startedAt);
         return;
     }
     const QString op = QStringLiteral("login:") + QString::number(++commandSeq_);
@@ -941,7 +941,7 @@ void CoreAccount::finishLoginSend(const QString& op, const QString& challenge,
 void CoreAccount::fetchLogin(const QString& link)
 {
     if (!loginSigner_) {
-        emit events_.loginFetchState(link, false, tr("This account is still opening."), {});
+        emit events_.loginFetchState(link, false, tr("This account is still opening"), {});
         return;
     }
     cancelLoginFetch(loginFetchLink_);

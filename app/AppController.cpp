@@ -503,7 +503,7 @@ void AppController::openLink(const QString& link)
     const bool invite = kindIs(bazarish::kInviteKind);
     if (!invite && !sign && !kindIs(bazarish::kServerKind)) {
         bazarish::log::warn("asked to open a link this client does not know");
-        emit linkRefused(tr("This link is not one Bazarish knows."));
+        emit linkRefused(tr("This link is not one Bazarish knows"));
         return;
     }
     emit raiseRequested();
@@ -531,7 +531,7 @@ QString AppController::pairLinkProblem(const QString& link) const
     try {
         (void)bazarish::parsePairLink(typed.toStdString());
     } catch (const std::exception&) {
-        return tr("This is not a pairing link.");
+        return tr("This is not a pairing link");
     }
     return {};
 }

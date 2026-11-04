@@ -58,7 +58,7 @@ Popup {
                     }
                     Label {
                         visible: !App.linksHandled
-                        text: qsTr("In the settings, tap Add link and check bazari.sh.")
+                        text: qsTr("In the settings, tap Add link and check bazari.sh")
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
@@ -183,7 +183,7 @@ Popup {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: qsTr("Pop-up notifications show the message text.")
+                                text: qsTr("Pop-up notifications show the message text")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -204,7 +204,7 @@ Popup {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: qsTr("A panel on the right edge lists the background operations and the stage each one has reached.")
+                                text: qsTr("A panel on the right edge lists the background operations and the stage each one has reached")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -244,7 +244,7 @@ Popup {
                         Layout.fillWidth: true
                     }
                     Label {
-                        text: qsTr("The I2P backend is chosen at startup: changing it takes a restart.")
+                        text: qsTr("The I2P backend is chosen at startup: changing it takes a restart")
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
@@ -377,7 +377,7 @@ Popup {
                             ShareLinkSheet {
                                 id: gatewayShare
                                 title: qsTr("Share gateway")
-                                note: qsTr("The link connects another device to this gateway.")
+                                note: qsTr("The link connects another device to this gateway")
                                 link: I2p.gatewayAddress
                             }
                         }
@@ -476,7 +476,7 @@ Popup {
                                 }
                             }
                             Label {
-                                text: qsTr("Use an external I2P router.")
+                                text: qsTr("Use an external I2P router")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -583,7 +583,7 @@ Popup {
             wrapMode: Text.Wrap
             color: Theme.textDim
             padding: 14
-            text: qsTr("Every account closes, the data is moved, and Bazarish has to be started again.")
+            text: qsTr("Every account closes, the data is moved, and Bazarish has to be started again")
         }
     }
 }

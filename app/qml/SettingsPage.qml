@@ -462,7 +462,7 @@ Popup {
                             }
                             Label {
                                 visible: root.session && !root.session.i2pHasKey
-                                text: qsTr("No destination key on this account yet.")
+                                text: qsTr("No destination key on this account yet")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -566,7 +566,7 @@ Popup {
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
                             Label {
-                                text: qsTr("Sets how long your server keeps serving incoming mail while you are offline.")
+                                text: qsTr("Sets how long your server keeps serving incoming mail while you are offline")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -678,7 +678,7 @@ Popup {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: qsTr("Off, a caller is refused automatically.")
+                                text: qsTr("Off, a caller is refused automatically")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -698,7 +698,7 @@ Popup {
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
-                            Label { text: qsTr("Lets contacts see a green mark when you receive."); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                            Label { text: qsTr("Lets contacts see a green mark when you receive"); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
                         }
                         Toggle {
                             checked: root.session ? root.session.sendReceipts : true
@@ -715,7 +715,7 @@ Popup {
                                 wrapMode: Text.Wrap
                                 Layout.fillWidth: true
                             }
-                            Label { text: qsTr("Contacts see when the app is open and when you type, and you see theirs."); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                            Label { text: qsTr("Contacts see when the app is open and when you type, and you see theirs"); color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true }
                         }
                         Toggle {
                             checked: root.session ? root.session.showPresence : true
@@ -949,7 +949,7 @@ Popup {
             wrapMode: Text.Wrap
             color: Theme.textDim
             padding: 14
-            text: qsTr("Your contacts keep the copy they already have until you set a new one.")
+            text: qsTr("Your contacts keep the copy they already have until you set a new one")
         }
     }
     Dialog {
@@ -984,7 +984,7 @@ Popup {
                 background: Rectangle { radius: 8; color: Theme.control; border.color: renameSelfField.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             Label {
-                text: qsTr("Only updates this device and your invite link.")
+                text: qsTr("Only updates this device and your invite link")
                 color: Theme.textDim; font.pixelSize: Theme.fontSmall; wrapMode: Text.Wrap; Layout.fillWidth: true
             }
         }
@@ -1046,9 +1046,9 @@ Popup {
             Label {
                 text: passwordDialog.matched
                     ? (newPass.displayText.length === 0
-                        ? qsTr("Empty: this account will be kept unencrypted.")
-                        : qsTr("Asked for whenever this account is opened."))
-                    : qsTr("The two do not match.")
+                        ? qsTr("Empty: this account will be kept unencrypted")
+                        : qsTr("Asked for whenever this account is opened"))
+                    : qsTr("The two do not match")
                 color: passwordDialog.matched ? Theme.textDim : Theme.warn
                 font.pixelSize: Theme.fontSmall
                 wrapMode: Text.Wrap; Layout.fillWidth: true
@@ -1122,7 +1122,7 @@ Popup {
     ShareLinkSheet {
         id: serverShare
         title: qsTr("Share server")
-        note: qsTr("This link connects another account to your server.")
+        note: qsTr("This link connects another account to your server")
         link: root.session ? root.session.serverLink : ""
         hasBack: true
         onBack: { serverShare.close(); serverChoice.open() }

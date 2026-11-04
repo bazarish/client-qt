@@ -61,7 +61,7 @@ Popup {
 
         Label {
             visible: !root.live
-            text: qsTr("Paste the pairing link, or scan it from the other device.")
+            text: qsTr("Paste the pairing link, or scan it from the other device")
             color: Theme.textDim
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.Wrap

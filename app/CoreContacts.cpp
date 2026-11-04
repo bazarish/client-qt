@@ -113,7 +113,7 @@ void CoreAccount::onContactAddRateLimited(
     }
     if (found == refusedRequests_.end() || found->triesLeft <= 0) {
         writeConversationNote(fingerprint,
-            encodeSystemNote(QT_TR_NOOP("The request was refused: the contact's server is busy.")));
+            encodeSystemNote(QT_TR_NOOP("The request was refused: the contact's server is busy")));
         emit events_.contactRetryExhausted(fingerprint);
         return;
     }
@@ -247,7 +247,7 @@ void CoreAccount::onRoutingTold(const QString& peer, const bool delivered)
     note.peer = peer;
     note.type = kind;
     note.text = encodeSystemNote(
-        QT_TR_NOOP("Your new contact details did not reach them."));
+        QT_TR_NOOP("Your new contact details did not reach them"));
     note.ts = nowMillis();
     note.orderKey = note.ts;
     note.status = DeliveryStatus::Received;
@@ -316,7 +316,7 @@ void CoreAccount::onContactAddDone(const QString& opId, const bool ok, const QSt
 void CoreAccount::onContactRequestUnconfirmed(const QString& opId)
 {
     settleContactAdd(opId, false,
-        encodeSystemNote(QT_TR_NOOP("The contact's server did not confirm the request.")));
+        encodeSystemNote(QT_TR_NOOP("The contact's server did not confirm the request")));
 }
 
 void CoreAccount::settleContactAdd(const QString& opId, const bool ok, const QString& note)
@@ -396,7 +396,7 @@ void CoreAccount::onContactRequestSent(const QString& fingerprint, const QString
         }
         return;
     }
-    const QString body = intro.isEmpty() ? tr("Contact request sent.") : intro;
+    const QString body = intro.isEmpty() ? tr("Contact request sent") : intro;
     StoredMessage m;
     m.peer = fingerprint;
     m.outgoing = true;
