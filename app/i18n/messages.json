@@ -221,11 +221,11 @@
       "zh": "账号",
       "ar": "الحسابات"
     },
-    "Accounts, history and the router's state live in a bazarish_data folder next to the program. Switching moves them, closes every account and needs the app started again.": {
-      "ru": "Аккаунты, переписка и состояние роутера хранятся в папке bazarish_data рядом с программой. Переключение перенесёт их, закроет все аккаунты и потребует запустить программу заново.",
-      "es": "Las cuentas, el historial y el estado del router viven en una carpeta bazarish_data junto al programa. Cambiar los mueve, cierra todas las cuentas y obliga a iniciar la aplicación de nuevo.",
-      "zh": "账号、聊天记录和路由状态存放在程序旁的 bazarish_data 文件夹中。切换会迁移它们、关闭所有账号，并需要重新启动程序。",
-      "ar": "تعيش الحسابات والمحادثات وحالة الموجّه في مجلد bazarish_data بجوار البرنامج. والتبديل ينقلها، ويغلق كل الحسابات، ويتطلب تشغيل التطبيق من جديد."
+    "All account data and the router's state live next to the app. Switching moves them, closes every account and needs the app started again.": {
+      "ru": "Все данные аккаунтов и состояние роутера хранятся рядом с приложением. Переключение перенесёт их, закроет все аккаунты и потребует запустить приложение заново.",
+      "es": "Todos los datos de las cuentas y el estado del router viven junto a la aplicación. Cambiar los mueve, cierra todas las cuentas y obliga a iniciar la aplicación de nuevo.",
+      "zh": "所有账号数据和路由状态都存放在应用旁边。切换会迁移它们、关闭所有账号，并需要重新启动应用。",
+      "ar": "تعيش كل بيانات الحسابات وحالة الموجّه بجوار التطبيق. والتبديل ينقلها، ويغلق كل الحسابات، ويتطلب تشغيل التطبيق من جديد."
     },
     "Add a facade": {
       "ru": "Добавить фасад",
@@ -690,9 +690,9 @@
       "ar": "لا يمكن الوصول إلى الجهاز الآخر."
     },
     "Cannot write beside the application (%1). Move it somewhere writable and try again.": {
-      "ru": "Рядом с программой писать нельзя (%1). Перенесите её в каталог с правом записи. Затем повторите.",
+      "ru": "Рядом с приложением писать нельзя (%1). Перенесите его в каталог с правом записи. Затем повторите.",
       "es": "No se puede escribir junto a la aplicación (%1). Muévela a un sitio con permiso de escritura y reinténtalo.",
-      "zh": "无法在程序旁写入（%1）。请把它移到可写的位置后重试。",
+      "zh": "无法在应用旁写入（%1）。请把它移到可写的位置后重试。",
       "ar": "تتعذّر الكتابة بجوار التطبيق (⁦%1⁩). انقله إلى موضع يسمح بالكتابة ثم أعد المحاولة."
     },
     "Card updated": {
@@ -1962,9 +1962,9 @@
       "ar": "أتريد إعادة البيانات؟"
     },
     "Move data beside the app?": {
-      "ru": "Перенести данные к программе?",
+      "ru": "Перенести данные к приложению?",
       "es": "¿Mover los datos junto a la aplicación?",
-      "zh": "要把数据移到程序旁边吗？",
+      "zh": "要把数据移到应用旁边吗？",
       "ar": "أتريد نقل البيانات بجوار التطبيق؟"
     },
     "My invite": {
@@ -3990,9 +3990,9 @@
       "ar": "عادت بياناتك إلى مجلد المستخدم. ولاستعمالها شغّل Bazarish من جديد."
     },
     "Your data now lives beside the app. Bazarish has to be started again to use it.": {
-      "ru": "Данные теперь хранятся рядом с программой. Чтобы ими пользоваться, запустите Bazarish заново.",
+      "ru": "Данные теперь хранятся рядом с приложением. Чтобы ими пользоваться, запустите Bazarish заново.",
       "es": "Tus datos viven ahora junto a la aplicación. Para usarlos, inicia Bazarish de nuevo.",
-      "zh": "数据现在存放在程序旁边。要使用它们，请重新启动 Bazarish。",
+      "zh": "数据现在存放在应用旁边。要使用它们，请重新启动 Bazarish。",
       "ar": "صارت بياناتك بجوار التطبيق. ولاستعمالها شغّل Bazarish من جديد."
     },
     "Your deposit will not cover the next renewal.": {

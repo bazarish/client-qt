@@ -132,7 +132,7 @@ Popup {
                             Layout.fillWidth: true
                             Label { text: qsTr("Portable mode"); color: Theme.text }
                             Label {
-                                text: qsTr("Accounts, history and the router's state live in a bazarish_data folder next to the program. Switching moves them, closes every account and needs the app started again.")
+                                text: qsTr("All account data and the router's state live next to the app. Switching moves them, closes every account and needs the app started again.")
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
