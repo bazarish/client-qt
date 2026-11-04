@@ -4,6 +4,7 @@
 #include "AccountManager.hpp"
 
 #include <bazarish/Log.hpp>
+#include <bazarish/PrivateFile.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -141,16 +142,10 @@ void AppSettings::save() const
         {"audio", {{"input", audioInput_}, {"output", audioOutput_}}},
         {"i2p", i2p},
     };
-    std::filesystem::path scratch = path_;
-    scratch += ".new";
-    {
-        std::ofstream out(scratch, std::ios::trunc);
-        out << document.dump(2) << '\n';
-    }
-    std::error_code failed;
-    std::filesystem::rename(scratch, path_, failed);
-    if (failed) {
-        bazarish::log::warn("settings not written: {}", failed.message());
+    try {
+        bazarish::writePrivateFile(path_, document.dump(2) + "\n");
+    } catch (const std::exception& error) {
+        bazarish::log::warn("settings not written: {}", error.what());
     }
 }
 
