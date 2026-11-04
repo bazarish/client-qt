@@ -3,6 +3,8 @@
 
 #include <bazarish/Bytes.hpp>
 
+#include <TranscriptDb.hpp>
+
 #include <QByteArray>
 #include <QMap>
 #include <QString>
@@ -11,10 +13,9 @@
 #include <QVector>
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
-
-struct sqlite3;
 
 namespace bazarish::app {
 
@@ -91,7 +92,7 @@ public:
     TranscriptReader& operator=(const TranscriptReader&) = delete;
 
     void close();
-    bool isOpen() const { return db_ != nullptr; }
+    bool isOpen() const { return core_->isOpen(); }
     bool open(const QString& dbPath, const Bytes& key);
 
     QByteArray media(const QString& key) const;
@@ -140,16 +141,17 @@ public:
     DatabaseFootprint footprint() const;
 
 protected:
-    bool hasMediaTable() const;
+    explicit TranscriptReader(std::unique_ptr<client::TranscriptReader> core);
 
-    sqlite3* db_ = nullptr;
-    QString path_;
+    std::unique_ptr<client::TranscriptReader> core_;
 };
 
 class TranscriptStore : public TranscriptReader {
 public:
+    TranscriptStore();
+
     bool open(const QString& dbPath, const QString& passphrase = {});
-    QString lastError() const { return lastError_; }
+    QString lastError() const;
 
     [[nodiscard]] qint64 append(const StoredMessage& message);
     [[nodiscard]] bool updateStatus(qint64 id, int status);
@@ -182,16 +184,7 @@ public:
     bool rebuild(QString& reason);
 
 private:
-    bool failed();
-    bool stampExpiry(qint64 id, const QString& peer, qint64 atMs);
-    bool stampNewlyRead(const QString& peer, qint64 afterId, qint64 uptoId);
-    bool clearPeerRows(const QString& peer);
-    bool removeMediaOfMessage(const QString& e2eId);
-    bool removeMediaOfPeer(const QString& peer);
-    bool removeMediaOfTrimmed(const QString& peer, int keep);
-    qint64 pruneRowsOf(const QString& peer, int keep);
-
-    QString lastError_;
+    client::TranscriptStore& store();
 };
 
 }  // namespace bazarish::app
