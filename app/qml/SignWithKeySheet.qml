@@ -226,7 +226,7 @@ Popup {
                                 color: Theme.text
                                 placeholderTextColor: Theme.textDim
                                 selectByMouse: true
-                                background: Rectangle { radius: 8; color: Theme.surface; border.color: challengeArea.activeFocus ? Theme.accent : Theme.border }
+                                background: Rectangle { radius: 8; color: Theme.control; border.color: challengeArea.activeFocus ? Theme.accent : Theme.controlEdge }
                                 onTextChanged: {
                                     copyBtn.copied = false
                                     root.asking = false

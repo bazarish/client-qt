@@ -22,12 +22,12 @@ Button {
         color: control.filled
             ? (control.down ? Theme.accentDown : (control.hovered ? Theme.accentHover : Theme.accent))
             : control.positive ? Theme.bubbleOut
-            : (control.down ? Theme.pressed : (control.hovered ? Theme.surfaceAlt : Theme.surface))
+            : (control.down ? Theme.pressed : (control.hovered ? Theme.controlHover : Theme.control))
         border.width: 1
         border.color: control.filled ? Theme.accent
             : control.positive ? Theme.green
             : (control.hovered ? (control.danger ? Theme.danger : Theme.green)
-                               : (control.danger ? Theme.danger : Theme.border))
+                               : (control.danger ? Theme.danger : Theme.controlEdge))
         Behavior on color { ColorAnimation { duration: 120 } }
         Behavior on border.color { ColorAnimation { duration: 120 } }
     }

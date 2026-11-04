@@ -405,7 +405,7 @@ ApplicationWindow {
                     wrapMode: TextArea.Wrap
                     color: Theme.text
                     selectByMouse: true
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                    background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
                 }
             }
             Button {

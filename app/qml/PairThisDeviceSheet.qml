@@ -84,7 +84,7 @@ Popup {
                     color: Theme.text
                     placeholderTextColor: Theme.textDim
                     placeholderText: qsTr("Pairing link")
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                    background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
                 }
             }
             QrScanButton {

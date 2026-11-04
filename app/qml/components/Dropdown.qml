@@ -39,8 +39,8 @@ ComboBox {
 
     background: Rectangle {
         radius: 8
-        color: root.pressed ? Theme.pressed : (root.hovered ? Theme.surfaceAlt : Theme.surface)
-        border.color: root.activeFocus ? Theme.accent : Theme.border
+        color: root.pressed ? Theme.pressed : (root.hovered ? Theme.controlHover : Theme.control)
+        border.color: root.activeFocus ? Theme.accent : Theme.controlEdge
     }
 
     contentItem: Label {

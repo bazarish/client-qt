@@ -598,9 +598,9 @@ Popup {
                                     bottomPadding: 0
                                     background: Rectangle {
                                         radius: Theme.radiusSmall
-                                        color: Theme.surface
+                                        color: Theme.control
                                         border.color: delegationDaysBox.activeFocus
-                                            ? Theme.accent : Theme.border
+                                            ? Theme.accent : Theme.controlEdge
                                     }
                                     contentItem: TextInput {
                                         text: delegationDaysBox.textFromValue(
@@ -981,7 +981,7 @@ Popup {
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 onAccepted: renameSelfDialog.accept()
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: renameSelfField.activeFocus ? Theme.accent : Theme.border }
+                background: Rectangle { radius: 8; color: Theme.control; border.color: renameSelfField.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             Label {
                 text: qsTr("Only updates this device and your invite link.")
@@ -1030,8 +1030,8 @@ Popup {
                 placeholderText: qsTr("new password")
                 color: Theme.text; placeholderTextColor: Theme.textDim
                 Layout.fillWidth: true; implicitWidth: 260
-                background: Rectangle { radius: 8; color: Theme.surface
-                    border.color: newPass.activeFocus ? Theme.accent : Theme.border }
+                background: Rectangle { radius: 8; color: Theme.control
+                    border.color: newPass.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             TextField {
                 id: newPassAgain
@@ -1040,8 +1040,8 @@ Popup {
                 color: Theme.text; placeholderTextColor: Theme.textDim
                 Layout.fillWidth: true; implicitWidth: 260
                 onAccepted: if (passwordDialog.matched) { passwordDialog.accept() }
-                background: Rectangle { radius: 8; color: Theme.surface
-                    border.color: newPassAgain.activeFocus ? Theme.accent : Theme.border }
+                background: Rectangle { radius: 8; color: Theme.control
+                    border.color: newPassAgain.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             Label {
                 text: passwordDialog.matched

@@ -316,7 +316,7 @@ Item {
                 placeholderTextColor: Theme.textDim
                 Layout.preferredWidth: 280
                 onAccepted: unlockDialog.submit()
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: unlockField.activeFocus ? Theme.accent : Theme.border }
+                background: Rectangle { radius: 8; color: Theme.control; border.color: unlockField.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             Label {
                 id: unlockError

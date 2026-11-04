@@ -72,7 +72,7 @@ Popup {
                     text: root.message
                     color: Theme.text
                     selectByMouse: true
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                    background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
                 }
             }
 
@@ -94,7 +94,7 @@ Popup {
                         text: modelData
                         color: Theme.text
                         selectByMouse: true
-                        background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                        background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
                     }
                     IconButton { iconName: "copy"; onClicked: root.copyText(modelData) }
                     Button {

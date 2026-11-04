@@ -132,7 +132,7 @@ Popup {
                     id: targetText
                     wrapMode: TextArea.WrapAnywhere
                     color: Theme.text
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
+                    background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
                     Label {
                         id: targetHint
                         anchors.left: parent.left

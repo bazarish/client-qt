@@ -166,8 +166,8 @@ Item {
             onDisplayTextChanged: if (root.session) { root.session.setChatFilter(displayText) }
             background: Rectangle {
                 radius: 8
-                color: Theme.surface
-                border.color: chatSearch.activeFocus ? Theme.green : Theme.border
+                color: Theme.control
+                border.color: chatSearch.activeFocus ? Theme.green : Theme.controlEdge
             }
             IconButton {
                 id: clearSearch

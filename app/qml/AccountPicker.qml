@@ -190,7 +190,7 @@ Item {
                 placeholderTextColor: Theme.textDim
                 Layout.preferredWidth: 280
                 onAccepted: passDialog.submit()
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: passField.activeFocus ? Theme.accent : Theme.border }
+                background: Rectangle { radius: 8; color: Theme.control; border.color: passField.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             Label {
                 id: passError

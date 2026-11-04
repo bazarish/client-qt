@@ -789,8 +789,8 @@ Item {
                 onClicked: if (root.session) { root.session.jumpToLatest() }
                 background: Rectangle {
                     radius: width / 2
-                    color: Theme.surface
-                    border.color: Theme.border
+                    color: Theme.control
+                    border.color: Theme.controlEdge
                 }
                 // RoundButton's own padding pulls a small content item off-centre.
                 padding: 0

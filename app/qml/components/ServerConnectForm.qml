@@ -16,7 +16,7 @@ ColumnLayout {
     property var shownReseeds: []
     signal submitted()
 
-    property color linkBorderColor: Theme.border
+    property color linkBorderColor: Theme.controlEdge
 
     spacing: 14
     Layout.fillWidth: true
@@ -34,7 +34,7 @@ ColumnLayout {
         linkField.text = ""
         form.detailed = false
         flashRevert.stop()
-        form.linkBorderColor = Theme.border
+        form.linkBorderColor = Theme.controlEdge
     }
 
     function fillFrom(facades, fingerprint, reseeds) {
@@ -89,7 +89,7 @@ ColumnLayout {
         var t = linkField.text.trim()
         if (t.length === 0) {
             flashRevert.stop()
-            form.linkBorderColor = Theme.border
+            form.linkBorderColor = Theme.controlEdge
             return
         }
         var info = form.session ? form.session.parseServerLink(t) : null
@@ -102,7 +102,7 @@ ColumnLayout {
     }
 
     Timer { id: parseTimer; interval: 300; onTriggered: form.parseLink() }
-    Timer { id: flashRevert; onTriggered: form.linkBorderColor = Theme.border }
+    Timer { id: flashRevert; onTriggered: form.linkBorderColor = Theme.controlEdge }
 
     ListModel { id: facadeModel }
     ListModel { id: reseedModel }
@@ -119,9 +119,9 @@ ColumnLayout {
             onTextChanged: parseTimer.restart()
             background: Rectangle {
                 radius: 8
-                color: Theme.surface
-                border.color: Qt.colorEqual(form.linkBorderColor, Theme.border)
-                    ? (linkField.activeFocus ? Theme.accent : Theme.border)
+                color: Theme.control
+                border.color: Qt.colorEqual(form.linkBorderColor, Theme.controlEdge)
+                    ? (linkField.activeFocus ? Theme.accent : Theme.controlEdge)
                     : form.linkBorderColor
                 border.width: 1
                 Behavior on border.color { ColorAnimation { duration: 300 } }
@@ -211,7 +211,7 @@ ColumnLayout {
                     placeholderTextColor: Theme.textDim
                     selectByMouse: true
                     onTextChanged: facadeModel.setProperty(index, "url", text)
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: parent.activeFocus ? Theme.accent : Theme.border }
+                    background: Rectangle { radius: 8; color: Theme.control; border.color: parent.activeFocus ? Theme.accent : Theme.controlEdge }
                 }
                 IconButton {
                     iconName: "close"
@@ -247,7 +247,7 @@ ColumnLayout {
                     placeholderTextColor: Theme.textDim
                     selectByMouse: true
                     onTextChanged: reseedModel.setProperty(index, "url", text)
-                    background: Rectangle { radius: 8; color: Theme.surface; border.color: parent.activeFocus ? Theme.accent : Theme.border }
+                    background: Rectangle { radius: 8; color: Theme.control; border.color: parent.activeFocus ? Theme.accent : Theme.controlEdge }
                 }
                 IconButton {
                     iconName: "close"

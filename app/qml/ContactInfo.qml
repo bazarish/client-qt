@@ -119,7 +119,7 @@ Popup {
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 onAccepted: root.saveName()
-                background: Rectangle { radius: 8; color: Theme.surface; border.color: nameField.activeFocus ? Theme.accent : Theme.border }
+                background: Rectangle { radius: 8; color: Theme.control; border.color: nameField.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             MenuButton { iconName: "check"; text: qsTr("Save"); onClicked: root.saveName() }
         }

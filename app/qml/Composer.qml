@@ -285,7 +285,7 @@ Rectangle {
                 Layout.preferredHeight: root.inputH
                 radius: 18
                 color: Theme.bg
-                border.color: (input.activeFocus || root.editing) ? Theme.accent : Theme.border
+                border.color: (input.activeFocus || root.editing) ? Theme.accent : Theme.controlEdge
 
                 ScrollView {
                     id: inputScroll

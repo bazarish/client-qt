@@ -53,7 +53,7 @@ Popup {
                 background: Rectangle {
                     radius: 8
                     color: Theme.bg
-                    border.color: field.activeFocus ? Theme.accent : Theme.border
+                    border.color: field.activeFocus ? Theme.accent : Theme.controlEdge
                 }
             }
             IconButton { iconName: "close"; onClicked: popup.close() }

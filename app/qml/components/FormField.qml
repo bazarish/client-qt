@@ -32,8 +32,8 @@ ColumnLayout {
         selectByMouse: true
         background: Rectangle {
             radius: 8
-            color: Theme.surface
-            border.color: field.activeFocus ? Theme.accent : Theme.border
+            color: Theme.control
+            border.color: field.activeFocus ? Theme.accent : Theme.controlEdge
         }
     }
 }

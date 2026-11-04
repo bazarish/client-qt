@@ -13,6 +13,10 @@ QtObject {
     readonly property color border:    light ? "#cfd6d0" : "#262b2f"
     readonly property color border2:   light ? "#a3ada5" : "#5f6c77"
     readonly property color pressed:   light ? "#a3ada5" : "#333a40"
+    // A field or a button stands off its window: its edge meets WCAG 2.2 1.4.11 (3:1) on the dark side.
+    readonly property color control:      light ? surface : surfaceAlt
+    readonly property color controlHover: light ? surfaceAlt : "#2a3139"
+    readonly property color controlEdge:  light ? border : border2
 
     readonly property color text:      light ? "#16191c" : "#d7dbd8"
     readonly property color textDim:   light ? "#4c554f" : "#9ea59e"
