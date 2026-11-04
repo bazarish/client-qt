@@ -722,14 +722,14 @@ void CoreAccount::reportUnsaved()
     emit events_.actionFailed(tr("History not saved: %1").arg(store_.lastError()));
 }
 
-void CoreAccount::onMessageReceived(const QVariantMap& message)
+void CoreAccount::onMessageReceived(const bazarish::client::IncomingMessage& message)
 {
     if (!ingest_.takeIn(message)) {
         emit events_.actionFailed(tr("Receiving stopped: %1").arg(store_.lastError()));
         return;
     }
-    if (const QString pendingId = message.value("pendingId").toString(); !pendingId.isEmpty()) {
-        emit commands_.requestAckPending(pendingId);
+    if (!message.pendingId.empty()) {
+        emit commands_.requestAckPending(QString::fromStdString(message.pendingId));
     }
 }
 

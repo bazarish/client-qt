@@ -174,7 +174,7 @@ signals:
     void openFailed(const QString& error);
     void connectionChanged(bool connected, const QString& connectionNote);
     void connectProgress(int percent, const QString& phase);
-    void messageReceived(const QVariantMap& message);
+    void messageReceived(const bazarish::client::IncomingMessage& message);
     void contactsRefreshed(const QVector<ContactState>& contacts,
         const QStringList& blocked);
     void avatarReady(const QString& fingerprint, const QByteArray& data);

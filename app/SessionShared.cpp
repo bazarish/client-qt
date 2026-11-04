@@ -21,7 +21,6 @@
 namespace bazarish::app {
 
 namespace {
-constexpr int kVoiceWaveBars = 40;
 constexpr qint64 kBytesPerUnit = 1024;
 constexpr int kLargestUnit = 3;
 constexpr double kDecimalBelow = 10.0;
@@ -50,19 +49,12 @@ QString humanBytes(const qint64 bytes)
 
 QString waveformHex(const Bytes& opus)
 {
-    std::vector<std::uint8_t> bars;
     try {
-        bars = bazarish::voiceWaveform(opus, kVoiceWaveBars);
+        return QString::fromStdString(bazarish::voiceWaveformHex(opus));
     } catch (const std::exception& error) {
         bazarish::log::warn("voice waveform: {}", error.what());
         return {};
     }
-    QString hex;
-    hex.reserve(static_cast<qsizetype>(bars.size()));
-    for (const std::uint8_t bar : bars) {
-        hex.append(QChar::fromLatin1("0123456789abcdef"[bar]));
-    }
-    return hex;
 }
 
 QString newE2eId()

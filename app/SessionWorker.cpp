@@ -988,53 +988,7 @@ void SessionWorker::drainMailbox()
             ackPending(QString::fromStdString(m.pendingId));
             continue;
         }
-        QVariantMap map;
-        map["peer"] = QString::fromStdString(m.fromFingerprint);
-        map["sentByUs"] = m.sentByUs;
-        map["type"] = QString::fromStdString(m.contentType);
-        map["text"] = QString::fromStdString(m.text);
-        map["rawType"] = QString::fromStdString(m.rawType);
-        map["rawBody"] = QString::fromLatin1(
-            QByteArray(reinterpret_cast<const char*>(m.rawBody.data()),
-                static_cast<qsizetype>(m.rawBody.size()))
-                .toBase64());
-        map["established"] = m.establishedContact;
-        map["attName"] = QString::fromStdString(m.attachmentName);
-        map["attMime"] = QString::fromStdString(m.attachmentMime);
-        map["attSize"] = static_cast<qint64>(m.attachmentSize);
-        map["attDurationMs"] = static_cast<qint64>(m.attachmentDurationMs);
-        if (m.contentType == "audio") {
-            const std::optional<Bytes> audio = session_->voice(m.e2eId);
-            if (audio.has_value()) {
-                map["attWave"] = waveformHex(*audio);
-            }
-        }
-        map["attRef"] = QString::fromStdString(m.attachmentRef);
-        map["keyboard"] = QString::fromStdString(m.keyboardJson);
-        map["menuItems"] = QString::fromStdString(m.menuItemsJson);
-        map["e2eId"] = QString::fromStdString(m.e2eId);
-        map["forwarded"] = m.forwarded;
-        map["ref"] = QString::fromStdString(m.refId);
-        map["replyTo"] = QString::fromStdString(m.replyTo);
-        map["sentAt"] = static_cast<qint64>(m.sentAt);
-        map["pendingId"] = QString::fromStdString(m.pendingId);
-        map["timerSeconds"] = static_cast<qint64>(m.timerSeconds);
-        if (m.group) {
-            QVariantMap group;
-            group["kind"] = m.group->kind == bazarish::client::GroupKind::eChannel
-                ? QStringLiteral("channel")
-                : QStringLiteral("group");
-            group["members"] = static_cast<qint64>(m.group->members);
-            group["write"] = m.group->write;
-            group["admin"] = m.group->admin;
-            group["at"] = static_cast<qint64>(m.group->at);
-            map["group"] = group;
-            map["author"] = QString::fromStdString(m.author);
-            map["contactable"] = m.contactable;
-            map["fromHost"] = m.fromHost;
-            map["groupReactions"] = QString::fromStdString(m.groupReactionsJson);
-        }
-        emit messageReceived(map);
+        emit messageReceived(m);
     }
     emitContacts();
     emitFacadeInfo();

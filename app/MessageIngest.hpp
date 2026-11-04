@@ -1,23 +1,27 @@
 // Bazarish project (c) 2026
 #pragma once
 
-#include <QHash>
+#include <Session.hpp>
+#include <TranscriptIngest.hpp>
+
 #include <QObject>
-#include <QSet>
+
+#include <memory>
 #include <QString>
-#include <QVariantMap>
 
 namespace bazarish::app {
 
 class ContactBook;
 class TranscriptStore;
 
+// The core's ingest with Qt signals for what it changed and translated words for its notes.
 class MessageIngest : public QObject {
     Q_OBJECT
 public:
     MessageIngest(TranscriptStore& store, const ContactBook& contacts, QObject* parent = nullptr);
+    ~MessageIngest() override;
 
-    [[nodiscard]] bool takeIn(const QVariantMap& message);
+    [[nodiscard]] bool takeIn(const client::IncomingMessage& message);
 
 signals:
     void rowAdded(const QString& peer, qint64 id, bool own);
@@ -42,14 +46,10 @@ signals:
     void reactionArrived(const QString& peer, const QString& target, const QString& emoji);
 
 private:
-    bool noteGroupBlock(const QString& peer, const QVariantMap& message);
-    bool applyGroupReactions(const QString& peer, const QString& json);
-    bool markOutgoingRead(const QString& peer, qint64 uptoId);
-    qint64 orderFloor(const QString& peer, const QVariantMap& message) const;
+    class Relay;
 
-    TranscriptStore& store_;
-    const ContactBook& contacts_;
-    QHash<QString, QSet<QString>> receiptsAhead_;
+    std::unique_ptr<Relay> relay_;
+    client::TranscriptIngest ingest_;
 };
 
 }  // namespace bazarish::app

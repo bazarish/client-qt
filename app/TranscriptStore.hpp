@@ -152,6 +152,7 @@ public:
 
     bool open(const QString& dbPath, const QString& passphrase = {});
     QString lastError() const;
+    client::TranscriptStore& core() { return store(); }
 
     [[nodiscard]] qint64 append(const StoredMessage& message);
     [[nodiscard]] bool updateStatus(qint64 id, int status);

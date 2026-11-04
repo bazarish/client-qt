@@ -41,18 +41,24 @@ const QString kBob = QStringLiteral("bob");
 const QString kClub = QStringLiteral("club");
 constexpr qint64 kSentAt = 1000;
 
-QVariantMap incoming(const QString& peer, const QString& type, const QString& e2eId,
+client::IncomingMessage incoming(const QString& peer, const QString& type, const QString& e2eId,
     const QString& text = {}, const QString& ref = {})
 {
-    return QVariantMap{{"peer", peer}, {"type", type}, {"e2eId", e2eId}, {"text", text},
-        {"ref", ref}, {"sentAt", kSentAt}, {"sentByUs", false}};
+    client::IncomingMessage m;
+    m.fromFingerprint = peer.toStdString();
+    m.contentType = type.toStdString();
+    m.e2eId = e2eId.toStdString();
+    m.text = text.toStdString();
+    m.refId = ref.toStdString();
+    m.sentAt = kSentAt;
+    return m;
 }
 
-QVariantMap ours(const QString& peer, const QString& type, const QString& e2eId,
+client::IncomingMessage ours(const QString& peer, const QString& type, const QString& e2eId,
     const QString& text = {})
 {
-    QVariantMap m = incoming(peer, type, e2eId, text);
-    m["sentByUs"] = true;
+    client::IncomingMessage m = incoming(peer, type, e2eId, text);
+    m.sentByUs = true;
     return m;
 }
 
@@ -93,7 +99,7 @@ int main(int argc, char** argv)
     QObject::connect(&ingest, &MessageIngest::readElsewhere, [&] { note("read"); });
     QObject::connect(&ingest, &MessageIngest::editArrived, [&] { note("edit"); });
     QObject::connect(&ingest, &MessageIngest::messageArrived, [&] { note("notify"); });
-    const auto took = [&](const QVariantMap& message) {
+    const auto took = [&](const client::IncomingMessage& message) {
         seen.clear();
         return ingest.takeIn(message);
     };
@@ -136,13 +142,13 @@ int main(int argc, char** argv)
     CHECK(saw({"removed"}));
     CHECK(store.messageByE2e("m1", kBob).id == 0);
 
-    QVariantMap read = ours(kBob, "device.read", "dr1", QString::number(kSentAt));
-    read["ref"] = kBob;
+    client::IncomingMessage read = ours(kBob, "device.read", "dr1", QString::number(kSentAt));
+    read.refId = kBob.toStdString();
     CHECK(took(read));
     CHECK(saw({"read"}));
 
-    QVariantMap pin = ours(kMe, "device.chat-pin", "dp1", QStringLiteral("1"));
-    pin["ref"] = kBob;
+    client::IncomingMessage pin = ours(kMe, "device.chat-pin", "dp1", QStringLiteral("1"));
+    pin.refId = kBob.toStdString();
     CHECK(took(pin));
     CHECK(saw({"chats"}));
     CHECK(store.isPinned(kBob));
@@ -153,19 +159,19 @@ int main(int argc, char** argv)
     CHECK(left.size() == 1);
     CHECK(left.front().type == QStringLiteral("system"));
 
-    QVariantMap post = incoming(kClub, "text", "g1", "in the group");
-    post["group"] = QVariantMap{{"kind", "group"}, {"members", 3}, {"write", true},
-        {"admin", false}, {"at", kSentAt}};
-    post["author"] = QStringLiteral("Ann");
-    post["contactable"] = true;
+    client::IncomingMessage post = incoming(kClub, "text", "g1", "in the group");
+    post.group = client::GroupBlock{client::GroupKind::eGroup, 3, true, false, kSentAt};
+    post.author = "Ann";
+    post.contactable = true;
     CHECK(took(post));
     CHECK(saw({"group", "added", "notify"}));
     CHECK(store.groupState(kClub).has_value());
     CHECK(store.messageByE2e("g1", kClub).author == QStringLiteral("Ann"));
 
-    QVariantMap future = incoming(kBob, "unsupported", "u1");
-    future["rawType"] = QStringLiteral("poll.vote");
-    future["rawBody"] = QStringLiteral("oWR0eXBlaXBvbGwudm90ZQ==");
+    client::IncomingMessage future = incoming(kBob, "unsupported", "u1");
+    future.rawType = "poll.vote";
+    const QByteArray kept = QByteArray::fromBase64("oWR0eXBlaXBvbGwudm90ZQ==");
+    future.rawBody = Bytes(kept.begin(), kept.end());
     CHECK(took(future));
     CHECK(saw({"added"}));
     const StoredMessage unknown = store.messageByE2e("u1", kBob);
@@ -176,14 +182,14 @@ int main(int argc, char** argv)
         == QStringLiteral("oWR0eXBlaXBvbGwudm90ZQ=="));
     CHECK(took(future));
     CHECK(saw({}));
-    QVariantMap worded = incoming(kBob, "unsupported", "u2", "a question for everyone");
-    worded["rawType"] = QStringLiteral("poll");
+    client::IncomingMessage worded = incoming(kBob, "unsupported", "u2", "a question for everyone");
+    worded.rawType = "poll";
     CHECK(took(worded));
     CHECK(saw({"added"}));
     CHECK(store.messageByE2e("u2", kBob).type == QStringLiteral("unsupported"));
 
-    QVariantMap timer = incoming(kBob, "chat.timer", "t1");
-    timer["timerSeconds"] = static_cast<qint64>(client::kSecondsPerDay);
+    client::IncomingMessage timer = incoming(kBob, "chat.timer", "t1");
+    timer.timerSeconds = client::kSecondsPerDay;
     CHECK(took(timer));
     CHECK(saw({"timer", "added"}));
     CHECK(store.chatTimer(kBob) == client::kSecondsPerDay);
@@ -192,19 +198,19 @@ int main(int argc, char** argv)
     CHECK(systemNoteText(plate.text).contains(QStringLiteral("Bob")));
     CHECK(took(timer));
     CHECK(saw({}));
-    QVariantMap off = ours(kBob, "chat.timer", "t2");
-    off["timerSeconds"] = static_cast<qint64>(client::kChatTimerOff);
+    client::IncomingMessage off = ours(kBob, "chat.timer", "t2");
+    off.timerSeconds = client::kChatTimerOff;
     CHECK(took(off));
     CHECK(saw({"timer", "added-own"}));
     CHECK(store.chatTimer(kBob) == client::kChatTimerOff);
-    QVariantMap menu = incoming(kBob, "bot.menu", "bm1");
-    menu["menuItems"] = QStringLiteral(R"([{"title":"Help","command":"help"}])");
+    client::IncomingMessage menu = incoming(kBob, "bot.menu", "bm1");
+    menu.menuItemsJson = R"([{"title":"Help","command":"help"}])";
     CHECK(took(menu));
     CHECK(saw({"menu"}));
     CHECK(store.botMenu(kBob).size() == 1);
     CHECK(store.messageByE2e("bm1", kBob).id == 0);
-    QVariantMap gone = incoming(kBob, "bot.menu", "bm2");
-    gone["menuItems"] = QStringLiteral("[]");
+    client::IncomingMessage gone = incoming(kBob, "bot.menu", "bm2");
+    gone.menuItemsJson = "[]";
     CHECK(took(gone));
     CHECK(saw({"menu"}));
     CHECK(store.botMenu(kBob).isEmpty());
@@ -224,15 +230,15 @@ int main(int argc, char** argv)
     CHECK(took(incoming(carl, "text", "a1", "help text")));
     const StoredMessage answer = store.messageByE2e("a1", carl);
     CHECK(answer.orderKey == kOwnAt + 1 && answer.ts == kSentAt);
-    QVariantMap later = incoming(carl, "text", "a2", "later");
-    later["sentAt"] = 2 * kOwnAt;
+    client::IncomingMessage later = incoming(carl, "text", "a2", "later");
+    later.sentAt = 2 * kOwnAt;
     CHECK(took(later));
     CHECK(store.messageByE2e("a2", carl).orderKey == 2 * kOwnAt);
     CHECK(took(ours(carl, "text", "q2", "from another device")));
     CHECK(store.messageByE2e("q2", carl).orderKey == kSentAt);
 
-    QVariantMap fromHost = incoming(kClub, "chat.timer", "t3");
-    fromHost["timerSeconds"] = static_cast<qint64>(client::kSecondsPerHour);
+    client::IncomingMessage fromHost = incoming(kClub, "chat.timer", "t3");
+    fromHost.timerSeconds = client::kSecondsPerHour;
     CHECK(took(fromHost));
     CHECK(saw({}));
     CHECK(store.chatTimer(kClub) == client::kChatTimerOff);
