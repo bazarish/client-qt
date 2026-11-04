@@ -18,7 +18,8 @@ Popup {
     anchors.centerIn: Overlay.overlay
     width: Math.min(460, parent ? parent.width - 24 : 460)
     margins: Theme.spacing
-    padding: 18
+    padding: 0
+    readonly property int kContentInset: 18
     closePolicy: Popup.CloseOnEscape
 
     onOpened: if (root.session) { root.session.startPairing() }
@@ -27,6 +28,7 @@ Popup {
     background: DialogFrame { }
 
     contentItem: ScrollColumn {
+        inset: root.kContentInset
         spacing: 12
 
         RowLayout {

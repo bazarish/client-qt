@@ -14,7 +14,8 @@ Popup {
     width: Math.min(460, parent ? parent.width - 24 : 460)
     margins: Theme.spacing
     bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
-    padding: 18
+    padding: 0
+    readonly property int kContentInset: 18
     property string errorText: ""
     property string prefillTarget: ""
     readonly property string kGreeting: qsTr("Hi, add me?")
@@ -98,6 +99,7 @@ Popup {
     }
 
     contentItem: ScrollColumn {
+        inset: root.kContentInset
         spacing: 12
 
         RowLayout {

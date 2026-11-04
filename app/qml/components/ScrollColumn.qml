@@ -6,13 +6,12 @@ import QtQuick.Layouts
 ScrollView {
     id: root
     default property alias content: column.data
-    readonly property int kBarGap: 4
-    readonly property real gutter: ScrollBar.vertical.visible ? ScrollBar.vertical.width + kBarGap : 0
-    property real columnWidth: availableWidth - gutter
+    property real inset: 0
+    property real columnWidth: availableWidth - 2 * inset
     property bool centered: false
     contentWidth: availableWidth
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-    contentHeight: column.height
+    contentHeight: column.height + 2 * inset
     clip: true
 
     readonly property Item focusedItem: Window.activeFocusItem
@@ -48,7 +47,7 @@ ScrollView {
         id: column
         spacing: root.spacing
         width: root.columnWidth
-        x: (root.availableWidth - root.gutter - width) / 2
-        y: root.centered ? Math.max(0, (root.availableHeight - height) / 2) : 0
+        x: (root.availableWidth - width) / 2
+        y: root.centered ? Math.max(root.inset, (root.availableHeight - height) / 2) : root.inset
     }
 }

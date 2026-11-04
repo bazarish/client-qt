@@ -1065,6 +1065,7 @@ Popup {
         margins: Theme.spacing
         bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
         onOpened: connectionForm.reset()
+        padding: 0
         background: DialogFrame { }
         header: RowLayout {
             spacing: 4
@@ -1077,6 +1078,7 @@ Popup {
             }
         }
         contentItem: ScrollColumn {
+            inset: Theme.spacing
             spacing: 12
             ServerConnectForm {
                 id: connectionForm

@@ -17,6 +17,7 @@ Dialog {
     width: Math.min(520, parent ? parent.width - 24 : 520)
     margins: Theme.spacing
     bottomMargin: Theme.spacing + (activeFocus ? App.keyboardInset : 0)
+    padding: 0
     background: DialogFrame { destructive: true }
 
     header: Label {
@@ -54,6 +55,7 @@ Dialog {
     }
 
     contentItem: ScrollColumn {
+        inset: Theme.spacing
         spacing: 8
 
         Label {
