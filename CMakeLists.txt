@@ -419,7 +419,8 @@ if(Qt6_FOUND)
     set_tests_properties(TestPictureStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     add_executable(TestPicture tests/TestPicture.cpp app/Picture.cpp)
-    target_include_directories(TestPicture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_include_directories(TestPicture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
+        ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
     target_link_libraries(TestPicture PRIVATE Qt6::Gui)
     target_compile_options(TestPicture PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestPicture COMMAND TestPicture)

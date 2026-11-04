@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "Picture.hpp"
 
+#include <bazarish/Limits.hpp>
+
 #include <QBuffer>
 #include <QFileInfo>
 #include <QImageReader>
@@ -12,7 +14,6 @@ namespace bazarish::app {
 namespace {
 
 constexpr int kMaxImageEdge = 1600;
-constexpr qint64 kMaxImageBytes = 256 * 1024;
 constexpr int kJpegQuality = 85;
 constexpr int kQualityStep = 10;
 constexpr int kMinJpegQuality = 45;
@@ -37,7 +38,7 @@ QByteArray encodedImage(QImage image, QString* const format)
         if (!image.save(&buffer, transparent ? "PNG" : "JPEG", transparent ? -1 : quality)) {
             return {};
         }
-        if (bytes.size() <= kMaxImageBytes) {
+        if (bytes.size() <= static_cast<qsizetype>(bazarish::kMaxPictureBytes)) {
             return bytes;
         }
         if (!transparent && quality > kMinJpegQuality) {
