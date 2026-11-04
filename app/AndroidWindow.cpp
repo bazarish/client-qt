@@ -189,6 +189,12 @@ bool AndroidWindow::backgroundRestricted()
     return QJniObject::callStaticMethod<jboolean>(kWindow, "backgroundRestricted", "()Z");
 }
 
+bool AndroidWindow::clipboardOffers(const bool pictures)
+{
+    return QJniObject::callStaticMethod<jboolean>(
+        kWindow, "clipboardOffers", "(Z)Z", static_cast<jboolean>(pictures));
+}
+
 bool AndroidWindow::fullScreenCallsRestricted()
 {
     return QJniObject::callStaticMethod<jboolean>(kWindow, "fullScreenCallsRestricted", "()Z");

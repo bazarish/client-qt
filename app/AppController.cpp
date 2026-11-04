@@ -27,6 +27,7 @@
 #pragma pop_macro("emit")
 
 #include <QClipboard>
+#include <QMimeData>
 #include <QColor>
 #include <QGuiApplication>
 #include <QScreen>
@@ -668,6 +669,17 @@ bool AppController::clipboardHasImage() const
 {
     const QClipboard* const clipboard = QGuiApplication::clipboard();
     return clipboard != nullptr && !clipboard->image().isNull();
+}
+
+bool AppController::clipboardOffersPaste(const bool pictures) const
+{
+#ifdef Q_OS_ANDROID
+    return AndroidWindow::clipboardOffers(pictures);
+#else
+    const QClipboard* const clipboard = QGuiApplication::clipboard();
+    const QMimeData* const data = clipboard == nullptr ? nullptr : clipboard->mimeData();
+    return data != nullptr && (data->hasText() || (pictures && data->hasImage()));
+#endif
 }
 
 QString AppController::markupHtml(const QString& text, const QColor& actionColor,

@@ -315,8 +315,9 @@ Item {
                 }
                 Action {
                     text: qsTr("Paste")
-                    visible: root.field !== null && root.editable && (root.field.canPaste
-                        || (root.pastesPictures && App.clipboardHasImage()))
+                    // Asked only with the menu up: Android announces every look into the clipboard.
+                    visible: root.menuShown && root.field !== null && root.editable
+                        && App.clipboardOffersPaste(root.pastesPictures)
                     onClicked: {
                         root.caretMenu = false
                         root.pasteRequested()

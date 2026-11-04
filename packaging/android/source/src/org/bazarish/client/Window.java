@@ -6,6 +6,8 @@ import android.app.Activity;
 import android.app.KeyguardManager;
 import android.app.NotificationManager;
 import android.content.ClipData;
+import android.content.ClipDescription;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -269,6 +271,17 @@ public final class Window {
     public static boolean backgroundRestricted() {
         return !app.getSystemService(PowerManager.class)
             .isIgnoringBatteryOptimizations(app.getPackageName());
+    }
+
+    // The description is not the content: reading it raises no "pasted from your clipboard".
+    public static boolean clipboardOffers(boolean pictures) {
+        ClipboardManager board = app.getSystemService(ClipboardManager.class);
+        if (board == null || !board.hasPrimaryClip()) {
+            return false;
+        }
+        ClipDescription about = board.getPrimaryClipDescription();
+        return about != null
+            && (about.hasMimeType("text/*") || (pictures && about.hasMimeType("image/*")));
     }
 
     public static boolean fullScreenCallsRestricted() {

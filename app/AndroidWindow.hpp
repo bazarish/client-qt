@@ -20,6 +20,7 @@ public:
     static bool backgroundRestricted();
     static void openBackgroundSettings();
     static bool fullScreenCallsRestricted();
+    static bool clipboardOffers(bool pictures);
     static void openFullScreenCallsSettings();
     static bool linksHandled();
     static void openLinkSettings();
