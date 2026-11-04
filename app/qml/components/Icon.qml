@@ -51,6 +51,7 @@ Item {
                         + "A 4 4 0 0 0 12.5 5.8 L 11.2 7.1 "
                         + "M 14 10 A 4 4 0 0 0 8.3 10 L 5.8 12.5 "
                         + "A 4 4 0 0 0 11.5 18.2 L 12.8 16.9"
+                    case "external": return "M 7 17 L 17 7 M 9 7 H 17 V 15"
                     case "bang":    return "M 12 4 L 12 14 M 12 18 L 12 18.5"
                     case "chevron": return "M 6 9 L 12 15 L 18 9"
                     case "up":      return "M 12 19 L 12 6 M 6 12 L 12 6 L 18 12"

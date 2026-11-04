@@ -15,6 +15,7 @@
 #include "PictureStore.hpp"
 #include "LetterAvatar.hpp"
 #include "PhotoShot.hpp"
+#include "ResolverConfig.hpp"
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
@@ -504,6 +505,17 @@ QString SessionController::letterOf(const QString& name) const
 QColor SessionController::letterFill(const QString& name) const
 {
     return bazarish::app::letterFill(name);
+}
+
+QString SessionController::registryBot() const
+{
+    return aliasChatPeer(QString::fromLatin1(bazarish::client::kRegistryBotAlias));
+}
+
+QStringList SessionController::registrySites() const
+{
+    return {QString::fromLatin1(bazarish::client::kRegistrySite),
+        QString::fromLatin1(bazarish::client::kRegistrySiteI2p)};
 }
 
 QColor SessionController::letterInk(const QString& name) const

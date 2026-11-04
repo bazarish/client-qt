@@ -17,6 +17,60 @@ Popup {
     readonly property int kLinkLines: 4
     signal back()
 
+    component RegistryItem: Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: 44
+        radius: 8
+        color: Theme.surface
+        border.color: Theme.border
+    }
+
+    component RegistrySite: RegistryItem {
+        id: site
+        property string address: ""
+        property bool copied: false
+        readonly property int kCopiedMs: 2000
+        RowLayout {
+            id: siteRow
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 4
+            spacing: 2
+            Label {
+                text: site.address
+                color: Theme.text
+                elide: Text.ElideMiddle
+                Layout.rightMargin: 6
+                Layout.maximumWidth: siteRow.width - copySite.width - openSite.width
+                    - siteRow.spacing * 2 - Layout.rightMargin
+            }
+            IconButton {
+                id: copySite
+                implicitWidth: 36
+                implicitHeight: 36
+                iconName: site.copied ? "check" : "copy"
+                tint: site.copied ? Theme.success : Theme.textDim
+                Accessible.name: qsTr("Copy")
+                onClicked: {
+                    App.copyText(site.address)
+                    site.copied = true
+                    copiedAgo.restart()
+                }
+                Timer { id: copiedAgo; interval: site.kCopiedMs; onTriggered: site.copied = false }
+            }
+            IconButton {
+                id: openSite
+                implicitWidth: 36
+                implicitHeight: 36
+                iconName: "external"
+                tint: Theme.textDim
+                Accessible.name: qsTr("Open")
+                onClicked: Qt.openUrlExternally(site.address)
+            }
+            Item { Layout.fillWidth: true }
+        }
+    }
+
     modal: true
     focus: true
     anchors.centerIn: Overlay.overlay
@@ -253,6 +307,39 @@ Popup {
                     : qsTr("Check my aliases")
                 enabled: root.session && root.session.connected && !root.session.aliasBusy
                 onClicked: root.session.activateAliasServicing()
+            }
+        }
+
+        Label {
+            visible: root.session !== null
+            text: qsTr("An alias can be bought in the registry.")
+            color: Theme.textDim
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+        }
+        RegistryItem {
+            visible: root.session !== null
+            Label {
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                text: root.session ? root.session.registryBot : ""
+                color: Theme.accent
+                font.underline: botHover.hovered
+                HoverHandler { id: botHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
+                        root.session.addByAlias(root.session.registryBot, "")
+                        root.close()
+                    }
+                }
+            }
+        }
+        Repeater {
+            model: root.session ? root.session.registrySites : []
+            RegistrySite {
+                required property string modelData
+                address: modelData
             }
         }
     }

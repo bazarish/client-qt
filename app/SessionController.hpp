@@ -347,6 +347,10 @@ public:
     Q_INVOKABLE void renameContact(const QString& fp, const QString& name);
     Q_INVOKABLE QString contactInvite(const QString& fp) const;
     Q_INVOKABLE bool canWriteTo(const QString& fp) const;
+    Q_PROPERTY(QString registryBot READ registryBot CONSTANT)
+    Q_PROPERTY(QStringList registrySites READ registrySites CONSTANT)
+    QString registryBot() const;
+    QStringList registrySites() const;
     Q_PROPERTY(QString ownInvite READ ownInvite NOTIFY ownInviteChanged)
     QString ownInvite() const { return ownInvite_; }
     Q_INVOKABLE void clearChat(bool forEveryone);
