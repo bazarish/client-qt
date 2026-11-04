@@ -34,6 +34,8 @@ const int kLoginSignerMetaType
         "std::shared_ptr<bazarish::client::LoginSigner>");
 const int kContactStateMetaType
     = qRegisterMetaType<QVector<ContactState>>("QVector<ContactState>");
+const int kIncomingMessageMetaType = qRegisterMetaType<bazarish::client::IncomingMessage>(
+    "bazarish::client::IncomingMessage");
 
 constexpr int kReadSyncIdleMs = 4000;
 constexpr int kPresenceOrderSettleMs = 2000;
