@@ -6,7 +6,9 @@ import QtQuick.Layouts
 ScrollView {
     id: root
     default property alias content: column.data
-    property real columnWidth: availableWidth
+    readonly property int kBarGap: 4
+    readonly property real gutter: ScrollBar.vertical.visible ? ScrollBar.vertical.width + kBarGap : 0
+    property real columnWidth: availableWidth - gutter
     property bool centered: false
     contentWidth: availableWidth
     ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -16,6 +18,10 @@ ScrollView {
     readonly property Item focusedItem: Window.activeFocusItem
     onFocusedItemChanged: revealFocused()
     onAvailableHeightChanged: revealFocused()
+
+    function toTop() {
+        root.contentItem.contentY = 0
+    }
 
     function revealFocused() {
         let inside = false
@@ -42,7 +48,7 @@ ScrollView {
         id: column
         spacing: root.spacing
         width: root.columnWidth
-        x: (root.availableWidth - width) / 2
+        x: (root.availableWidth - root.gutter - width) / 2
         y: root.centered ? Math.max(0, (root.availableHeight - height) / 2) : 0
     }
 }

@@ -21,6 +21,8 @@ Item {
     readonly property int kSyncSideMargin: 12
     readonly property int kSyncBarHeight: 4
     readonly property int kBadgeRing: 2
+    readonly property int kSelectedMark: 3
+    readonly property int kSelectedMarkInset: 12
     readonly property int kVisibleSettleMs: 300
     readonly property int kPreviewChars: 200
     readonly property int kMillisPerDay: 86400000
@@ -192,6 +194,8 @@ Item {
             ScrollBoost { flickable: list }
             topMargin: Theme.rowInset / 2
             bottomMargin: Theme.rowInset / 2
+            readonly property real gutter: chatBar.visible ? chatBar.width : 0
+            ScrollBar.vertical: ScrollBar { id: chatBar; policy: ScrollBar.AsNeeded }
             function reportVisible() {
                 if (!root.session) {
                     return
@@ -226,7 +230,7 @@ Item {
             delegate: ItemDelegate {
                 id: chatRow
                 readonly property string peer: model.fingerprint
-                width: ListView.view.width
+                width: ListView.view.width - list.gutter
                 height: 66
                 leftInset: Theme.rowInset
                 rightInset: Theme.rowInset
@@ -238,10 +242,20 @@ Item {
                 onClicked: root.session.openConversation(model.fingerprint)
                 onPressAndHold: pinMenu.popup()
                 background: Rectangle {
-                    color: chatRow.hovered ? Theme.surfaceAlt : "transparent"
+                    color: chatRow.highlighted ? Theme.selected
+                        : chatRow.hovered ? Theme.surfaceAlt : "transparent"
                     radius: Theme.radiusSmall
-                    border.width: chatRow.highlighted ? 1 : 0
-                    border.color: Theme.accent
+                    Rectangle {
+                        visible: chatRow.highlighted
+                        width: root.kSelectedMark
+                        radius: width / 2
+                        color: Theme.selectedMark
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.topMargin: root.kSelectedMarkInset
+                        anchors.bottomMargin: root.kSelectedMarkInset
+                    }
                 }
                 contentItem: RowLayout {
                     spacing: 10
@@ -262,7 +276,8 @@ Item {
                                 && root.session.presenceRevision >= 0
                                 && root.session.activePeer !== chatRow.peer
                                 && root.session.peerTyping(chatRow.peer)
-                            readonly property color ring: chatRow.hovered ? Theme.surfaceAlt : Theme.bg
+                            readonly property color ring: chatRow.highlighted ? Theme.selected
+                                : chatRow.hovered ? Theme.surfaceAlt : Theme.bg
                             visible: online
                             width: typing ? root.kTypingBadge : root.kOnlineDot
                             height: width
@@ -297,7 +312,7 @@ Item {
                             Label {
                                 Layout.fillWidth: true
                                 text: model.name
-                                color: chatRow.highlighted ? Theme.neon : Theme.text
+                                color: chatRow.highlighted ? Theme.selectedInk : Theme.text
                                 font.weight: Font.Medium
                                 elide: Text.ElideRight
                             }

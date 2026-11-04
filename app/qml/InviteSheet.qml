@@ -105,6 +105,7 @@ Popup {
     width: Math.min(460, parent ? parent.width - 24 : 460)
     margins: Theme.spacing
     padding: 18
+    onAboutToShow: sheetScroll.toTop()
     onOpened: {
         uri = session ? session.ownInvite : ""
         unavailable = ""
@@ -129,6 +130,7 @@ Popup {
     }
 
     contentItem: ScrollColumn {
+        id: sheetScroll
         spacing: 12
 
         RowLayout {
