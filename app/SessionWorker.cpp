@@ -1372,11 +1372,6 @@ void SessionWorker::dropSentFile(const QString& refId)
 void SessionWorker::sendDelete(const QString& peer, const QString& refId)
 {
     try {
-        try {
-            session_->unsend(refId.toStdString());
-        } catch (const std::exception& error) {
-            bazarish::log::debug("unsend before delete did nothing: {}", error.what());
-        }
         session_->sendDelete(peer.toStdString(), refId.toStdString());
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
