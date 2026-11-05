@@ -67,7 +67,7 @@ Popup {
             anchors.rightMargin: 4
             spacing: 2
             Label {
-                text: site.address
+                text: site.address.replace(/^https?:\/\//, "")
                 color: Theme.text
                 elide: Text.ElideMiddle
                 Layout.rightMargin: 6
