@@ -249,6 +249,7 @@ signals:
     void serverLinkOpened(const QString& link);
     void signLinkOpened(const QString& link);
     void pairLinkOpened(const QString& link);
+    void gatewayLinkOpened(const QString& link, const QString& host);
     void linkRefused(const QString& reason);
 
 private:

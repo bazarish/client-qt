@@ -71,7 +71,6 @@ I2pService::I2pService(QObject* parent)
     state_.samEnabled = AppSettings::instance().samEnabled();
     state_.gatewayAsked = AppSettings::instance().gatewayAsked();
     state_.gatewayEnabled = AppSettings::instance().gatewayEnabled();
-    state_.gatewayAddress = QString::fromStdString(AppSettings::instance().gatewayAddress());
     transportAtStart_ = transport();
     client::setI2pSocksProxy(state_.proxyHost.toStdString(), state_.proxyPort);
     if (!state_.proxyHost.isEmpty() && transportAtStart_ == QLatin1String("embedded")) {
@@ -79,7 +78,8 @@ I2pService::I2pService(QObject* parent)
             state_.proxyHost.toStdString(), state_.proxyPort);
     }
     const std::optional<client::GatewayAddress> gateway
-        = client::GatewayAddress::parse(state_.gatewayAddress.toStdString());
+        = client::GatewayAddress::parse(AppSettings::instance().gatewayAddress());
+    state_.gatewayAddress = gateway.has_value() ? QString::fromStdString(gateway->link()) : QString();
     state_.gatewayHost = gateway.has_value() ? QString::fromStdString(gateway->host) : QString();
     state_.gatewayEnabled = state_.gatewayEnabled && gateway.has_value();
     applyTransport();
@@ -144,7 +144,7 @@ void I2pService::checkAndSaveSam(const QString& host, const int port)
 void I2pService::applyTransport()
 {
     const std::optional<client::GatewayAddress> gateway
-        = client::GatewayAddress::parse(state_.gatewayAddress.toStdString());
+        = client::GatewayAddress::parse(AppSettings::instance().gatewayAddress());
     if (state_.gatewayEnabled && gateway.has_value()) {
         client::setGatewayTransport(gateway.value(), AppSettings::instance().gatewayPin());
     } else {
@@ -270,10 +270,9 @@ void I2pService::checkAndSaveGateway(const QString& address)
         return;
     }
     const std::optional<client::GatewayAddress> parsed
-        = client::GatewayAddress::parse(address.trimmed().toStdString());
+        = client::GatewayAddress::fromLink(address.trimmed().toStdString());
     if (!parsed.has_value()) {
-        emit events_.gatewayRefused(tr("That is not a gateway address. It looks like "
-                                       "https://host/path#token."));
+        emit events_.gatewayRefused(tr("This is not a gateway link"));
         return;
     }
     state_.gatewayChecking = true;
@@ -292,7 +291,7 @@ void I2pService::checkAndSaveGateway(const QString& address)
                 }
                 AppSettings::instance().rememberGateway(parsed->toString(), check.pin);
                 state_.gatewayAsked = true;
-                state_.gatewayAddress = QString::fromStdString(parsed->toString());
+                state_.gatewayAddress = QString::fromStdString(parsed->link());
                 state_.gatewayHost = QString::fromStdString(parsed->host);
                 announce();
                 emit events_.gatewaySaved();

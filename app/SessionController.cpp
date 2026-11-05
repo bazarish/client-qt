@@ -2,6 +2,7 @@
 #include "SessionController.hpp"
 
 #include "ChatPreview.hpp"
+#include "GatewayAddress.hpp"
 #include "Documents.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
@@ -538,6 +539,12 @@ QVariantMap linkPlate(const QString& kind, const std::string& uri)
         plate[QStringLiteral("fingerprint")] = QString::fromStdString(server.fingerprint);
     } else if (kind == QLatin1String("pair")) {
         plate[QStringLiteral("host")] = QString::fromStdString(bazarish::parsePairLink(uri).dest);
+    } else if (kind == QLatin1String("gateway")) {
+        const std::optional<client::GatewayAddress> gateway = client::GatewayAddress::fromLink(uri);
+        if (!gateway.has_value()) {
+            throw std::invalid_argument("not a gateway link");
+        }
+        plate[QStringLiteral("host")] = QString::fromStdString(gateway->host);
     } else if (const std::optional<bazarish::service::LoginCallback> at
                = bazarish::service::readLoginChallengeLink(uri)) {
         plate[QStringLiteral("host")] = QString::fromStdString(at->host);
@@ -555,7 +562,7 @@ QVariantList SessionController::linkPlatesIn(const QString& text) const
 {
     QVariantList found;
     static const QRegularExpression kLink(QStringLiteral(
-        "(?:https://bazari\\.sh/#|bazarish://)(invite|server|pair|sign)\\?\\S+"));
+        "(?:https://bazari\\.sh/#|bazarish://)(invite|server|pair|sign|gateway)\\?\\S+"));
     for (QRegularExpressionMatchIterator it = kLink.globalMatch(text); it.hasNext();) {
         const QRegularExpressionMatch match = it.next();
         const QString uri = match.captured(0);

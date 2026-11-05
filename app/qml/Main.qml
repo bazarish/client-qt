@@ -167,6 +167,7 @@ ApplicationWindow {
             }
             page.openPairing(link)
         }
+        function onGatewayLinkOpened(link, host) { gatewayOfferDialog.show(link, host) }
         function onLinkRefused(reason) { window.showToast(reason) }
         function onShowPicker() {
             if (stack.currentItem && stack.currentItem.objectName !== "accountPicker") {
@@ -441,6 +442,44 @@ ApplicationWindow {
         id: deleteFailedDialog
         onRetryRequested: (id) => App.deleteAccount(id)
         onLocalOnlyRequested: (id) => App.forgetAccountLocally(id)
+    }
+
+    Dialog {
+        id: gatewayOfferDialog
+        property string link: ""
+        property string host: ""
+        function show(offered, named) { link = offered; host = named; open() }
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        focus: true
+        width: Math.min(360, parent ? parent.width - 24 : 360)
+        background: DialogFrame { }
+        header: Label {
+            text: qsTr("Use the external gateway %1?").arg(gatewayOfferDialog.host)
+            color: Theme.text
+            font.pixelSize: Theme.fontTitle
+            font.weight: Font.DemiBold
+            wrapMode: Text.Wrap
+            padding: 14
+        }
+        footer: DialogButtons {
+            acceptText: qsTr("Use")
+            onAccepted: gatewayOfferDialog.accept()
+            onRejected: gatewayOfferDialog.reject()
+        }
+        onAccepted: {
+            let page = stack.currentItem
+            if (!page || !page.offerGateway) {
+                page = stack.push(pickerComponent)
+            }
+            page.offerGateway(gatewayOfferDialog.link)
+        }
+        contentItem: Label {
+            wrapMode: Text.Wrap
+            color: Theme.textDim
+            padding: 14
+            text: qsTr("The gateway sees the I2P addresses you reach")
+        }
     }
 
     Dialog {

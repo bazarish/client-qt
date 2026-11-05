@@ -76,7 +76,7 @@ Dialog {
                 Layout.fillWidth: true
                 enabled: !root.busy
                 label: qsTr("Address")
-                placeholder: "https://host/path#token"
+                placeholder: "https://bazari.sh/#gateway?\u2026"
                 inputField.onAccepted:
                     if (!root.busy && addressField.text.trim().length > 0) {
                         I2p.checkAndSaveGateway(addressField.text)

@@ -2,6 +2,7 @@
 #include "AppController.hpp"
 
 #include "AccountManager.hpp"
+#include "GatewayAddress.hpp"
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
 #include "Documents.hpp"
@@ -498,6 +499,17 @@ void AppController::openLink(const QString& link)
     if (kindIs(bazarish::kPairKind)) {
         emit raiseRequested();
         emit pairLinkOpened(uri);
+        return;
+    }
+    if (kindIs(bazarish::kGatewayKind)) {
+        const std::optional<client::GatewayAddress> gateway
+            = client::GatewayAddress::fromLink(uri.toStdString());
+        if (!gateway.has_value()) {
+            emit linkRefused(tr("This gateway link is damaged"));
+            return;
+        }
+        emit raiseRequested();
+        emit gatewayLinkOpened(uri, QString::fromStdString(gateway->host));
         return;
     }
     const bool invite = kindIs(bazarish::kInviteKind);

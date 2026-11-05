@@ -40,6 +40,7 @@ Item {
         onClicked: appSettings.open()
     }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
+    function offerGateway(link) { appSettings.offerGateway(link) }
     AppSettingsPage {
         id: appSettings
         parent: Overlay.overlay

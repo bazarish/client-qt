@@ -3311,11 +3311,35 @@
       "zh": "正在通知服务器…",
       "ar": "جارٍ إبلاغ خادمك…"
     },
-    "That is not a gateway address. It looks like https://host/path#token.": {
-      "ru": "Это не адрес шлюза. Он выглядит так: https://host/path#token.",
-      "es": "Esa no es una dirección de pasarela. Tiene esta forma: https://host/path#token.",
-      "zh": "这不是网关地址。网关地址形如 https://host/path#token。",
-      "ar": "ليس هذا عنوان بوابة. شكله هكذا: ‎https://host/path#token‎."
+    "This is not a gateway link": {
+      "ru": "Это не ссылка на шлюз",
+      "es": "Esto no es un enlace de pasarela",
+      "zh": "这不是网关链接",
+      "ar": "هذا ليس رابط بوابة"
+    },
+    "This gateway link is damaged": {
+      "ru": "Ссылка на шлюз повреждена",
+      "es": "El enlace de pasarela está dañado",
+      "zh": "网关链接已损坏",
+      "ar": "رابط البوابة تالف"
+    },
+    "Use": {
+      "ru": "Использовать",
+      "es": "Usar",
+      "zh": "使用",
+      "ar": "استخدام"
+    },
+    "Use the external gateway %1?": {
+      "ru": "Использовать внешний шлюз %1?",
+      "es": "¿Usar la pasarela externa %1?",
+      "zh": "使用外部网关 %1？",
+      "ar": "أتريد استخدام البوابة الخارجية ⁦%1⁩؟"
+    },
+    "The gateway sees the I2P addresses you reach": {
+      "ru": "Шлюз видит I2P-адреса, к которым вы обращаетесь",
+      "es": "La pasarela ve las direcciones I2P a las que te conectas",
+      "zh": "网关能看到你访问的 I2P 地址",
+      "ar": "ترى البوابة عناوين I2P التي تتصل بها"
     },
     "The I2P backend is chosen at startup: changing it takes a restart": {
       "ru": "Бэкенд I2P выбирается при старте, его смена требует перезапуск",

@@ -317,7 +317,7 @@ Popup {
                                 id: gatewayField
                                 visible: root.gatewayInput
                                 Layout.fillWidth: true
-                                placeholder: "https://host/path#token"
+                                placeholder: "https://bazari.sh/#gateway?\u2026"
                                 text: I2p.gatewayAddress
                             }
                             Label {
@@ -535,6 +535,13 @@ Popup {
 
     property string gatewayProblem: ""
     property bool editingGateway: false
+    function offerGateway(link) {
+        open()
+        transportTabs.currentIndex = 0
+        gatewayProblem = ""
+        editingGateway = true
+        gatewayField.text = link
+    }
     onClosed: root.editingGateway = false
     readonly property bool gatewayInput: I2p.gatewayAddress.length === 0 || root.editingGateway
     property string proxyProblem: ""

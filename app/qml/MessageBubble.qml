@@ -333,16 +333,19 @@ Item {
         if (plate.kind === "invite") return plate.name || qsTr("Contact")
         if (plate.kind === "server") return qsTr("Server")
         if (plate.kind === "pair") return qsTr("Device pairing")
+        if (plate.kind === "gateway") return qsTr("External gateway")
         return plate.name || qsTr("Sign-in request")
     }
     function plateAction(plate) {
         if (plate.kind === "invite") return qsTr("Write")
         if (plate.kind === "server") return qsTr("Connect")
         if (plate.kind === "pair") return qsTr("Pair")
+        if (plate.kind === "gateway") return qsTr("Use")
         return qsTr("Sign")
     }
     readonly property var plateIcons: ({
-        "invite": "person", "server": "server", "pair": "devices", "sign": "key"
+        "invite": "person", "server": "server", "pair": "devices", "sign": "key",
+        "gateway": "broadcast"
     })
     function statusText(s) {
         if (s === DeliveryStatus.Delivering) {
