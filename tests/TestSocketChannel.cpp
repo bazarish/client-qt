@@ -75,6 +75,15 @@ int main(int argc, char** argv)
     CHECK(server.listen(dir.filePath(QStringLiteral("wire.sock"))));
 
     {
+        // The window's loop stops right after Android says the app went to the background.
+        const Pair pair = connectPair(server);
+        SocketChannelEnd window(pair.client);
+        window.send(QByteArrayLiteral("inactive"));
+        CHECK(pair.served->waitForReadyRead(kSettleMs));
+        delete pair.served;
+    }
+
+    {
         const Pair pair = connectPair(server);
         SocketChannelEnd window(pair.client);
         SocketChannelEnd core(pair.served);

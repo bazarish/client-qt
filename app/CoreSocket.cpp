@@ -58,6 +58,8 @@ void SocketChannelEnd::send(const QByteArray& frame)
         close();
         return;
     }
+    // Android halts the window's event loop in the background; a queued frame would wait for it.
+    (void)socket_->flush();
     if (socket_->bytesToWrite() > kMaxQueuedBytes) {
         bazarish::log::warn("wire: the other end stopped reading; letting it go");
         close();
