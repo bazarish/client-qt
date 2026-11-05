@@ -70,9 +70,4 @@ QtObject {
     readonly property int fontTitle: 17
 
     readonly property string fontFamily: "Roboto Mono"
-    readonly property string emojiFontFamily: "Twemoji Mozilla"
-    // The emoji font only for what is emoji: it has blank glyphs for plain digits.
-    function reactionFont(reaction) {
-        return /^[\x20-\x7E]+$/.test(reaction) ? fontFamily : emojiFontFamily
-    }
 }

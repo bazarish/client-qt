@@ -1134,7 +1134,6 @@ Item {
                                 text: modelData.emoji
                                 color: modelData.mine ? Theme.reactionMineInk : Theme.text
                                 font.pixelSize: 12
-                                font.family: Theme.reactionFont(modelData.emoji)
                                 renderType: Text.NativeRendering
                             }
                             Label {
