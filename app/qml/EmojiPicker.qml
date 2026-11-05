@@ -22,7 +22,7 @@ Popup {
     padding: 8
     margins: Theme.spacing
     modal: false
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
     background: DialogFrame { }
 
     component Glyph: Rectangle {
