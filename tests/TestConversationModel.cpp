@@ -15,6 +15,7 @@
         }                                                                           \
     } while (false)
 
+using bazarish::app::ContactListModel;
 using bazarish::app::ConversationModel;
 using bazarish::app::StoredMessage;
 
@@ -51,6 +52,14 @@ int main(int argc, char** argv)
     for (int at = 0; at < model.rowCount(); ++at) {
         CHECK(model.rowForId(at + 1) == at);
     }
+
+    ContactListModel chats;
+    const QString peer = QStringLiteral("peer");
+    constexpr qint64 kSentAt = 1000;
+    chats.touch(peer, QStringLiteral("Peer"), QStringLiteral("hello"), kSentAt);
+    chats.touch(peer, QStringLiteral("Peer"), QString(), 0);
+    CHECK(chats.data(chats.index(0), ContactListModel::LastTextRole).toString().isEmpty());
+    CHECK(chats.data(chats.index(0), ContactListModel::LastTimeRole).toLongLong() == 0);
 
     std::printf("TestConversationModel: all checks passed\n");
     return 0;

@@ -139,12 +139,8 @@ void ContactListModel::touch(const QString& fingerprint, const QString& name,
     if (!name.isEmpty()) {
         c.name = name;
     }
-    if (!lastText.isEmpty()) {
-        c.lastText = lastText;
-    }
-    if (lastTime > 0) {
-        c.lastTime = lastTime;
-    }
+    c.lastText = lastText;
+    c.lastTime = lastTime;
     resort();
 }
 
