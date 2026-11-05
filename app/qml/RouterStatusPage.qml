@@ -178,13 +178,25 @@ Popup {
                                     }
                                 }
                                 Label {
+                                    id: destStatus
+                                    readonly property string stateText:
+                                        modelData.state === "published" ? qsTr("published")
+                                        : modelData.state === "ready" ? qsTr("ready")
+                                        : modelData.state === "closing" ? qsTr("closing")
+                                        : qsTr("building")
                                     // LeaseSets, not peers: one encrypted address costs two of them.
-                                    text: modelData.localRoute
-                                        ? qsTr("gateway routing")
-                                        : qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
+                                    readonly property string full:
+                                        qsTr("%1 \u00b7 tunnels %2 in / %3 out \u00b7 "
                                             + "%4 leasesets")
-                                            .arg(modelData.state).arg(modelData.tunnelsIn)
+                                            .arg(stateText).arg(modelData.tunnelsIn)
                                             .arg(modelData.tunnelsOut).arg(modelData.leaseSets)
+                                    readonly property string compact:
+                                        qsTr("%1 \u00b7 %2 in / %3 out \u00b7 %4 leasesets")
+                                            .arg(stateText).arg(modelData.tunnelsIn)
+                                            .arg(modelData.tunnelsOut).arg(modelData.leaseSets)
+                                    TextMetrics { id: fullWidth; font: destStatus.font; text: destStatus.full }
+                                    text: modelData.localRoute ? qsTr("gateway routing")
+                                        : fullWidth.advanceWidth <= width ? full : compact
                                     color: Theme.textDim; font.pixelSize: Theme.fontSmall
                                     wrapMode: Text.Wrap; Layout.fillWidth: true
                                 }
