@@ -1259,6 +1259,12 @@
       "zh": "无法连接到此地址",
       "ar": "تعذّر الاتصال بهذا العنوان"
     },
+    "The gateway at this address is not the one the link names": {
+      "ru": "По этому адресу отвечает не тот шлюз, что указан в ссылке",
+      "es": "La pasarela de esta dirección no es la que indica el enlace",
+      "zh": "此地址上的网关不是链接所指的网关",
+      "ar": "البوابة على هذا العنوان ليست التي يسمّيها الرابط"
+    },
     "Could not move the data: %1": {
       "ru": "Не удалось перенести данные: %1",
       "es": "No se han podido mover los datos: %1",

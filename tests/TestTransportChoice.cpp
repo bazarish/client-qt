@@ -30,8 +30,8 @@ namespace fs = std::filesystem;
 namespace {
 
 constexpr int kSettleMs = 2000;
-constexpr char kUnreachableGateway[] = "https://127.0.0.1:9/gw#token";
-constexpr char kAnyPin[] = "00";
+constexpr char kUnreachableGateway[]
+    = "https://127.0.0.1:9/gw#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 constexpr std::string_view kGatewayRefusal = "bazarish::i2p: the gateway would not open";
 
 }  // namespace
@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 #else
     CHECK(::setenv("BAZARISH_ACCOUNTS_DIR", accountsDir.c_str(), 1) == 0);
 #endif
-    AppSettings::instance().rememberGateway(kUnreachableGateway, kAnyPin);
+    AppSettings::instance().rememberGateway(kUnreachableGateway);
     CHECK(!AppSettings::instance().gatewayEnabled());
 
     I2pService service;

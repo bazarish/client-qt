@@ -63,8 +63,7 @@ public:
     bool gatewayAsked() const;
     bool gatewayEnabled() const;
     std::string gatewayAddress() const;
-    std::string gatewayPin() const;
-    void rememberGateway(const std::string& address, const std::string& pin);
+    void rememberGateway(const std::string& address);
     void useGateway(bool on);
     void skipGateway();
 
@@ -98,7 +97,6 @@ private:
     bool gatewayAsked_ = false;
     bool gatewayEnabled_ = false;
     std::string gatewayAddress_;
-    std::string gatewayPin_;
     bool samEnabled_ = false;
     std::string samHost_;
     int samPort_ = 0;

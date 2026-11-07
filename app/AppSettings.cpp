@@ -104,7 +104,6 @@ void AppSettings::load()
             gatewayAsked_ = gateway.value("asked", false);
             gatewayEnabled_ = gateway.value("enabled", false);
             gatewayAddress_ = gateway.value("address", std::string());
-            gatewayPin_ = gateway.value("pin", std::string());
         }
         const nlohmann::json proxy = i2p.value("proxy", nlohmann::json::object());
         i2pProxyHost_ = proxy.value("host", std::string());
@@ -137,7 +136,7 @@ void AppSettings::save() const
     };
     i2p["sam"] = {{"enabled", samEnabled_}, {"host", samHost_}, {"port", samPort_}};
     i2p["gateway"] = {{"asked", gatewayAsked_}, {"enabled", gatewayEnabled_},
-        {"address", gatewayAddress_}, {"pin", gatewayPin_}};
+        {"address", gatewayAddress_}};
     const nlohmann::json document = {
         {"activeAccount", activeAccount_},
         {"language", language_},
@@ -321,13 +320,10 @@ bool AppSettings::gatewayEnabled() const { return gatewayEnabled_; }
 
 std::string AppSettings::gatewayAddress() const { return gatewayAddress_; }
 
-std::string AppSettings::gatewayPin() const { return gatewayPin_; }
-
-void AppSettings::rememberGateway(const std::string& address, const std::string& pin)
+void AppSettings::rememberGateway(const std::string& address)
 {
     gatewayAsked_ = true;
     gatewayAddress_ = address;
-    gatewayPin_ = pin;
     save();
 }
 

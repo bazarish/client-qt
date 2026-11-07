@@ -148,13 +148,12 @@ bool I2pService::applyTransport()
     const std::optional<client::GatewayAddress> gateway
         = client::GatewayAddress::parse(AppSettings::instance().gatewayAddress());
     const bool gatewayWanted = state_.gatewayEnabled;
-    const std::string pin = AppSettings::instance().gatewayPin();
     const bool samWanted = state_.samEnabled;
     const std::string samHost = state_.samHost.toStdString();
     const int samPort = state_.samPort;
-    return client::applyI2pTransport([gateway, gatewayWanted, pin, samWanted, samHost, samPort]() {
+    return client::applyI2pTransport([gateway, gatewayWanted, samWanted, samHost, samPort]() {
         if (gatewayWanted && gateway.has_value()) {
-            client::setGatewayTransport(gateway.value(), pin);
+            client::setGatewayTransport(gateway.value());
         } else if (gatewayWanted) {
             bazarish::log::warn("i2p: the saved gateway address is not usable");
             client::refuseI2pTransport(
@@ -289,7 +288,7 @@ void I2pService::checkAndSaveGateway(const QString& address)
     state_.gatewayChecking = true;
     announce();
     std::thread([this, parsed]() {
-        const client::GatewayCheck check = client::checkGateway(parsed.value(), std::string());
+        const client::GatewayCheck check = client::checkGateway(parsed.value());
         QMetaObject::invokeMethod(
             this,
             [this, parsed, check]() {
@@ -297,10 +296,12 @@ void I2pService::checkAndSaveGateway(const QString& address)
                 if (!check.ok) {
                     bazarish::log::warn("i2p: gateway check: {}", check.error);
                     announce();
-                    emit events_.gatewayRefused(tr("Could not connect to this address"));
+                    emit events_.gatewayRefused(check.wrongGateway
+                            ? tr("The gateway at this address is not the one the link names")
+                            : tr("Could not connect to this address"));
                     return;
                 }
-                AppSettings::instance().rememberGateway(parsed->toString(), check.pin);
+                AppSettings::instance().rememberGateway(parsed->toString());
                 state_.gatewayAsked = true;
                 state_.gatewayAddress = QString::fromStdString(parsed->link());
                 state_.gatewayHost = QString::fromStdString(parsed->host);
