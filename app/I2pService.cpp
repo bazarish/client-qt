@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <stdexcept>
 #include <thread>
 
 namespace bazarish::app {
@@ -81,8 +82,9 @@ I2pService::I2pService(QObject* parent)
         = client::GatewayAddress::parse(AppSettings::instance().gatewayAddress());
     state_.gatewayAddress = gateway.has_value() ? QString::fromStdString(gateway->link()) : QString();
     state_.gatewayHost = gateway.has_value() ? QString::fromStdString(gateway->host) : QString();
-    state_.gatewayEnabled = state_.gatewayEnabled && gateway.has_value();
-    applyTransport();
+    if (!applyTransport()) {
+        throw std::logic_error("a router ran before the I2P settings were read");
+    }
     bazarish::i2p::setI2pLogging(state_.loggingEnabled);
     client::setTunnelPrivacy(privacyForLevel(state_.privacyLevel));
     refresh();
@@ -141,29 +143,38 @@ void I2pService::checkAndSaveSam(const QString& host, const int port)
     }).detach();
 }
 
-void I2pService::applyTransport()
+bool I2pService::applyTransport()
 {
     const std::optional<client::GatewayAddress> gateway
         = client::GatewayAddress::parse(AppSettings::instance().gatewayAddress());
-    if (state_.gatewayEnabled && gateway.has_value()) {
-        client::setGatewayTransport(gateway.value(), AppSettings::instance().gatewayPin());
-    } else {
-        client::clearGatewayTransport();
-    }
-    if (state_.samEnabled) {
-        client::setSamTransport(state_.samHost.toStdString(), state_.samPort);
-    } else {
-        client::setSamTransport(std::string(), 0);
-    }
+    const bool gatewayWanted = state_.gatewayEnabled;
+    const std::string pin = AppSettings::instance().gatewayPin();
+    const bool samWanted = state_.samEnabled;
+    const std::string samHost = state_.samHost.toStdString();
+    const int samPort = state_.samPort;
+    return client::applyI2pTransport([gateway, gatewayWanted, pin, samWanted, samHost, samPort]() {
+        if (gatewayWanted && gateway.has_value()) {
+            client::setGatewayTransport(gateway.value(), pin);
+        } else if (gatewayWanted) {
+            bazarish::log::warn("i2p: the saved gateway address is not usable");
+            client::refuseI2pTransport(
+                "the saved gateway address is not usable: add the gateway again");
+        } else {
+            client::clearGatewayTransport();
+        }
+        client::setSamTransport(samWanted ? samHost : std::string(), samWanted ? samPort : 0);
+    });
 }
 
 void I2pService::noteChoiceInForce()
 {
-    if (client::sharedI2pRouterIfRunning() == nullptr) {
-        applyTransport();
+    if (applyTransport()) {
         transportAtStart_ = transport();
     }
     state_.restartNeeded = transport() != transportAtStart_;
+    if (state_.restartNeeded) {
+        client::retireI2pRouter();
+    }
     announce();
 }
 

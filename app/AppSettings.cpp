@@ -70,8 +70,7 @@ void AppSettings::load()
     in.read(text.data(), static_cast<std::streamsize>(text.size()));
     const std::streamsize taken = in.gcount();
     if (taken > kMaxSettingsBytes) {
-        bazarish::log::warn("settings not read, using defaults: file is over {} bytes",
-            kMaxSettingsBytes);
+        unreadable_ = "the file is over " + std::to_string(kMaxSettingsBytes) + " bytes";
         return;
     }
     text.resize(static_cast<std::size_t>(taken));
@@ -115,8 +114,18 @@ void AppSettings::load()
             i2pProxyPort_ = 0;
         }
     } catch (const std::exception& error) {
-        bazarish::log::warn("settings not read, using defaults: {}", error.what());
+        unreadable_ = error.what();
     }
+}
+
+std::string AppSettings::unreadable() const
+{
+    return unreadable_;
+}
+
+const std::filesystem::path& AppSettings::path() const
+{
+    return path_;
 }
 
 void AppSettings::save() const

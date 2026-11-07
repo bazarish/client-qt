@@ -15,6 +15,10 @@ class AppSettings {
 public:
     static AppSettings& instance();
 
+    // Why the settings file could not be read; empty when it was read or is not there yet.
+    std::string unreadable() const;
+    const std::filesystem::path& path() const;
+
     std::string activeAccount() const;
     void setActiveAccount(const std::string& id);
 
@@ -75,6 +79,7 @@ private:
     void save() const;
 
     std::filesystem::path path_;
+    std::string unreadable_;
     std::string activeAccount_;
     std::string language_;
     bool lightTheme_ = true;

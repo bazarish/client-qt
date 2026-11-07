@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "AppController.hpp"
 #include "AppFont.hpp"
+#include "AppSettings.hpp"
 #include "CoreHost.hpp"
 #include "Wire.hpp"
 #include "AvatarStore.hpp"
@@ -45,6 +46,7 @@
 #include <QEvent>
 #include <QGuiApplication>
 #include <QIcon>
+#include <QMessageBox>
 #include <QImage>
 #include <QLibraryInfo>
 #include <QPalette>
@@ -338,6 +340,15 @@ int main(int argc, char** argv)
     QObject::connect(&translations, &bazarish::app::Translations::languageChanged, &engine,
         &QQmlEngine::retranslate);
     engine.rootContext()->setContextProperty("Tr", &translations);
+    if (const std::string why = bazarish::app::AppSettings::instance().unreadable(); !why.empty()) {
+        const QString path = bazarish::app::pathText(bazarish::app::AppSettings::instance().path());
+        bazarish::log::error("settings: {} cannot be read: {}", path.toStdString(), why);
+        QMessageBox::critical(nullptr, QStringLiteral("Bazarish"),
+            QObject::tr("Cannot read the settings file %1. Fix or delete it, then start Bazarish "
+                        "again.")
+                .arg(path));
+        return EXIT_FAILURE;
+    }
     engine.addImageProvider("identicon", new bazarish::app::IdenticonProvider());
     engine.addImageProvider("avatar", new bazarish::app::AvatarProvider());
     engine.addImageProvider("picture", new bazarish::app::PictureProvider());

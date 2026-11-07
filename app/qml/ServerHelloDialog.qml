@@ -10,6 +10,11 @@ Popup {
     property string message: ""
     property var links: []
 
+    LinkWarningDialog {
+        id: linkWarning
+        parent: Overlay.overlay
+    }
+
     function show(reasonText, messageText, linkList) {
         reason = reasonText || ""
         message = messageText || ""
@@ -102,7 +107,7 @@ Popup {
                         text: qsTr("Open")
                         leftPadding: 10
                         rightPadding: 10
-                        onClicked: Qt.openUrlExternally(modelData)
+                        onClicked: linkWarning.ask(modelData)
                         background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.border }
                         contentItem: IconLabel { name: "link"; color: Theme.accent }
                     }

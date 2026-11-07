@@ -18,9 +18,12 @@ public:
 
     int revision() const { return revision_; }
 
+    static constexpr int kMaxSide = 1024;
+
     void put(const QString& fingerprint, const QByteArray& imageData);
 
-    QImage image(const QString& fingerprint) const;
+    bool has(const QString& fingerprint) const;
+    QImage image(const QString& fingerprint);
 
 signals:
     void revisionChanged();
@@ -32,6 +35,7 @@ private:
     }
 
     mutable QReadWriteLock lock_;
+    QHash<QString, QByteArray> bytes_;
     QHash<QString, QImage> images_;
     int revision_ = 0;
 };

@@ -509,6 +509,12 @@
       "zh": "配对",
       "ar": "اقتران"
     },
+    "Pairing does not work through a gateway": {
+      "ru": "Подключение устройства через шлюз не работает",
+      "es": "La vinculación no funciona a través de una pasarela",
+      "zh": "通过网关无法配对设备",
+      "ar": "لا يعمل الاقتران عبر بوابة"
+    },
     "Pairing link": {
       "ru": "Ссылка подключения",
       "es": "Enlace de vinculación",
@@ -706,6 +712,12 @@
       "es": "Cancelar",
       "zh": "取消",
       "ar": "إلغاء"
+    },
+    "Cannot read the settings file %1. Fix or delete it, then start Bazarish again.": {
+      "ru": "Не удаётся прочитать файл настроек %1. Исправьте или удалите его и запустите Bazarish снова.",
+      "es": "No se puede leer el archivo de configuración %1. Corríjalo o elimínelo y vuelva a iniciar Bazarish.",
+      "zh": "无法读取设置文件 %1。请修复或删除该文件，然后重新启动 Bazarish。",
+      "ar": "تعذّرت قراءة ملف الإعدادات ⁦%1⁩. أصلحه أو احذفه، ثم شغّل Bazarish من جديد."
     },
     "Cannot reach the other device": {
       "ru": "Другое устройство недоступно",

@@ -12,13 +12,6 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/common/CMakeLists.txt")
 endif()
 add_subdirectory(common bazarish-common)
 
-# -Wno-error: under a sanitizer GCC raises maybe-uninitialized inside libstdc++ headers.
-set(BAZARISH_SANITIZE "" CACHE STRING "Build with a sanitizer: address | undefined | address,undefined")
-if(BAZARISH_SANITIZE)
-    add_compile_options(-fsanitize=${BAZARISH_SANITIZE} -fno-omit-frame-pointer -g -Wno-error)
-    add_link_options(-fsanitize=${BAZARISH_SANITIZE})
-endif()
-
 # No Svg: the qsvg plugin draws the logo, and a missing Svg dev config would fail this find.
 find_package(Qt6 COMPONENTS Quick QuickControls2 Qml Gui Multimedia Widgets Network Test QUIET)
 if(Qt6_FOUND)
@@ -153,6 +146,7 @@ if(Qt6_FOUND)
         app/LetterAvatar.hpp
         app/AvatarStore.cpp
         app/PictureStore.cpp
+        app/ImageFormat.cpp
         app/AvatarStore.hpp
     )
     target_include_directories(bazarish_app_ui PRIVATE ${QRENCODE_INCLUDE_DIR})
@@ -411,12 +405,21 @@ if(Qt6_FOUND)
         set_tests_properties(TestSelectionHold PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     endif()
 
-    add_executable(TestPictureStore tests/TestPictureStore.cpp app/PictureStore.cpp)
+    add_executable(TestPictureStore tests/TestPictureStore.cpp app/PictureStore.cpp
+        app/ImageFormat.cpp)
     target_include_directories(TestPictureStore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestPictureStore PRIVATE Qt6::Quick)
     target_compile_options(TestPictureStore PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestPictureStore COMMAND TestPictureStore)
     set_tests_properties(TestPictureStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(TestAvatarStore tests/TestAvatarStore.cpp app/AvatarStore.cpp
+        app/AvatarStore.hpp app/ImageFormat.cpp)
+    target_include_directories(TestAvatarStore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestAvatarStore PRIVATE Qt6::Gui)
+    target_compile_options(TestAvatarStore PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestAvatarStore COMMAND TestAvatarStore)
+    set_tests_properties(TestAvatarStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     add_executable(TestPicture tests/TestPicture.cpp app/Picture.cpp)
     target_include_directories(TestPicture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app

@@ -56,6 +56,11 @@ int runCore(int argc, char** argv)
     }
     Translations translations;
     QCoreApplication::installTranslator(&translations);
+    if (const std::string why = AppSettings::instance().unreadable(); !why.empty()) {
+        bazarish::log::error("settings: {} cannot be read: {}",
+            pathText(AppSettings::instance().path()).toStdString(), why);
+        return EXIT_FAILURE;
+    }
     CoreHost core;
     QObject::connect(
         &core, &CoreHost::languageChosen, &translations, &Translations::setLanguage);

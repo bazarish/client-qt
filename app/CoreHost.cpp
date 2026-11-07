@@ -757,6 +757,8 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
                     reached->close();
                 }
             }
+        } catch (const client::PairingThroughGateway&) {
+            failure = tr("Pairing does not work through a gateway");
         } catch (const std::exception& error) {
             failure = QString::fromUtf8(error.what());
         }

@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #include "PictureStore.hpp"
 
+#include "ImageFormat.hpp"
+
 #include <QBuffer>
 #include <QImageReader>
 
@@ -14,17 +16,6 @@ namespace {
 constexpr qint64 kDecodedBudgetBytes = 64 * 1024 * 1024;
 constexpr qint64 kStoredBudgetBytes = 32 * 1024 * 1024;
 constexpr int kBytesPerPixel = 4;
-
-bool looksLikeAPicture(const QByteArray& bytes)
-{
-    static const QByteArray kPng = QByteArray::fromHex("89504E470D0A1A0A");
-    if (bytes.startsWith(kPng)) {
-        return true;
-    }
-    return bytes.size() >= 3 && static_cast<unsigned char>(bytes[0]) == 0xFF
-        && static_cast<unsigned char>(bytes[1]) == 0xD8
-        && static_cast<unsigned char>(bytes[2]) == 0xFF;
-}
 
 qint64 decodedSize(const QImage& image)
 {
@@ -41,7 +32,7 @@ PictureStore& PictureStore::instance()
 
 PictureStore::Insert PictureStore::insert(const QString& e2eId, const QByteArray& data)
 {
-    if (!looksLikeAPicture(data)) {
+    if (pictureFormat(data).isEmpty()) {
         return Insert::eRefused;
     }
     const QWriteLocker locker(&lock_);
@@ -105,7 +96,7 @@ QImage PictureStore::image(const QString& e2eId)
     }
     QBuffer buffer(&data);
     buffer.open(QIODevice::ReadOnly);
-    QImageReader reader(&buffer);
+    QImageReader reader(&buffer, pictureFormat(data));
     reader.setAutoTransform(true);
     const QImage decoded = reader.read();
     if (decoded.isNull()) {

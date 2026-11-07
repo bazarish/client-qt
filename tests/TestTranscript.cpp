@@ -598,6 +598,12 @@ int main(int argc, char** argv)
         CHECK(store.reactionsFor("carol", "e-one").isEmpty());
         CHECK(store.reactionsFor("carol", "e-two").size() == 1);
 
+        write("dave", "e-shared");
+        const qint64 sharedByCarol = write("carol", "e-shared");
+        CHECK(store.setReaction("dave", "e-shared", "dave", "\xf0\x9f\x91\x8d"));
+        CHECK(store.removeById(sharedByCarol));
+        CHECK(store.reactionsFor("dave", "e-shared").size() == 1);
+
         CHECK(store.clearPeer("carol"));
         CHECK(store.reactionsFor("carol", "e-two").isEmpty());
         CHECK(store.lastReadId("carol") == 0);

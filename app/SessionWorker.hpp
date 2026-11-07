@@ -12,7 +12,6 @@
 #include <QSet>
 #include <QString>
 #include <QThread>
-#include <QThreadPool>
 #include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
@@ -303,8 +302,6 @@ private:
     qint64 lastAliasServiceMs_ = 0;
     qint64 lastApprovalCheckMs_ = 0;
     qint64 lastRegisterAttemptMs_ = 0;
-    std::atomic<bool> downloadsCancelled_{false};
-    QThreadPool downloadPool_;
 };
 
 }  // namespace bazarish::app

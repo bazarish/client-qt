@@ -34,7 +34,7 @@ private:
     void useEmbedded();
     void refresh();
     void noteChoiceInForce();
-    void applyTransport();
+    bool applyTransport();
     QString transport() const;
 
     I2pCommands commands_;

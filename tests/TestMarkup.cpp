@@ -5,6 +5,9 @@
 
 #include <QString>
 
+#include <algorithm>
+#include <chrono>
+#include <functional>
 #include <cstdio>
 #include <cstdlib>
 
@@ -20,6 +23,26 @@
 using namespace bazarish::app::markup;
 
 namespace {
+
+constexpr int kHostileUnits = 50000;
+constexpr int kGrowth = 4;
+constexpr double kQuadraticWouldBe = kGrowth * kGrowth;
+constexpr double kLinearAllowance = (kGrowth + kQuadraticWouldBe) / 2;
+constexpr double kShortestMeasurable = 1e-6;
+
+double secondsToParse(const QString& text)
+{
+    const auto started = std::chrono::steady_clock::now();
+    (void)bazarish::app::markup::parse(text);
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+}
+
+double growthOf(const std::function<QString(int)>& build)
+{
+    const double small = secondsToParse(build(kHostileUnits));
+    const double large = secondsToParse(build(kHostileUnits * kGrowth));
+    return large / std::max(small, kShortestMeasurable);
+}
 
 const QString kOverlongAlias = QString(bazarish::kAliasMaxLength + 1, QChar(u'a'));
 
@@ -226,6 +249,10 @@ int main()
     testHtmlIsOurs();
     testCodeBlocks();
     testPlainProjection();
+    CHECK(growthOf([](const int n) { return QStringLiteral("*a").repeated(n); }) < kLinearAllowance);
+    CHECK(growthOf([](const int n) { return QStringLiteral("~~a").repeated(n); }) < kLinearAllowance);
+    CHECK(growthOf([](const int n) { return QStringLiteral("https://a") + QString(n, u')'); })
+        < kLinearAllowance);
     std::fprintf(stderr, "TestMarkup passed\n");
     return 0;
 }

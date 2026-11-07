@@ -7,7 +7,9 @@
 #include <QStringView>
 #include <QUrl>
 
+#include <algorithm>
 #include <array>
+#include <vector>
 
 namespace bazarish::app::markup {
 
@@ -92,12 +94,6 @@ bool isNameSeparator(const QChar c)
     return c == u'_' || c == u'.' || c == u'-';
 }
 
-int lineEnd(const QString& text, const int from, const int to)
-{
-    const int found = text.indexOf(QChar(u'\n'), from);
-    return (found < 0 || found > to) ? to : found;
-}
-
 bool matchesAt(const QString& text, const int at, const int to, const QLatin1String what)
 {
     return at + what.size() <= to && QStringView(text).sliced(at, what.size()) == what;
@@ -107,7 +103,19 @@ class Parser {
 public:
     explicit Parser(const QString& text)
         : text_(text)
+        , size_(static_cast<int>(text.size()))
+        , lineEnds_(static_cast<std::size_t>(size_) + 1, size_)
     {
+        for (int i = size_ - 1; i >= 0; --i) {
+            lineEnds_[i] = text_[i] == QChar(u'\n') ? i : lineEnds_[i + 1];
+        }
+        for (std::size_t m = 0; m < kStyleMarkers.size(); ++m) {
+            std::vector<int>& next = closers_[m];
+            next.assign(static_cast<std::size_t>(size_) + 2, size_);
+            for (int j = size_ - 1; j >= 0; --j) {
+                next[j] = closesAt(kStyleMarkers[m].text, j) ? j : next[j + 1];
+            }
+        }
     }
 
     std::vector<Run> parse()
@@ -117,6 +125,15 @@ public:
     }
 
 private:
+    int lineEnd(const int from, const int to) const { return std::min(lineEnds_[from], to); }
+
+    bool closesAt(const QLatin1String marker, const int j) const
+    {
+        const int length = marker.size();
+        return j > 0 && matchesAt(text_, j, lineEnds_[j], marker) && !text_[j - 1].isSpace()
+            && !(j + length < size_ && isWordChar(text_[j + length]));
+    }
+
     void flush(QString& buffer, const Style style)
     {
         if (buffer.isEmpty()) {
@@ -195,8 +212,9 @@ private:
     bool matchStyle(const int at, const int to, StyleKind& kind, int& contentFrom,
         int& contentTo, int& after) const
     {
-        const int limit = lineEnd(text_, at, to);
-        for (const StyleMarker& marker : kStyleMarkers) {
+        const int limit = lineEnd(at, to);
+        for (std::size_t m = 0; m < kStyleMarkers.size(); ++m) {
+            const StyleMarker& marker = kStyleMarkers[m];
             const int length = marker.text.size();
             if (!matchesAt(text_, at, limit, marker.text)) {
                 continue;
@@ -207,19 +225,15 @@ private:
             if (at + length >= limit || text_[at + length].isSpace()) {
                 continue;
             }
-            for (int j = at + length + 1; j + length <= limit; ++j) {
-                if (!matchesAt(text_, j, limit, marker.text) || text_[j - 1].isSpace()) {
-                    continue;
-                }
-                if (j + length < to && isWordChar(text_[j + length])) {
-                    continue;
-                }
-                kind = marker.kind;
-                contentFrom = at + length;
-                contentTo = j;
-                after = j + length;
-                return true;
+            const int j = closers_[m][at + length + 1];
+            if (j + length > limit) {
+                continue;
             }
+            kind = marker.kind;
+            contentFrom = at + length;
+            contentTo = j;
+            after = j + length;
+            return true;
         }
         return false;
     }
@@ -247,7 +261,7 @@ private:
 
     bool matchSend(const int at, const int to, int& contentFrom, int& contentTo, int& after) const
     {
-        const int limit = lineEnd(text_, at, to);
+        const int limit = lineEnd(at, to);
         if (!matchesAt(text_, at, limit, kSendMarker)) {
             return false;
         }
@@ -272,7 +286,7 @@ private:
         if (at > 0 && isWordChar(text_[at - 1])) {
             return false;
         }
-        const int limit = lineEnd(text_, at, to);
+        const int limit = lineEnd(at, to);
         int start = -1;
         for (const QLatin1String scheme : kLinkSchemes) {
             if (at + scheme.size() <= limit
@@ -298,6 +312,13 @@ private:
 
     int trimTail(const int from, int end) const
     {
+        std::array<int, kBrackets.size()> unclosed{};
+        for (int i = from; i < end; ++i) {
+            for (std::size_t b = 0; b < kBrackets.size(); ++b) {
+                unclosed[b] += text_[i] == kBrackets[b].open ? 1 : 0;
+                unclosed[b] -= text_[i] == kBrackets[b].close ? 1 : 0;
+            }
+        }
         bool trimmed = true;
         while (trimmed && end > from) {
             trimmed = false;
@@ -307,13 +328,13 @@ private:
                 trimmed = true;
                 continue;
             }
-            for (const Bracket& bracket : kBrackets) {
-                if (last != bracket.close) {
+            for (std::size_t b = 0; b < kBrackets.size(); ++b) {
+                if (last != kBrackets[b].close) {
                     continue;
                 }
-                const QString address = text_.sliced(from, end - from);
-                if (address.count(bracket.close) > address.count(bracket.open)) {
+                if (unclosed[b] < 0) {
                     --end;
+                    ++unclosed[b];
                     trimmed = true;
                 }
                 break;
@@ -363,6 +384,9 @@ private:
     }
 
     const QString& text_;
+    const int size_;
+    std::vector<int> lineEnds_;
+    std::array<std::vector<int>, kStyleMarkers.size()> closers_;
     std::vector<Run> runs_;
 };
 

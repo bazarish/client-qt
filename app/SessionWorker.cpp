@@ -325,8 +325,6 @@ bazarish::client::DeliveryWatch watchFor(SessionWorker* const worker, const qint
 
 SessionWorker::~SessionWorker()
 {
-    downloadsCancelled_.store(true);
-    downloadPool_.waitForDone();
     stopEventWaiter();
     stopErrands();
 }
@@ -346,7 +344,9 @@ void SessionWorker::startMaintenance()
 void SessionWorker::startReceiving()
 {
     startMaintenance();
-    startEventWaiter();
+    if (!session_->approvalState().pending) {
+        startEventWaiter();
+    }
 }
 
 void SessionWorker::startErrands()
@@ -636,10 +636,6 @@ void SessionWorker::settleDrain()
 void SessionWorker::openAccount(
     const QString& dir, const QString& passphrase, const bool startOnline)
 {
-    downloadPool_.setMaxThreadCount(3);
-    downloadsCancelled_.store(true);
-    downloadPool_.waitForDone();
-    downloadsCancelled_.store(false);
     try {
         const std::optional<bazarish::AccountKind> kind
             = Session::storedKind(toPath(dir), passphrase.toStdString());
@@ -1047,12 +1043,17 @@ void SessionWorker::maintain()
         lastApprovalCheckMs_ = nowMillis();
         try {
             (void)session_->i2pDestStatus();
-            if (!session_->approvalState().pending) {
-                session_->publishRouting();
-                refreshI2pStatus();
-            }
         } catch (const std::exception& error) {
             bazarish::log::warn("approval check failed: {}", error.what());
+        }
+        if (!session_->approvalState().pending) {
+            try {
+                session_->registerAccount();
+            } catch (const std::exception& error) {
+                bazarish::log::warn("registering after approval failed: {}", error.what());
+            }
+            startEventWaiter();
+            refreshI2pStatus();
         }
         const Session::ApprovalState approval = session_->approvalState();
         emit approvalState(approval.pending, QString::fromStdString(approval.message));
@@ -1762,7 +1763,6 @@ void SessionWorker::shutdown()
     if (callTimer_ != nullptr) {
         callTimer_->stop();
     }
-    downloadsCancelled_.store(true);
     session_.reset();
     emit stopped();
 }
@@ -2226,24 +2226,17 @@ void SessionWorker::disablePersonalDest()
 void SessionWorker::saveAttachment(const QString& peer, const QString& e2eId,
     const QString& announcedSha256, const QString& destPath, qint64 token)
 {
-    Session* const session = session_.get();
-    if (session == nullptr) {
+    if (session_ == nullptr) {
         emit downloadFinished(token, false, tr("No open session"));
         return;
     }
-    const std::string e2eIdStd = e2eId.toStdString();
-    const std::string peerStd = peer.toStdString();
-    const std::string sha256Std = announcedSha256.toStdString();
-    downloadPool_.start([this, session, e2eIdStd, peerStd, sha256Std, destPath, token]() {
-        try {
-            session->requestFile(peerStd, e2eIdStd, sha256Std,
-                fileTargetFor(destPath, QString::number(token) + QStringLiteral(".part")));
-        } catch (const std::exception& e) {
-            if (!downloadsCancelled_.load()) {
-                emit downloadFinished(token, false, QString::fromUtf8(e.what()));
-            }
-        }
-    });
+    try {
+        session_->requestFile(peer.toStdString(), e2eId.toStdString(),
+            announcedSha256.toStdString(),
+            fileTargetFor(destPath, QString::number(token) + QStringLiteral(".part")));
+    } catch (const std::exception& e) {
+        emit downloadFinished(token, false, QString::fromUtf8(e.what()));
+    }
 }
 
 void SessionWorker::reportPairing(const bazarish::client::Session::PairingEvent& event)
@@ -2292,6 +2285,8 @@ void SessionWorker::startPairing()
             });
         emit pairOfferReady(
             QString::fromStdString(offer.uri), QString::fromStdString(offer.code));
+    } catch (const bazarish::client::PairingThroughGateway&) {
+        emit pairFinished(false, tr("Pairing does not work through a gateway"));
     } catch (const std::exception& e) {
         emit pairFinished(false, QString::fromUtf8(e.what()));
     }

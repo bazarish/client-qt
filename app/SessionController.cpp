@@ -858,7 +858,7 @@ void SessionController::setAvatarBusy(const bool busy)
 
 bool SessionController::hasAvatar() const
 {
-    return !AvatarStore::instance().image(fingerprint_).isNull();
+    return AvatarStore::instance().has(fingerprint_);
 }
 
 void SessionController::clearAvatar()

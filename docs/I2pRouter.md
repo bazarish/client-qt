@@ -82,9 +82,12 @@ Three consequences worth stating:
   which real routers you meet first - the same power the addresses in the
   descriptor already have. What stands between the archive and the network is
   TLS, which is why the address must be https.
-- **With no reseed address the engine uses its own built-in hosts.** That is the
-  fallback, and the only case in which the bootstrap reaches outside the network
-  the user chose. Measured on a fresh data directory: ready in about 30 seconds
+- **With no reseed address, or when none of them answered, the engine uses its
+  own built-in hosts.** That is the only case in which the bootstrap reaches
+  outside the network the user chose. i2pd reseeds only as its network database
+  starts and gives up after 180 seconds for good, so a pass that found nothing
+  restarts the router before the next one; the next pass comes with the next
+  mail wait, 30 seconds later. Measured on a fresh data directory: ready in about 30 seconds
   with 80 routers from the built-in hosts, and about a minute with 98 from a
   named su3 URL.
 
