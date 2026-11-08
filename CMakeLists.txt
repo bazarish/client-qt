@@ -150,6 +150,8 @@ if(Qt6_FOUND)
         app/PictureStore.cpp
         app/ImageFormat.cpp
         app/AvatarStore.hpp
+        app/LocalOnlyNetwork.cpp
+        app/LocalOnlyNetwork.hpp
     )
     target_include_directories(bazarish_app_ui PRIVATE ${QRENCODE_INCLUDE_DIR})
     target_link_libraries(bazarish_app_ui PUBLIC bazarish_app_shared quirc ${QRENCODE_LIBRARY}
@@ -423,6 +425,12 @@ if(Qt6_FOUND)
     target_compile_options(TestPictureStore PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestPictureStore COMMAND TestPictureStore)
     set_tests_properties(TestPictureStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+    add_executable(TestLocalOnlyNetwork tests/TestLocalOnlyNetwork.cpp app/LocalOnlyNetwork.cpp)
+    target_include_directories(TestLocalOnlyNetwork PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestLocalOnlyNetwork PRIVATE bazarish_test_util Qt6::Qml Qt6::Network)
+    target_compile_options(TestLocalOnlyNetwork PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestLocalOnlyNetwork COMMAND TestLocalOnlyNetwork)
 
     add_executable(TestAvatarStore tests/TestAvatarStore.cpp app/AvatarStore.cpp
         app/AvatarStore.hpp app/ImageFormat.cpp)

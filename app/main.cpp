@@ -12,6 +12,7 @@
 #include "UrlScheme.hpp"
 #endif
 #include "Identicon.hpp"
+#include "LocalOnlyNetwork.hpp"
 #include "PathText.hpp"
 #include "SingleInstance.hpp"
 #include "Translations.hpp"
@@ -341,7 +342,9 @@ int main(int argc, char** argv)
     }
 #endif
 
+    bazarish::app::LocalOnlyNetwork localOnly;
     QQmlApplicationEngine engine;
+    engine.setNetworkAccessManagerFactory(&localOnly);
     bazarish::app::Translations translations;
     QCoreApplication::installTranslator(&translations);
     QObject::connect(&translations, &bazarish::app::Translations::languageChanged, &engine,

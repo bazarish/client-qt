@@ -10,6 +10,7 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QLockFile>
+#include <QStandardPaths>
 
 namespace bazarish::app {
 
@@ -32,7 +33,15 @@ QString SingleInstance::socketName() const
 {
     const QByteArray digest
         = QCryptographicHash::hash(folder_.toUtf8(), QCryptographicHash::Sha256);
-    return QStringLiteral("bazarish-") + QString::fromLatin1(digest.left(kNameBytes).toHex());
+    const QString name
+        = QStringLiteral("bazarish-") + QString::fromLatin1(digest.left(kNameBytes).toHex());
+#ifdef Q_OS_UNIX
+    // A bare name would land in the shared /tmp; the runtime folder is the user's alone.
+    return QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation) + QLatin1Char('/')
+        + name;
+#else
+    return name;
+#endif
 }
 
 bool SingleInstance::claim()
@@ -47,6 +56,7 @@ bool SingleInstance::claim()
         return false;
     }
     server_ = std::make_unique<QLocalServer>();
+    server_->setSocketOptions(QLocalServer::UserAccessOption);
     QLocalServer::removeServer(socketName());
     if (!server_->listen(socketName())) {
         bazarish::log::warn("another copy will not be able to hand over: {}",

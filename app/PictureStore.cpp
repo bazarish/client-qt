@@ -3,6 +3,11 @@
 
 #include "ImageFormat.hpp"
 
+#pragma push_macro("emit")
+#undef emit
+#include <bazarish/Log.hpp>
+#pragma pop_macro("emit")
+
 #include <QBuffer>
 #include <QImageReader>
 
@@ -98,6 +103,13 @@ QImage PictureStore::image(const QString& e2eId)
     buffer.open(QIODevice::ReadOnly);
     QImageReader reader(&buffer, pictureFormat(data));
     reader.setAutoTransform(true);
+    const QSize size = reader.size();
+    if (!size.isValid()
+        || static_cast<qint64>(size.width()) * size.height() * kBytesPerPixel
+            > kDecodedBudgetBytes) {
+        bazarish::log::warn("a picture of {}x{} was not decoded", size.width(), size.height());
+        return {};
+    }
     const QImage decoded = reader.read();
     if (decoded.isNull()) {
         return {};

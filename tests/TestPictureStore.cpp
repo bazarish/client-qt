@@ -6,6 +6,7 @@
 #include <QBuffer>
 #include <QGuiApplication>
 #include <QImage>
+#include <QImageReader>
 #include <QRandomGenerator>
 
 #include <cstdio>
@@ -21,6 +22,16 @@ constexpr int kLargePictures = 6;
 // Noise does not compress: four of these pass the budget for kept bytes.
 constexpr int kNoisyEdge = 2048;
 constexpr int kNoisyPictures = 4;
+constexpr quint32 kHugeEdge = 30000;
+// PNG (RFC 2083): 8-byte signature, then IHDR's length, type, width, height ... CRC.
+constexpr int kIhdrTypeAt = 12;
+constexpr int kIhdrWidthAt = 16;
+constexpr int kIhdrHeightAt = 20;
+constexpr int kIhdrCrcAt = 29;
+constexpr int kIhdrCoveredBytes = 17;
+constexpr quint32 kCrcPolynomial = 0xEDB88320u;
+constexpr int kBitsPerByte = 8;
+constexpr quint32 kByteMask = 0xFFu;
 
 QByteArray png(const QImage& image)
 {
@@ -28,6 +39,37 @@ QByteArray png(const QImage& image)
     QBuffer buffer(&bytes);
     CHECK(buffer.open(QIODevice::WriteOnly));
     CHECK(image.save(&buffer, "PNG"));
+    return bytes;
+}
+
+quint32 crc32(const QByteArray& bytes)
+{
+    quint32 crc = ~0u;
+    for (const char byte : bytes) {
+        crc ^= static_cast<quint8>(byte);
+        for (int bit = 0; bit < kBitsPerByte; ++bit) {
+            crc = (crc >> 1) ^ ((crc & 1u) != 0 ? kCrcPolynomial : 0u);
+        }
+    }
+    return ~crc;
+}
+
+void putBigEndian(QByteArray& bytes, const int at, const quint32 value)
+{
+    constexpr int kWordBytes = 4;
+    for (int i = 0; i < kWordBytes; ++i) {
+        bytes[at + i] = static_cast<char>((value >> (kBitsPerByte * (kWordBytes - 1 - i))) & kByteMask);
+    }
+}
+
+QByteArray claimingHugeSize()
+{
+    QImage tiny(1, 1, QImage::Format_RGB32);
+    tiny.fill(Qt::black);
+    QByteArray bytes = png(tiny);
+    putBigEndian(bytes, kIhdrWidthAt, kHugeEdge);
+    putBigEndian(bytes, kIhdrHeightAt, kHugeEdge);
+    putBigEndian(bytes, kIhdrCrcAt, crc32(bytes.mid(kIhdrTypeAt, kIhdrCoveredBytes)));
     return bytes;
 }
 
@@ -101,6 +143,19 @@ void cameraOrientationIsApplied()
     CHECK(shown.height() == bazarish::test::kTurnedWide);
 }
 
+void hugeHeaderIsNotDecoded()
+{
+    PictureStore& store = PictureStore::instance();
+    store.clear();
+    const QByteArray bytes = claimingHugeSize();
+    QBuffer buffer;
+    buffer.setData(bytes);
+    CHECK(buffer.open(QIODevice::ReadOnly));
+    CHECK(QImageReader(&buffer).size() == QSize(kHugeEdge, kHugeEdge));
+    CHECK(store.restore(QStringLiteral("huge"), bytes));
+    CHECK(store.image(QStringLiteral("huge")).isNull());
+}
+
 }  // namespace
 
 int main(int argc, char** argv)
@@ -109,6 +164,7 @@ int main(int argc, char** argv)
     decodedBudgetKeepsEveryPicture();
     keptBytesBudgetLetsTheOldestGoAndRestoreBringsItBack();
     cameraOrientationIsApplied();
+    hugeHeaderIsNotDecoded();
     std::printf("TestPictureStore: ok\n");
     return 0;
 }
