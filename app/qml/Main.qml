@@ -504,7 +504,7 @@ ApplicationWindow {
             showReject: false
             onAccepted: restartDialog.accept()
         }
-        onAccepted: Qt.quit()
+        onAccepted: App.prepareForExit()
         contentItem: Label {
             wrapMode: Text.Wrap
             color: Theme.text

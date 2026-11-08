@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "SessionWorker.hpp"
+#include "Background.hpp"
 
 #include "PathText.hpp"
 #include "SessionShared.hpp"
@@ -351,11 +352,20 @@ void SessionWorker::startReceiving()
 
 void SessionWorker::startErrands()
 {
-    if (errands_.joinable()) {
+    if (errands_.joinable() || !session_) {
+        return;
+    }
+    bazarish::client::Session::ContactFetchContext context;
+    try {
+        context = session_->contactFetchContext();
+    } catch (const std::exception& error) {
+        bazarish::log::warn("no errands: {}", error.what());
         return;
     }
     errandsRunning_ = true;
-    errands_ = std::thread([this]() {
+    errands_ = std::thread([this, context]() {
+        const std::unique_ptr<bazarish::client::Client> errands
+            = bazarish::client::Session::makeEventClient(context);
         while (true) {
             Errand errand;
             std::vector<std::string> acks;
@@ -379,7 +389,7 @@ void SessionWorker::startErrands()
             }
             if (!errand.deliveryId.empty()) {
                 try {
-                    session_->submitPrepared(errand.deliveryId, errand.sealed, errand.kind);
+                    errands->submitSelf(errand.deliveryId, errand.sealed, errand.kind);
                 } catch (const std::exception& error) {
                     bazarish::log::warn(
                         "could not echo what was sent to our own devices: {}", error.what());
@@ -387,7 +397,7 @@ void SessionWorker::startErrands()
                 continue;
             }
             try {
-                session_->releasePending(acks);
+                errands->ack(acks);
             } catch (const std::exception& error) {
                 bazarish::log::warn("pending items not given back: {}", error.what());
             }
@@ -647,8 +657,7 @@ void SessionWorker::openAccount(
             emit openFailed(tr("This account was created as a bot or a group and cannot be opened here"));
             return;
         }
-        session_ = std::make_unique<Session>(
-            Session::open(toPath(dir), passphrase.toStdString()));
+        session_ = Session::open(toPath(dir), passphrase.toStdString());
     } catch (const std::exception& e) {
         emit openFailed(QString::fromUtf8(e.what()));
         return;
@@ -849,10 +858,13 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         if (endpoint.facades.empty()) {
             throw std::runtime_error(tr("Enter at least one facade address").toStdString());
         }
+        stopEventWaiter();
+        stopErrands();
         session_->connectServer(endpoint);
         emitFacadeInfo();
         // Registering publishes this account's card, which a switched-off account must not do.
         if (session_->switchedOff()) {
+            startReceiving();
             bazarish::client::setConnectProgressSink({});
             emit actionFailed(tr("this account is switched off: the server connection is saved, "
                                  "switch the account on to connect"));
@@ -867,6 +879,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
                     : tr("Connecting to the server"));
         session_->registerAccount();
     } catch (const std::exception& e) {
+        startReceiving();
         bazarish::client::setConnectProgressSink({});
         const QString reason = QString::fromUtf8(e.what());
         emit connectionChanged(false, reason);
@@ -1189,7 +1202,7 @@ void SessionWorker::sendText(const QString& peer, const QString& text, qint64 lo
     const QString& e2eId, const QString& replyTo, const bool forwarded)
 {
     try {
-        session_->sendMessage(peer.toStdString(), text.toStdString(), e2eId.toStdString(),
+        openSession().sendMessage(peer.toStdString(), text.toStdString(), e2eId.toStdString(),
             watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1200,7 +1213,7 @@ void SessionWorker::sendFile(const QString& peer, const QString& localPath, qint
     const QString& e2eId, const QString& replyTo, const bool forwarded)
 {
     try {
-        session_->sendFile(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
+        openSession().sendFile(peer.toStdString(), localPath.toStdString(), e2eId.toStdString(),
             watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1213,7 +1226,7 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
 {
     try {
         const Bytes audio(opus.begin(), opus.end());
-        session_->sendVoice(peer.toStdString(), audio, durationMs, e2eId.toStdString(),
+        openSession().sendVoice(peer.toStdString(), audio, durationMs, e2eId.toStdString(),
             watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1225,7 +1238,7 @@ void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
     const QString& replyTo, const bool forwarded)
 {
     try {
-        session_->sendPicture(peer.toStdString(),
+        openSession().sendPicture(peer.toStdString(),
             bazarish::Bytes(bytes.begin(), bytes.end()), name.toStdString(), mime.toStdString(),
             e2eId.toStdString(), watchFor(this, localId), replyTo.toStdString(), forwarded);
     } catch (const std::exception& e) {
@@ -1237,7 +1250,7 @@ void SessionWorker::sendReceipt(const QString& peer, const QString& refId)
 {
     const QString op = beginOp(tr("Read receipt"), tr("Sending…"));
     try {
-        session_->sendReceipt(peer.toStdString(), refId.toStdString());
+        openSession().sendReceipt(peer.toStdString(), refId.toStdString());
         emit opDone(op, true, tr("Receipt sent"));
     } catch (const std::exception&) {
         emit opDone(op, false, tr("Receipt not sent"));
@@ -1274,7 +1287,7 @@ void SessionWorker::sendReaction(const QString& peer, const QString& refId, cons
     const QString op = beginOp(
         emoji.isEmpty() ? tr("Removing reaction") : tr("Reaction %1").arg(emoji), tr("Sending…"));
     try {
-        session_->sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
+        openSession().sendReaction(peer.toStdString(), refId.toStdString(), emoji.toStdString());
         emit opDone(op, true, tr("Accepted by your server"));
     } catch (const std::exception& error) {
         bazarish::log::warn("reaction not sent: {}", error.what());
@@ -1286,7 +1299,7 @@ void SessionWorker::sendCallback(
     const QString& opId, const QString& peer, const QString& data, const QString& ref)
 {
     try {
-        session_->sendCallback(peer.toStdString(), data.toStdString(), ref.toStdString());
+        openSession().sendCallback(peer.toStdString(), data.toStdString(), ref.toStdString());
         emit botActionDone(opId, true, {});
     } catch (const std::exception& e) {
         emit botActionDone(opId, false, QString::fromUtf8(e.what()));
@@ -1297,7 +1310,7 @@ void SessionWorker::sendCommand(
     const QString& opId, const QString& peer, const QString& command, const QString& args)
 {
     try {
-        session_->sendCommand(peer.toStdString(), command.toStdString(), args.toStdString());
+        openSession().sendCommand(peer.toStdString(), command.toStdString(), args.toStdString());
         emit botActionDone(opId, true, {});
     } catch (const std::exception& e) {
         emit botActionDone(opId, false, QString::fromUtf8(e.what()));
@@ -1308,7 +1321,7 @@ void SessionWorker::sendEdit(
     const QString& peer, const QString& refId, qint64 localId, const QString& text)
 {
     try {
-        session_->sendEdit(peer.toStdString(), refId.toStdString(), text.toStdString(), {},
+        openSession().sendEdit(peer.toStdString(), refId.toStdString(), text.toStdString(), {},
             watchFor(this, localId));
     } catch (const std::exception& e) {
         emit sendResult(localId, false, QString::fromUtf8(e.what()));
@@ -1318,7 +1331,7 @@ void SessionWorker::sendEdit(
 void SessionWorker::dropSentFile(const QString& refId)
 {
     try {
-        session_->unsend(refId.toStdString());
+        openSession().unsend(refId.toStdString());
     } catch (const std::exception& error) {
         bazarish::log::debug("nothing to forget for a deleted message: {}", error.what());
     }
@@ -1327,7 +1340,7 @@ void SessionWorker::dropSentFile(const QString& refId)
 void SessionWorker::sendDelete(const QString& peer, const QString& refId)
 {
     try {
-        session_->sendDelete(peer.toStdString(), refId.toStdString());
+        openSession().sendDelete(peer.toStdString(), refId.toStdString());
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
@@ -1399,7 +1412,7 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     }
     std::shared_ptr<ResolvedContactAddQueue> queue = resolvedAdds_;
     try {
-        std::thread([context = std::move(context), request = std::move(request),
+        inBackground([context = std::move(context), request = std::move(request),
                         queue = std::move(queue), opId, alias = uriOrAlias]() {
             Step step = request.byAlias ? Step::eLookingUpAlias : Step::eFetchingCard;
             const auto tell = [&queue, &opId](const QString& note) {
@@ -1419,7 +1432,7 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
             bazarish::client::tellFetchStages(nullptr);
             const std::lock_guard<std::mutex> lock(queue->mutex);
             queue->results.push_back({opId, std::move(resolved)});
-        }).detach();
+        });
     } catch (const std::exception& e) {
         emit contactAddDone(opId, false, QString::fromUtf8(e.what()));
         emit actionFailed(QString::fromUtf8(e.what()));
@@ -1572,7 +1585,7 @@ void SessionWorker::acceptContact(const QString& peer)
     WorkerOp op(this, QStringLiteral("accept:") + peer, QStringLiteral("contact"),
         tr("Agreeing to a contact request"), tr("Telling your server…"));
     try {
-        session_->acceptContactRequest(peer.toStdString());
+        openSession().acceptContactRequest(peer.toStdString());
         op.succeed(tr("Agreed"));
         emit contactAccepted(peer, true, {});
         emitContacts();
@@ -1587,17 +1600,18 @@ void SessionWorker::acceptContact(const QString& peer)
 void SessionWorker::requestInvite()
 {
     try {
-        if (!session_->hasOwnRouting()) {
+        bazarish::client::Session& session = openSession();
+        if (!session.hasOwnRouting()) {
             WorkerOp op(this, QStringLiteral("refresh-card"), QStringLiteral("dest"),
                 tr("Refreshing your contact card"),
                 tr("Asking your server for your destination…"));
-            if (session_->refreshOwnCard()) {
-                session_->announceNewRouting();
+            if (session.refreshOwnCard()) {
+                session.announceNewRouting();
             }
-            op.succeed(session_->hasOwnRouting() ? tr("Card updated")
-                                                 : tr("Destination not up yet"));
+            op.succeed(session.hasOwnRouting() ? tr("Card updated")
+                                               : tr("Destination not up yet"));
         }
-        emit inviteReady(QString::fromStdString(session_->inviteUri()));
+        emit inviteReady(QString::fromStdString(session.inviteUri()));
     } catch (const std::exception& e) {
         emit inviteUnavailable(QString::fromUtf8(e.what()));
     }
@@ -2305,7 +2319,7 @@ void SessionWorker::exportAccount(const QString& path, const QString& password)
     WorkerOp op(this, QStringLiteral("export"), QStringLiteral("account"),
         tr("Exporting your backup"), tr("Sealing the account…"));
     try {
-        const bazarish::Bytes sealed = session_->exportAccountBytes(password.toStdString());
+        const bazarish::Bytes sealed = openSession().exportAccountBytes(password.toStdString());
         const std::unique_ptr<bazarish::client::FileOutput> out = openOutput(path);
         out->write(sealed.data(), sealed.size());
         out->finish();
@@ -2351,12 +2365,12 @@ void SessionWorker::startAliasErrand(const bool byHand)
     aliasErrandRunning_ = true;
     aliasErrandByHand_ = byHand;
     try {
-        std::thread([context = std::move(context), queue = std::move(queue)]() {
+        inBackground([context = std::move(context), queue = std::move(queue)]() {
             bazarish::client::Session::AliasErrandResult result
                 = bazarish::client::Session::runAliasErrand(context);
             const std::lock_guard<std::mutex> lock(queue->mutex);
             queue->results.push_back(std::move(result));
-        }).detach();
+        });
     } catch (const std::exception& e) {
         aliasErrandRunning_ = false;
         aliasErrandByHand_ = false;
@@ -2411,12 +2425,20 @@ void SessionWorker::drainAliasErrands()
 void SessionWorker::changePassphrase(const QString& passphrase)
 {
     try {
-        session_->changePassphrase(passphrase.toStdString());
+        openSession().changePassphrase(passphrase.toStdString());
         emit actionOk(passphrase.isEmpty() ? tr("This account is no longer password-protected")
                                            : tr("Password changed"));
     } catch (const std::exception& e) {
         emit actionFailed(QString::fromUtf8(e.what()));
     }
+}
+
+bazarish::client::Session& SessionWorker::openSession()
+{
+    if (!session_) {
+        throw std::runtime_error(tr("No account is open").toStdString());
+    }
+    return *session_;
 }
 
 }  // namespace bazarish::app

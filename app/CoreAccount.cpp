@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "CoreAccount.hpp"
+#include "Background.hpp"
 
 #include "ChatPreview.hpp"
 #include "DeliveryStatus.hpp"
@@ -123,7 +124,7 @@ QString loginStageText(const client::FetchStage stage)
 template <typename Work, typename Stage, typename Done>
 void overI2p(Work work, Stage stage, Done done)
 {
-    std::thread([work, stage, done]() {
+    inBackground([work, stage, done]() {
         client::tellFetchStages([stage](const client::FetchStage reached) {
             QMetaObject::invokeMethod(
                 QCoreApplication::instance(), [stage, reached]() { stage(reached); },
@@ -140,7 +141,7 @@ void overI2p(Work work, Stage stage, Done done)
         QMetaObject::invokeMethod(
             QCoreApplication::instance(), [done, result, problem]() { done(result, problem); },
             Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 constexpr int kHttpAcceptedFirst = 200;
@@ -705,6 +706,9 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
 void CoreAccount::close()
 {
     expiryTimer_.stop();
+    readSyncTimer_.stop();
+    presenceOrderTimer_.stop();
+    commandTimer_.stop();
     accountDb_.reset();
     store_.close();
 }

@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
+#include "Background.hpp"
 
 #include "ChatPreview.hpp"
 #include "GatewayAddress.hpp"
@@ -1145,7 +1146,7 @@ void SessionController::sendPictureFiles(const QStringList& fileUrls)
         return;
     }
     const QPointer<SessionController> self(this);
-    std::thread([self, peer = activePeer_, fileUrls, replyTo = takeReply()]() mutable {
+    inBackground([self, peer = activePeer_, fileUrls, replyTo = takeReply()]() mutable {
         for (const QString& fileUrl : fileUrls) {
             const QUrl url(fileUrl);
             const QString localPath = url.isLocalFile() ? url.toLocalFile() : fileUrl;
@@ -1162,7 +1163,7 @@ void SessionController::sendPictureFiles(const QStringList& fileUrls)
             }, Qt::QueuedConnection);
             replyTo.clear();
         }
-    }).detach();
+    });
 }
 
 QString SessionController::pictureSource(const QString& e2eId, const int revision)

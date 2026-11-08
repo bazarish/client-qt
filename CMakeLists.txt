@@ -37,6 +37,8 @@ if(Qt6_FOUND)
 
     # The core keeps every account and runs with no window: no Qt Quick, no Qt QML.
     add_library(bazarish_app_shared STATIC
+        app/Background.cpp
+        app/Background.hpp
         app/SingleInstance.cpp
         app/SingleInstance.hpp
         app/AppSettings.cpp

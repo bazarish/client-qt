@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "CoreHost.hpp"
+#include "Background.hpp"
 
 #include "AccountKey.hpp"
 #include "AppSettings.hpp"
@@ -590,8 +591,10 @@ void CoreHost::removeSession(CoreAccount* const account)
     refreshAccounts();
     relay_.forget(id);
     emit events_.sessionEnded(id);
+    ++closingSessions_;
     connect(&account->events(), &AccountEvents::closed, this, [this, account, id]() {
         account->deleteLater();
+        --closingSessions_;
         onSessionClosed(id);
     });
     account->beginShutdown();
@@ -600,6 +603,11 @@ void CoreHost::removeSession(CoreAccount* const account)
 void CoreHost::onSessionClosed(const QString& id)
 {
     client::accountkey::forget(manager_->fileFor(id.toStdString()));
+    if (portableWanted_.has_value() && closingSessions_ == 0) {
+        const bool on = *portableWanted_;
+        portableWanted_.reset();
+        movePortable(on);
+    }
     if (pendingRemovals_.remove(id)) {
         removeAccountFiles(id);
     }
@@ -715,7 +723,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
     const std::vector<std::string> reseeds = parsed.reseeds;
     const std::string dest = pairDest_.toStdString();
     const std::shared_ptr<std::atomic<bool>> cancel = pairCancel_;
-    std::thread([this, reseeds, dest, cancel]() {
+    inBackground([this, reseeds, dest, cancel]() {
         QString failure;
         std::shared_ptr<bazarish::i2p::Endpoint> endpoint;
         const auto say = [this, cancel](const QString& stage) {
@@ -778,7 +786,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
                 announcePairing();
             },
             Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 void CoreHost::submitPairCode(const QString& code)
@@ -796,7 +804,7 @@ void CoreHost::submitPairCode(const QString& code)
     const std::string dest = pairDest_.toStdString();
     const std::string want = code.toStdString();
     const QString atRest = pairAtRest_;
-    std::thread([this, endpoint, cancel, dest, want, atRest]() {
+    inBackground([this, endpoint, cancel, dest, want, atRest]() {
         QString failure;
         QString refusedKind;
         bool wrongCode = false;
@@ -864,7 +872,7 @@ void CoreHost::submitPairCode(const QString& code)
                 openSession(QString::fromStdString(id), atRest, /*makeActive=*/true);
             },
             Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 void CoreHost::cancelPairing()
@@ -889,7 +897,7 @@ void CoreHost::importAccount(const QString& name, const QString& path, const QSt
 {
     log_.begin(kRestoreOperation, QStringLiteral("account"), tr("Restoring your account"),
         tr("Opening the backup…"));
-    std::thread([this, name, path, password, atRestPassphrase]() {
+    inBackground([this, name, path, password, atRestPassphrase]() {
         std::string id;
         QString failure;
         QString refusedKind;
@@ -926,7 +934,7 @@ void CoreHost::importAccount(const QString& name, const QString& path, const QSt
                 openSession(QString::fromStdString(id), atRestPassphrase, /*makeActive=*/true);
             },
             Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 void CoreHost::deleteAccount(const QString& id)
@@ -1034,14 +1042,9 @@ void CoreHost::setOnline(const QString& id, const bool on)
 
 void CoreHost::setPortable(const bool on)
 {
-    namespace fs = std::filesystem;
     if (on == client::AccountManager::portable()) {
         return;
     }
-    const fs::path from = on ? client::AccountManager::globalRoot()
-                             : client::AccountManager::portableRoot();
-    const fs::path to = on ? client::AccountManager::portableRoot()
-                           : client::AccountManager::globalRoot();
     if (on && underTempDirectory(client::AccountManager::portableRoot())) {
         emit events_.createFailed(tr("The application is running from a temporary directory (%1), which is cleared on reboot. Move it to a folder of its own first.")
                 .arg(pathText(client::AccountManager::portableRoot().parent_path())));
@@ -1052,7 +1055,21 @@ void CoreHost::setPortable(const bool on)
                 .arg(pathText(client::AccountManager::portableRoot().parent_path())));
         return;
     }
+    portableWanted_ = on;
     closeAllSessions();
+    if (closingSessions_ == 0) {
+        portableWanted_.reset();
+        movePortable(on);
+    }
+}
+
+void CoreHost::movePortable(const bool on)
+{
+    namespace fs = std::filesystem;
+    const fs::path from = on ? client::AccountManager::globalRoot()
+                             : client::AccountManager::portableRoot();
+    const fs::path to = on ? client::AccountManager::portableRoot()
+                           : client::AccountManager::globalRoot();
     std::error_code error;
     if (fs::exists(from, error) && !fs::is_empty(from, error)) {
         if (fs::exists(to, error) && !fs::is_empty(to, error)) {
@@ -1061,6 +1078,8 @@ void CoreHost::setPortable(const bool on)
                     .arg(pathText(to)));
             return;
         }
+        // The router keeps files under the root it was started with: it stops for good first.
+        client::retireI2pRouter();
         fs::create_directories(to.parent_path(), error);
         fs::rename(from, to, error);
         if (error) {

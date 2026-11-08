@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "I2pService.hpp"
+#include "Background.hpp"
 
 #include "Wire.hpp"
 
@@ -113,7 +114,7 @@ void I2pService::checkAndSaveSam(const QString& host, const int port)
     }
     state_.samChecking = true;
     announce();
-    std::thread([this, wanted, port]() {
+    inBackground([this, wanted, port]() {
         QString failure;
         try {
             bazarish::sam::RouterAddress address;
@@ -140,7 +141,7 @@ void I2pService::checkAndSaveSam(const QString& host, const int port)
                 emit events_.samSaved();
             },
             Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 bool I2pService::applyTransport()
@@ -213,7 +214,7 @@ void I2pService::checkAndSaveProxy(const QString& host, const int port)
     }
     state_.proxyChecking = true;
     announce();
-    std::thread([this, wantedHost, port]() {
+    inBackground([this, wantedHost, port]() {
         const client::SocksCheck check
             = client::checkSocksProxy(wantedHost.toStdString(), port);
         QMetaObject::invokeMethod(
@@ -236,7 +237,7 @@ void I2pService::checkAndSaveProxy(const QString& host, const int port)
                 saveProxy(wantedHost, port);
             },
             Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 void I2pService::saveProxy(const QString& host, const int port)
@@ -246,7 +247,7 @@ void I2pService::saveProxy(const QString& host, const int port)
     AppSettings::instance().setI2pProxy(state_.proxyHost.toStdString(), state_.proxyPort);
     client::setI2pSocksProxy(state_.proxyHost.toStdString(), state_.proxyPort);
     announce();
-    std::thread([]() { client::restartI2pRouter(); }).detach();
+    inBackground([]() { client::restartI2pRouter(); });
     refresh();
 }
 
@@ -287,7 +288,7 @@ void I2pService::checkAndSaveGateway(const QString& address)
     }
     state_.gatewayChecking = true;
     announce();
-    std::thread([this, parsed]() {
+    inBackground([this, parsed]() {
         const client::GatewayCheck check = client::checkGateway(parsed.value());
         QMetaObject::invokeMethod(
             this,
@@ -309,7 +310,7 @@ void I2pService::checkAndSaveGateway(const QString& address)
                 emit events_.gatewaySaved();
             },
             Qt::QueuedConnection);
-    }).detach();
+    });
 }
 
 QString I2pService::transport() const

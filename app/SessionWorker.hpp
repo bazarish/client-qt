@@ -46,6 +46,9 @@ public:
     void networkChanged();
 
 private:
+    // The open session: a slot that runs once it is gone fails as any refusal does.
+    bazarish::client::Session& openSession();
+
     template <typename Work>
     void withSession(Work&& work)
     {

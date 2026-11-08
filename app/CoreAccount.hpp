@@ -14,6 +14,7 @@
 #include <QObject>
 #include <QSet>
 #include <QThread>
+#include <QPointer>
 #include <QTimer>
 
 #include <atomic>
@@ -202,7 +203,7 @@ private:
     bool linksRebuilding_ = false;
     QTimer rebuildGrace_;
     QThread thread_;
-    SessionWorker* worker_ = nullptr;
+    QPointer<SessionWorker> worker_;
     std::shared_ptr<client::LoginSigner> loginSigner_;
     // The one challenge fetch in flight; a new one or the window's back gives it up.
     QString loginFetchOp_;

@@ -149,10 +149,16 @@ private:
     QString waiting_;
 };
 
-void exitNow()
+// The one way out: no destructors, so nothing waits on a thread that sits in a request.
+[[noreturn]] void exitWith(const int code)
 {
     std::fflush(nullptr);
-    std::_Exit(EXIT_SUCCESS);
+    std::_Exit(code);
+}
+
+void exitNow()
+{
+    exitWith(EXIT_SUCCESS);
 }
 
 constexpr const char* kBrandCanvas = "#16191c";
@@ -356,7 +362,7 @@ int main(int argc, char** argv)
 
     const auto wireBroken = [](const QString& reason) {
         bazarish::log::error("wire: {}", reason.toStdString());
-        QCoreApplication::exit(1);
+        exitWith(EXIT_FAILURE);
     };
 #ifdef Q_OS_ANDROID
     bazarish::app::Relay windowRelay;
@@ -403,11 +409,11 @@ int main(int argc, char** argv)
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
-        []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
+        []() { exitWith(EXIT_FAILURE); }, Qt::QueuedConnection);
 
     engine.load(QUrl(QStringLiteral("qrc:/qt/qml/Bazarish/app/qml/Main.qml")));
     if (engine.rootObjects().isEmpty()) {
-        return -1;
+        exitWith(EXIT_FAILURE);
     }
 
     const auto raiseWindow = [&engine]() {
@@ -446,6 +452,9 @@ int main(int argc, char** argv)
             &bazarish::app::TrayIcon::showNotice);
     } else {
         bazarish::log::info("tray: this desktop offers none; the window is the only way in");
+        QApplication::setQuitOnLastWindowClosed(false);
+        QObject::connect(&app, &QGuiApplication::lastWindowClosed, &controller,
+            &bazarish::app::AppController::prepareForExit);
     }
 #endif
     return app.exec();

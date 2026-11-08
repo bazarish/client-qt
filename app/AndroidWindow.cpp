@@ -20,6 +20,7 @@
 #include <atomic>
 #include <functional>
 #include <iterator>
+#include <mutex>
 #include <stdexcept>
 
 namespace bazarish::app {
@@ -29,11 +30,14 @@ const char* const kWindow = "org/bazarish/client/Window";
 
 std::atomic<AndroidWindow*> gWindow{nullptr};
 std::atomic<AppController*> gApp{nullptr};
+// Held from reading a target to posting to it, and while they are cleared.
+std::mutex gHeldMutex;
 
 // Android calls in on its own thread; the window answers on its own.
 template <typename Target>
 void inWindowThread(const std::atomic<Target*>& held, std::function<void(Target&)> action)
 {
+    const std::lock_guard<std::mutex> lock(gHeldMutex);
     Target* const target = held.load();
     if (target == nullptr) {
         return;
@@ -148,8 +152,11 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
     if (!env.registerNativeMethods(kWindow, natives, static_cast<int>(std::size(natives)))) {
         throw std::runtime_error("the Android window did not take its native methods");
     }
-    gApp.store(&app);
-    gWindow.store(this);
+    {
+        const std::lock_guard<std::mutex> lock(gHeldMutex);
+        gApp.store(&app);
+        gWindow.store(this);
+    }
 
     QJniObject::callStaticMethod<void>(kWindow, "askNotifications", "()V");
     QJniObject::callStaticMethod<void>(kWindow, "followKeyboard", "()V");
@@ -175,6 +182,7 @@ AndroidWindow::AndroidWindow(AppController& app, QObject* const parent)
 
 AndroidWindow::~AndroidWindow()
 {
+    const std::lock_guard<std::mutex> lock(gHeldMutex);
     gApp.store(nullptr);
     gWindow.store(nullptr);
 }

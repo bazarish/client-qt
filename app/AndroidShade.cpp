@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "AndroidShade.hpp"
+#include "Background.hpp"
 
 #include "AndroidCallAudio.hpp"
 #include "CoreHost.hpp"
@@ -22,6 +23,7 @@
 #include <cstdio>
 #include <functional>
 #include <iterator>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -34,6 +36,8 @@ const char* const kLogTag = "bazarish";
 constexpr int kLogChunkBytes = 1024;
 
 std::atomic<CoreHost*> gCore{nullptr};
+// Held from reading gCore to posting to it, and while it is cleared: a post never meets a dead core.
+std::mutex gCoreMutex;
 
 QJniObject javaString(const QString& text)
 {
@@ -43,6 +47,7 @@ QJniObject javaString(const QString& text)
 // The shade's buttons are pressed on Android's own thread; the core answers on its own.
 void inCoreThread(std::function<void(CoreHost&)> action)
 {
+    const std::lock_guard<std::mutex> lock(gCoreMutex);
     CoreHost* const core = gCore.load();
     if (core == nullptr) {
         return;
@@ -79,7 +84,10 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
     if (!env.registerNativeMethods(kShade, natives, static_cast<int>(std::size(natives)))) {
         throw std::runtime_error("the Android shade did not take its native methods");
     }
-    gCore.store(&core);
+    {
+        const std::lock_guard<std::mutex> lock(gCoreMutex);
+        gCore.store(&core);
+    }
     QJniObject::callStaticMethod<void>(kShade, "nativesRegistered", "()V");
 
     line_ = presenceLine();
@@ -106,6 +114,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
 
 AndroidShade::~AndroidShade()
 {
+    const std::lock_guard<std::mutex> lock(gCoreMutex);
     gCore.store(nullptr);
 }
 
@@ -118,7 +127,7 @@ void AndroidShade::routeStderrToLogcat()
     close(ends[1]);
     std::setvbuf(stderr, nullptr, _IOLBF, 0);
     // Not a FILE: fgets holds its lock while it waits, and fflush(nullptr) at exit waits for it.
-    std::thread([reading = ends[0]]() {
+    inBackground([reading = ends[0]]() {
         std::string pending;
         char chunk[kLogChunkBytes];
         ssize_t got = 0;
@@ -130,7 +139,7 @@ void AndroidShade::routeStderrToLogcat()
                 pending.erase(0, end + 1);
             }
         }
-    }).detach();
+    });
 }
 
 void AndroidShade::startRinging()

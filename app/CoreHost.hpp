@@ -19,6 +19,7 @@
 
 #include <atomic>
 #include <memory>
+#include <optional>
 
 namespace bazarish::i2p {
 class Endpoint;
@@ -79,6 +80,8 @@ private:
     void openAllAccounts();
     void removeSession(CoreAccount* account);
     void onSessionClosed(const QString& id);
+    // Moves the data root once every session has closed and the router is down.
+    void movePortable(bool on);
     void removeAccountFiles(const QString& id);
     void refreshAccountList();
     void refreshAccountRows();
@@ -135,6 +138,8 @@ private:
     QString pendingDeleteId_;
     QString deletingId_;
     QSet<QString> pendingRemovals_;
+    int closingSessions_ = 0;
+    std::optional<bool> portableWanted_;
     bool exiting_ = false;
     bool windowActive_ = false;
     bool callScreenShown_ = false;
