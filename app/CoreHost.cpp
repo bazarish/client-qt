@@ -712,6 +712,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
     }
 
     pairDest_ = QString::fromStdString(parsed.dest);
+    pairKey_ = parsed.key;
     pairAtRest_ = atRestPassphrase;
     pairCancel_ = std::make_shared<std::atomic<bool>>(false);
     pairing_ = true;
@@ -767,8 +768,6 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
                     reached->close();
                 }
             }
-        } catch (const client::PairingThroughGateway&) {
-            failure = tr("Pairing does not work through a gateway");
         } catch (const std::exception& error) {
             failure = QString::fromUtf8(error.what());
         }
@@ -804,9 +803,10 @@ void CoreHost::submitPairCode(const QString& code)
     const std::shared_ptr<bazarish::i2p::Endpoint> endpoint = pairEndpoint_;
     const std::shared_ptr<std::atomic<bool>> cancel = pairCancel_;
     const std::string dest = pairDest_.toStdString();
+    const bazarish::Bytes key = pairKey_;
     const std::string want = code.toStdString();
     const QString atRest = pairAtRest_;
-    inBackground([this, endpoint, cancel, dest, want, atRest]() {
+    inBackground([this, endpoint, cancel, dest, key, want, atRest]() {
         QString failure;
         QString refusedKind;
         bool wrongCode = false;
@@ -829,15 +829,18 @@ void CoreHost::submitPairCode(const QString& code)
                           Qt::QueuedConnection);
                   };
             const client::PairFetchResult got
-                = client::fetchPairBundle(*endpoint, dest, want, onProgress, *cancel);
+                = client::fetchPairBundle(*endpoint, dest, want, key, onProgress, *cancel);
             if (got.wrongCode) {
                 wrongCode = true;
                 triesLeft = got.triesLeft;
-            } else if (const bazarish::AccountKind kind = client::Session::bundleKind(got.bundle, want);
-                       kind != bazarish::AccountKind::eUser) {
-                refusedKind = QString::fromUtf8(bazarish::accountKindName(kind));
             } else {
-                id = manager_->import(std::string{}, got.bundle, want, atRest.toStdString()).id;
+                const bazarish::Bytes bundle = client::openPairBundle(key, got.bundle);
+                if (const bazarish::AccountKind kind = client::Session::bundleKindOf(bundle);
+                    kind != bazarish::AccountKind::eUser) {
+                    refusedKind = QString::fromUtf8(bazarish::accountKindName(kind));
+                } else {
+                    id = manager_->importBundle(std::string{}, bundle, atRest.toStdString()).id;
+                }
             }
         } catch (const std::exception& error) {
             failure = QString::fromUtf8(error.what());

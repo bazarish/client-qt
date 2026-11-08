@@ -2282,8 +2282,6 @@ void SessionWorker::startPairing()
             });
         emit pairOfferReady(
             QString::fromStdString(offer.uri), QString::fromStdString(offer.code));
-    } catch (const bazarish::client::PairingThroughGateway&) {
-        emit pairFinished(false, tr("Pairing does not work through a gateway"));
     } catch (const std::exception& e) {
         emit pairFinished(false, QString::fromUtf8(e.what()));
     }

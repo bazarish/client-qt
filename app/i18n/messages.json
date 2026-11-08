@@ -503,12 +503,6 @@
       "zh": "配对",
       "ar": "اقتران"
     },
-    "Pairing does not work through a gateway": {
-      "ru": "Подключение устройства через шлюз не работает",
-      "es": "La vinculación no funciona a través de una pasarela",
-      "zh": "通过网关无法配对设备",
-      "ar": "لا يعمل الاقتران عبر بوابة"
-    },
     "Pairing link": {
       "ru": "Ссылка подключения",
       "es": "Enlace de vinculación",
