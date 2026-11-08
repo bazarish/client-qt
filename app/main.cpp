@@ -41,6 +41,7 @@
 #include <QColor>
 #include <QDir>
 #include <QFile>
+#include <QPointer>
 #include <QApplication>
 #include <QFileOpenEvent>
 #include <QEvent>
@@ -120,7 +121,7 @@ class LinkCatcher : public QObject {
 public:
     void handOverTo(bazarish::app::AppController& controller)
     {
-        controller_ = &controller;
+        controller_ = QPointer<bazarish::app::AppController>(&controller);
         if (waiting_.isEmpty()) {
             return;
         }
@@ -136,7 +137,7 @@ protected:
             return QObject::eventFilter(watched, event);
         }
         const QString link = static_cast<QFileOpenEvent*>(event)->url().toString();
-        if (controller_ == nullptr) {
+        if (controller_.isNull()) {
             waiting_ = link;
             return true;
         }
@@ -145,7 +146,7 @@ protected:
     }
 
 private:
-    bazarish::app::AppController* controller_ = nullptr;
+    QPointer<bazarish::app::AppController> controller_;
     QString waiting_;
 };
 
@@ -367,8 +368,7 @@ int main(int argc, char** argv)
 #ifdef Q_OS_ANDROID
     bazarish::app::Relay windowRelay;
     QObject::connect(&windowRelay, &bazarish::app::Relay::broken, &app, wireBroken);
-    bazarish::app::AppController controller(translations);
-    controller.attach(windowRelay);
+    bazarish::app::AppController controller(translations, windowRelay);
     bazarish::app::I2pController i2pController;
     i2pController.attach(windowRelay);
     bazarish::app::CoreLink coreLink(windowRelay, bazarish::app::coreSocketName());
@@ -391,8 +391,7 @@ int main(int argc, char** argv)
     bazarish::app::Relay windowRelay;
     QObject::connect(&windowRelay, &bazarish::app::Relay::broken, &app, wireBroken);
     windowRelay.attach(channel.second());
-    bazarish::app::AppController controller(translations);
-    controller.attach(windowRelay);
+    bazarish::app::AppController controller(translations, windowRelay);
     bazarish::app::I2pController i2pController;
     i2pController.attach(windowRelay);
     core.attachWindow(channel.first());

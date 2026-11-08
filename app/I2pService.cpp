@@ -340,8 +340,8 @@ void I2pService::skipGateway()
 
 void I2pService::refresh()
 {
-    bazarish::i2p::Router* const router = client::sharedI2pRouterIfRunning();
-    const bool running = router != nullptr;
+    const auto router = client::sharedI2pRouterIfRunning();
+    const bool running = router.has_value();
     bool ready = false;
     const bool ownEngine = !state_.samEnabled && !state_.gatewayEnabled;
     int knownRouters = ownEngine ? static_cast<int>(client::knownRouterCount(i2pRoot())) : 0;
@@ -351,14 +351,14 @@ void I2pService::refresh()
     QStringList transports;
     QVariantList destinations;
     if (running) {
-        ready = router->ready();
+        ready = router->get().ready();
     }
-    if (running && router->capabilities().routerCounters) {
-        knownRouters = router->knownRouters();
-        floodfills = router->floodfills();
-        inboundTunnels = router->inboundTunnels();
-        outboundTunnels = router->outboundTunnels();
-        for (const bazarish::i2p::TransportPeer& peer : router->transportPeers()) {
+    if (running && router->get().capabilities().routerCounters) {
+        knownRouters = router->get().knownRouters();
+        floodfills = router->get().floodfills();
+        inboundTunnels = router->get().inboundTunnels();
+        outboundTunnels = router->get().outboundTunnels();
+        for (const bazarish::i2p::TransportPeer& peer : router->get().transportPeers()) {
             QString row = QString::fromStdString(peer.transport)
                 + (peer.outbound ? " · " : " · incoming · ");
             if (!peer.endpoint.empty()) {
@@ -371,7 +371,7 @@ void I2pService::refresh()
     }
     if (running) {
         const bool manyAccounts = client::AccountManager(accountsRoot()).list().size() > 1;
-        for (const bazarish::i2p::LocalDestination& dest : router->localDestinations()) {
+        for (const bazarish::i2p::LocalDestination& dest : router->get().localDestinations()) {
             QVariantMap row;
             const QString what = dest.label.empty() ? QStringLiteral("Destination")
                                                     : QString::fromStdString(dest.label);
@@ -387,7 +387,7 @@ void I2pService::refresh()
             row[QStringLiteral("tunnelsOut")] = dest.outboundTunnels;
             row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;
             row[QStringLiteral("localRoute")] = dest.localRoute;
-            row[QStringLiteral("countsKnown")] = router->capabilities().destinationCounters;
+            row[QStringLiteral("countsKnown")] = router->get().capabilities().destinationCounters;
             destinations << row;
         }
     }

@@ -10,6 +10,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <atomic>
+#include <memory>
 
 struct quirc;
 
@@ -36,7 +37,11 @@ private:
     void readFrame(const QVideoFrame& frame);
 
     QPointer<QVideoSink> sink_;
-    quirc* decoder_ = nullptr;
+    struct Destroy {
+        void operator()(quirc* decoder) const;
+    };
+    // Its last reader is waited for in the destructor, before this goes.
+    std::unique_ptr<quirc, Destroy> decoder_;
     int width_ = 0;
     int height_ = 0;
     // Frames arriving while one is read are let go at once, or the camera runs out of buffers.

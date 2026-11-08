@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -78,7 +79,8 @@ private:
         QByteArray frame;
     };
 
-    void post(const QString& scope, const QByteArray& frame, const QByteArray* latchKey);
+    void post(
+        const QString& scope, const QByteArray& frame, const std::optional<QByteArray>& latchKey);
     void deliver(const QByteArray& frame);
 
     QPointer<ChannelEnd> channel_;

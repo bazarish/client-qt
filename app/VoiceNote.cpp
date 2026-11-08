@@ -124,7 +124,8 @@ Bytes VoiceNote::stopRecording()
     for (std::size_t at = 0; at + kCallSamplesPerFrame <= pcm.size();
         at += static_cast<std::size_t>(kCallSamplesPerFrame)) {
         try {
-            frames.push_back(encoder.encode(&pcm[at], kCallSamplesPerFrame));
+            frames.push_back(encoder.encode(std::span<const std::int16_t>(pcm).subspan(
+                at, static_cast<std::size_t>(kCallSamplesPerFrame))));
         } catch (const std::exception& error) {
             bazarish::log::warn("a voice frame did not encode: {}", error.what());
         }
@@ -184,7 +185,7 @@ void VoiceNote::play(const Bytes& opus, const double speed, const qint64 fromMs)
         std::size_t playedSamples = 0;
         bool ended = false;
         while (playing_.load()) {
-            const std::size_t produced = stretch.read(out.data(), out.size());
+            const std::size_t produced = stretch.read(out);
             if (produced == 0) {
                 ended = true;
                 break;

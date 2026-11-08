@@ -45,8 +45,9 @@ const QString kAppScope = QStringLiteral("app");
 
 }  // namespace
 
-AppController::AppController(Translations& translations, QObject* parent)
+AppController::AppController(Translations& translations, Relay& relay, QObject* parent)
     : QObject(parent)
+    , relay_(relay)
     , lightTheme_(AppSettings::instance().lightTheme())
     , camera_(QString::fromStdString(AppSettings::instance().camera()))
     , screenCapture_(AppSettings::instance().screenCapture())
@@ -178,13 +179,8 @@ AppController::AppController(Translations& translations, QObject* parent)
         operations_.remove(id);
         emit operationsChanged();
     });
-}
-
-void AppController::attach(Relay& relay)
-{
-    relay_ = &relay;
-    relay.sendFrom(kAppScope, commands_);
-    relay.deliverTo(kAppScope, events_);
+    relay_.sendFrom(kAppScope, commands_);
+    relay_.deliverTo(kAppScope, events_);
 }
 
 void AppController::detach()
@@ -201,8 +197,8 @@ void AppController::startSession(const QString& id)
 {
     auto* const ctrl = new SessionController(id, this);
     sessions_.append(ctrl);
-    relay_->sendFrom(id, ctrl->commands());
-    relay_->deliverTo(id, ctrl->events());
+    relay_.sendFrom(id, ctrl->commands());
+    relay_.deliverTo(id, ctrl->events());
     connect(ctrl, &SessionController::openFailed, this, &AppController::accountOpenFailed);
     connect(ctrl, &SessionController::historyOpened, this, [this, id]() {
         if (pendingConversation_.first == id) {
@@ -222,7 +218,7 @@ void AppController::endSession(const QString& id)
     if (ctrl == nullptr) {
         return;
     }
-    relay_->forget(id);
+    relay_.forget(id);
     sessions_.removeAll(ctrl);
     if (activeId_ == id) {
         activeId_.clear();

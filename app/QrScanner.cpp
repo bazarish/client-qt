@@ -19,6 +19,11 @@ constexpr int kScanWidth = 800;
 
 }  // namespace
 
+void QrScanner::Destroy::operator()(quirc* const decoder) const
+{
+    quirc_destroy(decoder);
+}
+
 QrScanner::QrScanner(QObject* parent)
     : QObject(parent)
     , decoder_(quirc_new())
@@ -31,7 +36,6 @@ QrScanner::QrScanner(QObject* parent)
 QrScanner::~QrScanner()
 {
     reading_.waitForDone();
-    quirc_destroy(decoder_);
 }
 
 void QrScanner::setSink(QVideoSink* const sink)
@@ -77,7 +81,7 @@ QString QrScanner::read(const QImage& frame)
         return {};
     }
     if (image.width() != width_ || image.height() != height_) {
-        if (quirc_resize(decoder_, image.width(), image.height()) < 0) {
+        if (quirc_resize(decoder_.get(), image.width(), image.height()) < 0) {
             throw std::runtime_error("quirc_resize failed");
         }
         width_ = image.width();
@@ -86,17 +90,17 @@ QString QrScanner::read(const QImage& frame)
 
     int bufferWidth = 0;
     int bufferHeight = 0;
-    unsigned char* const buffer = quirc_begin(decoder_, &bufferWidth, &bufferHeight);
+    unsigned char* const buffer = quirc_begin(decoder_.get(), &bufferWidth, &bufferHeight);
     for (int y = 0; y < bufferHeight; ++y) {
         std::memcpy(buffer + static_cast<std::ptrdiff_t>(y) * bufferWidth,
             image.constScanLine(y), static_cast<std::size_t>(bufferWidth));
     }
-    quirc_end(decoder_);
+    quirc_end(decoder_.get());
 
-    const int found = quirc_count(decoder_);
+    const int found = quirc_count(decoder_.get());
     for (int i = 0; i < found; ++i) {
         quirc_code code;
-        quirc_extract(decoder_, i, &code);
+        quirc_extract(decoder_.get(), i, &code);
         quirc_data data;
         if (quirc_decode(&code, &data) != QUIRC_SUCCESS) {
             continue;

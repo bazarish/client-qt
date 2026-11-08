@@ -1762,7 +1762,8 @@ void SessionController::savePictureAs(const QString& e2eId, const QString& fileU
     }
     try {
         const std::unique_ptr<bazarish::client::FileOutput> out = openOutput(path);
-        out->write(bytes.constData(), static_cast<std::size_t>(bytes.size()));
+        out->write(bazarish::viewOf(
+            std::string_view(bytes.constData(), static_cast<std::size_t>(bytes.size()))));
         out->finish();
     } catch (const std::exception& error) {
         bazarish::log::warn("picture not saved: {}", error.what());

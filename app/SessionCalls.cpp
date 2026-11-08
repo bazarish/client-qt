@@ -5,8 +5,18 @@
 #include "SystemNotes.hpp"
 
 #include <QAudioDevice>
+#include <QLatin1StringView>
+
+#include <array>
+#include <cstddef>
 
 namespace bazarish::app {
+
+namespace {
+
+constexpr std::size_t kCallStates = 4;
+
+}  // namespace
 
 bool SessionController::speakerPresent()
 {
@@ -65,9 +75,12 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
         callOutputLevel_ = outputLevel;
         emit callLevelsChanged();
     }
-    static const char* const kNames[] = {"idle", "outgoing", "incoming", "active"};
-    const QString name = (state >= 0 && state <= 3) ? QString::fromLatin1(kNames[state])
-                                                    : QStringLiteral("idle");
+    static constexpr std::array<QLatin1StringView, kCallStates> kNames
+        = {QLatin1StringView("idle"), QLatin1StringView("outgoing"),
+            QLatin1StringView("incoming"), QLatin1StringView("active")};
+    const QString name = (state >= 0 && static_cast<std::size_t>(state) < kNames.size())
+        ? QString(kNames[static_cast<std::size_t>(state)])
+        : QStringLiteral("idle");
     if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted
         && callStage_ == stage && callConnectedAtMs_ == connectedAtMs) {
         return;

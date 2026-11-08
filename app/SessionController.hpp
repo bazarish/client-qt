@@ -622,7 +622,7 @@ private:
     QStringList recentReactions_;
     QStringList recentEmoji_;
     QString ownInvite_;
-    VoiceNote* voiceNote();
+    VoiceNote& voiceNote();
     std::unique_ptr<VoiceNote> voice_;
     QTimer voiceTimer_;
     bool voiceRecording_ = false;

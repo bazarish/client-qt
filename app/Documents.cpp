@@ -101,11 +101,12 @@ public:
         }
     }
 
-    void write(const void* data, std::size_t size) override
+    void write(const bazarish::ByteView data) override
     {
-        const char* at = static_cast<const char*>(data);
-        while (size > 0) {
-            const ssize_t put = ::write(fd_, at, size);
+        std::size_t done = 0;
+        while (done < data.size()) {
+            const bazarish::ByteView rest = data.subspan(done);
+            const ssize_t put = ::write(fd_, rest.data(), rest.size());
             if (put < 0) {
                 if (errno == EINTR) {
                     continue;
@@ -113,8 +114,7 @@ public:
                 throw std::runtime_error(
                     std::string("the document did not take the file: ") + std::strerror(errno));
             }
-            at += put;
-            size -= static_cast<std::size_t>(put);
+            done += static_cast<std::size_t>(put);
         }
     }
 
@@ -156,10 +156,10 @@ public:
         static_cast<void>(::close(fd_));
     }
 
-    std::size_t read(void* const buffer, const std::size_t size) override
+    std::size_t read(const bazarish::ByteBuffer buffer) override
     {
         for (;;) {
-            const ssize_t got = ::read(fd_, buffer, size);
+            const ssize_t got = ::read(fd_, buffer.data(), buffer.size());
             if (got >= 0) {
                 return static_cast<std::size_t>(got);
             }
@@ -229,8 +229,7 @@ Bytes readWhole(const QString& location)
     const std::unique_ptr<client::FileInput> input = deviceFiles()->open(location.toStdString());
     Bytes whole;
     std::array<unsigned char, kReadChunkBytes> buffer{};
-    for (std::size_t got = input->read(buffer.data(), buffer.size()); got > 0;
-        got = input->read(buffer.data(), buffer.size())) {
+    for (std::size_t got = input->read(buffer); got > 0; got = input->read(buffer)) {
         whole.insert(
             whole.end(), buffer.begin(), buffer.begin() + static_cast<std::ptrdiff_t>(got));
     }
@@ -259,7 +258,8 @@ void saveIntoFolder(const QDir& folder, const QString& fileName, const QByteArra
                 .arg(wanted.completeBaseName()).arg(copy).arg(wanted.suffix()));
     }
     const std::unique_ptr<client::FileOutput> out = openOutput(path);
-    out->write(bytes.constData(), static_cast<std::size_t>(bytes.size()));
+    out->write(bazarish::viewOf(
+        std::string_view(bytes.constData(), static_cast<std::size_t>(bytes.size()))));
     out->finish();
 }
 
@@ -268,17 +268,18 @@ void saveIntoDownloads(
 {
 #ifdef Q_OS_ANDROID
     QJniEnvironment env;
-    const jbyteArray array = env->NewByteArray(static_cast<jsize>(bytes.size()));
-    if (array == nullptr) {
+    const QJniObject array
+        = QJniObject::fromLocalRef(env->NewByteArray(static_cast<jsize>(bytes.size())));
+    if (!array.isValid()) {
         throw std::runtime_error("no room to hand the file to Downloads");
     }
-    env->SetByteArrayRegion(array, 0, static_cast<jsize>(bytes.size()),
+    env->SetByteArrayRegion(array.object<jbyteArray>(), 0, static_cast<jsize>(bytes.size()),
         reinterpret_cast<const jbyte*>(bytes.constData()));
     const jboolean saved = QJniObject::callStaticMethod<jboolean>(kDocuments, "saveToDownloads",
         "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;[B)Z",
         QNativeInterface::QAndroidApplication::context().object(),
-        jniString(fileName).object<jstring>(), jniString(mime).object<jstring>(), array);
-    env->DeleteLocalRef(array);
+        jniString(fileName).object<jstring>(), jniString(mime).object<jstring>(),
+        array.object<jbyteArray>());
     if (!saved) {
         throw std::runtime_error("Downloads did not take the file");
     }

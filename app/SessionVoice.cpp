@@ -49,7 +49,7 @@ using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
 
-VoiceNote* SessionController::voiceNote()
+VoiceNote& SessionController::voiceNote()
 {
     if (!voice_) {
         voice_ = std::make_unique<VoiceNote>();
@@ -91,7 +91,7 @@ VoiceNote* SessionController::voiceNote()
             }
         });
     }
-    return voice_.get();
+    return *voice_;
 }
 
 void SessionController::startVoiceRecording()
@@ -102,7 +102,7 @@ void SessionController::startVoiceRecording()
     discardVoiceTake();
     voiceError_.clear();
     try {
-        voiceNote()->startRecording();
+        voiceNote().startRecording();
     } catch (const std::exception& error) {
         voiceError_ = QString::fromUtf8(error.what());
         emit voiceChanged();
@@ -157,7 +157,7 @@ void SessionController::playVoiceTake()
     voiceTakePlaying_ = true;
     emit voiceChanged();
     try {
-        voiceNote()->play(Bytes(voiceTake_.begin(), voiceTake_.end()));
+        voiceNote().play(Bytes(voiceTake_.begin(), voiceTake_.end()));
         playbackTimer_.start();
     } catch (const std::exception& error) {
         voiceError_ = QString::fromUtf8(error.what());

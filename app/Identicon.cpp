@@ -6,6 +6,7 @@
 #include <qrencode.h>
 
 #include <algorithm>
+#include <memory>
 
 #include <QColor>
 #include <QCryptographicHash>
@@ -62,6 +63,10 @@ QImage IdenticonProvider::requestImage(
 }
 
 namespace {
+
+struct QrcodeFree {
+    void operator()(QRcode* const code) const { QRcode_free(code); }
+};
 
 // Cut here: a scene-graph mask is a shader effect, which the software renderer does not draw.
 QImage circled(const QImage& square)
@@ -132,7 +137,8 @@ QImage QrImageProvider::requestImage(
 
     const QString text = QUrl::fromPercentEncoding(id.toUtf8());
     const QByteArray utf8 = text.toUtf8();
-    QRcode* const qr = QRcode_encodeString8bit(utf8.constData(), 0, QR_ECLEVEL_M);
+    const std::unique_ptr<QRcode, QrcodeFree> qr(
+        QRcode_encodeString8bit(utf8.constData(), 0, QR_ECLEVEL_M));
     if (qr != nullptr) {
         const int quiet = 2;
         const int span = qr->width + 2 * quiet;
@@ -149,7 +155,6 @@ QImage QrImageProvider::requestImage(
             }
         }
         painter.end();
-        QRcode_free(qr);
     }
     if (size != nullptr) {
         *size = QSize(dim, dim);

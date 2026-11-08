@@ -102,7 +102,7 @@ TrayIcon::TrayIcon(AppController& app, QObject* const parent)
 void TrayIcon::attachWindow(QWindow* const window)
 {
     window_ = window;
-    if (window_ == nullptr) {
+    if (window_.isNull()) {
         return;
     }
     connect(window_, &QWindow::activeChanged, this, [this]() {
@@ -116,7 +116,7 @@ void TrayIcon::attachWindow(QWindow* const window)
 
 void TrayIcon::showWindow()
 {
-    if (window_ == nullptr) {
+    if (window_.isNull()) {
         return;
     }
     window_->setWindowStates(window_->windowStates() & ~Qt::WindowMinimized);
@@ -127,7 +127,7 @@ void TrayIcon::showWindow()
 
 void TrayIcon::toggleWindow()
 {
-    if (window_ == nullptr) {
+    if (window_.isNull()) {
         return;
     }
     const bool wasActive = window_->isActive()

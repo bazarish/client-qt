@@ -5,6 +5,7 @@
 #include <QIcon>
 #include <QMenu>
 #include <QObject>
+#include <QPointer>
 #include <QSystemTrayIcon>
 
 #include <optional>
@@ -49,7 +50,7 @@ private:
     QIcon idleIcon_;
     QIcon unreadIcon_;
     bool showingUnread_ = false;
-    QWindow* window_ = nullptr;
+    QPointer<QWindow> window_;
     QElapsedTimer sinceInactive_;
     std::optional<bool> bodyReadsMarkup_;
 };

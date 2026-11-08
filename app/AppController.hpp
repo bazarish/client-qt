@@ -68,9 +68,8 @@ class AppController : public QObject {
     Q_PROPERTY(QString ringingAccountName READ ringingAccountName NOTIFY ringingChanged)
     Q_PROPERTY(qreal ringLevel READ ringLevel NOTIFY ringLevelChanged)
 public:
-    explicit AppController(Translations& translations, QObject* parent = nullptr);
+    AppController(Translations& translations, Relay& relay, QObject* parent = nullptr);
 
-    void attach(Relay& relay);
     void detach();
     bool attached() const { return attached_; }
     bool coreClosing() const { return coreClosing_; }
@@ -260,7 +259,7 @@ private:
 
     AppCommands commands_;
     AppEvents events_;
-    Relay* relay_ = nullptr;
+    Relay& relay_;
     bool attached_ = false;
     bool coreClosing_ = false;
     bool answerWhenRinging_ = false;

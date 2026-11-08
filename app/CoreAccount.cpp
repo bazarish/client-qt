@@ -153,6 +153,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     : QObject(parent)
     , accountId_(accountId)
 {
+    // ownership: allowed - deleted on its own thread once that thread finishes.
     worker_ = new SessionWorker();
     worker_->moveToThread(&thread_);
     connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);

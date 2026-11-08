@@ -194,10 +194,10 @@ void CoreAccount::forwardMessage(
             if (media.isEmpty() && !saved.empty() && deviceFiles()->exists(saved)) {
                 const std::unique_ptr<bazarish::client::FileInput> input
                     = deviceFiles()->open(saved);
-                std::array<char, kPictureReadBytes> buffer{};
-                for (std::size_t got = input->read(buffer.data(), buffer.size()); got > 0;
-                    got = input->read(buffer.data(), buffer.size())) {
-                    media.append(buffer.data(), static_cast<qsizetype>(got));
+                std::array<unsigned char, kPictureReadBytes> buffer{};
+                for (std::size_t got = input->read(buffer); got > 0; got = input->read(buffer)) {
+                    media.append(reinterpret_cast<const char*>(buffer.data()),
+                        static_cast<qsizetype>(got));
                 }
             }
             if (media.isEmpty()) {

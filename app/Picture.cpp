@@ -20,14 +20,19 @@ constexpr int kMinJpegQuality = 45;
 constexpr double kEdgeStep = 0.75;
 constexpr int kMinImageEdge = 640;
 
-QByteArray encodedImage(QImage image, QString* const format)
+struct Encoded {
+    QByteArray bytes;
+    QString format;
+};
+
+Encoded encodedImage(QImage image)
 {
     if (image.width() > kMaxImageEdge || image.height() > kMaxImageEdge) {
         image = image.scaled(kMaxImageEdge, kMaxImageEdge, Qt::KeepAspectRatio,
             Qt::SmoothTransformation);
     }
     const bool transparent = image.hasAlphaChannel();
-    *format = transparent ? QStringLiteral("png") : QStringLiteral("jpg");
+    const QString format = transparent ? QStringLiteral("png") : QStringLiteral("jpg");
     int quality = kJpegQuality;
     for (;;) {
         QByteArray bytes;
@@ -39,7 +44,7 @@ QByteArray encodedImage(QImage image, QString* const format)
             return {};
         }
         if (bytes.size() <= static_cast<qsizetype>(bazarish::kMaxPictureBytes)) {
-            return bytes;
+            return {bytes, format};
         }
         if (!transparent && quality > kMinJpegQuality) {
             quality -= kQualityStep;
@@ -47,7 +52,7 @@ QByteArray encodedImage(QImage image, QString* const format)
         }
         const int edge = static_cast<int>(std::max(image.width(), image.height()) * kEdgeStep);
         if (edge < kMinImageEdge) {
-            return bytes;
+            return {bytes, format};
         }
         image = image.scaled(edge, edge, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     }
@@ -60,9 +65,10 @@ PreparedPicture preparePicture(const QImage& image, const QString& baseName)
     if (image.isNull()) {
         return {};
     }
-    QString format;
+    const Encoded encoded = encodedImage(image);
+    const QString& format = encoded.format;
     PreparedPicture prepared;
-    prepared.bytes = encodedImage(image, &format);
+    prepared.bytes = encoded.bytes;
     if (prepared.bytes.isEmpty()) {
         return {};
     }

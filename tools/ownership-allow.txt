@@ -1,0 +1,5 @@
+# Classes whose objects belong to a Qt parent: a pointer to one observes, Qt keeps it valid.
+CoreAccount
+SocketChannelEnd
+SessionController
+SessionWorker

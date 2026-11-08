@@ -716,7 +716,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
     pairing_ = true;
     pairNeedsCode_ = false;
     pairProgress_ = kProgressUnknown;
-    pairStatus_ = client::sharedI2pRouterIfRunning() == nullptr
+    pairStatus_ = !client::sharedI2pRouterIfRunning().has_value()
         ? tr("Starting the I2P router")
         : tr("Building your I2P tunnels");
     announcePairing();

@@ -20,6 +20,11 @@ namespace bazarish::app {
 
 namespace {
 
+struct MetaDestroy {
+    QMetaType type;
+    void operator()(void* const value) const { type.destroy(value); }
+};
+
 bool travels(const QMetaMethod& method)
 {
     return method.methodType() == QMetaMethod::Signal
@@ -36,15 +41,15 @@ public:
             peer_, [peer = peer_, frame]() { emit peer->received(frame); }, Qt::QueuedConnection);
     }
 
-    End* peer_ = nullptr;
+    QPointer<End> peer_;
 };
 
 InProcessChannel::InProcessChannel()
     : first_(std::make_unique<End>())
     , second_(std::make_unique<End>())
 {
-    first_->peer_ = second_.get();
-    second_->peer_ = first_.get();
+    first_->peer_ = QPointer<End>(second_.get());
+    second_->peer_ = QPointer<End>(first_.get());
 }
 
 InProcessChannel::~InProcessChannel() = default;
@@ -128,7 +133,8 @@ private:
                 key += frame.sliced(before);
             }
         }
-        relay_.post(scope_, frame, keyArgs == kNotLatched ? nullptr : &key);
+        relay_.post(scope_, frame,
+            keyArgs == kNotLatched ? std::nullopt : std::optional<QByteArray>(key));
     }
 
     Relay& relay_;
@@ -171,9 +177,10 @@ void Relay::replay()
     }
 }
 
-void Relay::post(const QString& scope, const QByteArray& frame, const QByteArray* const latchKey)
+void Relay::post(
+    const QString& scope, const QByteArray& frame, const std::optional<QByteArray>& latchKey)
 {
-    if (latchKey != nullptr) {
+    if (latchKey.has_value()) {
         const QByteArray key = scope.toUtf8() + '\0' + *latchKey;
         if (const auto was = latchedAt_.constFind(key); was != latchedAt_.cend()) {
             latched_.erase(was.value());
@@ -236,34 +243,27 @@ void Relay::deliver(const QByteArray& frame)
         return;
     }
     const QMetaMethod method = meta->method(index);
+    // Slot 0 is the return value, which a signal has none of.
     std::vector<void*> args(static_cast<std::size_t>(method.parameterCount()) + 1, nullptr);
-    const auto release = [&method, &args]() {
-        for (int at = 0; at < method.parameterCount(); ++at) {
-            if (void* const held = args[static_cast<std::size_t>(at) + 1]) {
-                method.parameterMetaType(at).destroy(held);
-            }
-        }
-    };
+    std::vector<std::unique_ptr<void, MetaDestroy>> values;
     for (int at = 0; at < method.parameterCount(); ++at) {
         const QMetaType type = method.parameterMetaType(at);
-        void* const held = type.create();
-        args[static_cast<std::size_t>(at) + 1] = held;
-        if (held == nullptr || !type.load(in, held)) {
-            release();
+        values.emplace_back(type.create(), MetaDestroy{type});
+        void* const value = values.back().get();
+        args[static_cast<std::size_t>(at) + 1] = value;
+        if (value == nullptr || !type.load(in, value)) {
             emit broken(
                 QStringLiteral("a frame for %1 does not read").arg(QString::fromLatin1(signature)));
             return;
         }
     }
     if (in.status() != QDataStream::Ok || !in.atEnd()) {
-        release();
         emit broken(
             QStringLiteral("a frame for %1 does not read").arg(QString::fromLatin1(signature)));
         return;
     }
     QMetaObject::activate(target, method.enclosingMetaObject(), method.relativeMethodIndex(),
         args.data());
-    release();
 }
 
 }  // namespace bazarish::app
