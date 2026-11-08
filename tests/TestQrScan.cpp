@@ -3,6 +3,7 @@
 #include "TestUtil.hpp"
 
 #include <bazarish/Descriptor.hpp>
+#include <bazarish/KeyedSeal.hpp>
 
 #include <qrencode.h>
 
@@ -64,7 +65,8 @@ int main(int argc, char** argv)
     QCoreApplication app(argc, argv);
     const bazarish::Descriptor descriptor{
         "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq",
-        "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p", "anna"};
+        "dlkbeyqjykssca6o7qlbwgq4fr2hry7kw2ursn2sh3lt3acox6gq.b32.i2p", bazarish::newLinkKey(),
+        "anna"};
     const std::string uri = bazarish::encodeDescriptor(descriptor);
     const QString expected = QString::fromStdString(uri);
 
