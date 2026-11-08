@@ -3,6 +3,7 @@
 
 #include <QHash>
 #include <QObject>
+#include <QReadWriteLock>
 #include <QString>
 #include <QTranslator>
 #include <QVariantList>
@@ -21,7 +22,7 @@ public:
         int n) const override;
     bool isEmpty() const override { return false; }
 
-    QString language() const { return language_; }
+    QString language() const;
     void setLanguage(const QString& code);
 
     QVariantList languages() const { return languages_; }
@@ -39,6 +40,8 @@ private:
 
     QVariantList languages_;
     QHash<QString, Entry> messages_;
+    // tr() reads it on any thread, the settings page writes it on the GUI thread.
+    mutable QReadWriteLock languageLock_;
     QString language_;
 };
 

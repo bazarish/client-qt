@@ -91,6 +91,7 @@ CoreHost::CoreHost(QObject* const parent)
     : QObject(parent)
     , manager_(std::make_unique<client::AccountManager>(accountsRoot()))
 {
+    manager_->discardInterruptedImports();
     connect(&ringtone_, &Ringtone::levelChanged, &events_, &AppEvents::ringLevel);
     connect(&i2p_, &I2pService::tunnelsNeedRebuild, this, &CoreHost::rebuildI2pLinks);
     connect(&log_, &OperationLog::changed, &events_, &AppEvents::opChanged);

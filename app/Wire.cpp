@@ -11,6 +11,7 @@
 #include <QMetaObject>
 #include <QMetaType>
 
+#include <vector>
 #include <algorithm>
 #include <stdexcept>
 #include <string>
@@ -158,11 +159,15 @@ void Relay::detach()
 
 void Relay::replay()
 {
-    if (channel_ == nullptr) {
-        return;
-    }
+    std::vector<QByteArray> frames;
     for (const auto& [seq, entry] : latched_) {
-        channel_->send(entry.frame);
+        frames.push_back(entry.frame);
+    }
+    for (const QByteArray& frame : frames) {
+        if (channel_ == nullptr) {
+            return;
+        }
+        channel_->send(frame);
     }
 }
 

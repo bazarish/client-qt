@@ -29,6 +29,8 @@ namespace {
 constexpr int kSettleMs = 5000;
 constexpr qsizetype kLargeFrameBytes = 1024 * 1024;
 constexpr quint32 kTooLongFrameBytes = 16 * 1024 * 1024 + 1;
+constexpr qsizetype kStalledFrameBytes = 15 * 1024 * 1024;
+constexpr qint64 kQueueLimitBytes = 64 * 1024 * 1024;
 
 void settleUntil(const std::function<bool()>& done)
 {
@@ -129,6 +131,24 @@ int main(int argc, char** argv)
         settleUntil([&]() { return closed; });
         CHECK(closed);
         CHECK(frames == 0);
+        delete pair.client;
+    }
+
+    {
+        // A stalled window is let go, never from inside send.
+        const Pair pair = connectPair(server);
+        SocketChannelEnd core(pair.served);
+        bool closed = false;
+        QObject::connect(&core, &SocketChannelEnd::closed, [&closed]() { closed = true; });
+        const QByteArray frame(kStalledFrameBytes, 's');
+        qint64 sent = 0;
+        while (sent <= kQueueLimitBytes) {
+            core.send(frame);
+            sent += frame.size();
+            CHECK(!closed);
+        }
+        settleUntil([&]() { return closed; });
+        CHECK(closed);
         delete pair.client;
     }
 

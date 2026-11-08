@@ -107,18 +107,28 @@ void Translations::setLanguage(const QString& code)
     if (!known) {
         wanted = kSourceLanguage;
     }
-    if (language_ == wanted) {
-        return;
+    {
+        const QWriteLocker lock(&languageLock_);
+        if (language_ == wanted) {
+            return;
+        }
+        language_ = wanted;
     }
-    language_ = wanted;
     emit languageChanged();
+}
+
+QString Translations::language() const
+{
+    const QReadLocker lock(&languageLock_);
+    return language_;
 }
 
 bool Translations::rightToLeft() const
 {
+    const QString current = language();
     for (const QVariant& language : languages_) {
         const QVariantMap entry = language.toMap();
-        if (entry.value(QStringLiteral("code")).toString() == language_) {
+        if (entry.value(QStringLiteral("code")).toString() == current) {
             return entry.value(QStringLiteral("rtl")).toBool();
         }
     }
@@ -129,14 +139,15 @@ QString Translations::translate(const char* const context, const char* const sou
     const char* const disambiguation, int) const
 {
     Q_UNUSED(context);
-    if (language_ == kSourceLanguage) {
+    const QString current = language();
+    if (current == kSourceLanguage) {
         return {};
     }
     const auto found = messages_.constFind(keyFor(sourceText, disambiguation));
     if (found == messages_.constEnd()) {
         return {};
     }
-    return found->byLanguage.value(language_);
+    return found->byLanguage.value(current);
 }
 
 }  // namespace bazarish::app

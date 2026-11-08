@@ -829,9 +829,10 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         emit actionFailed(tr("no account is open"));
         return;
     }
+    const std::string progressOwner = session_->destinationOwner();
     try {
         emit connectProgress(5, tr("Preparing"));
-        bazarish::client::setConnectProgressSink(
+        bazarish::client::setConnectProgressSink(progressOwner,
             [this](const int percent, const std::string& text) {
                 emit connectProgress(percent, coreText(QString::fromStdString(text)));
             });
@@ -865,7 +866,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         // Registering publishes this account's card, which a switched-off account must not do.
         if (session_->switchedOff()) {
             startReceiving();
-            bazarish::client::setConnectProgressSink({});
+            bazarish::client::setConnectProgressSink(progressOwner, {});
             emit actionFailed(tr("this account is switched off: the server connection is saved, "
                                  "switch the account on to connect"));
             return;
@@ -880,7 +881,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         session_->registerAccount();
     } catch (const std::exception& e) {
         startReceiving();
-        bazarish::client::setConnectProgressSink({});
+        bazarish::client::setConnectProgressSink(progressOwner, {});
         const QString reason = QString::fromUtf8(e.what());
         emit connectionChanged(false, reason);
         try {
@@ -900,7 +901,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         return;
     }
     emit connectProgress(100, tr("Connected"));
-    bazarish::client::setConnectProgressSink({});
+    bazarish::client::setConnectProgressSink(progressOwner, {});
     emit connectionChanged(true, "active");
     if (session_->aliasServicingDue()) {
         startAliasErrand(/*byHand=*/false);

@@ -96,7 +96,7 @@ int main(int argc, char** argv)
     const qint64 oneReadNs = oneRead.nsecsElapsed();
 
     QString seen;
-    QObject::connect(&scanner, &bazarish::app::QrScanner::decoded,
+    QObject::connect(&scanner, &bazarish::app::QrScanner::decoded, &scanner,
         [&seen](const QString& text) { seen = text; });
     QElapsedTimer handing;
     handing.start();

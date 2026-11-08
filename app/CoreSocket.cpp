@@ -52,17 +52,18 @@ void SocketChannelEnd::send(const QByteArray& frame)
     }
     QByteArray length(kLengthBytes, '\0');
     qToBigEndian(static_cast<quint32>(frame.size()), length.data());
+    // Closed later, never inside send: closing tells the relay, which may be mid-send itself.
     if (socket_->write(length + frame) < 0) {
         bazarish::log::warn("wire: the socket refused a frame: {}",
             socket_->errorString().toStdString());
-        close();
+        QMetaObject::invokeMethod(this, &SocketChannelEnd::close, Qt::QueuedConnection);
         return;
     }
     // Android halts the window's event loop in the background; a queued frame would wait for it.
     (void)socket_->flush();
     if (socket_->bytesToWrite() > kMaxQueuedBytes) {
         bazarish::log::warn("wire: the other end stopped reading; letting it go");
-        close();
+        QMetaObject::invokeMethod(this, &SocketChannelEnd::close, Qt::QueuedConnection);
     }
 }
 
