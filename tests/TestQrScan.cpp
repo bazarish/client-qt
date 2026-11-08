@@ -4,6 +4,7 @@
 
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/KeyedSeal.hpp>
+#include <bazarish/Portal.hpp>
 
 #include <qrencode.h>
 
@@ -60,6 +61,8 @@ QImage renderQr(const std::string& payload, const int modulePixels)
 
 }  // namespace
 
+constexpr std::size_t kNonceHexChars = 32;
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -73,6 +76,11 @@ int main(int argc, char** argv)
     bazarish::app::QrScanner scanner;
     CHECK(scanner.read(renderQr(uri, kCloseModulePixels)) == expected);
     CHECK(scanner.read(renderQr(uri, kFarModulePixels)) == expected);
+    const std::string signAt = bazarish::service::withLoginKey(
+        "bazarish://sign?at=" + descriptor.dest + "/login/c/" + std::string(kNonceHexChars, 'f'),
+        bazarish::newLinkKey());
+    CHECK(scanner.read(renderQr(signAt, kCloseModulePixels)) == QString::fromStdString(signAt));
+    CHECK(scanner.read(renderQr(signAt, kFarModulePixels)) == QString::fromStdString(signAt));
 
     QImage blank(320, 320, QImage::Format_Grayscale8);
     blank.fill(kWhite);

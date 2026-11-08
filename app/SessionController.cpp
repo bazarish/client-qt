@@ -1420,7 +1420,10 @@ QVariantMap SessionController::describeLoginChallenge(const QString& challenge) 
         described["role"] = QString::fromStdString(consumer.role);
         const std::optional<bazarish::service::LoginCallback> callback
             = bazarish::service::readLoginCallback(challenge.trimmed().toStdString());
-        described["callback"] = callback
+        // Without the link's key the signature cannot be sealed for sending, only copied.
+        const bool sealable
+            = bazarish::service::splitLoginKey(challenge.trimmed().toStdString()).key.has_value();
+        described["callback"] = callback && sealable
             ? QString::fromStdString(callback->host + callback->path)
             : QString();
         described["expiresAt"] = static_cast<double>(
