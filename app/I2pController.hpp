@@ -14,7 +14,6 @@ class Relay;
 
 class I2pController : public QObject {
     Q_OBJECT
-    // libi2pd's own logging. OFF by default (fully suppressed); a debugging aid.
     Q_PROPERTY(bool loggingEnabled READ loggingEnabled WRITE setLoggingEnabled NOTIFY loggingChanged)
     Q_PROPERTY(int privacyLevel READ privacyLevel WRITE setPrivacyLevel NOTIFY privacyLevelChanged)
     Q_PROPERTY(bool running READ running NOTIFY statusChanged)

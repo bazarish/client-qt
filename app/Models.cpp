@@ -323,19 +323,16 @@ void ConversationModel::notifyRow(const int row, const QList<int>& roles)
     emit dataChanged(at, at, roles);
 }
 
-QVector<qint64> ConversationModel::markDeliveredThrough(qint64 uptoId)
+void ConversationModel::markDeliveredThrough(qint64 uptoId)
 {
-    QVector<qint64> changed;
     for (int i = 0; i < messages_.size(); ++i) {
         StoredMessage& m = messages_[i];
         if (m.outgoing && m.id <= uptoId && m.status == DeliveryStatus::AtRecipientServer) {
             m.status = DeliveryStatus::Delivered;
             const QModelIndex idx = index(i);
             emit dataChanged(idx, idx, {StatusRole});
-            changed.push_back(m.id);
         }
     }
-    return changed;
 }
 
 bool ConversationModel::newestIncomingThrough(

@@ -4985,12 +4985,6 @@
       "zh": "此账户创建为群组",
       "ar": "أُنشئ هذا الحساب كمجموعة"
     },
-    "This account was made by an earlier version of Bazarish and cannot be opened": {
-      "ru": "Этот аккаунт создан ранней версией Bazarish и не открывается",
-      "es": "Esta cuenta se creó con una versión anterior de Bazarish y no se puede abrir",
-      "zh": "此账户由早期版本的 Bazarish 创建，无法打开",
-      "ar": "أُنشئ هذا الحساب بإصدار سابق من Bazarish ولا يمكن فتحه"
-    },
     "bot": {
       "ru": "бот",
       "es": "bot",

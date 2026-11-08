@@ -91,7 +91,6 @@ QString noteForFetchStage(const bazarish::client::FetchStage stage)
     throw std::logic_error("no note for this contact-card fetch stage");
 }
 
-// What the add is doing, alone or with the network stage it is in.
 QString noteForCardStep(const bazarish::client::Session::CardStep step, const QString& alias,
     const QString& fetchStage)
 {
@@ -634,13 +633,8 @@ void SessionWorker::openAccount(
     const QString& dir, const QString& passphrase, const bool startOnline)
 {
     try {
-        const std::optional<bazarish::AccountKind> kind
-            = Session::storedKind(toPath(dir), passphrase.toStdString());
-        if (!kind.has_value()) {
-            emit openFailed(tr("This account was made by an earlier version of Bazarish and cannot be opened"));
-            return;
-        }
-        if (*kind != bazarish::AccountKind::eUser) {
+        if (Session::storedKind(toPath(dir), passphrase.toStdString())
+            != bazarish::AccountKind::eUser) {
             emit openFailed(tr("This account was created as a bot or a group and cannot be opened here"));
             return;
         }
@@ -1115,8 +1109,8 @@ void SessionWorker::flushCallLog()
         return;
     }
     for (const Session::CompletedCall& call : session_->takeCallLog()) {
-        emit callLogged(QString::fromStdString(call.peer), call.incoming,
-            static_cast<int>(call.outcome), static_cast<qint64>(call.durationSec));
+        emit callLogged(
+            QString::fromStdString(call.peer), call.incoming, static_cast<int>(call.outcome));
     }
 }
 
@@ -1284,8 +1278,8 @@ void SessionWorker::sendCallback(
     const QString& opId, const QString& peer, const QString& data, const QString& ref)
 {
     try {
-        openSession().sendCallback(peer.toStdString(), data.toStdString(), ref.toStdString());
-        emit botActionDone(opId, true, {});
+        openSession().sendCallback(
+            peer.toStdString(), data.toStdString(), ref.toStdString(), botActionWatch(opId));
     } catch (const std::exception& e) {
         emit botActionDone(opId, false, QString::fromUtf8(e.what()));
     }
@@ -1295,8 +1289,8 @@ void SessionWorker::sendCommand(
     const QString& opId, const QString& peer, const QString& command, const QString& args)
 {
     try {
-        openSession().sendCommand(peer.toStdString(), command.toStdString(), args.toStdString());
-        emit botActionDone(opId, true, {});
+        openSession().sendCommand(peer.toStdString(), command.toStdString(), args.toStdString(),
+            {}, botActionWatch(opId));
     } catch (const std::exception& e) {
         emit botActionDone(opId, false, QString::fromUtf8(e.what()));
     }
@@ -1501,8 +1495,8 @@ void SessionWorker::drainResolvedAdds()
             emit contactAddStage(
                 entry.opId, encodeSystemNote(QT_TR_NOOP("Sending the contact request…")));
             if (resending) {
-                session_->sendContactRequest(resolved.fingerprint, resolved.requestId,
-                    resolved.introText, watch, /*waitForOutcome=*/false);
+                session_->sendContactRequest(
+                    resolved.fingerprint, resolved.requestId, resolved.introText, watch);
             } else {
                 session_->commitContactAdd(resolved, watch);
                 emitContacts();
@@ -1517,6 +1511,21 @@ void SessionWorker::drainResolvedAdds()
             emit actionFailed(QString::fromUtf8(e.what()));
         }
     }
+}
+
+bazarish::client::DeliveryWatch SessionWorker::botActionWatch(const QString& opId)
+{
+    bazarish::client::DeliveryWatch watch;
+    watch.onOutcome = [this, opId](const bazarish::client::OutboundCourier::Outcome& outcome) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, opId, outcome]() {
+                emit botActionDone(
+                    opId, outcome.stored, QString::fromStdString(outcome.errorMessage));
+            },
+            Qt::QueuedConnection);
+    };
+    return watch;
 }
 
 bazarish::client::DeliveryWatch SessionWorker::contactRequestWatch(const QString& opId,

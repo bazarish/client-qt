@@ -1,3 +1,0 @@
-# Sites where a catch legitimately reports nothing. Prefer an "error-hiding:
-# allowed - <reason>" comment inside the block: it travels with the code. This
-# file is for sites that cannot carry one.

@@ -40,7 +40,6 @@ const int kIncomingMessageMetaType = qRegisterMetaType<bazarish::client::Incomin
 
 constexpr int kReadSyncIdleMs = 4000;
 constexpr int kPresenceOrderSettleMs = 2000;
-// How often every chat is looked through for messages whose auto-delete time ran out.
 constexpr int kExpirySweepMs = 5 * 60 * 1000;
 // A reconnect this client asked for is not reported before this much of it.
 constexpr int kLinkRebuildGraceMs = 1500;
@@ -120,7 +119,7 @@ QString loginStageText(const client::FetchStage stage)
     throw std::logic_error("no words for this sign-in stage");
 }
 
-// A sign-in step reaches a site over I2P off the core thread; its stages and its end come back.
+// stage and done run on the application thread.
 template <typename Work, typename Stage, typename Done>
 void overI2p(Work work, Stage stage, Done done)
 {
@@ -342,6 +341,11 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::botActionDone, &log_,
         [this](const QString& id, const bool ok, const QString& error) {
             log_.finish(id, ok, ok ? tr("Sent") : error);
+            const auto pressed = keyPresses_.constFind(id);
+            if (pressed != keyPresses_.cend()) {
+                emit events_.botKeySettled(pressed.value(), ok);
+                keyPresses_.erase(pressed);
+            }
         });
     connect(worker_, &SessionWorker::actionFailed, &events_, &AccountEvents::actionFailed);
     connect(worker_, &SessionWorker::inviteReady, &events_, &AccountEvents::inviteReady);

@@ -14,7 +14,6 @@ import android.util.Log;
 
 import java.nio.ByteBuffer;
 
-// A voice note plays aloud; held to the ear it moves to the earpiece and the screen goes dark.
 public final class VoicePlayback implements SensorEventListener {
     private static final String TAG = "bazarish";
     // A voice note already plays privately on these, and the ear changes nothing.

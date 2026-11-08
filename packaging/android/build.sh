@@ -1,7 +1,6 @@
 #!/bin/bash
 # Bazarish project (c) 2026
-# The Android package from a checkout: the libraries, the client and a signed APK.
-# The toolchain is named by the environment, so CI and a workstation run this alike.
+# The toolchain comes from the environment, so CI and a workstation run this alike.
 set -eu -o pipefail
 
 readonly kJobs=${BAZARISH_JOBS:-4}

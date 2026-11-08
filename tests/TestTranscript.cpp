@@ -27,6 +27,10 @@
 using namespace bazarish;
 using namespace bazarish::app;
 
+namespace {
+constexpr int kWholeChat = 1000;
+}  // namespace
+
 int main(int argc, char** argv)
 {
     const QCoreApplication app(argc, argv);
@@ -83,7 +87,7 @@ int main(int argc, char** argv)
     {
         TranscriptStore store;
         CHECK(store.open(db, "pw"));
-        const QVector<StoredMessage> msgs = store.messagesFor("bob");
+        const QVector<StoredMessage> msgs = store.latestMessages("bob", kWholeChat);
         CHECK(msgs.size() == 1);
         CHECK(msgs[0].text == "secret-hello");
         CHECK(msgs[0].ts == 42);
@@ -96,7 +100,7 @@ int main(int argc, char** argv)
     {
         TranscriptStore store;
         CHECK(store.open(db, "pw"));
-        CHECK(store.messagesFor("bob").size() == 1);
+        CHECK(store.latestMessages("bob", kWholeChat).size() == 1);
     }
 
     {
@@ -178,7 +182,7 @@ int main(int argc, char** argv)
         onItsWay.status = 1;
         CHECK(store.append(onItsWay) > 0);
         CHECK(store.failUnsentOnLoad(0, 1, 4) == 4);
-        for (const StoredMessage& m : store.messagesFor("carol")) {
+        for (const StoredMessage& m : store.latestMessages("carol", kWholeChat)) {
             CHECK(m.status == (m.outgoing ? 4 : 0));
         }
     }
@@ -207,7 +211,7 @@ int main(int argc, char** argv)
             m.orderKey = e.orderKey;
             CHECK(store.append(m) > 0);
         }
-        const QVector<StoredMessage> ordered = store.messagesFor("dave");
+        const QVector<StoredMessage> ordered = store.latestMessages("dave", kWholeChat);
         CHECK(ordered.size() == 4);
         CHECK(ordered[0].text == "first");
         CHECK(ordered[1].text == "second");
@@ -357,7 +361,7 @@ int main(int argc, char** argv)
         }
 
         CHECK(store.pruneToLatest("alpha", 2) == 4);
-        const QVector<StoredMessage> kept = store.messagesFor("alpha");
+        const QVector<StoredMessage> kept = store.latestMessages("alpha", kWholeChat);
         CHECK(kept.size() == 2);
         QVector<qint64> keptIds;
         for (const StoredMessage& message : kept) {
@@ -366,7 +370,7 @@ int main(int argc, char** argv)
         std::sort(keptIds.begin(), keptIds.end());
         CHECK(keptIds.front() == a4);
         CHECK(keptIds.back() == a5);
-        CHECK(store.messagesFor("beta").size() == 2);
+        CHECK(store.latestMessages("beta", kWholeChat).size() == 2);
         {
             client::AccountDb account(file, "pw");
             CHECK(!account.has("picture:a1"));
@@ -378,7 +382,7 @@ int main(int argc, char** argv)
         CHECK(store.reactionsFor("alpha", "a5").size() == 1);
 
         CHECK(store.pruneToLatest("alpha", 100) == 0);
-        CHECK(store.messagesFor("alpha").size() == 2);
+        CHECK(store.latestMessages("alpha", kWholeChat).size() == 2);
 
         const qint64 beforeTrim = store.footprint().fileBytes;
         CHECK(store.pruneEveryChatToLatest(1) == 2);
@@ -389,8 +393,8 @@ int main(int argc, char** argv)
         }
         CHECK(store.footprint().fileBytes < beforeTrim);
         CHECK(store.footprint().freeBytes == 0);
-        CHECK(store.messagesFor("alpha").size() == 1);
-        CHECK(store.messagesFor("beta").size() == 1);
+        CHECK(store.latestMessages("alpha", kWholeChat).size() == 1);
+        CHECK(store.latestMessages("beta", kWholeChat).size() == 1);
         {
             client::AccountDb account(file, "pw");
             CHECK(!account.has("voice:b1"));
@@ -401,7 +405,7 @@ int main(int argc, char** argv)
             client::AccountDb account(file, "pw");
             account.put("picture:a5", keptPicture);
         }
-        const QVector<StoredMessage> alpha = store.messagesFor("alpha");
+        const QVector<StoredMessage> alpha = store.latestMessages("alpha", kWholeChat);
         CHECK(alpha.size() == 1);
         CHECK(alpha.front().e2eId == "a5");
         CHECK(store.removeById(alpha.front().id));
@@ -412,7 +416,7 @@ int main(int argc, char** argv)
         }
 
         CHECK(store.clearPeer("beta"));
-        CHECK(store.messagesFor("beta").isEmpty());
+        CHECK(store.latestMessages("beta", kWholeChat).isEmpty());
         {
             client::AccountDb account(file, "pw");
             CHECK(!account.has("voice:b2"));

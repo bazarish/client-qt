@@ -12,7 +12,6 @@ import android.os.PowerManager;
 
 import java.nio.ByteBuffer;
 
-// A call is spoken as a phone call: the voice stream, the earpiece unless the speaker is asked for.
 public final class CallAudio {
     private static final int[] kTalkingDevices = {
         AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
@@ -30,7 +29,7 @@ public final class CallAudio {
 
     private CallAudio() {}
 
-    // Everything that sounds during a call - its tones and its voice - shares one route.
+    // Everything that sounds during a call shares one route.
     private static synchronized void join() {
         AudioManager manager = Shade.app.getSystemService(AudioManager.class);
         if (users++ == 0) {
@@ -82,7 +81,7 @@ public final class CallAudio {
         throw new IllegalStateException("there is nothing to speak through");
     }
 
-    // Mono 16-bit speech, started; the usage decides where the platform routes it.
+    // The usage decides where the platform routes the track.
     static AudioTrack openTrack(int usage, int sampleRate, int frameBytes) {
         int least = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
             AudioFormat.ENCODING_PCM_16BIT);
@@ -139,8 +138,7 @@ public final class CallAudio {
         public Capture(int sampleRate, int frameBytes, boolean forCall) {
             int least = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
-            // A call needs the voice-communication source's echo canceller; its noise
-            // suppression would cut the quiet sounds out of a voice note.
+            // VOICE_COMMUNICATION cancels echo, but its noise suppression cuts a voice note's quiet sounds.
             int source = forCall ? MediaRecorder.AudioSource.VOICE_COMMUNICATION
                 : MediaRecorder.AudioSource.MIC;
             AudioRecord opened = new AudioRecord(source,

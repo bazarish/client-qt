@@ -127,19 +127,9 @@ QByteArray TranscriptReader::media(const QString& key) const
     return toQByteArray(core_->media(utf8(key)));
 }
 
-qint64 TranscriptReader::idForE2e(const QString& e2eId) const
-{
-    return core_->idForE2e(utf8(e2eId));
-}
-
 qint64 TranscriptReader::idForKey(const QString& peer, const QString& e2eId, const bool outgoing) const
 {
     return core_->idForKey(utf8(peer), utf8(e2eId), outgoing);
-}
-
-qint64 TranscriptReader::idForIncomingE2e(const QString& e2eId, const QString& peer) const
-{
-    return core_->idForIncomingE2e(utf8(e2eId), utf8(peer));
 }
 
 qint64 TranscriptReader::oldestOfType(
@@ -156,11 +146,6 @@ StoredMessage TranscriptReader::messageByE2e(const QString& e2eId, const QString
 StoredMessage TranscriptReader::messageById(const qint64 id) const
 {
     return toQt(core_->messageById(id));
-}
-
-QVector<StoredMessage> TranscriptReader::messagesFor(const QString& peer) const
-{
-    return toQt(core_->messagesFor(utf8(peer)));
 }
 
 QVector<StoredMessage> TranscriptReader::latestMessages(const QString& peer, const int limit) const

@@ -1,8 +1,6 @@
 #!/bin/sh
 # Bazarish project (c) 2026
-# A client with nothing to install beside it: musl, static Qt, static everything.
-# Runs inside Alpine; the sources arrive on /host and the result stays on /out,
-# so an interrupted run carries on where it stopped.
+# Runs inside Alpine: sources on /host, results on /out, so an interrupted run resumes.
 set -eu
 
 readonly kJobs=4
@@ -40,24 +38,20 @@ done_with() {
     touch "$kPrefix/.$1"
 }
 
-# Downloaded aside and moved into place, so an interrupted run never leaves a
-# half file that looks finished.
+# Downloaded aside, so an interrupted run leaves no half file that looks finished.
 fetch() {
     test -f "$kWork/$2" && return 0
     wget -q -O "$kWork/$2.part" "$1"
     mv "$kWork/$2.part" "$kWork/$2"
 }
 
-# The flags are the ones a portable static build needs: no shared objects, no
-# ucontext (musl has none that OpenSSL's async engine can use), and no reading of
-# a host openssl.cnf that belongs to a different build.
+# no-async: musl has no ucontext that OpenSSL's async engine can use.
 if step openssl; then
     fetch "https://github.com/openssl/openssl/releases/download/openssl-$kOpenSsl/openssl-$kOpenSsl.tar.gz" \
         "openssl-$kOpenSsl.tar.gz"
     cd "$kWork" && rm -rf "openssl-$kOpenSsl" && tar xf "openssl-$kOpenSsl.tar.gz"
     cd "openssl-$kOpenSsl"
-    # Everything under one libdir: on x86_64 OpenSSL would otherwise install into
-    # lib64, where nothing else here looks.
+    # --libdir=lib: on x86_64 OpenSSL would install into lib64, where nothing here looks.
     ./Configure "$kOpenSslTarget" no-shared no-async no-autoload-config no-docs \
         --prefix="$kPrefix" --openssldir="$kPrefix/ssl" --libdir=lib
     make -j"$kJobs"
@@ -106,10 +100,7 @@ if step sqlcipher; then
     done_with sqlcipher
 fi
 
-# Audio reaches the host's sound server over the PulseAudio protocol, which
-# PipeWire speaks as well. PulseAudio builds its client library shared only, so
-# the archive is made from the objects of that build. The paths stay the host's,
-# where the library looks for client.conf; its own messages are not translated.
+# PulseAudio builds its client library shared only: the archive is made from its objects.
 if step pulseaudio; then
     fetch "https://www.freedesktop.org/software/pulseaudio/releases/pulseaudio-$kPulseAudio.tar.xz" \
         "pulseaudio-$kPulseAudio.tar.xz"
@@ -135,12 +126,7 @@ EOF
     done_with pulseaudio
 fi
 
-# Qt takes longer than any one sitting, so each module keeps its source and its
-# build directory until it is installed: a build that was cut short carries on.
-# The distribution's harfbuzz is built against glib, which it then needs on the
-# link line, and of glib, libintl and pcre2 Alpine has no static library at all.
-# Qt asks harfbuzz for shaping and nothing else, so the dependency goes rather
-# than three more builds. The version matches the one Qt was compiled against.
+# Alpine's harfbuzz needs glib, which has no static library there; the version is Qt's own.
 if step harfbuzz; then
     fetch "https://github.com/harfbuzz/harfbuzz/releases/download/$kHarfbuzz/harfbuzz-$kHarfbuzz.tar.xz" \
         "harfbuzz-$kHarfbuzz.tar.xz"
@@ -156,8 +142,7 @@ if step harfbuzz; then
     done_with harfbuzz
 fi
 
-# The platform plugin calls into xcb-aux, which lives in xcb-util, and that one
-# Alpine ships shared only.
+# The platform plugin needs xcb-aux from xcb-util, which Alpine ships shared only.
 if step xcbutil; then
     fetch "https://xcb.freedesktop.org/dist/xcb-util-$kXcbUtil.tar.xz" \
         "xcb-util-$kXcbUtil.tar.xz"
@@ -170,8 +155,7 @@ if step xcbutil; then
     done_with xcbutil
 fi
 
-# Alpine ships these two shared only, and the xcb platform plugin needs both,
-# so they are built here like everything else the binary must carry.
+# Alpine ships these two shared only, and the xcb platform plugin needs both.
 if step x11; then
     fetch "https://www.x.org/releases/individual/lib/libXau-$kXau.tar.xz" "libXau-$kXau.tar.xz"
     cd "$kWork" && rm -rf "libXau-$kXau" && tar xf "libXau-$kXau.tar.xz"
@@ -231,8 +215,7 @@ qt_module() {
                 -system-libjpeg -fontconfig -xcb -openssl-linked \
                 -- -DOPENSSL_ROOT_DIR="$kPrefix" -DCMAKE_PREFIX_PATH="$kPrefix"
         else
-            # glslang, bundled in qtshadertools, names uint32_t without including
-            # <cstdint>, which compiles only where another header drags it in.
+            # glslang in qtshadertools uses uint32_t without including <cstdint>.
             "$kQt/bin/qt-configure-module" "$source" -- \
                 -DCMAKE_PREFIX_PATH="$kPrefix" -DCMAKE_CXX_FLAGS="-include cstdint"
         fi
@@ -251,8 +234,7 @@ qt_module qtsvg
 
 if step app; then
     rm -rf /out/build
-    # The version is read from git, which answers only in a repository it trusts,
-    # and /host belongs to whoever mounted it.
+    # git reads the version only in a repository it trusts, and /host is another user's.
     git config --global --add safe.directory /host
     cmake -S /host -B /out/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_PROJECT_INCLUDE=/host/packaging/musl/static-only.cmake \

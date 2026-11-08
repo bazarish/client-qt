@@ -9,7 +9,6 @@ import java.lang.ref.WeakReference;
 
 import org.qtproject.qt.android.bindings.QtActivity;
 
-// The window: its process may end with it, the core goes on in its own.
 public class BazarishActivity extends QtActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {

@@ -10,9 +10,8 @@
 
 namespace bazarish::app {
 
-// These open an activity row of their own; every other command is shown only while it waits.
 inline const QSet<QByteArray> kSelfDescribingCommands = {
-    "requestOpen", "requestConnect", "requestShutdown", "requestSendText", "requestSendFile",
+    "requestConnect", "requestSendText", "requestSendFile",
     "requestSendPicture", "requestSendVoice", "requestSendCallback", "requestSendCommand",
     "requestAddByInvite", "requestAddByAlias", "requestAcceptContact", "requestInviteSig",
     "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
@@ -24,7 +23,6 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestSetAvatar", "requestClearAvatar",
 };
 
-// A request goes to the worker; the core answers every other command itself.
 inline bool listedWhileQueued(const QMetaMethod& command)
 {
     return command.methodType() == QMetaMethod::Signal && command.name().startsWith("request")
@@ -72,8 +70,8 @@ signals:
     void endCall();
     void sendCallback(
         const QString& peer, const QString& data, const QString& ref, const QString& label);
-    void sendCommand(
-        const QString& peer, const QString& command, const QString& args, const QString& label);
+    void sendCommand(const QString& peer, const QString& command, const QString& args,
+        const QString& label, const QString& keyRef);
     void saveAttachment(
         const QString& peer, const QString& e2eId, const QString& dest, qint64 token);
     void trim(const QString& peer, int keep);

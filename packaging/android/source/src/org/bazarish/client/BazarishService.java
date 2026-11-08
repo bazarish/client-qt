@@ -13,7 +13,6 @@ import java.lang.ref.WeakReference;
 
 import org.qtproject.qt.android.QtServiceBase;
 
-// The core: its own process, started by the window or at boot; only the system stops it.
 public class BazarishService extends QtServiceBase {
     private static final String ACTION_HIDDEN = "org.bazarish.client.PRESENCE_HIDDEN";
     private static final int OPEN_REQUEST = 0;

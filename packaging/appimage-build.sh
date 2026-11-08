@@ -1,11 +1,5 @@
 #!/bin/bash
-# Portable Bazarish AppImage, built against an upstream Qt 6.8 on the oldest base
-# that runs it, with everything the host would otherwise have to provide - Qt,
-# OpenSSL 3.5, SQLCipher - carried inside. A binary built here runs on its base and
-# on anything newer; the reverse is not true, which is why the base is the older
-# distribution and not the newer one. Qt's own binaries need glibc 2.28 on x86_64
-# and 2.38 on aarch64, so the base is Debian 12 (2.36) for the one and Ubuntu 24.04
-# (2.39) for the other.
+# Runs on its build base and newer: Debian 12 for x86_64, Ubuntu 24.04 for aarch64.
 set -eux
 export DEBIAN_FRONTEND=noninteractive
 export APPIMAGE_EXTRACT_AND_RUN=1
@@ -28,10 +22,7 @@ aarch64)
 esac
 
 apt-get update -qq
-# qt6-*-dev is installed for the system libraries Qt itself needs (X, GL,
-# fontconfig, audio); the build itself uses the Qt under /opt. The GStreamer
-# libraries are what Qt's own GStreamer media plugin links against; GStreamer 1.24
-# moved libgstphotography from the bad set to the good one.
+# qt6-*-dev only pulls in Qt's system libraries; GStreamer 1.24 moved gstphotography to -good.
 apt-get install -y -qq --no-install-recommends \
   build-essential cmake git ca-certificates wget file rsync patchelf python3-pip tcl \
   libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
@@ -52,9 +43,7 @@ if [ ! -x "$QTDIR/bin/qmake" ]; then
 fi
 test -x "$QTDIR/bin/qmake"
 
-# OpenSSL: 24.04 ships 3.0, which has no Argon2id (3.2+), and an account key is
-# Argon2id. Built and bundled here so the host's version does not decide whether
-# an account can be created at all.
+# The base's OpenSSL may predate Argon2id (3.2+), which an account key needs.
 OPENSSL_VERSION=3.5.7
 if [ ! -f /opt/openssl/lib/libcrypto.so.3 ]; then
     cd /work-openssl 2>/dev/null || { mkdir -p /work-openssl; cd /work-openssl; }
@@ -67,11 +56,7 @@ if [ ! -f /opt/openssl/lib/libcrypto.so.3 ]; then
 fi
 export LD_LIBRARY_PATH=/opt/openssl/lib:${LD_LIBRARY_PATH:-}
 
-# SQLCipher: this base ships 3.4.1, whose database format is not the one
-# SQLCipher 4 writes - an account made by any build with a 4.x library is simply
-# unreadable here, and the application can only report it as locked. Built from
-# source against the OpenSSL above so the account file means the same thing
-# wherever it was made.
+# The base's SQLCipher 3 cannot read an account a SQLCipher 4 build wrote.
 SQLCIPHER_VERSION=4.6.1
 if [ ! -f /opt/sqlcipher/lib/libsqlcipher.so ]; then
     cd /work-sqlcipher 2>/dev/null || { mkdir -p /work-sqlcipher; cd /work-sqlcipher; }
@@ -88,17 +73,13 @@ if [ ! -f /opt/sqlcipher/lib/libsqlcipher.so ]; then
 fi
 export LD_LIBRARY_PATH=/opt/sqlcipher/lib:${LD_LIBRARY_PATH}
 
-# --delete, and not only a copy: this directory outlives one build, and a source
-# file the repository no longer has must not stay behind in it.
-# The build directory and what is made from it are the receiver's own and are
-# excluded, which also protects them from the delete.
+# --delete drops files the repository no longer has; the excludes are the receiver's own.
 rsync -a --delete --exclude 'build' --exclude 'build-asan' --exclude 'build-appimage' \
     --exclude 'AppDir' /host/ /src/
 cd /src
 git config --global --add safe.directory '*'
 
-# -U clears any OpenSSL paths a previous configure cached: the root below is
-# only consulted when they are not already set.
+# -U drops cached OpenSSL paths, which OPENSSL_ROOT_DIR would not override.
 cmake -S . -B build-appimage -DCMAKE_BUILD_TYPE=Release -UOPENSSL_* -USQLCIPHER_* \
     -DCMAKE_PREFIX_PATH="$QTDIR" -DOPENSSL_ROOT_DIR=/opt/openssl \
     -DSQLCIPHER_LIBRARY=/opt/sqlcipher/lib/libsqlcipher.so \
@@ -120,9 +101,7 @@ Exec=bazarish-app
 Icon=bazarish
 Categories=Network;InstantMessaging;
 Terminal=false
-# What the window says it is (Qt reports the application name as the WM class):
-# a shell that maps windows to installed entries needs the two to match, and the
-# instance name it would otherwise use is the AppImage's file name.
+# Qt reports the application name as the WM class; a shell matches it to this entry.
 StartupWMClass=Bazarish
 DESKTOP
 
@@ -135,14 +114,7 @@ export QML_SOURCES_PATHS=/src/app/qml
 export QMAKE="$QTDIR/bin/qmake"
 export LD_LIBRARY_PATH="$QTDIR/lib:/opt/openssl/lib:${LD_LIBRARY_PATH:-}"
 export EXTRA_QT_MODULES="multimedia"
-# The C++ runtime is NOT bundled: this base has the oldest libstdc++ we support,
-# so every host that can run this image already has one at least as new. Carrying
-# it would put it ahead of the host's own on the library path, where the host's
-# graphics stack picks it up too - and Mesa built against a newer libstdc++ then
-# fails to load, which reads as "Could not initialize GLX" and no window at all.
-# libxcb-glx belongs to the host's graphics stack, not to this bundle: carried
-# along from an older base it is loaded next to the host's own libxcb, and GLX
-# then fails to initialize on a newer system ("Could not initialize GLX").
+# libxcb-glx belongs to the host's GL stack: an older bundled copy breaks GLX on a newer host.
 "./linuxdeploy-$kDeploy.AppImage" --appdir "$APPDIR" \
   -e "$APPDIR/usr/bin/bazarish-app" \
   -d "$APPDIR/usr/share/applications/bazarish.desktop" \

@@ -66,25 +66,6 @@
 
 namespace bazarish::app {
 
-struct ResolvedContactAddQueue {
-    std::mutex mutex;
-    struct Entry {
-        QString opId;
-        bazarish::client::Session::ContactCardResolved resolved;
-    };
-    std::vector<Entry> results;
-    std::vector<std::pair<QString, QString>> stages;
-};
-
-struct AliasErrandQueue {
-    std::mutex mutex;
-    std::vector<bazarish::client::Session::AliasErrandResult> results;
-};
-
-using bazarish::client::IncomingMessage;
-using bazarish::client::ServerEndpoint;
-using bazarish::client::Session;
-
 namespace {
 const QString kTimeOfDay = QStringLiteral("HH:mm");
 const QString kDayAndTime = QStringLiteral("dd.MM.yyyy HH:mm");
@@ -353,6 +334,7 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     });
     connect(&events_, &AccountEvents::facadeInfo, this, &SessionController::onFacadeInfo);
     connect(&events_, &AccountEvents::actionOk, this, &SessionController::actionOk);
+    connect(&events_, &AccountEvents::botKeySettled, this, &SessionController::botKeySettled);
     connect(&events_, &AccountEvents::actionFailed, this, [this](const QString& reason) {
         setAvatarBusy(false);
         if (connecting_) {
@@ -1262,10 +1244,10 @@ void SessionController::sendCallback(
 }
 
 void SessionController::sendCommand(
-    const QString& command, const QString& args, const QString& label)
+    const QString& command, const QString& args, const QString& label, const QString& keyRef)
 {
     if (!activePeer_.isEmpty() && !command.isEmpty()) {
-        emit commands_.sendCommand(activePeer_, command, args, label);
+        emit commands_.sendCommand(activePeer_, command, args, label, keyRef);
     }
 }
 
@@ -1972,34 +1954,8 @@ void SessionController::onApprovalState(const bool pending, const QString& note)
     emit approvalChanged();
 }
 
-void SessionController::resendText(qint64 localId, const QString& text, const QString& e2eId)
+void SessionController::resend(const qint64 localId)
 {
-    Q_UNUSED(text);
-    Q_UNUSED(e2eId);
-    if (!activePeer_.isEmpty()) {
-        emit commands_.resend(activePeer_, localId);
-    }
-}
-
-void SessionController::resendFile(qint64 localId, const QString& e2eId)
-{
-    Q_UNUSED(e2eId);
-    if (!activePeer_.isEmpty()) {
-        emit commands_.resend(activePeer_, localId);
-    }
-}
-
-void SessionController::resendVoice(qint64 localId, const QString& e2eId)
-{
-    Q_UNUSED(e2eId);
-    if (!activePeer_.isEmpty()) {
-        emit commands_.resend(activePeer_, localId);
-    }
-}
-
-void SessionController::resendPicture(qint64 localId, const QString& e2eId)
-{
-    Q_UNUSED(e2eId);
     if (!activePeer_.isEmpty()) {
         emit commands_.resend(activePeer_, localId);
     }

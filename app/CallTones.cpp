@@ -141,7 +141,7 @@ void CallTones::play(const double hz, const int onMs, const int offMs, const int
     }
     stop();
 #ifdef Q_OS_ANDROID
-    // A phone sounds the tones where the call will speak: the earpiece, or the speaker if chosen.
+    // On a phone the tones go where the call speaks: the earpiece, or the speaker if chosen.
     voice_ = std::make_unique<Voice>(hz, onMs, offMs, bursts);
     voice_->open(QIODevice::ReadOnly);
     phone_ = std::make_unique<AndroidCallSink>();

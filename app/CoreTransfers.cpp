@@ -64,16 +64,20 @@ void CoreAccount::sendCallback(
     const QString& peer, const QString& data, const QString& ref, const QString& label)
 {
     const QString opId = QStringLiteral("bot:") + ref + QStringLiteral(":") + data;
+    keyPresses_.insert(opId, ref);
     log_.begin(opId, QStringLiteral("bot"),
         (label.isEmpty() ? data : label) + QStringLiteral(" → ") + contacts_.peerName(peer),
         tr("Sending…"), peer);
     emit commands_.requestSendCallback(opId, peer, data, ref);
 }
 
-void CoreAccount::sendCommand(
-    const QString& peer, const QString& command, const QString& args, const QString& label)
+void CoreAccount::sendCommand(const QString& peer, const QString& command, const QString& args,
+    const QString& label, const QString& keyRef)
 {
-    const QString opId = QStringLiteral("bot-command:") + command;
+    const QString opId = QStringLiteral("bot-command:") + command + QStringLiteral(":") + keyRef;
+    if (!keyRef.isEmpty()) {
+        keyPresses_.insert(opId, keyRef);
+    }
     log_.begin(opId, QStringLiteral("bot"),
         (label.isEmpty() ? QStringLiteral("/") + command : label) + QStringLiteral(" → ")
             + contacts_.peerName(peer),

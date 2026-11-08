@@ -48,7 +48,7 @@ void Notifier::announce(const QString& accountId, const QString& peer, const QSt
     }
     emit announced(accountId, peer, title, body, reaction);
 #ifndef Q_OS_ANDROID
-    // On Android the notification channel sounds, under the phone's silent and do-not-disturb.
+    // On Android the notification channel makes the sound.
     if (reaction) {
         play(reactionSound_, sinceReactionSound_);
     } else {

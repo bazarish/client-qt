@@ -96,13 +96,10 @@ public:
     bool open(const QString& dbPath, const Bytes& key);
 
     QByteArray media(const QString& key) const;
-    qint64 idForE2e(const QString& e2eId) const;
     qint64 idForKey(const QString& peer, const QString& e2eId, bool outgoing) const;
-    qint64 idForIncomingE2e(const QString& e2eId, const QString& peer) const;
     qint64 oldestOfType(const QString& peer, const QString& type, bool outgoing) const;
     StoredMessage messageByE2e(const QString& e2eId, const QString& peer) const;
     StoredMessage messageById(qint64 id) const;
-    QVector<StoredMessage> messagesFor(const QString& peer) const;
     QVector<StoredMessage> latestMessages(const QString& peer, int limit) const;
     QVector<StoredMessage> olderMessages(const QString& peer, qint64 beforeId, int limit) const;
     QVector<StoredMessage> newerMessages(const QString& peer, qint64 afterId, int limit) const;
@@ -110,11 +107,11 @@ public:
     StoredMessage nextVoiceAfter(const QString& peer, qint64 afterId) const;
     StoredMessage pictureBeside(const QString& peer, qint64 id, bool later) const;
     bool hasMessagesBefore(const QString& peer, qint64 id) const;
-    // The chat's auto-delete timer in seconds, 0 when it has none.
+    // Seconds, 0 when the chat has none.
     qint64 chatTimer(const QString& peer) const;
-    // The peer's bot menu as {title, command} maps, empty when it has none.
+    // {title, command} maps, empty when the peer has none.
     QVariantList botMenu(const QString& peer) const;
-    // Messages whose time ran out by then, as (peer, id), oldest first.
+    // As (peer, id), oldest first.
     QVector<QPair<QString, qint64>> expiredBy(qint64 nowMs) const;
     bool hasMessagesAfter(const QString& peer, qint64 id) const;
     QVector<SearchHit> searchInPeer(const QString& peer, const QString& query) const;
@@ -126,7 +123,7 @@ public:
     };
     LastMessage lastMessage(const QString& peer) const;
     qint64 lastTime(const QString& peer) const;
-    // The order key of the newest row this side wrote in the chat, 0 when there is none.
+    // 0 when this side wrote nothing in the chat.
     qint64 newestOwnOrderKey(const QString& peer) const;
     QStringList conversationPeers() const;
     qint64 lastReadId(const QString& peer) const;

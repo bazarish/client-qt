@@ -132,6 +132,7 @@ signals:
     void servedFinished(const QString& peer, const QString& e2eId, bool ok, const QString& error);
     void downloadFinished(qint64 token, bool ok, const QString& error);
     void actionOk(const QString& info);
+    void botKeySettled(const QString& messageId, bool delivered);
     void actionFailed(const QString& error);
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
     void inviteReady(const QString& uri);
@@ -154,8 +155,7 @@ signals:
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void serverHello(const QString& reason, const QString& message, const QStringList& links);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
-        float outputLevel);
+        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
     void closed();
     void rowAdded(const QString& peer, qint64 id, bool own);
     void rowChanged(const QString& peer, qint64 id);

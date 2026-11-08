@@ -47,7 +47,7 @@ bool regional(const char32_t c) { return c >= kRegionalFirst && c <= kRegionalLa
 
 bool keycapBase(const char32_t c) { return (c >= '0' && c <= '9') || c == '#' || c == '*'; }
 
-// What only ever follows an emoji and changes how it looks, never how many there are.
+// Changes how an emoji looks, never how many there are.
 bool modifier(const char32_t c)
 {
     return c == kEmojiStyle || c == kTextStyle || c == kKeycap

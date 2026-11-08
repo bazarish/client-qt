@@ -46,10 +46,6 @@ constexpr int kVoiceTickMs = 50;
 constexpr std::array<double, 3> kVoiceSpeeds = {1.0, 1.5, 2.0};
 }  // namespace
 
-using bazarish::client::IncomingMessage;
-using bazarish::client::ServerEndpoint;
-using bazarish::client::Session;
-
 VoiceNote& SessionController::voiceNote()
 {
     if (!voice_) {

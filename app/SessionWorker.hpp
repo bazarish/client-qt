@@ -4,16 +4,10 @@
 #include "AccountEvents.hpp"
 #include "Session.hpp"
 #include "AccountDb.hpp"
-#include "TranscriptStore.hpp"
-#include "CallTones.hpp"
 #include "I2pRouter.hpp"
 
 #include <QObject>
-#include <QSortFilterProxyModel>
-#include <QSet>
 #include <QString>
-#include <QThread>
-#include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -22,7 +16,6 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
-#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -143,7 +136,7 @@ public slots:
     void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
-    // An operation the activity panel shows; a failure is also reported as a failed action.
+    // A failure is also reported as a failed action.
     void runOp(const QString& id, const QString& kind, const QString& title,
         const QString& status, const std::function<QString()>& work);
     void emitAliasHoldings();
@@ -231,7 +224,7 @@ signals:
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
         float outputLevel);
-    void callLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
+    void callLogged(const QString& peer, bool incoming, int outcome);
 
 private:
     QString beginOp(const QString& title, const QString& status);
@@ -249,6 +242,7 @@ private:
         const QString& opId, const QString& requestId = {});
     void resumePendingAdds();
     bool addsResumed_ = false;
+    bazarish::client::DeliveryWatch botActionWatch(const QString& opId);
     bazarish::client::DeliveryWatch contactRequestWatch(const QString& opId,
         const QString& fingerprint, const QString& intro, const QString& requestId,
         bool recordedHere);

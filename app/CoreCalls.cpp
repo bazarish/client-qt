@@ -31,8 +31,8 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
     if (!callId.isEmpty() && callId != refusedCallId_) {
         refusedCallId_.clear();
     }
-    emit events_.callStateChanged(state, peer, callId, muted, stage, peerRinging, connectedAtMs,
-        inputLevel, outputLevel);
+    emit events_.callStateChanged(
+        state, peer, callId, muted, stage, connectedAtMs, inputLevel, outputLevel);
     if (call_.state == name && call_.peer == peer && call_.id == callId && call_.stage == stage
         && call_.connectedAtMs == connectedAtMs) {
         return;
@@ -80,10 +80,8 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
     }
 }
 
-void CoreAccount::onCallLogged(
-    const QString& peer, const bool incoming, const int outcome, const qint64 durationSec)
+void CoreAccount::onCallLogged(const QString& peer, const bool incoming, const int outcome)
 {
-    Q_UNUSED(durationSec);
     if (peer.isEmpty()) {
         return;
     }

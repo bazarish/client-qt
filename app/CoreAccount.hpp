@@ -63,7 +63,6 @@ public:
     void setPresenceFocused(bool focused);
     void replayOperations();
     void beginShutdown();
-    void shutdown();
 
 signals:
     void changed();
@@ -75,6 +74,7 @@ private slots:
     void noteCommandQueued();
 
 private:
+    void shutdown();
     void onCommandFinished();
     void showSlowCommands();
     void close();
@@ -170,7 +170,7 @@ private:
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
         float outputLevel);
-    void onCallLogged(const QString& peer, bool incoming, int outcome, qint64 durationSec);
+    void onCallLogged(const QString& peer, bool incoming, int outcome);
     void declineCall();
     void endCall();
     void onConnectRequested();
@@ -181,8 +181,8 @@ private:
     void settleConnect(bool connected, const QString& note);
     void sendCallback(
         const QString& peer, const QString& data, const QString& ref, const QString& label);
-    void sendCommand(
-        const QString& peer, const QString& command, const QString& args, const QString& label);
+    void sendCommand(const QString& peer, const QString& command, const QString& args,
+        const QString& label, const QString& keyRef);
     void saveAttachment(
         const QString& peer, const QString& e2eId, const QString& dest, qint64 token);
     void onTransferStage(const QString& peer, const QString& e2eId, const QString& stage);
@@ -251,6 +251,8 @@ private:
     };
     QHash<QString, ContactProgressRow> contactProgressRows_;
     QHash<QString, QString> aliasChats_;
+    // A bot action started from a message's keyboard, by op id: the message it came from.
+    QHash<QString, QString> keyPresses_;
     QHash<QString, PendingContactRequest> refusedRequests_;
     QSet<QString> agreeingShown_;
     struct CallView {

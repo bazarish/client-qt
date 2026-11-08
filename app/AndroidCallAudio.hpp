@@ -34,7 +34,7 @@ private:
     std::atomic<bool> running_ = false;
 };
 
-// A voice note: the same microphone without the call's processing, which cuts quiet sounds.
+// Not the call's source: its processing cuts quiet sounds.
 class AndroidVoiceSource : public AndroidCallSource {
 public:
     AndroidVoiceSource();
@@ -63,7 +63,6 @@ private:
     std::atomic<bool> running_ = false;
 };
 
-// A voice note: aloud, and through the earpiece while the phone is at the ear.
 class AndroidVoiceSink : public AndroidCallSink {
 public:
     AndroidVoiceSink();

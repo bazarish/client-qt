@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-// The core's side of Android: the shade, the notices and the ring, all in the :core process.
 public final class Shade {
     static final String CHANNEL_PRESENCE = "status";
     static final String CHANNEL_MESSAGES = "messages";
@@ -238,8 +237,7 @@ public final class Shade {
         vibrateForRinging();
     }
 
-    // Rung as a ringtone: the phone's own setting for vibrating on calls, and its ringer
-    // mode, decide whether this is felt.
+    // Ringtone usage: the phone's call vibration setting and ringer mode decide.
     private static void vibrateForRinging() {
         Vibrator vibrator = app.getSystemService(VibratorManager.class).getDefaultVibrator();
         if (!vibrator.hasVibrator()) {

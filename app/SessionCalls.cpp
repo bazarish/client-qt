@@ -65,10 +65,9 @@ void SessionController::setCallMuted(const bool muted)
 }
 
 void SessionController::onCallStateChanged(const int state, const QString& peer,
-    const QString& callId, const bool muted, const QString& stage, const bool peerRinging,
-    const qint64 connectedAtMs, const float inputLevel, const float outputLevel)
+    const QString& callId, const bool muted, const QString& stage, const qint64 connectedAtMs,
+    const float inputLevel, const float outputLevel)
 {
-    Q_UNUSED(peerRinging);
     if (!qFuzzyCompare(static_cast<qreal>(callInputLevel_), static_cast<qreal>(inputLevel))
         || !qFuzzyCompare(static_cast<qreal>(callOutputLevel_), static_cast<qreal>(outputLevel))) {
         callInputLevel_ = inputLevel;

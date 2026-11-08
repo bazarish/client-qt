@@ -34,7 +34,7 @@ void followTilt(const bool on)
 #endif
 }
 
-// What the shot still has to turn so that up in the room is up in it, clockwise.
+// Degrees clockwise.
 int turnToUpright()
 {
 #ifdef Q_OS_ANDROID

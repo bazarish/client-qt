@@ -1,8 +1,6 @@
 #!/bin/bash
 # Bazarish project (c) 2026
-# The portable Windows folder: the binary, what Qt needs beside it, and every
-# library the two of them import. Nothing is resolved through MSYS2 at run time,
-# so the folder runs on a machine that has never seen it.
+# Nothing is resolved through MSYS2 at run time.
 set -eu
 
 readonly kOut=${1:?usage: windows-portable.sh <folder> [build dir]}
@@ -19,10 +17,7 @@ cp "$kBuild/$kBinary" "$kOut/"
 
 windeployqt6 --qmldir app/qml --compiler-runtime "$kOut/$kBinary"
 
-# windeployqt brings Qt and its plugins; the rest of the closure - OpenSSL,
-# SQLCipher, Opus, qrencode, Boost, the toolchain runtime - is walked here. A
-# library copied in brings imports of its own, so this runs until a round adds
-# nothing.
+# A copied library brings imports of its own: repeat until a round adds nothing.
 while :; do
     added=0
     while read -r name; do

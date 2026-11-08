@@ -14,7 +14,6 @@ import android.util.Log;
 
 import java.io.OutputStream;
 
-// A document the user picked is a content:// address that only its provider can open.
 public final class Documents {
     private static final String TAG = "bazarish";
 

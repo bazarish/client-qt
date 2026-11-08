@@ -107,14 +107,14 @@ int main(int argc, char** argv)
 
     CHECK(took(ours(kBob, "text", "o1", "from my other device")));
     CHECK(saw({"added"}));
-    const qint64 o1 = store.idForE2e("o1");
+    const qint64 o1 = store.idForKey(kBob, "o1", true);
     CHECK(store.messageById(o1).status == DeliveryStatus::AtRecipientServer);
 
     CHECK(took(incoming(kBob, "receipt", "r1", {}, "o2")));
     CHECK(saw({}));
     CHECK(took(ours(kBob, "text", "o2", "read before it arrived")));
     CHECK(saw({"delivered", "added"}));
-    CHECK(store.messageById(store.idForE2e("o2")).status == DeliveryStatus::Delivered);
+    CHECK(store.messageById(store.idForKey(kBob, "o2", true)).status == DeliveryStatus::Delivered);
 
     CHECK(took(incoming(kBob, "receipt", "r2", {}, "o1")));
     CHECK(saw({"delivered"}));

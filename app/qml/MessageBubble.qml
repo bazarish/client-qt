@@ -200,13 +200,18 @@ Item {
     readonly property string fullText: delegate.isAttachment
         ? (model.attName || "") : (model.text || "")
 
-    // Transient "waiting for the bot" state set when a keyboard button is
-    // tapped; cleared when the message's content changes (the reply edited it)
-    // or after a short fallback timeout, so a tap always visibly registers.
+    // Waiting for the bot after a keyboard tap: cleared by its edited reply or a failed delivery.
     property bool busy: false
     readonly property string contentKey: (model.text || "") + "" + (model.keyboard || "")
     onContentKeyChanged: delegate.busy = false
-    Timer { id: busyTimer; interval: 6000; onTriggered: delegate.busy = false }
+    Connections {
+        target: delegate.session
+        function onBotKeySettled(messageId, delivered) {
+            if (!delivered && messageId === delegate.msgE2eId) {
+                delegate.busy = false
+            }
+        }
+    }
     property bool pooled: false
     readonly property bool textSelecting: !!(delegate.ListView.view && delegate.ListView.view.selectingText)
     ListView.onPooled: {
@@ -220,7 +225,6 @@ Item {
         copiedBlock = false
         copiedBlockFor.stop()
         busy = false
-        busyTimer.stop()
     }
     ListView.onReused: {
         pooled = false
@@ -1042,13 +1046,12 @@ Item {
                                     opacity: delegate.busy ? 0.5 : 1.0
                                     onClicked: {
                                         delegate.busy = true
-                                        busyTimer.restart()
                                         if (modelData.data !== undefined)
                                             delegate.session.sendCallback(modelData.data,
                                                 delegate.msgE2eId, modelData.text)
                                         else if (modelData.command !== undefined)
                                             delegate.session.sendCommand(modelData.command, "",
-                                                modelData.text)
+                                                modelData.text, delegate.msgE2eId)
                                     }
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                                     background: Rectangle {
@@ -1220,18 +1223,7 @@ Item {
                     }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler {
-                        onTapped: {
-                            if (model.type === "text") {
-                                delegate.session.resendText(
-                                    model.msgId, model.text, model.e2eId)
-                            } else if (model.type === "audio") {
-                                delegate.session.resendVoice(model.msgId, model.e2eId)
-                            } else if (model.type === "image") {
-                                delegate.session.resendPicture(model.msgId, model.e2eId)
-                            } else {
-                                delegate.session.resendFile(model.msgId, model.e2eId)
-                            }
-                        }
+                        onTapped: delegate.session.resend(model.msgId)
                     }
                 }
             }

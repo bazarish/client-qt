@@ -37,7 +37,7 @@ const char* const kLogTag = "bazarish";
 constexpr int kLogChunkBytes = 1024;
 
 std::atomic<CoreHost*> gCore{nullptr};
-// Held from reading gCore to posting to it, and while it is cleared: a post never meets a dead core.
+// Held from reading gCore to posting to it, and while it is cleared.
 std::mutex gCoreMutex;
 
 QJniObject javaString(const QString& text)
@@ -45,7 +45,6 @@ QJniObject javaString(const QString& text)
     return QJniObject::fromString(text);
 }
 
-// The shade's buttons are pressed on Android's own thread; the core answers on its own.
 void inCoreThread(std::function<void(CoreHost&)> action)
 {
     if (!postIfHeld(gCoreMutex, gCore, std::move(action))) {
@@ -216,7 +215,6 @@ void AndroidShade::followRinging()
         talking_ = core_.callTalking();
         QJniObject::callStaticMethod<void>(kShade, "callTalking", "(Z)V", jboolean(talking_));
     }
-    // Dark at the ear only while the call screen is up, full screen, with the app in front.
     AndroidCallAudio::holdNearEar(talking_ && !core_.speakerOn() && core_.windowActive()
         && core_.callScreenShown());
     if (ringing && !callShown_ && !core_.windowActive()) {

@@ -44,8 +44,8 @@ private:
     std::unique_ptr<quirc, Destroy> decoder_;
     int width_ = 0;
     int height_ = 0;
-    // Frames arriving while one is read are let go at once, or the camera runs out of buffers.
     QThreadPool reading_;
+    // Frames arriving while one is read are let go at once, or the camera runs out of buffers.
     std::atomic<bool> busy_{false};
 };
 

@@ -32,7 +32,6 @@ import android.view.WindowManager;
 
 import java.lang.ref.WeakReference;
 
-// The window's side of Android: what only an activity can do, in the window's own process.
 public final class Window {
     private static final int ASK_NOTIFICATIONS = 1;
     static final int PICK_PICTURES = 2;

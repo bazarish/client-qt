@@ -9,13 +9,11 @@ namespace bazarish::app {
 bool isServiceMessage(const QString& type);
 
 QString encodeSystemNote(const QString& sourceText, const QStringList& args = {});
-// The placeholder for a type this version cannot show; the body is kept for one that can.
+// The body is kept for a version that can show the type.
 QString encodeUnsupportedMessage(const QString& type, const QString& keptBody);
 QString systemNoteText(const QString& stored);
 
-// An auto-delete timer as a note: its duration, or that there is none.
 QString chatTimerDurationNote(qint64 seconds);
-// The plate that says who set a chat's auto-delete timer, and to what.
 QString chatTimerNote(qint64 seconds, bool ours, const QString& peerName);
 QString chatClearedNote(bool ours, const QString& peerName);
 

@@ -18,7 +18,6 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "app" / "i18n" / "messages.json"
 SOURCE_LANGUAGE = "en"
 
-# Properties and calls that put text in front of a reader.
 QML_TEXT_PROPERTIES = (
     "text", "placeholderText", "placeholder", "title", "label", "description", "acceptText",
     "actionText", "rejectText", "cancelText", "caption", "reason", "failure", "unavailable",
@@ -26,11 +25,9 @@ QML_TEXT_PROPERTIES = (
 )
 QML_TEXT_CALLS = ("showError", "showToast")
 
-# Members and variables whose value is read out as prose later.
 CPP_TEXT_FIELDS = ("title", "status", "text", "summary", "connectPhase_", "status_", "preview",
     "pairStatus_")
 
-# Signals and helpers whose argument reaches the user as prose.
 CPP_TEXT_CALLS = (
     "actionFailed", "actionOk", "createFailed", "accountOpenFailed", "restartRequired",
     "writeConversationNote", "opDone", "opBegin", "sendResult", "contactAddDone", "openFailed",
@@ -40,9 +37,7 @@ CPP_TEXT_CALLS = (
 )
 
 STRING = r'"(?:[^"\\]|\\.)*"'
-# A sentence may be written as several literals joined over as many lines as it
-# needs; the catalog knows it as the one sentence they make.
-# QML joins with +, C++ by writing one literal after another.
+# A sentence may span several literals: QML joins them with +, C++ by adjacency.
 JOINED = STRING + r'(?:\s*\+?\s*' + STRING + r')*'
 TRANSLATED = re.compile(
     r'\b(?:qsTr|qsTranslate|tr|QT_TR_NOOP)\s*\(\s*(' + JOINED + r')\s*'
@@ -138,8 +133,7 @@ def line_of(text, index):
     return text.count("\n", 0, index) + 1
 
 
-# A value may run over several lines: the branches of a choice and the pieces of
-# a sentence are written under the property, not beside it.
+# Choice branches and sentence pieces continue on the lines under the property.
 CONTINUES = re.compile(r'^\s*[?:+.]')
 
 
@@ -185,7 +179,6 @@ def check_qml(path, text, problems):
     check_returns(path, text, problems, "qsTr()")
 
 
-# What a function hands back is read by whoever shows it.
 def check_returns(path, text, problems, call):
     for match in RETURNED.finditer(text):
         literal = match.group(1)

@@ -20,7 +20,7 @@ public:
     int revision() const { return revision_; }
 
     bool put(const QString& e2eId, const QByteArray& bytes);
-    // Brings back bytes the budget let go, without making every picture reload.
+    // Unlike put(), bumps no revision, so pictures already shown do not reload.
     bool restore(const QString& e2eId, const QByteArray& bytes);
 
     bool has(const QString& e2eId) const;

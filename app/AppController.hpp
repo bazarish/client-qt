@@ -273,7 +273,6 @@ private:
     OperationListModel operations_;
     QList<SessionController*> sessions_;
     QString activeId_;
-    // A link that arrived before any account was open waits for one.
     QString pendingLink_;
     std::pair<QString, QString> pendingConversation_;
     QString deletingId_;

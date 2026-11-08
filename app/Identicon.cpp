@@ -100,7 +100,6 @@ QImage AvatarProvider::requestImage(
 {
     const int dim = requestedSize.width() > 0 ? requestedSize.width() : 96;
     const QString fingerprint = id.section('?', 0, 0);
-    // The viewer shows the whole picture; a face in the interface is a circle.
     const bool round = id.section('?', 1).contains(QLatin1String("round=1"));
 
     const QImage stored = AvatarStore::instance().image(fingerprint);

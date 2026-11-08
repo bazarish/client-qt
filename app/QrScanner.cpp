@@ -13,8 +13,7 @@ namespace bazarish::app {
 
 namespace {
 
-// Measured: enough for an invite code held up to the lens, and quirc's cost
-// grows with the area.
+// Measured: reads an invite code held up to the lens; quirc's cost grows with the area.
 constexpr int kScanWidth = 800;
 
 }  // namespace

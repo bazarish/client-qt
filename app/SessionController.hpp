@@ -77,7 +77,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QString loginFetchedChallenge READ loginFetchedChallenge NOTIFY loginFetchChanged)
     Q_PROPERTY(QString serverFingerprint READ serverFingerprint NOTIFY facadeInfoChanged)
     Q_PROPERTY(QStringList configuredReseeds READ configuredReseeds NOTIFY facadeInfoChanged)
-    // The server's descriptor link, empty while the account has none.
+    // Empty while the account has none.
     Q_PROPERTY(QString serverLink READ serverLink NOTIFY facadeInfoChanged)
     Q_PROPERTY(QString activePeer READ activePeer NOTIFY activePeerChanged)
     Q_PROPERTY(QString activePeerName READ activePeerName NOTIFY activePeerNameChanged)
@@ -272,15 +272,15 @@ public:
     Q_INVOKABLE void sendText(const QString& text);
     Q_INVOKABLE void sendOffered(const QString& text);
     Q_INVOKABLE void forwardMessage(const QString& e2eId, const QString& toPeer);
-    // Several messages of the open chat, by local id; each is taken in the order the chat shows.
+    // Taken in the order the chat shows them.
     Q_INVOKABLE int copyMessages(const QVariantList& localIds) const;
     Q_INVOKABLE void forwardMessages(const QVariantList& localIds, const QString& toPeer);
     Q_INVOKABLE void deleteMessages(const QVariantList& localIds);
-    Q_INVOKABLE void resendText(qint64 localId, const QString& text, const QString& e2eId);
+    Q_INVOKABLE void resend(qint64 localId);
     Q_INVOKABLE void sendFile(const QString& fileUrl);
     Q_INVOKABLE void sendPictureFiles(const QStringList& fileUrls);
     Q_INVOKABLE QVariantMap pictureBeside(const QString& e2eId, int step);
-    // The address a bubble draws its picture from; bytes the cache let go come back first.
+    // Brings back bytes the cache let go before answering.
     Q_INVOKABLE QString pictureSource(const QString& e2eId, int revision);
     Q_INVOKABLE bool savePictureToDownloads(const QString& e2eId, const QString& name);
     Q_INVOKABLE void sendClipboardPicture();
@@ -299,9 +299,6 @@ public:
     void stopVoice();
     Q_INVOKABLE void cycleVoiceSpeed();
     Q_INVOKABLE QUrl defaultPictureSaveUrl(const QString& e2eId, const QString& name) const;
-    Q_INVOKABLE void resendFile(qint64 localId, const QString& e2eId);
-    Q_INVOKABLE void resendVoice(qint64 localId, const QString& e2eId);
-    Q_INVOKABLE void resendPicture(qint64 localId, const QString& e2eId);
     Q_INVOKABLE QString peerName(const QString& id) const;
     QString savedPeer() const;
     static QString savedChatName();
@@ -354,7 +351,7 @@ public:
     Q_PROPERTY(QString ownInvite READ ownInvite NOTIFY ownInviteChanged)
     QString ownInvite() const { return ownInvite_; }
     Q_INVOKABLE void clearChat(bool forEveryone);
-    // The auto-delete timers a chat can carry, in seconds, and how each one is named.
+    // Seconds, each with its name.
     Q_INVOKABLE QVariantList chatTimerChoices() const;
     Q_INVOKABLE QString chatTimerLabel(qint64 seconds) const;
     Q_INVOKABLE void setChatTimer(qint64 seconds);
@@ -362,8 +359,8 @@ public:
     Q_INVOKABLE void retryContactAdd();
     Q_INVOKABLE void sendCallback(
         const QString& data, const QString& refMsgId, const QString& label = {});
-    Q_INVOKABLE void sendCommand(
-        const QString& command, const QString& args, const QString& label = {});
+    Q_INVOKABLE void sendCommand(const QString& command, const QString& args,
+        const QString& label = {}, const QString& keyRef = {});
     Q_INVOKABLE void beginEdit(qint64 localId, const QString& e2eId, const QString& text);
     Q_INVOKABLE void commitEdit(const QString& newText);
     Q_INVOKABLE void cancelEdit();
@@ -489,6 +486,7 @@ signals:
     void openFailed(const QString& error);
     void historyOpened();
     void actionOk(const QString& info);
+    void botKeySettled(const QString& messageId, bool delivered);
     void actionFailed(const QString& error);
     void inviteReady(const QString& uri);
     void inviteUnavailable(const QString& reason);
@@ -533,8 +531,7 @@ private slots:
     QVector<StoredMessage> chosenMessages(const QVariantList& localIds) const;
     void onStorageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void onCallStateChanged(int state, const QString& peer, const QString& callId, bool muted,
-        const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
-        float outputLevel);
+        const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);
     bool speakerPresent();
 
 private:

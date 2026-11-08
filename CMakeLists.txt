@@ -399,7 +399,6 @@ if(Qt6_FOUND)
     target_compile_options(TestUtf8Limit PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestUtf8Limit COMMAND TestUtf8Limit)
 
-    # Android's back key closes the top popup first; which one that is rests on Qt internals.
     add_executable(TestPopupStack tests/TestPopupStack.cpp app/PopupStack.cpp)
     target_include_directories(TestPopupStack PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestPopupStack PRIVATE bazarish_test_util Qt6::Quick Qt6::Qml)

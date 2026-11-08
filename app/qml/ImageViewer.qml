@@ -15,10 +15,9 @@ Popup {
 
     readonly property real kMaxZoom: 4
     readonly property real kDoubleTapZoom: 2.5
-    // A wheel notch is 120 in angleDelta.
     readonly property real kWheelStep: 1.25
+    // One wheel notch in angleDelta, in eighths of a degree.
     readonly property int kWheelNotch: 120
-    // This client sends at most 1600 px; a bigger, hostile picture is capped here.
     readonly property int kMaxDecodeEdge: 2048
     readonly property int kTurnPull: 80
     readonly property int kSettleMs: 180

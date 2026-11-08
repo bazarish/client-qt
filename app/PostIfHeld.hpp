@@ -10,9 +10,7 @@
 
 namespace bazarish::app {
 
-// A call from a foreign thread to an object that may be going away: the guard is held from
-// reading the target to posting to it, and by whoever clears it. False only when Qt refused
-// the post; no target means nothing to do.
+// The guard is held from reading the target to posting; false only when Qt refused the post.
 template <typename Target>
 bool postIfHeld(
     std::mutex& guard, const std::atomic<Target*>& held, std::function<void(Target&)> action)

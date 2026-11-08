@@ -729,9 +729,7 @@ void AppController::holdSelection(QObject* const field) const
 void AppController::retranslate()
 {
     for (SessionController* const session : sessions_) {
-        if (session != nullptr) {
-            session->retranslate();
-        }
+        session->retranslate();
     }
 }
 

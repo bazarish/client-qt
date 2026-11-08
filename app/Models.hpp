@@ -57,7 +57,6 @@ public:
     void setUnread(const QString& fingerprint, int count);
     int totalUnread() const;
     void remove(const QString& fingerprint);
-    bool has(const QString& fingerprint) const { return indexOf(fingerprint) >= 0; }
 
 private:
     int indexOf(const QString& fingerprint) const;
@@ -99,7 +98,7 @@ public:
     void prependMessages(const QVector<StoredMessage>& messages);
     void appendMessages(const QVector<StoredMessage>& messages);
     Q_INVOKABLE int rowForId(qint64 id) const;
-    QVector<qint64> markDeliveredThrough(qint64 uptoId);
+    void markDeliveredThrough(qint64 uptoId);
     bool newestIncomingThrough(int row, qint64& outId, QString& outProtocol, qint64& outSentAt) const;
     void setErrorForId(qint64 id, const QString& error);
     void setUploadProgressForId(qint64 id, double fraction);
@@ -154,9 +153,9 @@ public:
     void upsert(const OperationRow& row);
     void remove(const QString& id);
     int runningCount() const;
-    int indexOf(const QString& id) const;
 
 private:
+    int indexOf(const QString& id) const;
     QVector<OperationRow> ops_;
 };
 

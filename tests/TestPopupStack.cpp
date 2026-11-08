@@ -83,7 +83,6 @@ QQuickItem* item(QObject* const window, const char* const name)
     return qvariant_cast<QQuickItem*>(window->property(name));
 }
 
-// Focus a field, close its popup and open it again: true when the field has the focus back.
 bool focusComesBack(QObject* const window, QQuickItem* const field)
 {
     open(window, "account");

@@ -1,7 +1,4 @@
 # Bazarish project (c) 2026
-# The environment the static client is built in: musl, a toolchain, and the
-# system libraries Qt links statically. What is built from source lives in
-# build.sh, because its flags are what make the result portable.
 FROM docker.io/library/alpine:edge
 
 RUN apk add --no-cache \

@@ -5,7 +5,7 @@
 
 namespace bazarish::app {
 
-// How many emoji the text is made of, spaces between them allowed; 0 when anything else is in it.
+// Spaces between emoji allowed; 0 when anything else is in the text.
 int emojiOnlyCount(const QString& text);
 
 }  // namespace bazarish::app

@@ -14,7 +14,6 @@ namespace bazarish::app {
 class ContactBook;
 class TranscriptStore;
 
-// The core's ingest with Qt signals for what it changed and translated words for its notes.
 class MessageIngest : public QObject {
     Q_OBJECT
 public:

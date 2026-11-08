@@ -34,7 +34,6 @@ std::atomic<AppController*> gApp{nullptr};
 // Held from reading a target to posting to it, and while they are cleared.
 std::mutex gHeldMutex;
 
-// Android calls in on its own thread; the window answers on its own.
 template <typename Target>
 void inWindowThread(const std::atomic<Target*>& held, std::function<void(Target&)> action)
 {
