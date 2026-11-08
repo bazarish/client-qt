@@ -401,12 +401,6 @@
       "zh": "正在询问你的其他设备",
       "ar": "جارٍ سؤال أجهزتك الأخرى"
     },
-    "Asking your server for a new serving key": {
-      "ru": "Запрос нового обслуживающего ключа",
-      "es": "Pidiendo al servidor una nueva clave de servicio",
-      "zh": "正在向服务器申请新的服务密钥",
-      "ar": "جارٍ طلب مفتاح خدمة جديد من الخادم"
-    },
     "Asking your server for your destination…": {
       "ru": "Запрос назначения у сервера…",
       "es": "Pidiendo tu destino al servidor…",
@@ -1084,12 +1078,6 @@
       "es": "Contacto eliminado",
       "zh": "联系人已删除",
       "ar": "حُذفت جهة الاتصال"
-    },
-    "Contact request sent": {
-      "ru": "Запрос контакта отправлен",
-      "es": "Solicitud de contacto enviada",
-      "zh": "联系人请求已发送",
-      "ar": "أُرسل طلب الاتصال"
     },
     "Contact request sent": {
       "ru": "Запрос на добавление отправлен",
@@ -2633,12 +2621,6 @@
       "zh": "正在发布…",
       "ar": "جارٍ النشر…"
     },
-    "Putting the new key in force": {
-      "ru": "Новый ключ вводится в действие",
-      "es": "Poniendo en vigor la clave nueva",
-      "zh": "正在启用新密钥",
-      "ar": "جارٍ إنفاذ المفتاح الجديد"
-    },
     "Queued…": {
       "ru": "В очереди…",
       "es": "En cola…",
@@ -3173,12 +3155,6 @@
       "zh": "签名",
       "ar": "التوقيع"
     },
-    "Signing a card over the new key": {
-      "ru": "Подпись карточки новым ключом",
-      "es": "Firmando una tarjeta con la clave nueva",
-      "zh": "正在用新密钥签署名片",
-      "ar": "جارٍ توقيع بطاقة بالمفتاح الجديد"
-    },
     "Signing as %1": {
       "ru": "Подпись от имени %1",
       "es": "Firmando como %1",
@@ -3304,18 +3280,6 @@
       "es": "Retirando de la red…",
       "zh": "正在下线…",
       "ar": "جارٍ السحب…"
-    },
-    "Telling the name service": {
-      "ru": "Оповещение сервиса имён",
-      "es": "Avisando al servicio de nombres",
-      "zh": "正在通知名称服务",
-      "ar": "جارٍ إبلاغ خدمة الأسماء"
-    },
-    "Telling your contacts": {
-      "ru": "Оповещение контактов",
-      "es": "Avisando a tus contactos",
-      "zh": "正在通知你的联系人",
-      "ar": "جارٍ إبلاغ مراسليك"
     },
     "Telling your other devices": {
       "ru": "Оповещение ваших устройств",

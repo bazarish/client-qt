@@ -164,6 +164,8 @@ if(Qt6_FOUND)
         app/PhotoShot.hpp
         app/QrScanner.cpp
         app/QrScanner.hpp
+        app/Utf8Limit.cpp
+        app/Utf8Limit.hpp
     )
     target_link_libraries(bazarish-app PRIVATE bazarish_app_core bazarish_app_ui)
     target_include_directories(bazarish-app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
@@ -332,6 +334,7 @@ if(Qt6_FOUND)
             app/qml/components/TextSelection.qml
             app/qml/components/TextField.qml
             app/qml/components/TextArea.qml
+            app/qml/components/UnlockDialog.qml
             app/qml/components/PhoneSelection.qml
             app/qml/components/FocusSelection.qml
             app/qml/components/ContextMenuItem.qml
@@ -370,14 +373,14 @@ enable_testing()
 
 add_executable(TestAppSettings tests/TestAppSettings.cpp app/AppSettings.cpp)
 target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-target_link_libraries(TestAppSettings PRIVATE bazarish_client)
+target_link_libraries(TestAppSettings PRIVATE bazarish_test_util bazarish_client)
 target_compile_options(TestAppSettings PRIVATE -Wall -Wextra)
 add_test(NAME TestAppSettings COMMAND TestAppSettings)
 
 if(Qt6_FOUND)
     add_executable(TestMarkup tests/TestMarkup.cpp app/Markup.cpp)
     target_include_directories(TestMarkup PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestMarkup PRIVATE bazarish_client Qt6::Core)
+    target_link_libraries(TestMarkup PRIVATE bazarish_test_util bazarish_client Qt6::Core)
     target_compile_options(TestMarkup PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestMarkup COMMAND TestMarkup)
 
@@ -385,14 +388,21 @@ if(Qt6_FOUND)
     target_include_directories(TestQrScan PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${QRENCODE_INCLUDE_DIR})
     target_link_libraries(TestQrScan PRIVATE
+        bazarish_test_util
         bazarish_client quirc ${QRENCODE_LIBRARY} Qt6::Gui Qt6::Multimedia Qt6::Qml)
     target_compile_options(TestQrScan PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestQrScan COMMAND TestQrScan)
 
+    add_executable(TestUtf8Limit tests/TestUtf8Limit.cpp app/Utf8Limit.cpp app/Utf8Limit.hpp)
+    target_include_directories(TestUtf8Limit PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestUtf8Limit PRIVATE bazarish_test_util bazarish_client Qt6::Gui Qt6::Qml)
+    target_compile_options(TestUtf8Limit PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestUtf8Limit COMMAND TestUtf8Limit)
+
     # Android's back key closes the top popup first; which one that is rests on Qt internals.
     add_executable(TestPopupStack tests/TestPopupStack.cpp app/PopupStack.cpp)
     target_include_directories(TestPopupStack PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestPopupStack PRIVATE Qt6::Quick Qt6::Qml)
+    target_link_libraries(TestPopupStack PRIVATE bazarish_test_util Qt6::Quick Qt6::Qml)
     target_compile_options(TestPopupStack PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestPopupStack COMMAND TestPopupStack)
     set_tests_properties(TestPopupStack PROPERTIES
@@ -401,7 +411,7 @@ if(Qt6_FOUND)
     if(TARGET Qt6::Test)
         add_executable(TestSelectionHold tests/TestSelectionHold.cpp app/SelectionHold.cpp)
         target_include_directories(TestSelectionHold PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-        target_link_libraries(TestSelectionHold PRIVATE Qt6::Quick Qt6::Test)
+        target_link_libraries(TestSelectionHold PRIVATE bazarish_test_util Qt6::Quick Qt6::Test)
         target_compile_options(TestSelectionHold PRIVATE -Wall -Wextra -Werror)
         add_test(NAME TestSelectionHold COMMAND TestSelectionHold)
         set_tests_properties(TestSelectionHold PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
@@ -410,7 +420,7 @@ if(Qt6_FOUND)
     add_executable(TestPictureStore tests/TestPictureStore.cpp app/PictureStore.cpp
         app/ImageFormat.cpp)
     target_include_directories(TestPictureStore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestPictureStore PRIVATE Qt6::Quick)
+    target_link_libraries(TestPictureStore PRIVATE bazarish_test_util Qt6::Quick)
     target_compile_options(TestPictureStore PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestPictureStore COMMAND TestPictureStore)
     set_tests_properties(TestPictureStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
@@ -418,7 +428,7 @@ if(Qt6_FOUND)
     add_executable(TestAvatarStore tests/TestAvatarStore.cpp app/AvatarStore.cpp
         app/AvatarStore.hpp app/ImageFormat.cpp)
     target_include_directories(TestAvatarStore PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestAvatarStore PRIVATE Qt6::Gui)
+    target_link_libraries(TestAvatarStore PRIVATE bazarish_test_util Qt6::Gui)
     target_compile_options(TestAvatarStore PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestAvatarStore COMMAND TestAvatarStore)
     set_tests_properties(TestAvatarStore PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
@@ -426,14 +436,14 @@ if(Qt6_FOUND)
     add_executable(TestPicture tests/TestPicture.cpp app/Picture.cpp)
     target_include_directories(TestPicture PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app
         ${CMAKE_CURRENT_SOURCE_DIR}/common/include)
-    target_link_libraries(TestPicture PRIVATE Qt6::Gui)
+    target_link_libraries(TestPicture PRIVATE bazarish_test_util Qt6::Gui)
     target_compile_options(TestPicture PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestPicture COMMAND TestPicture)
     set_tests_properties(TestPicture PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     add_executable(TestEmojiText tests/TestEmojiText.cpp app/EmojiText.cpp)
     target_include_directories(TestEmojiText PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestEmojiText PRIVATE Qt6::Core)
+    target_link_libraries(TestEmojiText PRIVATE bazarish_test_util Qt6::Core)
     target_compile_options(TestEmojiText PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestEmojiText COMMAND TestEmojiText)
 
@@ -449,7 +459,7 @@ if(Qt6_FOUND)
     target_include_directories(TestEmojiSet PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_compile_definitions(TestEmojiSet PRIVATE
         BAZARISH_EMOJI_JS="${CMAKE_CURRENT_SOURCE_DIR}/app/qml/Emoji.js")
-    target_link_libraries(TestEmojiSet PRIVATE bazarish_common Qt6::Gui Qt6::Qml)
+    target_link_libraries(TestEmojiSet PRIVATE bazarish_test_util bazarish_common Qt6::Gui Qt6::Qml)
     target_compile_options(TestEmojiSet PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestEmojiSet COMMAND TestEmojiSet)
     # Offscreen draws with CoreText on macOS; the app draws with FreeType there, as everywhere.
@@ -462,14 +472,14 @@ if(Qt6_FOUND)
 
     add_executable(TestConversationModel tests/TestConversationModel.cpp app/Models.cpp
         app/Models.hpp)
-    target_link_libraries(TestConversationModel PRIVATE bazarish_app_shared Qt6::Gui Qt6::Qml)
+    target_link_libraries(TestConversationModel PRIVATE bazarish_test_util bazarish_app_shared Qt6::Gui Qt6::Qml)
     target_compile_options(TestConversationModel PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestConversationModel COMMAND TestConversationModel)
     set_tests_properties(TestConversationModel PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     add_executable(TestLetterAvatar tests/TestLetterAvatar.cpp app/LetterAvatar.cpp)
     target_include_directories(TestLetterAvatar PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestLetterAvatar PRIVATE Qt6::Gui)
+    target_link_libraries(TestLetterAvatar PRIVATE bazarish_test_util Qt6::Gui)
     target_compile_options(TestLetterAvatar PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestLetterAvatar COMMAND TestLetterAvatar)
 
@@ -478,21 +488,43 @@ if(Qt6_FOUND)
     target_include_directories(TestTranscript PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLCIPHER_INCLUDE_DIR})
     target_link_libraries(TestTranscript PRIVATE
+        bazarish_test_util
         bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core)
     target_compile_options(TestTranscript PRIVATE -Wall -Wextra)
     add_test(NAME TestTranscript COMMAND TestTranscript)
 
     add_executable(TestDownloads tests/TestDownloads.cpp app/Documents.cpp)
     target_include_directories(TestDownloads PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestDownloads PRIVATE bazarish_client Qt6::Core)
+    target_link_libraries(TestDownloads PRIVATE bazarish_test_util bazarish_client Qt6::Core)
     target_compile_options(TestDownloads PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestDownloads COMMAND TestDownloads)
+
+    add_executable(TestPostIfHeld tests/TestPostIfHeld.cpp app/PostIfHeld.hpp)
+    target_include_directories(TestPostIfHeld PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestPostIfHeld PRIVATE bazarish_test_util bazarish_client Qt6::Core)
+    target_compile_options(TestPostIfHeld PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestPostIfHeld COMMAND TestPostIfHeld)
+
+    add_executable(TestAudioSamples tests/TestAudioSamples.cpp)
+    target_include_directories(TestAudioSamples PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestAudioSamples PRIVATE bazarish_test_util bazarish_client Qt6::Core)
+    target_compile_options(TestAudioSamples PRIVATE -Wall -Wextra -Werror
+        -fsanitize=alignment,undefined -fno-sanitize-recover=all)
+    target_link_options(TestAudioSamples PRIVATE -fsanitize=alignment,undefined)
+    add_test(NAME TestAudioSamples COMMAND TestAudioSamples)
+
+    add_executable(TestHumanBytes tests/TestHumanBytes.cpp app/SessionShared.cpp)
+    target_include_directories(TestHumanBytes PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestHumanBytes PRIVATE bazarish_test_util bazarish_client Qt6::Core)
+    target_compile_options(TestHumanBytes PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestHumanBytes COMMAND TestHumanBytes)
 
     add_executable(TestIngest tests/TestIngest.cpp app/MessageIngest.cpp app/ContactBook.cpp
         app/TranscriptStore.cpp app/SystemNotes.cpp app/SessionShared.cpp)
     target_include_directories(TestIngest PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLCIPHER_INCLUDE_DIR})
     target_link_libraries(TestIngest PRIVATE
+        bazarish_test_util
         bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core Qt6::QmlIntegration)
     target_compile_options(TestIngest PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestIngest COMMAND TestIngest)
@@ -500,20 +532,20 @@ if(Qt6_FOUND)
     add_executable(TestWire tests/TestWire.cpp app/Wire.cpp app/AccountCommands.hpp
         app/AccountEvents.hpp app/AppCommands.hpp app/AppEvents.hpp app/I2pEvents.hpp)
     target_include_directories(TestWire PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestWire PRIVATE bazarish_client Qt6::Core)
+    target_link_libraries(TestWire PRIVATE bazarish_test_util bazarish_client Qt6::Core)
     target_compile_options(TestWire PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestWire COMMAND TestWire)
 
     add_executable(TestTransportChoice tests/TestTransportChoice.cpp)
     target_include_directories(TestTransportChoice PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestTransportChoice PRIVATE bazarish_app_core)
+    target_link_libraries(TestTransportChoice PRIVATE bazarish_test_util bazarish_app_core)
     target_compile_options(TestTransportChoice PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestTransportChoice COMMAND TestTransportChoice)
 
     add_executable(TestSocketChannel tests/TestSocketChannel.cpp app/CoreSocket.cpp app/Wire.cpp
         app/AppSettings.cpp)
     target_include_directories(TestSocketChannel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestSocketChannel PRIVATE bazarish_client Qt6::Core Qt6::Network)
+    target_link_libraries(TestSocketChannel PRIVATE bazarish_test_util bazarish_client Qt6::Core Qt6::Network)
     target_compile_options(TestSocketChannel PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestSocketChannel COMMAND TestSocketChannel)
 

@@ -20,10 +20,11 @@
 #include "Session.hpp"
 
 #include <bazarish/Crypto.hpp>
-#include <bazarish/Limits.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Errors.hpp>
 #include <bazarish/I2p.hpp>
+#include <bazarish/I2pAddress.hpp>
+#include <bazarish/Limits.hpp>
 #include <bazarish/Portal.hpp>
 
 #pragma push_macro("emit")
@@ -69,27 +70,6 @@ struct AliasErrandQueue {
 using bazarish::client::IncomingMessage;
 using bazarish::client::ServerEndpoint;
 using bazarish::client::Session;
-
-const char* const kCoreProgress[] = {
-    QT_TR_NOOP("Starting the I2P router"),
-    QT_TR_NOOP("Starting with the built-in reseeds"),
-    QT_TR_NOOP("Building your I2P tunnels"),
-    QT_TR_NOOP("I2P tunnels are still building"),
-    QT_TR_NOOP("Looking up the server's I2P address"),
-    QT_TR_NOOP("Connected to the server over I2P"),
-    QT_TR_NOOP("Registering with this server"),
-    QT_TR_NOOP("Registered; registering this device"),
-    QT_TR_NOOP("Checking the address your server serves"),
-    QT_TR_NOOP("Publishing your own destination"),
-    QT_TR_NOOP("Delegating your destination to the server"),
-    QT_TR_NOOP("Publishing your contact card"),
-    QT_TR_NOOP("Syncing your address to your other devices"),
-    QT_TR_NOOP("Asking your server for a new serving key"),
-    QT_TR_NOOP("Signing a card over the new key"),
-    QT_TR_NOOP("Putting the new key in force"),
-    QT_TR_NOOP("Telling the name service"),
-    QT_TR_NOOP("Telling your contacts"),
-};
 
 namespace {
 constexpr std::size_t kContactRequestIdBytes = 8;
@@ -717,16 +697,12 @@ void SessionWorker::openAccount(
     {
         const bazarish::Bytes& own = session_->avatar();
         if (!own.empty()) {
-            emit avatarReady(QString::fromStdString(session_->fingerprint()),
-                QByteArray(reinterpret_cast<const char*>(own.data()),
-                    static_cast<int>(own.size())));
+            emit avatarReady(QString::fromStdString(session_->fingerprint()), toQByteArray(own));
         }
         for (const std::string& fp : session_->contactFingerprints()) {
             const bazarish::Bytes av = session_->contactAvatar(fp);
             if (!av.empty()) {
-                emit avatarReady(QString::fromStdString(fp),
-                    QByteArray(reinterpret_cast<const char*>(av.data()),
-                        static_cast<int>(av.size())));
+                emit avatarReady(QString::fromStdString(fp), toQByteArray(av));
             }
         }
     }
@@ -840,8 +816,9 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
     try {
         emit connectProgress(5, tr("Preparing"));
         bazarish::client::setConnectProgressSink(progressOwner,
-            [this](const int percent, const std::string& text) {
-                emit connectProgress(percent, coreText(QString::fromStdString(text)));
+            [this](const bazarish::client::ConnectMilestone milestone) {
+                emit connectProgress(bazarish::client::connectPercent(milestone),
+                    milestoneText(milestone));
             });
         ServerEndpoint endpoint;
         endpoint.serverFingerprint = serverFp.toStdString();
@@ -880,7 +857,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         }
         const bool overI2p = std::any_of(endpoint.facades.begin(), endpoint.facades.end(),
             [](const bazarish::client::Facade& f) {
-                return f.host.size() > 8 && f.host.rfind(".b32.i2p") == f.host.size() - 8;
+                return bazarish::isB32I2pHost(f.host);
             });
         emit connectProgress(overI2p ? 8 : 20,
             overI2p ? tr("Connecting over I2P — the first connection takes minutes")
@@ -1354,14 +1331,25 @@ void SessionWorker::sendDelete(const QString& peer, const QString& refId)
     }
 }
 
-QString SessionWorker::coreText(const QString& reported)
+QString SessionWorker::milestoneText(const bazarish::client::ConnectMilestone milestone)
 {
-    for (const char* const known : kCoreProgress) {
-        if (reported == QLatin1StringView(known)) {
-            return tr(known);
-        }
+    using bazarish::client::ConnectMilestone;
+    switch (milestone) {
+    case ConnectMilestone::eRouterStarting: return tr("Starting the I2P router");
+    case ConnectMilestone::eBuiltInReseeds: return tr("Starting with the built-in reseeds");
+    case ConnectMilestone::eTunnelsBuilding: return tr("Building your I2P tunnels");
+    case ConnectMilestone::eTunnelsStillBuilding: return tr("I2P tunnels are still building");
+    case ConnectMilestone::eServerLookup: return tr("Looking up the server's I2P address");
+    case ConnectMilestone::eServerReached: return tr("Connected to the server over I2P");
+    case ConnectMilestone::eRegistering: return tr("Registering with this server");
+    case ConnectMilestone::eRegisteringDevice: return tr("Registered; registering this device");
+    case ConnectMilestone::eCheckingAddress: return tr("Checking the address your server serves");
+    case ConnectMilestone::ePublishingDestination: return tr("Publishing your own destination");
+    case ConnectMilestone::eDelegating: return tr("Delegating your destination to the server");
+    case ConnectMilestone::ePublishingCard: return tr("Publishing your contact card");
+    case ConnectMilestone::eSyncingDevices: return tr("Syncing your address to your other devices");
     }
-    return reported;
+    throw std::logic_error("no words for this connection milestone");
 }
 
 QString SessionWorker::beginOp(const QString& title, const QString& status)
@@ -1837,20 +1825,34 @@ void SessionWorker::signLogin(const QString& challenge)
     }
 }
 
+void SessionWorker::runOp(const QString& id, const QString& kind, const QString& title,
+    const QString& status, const std::function<QString()>& work)
+{
+    WorkerOp op(*this, id, kind, title, status);
+    try {
+        op.succeed(work());
+    } catch (const std::exception& error) {
+        op.fail(QString::fromUtf8(error.what()));
+        emit actionFailed(QString::fromUtf8(error.what()));
+    }
+}
+
+void SessionWorker::emitAliasHoldings()
+{
+    const QVariantList rows = aliasHoldingRows(session_->aliasNames());
+    emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+}
+
 void SessionWorker::publishThisDeviceAddress()
 {
     if (!session_) {
         return;
     }
-    WorkerOp op(*this, QStringLiteral("i2p-address"), QStringLiteral("status"),
-        tr("Publishing your address"), tr("Telling your server…"));
-    try {
-        session_->publishThisDeviceAddress();
-        op.succeed(tr("Your server serves this address now"));
-    } catch (const std::exception& error) {
-        op.fail(QString::fromUtf8(error.what()));
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    runOp(QStringLiteral("i2p-address"), QStringLiteral("status"), tr("Publishing your address"),
+        tr("Telling your server…"), [this]() {
+            session_->publishThisDeviceAddress();
+            return tr("Your server serves this address now");
+        });
     refreshI2pStatus();
 }
 
@@ -1859,15 +1861,11 @@ void SessionWorker::publishFreshAddress()
     if (!session_) {
         return;
     }
-    WorkerOp op(*this, QStringLiteral("i2p-address"), QStringLiteral("status"),
-        tr("Making a new address"), tr("Building it…"));
-    try {
-        session_->publishFreshAddress();
-        op.succeed(tr("A new address is published"));
-    } catch (const std::exception& error) {
-        op.fail(QString::fromUtf8(error.what()));
-        emit actionFailed(QString::fromUtf8(error.what()));
-    }
+    runOp(QStringLiteral("i2p-address"), QStringLiteral("status"), tr("Making a new address"),
+        tr("Building it…"), [this]() {
+            session_->publishFreshAddress();
+            return tr("A new address is published");
+        });
     refreshI2pStatus();
 }
 
@@ -1978,18 +1976,12 @@ void SessionWorker::forgetDevice(const QString& clientId)
     if (!session_) {
         return;
     }
-    {
-        WorkerOp op(*this, QStringLiteral("device-forget"), QStringLiteral("status"),
-            tr("Forgetting a device"), tr("Telling your server…"));
-        try {
+    runOp(QStringLiteral("device-forget"), QStringLiteral("status"), tr("Forgetting a device"),
+        tr("Telling your server…"), [this, &clientId]() {
             session_->retireDevice(clientId.toStdString());
-            op.succeed(tr("Forgotten"));
             emit actionOk(tr("Device forgotten. Its unread mail is no longer held"));
-        } catch (const std::exception& error) {
-            op.fail(QString::fromUtf8(error.what()));
-            emit actionFailed(QString::fromUtf8(error.what()));
-        }
-    }
+            return tr("Forgotten");
+        });
     refreshDevices();
 }
 
@@ -2028,19 +2020,13 @@ void SessionWorker::generatePersonalKey()
     if (!session_) {
         return;
     }
-    {
-        WorkerOp op(*this, QStringLiteral("dest-key"), QStringLiteral("dest"),
-            tr("Creating your destination key"), tr("Generating…"));
-        try {
+    runOp(QStringLiteral("dest-key"), QStringLiteral("dest"), tr("Creating your destination key"),
+        tr("Generating…"), [this]() {
             const QString address = QString::fromStdString(session_->ensureI2pDestination());
             emit i2pKeyState(true, address);
-            op.succeed(address);
             emit actionOk(tr("Personal I2P key created"));
-        } catch (const std::exception& e) {
-            op.fail(QString::fromUtf8(e.what()));
-            emit actionFailed(QString::fromUtf8(e.what()));
-        }
-    }
+            return address;
+        });
     refreshI2pStatus();
 }
 
@@ -2063,19 +2049,13 @@ void SessionWorker::replacePersonalKey()
     if (!session_) {
         return;
     }
-    {
-        WorkerOp op(*this, QStringLiteral("new-dest-key"), QStringLiteral("dest"),
-            tr("Raising a new address"), tr("Delegating it to your server…"));
-        try {
+    runOp(QStringLiteral("new-dest-key"), QStringLiteral("dest"), tr("Raising a new address"),
+        tr("Delegating it to your server…"), [this]() {
             session_->replaceOwnAddress();
             emit i2pKeyState(true, QString::fromStdString(session_->i2pAddress()));
-            op.succeed(tr("Raised"));
             emit actionOk(tr("New address published; your contacts are being told"));
-        } catch (const std::exception& e) {
-            op.fail(QString::fromUtf8(e.what()));
-            emit actionFailed(QString::fromUtf8(e.what()));
-        }
-    }
+            return tr("Raised");
+        });
     refreshI2pStatus();
 }
 
@@ -2084,20 +2064,13 @@ void SessionWorker::setAliasBinding(const QString& alias, const bool on)
     if (!session_) {
         return;
     }
-    {
-        WorkerOp op(*this, QStringLiteral("alias-binding-") + alias, QStringLiteral("alias"),
-            on ? tr("Pointing %1 here").arg(alias) : tr("Unpointing %1").arg(alias),
-            tr("Asking the alias registry…"));
-        try {
+    runOp(QStringLiteral("alias-binding-") + alias, QStringLiteral("alias"),
+        on ? tr("Pointing %1 here").arg(alias) : tr("Unpointing %1").arg(alias),
+        tr("Asking the alias registry…"), [this, &alias, on]() {
             session_->setAliasBinding(alias.toStdString(), on);
-            op.succeed(on ? tr("Points here") : tr("Points nowhere"));
-        } catch (const std::exception& e) {
-            op.fail(QString::fromUtf8(e.what()));
-            emit actionFailed(QString::fromUtf8(e.what()));
-        }
-    }
-    const QVariantList rows = aliasHoldingRows(session_->aliasNames());
-    emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+            return on ? tr("Points here") : tr("Points nowhere");
+        });
+    emitAliasHoldings();
 }
 
 void SessionWorker::setAliasWord(const QString& alias, const QString& word)
@@ -2105,21 +2078,14 @@ void SessionWorker::setAliasWord(const QString& alias, const QString& word)
     if (!session_) {
         return;
     }
-    {
-        WorkerOp op(*this, QStringLiteral("alias-word-") + alias, QStringLiteral("alias"),
-            word.isEmpty() ? tr("Taking the word off %1").arg(alias)
-                           : tr("Setting the word of %1").arg(alias),
-            tr("Asking the alias registry…"));
-        try {
+    runOp(QStringLiteral("alias-word-") + alias, QStringLiteral("alias"),
+        word.isEmpty() ? tr("Taking the word off %1").arg(alias)
+                       : tr("Setting the word of %1").arg(alias),
+        tr("Asking the alias registry…"), [this, &alias, &word]() {
             session_->setAliasWord(alias.toStdString(), word.toStdString());
-            op.succeed(word.isEmpty() ? tr("No word") : tr("Word set"));
-        } catch (const std::exception& e) {
-            op.fail(QString::fromUtf8(e.what()));
-            emit actionFailed(QString::fromUtf8(e.what()));
-        }
-    }
-    const QVariantList rows = aliasHoldingRows(session_->aliasNames());
-    emit aliasHoldings(rows, aliasHoldingsNote(rows, session_->aliasDepositCovers()));
+            return word.isEmpty() ? tr("No word") : tr("Word set");
+        });
+    emitAliasHoldings();
 }
 
 void SessionWorker::retryRoutingTo(const QString& peer)

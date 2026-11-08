@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "QrScanner.hpp"
+#include "TestUtil.hpp"
 
 #include <bazarish/Descriptor.hpp>
 
@@ -17,15 +18,6 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
-
-#define CHECK(condition)                                                            \
-    do {                                                                            \
-        if (!(condition)) {                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
-                #condition);                                                        \
-            std::exit(1);                                                           \
-        }                                                                           \
-    } while (false)
 
 namespace {
 

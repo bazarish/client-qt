@@ -4,6 +4,7 @@
 #include "MessageIngest.hpp"
 #include "SystemNotes.hpp"
 #include "TranscriptStore.hpp"
+#include "TestUtil.hpp"
 
 #include "AccountKey.hpp"
 #include "Session.hpp"
@@ -21,15 +22,6 @@
 #include <filesystem>
 #include <string>
 #include <vector>
-
-#define CHECK(condition)                                                            \
-    do {                                                                            \
-        if (!(condition)) {                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
-                #condition);                                                        \
-            std::exit(1);                                                           \
-        }                                                                           \
-    } while (false)
 
 using namespace bazarish;
 using namespace bazarish::app;
@@ -189,10 +181,10 @@ int main(int argc, char** argv)
     CHECK(store.messageByE2e("u2", kBob).type == QStringLiteral("unsupported"));
 
     client::IncomingMessage timer = incoming(kBob, "chat.timer", "t1");
-    timer.timerSeconds = client::kSecondsPerDay;
+    timer.timerSeconds = bazarish::kSecondsPerDay;
     CHECK(took(timer));
     CHECK(saw({"timer", "added"}));
-    CHECK(store.chatTimer(kBob) == client::kSecondsPerDay);
+    CHECK(store.chatTimer(kBob) == bazarish::kSecondsPerDay);
     const StoredMessage plate = store.messageByE2e("t1", kBob);
     CHECK(plate.type == QStringLiteral("system"));
     CHECK(systemNoteText(plate.text).contains(QStringLiteral("Bob")));
@@ -238,7 +230,7 @@ int main(int argc, char** argv)
     CHECK(store.messageByE2e("q2", carl).orderKey == kSentAt);
 
     client::IncomingMessage fromHost = incoming(kClub, "chat.timer", "t3");
-    fromHost.timerSeconds = client::kSecondsPerHour;
+    fromHost.timerSeconds = bazarish::kSecondsPerHour;
     CHECK(took(fromHost));
     CHECK(saw({}));
     CHECK(store.chatTimer(kClub) == client::kChatTimerOff);

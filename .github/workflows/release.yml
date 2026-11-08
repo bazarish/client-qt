@@ -57,7 +57,7 @@ jobs:
           if-no-files-found: error
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh
 
   linux-static:
     name: Linux ${{ matrix.arch }} static
@@ -119,7 +119,7 @@ jobs:
           if-no-files-found: error
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh
 
   windows:
     name: Windows ${{ matrix.arch }}
@@ -187,7 +187,7 @@ jobs:
           if-no-files-found: error
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh
 
   macos:
     name: macOS arm64
@@ -230,7 +230,7 @@ jobs:
           if-no-files-found: error
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh
 
   android:
     name: Android arm64
@@ -286,7 +286,7 @@ jobs:
           if-no-files-found: error
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh
 
   publish:
     name: Publish

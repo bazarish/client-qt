@@ -6,6 +6,7 @@
 #include "AccountDb.hpp"
 #include "TranscriptStore.hpp"
 #include "CallTones.hpp"
+#include "I2pRouter.hpp"
 
 #include <QObject>
 #include <QSortFilterProxyModel>
@@ -142,6 +143,10 @@ public slots:
     void publishPersonalDest();
     void disablePersonalDest();
     void refreshI2pStatus();
+    // An operation the activity panel shows; a failure is also reported as a failed action.
+    void runOp(const QString& id, const QString& kind, const QString& title,
+        const QString& status, const std::function<QString()>& work);
+    void emitAliasHoldings();
     void refreshContacts();
     void publishThisDeviceAddress();
     void publishFreshAddress();
@@ -230,7 +235,7 @@ signals:
 
 private:
     QString beginOp(const QString& title, const QString& status);
-    QString coreText(const QString& reported);
+    static QString milestoneText(bazarish::client::ConnectMilestone milestone);
     void reportPairing(const bazarish::client::Session::PairingEvent& event);
     int opSeq_ = 0;
     void startMaintenance();

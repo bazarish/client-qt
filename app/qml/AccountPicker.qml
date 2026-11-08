@@ -14,7 +14,6 @@ Item {
         root.StackView.view.push(wizardComponent).pairLink = link
     }
 
-    property string pendingId: ""
     property string rowId: ""
     property string rowName: ""
     property string rowFingerprint: ""
@@ -90,9 +89,7 @@ Item {
                     opacity: goingAway ? 0.5 : 1
                     onClicked: {
                         if (model.encrypted && !model.open) {
-                            root.pendingId = model.accountId
-                            passField.text = ""
-                            passDialog.open()
+                            passDialog.ask(model.accountId)
                         } else {
                             App.openAccount(model.accountId, "")
                             root.closeIfSwitching()
@@ -160,64 +157,22 @@ Item {
 
     }
 
-    Dialog {
+    UnlockDialog {
         id: passDialog
-        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: parent
-        modal: true
-        focus: true
         title: qsTr("Unlock account")
-        closePolicy: Popup.CloseOnEscape
-        // Not Dialog.accept(): that closes the prompt before the passphrase is known to work.
-        function submit() {
-            passError.text = ""
-            App.openAccount(root.pendingId, passField.text)
-        }
-        onRejected: {
-            passField.text = ""
-            App.cancelUnlock()
-        }
-        onOpened: passField.forceActiveFocus()
-        background: DialogFrame { }
-        header: Label { text: qsTr("Unlock account"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
-        footer: DialogButtons { acceptText: qsTr("Unlock"); onAccepted: passDialog.submit(); onRejected: passDialog.reject() }
-        contentItem: ColumnLayout {
-            spacing: 6
-            TextField {
-                id: passField
-                echoMode: TextInput.Password
-                placeholderText: qsTr("Passphrase")
-                color: Theme.text
-                placeholderTextColor: Theme.textDim
-                Layout.preferredWidth: 280
-                onAccepted: passDialog.submit()
-                background: Rectangle { radius: 8; color: Theme.control; border.color: passField.activeFocus ? Theme.accent : Theme.controlEdge }
-            }
-            Label {
-                id: passError
-                visible: text.length > 0
-                color: Theme.danger
-                font.pixelSize: Theme.fontSmall
-                wrapMode: Text.Wrap
-                Layout.preferredWidth: 280
-            }
-        }
     }
 
     Connections {
         target: App
         function onUnlockFailed(error) {
-            passError.text = error
-            passField.text = ""
-            passField.forceActiveFocus()
+            passDialog.refused(error)
             if (!passDialog.visible) {
                 passDialog.open()
             }
         }
         function onAccountUnlocked(id) {
-            passError.text = ""
-            passField.text = ""
-            passDialog.close()
+            passDialog.unlocked()
             root.closeIfSwitching()
         }
     }

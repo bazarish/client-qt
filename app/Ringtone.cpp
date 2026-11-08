@@ -3,10 +3,13 @@
 
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
+#include "AudioSamples.hpp"
 #include "PathText.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidShade.hpp"
 #endif
+
+#include <bazarish/Clock.hpp>
 
 #include <QAudioDevice>
 #include <QAudioFormat>
@@ -39,9 +42,8 @@ constexpr qint64 kMaxTrackBytes = 8 * 1024 * 1024;
 
 constexpr int kEnvelopeFrameMs = 20;
 constexpr int kLevelIntervalMs = 33;
-constexpr int kMsPerSecond = 1000;
 constexpr int kUsPerMs = 1000;
-constexpr qint64 kUsPerSecond = static_cast<qint64>(kUsPerMs) * kMsPerSecond;
+constexpr qint64 kUsPerSecond = static_cast<qint64>(kUsPerMs) * bazarish::kMillisPerSecond;
 
 constexpr std::uint16_t kPcmFormatTag = 1;
 constexpr int kBitsPerSample = 16;
@@ -130,13 +132,11 @@ protected:
         if (samples_.empty()) {
             return 0;
         }
-        const qint64 want = maxLen / static_cast<qint64>(sizeof(std::int16_t));
-        auto* const out = reinterpret_cast<std::int16_t*>(data);
-        for (qint64 i = 0; i < want; ++i) {
-            out[i] = samples_[position_];
+        return fillSamples(data, maxLen, [this]() {
+            const std::int16_t sample = samples_[position_];
             position_ = (position_ + 1) % samples_.size();
-        }
-        return want * static_cast<qint64>(sizeof(std::int16_t));
+            return sample;
+        });
     }
 
     qint64 writeData(const char*, qint64) override
@@ -178,7 +178,8 @@ bool Ringtone::loadFrom(const QString& path)
         samples_.clear();
         return false;
     }
-    frameSamples_ = static_cast<std::size_t>(sampleRate_) * kEnvelopeFrameMs / kMsPerSecond;
+    frameSamples_
+        = static_cast<std::size_t>(sampleRate_) * kEnvelopeFrameMs / bazarish::kMillisPerSecond;
     if (frameSamples_ == 0) {
         bazarish::log::warn(
             "ringtone: {} is sampled at {} Hz, too low to measure", path.toStdString(),
@@ -288,7 +289,7 @@ void Ringtone::publishLevel()
         return;
     }
     const qint64 played = sink_ ? sink_->processedUSecs() * sampleRate_ / kUsPerSecond
-                                : since_.elapsed() * sampleRate_ / kMsPerSecond;
+                                : since_.elapsed() * sampleRate_ / bazarish::kMillisPerSecond;
     const std::size_t at = static_cast<std::size_t>(played) % samples_.size();
     emit levelChanged(static_cast<qreal>(envelope_[at / frameSamples_]));
 }

@@ -82,27 +82,33 @@ public final class CallAudio {
         throw new IllegalStateException("there is nothing to speak through");
     }
 
+    // Mono 16-bit speech, started; the usage decides where the platform routes it.
+    static AudioTrack openTrack(int usage, int sampleRate, int frameBytes) {
+        int least = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
+            AudioFormat.ENCODING_PCM_16BIT);
+        AudioTrack opened = new AudioTrack.Builder()
+            .setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(usage)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build())
+            .setAudioFormat(new AudioFormat.Builder()
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .build())
+            .setBufferSizeInBytes(Math.max(least, frameBytes * kBufferedFrames))
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .build();
+        opened.play();
+        return opened;
+    }
+
     public static final class Playback {
         private volatile AudioTrack track;
 
         public Playback(int sampleRate, int frameBytes) {
             join();
-            int least = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_16BIT);
-            track = new AudioTrack.Builder()
-                .setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build())
-                .setAudioFormat(new AudioFormat.Builder()
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setSampleRate(sampleRate)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build())
-                .setBufferSizeInBytes(Math.max(least, frameBytes * kBufferedFrames))
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build();
-            track.play();
+            track = openTrack(AudioAttributes.USAGE_VOICE_COMMUNICATION, sampleRate, frameBytes);
         }
 
         public void write(ByteBuffer pcm, int bytes) {

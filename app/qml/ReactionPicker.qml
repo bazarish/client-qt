@@ -149,7 +149,6 @@ Popup {
                         customField.text = held.slice(0, App.maxReactionChars).join("")
                     }
                 }
-                background: Rectangle { radius: 8; color: Theme.control; border.color: customField.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             MenuButton {
                 iconName: "smile"

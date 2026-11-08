@@ -598,7 +598,7 @@ Item {
                 sourceComponent: ColumnLayout {
                     spacing: 2
                     Label { text: "" + model.attName; color: Theme.text; font.weight: Font.Medium; elide: Text.ElideRight; Layout.fillWidth: true }
-                    Label { visible: model.attSize > 0; text: Format.bytes(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
+                    Label { visible: model.attSize > 0; text: App.humanBytes(model.attSize); color: Theme.textDim; font.pixelSize: Theme.fontSmall }
                     TextMetrics {
                         id: stageMetrics
                         font.pixelSize: Theme.fontSmall
@@ -703,8 +703,8 @@ Item {
                         Label {
                             Layout.fillWidth: true
                             text: model.downloadTotal > 0
-                                ? (Format.bytes(model.downloadReceived) + " / "
-                                    + Format.bytes(model.downloadTotal))
+                                ? (App.humanBytes(model.downloadReceived) + " / "
+                                    + App.humanBytes(model.downloadTotal))
                                 : (model.transferStage.length > 0
                                     ? model.transferStage
                                     : qsTr("Connecting over I2P…"))
@@ -1083,7 +1083,7 @@ Item {
                 spacing: 4
                 Label {
                     visible: (delegate.isVoice || delegate.isPicture) && model.attSize > 0
-                    text: Format.bytes(model.attSize)
+                    text: App.humanBytes(model.attSize)
                     color: Theme.textFaint
                     font.pixelSize: 10
                 }

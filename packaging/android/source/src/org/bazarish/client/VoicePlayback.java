@@ -7,7 +7,6 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.AudioAttributes;
 import android.media.AudioDeviceInfo;
-import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.os.PowerManager;
@@ -28,7 +27,6 @@ public final class VoicePlayback implements SensorEventListener {
         AudioDeviceInfo.TYPE_BLE_HEADSET,
         AudioDeviceInfo.TYPE_HEARING_AID,
     };
-    private static final int kBufferedFrames = 4;
 
     private final int sampleRate;
     private final int frameBytes;
@@ -56,23 +54,7 @@ public final class VoicePlayback implements SensorEventListener {
 
     // The voice-communication usage is what the platform routes to the earpiece.
     private AudioTrack open(int usage) {
-        int least = AudioTrack.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_MONO,
-            AudioFormat.ENCODING_PCM_16BIT);
-        AudioTrack opened = new AudioTrack.Builder()
-            .setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(usage)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build())
-            .setAudioFormat(new AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build())
-            .setBufferSizeInBytes(Math.max(least, frameBytes * kBufferedFrames))
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build();
-        opened.play();
-        return opened;
+        return CallAudio.openTrack(usage, sampleRate, frameBytes);
     }
 
     private boolean playsPrivately() {

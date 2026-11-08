@@ -5,6 +5,7 @@
 #include "AndroidCallAudio.hpp"
 #include "CoreHost.hpp"
 #include "Notifier.hpp"
+#include "PostIfHeld.hpp"
 #include "Translations.hpp"
 
 #include <QJniEnvironment>
@@ -47,14 +48,7 @@ QJniObject javaString(const QString& text)
 // The shade's buttons are pressed on Android's own thread; the core answers on its own.
 void inCoreThread(std::function<void(CoreHost&)> action)
 {
-    const std::lock_guard<std::mutex> lock(gCoreMutex);
-    CoreHost* const core = gCore.load();
-    if (core == nullptr) {
-        return;
-    }
-    if (!QMetaObject::invokeMethod(
-            core, [core, action = std::move(action)]() { action(*core); },
-            Qt::QueuedConnection)) {
+    if (!postIfHeld(gCoreMutex, gCore, std::move(action))) {
         bazarish::log::warn("android: a button pressed in the shade did not reach the core");
     }
 }

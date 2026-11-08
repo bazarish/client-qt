@@ -17,7 +17,6 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
-#include <QRegularExpression>
 #include <chrono>
 #include <QTimer>
 #include <cstring>
@@ -30,6 +29,8 @@
 #include <iterator>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -62,40 +63,33 @@ QString SessionController::inviteProblem(const QString& uri) const
 
 QString SessionController::aliasProblem(const QString& typed) const
 {
-    const std::string text = typed.trimmed().toStdString();
-    try {
-        bazarish::parseAliasQuery(text);
-    } catch (const std::exception&) {
-        // The same checks as common's, in its order; its own words are not translated.
-        const std::size_t sigil = (!text.empty() && text.front() == bazarish::kAliasSigil) ? 1 : 0;
-        const std::size_t dash = text.find(bazarish::kAliasWordSeparator, sigil);
-        const std::string name
-            = text.substr(sigil, dash == std::string::npos ? std::string::npos : dash - sigil);
-        if (name.size() < bazarish::kAliasMinLength || name.size() > bazarish::kAliasMaxLength) {
-            return tr("An alias must be %1 to %2 characters long")
-                .arg(bazarish::kAliasMinLength)
-                .arg(bazarish::kAliasMaxLength);
-        }
-        if (dash == std::string::npos
-            || !bazarish::isAlias(QString::fromStdString(name).toLower().toStdString())) {
-            return tr("An alias may contain only Latin letters and digits");
-        }
+    const std::optional<bazarish::AliasProblem> problem
+        = bazarish::aliasQueryProblem(typed.trimmed().toStdString());
+    if (!problem.has_value()) {
+        return {};
+    }
+    switch (*problem) {
+    case bazarish::AliasProblem::eNameLength:
+        return tr("An alias must be %1 to %2 characters long")
+            .arg(bazarish::kAliasMinLength)
+            .arg(bazarish::kAliasMaxLength);
+    case bazarish::AliasProblem::eNameChars:
+        return tr("An alias may contain only Latin letters and digits");
+    case bazarish::AliasProblem::eWordLength:
+    case bazarish::AliasProblem::eWordChars:
+    case bazarish::AliasProblem::eWordEmpty:
         return tr("The word after the dash is 1 to %1 Latin letters and digits")
             .arg(bazarish::kAliasWordMaxLength);
     }
-    return {};
+    throw std::logic_error("unknown alias problem");
 }
 
 QString SessionController::aliasWordProblem(const QString& word) const
 {
-    const QString trimmed = word.trimmed();
-    static const QRegularExpression wordShape(QStringLiteral("^[A-Za-z0-9]*$"));
-    if (trimmed.size() > static_cast<qsizetype>(bazarish::kAliasWordMaxLength)
-        || !wordShape.match(trimmed).hasMatch()) {
-        return tr("A word is up to %1 Latin letters and digits")
-            .arg(bazarish::kAliasWordMaxLength);
+    if (!bazarish::aliasWordProblem(word.trimmed().toStdString()).has_value()) {
+        return {};
     }
-    return {};
+    return tr("A word is up to %1 Latin letters and digits").arg(bazarish::kAliasWordMaxLength);
 }
 
 bool SessionController::typedAlias(const QString& typed) const

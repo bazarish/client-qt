@@ -265,68 +265,21 @@ Item {
         onShowConnectionLog: connectionLog.open()
     }
 
-    property string unlockId: ""
     Connections {
         target: App
         function onNeedPassphrase(id, name) {
-            root.unlockId = id
-            unlockField.text = ""
-            unlockError.text = ""
             unlockDialog.title = qsTr("Unlock %1").arg(name)
-            unlockDialog.open()
+            unlockDialog.ask(id)
         }
         function onUnlockFailed(error) {
-            unlockError.text = error
-            unlockField.text = ""
-            unlockField.forceActiveFocus()
+            unlockDialog.refused(error)
         }
         function onAccountUnlocked(id) {
-            unlockError.text = ""
-            unlockField.text = ""
-            unlockDialog.close()
+            unlockDialog.unlocked()
         }
     }
-    Dialog {
+    UnlockDialog {
         id: unlockDialog
-        bottomMargin: activeFocus ? App.keyboardInset : 0
         anchors.centerIn: Overlay.overlay
-        modal: true
-        focus: true
-        closePolicy: Popup.CloseOnEscape
-        // Not Dialog.accept(): that closes the prompt before the passphrase is known to work.
-        function submit() {
-            if (root.unlockId.length > 0) {
-                App.openAccount(root.unlockId, unlockField.text)
-            }
-        }
-        onRejected: {
-            unlockField.text = ""
-            App.cancelUnlock()
-        }
-        onOpened: unlockField.forceActiveFocus()
-        background: DialogFrame { }
-        header: Label { text: unlockDialog.title; color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14; visible: text.length > 0 }
-        footer: DialogButtons { acceptText: qsTr("Unlock"); onAccepted: unlockDialog.submit(); onRejected: unlockDialog.reject() }
-        contentItem: ColumnLayout {
-            spacing: 6
-            TextField {
-                id: unlockField
-                echoMode: TextInput.Password
-                placeholderText: qsTr("Passphrase")
-                color: Theme.text
-                placeholderTextColor: Theme.textDim
-                Layout.preferredWidth: 280
-                onAccepted: unlockDialog.submit()
-                background: Rectangle { radius: 8; color: Theme.control; border.color: unlockField.activeFocus ? Theme.accent : Theme.controlEdge }
-            }
-            Label {
-                id: unlockError
-                visible: text.length > 0
-                color: Theme.danger
-                font.pixelSize: Theme.fontSmall
-                wrapMode: Text.Wrap
-                Layout.preferredWidth: 280
-            }
-        }
     }
 }

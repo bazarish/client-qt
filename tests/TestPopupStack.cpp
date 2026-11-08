@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "PopupStack.hpp"
+#include "TestUtil.hpp"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -10,15 +11,6 @@
 
 #include <cstdio>
 #include <cstdlib>
-
-#define CHECK(condition)                                                            \
-    do {                                                                            \
-        if (!(condition)) {                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
-                #condition);                                                        \
-            std::exit(1);                                                           \
-        }                                                                           \
-    } while (false)
 
 using namespace bazarish::app;
 

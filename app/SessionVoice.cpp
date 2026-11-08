@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "SessionController.hpp"
 
+#include "MediaKeys.hpp"
 #include "SessionShared.hpp"
 
 #include "Session.hpp"
@@ -137,8 +138,7 @@ void SessionController::stopVoiceRecording()
         emit voiceChanged();
         return;
     }
-    voiceTake_ = QByteArray(
-        reinterpret_cast<const char*>(audio.data()), static_cast<qsizetype>(audio.size()));
+    voiceTake_ = toQByteArray(audio);
     voiceTakeMs_ = durationMs;
     voiceTakeWave_ = waveformHex(audio);
     emit voiceChanged();
@@ -243,7 +243,7 @@ void SessionController::playVoice(const QString& e2eId, const qint64 fromMs)
     voicePositionMs_ = voiceSeekMs_;
     emit voiceChanged();
     // Read here, like a picture: a press on play must not wait for the worker.
-    onVoiceLoaded(e2eId, store_.media(QStringLiteral("voice:") + e2eId));
+    onVoiceLoaded(e2eId, store_.media(QString::fromLatin1(client::kVoiceKeyPrefix) + e2eId));
 }
 
 void SessionController::stopVoice()

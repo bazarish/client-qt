@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "Picture.hpp"
 #include "TurnedJpeg.hpp"
+#include "TestUtil.hpp"
 
 #include <QFile>
 #include <QGuiApplication>
@@ -9,15 +10,6 @@
 
 #include <cstdio>
 #include <cstdlib>
-
-#define CHECK(condition)                                                            \
-    do {                                                                            \
-        if (!(condition)) {                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
-                #condition);                                                        \
-            std::exit(1);                                                           \
-        }                                                                           \
-    } while (false)
 
 using bazarish::test::kTurnedHigh;
 using bazarish::test::kTurnedWide;

@@ -3,10 +3,13 @@
 
 #include "AudioCodec.hpp"
 #include "AudioRoute.hpp"
+#include "AudioSamples.hpp"
 #include "QtAudioIo.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidCallAudio.hpp"
 #endif
+
+#include <bazarish/Clock.hpp>
 
 #include <QAudioSink>
 #include <QIODevice>
@@ -30,7 +33,6 @@ constexpr int kHangupMs = 400;
 constexpr int kOnce = 1;
 constexpr double kAmplitude = 0.22;
 constexpr double kRampMs = 8.0;
-constexpr int kMsPerSecond = 1000;
 
 constexpr int kRingbackOnMs = 1000;
 constexpr int kRingbackOffMs = 4000;
@@ -60,12 +62,7 @@ public:
 protected:
     qint64 readData(char* data, const qint64 maxLen) override
     {
-        const std::size_t want = static_cast<std::size_t>(maxLen) / sizeof(std::int16_t);
-        auto* const out = reinterpret_cast<std::int16_t*>(data);
-        for (std::size_t i = 0; i < want; ++i) {
-            out[i] = sampleAt(position_++);
-        }
-        return static_cast<qint64>(want * sizeof(std::int16_t));
+        return fillSamples(data, maxLen, [this]() { return sampleAt(position_++); });
     }
 
     qint64 writeData(const char*, qint64) override
@@ -82,7 +79,7 @@ private:
     std::int16_t sampleAt(const qint64 position) const
     {
         const qint64 cycleMs = onMs_ + offMs_;
-        const qint64 elapsedMs = position * kMsPerSecond / kCallSampleRate;
+        const qint64 elapsedMs = position * bazarish::kMillisPerSecond / kCallSampleRate;
         if (bursts_ != kForever && elapsedMs >= bursts_ * cycleMs) {
             return 0;
         }

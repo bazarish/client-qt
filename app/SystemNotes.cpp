@@ -93,4 +93,10 @@ QString chatTimerNote(const qint64 seconds, const bool ours, const QString& peer
                       QT_TR_NOOP("%1 set the auto-delete timer to %2"), {peerName, duration});
 }
 
+QString chatClearedNote(const bool ours, const QString& peerName)
+{
+    return ours ? encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone"))
+                : encodeSystemNote(QT_TR_NOOP("%1 cleared the chat"), {peerName});
+}
+
 }  // namespace bazarish::app

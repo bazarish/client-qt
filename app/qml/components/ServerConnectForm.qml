@@ -211,7 +211,6 @@ ColumnLayout {
                     placeholderTextColor: Theme.textDim
                     selectByMouse: true
                     onTextChanged: facadeModel.setProperty(index, "url", text)
-                    background: Rectangle { radius: 8; color: Theme.control; border.color: parent.activeFocus ? Theme.accent : Theme.controlEdge }
                 }
                 IconButton {
                     iconName: "close"
@@ -247,7 +246,6 @@ ColumnLayout {
                     placeholderTextColor: Theme.textDim
                     selectByMouse: true
                     onTextChanged: reseedModel.setProperty(index, "url", text)
-                    background: Rectangle { radius: 8; color: Theme.control; border.color: parent.activeFocus ? Theme.accent : Theme.controlEdge }
                 }
                 IconButton {
                     iconName: "close"

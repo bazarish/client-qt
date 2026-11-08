@@ -20,7 +20,6 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <stdexcept>
@@ -63,8 +62,7 @@ I2pService::I2pService(QObject* parent)
     connect(&commands_, &I2pCommands::refresh, this, &I2pService::refresh);
 
     state_.loggingEnabled = AppSettings::instance().i2pLogging();
-    state_.privacyLevel = std::clamp(
-        AppSettings::instance().i2pTunnelLength(), kMinimalPrivacyLevel, kMaxPrivacyLevel);
+    state_.privacyLevel = boundedPrivacyLevel(AppSettings::instance().i2pTunnelLength());
     state_.minKnownRouters = static_cast<int>(client::kMinKnownRouters);
     state_.proxyHost = QString::fromStdString(AppSettings::instance().i2pProxyHost());
     state_.proxyPort = AppSettings::instance().i2pProxyPort();
@@ -264,7 +262,7 @@ void I2pService::setLoggingEnabled(bool on)
 
 void I2pService::setPrivacyLevel(const int level)
 {
-    const int wanted = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
+    const int wanted = boundedPrivacyLevel(level);
     if (state_.privacyLevel == wanted) {
         return;
     }
@@ -315,10 +313,7 @@ void I2pService::checkAndSaveGateway(const QString& address)
 
 QString I2pService::transport() const
 {
-    if (state_.gatewayEnabled) {
-        return QStringLiteral("gateway");
-    }
-    return state_.samEnabled ? QStringLiteral("sam") : QStringLiteral("embedded");
+    return transportOf(state_);
 }
 
 void I2pService::useEmbedded()

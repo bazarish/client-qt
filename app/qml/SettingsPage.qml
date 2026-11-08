@@ -4,7 +4,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import Bazarish
-import "Format.js" as Format
 
 Popup {
     id: root
@@ -263,8 +262,8 @@ Popup {
                                     }
                                     Label {
                                         text: storageSection.ok
-                                            ? (Format.bytes(storageSection.used) + " / "
-                                                + Format.bytes(storageSection.quota))
+                                            ? (App.humanBytes(storageSection.used) + " / "
+                                                + App.humanBytes(storageSection.quota))
                                             : root.awaitingText(storageSection.info.failed === true)
                                         color: storageSection.ok ? Theme.textDim
                                             : root.awaitingColor(storageSection.info.failed === true)
@@ -976,12 +975,10 @@ Popup {
                 id: renameSelfField
                 Layout.fillWidth: true
                 placeholderText: qsTr("Your name")
-                // Characters here; the core enforces the contact request's byte cap.
-                maximumLength: 64
+                validator: Utf8Limit { maxBytes: App.maxAccountNameBytes }
                 color: Theme.text
                 placeholderTextColor: Theme.textDim
                 onAccepted: renameSelfDialog.accept()
-                background: Rectangle { radius: 8; color: Theme.control; border.color: renameSelfField.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             Label {
                 text: qsTr("Only updates this device and your invite link")
@@ -1030,8 +1027,6 @@ Popup {
                 placeholderText: qsTr("new password")
                 color: Theme.text; placeholderTextColor: Theme.textDim
                 Layout.fillWidth: true; implicitWidth: 260
-                background: Rectangle { radius: 8; color: Theme.control
-                    border.color: newPass.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             TextField {
                 id: newPassAgain
@@ -1040,8 +1035,6 @@ Popup {
                 color: Theme.text; placeholderTextColor: Theme.textDim
                 Layout.fillWidth: true; implicitWidth: 260
                 onAccepted: if (passwordDialog.matched) { passwordDialog.accept() }
-                background: Rectangle { radius: 8; color: Theme.control
-                    border.color: newPassAgain.activeFocus ? Theme.accent : Theme.controlEdge }
             }
             Label {
                 text: passwordDialog.matched

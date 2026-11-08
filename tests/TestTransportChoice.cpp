@@ -4,6 +4,7 @@
 #include "I2pRouter.hpp"
 #include "I2pService.hpp"
 #include "Wire.hpp"
+#include "TestUtil.hpp"
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -14,15 +15,6 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-
-#define CHECK(condition)                                                            \
-    do {                                                                            \
-        if (!(condition)) {                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
-                #condition);                                                        \
-            std::exit(1);                                                           \
-        }                                                                           \
-    } while (false)
 
 using namespace bazarish::app;
 namespace fs = std::filesystem;
@@ -39,8 +31,7 @@ constexpr std::string_view kGatewayRefusal = "bazarish::i2p: the gateway would n
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
-    const fs::path root = fs::temp_directory_path() / "bazarish-transport-choice-test";
-    fs::remove_all(root);
+    const fs::path root = testutil::freshDir("transport-choice");
     fs::create_directories(root / "accounts");
     const std::string accountsDir = (root / "accounts").string();
 #ifdef _WIN32

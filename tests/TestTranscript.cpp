@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "TranscriptStore.hpp"
+#include "TestUtil.hpp"
 
 #include "AccountDb.hpp"
 #include "AccountKey.hpp"
@@ -22,15 +23,6 @@
 #include <iterator>
 #include <stdexcept>
 #include <string>
-
-#define CHECK(condition)                                                            \
-    do {                                                                            \
-        if (!(condition)) {                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
-                #condition);                                                        \
-            std::exit(1);                                                           \
-        }                                                                           \
-    } while (false)
 
 using namespace bazarish;
 using namespace bazarish::app;
@@ -737,7 +729,7 @@ int main(int argc, char** argv)
         TranscriptStore store;
         CHECK(store.open(db, "pw"));
         constexpr qint64 kMsPerSecond = 1000;
-        constexpr qint64 kTimer = client::kSecondsPerHour;
+        constexpr qint64 kTimer = bazarish::kSecondsPerHour;
         constexpr qint64 kTimerMs = kTimer * kMsPerSecond;
         // Room for the test's own run time around "now".
         constexpr qint64 kSlackMs = 60 * kMsPerSecond;

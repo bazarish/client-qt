@@ -151,7 +151,7 @@ Popup {
             }
             Label {
                 visible: root.takeReady
-                text: Format.bytes(root.session ? root.session.voiceTakeBytes : 0)
+                text: App.humanBytes(root.session ? root.session.voiceTakeBytes : 0)
                 color: Theme.textFaint
                 font.pixelSize: Theme.fontSmall
             }

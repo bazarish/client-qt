@@ -2,6 +2,7 @@
 #include "MessageIngest.hpp"
 
 #include "ContactBook.hpp"
+#include "SessionShared.hpp"
 #include "SystemNotes.hpp"
 #include "TranscriptStore.hpp"
 
@@ -28,10 +29,7 @@ public:
 
     std::string chatCleared(const bool ours, const std::string& peer) const override
     {
-        return (ours ? encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone"))
-                     : encodeSystemNote(
-                           QT_TR_NOOP("%1 cleared the chat"), {contacts_.peerName(qt(peer))}))
-            .toStdString();
+        return chatClearedNote(ours, contacts_.peerName(qt(peer))).toStdString();
     }
 
     std::string chatTimer(
@@ -49,8 +47,7 @@ public:
 
     std::string unsupported(const std::string& rawType, const Bytes& rawBody) const override
     {
-        const QByteArray body(
-            reinterpret_cast<const char*>(rawBody.data()), static_cast<qsizetype>(rawBody.size()));
+        const QByteArray body = toQByteArray(rawBody);
         return encodeUnsupportedMessage(qt(rawType), QString::fromLatin1(body.toBase64()))
             .toStdString();
     }

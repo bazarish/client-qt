@@ -2,6 +2,7 @@
 #include "AndroidWindow.hpp"
 
 #include "AppController.hpp"
+#include "PostIfHeld.hpp"
 
 #include <QGuiApplication>
 #include <QInputDevice>
@@ -37,14 +38,7 @@ std::mutex gHeldMutex;
 template <typename Target>
 void inWindowThread(const std::atomic<Target*>& held, std::function<void(Target&)> action)
 {
-    const std::lock_guard<std::mutex> lock(gHeldMutex);
-    Target* const target = held.load();
-    if (target == nullptr) {
-        return;
-    }
-    if (!QMetaObject::invokeMethod(
-            target, [target, action = std::move(action)]() { action(*target); },
-            Qt::QueuedConnection)) {
+    if (!postIfHeld(gHeldMutex, held, std::move(action))) {
         bazarish::log::warn("android: a call from Android did not reach the window");
     }
 }

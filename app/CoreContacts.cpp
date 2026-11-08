@@ -208,19 +208,27 @@ void CoreAccount::writeConversationNote(const QString& peer, const QString& text
     if (peer.isEmpty()) {
         return;
     }
+    const qint64 id = appendNote(peer, QStringLiteral("system"), text, DeliveryStatus::Received);
+    if (id != 0) {
+        emit events_.rowAdded(peer, id, true);
+    }
+}
+
+qint64 CoreAccount::appendNote(const QString& peer, const QString& type, const QString& text,
+    const DeliveryStatus::Value status)
+{
     StoredMessage note;
     note.peer = peer;
-    note.type = QStringLiteral("system");
+    note.type = type;
     note.text = text;
     note.ts = nowMillis();
     note.orderKey = note.ts;
-    note.status = DeliveryStatus::Received;
+    note.status = status;
     note.id = store_.append(note);
     if (note.id == 0) {
         reportUnsaved();
-        return;
     }
-    emit events_.rowAdded(peer, note.id, true);
+    return note.id;
 }
 
 void CoreAccount::onRoutingTold(const QString& peer, const bool delivered)
@@ -243,20 +251,12 @@ void CoreAccount::onRoutingTold(const QString& peer, const bool delivered)
     if (told > 0) {
         return;
     }
-    StoredMessage note;
-    note.peer = peer;
-    note.type = kind;
-    note.text = encodeSystemNote(
-        QT_TR_NOOP("Your new contact details did not reach them"));
-    note.ts = nowMillis();
-    note.orderKey = note.ts;
-    note.status = DeliveryStatus::Received;
-    note.id = store_.append(note);
-    if (note.id == 0) {
-        reportUnsaved();
-        return;
+    const qint64 id = appendNote(peer, kind,
+        encodeSystemNote(QT_TR_NOOP("Your new contact details did not reach them")),
+        DeliveryStatus::Received);
+    if (id != 0) {
+        emit events_.rowAdded(peer, id, true);
     }
-    emit events_.rowAdded(peer, note.id, true);
 }
 
 void CoreAccount::openContactProgress(const QString& peer, const QString& opId)
@@ -272,20 +272,13 @@ void CoreAccount::openContactProgress(const QString& peer, const QString& opId)
 
 void CoreAccount::noteContactProgress(const QString& peer, const QString& opId)
 {
-    StoredMessage note;
-    note.peer = peer;
-    note.type = QStringLiteral("system");
-    note.text = encodeSystemNote(QT_TR_NOOP("Sending a contact request…"));
-    note.ts = nowMillis();
-    note.orderKey = note.ts;
-    note.status = DeliveryStatus::Preparing;
-    note.id = store_.append(note);
-    if (note.id == 0) {
-        reportUnsaved();
+    const qint64 id = appendNote(peer, QStringLiteral("system"),
+        encodeSystemNote(QT_TR_NOOP("Sending a contact request…")), DeliveryStatus::Preparing);
+    if (id == 0) {
         return;
     }
-    contactProgressRows_[opId] = ContactProgressRow{note.id, peer};
-    emit events_.rowAdded(peer, note.id, true);
+    contactProgressRows_[opId] = ContactProgressRow{id, peer};
+    emit events_.rowAdded(peer, id, true);
 }
 
 void CoreAccount::writeContactProgress(const QString& opId, const QString& text)

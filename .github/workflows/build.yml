@@ -50,7 +50,7 @@ jobs:
         run: .github/ci/build.sh test
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh
 
   windows:
     name: Windows ${{ matrix.arch }}
@@ -103,7 +103,7 @@ jobs:
         run: .github/ci/build.sh test
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh
 
   macos:
     name: macOS arm64
@@ -132,4 +132,4 @@ jobs:
         run: .github/ci/build.sh test
       - name: Say what broke
         if: failure()
-        run: .github/ci/report.sh
+        run: common/tools/ci-report.sh

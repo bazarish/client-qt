@@ -59,7 +59,12 @@ Item {
             horizontalAlignment: Text.AlignHCenter
         }
 
-        FormField { id: nameField; label: qsTr("Account name"); placeholder: qsTr("e.g. Mr. Who"); maximumLength: 64 }
+        FormField {
+            id: nameField
+            label: qsTr("Account name")
+            placeholder: qsTr("e.g. Mr. Who")
+            validator: Utf8Limit { maxBytes: App.maxAccountNameBytes }
+        }
         FormField { id: passField; label: qsTr("Passphrase (optional, encrypts keys at rest)"); echoMode: TextInput.Password; placeholder: qsTr("leave empty for none") }
         FormField { id: confirmField; label: qsTr("Confirm passphrase"); echoMode: TextInput.Password }
 

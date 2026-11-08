@@ -32,7 +32,7 @@ auto gatewayOf(const I2pState& state)
         state.gatewayAddress, state.gatewayHost);
 }
 
-auto transportOf(const I2pState& state)
+auto transportFields(const I2pState& state)
 {
     return std::tie(state.samEnabled, state.gatewayEnabled, state.restartNeeded);
 }
@@ -80,14 +80,14 @@ void I2pController::take(const I2pState& state)
     if (gatewayOf(was) != gatewayOf(state_)) {
         emit gatewayChanged();
     }
-    if (transportOf(was) != transportOf(state_)) {
+    if (transportFields(was) != transportFields(state_)) {
         emit transportChanged();
     }
 }
 
 void I2pController::setPrivacyLevel(const int level)
 {
-    const int wanted = std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
+    const int wanted = boundedPrivacyLevel(level);
     if (state_.privacyLevel == wanted) {
         return;
     }
@@ -121,10 +121,7 @@ bool I2pController::tunnelsBuilding() const
 
 QString I2pController::transport() const
 {
-    if (state_.gatewayEnabled) {
-        return QStringLiteral("gateway");
-    }
-    return state_.samEnabled ? QStringLiteral("sam") : QStringLiteral("embedded");
+    return transportOf(state_);
 }
 
 void I2pController::checkAndSaveProxy(const QString& host, const int port)

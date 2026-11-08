@@ -3,7 +3,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
-import "Format.js" as Format
 
 Popup {
     id: root
@@ -69,7 +68,7 @@ Popup {
                     Layout.margins: 14
                     spacing: 4
                     Label {
-                        text: qsTr("Database file: %1").arg(Format.bytes(root.info.fileBytes))
+                        text: qsTr("Database file: %1").arg(App.humanBytes(root.info.fileBytes))
                         color: Theme.text
                         font.pixelSize: Theme.fontBody
                         wrapMode: Text.Wrap
@@ -78,7 +77,7 @@ Popup {
                     Label {
                         visible: root.info.freeBytes > 0
                         text: qsTr("About %1 of it is free space compacting returns to the disk")
-                            .arg(Format.bytes(root.info.freeBytes))
+                            .arg(App.humanBytes(root.info.freeBytes))
                         color: Theme.textDim
                         font.pixelSize: Theme.fontSmall
                         wrapMode: Text.Wrap
@@ -151,7 +150,7 @@ Popup {
                             Label {
                                 text: "%1 (%2)"
                                     .arg(chatRow.modelData.messages)
-                                    .arg(Format.bytes(chatRow.modelData.bytes))
+                                    .arg(App.humanBytes(chatRow.modelData.bytes))
                                 color: Theme.textDim
                                 font.pixelSize: Theme.fontSmall
                                 wrapMode: Text.Wrap

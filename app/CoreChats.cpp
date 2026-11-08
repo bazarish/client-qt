@@ -98,16 +98,8 @@ void CoreAccount::clearChat(const QString& peer, const bool forEveryone)
         return;
     }
     emit commands_.requestClearChatForEveryone(peer);
-    StoredMessage sys;
-    sys.peer = peer;
-    sys.type = QStringLiteral("system");
-    sys.text = encodeSystemNote(QT_TR_NOOP("You cleared the chat for everyone"));
-    sys.ts = nowMillis();
-    sys.orderKey = sys.ts;
-    sys.status = DeliveryStatus::Received;
-    if (store_.append(sys) == 0) {
-        reportUnsaved();
-    }
+    (void)appendNote(peer, QStringLiteral("system"), chatClearedNote(true, QString()),
+        DeliveryStatus::Received);
     emit events_.peerReset(peer);
 }
 
@@ -123,19 +115,11 @@ void CoreAccount::setChatTimer(const QString& peer, const qint64 seconds)
     }
     emit commands_.requestSendChatTimer(peer, seconds);
     emit events_.chatTimerChanged(peer, seconds);
-    StoredMessage sys;
-    sys.peer = peer;
-    sys.type = QStringLiteral("system");
-    sys.text = chatTimerNote(seconds, /*ours=*/true, contacts_.peerName(peer));
-    sys.ts = nowMillis();
-    sys.orderKey = sys.ts;
-    sys.status = DeliveryStatus::Received;
-    sys.id = store_.append(sys);
-    if (sys.id == 0) {
-        reportUnsaved();
-        return;
+    const qint64 id = appendNote(peer, QStringLiteral("system"),
+        chatTimerNote(seconds, /*ours=*/true, contacts_.peerName(peer)), DeliveryStatus::Received);
+    if (id != 0) {
+        emit events_.rowAdded(peer, id, true);
     }
-    emit events_.rowAdded(peer, sys.id, true);
 }
 
 void CoreAccount::sweepExpired()

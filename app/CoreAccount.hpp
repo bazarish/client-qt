@@ -5,9 +5,11 @@
 #include "CallTones.hpp"
 #include "AccountEvents.hpp"
 #include "ContactBook.hpp"
+#include "DeliveryStatus.hpp"
 #include "FederationFetch.hpp"
 #include "MessageIngest.hpp"
 #include "OperationLog.hpp"
+#include "Session.hpp"
 #include "TranscriptStore.hpp"
 
 #include <QHash>
@@ -48,7 +50,7 @@ public:
     bool reachable() const { return reachable_; }
     QString activeFacade() const { return activeFacade_; }
     bool hasServer() const { return hasServer_; }
-    QString callState() const { return call_.state; }
+    client::Session::CallState callState() const { return call_.state; }
     QString callPeer() const { return call_.peer; }
     QString callPeerName() const { return contacts_.peerName(call_.peer); }
     int unreadTotal() const { return unread_; }
@@ -101,7 +103,9 @@ private:
     bool isSavedChat(const QString& peer) const;
     void sendText(
         const QString& peer, const QString& text, const QString& replyTo, const QString& e2eId);
-    qint64 beginAttachmentSend(StoredMessage m);
+    qint64 beginSend(StoredMessage m, const QString& kind, const QString& title);
+    QByteArray mediaOf(const StoredMessage& m) const;
+    void dispatchSend(const StoredMessage& m, const QByteArray& media);
     void sendFile(
         const QString& peer, const QString& path, const QString& replyTo, const QString& e2eId);
     void sendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
@@ -147,6 +151,9 @@ private:
     void trackAliasAdd(const QString& opId, const QString& alias, const QString& intro,
         const QString& requestId, const QString& chat);
     void writeConversationNote(const QString& peer, const QString& text);
+    // The row id, or 0 when the store refused it (already reported).
+    qint64 appendNote(const QString& peer, const QString& type, const QString& text,
+        DeliveryStatus::Value status);
     void onRoutingTold(const QString& peer, bool delivered);
     void openContactProgress(const QString& peer, const QString& opId);
     void noteContactProgress(const QString& peer, const QString& opId);
@@ -247,7 +254,7 @@ private:
     QHash<QString, PendingContactRequest> refusedRequests_;
     QSet<QString> agreeingShown_;
     struct CallView {
-        QString state = QStringLiteral("idle");
+        client::Session::CallState state = client::Session::CallState::eIdle;
         QString peer;
         QString id;
         QString stage;

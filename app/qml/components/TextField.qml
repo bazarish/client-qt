@@ -5,5 +5,10 @@ import Bazarish
 
 Controls.TextField {
     id: field
+    background: Rectangle {
+        radius: 8
+        color: Theme.control
+        border.color: field.activeFocus ? Theme.accent : Theme.controlEdge
+    }
     PhoneSelection { field: field }
 }

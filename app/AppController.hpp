@@ -43,7 +43,8 @@ class AppController : public QObject {
     Q_PROPERTY(bool hasAccounts READ hasAccounts NOTIFY accountListChanged)
     Q_PROPERTY(bool hasOpenAccounts READ hasOpenAccounts NOTIFY accountsChanged)
     Q_PROPERTY(int unreadElsewhere READ unreadElsewhere NOTIFY accountsChanged)
-    Q_PROPERTY(int maxGreetingLength READ maxGreetingLength CONSTANT)
+    Q_PROPERTY(int maxGreetingBytes READ maxGreetingBytes CONSTANT)
+    Q_PROPERTY(int maxAccountNameBytes READ maxAccountNameBytes CONSTANT)
     Q_PROPERTY(QString aliasSigil READ aliasSigil CONSTANT)
     Q_PROPERTY(int aliasWordMaxLength READ aliasWordMaxLength CONSTANT)
     Q_PROPERTY(int maxReactionChars READ maxReactionChars CONSTANT)
@@ -77,7 +78,8 @@ public:
     QObject* accountList() { return &accountList_; }
     QObject* accounts() { return &accounts_; }
     int unreadElsewhere() const;
-    static int maxGreetingLength() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
+    static int maxGreetingBytes() { return static_cast<int>(bazarish::kMaxContactGreetingBytes); }
+    static int maxAccountNameBytes() { return static_cast<int>(bazarish::kMaxAccountNameBytes); }
     static QString aliasSigil() { return QString(QChar(bazarish::kAliasSigil)); }
     static int aliasWordMaxLength() { return static_cast<int>(bazarish::kAliasWordMaxLength); }
     static int maxReactionChars() { return static_cast<int>(bazarish::kMaxReactionChars); }
@@ -95,6 +97,7 @@ public:
     QString i2pdVersion() const;
     QString appVersion() const;
 
+    Q_INVOKABLE static QString humanBytes(qint64 bytes);
     Q_INVOKABLE void openLink(const QString& link);
     Q_INVOKABLE bool isAppLink(const QString& link) const;
 

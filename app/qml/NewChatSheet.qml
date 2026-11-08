@@ -173,7 +173,7 @@ Popup {
             id: intro
             label: qsTr("Introduction")
             text: root.kGreeting
-            maximumLength: App.maxGreetingLength
+            validator: Utf8Limit { maxBytes: App.maxGreetingBytes }
         }
 
         RowLayout {

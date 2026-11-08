@@ -2,6 +2,7 @@
 #include "TranscriptStore.hpp"
 
 #include "PathText.hpp"
+#include "SessionShared.hpp"
 #include "SystemNotes.hpp"
 
 #include <QJsonArray>
@@ -123,8 +124,7 @@ bool TranscriptReader::open(const QString& dbPath, const Bytes& key)
 
 QByteArray TranscriptReader::media(const QString& key) const
 {
-    const Bytes bytes = core_->media(utf8(key));
-    return QByteArray(reinterpret_cast<const char*>(bytes.data()), static_cast<qsizetype>(bytes.size()));
+    return toQByteArray(core_->media(utf8(key)));
 }
 
 qint64 TranscriptReader::idForE2e(const QString& e2eId) const

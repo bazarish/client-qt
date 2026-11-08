@@ -17,5 +17,6 @@ QString systemNoteText(const QString& stored);
 QString chatTimerDurationNote(qint64 seconds);
 // The plate that says who set a chat's auto-delete timer, and to what.
 QString chatTimerNote(qint64 seconds, bool ours, const QString& peerName);
+QString chatClearedNote(bool ours, const QString& peerName);
 
 }  // namespace bazarish::app

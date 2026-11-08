@@ -13,7 +13,6 @@
 
 #include <QChar>
 #include <QStringList>
-#include <QDateTime>
 
 #include <cstdint>
 #include <vector>
@@ -25,11 +24,6 @@ constexpr qint64 kBytesPerUnit = 1024;
 constexpr int kLargestUnit = 3;
 constexpr double kDecimalBelow = 10.0;
 }  // namespace
-
-qint64 nowMillis()
-{
-    return QDateTime::currentMSecsSinceEpoch();
-}
 
 QString humanBytes(const qint64 bytes)
 {

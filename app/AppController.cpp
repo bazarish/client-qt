@@ -2,16 +2,17 @@
 #include "AppController.hpp"
 
 #include "AccountManager.hpp"
-#include "GatewayAddress.hpp"
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
 #include "Documents.hpp"
 #include "EmojiText.hpp"
-#include "SelectionHold.hpp"
-#include "Translations.hpp"
+#include "GatewayAddress.hpp"
 #include "Markup.hpp"
 #include "PathText.hpp"
 #include "PopupStack.hpp"
+#include "SelectionHold.hpp"
+#include "SessionShared.hpp"
+#include "Translations.hpp"
 #include "Wire.hpp"
 #ifdef Q_OS_ANDROID
 #include "AndroidWindow.hpp"
@@ -485,10 +486,15 @@ bool AppController::isAppLink(const QString& link) const
     return !bazarish::linkTail(link.trimmed().toStdString()).empty();
 }
 
+QString AppController::humanBytes(const qint64 bytes)
+{
+    return app::humanBytes(bytes);
+}
+
 void AppController::openLink(const QString& link)
 {
     const std::string tail = bazarish::linkTail(link.trimmed().toStdString());
-    const auto kindIs = [&tail](const char* const kind) { return tail.rfind(kind, 0) == 0; };
+    const auto kindIs = [&tail](const char* const kind) { return tail.starts_with(kind); };
     const bool sign = kindIs(bazarish::kSignKind);
     const QString uri
         = QString::fromStdString(sign ? bazarish::schemeLink(tail) : bazarish::webLink(tail));

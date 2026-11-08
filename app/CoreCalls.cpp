@@ -3,21 +3,19 @@
 
 #include "Session.hpp"
 
-#include <array>
-
 namespace bazarish::app {
 
 namespace {
 
-const QString kIdle = QStringLiteral("idle");
+using CallState = client::Session::CallState;
 
-QString callStateName(const int state)
+CallState callStateOf(const int state)
 {
-    static const std::array<const char*, 4> kNames = {"idle", "outgoing", "incoming", "active"};
-    if (state < 0 || state >= static_cast<int>(kNames.size())) {
-        return kIdle;
+    if (state < static_cast<int>(CallState::eIdle)
+        || state > static_cast<int>(CallState::eActive)) {
+        return CallState::eIdle;
     }
-    return QString::fromLatin1(kNames.at(static_cast<std::size_t>(state)));
+    return static_cast<CallState>(state);
 }
 
 }  // namespace
@@ -26,8 +24,8 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
     const bool muted, const QString& stage, const bool peerRinging, const qint64 connectedAtMs,
     const float inputLevel, const float outputLevel)
 {
-    const QString name = callStateName(state);
-    if (!refusedCallId_.isEmpty() && callId == refusedCallId_ && name != kIdle) {
+    const CallState name = callStateOf(state);
+    if (!refusedCallId_.isEmpty() && callId == refusedCallId_ && name != CallState::eIdle) {
         return;
     }
     if (!callId.isEmpty() && callId != refusedCallId_) {
@@ -39,7 +37,7 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
         && call_.connectedAtMs == connectedAtMs) {
         return;
     }
-    const bool wasAnswered = call_.state == QLatin1String("active");
+    const bool wasAnswered = call_.state == CallState::eActive;
     call_.state = name;
     call_.peer = peer;
     call_.id = callId;
@@ -47,11 +45,11 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
     call_.connectedAtMs = connectedAtMs;
     emit callChanged();
 
-    const bool waitingOnThem = (name == QLatin1String("outgoing") && peerRinging)
-        || (name == QLatin1String("active") && connectedAtMs == 0);
+    const bool waitingOnThem = (name == CallState::eOutgoing && peerRinging)
+        || (name == CallState::eActive && connectedAtMs == 0);
     if (waitingOnThem) {
         callTones_.ringback();
-    } else if (name == kIdle) {
+    } else if (name == CallState::eIdle) {
         if (wasAnswered) {
             callTones_.hangup();
         } else {
@@ -62,7 +60,7 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
         callTones_.stop();
     }
 
-    if (name == kIdle) {
+    if (name == CallState::eIdle) {
         if (!callOpId_.isEmpty()) {
             log_.finish(callOpId_, true, tr("Call ended"));
             callOpId_.clear();
@@ -70,9 +68,9 @@ void CoreAccount::onCallStateChanged(const int state, const QString& peer, const
         return;
     }
     const QString opId = QStringLiteral("call:") + (callId.isEmpty() ? peer : callId);
-    const QString status = name == QLatin1String("outgoing") ? tr("Calling…")
-        : name == QLatin1String("incoming")                  ? tr("Incoming call…")
-                                                             : tr("Connected");
+    const QString status = name == CallState::eOutgoing ? tr("Calling…")
+        : name == CallState::eIncoming                  ? tr("Incoming call…")
+                                                        : tr("Connected");
     if (callOpId_ != opId) {
         callOpId_ = opId;
         log_.begin(opId, QStringLiteral("call"), tr("Call with %1").arg(contacts_.peerName(peer)),

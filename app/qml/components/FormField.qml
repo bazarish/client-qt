@@ -13,6 +13,7 @@ ColumnLayout {
     property alias echoMode: field.echoMode
     property alias inputField: field
     property alias maximumLength: field.maximumLength
+    property alias validator: field.validator
     spacing: 4
     Layout.fillWidth: true
 
@@ -30,10 +31,5 @@ ColumnLayout {
         color: Theme.text
         placeholderTextColor: Theme.textDim
         selectByMouse: true
-        background: Rectangle {
-            radius: 8
-            color: Theme.control
-            border.color: field.activeFocus ? Theme.accent : Theme.controlEdge
-        }
     }
 }

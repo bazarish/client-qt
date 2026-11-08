@@ -28,23 +28,12 @@ constexpr int kIdleSleepMs = 5;
 
 constexpr int kMillisecondsPerSecond = 1000;
 
-constexpr double kFullScale = 32768.0;
 
 constexpr int kVoiceBitrateBps = 24000;
 
 constexpr int kBitsPerByte = 8;
 constexpr std::size_t kFrameBytesEstimate = static_cast<std::size_t>(kVoiceBitrateBps)
     * kCallFrameMs / (kBitsPerByte * 1000);
-
-float frameLevel(const std::vector<std::int16_t>& pcm)
-{
-    double sum = 0.0;
-    for (const std::int16_t sample : pcm) {
-        const double value = static_cast<double>(sample) / kFullScale;
-        sum += value * value;
-    }
-    return pcm.empty() ? 0.0F : static_cast<float>(std::sqrt(sum / static_cast<double>(pcm.size())));
-}
 
 }  // namespace
 
@@ -88,7 +77,7 @@ void VoiceNote::startRecording()
                 std::this_thread::sleep_for(std::chrono::milliseconds(kIdleSleepMs));
                 continue;
             }
-            inputLevel_.store(frameLevel(frame));
+            inputLevel_.store(static_cast<float>(bazarish::pcmRms(frame)));
             encodedBytes_.fetch_add(kFrameBytesEstimate);
             const std::lock_guard<std::mutex> lock(pcmMutex_);
             pcm_.insert(pcm_.end(), frame.begin(), frame.end());

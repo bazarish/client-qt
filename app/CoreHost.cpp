@@ -301,7 +301,7 @@ void CoreHost::updateRinging()
     const CoreAccount* ringing = nullptr;
     if (notifications_) {
         for (const CoreAccount* const account : sessions_) {
-            if (account->callState() == QLatin1String("incoming")) {
+            if (account->callState() == client::Session::CallState::eIncoming) {
                 ringing = account;
                 break;
             }
@@ -328,9 +328,10 @@ void CoreHost::updateRinging()
     bool live = false;
     bool talking = false;
     for (const CoreAccount* const session : sessions_) {
-        live = live || session->callState() != QLatin1String("idle");
-        talking = talking || session->callState() == QLatin1String("active")
-            || session->callState() == QLatin1String("outgoing");
+        const client::Session::CallState state = session->callState();
+        live = live || state != client::Session::CallState::eIdle;
+        talking = talking || state == client::Session::CallState::eActive
+            || state == client::Session::CallState::eOutgoing;
     }
     if (live != callLive_ || talking != callTalking_) {
         if (live && !callLive_) {
@@ -750,7 +751,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
                 endpoint = client::openPairLink(client::sharedI2pRouter(i2pRoot()),
                     client::tunnelPrivacy(), client::kPairingOwner);
                 if (!endpoint->waitReady(
-                        std::chrono::seconds(client::kPairOwnTunnelsSeconds))) {
+                        std::chrono::seconds(client::kOwnTunnelsSeconds))) {
                     endpoint.reset();
                     failure = tr("This device could not build I2P tunnels");
                 }
@@ -758,7 +759,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
             if (endpoint) {
                 say(tr("Reaching the other device"));
                 const std::unique_ptr<bazarish::i2p::Stream> reached
-                    = endpoint->connect(dest, std::chrono::seconds(client::kPairDialSeconds));
+                    = endpoint->connect(dest, std::chrono::seconds(client::kDialSeconds));
                 if (!reached) {
                     endpoint.reset();
                     failure = tr("Cannot reach the other device");

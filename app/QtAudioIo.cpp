@@ -3,6 +3,7 @@
 
 #include "AudioCodec.hpp"
 #include "AudioRoute.hpp"
+#include "AudioSamples.hpp"
 
 #pragma push_macro("emit")
 #undef emit
@@ -24,6 +25,21 @@
 
 namespace bazarish::app {
 
+namespace {
+
+// How much audio a call keeps queued before the oldest goes: half a second of frames.
+constexpr std::size_t kRingFrames = 25;
+
+void keepRecent(std::deque<std::int16_t>& ring)
+{
+    const std::size_t cap = static_cast<std::size_t>(kCallSamplesPerFrame) * kRingFrames;
+    while (ring.size() > cap) {
+        ring.pop_front();
+    }
+}
+
+}  // namespace
+
 QAudioFormat callAudioFormat()
 {
     QAudioFormat format;
@@ -37,15 +53,10 @@ class QtAudioSource::CaptureDevice : public QIODevice {
 public:
     qint64 writeData(const char* data, qint64 len) override
     {
-        const auto* samples = reinterpret_cast<const std::int16_t*>(data);
-        const std::size_t count = static_cast<std::size_t>(len) / sizeof(std::int16_t);
         {
             const std::lock_guard<std::mutex> lock(mutex_);
-            ring_.insert(ring_.end(), samples, samples + count);
-            const std::size_t cap = static_cast<std::size_t>(kCallSamplesPerFrame) * 25;
-            while (ring_.size() > cap) {
-                ring_.pop_front();
-            }
+            appendSamples(ring_, data, len);
+            keepRecent(ring_);
         }
         cv_.notify_one();
         return len;
@@ -189,20 +200,15 @@ public:
 
     qint64 readData(char* data, qint64 maxLen) override
     {
-        const std::size_t want = static_cast<std::size_t>(maxLen) / sizeof(std::int16_t);
-        auto* out = reinterpret_cast<std::int16_t*>(data);
-        std::size_t produced = 0;
-        {
-            const std::lock_guard<std::mutex> lock(mutex_);
-            while (produced < want && !ring_.empty()) {
-                out[produced++] = ring_.front();
-                ring_.pop_front();
+        const std::lock_guard<std::mutex> lock(mutex_);
+        return fillSamples(data, maxLen, [this]() -> std::int16_t {
+            if (ring_.empty()) {
+                return 0;
             }
-        }
-        while (produced < want) {
-            out[produced++] = 0;
-        }
-        return static_cast<qint64>(produced * sizeof(std::int16_t));
+            const std::int16_t sample = ring_.front();
+            ring_.pop_front();
+            return sample;
+        });
     }
 
     bool isSequential() const override
@@ -214,10 +220,7 @@ public:
     {
         const std::lock_guard<std::mutex> lock(mutex_);
         ring_.insert(ring_.end(), pcm.begin(), pcm.end());
-        const std::size_t cap = static_cast<std::size_t>(kCallSamplesPerFrame) * 25;
-        while (ring_.size() > cap) {
-            ring_.pop_front();
-        }
+        keepRecent(ring_);
     }
 
 private:

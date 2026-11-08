@@ -9,6 +9,8 @@
 #include <QStringList>
 #include <QVariantList>
 
+#include <algorithm>
+
 namespace bazarish::app {
 
 inline constexpr int kMinimalPrivacyLevel = 0;
@@ -43,6 +45,19 @@ struct I2pState {
 
     bool operator==(const I2pState&) const = default;
 };
+
+inline QString transportOf(const I2pState& state)
+{
+    if (state.gatewayEnabled) {
+        return QStringLiteral("gateway");
+    }
+    return state.samEnabled ? QStringLiteral("sam") : QStringLiteral("embedded");
+}
+
+inline int boundedPrivacyLevel(const int level)
+{
+    return std::clamp(level, kMinimalPrivacyLevel, kMaxPrivacyLevel);
+}
 
 inline QDataStream& operator<<(QDataStream& out, const I2pState& state)
 {

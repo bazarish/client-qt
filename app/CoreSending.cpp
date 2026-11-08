@@ -3,6 +3,7 @@
 
 #include "DeliveryStatus.hpp"
 #include "Documents.hpp"
+#include "MediaKeys.hpp"
 #include "OutboundCourier.hpp"
 #include "SessionShared.hpp"
 
@@ -92,7 +93,7 @@ void CoreAccount::sendText(
     emit commands_.requestSendText(peer, text, m.id, e2eId, replyTo);
 }
 
-qint64 CoreAccount::beginAttachmentSend(StoredMessage m)
+qint64 CoreAccount::beginSend(StoredMessage m, const QString& kind, const QString& title)
 {
     m.id = store_.append(m);
     if (m.id == 0) {
@@ -100,8 +101,35 @@ qint64 CoreAccount::beginAttachmentSend(StoredMessage m)
         return 0;
     }
     emit events_.rowAdded(m.peer, m.id, true);
-    log_.begin(sendOpId(m.id), QStringLiteral("file-up"), m.attName, tr("Sending…"), m.peer);
+    log_.begin(sendOpId(m.id), kind, title, tr("Sending…"), m.peer);
     return m.id;
+}
+
+QByteArray CoreAccount::mediaOf(const StoredMessage& m) const
+{
+    if (m.type == QStringLiteral("audio")) {
+        return store_.media(QString::fromLatin1(client::kVoiceKeyPrefix) + m.e2eId);
+    }
+    if (m.type == QStringLiteral("image")) {
+        return store_.media(QString::fromLatin1(client::kPictureKeyPrefix) + m.e2eId);
+    }
+    return {};
+}
+
+void CoreAccount::dispatchSend(const StoredMessage& m, const QByteArray& media)
+{
+    if (m.type == QStringLiteral("file")) {
+        emit commands_.requestSendFile(
+            m.peer, m.attSrcPath, m.id, m.e2eId, m.replyTo, m.forwarded);
+    } else if (m.type == QStringLiteral("audio")) {
+        emit commands_.requestSendVoice(
+            m.peer, media, m.attDurationMs, m.id, m.e2eId, m.replyTo, m.forwarded);
+    } else if (m.type == QStringLiteral("image")) {
+        emit commands_.requestSendPicture(
+            m.peer, media, m.attName, m.attMime, m.id, m.e2eId, m.replyTo, m.forwarded);
+    } else {
+        emit commands_.requestSendText(m.peer, m.text, m.id, m.e2eId, m.replyTo, m.forwarded);
+    }
 }
 
 void CoreAccount::sendFile(
@@ -114,7 +142,7 @@ void CoreAccount::sendFile(
     m.attSize = facts.size;
     m.attMime = QMimeDatabase().mimeTypeForFile(facts.name, QMimeDatabase::MatchExtension).name();
     m.attSrcPath = path;
-    const qint64 id = beginAttachmentSend(m);
+    const qint64 id = beginSend(m, QStringLiteral("file-up"), m.attName);
     if (id != 0) {
         emit commands_.requestSendFile(peer, path, id, e2eId, replyTo);
     }
@@ -129,7 +157,7 @@ void CoreAccount::sendPicture(const QString& peer, const QByteArray& bytes, cons
     m.attSize = bytes.size();
     m.attMime = mime;
     m.hasPicture = true;
-    const qint64 id = beginAttachmentSend(m);
+    const qint64 id = beginSend(m, QStringLiteral("file-up"), m.attName);
     if (id == 0) {
         return;
     }
@@ -148,15 +176,11 @@ void CoreAccount::sendVoice(const QString& peer, const QByteArray& opus, const q
     m.attSize = opus.size();
     m.attDurationMs = durationMs;
     m.attWave = wave;
-    m.id = store_.append(m);
-    if (m.id == 0) {
-        reportUnsaved();
-        return;
+    const qint64 id
+        = beginSend(m, QStringLiteral("send"), tr("To %1").arg(contacts_.peerName(peer)));
+    if (id != 0) {
+        emit commands_.requestSendVoice(peer, opus, durationMs, id, e2eId, replyTo);
     }
-    emit events_.rowAdded(peer, m.id, true);
-    log_.begin(sendOpId(m.id), QStringLiteral("send"), tr("To %1").arg(contacts_.peerName(peer)),
-        tr("Sending…"), peer);
-    emit commands_.requestSendVoice(peer, opus, durationMs, m.id, e2eId, replyTo);
 }
 
 void CoreAccount::forwardMessage(
@@ -174,7 +198,7 @@ void CoreAccount::forwardMessage(
     QString path;
     QString preview;
     if (source.type == QStringLiteral("audio")) {
-        media = store_.media(QStringLiteral("voice:") + source.e2eId);
+        media = mediaOf(source);
         if (media.isEmpty()) {
             emit events_.actionFailed(tr("this voice message is no longer on this device"));
             return;
@@ -189,7 +213,7 @@ void CoreAccount::forwardMessage(
         m.attMime = source.attMime;
         m.attSize = source.attSize;
         if (source.type == QStringLiteral("image")) {
-            media = store_.media(QStringLiteral("picture:") + source.e2eId);
+            media = mediaOf(source);
             const std::string saved = source.savedPath.toStdString();
             if (media.isEmpty() && !saved.empty() && deviceFiles()->exists(saved)) {
                 const std::unique_ptr<bazarish::client::FileInput> input
@@ -233,17 +257,7 @@ void CoreAccount::forwardMessage(
         log_.begin(sendOpId(m.id), QStringLiteral("send"),
             tr("To %1").arg(contacts_.peerName(toPeer)), tr("Forwarding…"), toPeer);
     }
-    if (source.type == QStringLiteral("audio")) {
-        emit commands_.requestSendVoice(
-            toPeer, media, m.attDurationMs, m.id, m.e2eId, QString(), true);
-    } else if (source.type == QStringLiteral("text")) {
-        emit commands_.requestSendText(toPeer, m.text, m.id, m.e2eId, QString(), true);
-    } else if (source.type == QStringLiteral("image")) {
-        emit commands_.requestSendPicture(
-            toPeer, media, m.attName, m.attMime, m.id, m.e2eId, QString(), true);
-    } else {
-        emit commands_.requestSendFile(toPeer, path, m.id, m.e2eId, QString(), true);
-    }
+    dispatchSend(m, media);
 }
 
 void CoreAccount::resend(const QString& peer, const qint64 localId)
@@ -252,7 +266,7 @@ void CoreAccount::resend(const QString& peer, const qint64 localId)
     if (stored.id == 0 || stored.peer != peer) {
         return;
     }
-    QByteArray media;
+    const QByteArray media = mediaOf(stored);
     if (stored.type == QStringLiteral("file")) {
         if (stored.attSrcPath.isEmpty()
             || !deviceFiles()->exists(stored.attSrcPath.toStdString())) {
@@ -260,13 +274,11 @@ void CoreAccount::resend(const QString& peer, const qint64 localId)
             return;
         }
     } else if (stored.type == QStringLiteral("audio")) {
-        media = store_.media(QStringLiteral("voice:") + stored.e2eId);
         if (media.isEmpty()) {
             emit events_.actionFailed(tr("this voice message is no longer on this device"));
             return;
         }
     } else if (stored.type == QStringLiteral("image")) {
-        media = store_.media(QStringLiteral("picture:") + stored.e2eId);
         if (media.isEmpty()) {
             emit events_.actionFailed(tr("this picture is no longer on this device"));
             return;
@@ -283,19 +295,7 @@ void CoreAccount::resend(const QString& peer, const qint64 localId)
     }
     log_.begin(sendOpId(localId), attachment ? QStringLiteral("file-up") : QStringLiteral("send"),
         title, tr("Sending again…"), peer);
-    if (stored.type == QStringLiteral("file")) {
-        emit commands_.requestSendFile(peer, stored.attSrcPath, localId, stored.e2eId,
-            stored.replyTo, stored.forwarded);
-    } else if (stored.type == QStringLiteral("audio")) {
-        emit commands_.requestSendVoice(peer, media, stored.attDurationMs, localId, stored.e2eId,
-            stored.replyTo, stored.forwarded);
-    } else if (stored.type == QStringLiteral("image")) {
-        emit commands_.requestSendPicture(peer, media, stored.attName, stored.attMime, localId,
-            stored.e2eId, stored.replyTo, stored.forwarded);
-    } else {
-        emit commands_.requestSendText(
-            peer, stored.text, localId, stored.e2eId, stored.replyTo, stored.forwarded);
-    }
+    dispatchSend(stored, media);
 }
 
 void CoreAccount::editMessage(

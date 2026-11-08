@@ -2,15 +2,21 @@
 #pragma once
 
 #include <bazarish/Bytes.hpp>
+#include <bazarish/Clock.hpp>
 
+#include <QByteArray>
 #include <QString>
 #include <QStringList>
 
 namespace bazarish::app {
 
-qint64 nowMillis();
-
 QString humanBytes(qint64 bytes);
+
+inline QByteArray toQByteArray(const ByteView bytes)
+{
+    return QByteArray(
+        reinterpret_cast<const char*>(bytes.data()), static_cast<qsizetype>(bytes.size()));
+}
 
 QString waveformHex(const Bytes& opus);
 

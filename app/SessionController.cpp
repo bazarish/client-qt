@@ -3,8 +3,9 @@
 #include "Background.hpp"
 
 #include "ChatPreview.hpp"
-#include "GatewayAddress.hpp"
 #include "Documents.hpp"
+#include "GatewayAddress.hpp"
+#include "MediaKeys.hpp"
 #include "SessionShared.hpp"
 #include "SystemNotes.hpp"
 
@@ -22,6 +23,7 @@
 
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Limits.hpp>
+#include <bazarish/Links.hpp>
 #include <bazarish/Descriptor.hpp>
 #include <bazarish/Portal.hpp>
 #include <bazarish/PairLink.hpp>
@@ -557,13 +559,27 @@ QVariantMap linkPlate(const QString& kind, const std::string& uri)
     return plate;
 }
 
+QString appLinkPattern()
+{
+    QStringList kinds;
+    for (const char* const kind : {bazarish::kInviteKind, bazarish::kServerKind,
+             bazarish::kPairKind, bazarish::kSignKind, bazarish::kGatewayKind}) {
+        QString name = QString::fromLatin1(kind);
+        name.chop(1);
+        kinds << QRegularExpression::escape(name);
+    }
+    return QStringLiteral("(?:%1|%2)(%3)\\?\\S+")
+        .arg(QRegularExpression::escape(QString::fromLatin1(bazarish::kWebLinkPrefix)),
+            QRegularExpression::escape(QString::fromLatin1(bazarish::kSchemeLinkPrefix)),
+            kinds.join(QLatin1Char('|')));
+}
+
 }  // namespace
 
 QVariantList SessionController::linkPlatesIn(const QString& text) const
 {
     QVariantList found;
-    static const QRegularExpression kLink(QStringLiteral(
-        "(?:https://bazari\\.sh/#|bazarish://)(invite|server|pair|sign|gateway)\\?\\S+"));
+    static const QRegularExpression kLink(appLinkPattern());
     for (QRegularExpressionMatchIterator it = kLink.globalMatch(text); it.hasNext();) {
         const QRegularExpressionMatch match = it.next();
         const QString uri = match.captured(0);
@@ -1169,7 +1185,7 @@ void SessionController::sendPictureFiles(const QStringList& fileUrls)
 QString SessionController::pictureSource(const QString& e2eId, const int revision)
 {
     if (!PictureStore::instance().has(e2eId)) {
-        const QByteArray bytes = store_.media(QStringLiteral("picture:") + e2eId);
+        const QByteArray bytes = store_.media(QString::fromLatin1(client::kPictureKeyPrefix) + e2eId);
         if (!PictureStore::instance().restore(e2eId, bytes)) {
             bazarish::log::warn("picture {} has no drawable bytes here", e2eId.toStdString());
         }
@@ -1745,7 +1761,7 @@ void SessionController::requestPicturesFor(const QList<StoredMessage>& messages)
         if (PictureStore::instance().has(message.e2eId)) {
             continue;
         }
-        const QByteArray bytes = store_.media(QStringLiteral("picture:") + message.e2eId);
+        const QByteArray bytes = store_.media(QString::fromLatin1(client::kPictureKeyPrefix) + message.e2eId);
         if (bytes.isEmpty() || !PictureStore::instance().put(message.e2eId, bytes)) {
             conversation_.markPictureMissingForId(message.id);
         }
@@ -1873,7 +1889,7 @@ void SessionController::measureDeviceStorage()
     const DatabaseFootprint footprint = store_.footprint();
     deviceStorage_.clear();
     deviceStorage_[QStringLiteral("busy")] = deviceStorageBusy_;
-    deviceStorage_[QStringLiteral("measuredAt")] = nowMillis();
+    deviceStorage_[QStringLiteral("measuredAt")] = static_cast<qint64>(nowMillis());
     deviceStorage_[QStringLiteral("fileBytes")] = footprint.fileBytes;
     deviceStorage_[QStringLiteral("freeBytes")] = footprint.freeBytes;
     deviceStorage_[QStringLiteral("chats")] = chats;

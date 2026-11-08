@@ -1,5 +1,6 @@
 // Bazarish project (c) 2026
 #include "AppSettings.hpp"
+#include "TestUtil.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -11,15 +12,6 @@
 #include <vector>
 
 constexpr std::size_t kOversizedNoteBytes = 128 * 1024;
-
-#define CHECK(condition)                                                            \
-    do {                                                                            \
-        if (!(condition)) {                                                         \
-            std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, __LINE__, \
-                #condition);                                                        \
-            std::exit(1);                                                           \
-        }                                                                           \
-    } while (false)
 
 namespace fs = std::filesystem;
 using bazarish::app::AppSettings;
@@ -40,8 +32,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    const fs::path root = fs::temp_directory_path() / "bazarish-settings-test";
-    fs::remove_all(root);
+    const fs::path root = testutil::freshDir("settings");
     fs::create_directories(root / "accounts");
     const std::string accountsDir = (root / "accounts").string();
 #ifdef _WIN32
