@@ -5,6 +5,8 @@
 #include "I2pEvents.hpp"
 #include "Wire.hpp"
 
+#include "TestUtil.hpp"
+
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QProcess>
@@ -16,27 +18,19 @@
 #include <functional>
 #include <memory>
 
-#define CHECK(condition)                \
-    do {                                \
-        if (!(condition)) {             \
-            fail(__LINE__, #condition); \
-        }                               \
-    } while (false)
-
 using namespace bazarish::app;
 
 namespace {
 
 QProcess* gCore = nullptr;
 
-[[noreturn]] void fail(const int line, const char* const condition)
+// A failed check exits; the core it started must not outlive it.
+void stopCore()
 {
-    std::fprintf(stderr, "CHECK failed at %s:%d: %s\n", __FILE__, line, condition);
     if (gCore != nullptr) {
         gCore->kill();
         gCore->waitForFinished();
     }
-    std::exit(1);
 }
 
 constexpr int kCoreStartMs = 30000;
@@ -77,8 +71,8 @@ struct Window {
         QObject::connect(&i2p, &I2pEvents::state, [this](const I2pState&) { i2pState = true; });
         QObject::connect(&events, &AppEvents::closing, [this]() { closing = true; });
         QObject::connect(&relay, &Relay::broken, [](const QString& reason) {
-            std::fprintf(stderr, "broken: %s\n", qPrintable(reason));
-            fail(__LINE__, "the relay broke");
+            std::fprintf(stderr, "the relay broke: %s\n", qPrintable(reason));
+            std::exit(1);
         });
     }
 
@@ -107,6 +101,7 @@ int main(int argc, char** argv)
 
     QProcess core;
     gCore = &core;
+    CHECK(std::atexit(stopCore) == 0);
     core.setProcessEnvironment(environment);
     bool listening = false;
     QObject::connect(&core, &QProcess::readyReadStandardError, [&core, &listening]() {
@@ -180,5 +175,6 @@ int main(int argc, char** argv)
     CHECK(third.closing);
 
     std::fprintf(stderr, "TestTwoProcess passed\n");
+    gCore = nullptr;
     return 0;
 }

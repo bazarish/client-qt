@@ -568,7 +568,7 @@ if(Qt6_FOUND)
         app/AppSettings.cpp app/AppCommands.hpp app/AppEvents.hpp app/AccountEvents.hpp
         app/I2pEvents.hpp)
     target_include_directories(TestTwoProcess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-    target_link_libraries(TestTwoProcess PRIVATE bazarish_client Qt6::Core Qt6::Network)
+    target_link_libraries(TestTwoProcess PRIVATE bazarish_test_util bazarish_client Qt6::Core Qt6::Network)
     target_compile_options(TestTwoProcess PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestTwoProcess COMMAND TestTwoProcess $<TARGET_FILE:bazarish-core-harness>)
 endif()
