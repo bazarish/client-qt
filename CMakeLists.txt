@@ -515,9 +515,13 @@ if(Qt6_FOUND)
     add_executable(TestAudioSamples tests/TestAudioSamples.cpp)
     target_include_directories(TestAudioSamples PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
     target_link_libraries(TestAudioSamples PRIVATE bazarish_test_util bazarish_client Qt6::Core)
-    target_compile_options(TestAudioSamples PRIVATE -Wall -Wextra -Werror
-        -fsanitize=alignment,undefined -fno-sanitize-recover=all)
-    target_link_options(TestAudioSamples PRIVATE -fsanitize=alignment,undefined)
+    target_compile_options(TestAudioSamples PRIVATE -Wall -Wextra -Werror)
+    # MinGW ships no UBSan runtime.
+    if(NOT WIN32)
+        target_compile_options(TestAudioSamples PRIVATE
+            -fsanitize=alignment,undefined -fno-sanitize-recover=all)
+        target_link_options(TestAudioSamples PRIVATE -fsanitize=alignment,undefined)
+    endif()
     add_test(NAME TestAudioSamples COMMAND TestAudioSamples)
 
     add_executable(TestHumanBytes tests/TestHumanBytes.cpp app/SessionShared.cpp)
