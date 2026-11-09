@@ -68,6 +68,8 @@ public slots:
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
+    void sendFileBytes(const QString& peer, const QByteArray& bytes, const QString& name,
+        qint64 localId, const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
         const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo,
         bool forwarded = false);

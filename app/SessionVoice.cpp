@@ -38,9 +38,6 @@ namespace bazarish::app {
 
 namespace {
 constexpr qint64 kMaxVoiceMs = 2 * 60 * 1000;
-constexpr std::size_t kVoiceEnvelopeReserveBytes = 8 * 1024;
-constexpr std::size_t kMaxVoiceBytes
-    = bazarish::kMaxMessagePayloadBytes - kVoiceEnvelopeReserveBytes;
 constexpr qint64 kMinVoiceMs = 700;
 constexpr int kVoiceTickMs = 50;
 constexpr std::array<double, 3> kVoiceSpeeds = {1.0, 1.5, 2.0};
@@ -83,7 +80,7 @@ VoiceNote& SessionController::voiceNote()
             voiceElapsedMs_ = voice_->elapsedMs();
             emit voiceChanged();
             if (voiceElapsedMs_ >= kMaxVoiceMs
-                || voice_->encodedBytes() >= kMaxVoiceBytes) {
+                || voice_->encodedBytes() >= bazarish::kMaxVoiceBytes) {
                 stopVoiceRecording();
             }
         });

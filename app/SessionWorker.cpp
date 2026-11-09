@@ -1212,6 +1212,19 @@ void SessionWorker::sendVoice(const QString& peer, const QByteArray& opus,
     }
 }
 
+void SessionWorker::sendFileBytes(const QString& peer, const QByteArray& bytes,
+    const QString& name, qint64 localId, const QString& e2eId, const QString& replyTo,
+    const bool forwarded)
+{
+    try {
+        openSession().sendFileBytes(peer.toStdString(), name.toStdString(),
+            bazarish::Bytes(bytes.begin(), bytes.end()), e2eId.toStdString(),
+            watchFor(*this, localId), replyTo.toStdString(), forwarded);
+    } catch (const std::exception& e) {
+        emit sendResult(localId, false, QString::fromUtf8(e.what()));
+    }
+}
+
 void SessionWorker::sendPicture(const QString& peer, const QByteArray& bytes,
     const QString& name, const QString& mime, qint64 localId, const QString& e2eId,
     const QString& replyTo, const bool forwarded)

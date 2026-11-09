@@ -11,7 +11,7 @@
 namespace bazarish::app {
 
 inline const QSet<QByteArray> kSelfDescribingCommands = {
-    "requestConnect", "requestSendText", "requestSendFile",
+    "requestConnect", "requestSendText", "requestSendFile", "requestSendFileBytes",
     "requestSendPicture", "requestSendVoice", "requestSendCallback", "requestSendCommand",
     "requestAddByInvite", "requestAddByAlias", "requestAcceptContact", "requestInviteSig",
     "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
@@ -84,6 +84,8 @@ signals:
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendFile(const QString& peer, const QString& localPath, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
+    void requestSendFileBytes(const QString& peer, const QByteArray& bytes, const QString& name,
+        qint64 localId, const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
         const QString& mime, qint64 localId, const QString& e2eId, const QString& replyTo,
         bool forwarded = false);

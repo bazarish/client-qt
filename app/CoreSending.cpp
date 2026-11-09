@@ -113,6 +113,9 @@ QString CoreAccount::mediaKeyOf(const StoredMessage& m)
     if (m.type == QStringLiteral("image")) {
         return QString::fromLatin1(client::kPictureKeyPrefix) + m.e2eId;
     }
+    if (m.type == QStringLiteral("file")) {
+        return QString::fromLatin1(client::kFileKeyPrefix) + m.e2eId;
+    }
     return {};
 }
 
@@ -124,7 +127,10 @@ QByteArray CoreAccount::mediaOf(const StoredMessage& m) const
 
 void CoreAccount::dispatchSend(const StoredMessage& m, const QByteArray& media)
 {
-    if (m.type == QStringLiteral("file")) {
+    if (m.type == QStringLiteral("file") && !media.isEmpty()) {
+        emit commands_.requestSendFileBytes(
+            m.peer, media, m.attName, m.id, m.e2eId, m.replyTo, m.forwarded);
+    } else if (m.type == QStringLiteral("file")) {
         emit commands_.requestSendFile(
             m.peer, m.attSrcPath, m.id, m.e2eId, m.replyTo, m.forwarded);
     } else if (m.type == QStringLiteral("audio")) {
@@ -240,6 +246,8 @@ void CoreAccount::forwardMessage(
                 return;
             }
             m.hasPicture = true;
+        } else if (const QByteArray carried = mediaOf(source); !carried.isEmpty()) {
+            media = carried;
         } else {
             path = source.outgoing ? source.attSrcPath : source.savedPath;
             if (path.isEmpty() || !deviceFiles()->exists(path.toStdString())) {
@@ -280,7 +288,7 @@ void CoreAccount::resend(const QString& peer, const qint64 localId)
         return;
     }
     const QByteArray media = mediaOf(stored);
-    if (stored.type == QStringLiteral("file")) {
+    if (stored.type == QStringLiteral("file") && media.isEmpty()) {
         if (stored.attSrcPath.isEmpty()
             || !deviceFiles()->exists(stored.attSrcPath.toStdString())) {
             emit events_.resendFilePickRequested();

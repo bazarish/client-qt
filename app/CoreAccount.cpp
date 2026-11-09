@@ -161,6 +161,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::connectAndRegister);
     connect(&commands_, &AccountCommands::requestSendText, worker_, &SessionWorker::sendText);
     connect(&commands_, &AccountCommands::requestSendFile, worker_, &SessionWorker::sendFile);
+    connect(&commands_, &AccountCommands::requestSendFileBytes, worker_,
+        &SessionWorker::sendFileBytes);
     connect(&commands_, &AccountCommands::requestSendPicture, worker_, &SessionWorker::sendPicture);
     connect(&commands_, &AccountCommands::requestSendVoice, worker_, &SessionWorker::sendVoice);
     connect(&commands_, &AccountCommands::requestSendReceipt, worker_, &SessionWorker::sendReceipt);

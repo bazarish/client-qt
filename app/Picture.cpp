@@ -72,7 +72,12 @@ PreparedPicture preparePicture(const QImage& image, const QString& baseName)
     if (prepared.bytes.isEmpty()) {
         return {};
     }
-    prepared.name = (baseName.isEmpty() ? QStringLiteral("image") : baseName) + "." + format;
+    const QString extension = QStringLiteral(".") + format;
+    QString stem = baseName.isEmpty() ? QStringLiteral("image") : baseName;
+    while ((stem + extension).toUtf8().size() > static_cast<qsizetype>(bazarish::kMaxMediaNameBytes)) {
+        stem.chop(stem.size() >= 2 && stem.at(stem.size() - 1).isLowSurrogate() ? 2 : 1);
+    }
+    prepared.name = stem + extension;
     prepared.mime = format == QStringLiteral("png") ? QStringLiteral("image/png")
                                                     : QStringLiteral("image/jpeg");
     return prepared;

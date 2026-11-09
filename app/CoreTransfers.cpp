@@ -91,6 +91,21 @@ void CoreAccount::saveAttachment(
     pendingSavePath_.insert(token, dest);
     const StoredMessage message = store_.messageById(token);
     const QString name = isDocumentUri(dest) ? message.attName : QFileInfo(dest).fileName();
+    if (const QByteArray carried = mediaOf(message); !carried.isEmpty()) {
+        log_.begin(downloadOpId(token), QStringLiteral("file-down"), name, tr("Saving…"), peer,
+            e2eId);
+        try {
+            const std::unique_ptr<client::FileOutput> out = openOutput(dest);
+            out->write(bazarish::viewOf(std::string_view(
+                carried.constData(), static_cast<std::size_t>(carried.size()))));
+            out->finish();
+        } catch (const std::exception& error) {
+            onDownloadFinished(token, false, QString::fromUtf8(error.what()));
+            return;
+        }
+        onDownloadFinished(token, true, {});
+        return;
+    }
     log_.begin(downloadOpId(token), QStringLiteral("file-down"), name,
         tr("Connecting…"), peer, e2eId);
     emit commands_.requestSaveAttachment(peer, e2eId, message.attRef, dest, token);
