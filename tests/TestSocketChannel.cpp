@@ -23,6 +23,7 @@ constexpr qsizetype kLargeFrameBytes = 1024 * 1024;
 constexpr quint32 kTooLongFrameBytes = 16 * 1024 * 1024 + 1;
 constexpr qsizetype kStalledFrameBytes = 15 * 1024 * 1024;
 constexpr qint64 kQueueLimitBytes = 64 * 1024 * 1024;
+constexpr qint64 kStalledReadBufferBytes = 64 * 1024;
 
 void settleUntil(const std::function<bool()>& done)
 {
@@ -129,6 +130,8 @@ int main(int argc, char** argv)
     {
         // A stalled window is let go, never from inside send.
         const Pair pair = connectPair(server);
+        // Windows drains a pipe on a thread of its own unless the reader's buffer is bounded.
+        pair.client->setReadBufferSize(kStalledReadBufferBytes);
         SocketChannelEnd core(pair.served);
         bool closed = false;
         QObject::connect(&core, &SocketChannelEnd::closed, [&closed]() { closed = true; });
