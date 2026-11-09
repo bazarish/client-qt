@@ -104,6 +104,7 @@ private:
     void sendText(
         const QString& peer, const QString& text, const QString& replyTo, const QString& e2eId);
     qint64 beginSend(StoredMessage m, const QString& kind, const QString& title);
+    static QString mediaKeyOf(const StoredMessage& m);
     QByteArray mediaOf(const StoredMessage& m) const;
     void dispatchSend(const StoredMessage& m, const QByteArray& media);
     void sendFile(

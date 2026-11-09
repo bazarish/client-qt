@@ -389,6 +389,11 @@ bool TranscriptStore::setHasPicture(const qint64 id, const bool has)
     return store().setHasPicture(id, has);
 }
 
+bool TranscriptStore::keepMedia(const QString& key, const QByteArray& bytes)
+{
+    return store().keepMedia(utf8(key), Bytes(bytes.begin(), bytes.end()));
+}
+
 bool TranscriptStore::editContent(const qint64 id, const QString& text, const QString& keyboard)
 {
     return store().editContent(id, utf8(text), utf8(keyboard));

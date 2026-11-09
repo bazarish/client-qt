@@ -161,6 +161,7 @@ public:
         const QString& peer, qint64 uptoId, int readStatus, int minStatus, int maxStatus);
     [[nodiscard]] bool setSavedPath(qint64 id, const QString& path);
     [[nodiscard]] bool setHasPicture(qint64 id, bool has);
+    [[nodiscard]] bool keepMedia(const QString& key, const QByteArray& bytes);
     [[nodiscard]] bool editContent(qint64 id, const QString& text, const QString& keyboard);
     [[nodiscard]] bool setType(qint64 id, const QString& type);
     [[nodiscard]] bool removeById(qint64 id);

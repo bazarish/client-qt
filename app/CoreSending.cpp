@@ -105,15 +105,21 @@ qint64 CoreAccount::beginSend(StoredMessage m, const QString& kind, const QStrin
     return m.id;
 }
 
-QByteArray CoreAccount::mediaOf(const StoredMessage& m) const
+QString CoreAccount::mediaKeyOf(const StoredMessage& m)
 {
     if (m.type == QStringLiteral("audio")) {
-        return store_.media(QString::fromLatin1(client::kVoiceKeyPrefix) + m.e2eId);
+        return QString::fromLatin1(client::kVoiceKeyPrefix) + m.e2eId;
     }
     if (m.type == QStringLiteral("image")) {
-        return store_.media(QString::fromLatin1(client::kPictureKeyPrefix) + m.e2eId);
+        return QString::fromLatin1(client::kPictureKeyPrefix) + m.e2eId;
     }
     return {};
+}
+
+QByteArray CoreAccount::mediaOf(const StoredMessage& m) const
+{
+    const QString key = mediaKeyOf(m);
+    return key.isEmpty() ? QByteArray() : store_.media(key);
 }
 
 void CoreAccount::dispatchSend(const StoredMessage& m, const QByteArray& media)
@@ -161,7 +167,7 @@ void CoreAccount::sendPicture(const QString& peer, const QByteArray& bytes, cons
     if (id == 0) {
         return;
     }
-    if (!store_.setHasPicture(id, true)) {
+    if (!store_.keepMedia(mediaKeyOf(m), bytes) || !store_.setHasPicture(id, true)) {
         reportUnsaved();
     }
     emit commands_.requestSendPicture(peer, bytes, name, mime, id, e2eId, replyTo);
@@ -178,9 +184,13 @@ void CoreAccount::sendVoice(const QString& peer, const QByteArray& opus, const q
     m.attWave = wave;
     const qint64 id
         = beginSend(m, QStringLiteral("send"), tr("To %1").arg(contacts_.peerName(peer)));
-    if (id != 0) {
-        emit commands_.requestSendVoice(peer, opus, durationMs, id, e2eId, replyTo);
+    if (id == 0) {
+        return;
     }
+    if (!store_.keepMedia(mediaKeyOf(m), opus)) {
+        reportUnsaved();
+    }
+    emit commands_.requestSendVoice(peer, opus, durationMs, id, e2eId, replyTo);
 }
 
 void CoreAccount::forwardMessage(
@@ -246,6 +256,9 @@ void CoreAccount::forwardMessage(
         return;
     }
     if (m.hasPicture && !store_.setHasPicture(m.id, true)) {
+        reportUnsaved();
+    }
+    if (!media.isEmpty() && !store_.keepMedia(mediaKeyOf(m), media)) {
         reportUnsaved();
     }
     const bool saved = isSavedChat(toPeer);
