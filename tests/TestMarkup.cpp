@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
+#include <limits>
 #include <cstdio>
 #include <cstdlib>
 
@@ -21,12 +22,19 @@ constexpr int kGrowth = 4;
 constexpr double kQuadraticWouldBe = kGrowth * kGrowth;
 constexpr double kLinearAllowance = (kGrowth + kQuadraticWouldBe) / 2;
 constexpr double kShortestMeasurable = 1e-6;
+constexpr int kTimedRuns = 5;
 
+// The fastest of several runs: a shared machine only ever adds time to one.
 double secondsToParse(const QString& text)
 {
-    const auto started = std::chrono::steady_clock::now();
-    (void)bazarish::app::markup::parse(text);
-    return std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+    double fastest = std::numeric_limits<double>::max();
+    for (int run = 0; run < kTimedRuns; ++run) {
+        const auto started = std::chrono::steady_clock::now();
+        (void)bazarish::app::markup::parse(text);
+        fastest = std::min(fastest,
+            std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count());
+    }
+    return fastest;
 }
 
 double growthOf(const std::function<QString(int)>& build)
