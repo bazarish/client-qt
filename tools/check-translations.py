@@ -67,6 +67,8 @@ NOT_SHOWN = re.compile(r'^"(?:|[^a-zA-Z]*|#[0-9a-fA-F]+|qrc:.*|image://.*|\w+://
 NOT_TEXT = ("gateway", "embedded", "sam", "hh:mm", "yyyy-MM-dd", "dd MMM hh:mm")
 # Shown, and deliberately the same in every language.
 UNTRANSLATED = ("min", "middle", "max")
+# One-sentence texts that keep their full stop by the user's choice.
+STOP_KEPT = ("A messenger where your anonymity is as natural as sending a message.",)
 
 
 def unquote(literal):
@@ -230,7 +232,7 @@ def main():
                 f"{where}: {key!r} is shown but the catalog does not carry it - add it to "
                 f"{CATALOG.relative_to(ROOT)}")
             continue
-        if stops_one_sentence(key):
+        if stops_one_sentence(key) and key not in STOP_KEPT:
             problems.append(f"{', '.join(sorted(used[key]))}: {key!r} is one sentence - drop its full stop")
         slots = set(re.findall(r'%\d', key))
         for code in wanted:
@@ -241,7 +243,7 @@ def main():
                     f"{CATALOG.relative_to(ROOT)}: {key!r} has no {code} translation, and "
                     f"{where} shows it")
                 continue
-            if stops_one_sentence(text):
+            if stops_one_sentence(text) and key not in STOP_KEPT:
                 problems.append(
                     f"{CATALOG.relative_to(ROOT)}: the {code} text of {key!r} is one sentence - "
                     f"drop its full stop")

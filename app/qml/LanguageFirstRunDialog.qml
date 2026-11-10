@@ -41,7 +41,7 @@ Dialog {
             rightPadding: 14
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("A messenger where your anonymity is as natural as sending a message")
+            text: qsTr("A messenger where your anonymity is as natural as sending a message.")
         }
 
         RowLayout {
