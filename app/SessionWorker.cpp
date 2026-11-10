@@ -860,7 +860,15 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
     } catch (const std::exception& e) {
         startReceiving();
         bazarish::client::setConnectProgressSink(progressOwner, {});
-        const QString reason = QString::fromUtf8(e.what());
+        const auto* apiError = dynamic_cast<const bazarish::client::ApiError*>(&e);
+        const bool unanswered
+            = apiError != nullptr && !apiError->code.has_value() && apiError->httpStatus == 0;
+        if (unanswered) {
+            bazarish::log::warn("connecting failed: {}", e.what());
+        }
+        const QString reason = unanswered
+            ? tr("The server did not answer over I2P, try again later")
+            : QString::fromUtf8(e.what());
         emit connectionChanged(false, reason);
         try {
             const bazarish::client::PortalInfo info = session_->serverPortalInfo();

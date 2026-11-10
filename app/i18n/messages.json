@@ -5122,6 +5122,12 @@
       "es": "Palabra fijada",
       "zh": "口令已设置",
       "ar": "عُيّنت الكلمة"
+    },
+    "The server did not answer over I2P, try again later": {
+      "ru": "Сервер не ответил по I2P, попробуйте позже",
+      "es": "El servidor no respondió por I2P, inténtalo más tarde",
+      "zh": "服务器没有通过 I2P 应答，请稍后再试",
+      "ar": "لم يستجب الخادم عبر I2P، حاول لاحقًا"
     }
   }
 }
