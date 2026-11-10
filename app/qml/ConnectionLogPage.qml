@@ -42,7 +42,13 @@ Popup {
     Connections {
         target: root.session
         ignoreUnknownSignals: true
-        function onConnectionLogUpdated(lines) { root.lines = lines.slice().reverse() }
+        function onConnectionLogUpdated(lines) {
+            const newestFirst = lines.slice().reverse()
+            // A new array rebuilds every row, and a rebuilt row forgets the pointer over it.
+            if (JSON.stringify(newestFirst) !== JSON.stringify(root.lines)) {
+                root.lines = newestFirst
+            }
+        }
     }
 
     onOpened: if (root.session) { root.session.refreshConnectionLog() }
