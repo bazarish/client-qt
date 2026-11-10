@@ -2363,11 +2363,35 @@
       "zh": "粘贴邀请链接或短别名",
       "ar": "الصِق رابط دعوة أو اسمًا مستعارًا قصيرًا"
     },
-    "Paste the address its operator gave you, or skip. The app will run its built-in router.": {
-      "ru": "Вставьте адрес от оператора или пропустите. Приложение запустит встроенный роутер.",
-      "es": "Pega la dirección de su operador o sáltalo. La aplicación levantará su router integrado.",
-      "zh": "粘贴运营者给你的地址，或者跳过。程序将启动内置路由。",
-      "ar": "الصِق عنوان المشغّل أو تخطَّ ذلك. سيشغّل التطبيق موجّهه المدمج."
+    "Paste the address a friend gave you. If there is no link or you do not trust whoever gave it, skip this step: the app will run its built-in router.": {
+      "ru": "Вставьте адрес от друга. Если ссылки нет или вы не доверяете тому, кто её дал, пропустите этот шаг — приложение запустит встроенный роутер.",
+      "es": "Pega la dirección que te dio un amigo. Si no tienes enlace o no confías en quien te lo dio, salta este paso: la aplicación levantará su router integrado.",
+      "zh": "粘贴朋友给你的地址。如果没有链接，或者你不信任给你链接的人，请跳过这一步：程序将启动内置路由。",
+      "ar": "الصِق العنوان الذي أعطاك إياه صديق. إن لم يكن لديك رابط أو كنت لا تثق بمن أعطاك إياه، فتخطَّ هذه الخطوة: سيشغّل التطبيق موجّهه المدمج."
+    },
+    "Welcome to Bazarish": {
+      "ru": "Добро пожаловать в Bazarish",
+      "es": "Bienvenido a Bazarish",
+      "zh": "欢迎使用 Bazarish",
+      "ar": "مرحبًا بك في Bazarish"
+    },
+    "A messenger where your anonymity is as natural as sending a message": {
+      "ru": "Мессенджер, в котором ваша анонимность так же естественна, как отправка сообщения",
+      "es": "Un mensajero en el que tu anonimato es tan natural como enviar un mensaje",
+      "zh": "在这款通讯软件里，匿名就像发送消息一样自然",
+      "ar": "تطبيق مراسلة يكون فيه إخفاء هويتك طبيعيًا كإرسال رسالة"
+    },
+    "Choose the app language": {
+      "ru": "Выберите язык приложения",
+      "es": "Elige el idioma de la aplicación",
+      "zh": "选择应用语言",
+      "ar": "اختر لغة التطبيق"
+    },
+    "Next": {
+      "ru": "Далее",
+      "es": "Siguiente",
+      "zh": "下一步",
+      "ar": "التالي"
     },
     "Paste the challenge": {
       "ru": "Вставьте запрос",

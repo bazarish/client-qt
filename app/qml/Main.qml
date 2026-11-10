@@ -137,8 +137,8 @@ ApplicationWindow {
             if (stack.currentItem.objectName === "attaching") {
                 stack.replace(null, App.session ? mainComponent : pickerComponent)
             }
-            if (!I2p.gatewayAsked) {
-                gatewayFirstRun.open()
+            if (!I2p.gatewayAsked && !gatewayFirstRun.opened) {
+                languageFirstRun.open()
             }
         }
         function onAccountOpened() {
@@ -214,6 +214,11 @@ ApplicationWindow {
         z: 900
     }
 
+    LanguageFirstRunDialog {
+        id: languageFirstRun
+        z: 1100
+        onAccepted: gatewayFirstRun.open()
+    }
     GatewayFirstRunDialog {
         id: gatewayFirstRun
         z: 1100

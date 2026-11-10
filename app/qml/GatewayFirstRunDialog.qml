@@ -64,7 +64,7 @@ Dialog {
             bottomPadding: 0
             wrapMode: Text.Wrap
             color: Theme.text
-            text: qsTr("Paste the address its operator gave you, or skip. The app will run its built-in router.")
+            text: qsTr("Paste the address a friend gave you. If there is no link or you do not trust whoever gave it, skip this step: the app will run its built-in router.")
         }
 
         RowLayout {
