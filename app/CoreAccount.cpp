@@ -356,7 +356,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::loginSigned, &events_, &AccountEvents::loginSigned);
     connect(worker_, &SessionWorker::connectionLogReady, &events_,
         &AccountEvents::connectionLogReady);
-    connect(worker_, &SessionWorker::serverHello, &events_, &AccountEvents::serverHello);
     connect(worker_, &SessionWorker::i2pStatus, &events_, &AccountEvents::i2pStatus);
     connect(worker_, &SessionWorker::i2pKeyState, &events_, &AccountEvents::i2pKeyState);
     connect(worker_, &SessionWorker::i2pServedAddress, &events_, &AccountEvents::i2pServedAddress);

@@ -375,7 +375,6 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         });
     connect(&events_, &AccountEvents::connectionLogReady, this,
         &SessionController::connectionLogUpdated);
-    connect(&events_, &AccountEvents::serverHello, this, &SessionController::serverHello);
     connect(&events_, &AccountEvents::i2pStatus, this, &SessionController::onI2pStatus);
     connect(&events_, &AccountEvents::i2pKeyState, this, &SessionController::onI2pKeyState);
     connect(&events_, &AccountEvents::i2pServedAddress, this, [this](const QString& address) {

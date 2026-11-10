@@ -2303,12 +2303,6 @@
       "zh": "打开",
       "ar": "فتح"
     },
-    "Open one of these to register, then connect again:": {
-      "ru": "Откройте любую из них, зарегистрируйтесь и подключитесь снова:",
-      "es": "Abre una de estas para registrarte y vuelve a conectar:",
-      "zh": "打开其中之一完成注册，然后再连接一次：",
-      "ar": "افتح إحداها للتسجيل، ثم أعد الاتصال:"
-    },
     "Opening the audio path": {
       "ru": "Звуковой канал открывается",
       "es": "Abriendo el canal de audio",
@@ -3682,12 +3676,6 @@
       "es": "Esto retira del servidor tu dirección I2P personal. Tu cuenta quedará fuera del alcance de otros usuarios. Tiene sentido si piensas cambiar de servidor y retiras tu dirección para publicarla en el nuevo.",
       "zh": "此操作会从服务器上撤下你的个人 I2P 地址。其他用户将无法联系到你的账号。只有在你打算更换服务器、撤回地址以便在新服务器上发布时，这一操作才有意义。",
       "ar": "يزيل هذا الإجراء عنوان I2P الشخصي الخاص بك من الخادم. لن يتمكن المستخدمون الآخرون من الوصول إلى حسابك. يكون لهذه العملية معنى إذا كنت تنوي تغيير الخادم وتسحب عنوانك لتنشره في المكان الجديد."
-    },
-    "This server needs registration": {
-      "ru": "Этот сервер требует регистрации",
-      "es": "Este servidor exige registro",
-      "zh": "这个服务器需要注册",
-      "ar": "هذا الخادم يتطلب تسجيلًا"
     },
     "This voice message is broken": {
       "ru": "Это голосовое сообщение повреждено",

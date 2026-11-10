@@ -313,7 +313,6 @@ if(Qt6_FOUND)
         app/qml/StoragePage.qml
             app/qml/LanguageFirstRunDialog.qml
             app/qml/GatewayFirstRunDialog.qml
-            app/qml/ServerHelloDialog.qml
             app/qml/AccountDeleteConfirmDialog.qml
             app/qml/AddressChoiceDialog.qml
             app/qml/AccountDeleteLockedDialog.qml

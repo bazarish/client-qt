@@ -107,7 +107,6 @@ ApplicationWindow {
         target: App.session
         ignoreUnknownSignals: true
         function onActionFailed(error) { window.showError(error) }
-        function onServerHello(reason, message, links) { helloDialog.show(reason, message, links) }
     }
 
     IncomingCallWindow { mainWindowActive: window.active }
@@ -377,8 +376,6 @@ ApplicationWindow {
             }
         }
     }
-
-    ServerHelloDialog { id: helloDialog }
 
     Popup {
         id: errorDialog

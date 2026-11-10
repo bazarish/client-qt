@@ -494,7 +494,6 @@ signals:
     void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     void connectionLogUpdated(const QVariantList& lines);
     void resendFilePickRequested();
-    void serverHello(const QString& reason, const QString& message, const QStringList& links);
 
 signals:
     void pairingChanged();

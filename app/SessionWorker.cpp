@@ -870,19 +870,6 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
             ? tr("The server did not answer over I2P, try again later")
             : QString::fromUtf8(e.what());
         emit connectionChanged(false, reason);
-        try {
-            const bazarish::client::PortalInfo info = session_->serverPortalInfo();
-            if (!info.message.empty() || !info.links.empty()) {
-                QStringList links;
-                for (const std::string& link : info.links) {
-                    links << QString::fromStdString(link);
-                }
-                emit serverHello(reason, QString::fromStdString(info.message), links);
-                return;
-            }
-        } catch (const std::exception& error) {
-            bazarish::log::warn("portal info unavailable: {}", error.what());
-        }
         emit actionFailed(reason);
         return;
     }
