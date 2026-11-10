@@ -11,6 +11,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <memory>
 
 namespace {
 
@@ -27,17 +28,17 @@ Item {
 }
 )";
 
-QString heldAfterRelease(QQuickView& view, QPointingDevice* touch, QQuickItem* field, const int block)
+QString heldAfterRelease(QQuickView& view, QPointingDevice& touch, QQuickItem* field, const int block)
 {
     field->forceActiveFocus();
     QMetaObject::invokeMethod(field, "deselect");
     const QPoint at = field->mapToScene(QPointF(30, field->height() * (block + 1) / 3)).toPoint();
-    QTest::touchEvent(&view, touch).press(0, at, &view);
+    QTest::touchEvent(&view, &touch).press(0, at, &view);
     QTest::qWait(kHoldMs);
     const int offset = block == 0 ? 0 : field->property("text").toString().indexOf('\n') + 1;
     CHECK(QMetaObject::invokeMethod(field, "select", Q_ARG(int, offset + kWordStart), Q_ARG(int, offset + kWordEnd)));
     bazarish::app::holdSelection(field);
-    QTest::touchEvent(&view, touch).release(0, at, &view);
+    QTest::touchEvent(&view, &touch).release(0, at, &view);
     QTest::qWait(kHoldMs / 4);
     return field->property("selectedText").toString();
 }
@@ -56,13 +57,13 @@ int main(int argc, char** argv)
     view.resize(400, 200);
     view.show();
     CHECK(QTest::qWaitForWindowExposed(&view));
-    QPointingDevice* const touch = QTest::createTouchDevice();
+    const std::unique_ptr<QPointingDevice> touch(QTest::createTouchDevice());
     QQuickItem* const edit = root->findChild<QQuickItem*>("edit");
     QQuickItem* const shown = root->findChild<QQuickItem*>("shown");
     CHECK(edit != nullptr && shown != nullptr);
 
-    CHECK(heldAfterRelease(view, touch, edit, 1) == "world");
-    CHECK(heldAfterRelease(view, touch, shown, 0) == "world");
+    CHECK(heldAfterRelease(view, *touch, edit, 1) == "world");
+    CHECK(heldAfterRelease(view, *touch, shown, 0) == "world");
 
     QObject notAField;
     bool refused = false;
