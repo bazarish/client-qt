@@ -81,6 +81,7 @@ I2pService::I2pService(QObject* parent)
         = client::GatewayAddress::parse(AppSettings::instance().gatewayAddress());
     state_.gatewayAddress = gateway.has_value() ? QString::fromStdString(gateway->link()) : QString();
     state_.gatewayHost = gateway.has_value() ? QString::fromStdString(gateway->host) : QString();
+    gatewayAtStart_ = state_.gatewayAddress;
     if (!applyTransport()) {
         throw std::logic_error("a router ran before the I2P settings were read");
     }
@@ -168,8 +169,10 @@ void I2pService::noteChoiceInForce()
 {
     if (applyTransport()) {
         transportAtStart_ = transport();
+        gatewayAtStart_ = state_.gatewayAddress;
     }
-    state_.restartNeeded = transport() != transportAtStart_;
+    state_.restartNeeded = transport() != transportAtStart_
+        || (transport() == QLatin1String("gateway") && state_.gatewayAddress != gatewayAtStart_);
     if (state_.restartNeeded) {
         client::retireI2pRouter();
     }
@@ -304,7 +307,15 @@ void I2pService::checkAndSaveGateway(const QString& address)
                 state_.gatewayAsked = true;
                 state_.gatewayAddress = QString::fromStdString(parsed->link());
                 state_.gatewayHost = QString::fromStdString(parsed->host);
-                announce();
+                if (state_.gatewayEnabled) {
+                    if (client::repointGatewayTransport(parsed.value())) {
+                        transportAtStart_ = transport();
+                        gatewayAtStart_ = state_.gatewayAddress;
+                    }
+                    noteChoiceInForce();
+                } else {
+                    announce();
+                }
                 emit events_.gatewaySaved();
             },
             Qt::QueuedConnection);

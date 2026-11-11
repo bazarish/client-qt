@@ -42,6 +42,7 @@ private:
     QTimer rebuildDelay_;
     I2pState state_;
     QString transportAtStart_;
+    QString gatewayAtStart_;
 };
 
 }  // namespace bazarish::app
