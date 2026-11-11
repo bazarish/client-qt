@@ -20,7 +20,7 @@ Rectangle {
     property int elapsedTick: 0
 
     visible: !!root.calling && (root.elsewhere || root.minimized)
-    implicitHeight: line.implicitHeight + 2 * root.kPadding
+    implicitHeight: Math.max(line.implicitHeight, lead.implicitHeight) + 2 * root.kPadding
     color: tap.pressed ? Qt.darker(Theme.greenFill, 1.2)
         : (hover.hovered ? Qt.lighter(Theme.greenFill, 1.15) : Theme.greenFill)
     Accessible.role: Accessible.Button
@@ -59,35 +59,40 @@ Rectangle {
             : root.calling.callPeerName
     }
 
-    RowLayout {
-        id: line
+    Row {
+        id: lead
         anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: root.kSideMargin
-        anchors.rightMargin: root.kSideMargin
+        anchors.verticalCenter: parent.verticalCenter
         spacing: 8
         Icon {
+            anchors.verticalCenter: parent.verticalCenter
             name: "call"
             color: Theme.onGreen
             size: root.kIconSize
         }
         Label {
+            anchors.verticalCenter: parent.verticalCenter
             text: root.phase()
             color: Theme.onGreen
             opacity: root.kPhaseOpacity
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.NoWrap
         }
-        Label {
-            Layout.fillWidth: true
-            text: root.peerText()
-            color: Theme.onGreen
-            font.weight: Font.Medium
-            wrapMode: Text.NoWrap
-            maximumLineCount: 1
-            elide: Text.ElideRight
-        }
+    }
+
+    Label {
+        id: line
+        anchors.centerIn: parent
+        width: Math.min(implicitWidth,
+            root.width - 2 * (lead.anchors.leftMargin + lead.width + lead.spacing))
+        horizontalAlignment: Text.AlignHCenter
+        text: root.peerText()
+        color: Theme.onGreen
+        font.weight: Font.Medium
+        wrapMode: Text.NoWrap
+        maximumLineCount: 1
+        elide: Text.ElideRight
     }
 
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
