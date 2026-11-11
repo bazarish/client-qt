@@ -17,8 +17,9 @@ protected:
     QNetworkReply* createRequest(
         const Operation op, const QNetworkRequest& request, QIODevice* const outgoing) override
     {
-        static const QStringList kLocalSchemes
-            = {QStringLiteral("qrc"), QStringLiteral("file"), QStringLiteral("data")};
+        // "content" is an Android content provider: a picture picked from the gallery.
+        static const QStringList kLocalSchemes = {QStringLiteral("qrc"), QStringLiteral("file"),
+            QStringLiteral("data"), QStringLiteral("content")};
         if (kLocalSchemes.contains(request.url().scheme())) {
             return QNetworkAccessManager::createRequest(op, request, outgoing);
         }
