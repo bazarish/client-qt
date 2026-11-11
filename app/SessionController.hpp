@@ -370,6 +370,8 @@ public:
     Q_INVOKABLE QVariantMap replyPreview(const QString& e2eId) const;
     Q_INVOKABLE void deleteMessage(qint64 localId, const QString& e2eId, bool outgoing);
     Q_INVOKABLE QString inviteProblem(const QString& uri) const;
+    // The fingerprint an invite names when that account is already a contact, else empty.
+    Q_INVOKABLE QString contactFor(const QString& uri) const;
     Q_INVOKABLE QString aliasProblem(const QString& typed) const;
     // Whatever is not an invite link is an alias, with or without its sigil.
     Q_INVOKABLE bool typedAlias(const QString& typed) const;

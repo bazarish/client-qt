@@ -32,7 +32,6 @@ void CoreAccount::addByInvite(const QString& uri, const QString& intro)
         const QString peer = QString::fromStdString(known.fingerprint);
         if (contacts_.has(peer) && contacts_.state(peer).writable) {
             emit events_.showConversation(peer);
-            emit events_.actionOk(tr("Already in your contacts"));
             return;
         }
     } catch (const std::exception& error) {
@@ -338,7 +337,6 @@ void CoreAccount::onContactAlreadyKnown(const QString& opId, const QString& fing
         forgetChat(chat);
     }
     emit events_.showConversation(fingerprint);
-    emit events_.actionOk(tr("Already in your contacts"));
 }
 
 void CoreAccount::onContactAliasUnknown(const QString& opId, const QString& status)

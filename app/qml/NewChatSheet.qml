@@ -58,6 +58,11 @@ Popup {
     }
 
     function openInvite(uri) {
+        const known = root.session ? root.session.contactFor(uri) : ""
+        if (known.length > 0) {
+            root.session.openConversation(known)
+            return
+        }
         root.prefillTarget = uri
         root.open()
         root.prefillTarget = ""

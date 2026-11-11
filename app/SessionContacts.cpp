@@ -61,6 +61,16 @@ QString SessionController::inviteProblem(const QString& uri) const
     return {};
 }
 
+QString SessionController::contactFor(const QString& uri) const
+{
+    if (!inviteProblem(uri).isEmpty()) {
+        return {};
+    }
+    const QString fingerprint = QString::fromStdString(
+        bazarish::parseDescriptor(uri.trimmed().toStdString()).fingerprint);
+    return book_.has(fingerprint) ? fingerprint : QString();
+}
+
 QString SessionController::aliasProblem(const QString& typed) const
 {
     const std::optional<bazarish::AliasProblem> problem
