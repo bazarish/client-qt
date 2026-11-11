@@ -48,9 +48,9 @@ QtObject {
     readonly property color bubbleOutHeld: light ? "#cbe5c1" : "#1c3524"
     readonly property color bubbleInHeld: surfaceAlt
     readonly property color authorName: light ? green : "#7fd36f"
-    readonly property color reactionMine: greenFill
+    readonly property color reactionMine: light ? "#b9e3ad" : greenFill
     readonly property color reactionMineEdge: light ? greenFill : authorName
-    readonly property color reactionMineInk: greenInk
+    readonly property color reactionMineInk: light ? selectedInk : greenInk
     readonly property color knobOn: greenInk
 
     readonly property int spacing: 12

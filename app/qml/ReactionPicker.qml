@@ -10,7 +10,8 @@ Popup {
     property var session: null
     property string target: ""
     modal: true
-    focus: true
+    // Taking focus would close a phone's keyboard and move the conversation under it.
+    focus: !App.mobile
     parent: Overlay.overlay
     readonly property int kColumns: 6
     width: Math.min(parent ? parent.width - 24 : 400,
