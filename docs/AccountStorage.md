@@ -31,27 +31,19 @@ which is
 | `cipher_kdf_algorithm` | PBKDF2_HMAC_SHA512 |
 | `cipher_hmac_algorithm` | HMAC_SHA512 |
 
-A build must therefore link **SQLCipher 4.x**. Version 3 writes a different
-format entirely - 1024-byte pages, 64000 iterations, SHA1 - and has no
-`cipher_compatibility` pragma to bridge the two. A client linked against
-SQLCipher 3 does not read a version-4 account at all: the pages do not decrypt,
-the open fails, and the account can only be reported as one that did not open.
+A build must therefore link **SQLCipher 4.x**. A client linked against
+SQLCipher 3 does not read a version-4 account: the pages do not decrypt, the open
+fails, and the account is reported as one that did not open.
 
-Two consequences follow, and both have been met in practice:
+Two consequences follow:
 
 - **The packaged build carries its own SQLCipher.** The AppImage is built on the
   oldest supported base, which ships SQLCipher 3, so `packaging/appimage-build.sh`
-  builds 4.6.1 from source against the bundled OpenSSL. Without that, an account
-  created by a distribution build asks the packaged build for a passphrase it
-  never had.
-- **An account written by a SQLCipher 3 build stays unreadable.** SQLCipher 4 can
-  read such a file with `PRAGMA cipher_compatibility = 3`, and this client does
-  not: there is no migration path in either direction, in line with the project's
-  rule for a pre-release version.
+  builds 4.6.1 from source against the bundled OpenSSL.
+- **An account written by a SQLCipher 3 build is not read.** The client opens
+  the version-4 profile only and does not set `cipher_compatibility`.
 
-The compatibility level is not pinned explicitly. It is the library default for
-every 4.x release, and pinning it would only matter the day a version 5 changes
-that default - at which point the pin, not the discovery, is the smaller change.
+The compatibility level is the library default of every 4.x release.
 
 ## What the file holds, and trimming it
 
@@ -59,10 +51,10 @@ Global settings -> Storage shows what one account keeps on this machine,
 conversation by conversation, and drops old history a conversation at a time.
 
 **Where the bytes are.** The transcript's `messages` table holds text and
-metadata. Pictures and voice notes are **not** in it: the core keeps them beside
-it in the same file under `picture:<id>` and `voice:<id>`. Files that were sent
-or received are not in the database at all - they travel directly between the two
-clients and land wherever the user saved them.
+metadata. Pictures and voice notes are kept beside it in the same file under
+`picture:<id>` and `voice:<id>`. Files sent or received stay outside the
+database: they travel directly between the two clients and land wherever the
+user saved them.
 
 **What the figures mean.** A conversation's weight is what its rows and its
 pictures hold - content, not pages. The file is always larger: it also carries
@@ -72,21 +64,18 @@ size, so it is a little under what a rewrite actually returns.
 
 **Deletion takes the media with it.** A message is what names its media, so the
 media goes when the message does - read from the row before it is removed, in the
-same statement sequence. There is no separate collection pass looking for what
-nothing points at.
+same statement sequence.
 
 **What a trim does.** It keeps the newest 100 or 1000 messages of a conversation
 and removes the rest, with their reactions and their media, in one transaction:
 the conversation is trimmed or it is untouched. Newest is by row id, the same key
 a conversation pages by, so what is kept is what the view would have shown.
-`read_state` and `pinned_chats` are left alone - trimming is not clearing, and
-the conversation stays in the list.
+`read_state` and `pinned_chats` are left alone, and the conversation stays in
+the list.
 
-A trim is **local to this device**, and that is not a policy but a fact about the
-protocol: there is no history backfill between an account's devices. The
-device-sync kinds are live echoes of what is happening now, not a request for
-what happened before, so a trimmed message does not come back from a sibling
-device, and nothing is asked of the person on the other side either.
+A trim is **local to this device**. The device-sync kinds are live echoes of what
+is happening now, so a trimmed message does not come back from a sibling device,
+and nothing is asked of the person on the other side.
 
 **Compacting.** Freed pages stay inside the file until it is rewritten, so a trim
 is followed by `VACUUM` and the size on disk falls with it. The same operation is
@@ -95,25 +84,20 @@ removes nothing: it only hands back what earlier deletions already freed, which
 makes it the one non-destructive action there.
 
 That rewrite belongs to the storage window and to nothing else. Its cost is the
-size of what is **kept**, not of what went - it reads and writes the whole
-database either way - so an ordinary deletion does not perform one: deleting a
-single message from a 148 MB account was measured at **4.7 s**, essentially all
-of it the rewrite, and the same code path carries a correspondent's "delete for
-everyone", which arrives without the user asking for anything. Ordinary deletions
-therefore leave their pages in the file to be reused, and the storage window is
-where the space is handed back.
+size of what is **kept** - it reads and writes the whole database. An ordinary
+deletion, which also carries a correspondent's "delete for everyone" arriving
+without the user asking for anything, leaves its pages in the file to be reused,
+and the storage window is where the space is handed back.
 
 While either runs, the application is deliberately held: they take the database
-exclusively, and doing the work on another thread would put an arriving message
-against that lock - `append` would fail and the message would be shown but never
-stored. The window says what is running before it stops answering, and it shows
-no percentage, because SQLite reports none for a rewrite and an invented figure
-would say something untrue about how far along it is.
+exclusively, and an arriving message is stored, not only shown. The window says
+what is running before it stops answering, and it shows no percentage, because
+SQLite reports none for a rewrite.
 
 `VACUUM` needs free disk space equal to the file, which is checked first, and it
 takes the database exclusively, so it can be refused while the account is busy. A
-refusal is not a failed trim: the messages are gone, only the space has not come
-back, and trimming again returns it. The client says both rather than reporting a
+refusal leaves the trim done: the messages are gone, only the space has not come
+back, and trimming again returns it. The client says both and reports no
 failure. The schema mark is written again afterwards, because an account carrying
 any other number is refused at open.
 
@@ -139,15 +123,15 @@ copy the account folder, keys included, to Google.
 | identity and sealing private keys (PEM) | the account itself |
 | the I2P **routing master** | the account's address is the account's, not a device's: a restored device that minted its own would take the address away from every contact holding it (`docs-main/Identity.md`) |
 | meta and the contact records | who this account is and who it knows |
-| the account's avatar and each contact's | the pictures are rows of their own; a bundle carrying only their mime types restored an account with no face at all |
+| the account's avatar and each contact's | the pictures are rows of their own, so the bundle carries them in full |
 | the block list | a restored account that forgot it would let them all back in |
 | **each conversation's delivery pass** | see below |
 
 A delivery pass is not spent, so the bundle **copies** it: the exporting device
 goes on writing and the restored one can write from its first sync.
 
-A device that ends up without the account's address anyway - an older bundle, or
-an account moved another way - does not publish one of its own. On connect it
+A device that ends up without the account's address anyway - an account moved
+another way - does not publish one of its own. On connect it
 asks the server which address it serves, and when that is not the one it holds it
 asks the account's other devices for the keys (`device.i2p-master-request`). Only
 if nobody answers is the user asked, with the two answers that exist: serve this

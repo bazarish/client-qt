@@ -77,7 +77,7 @@ What the link carries decides where it opens:
 | `bazarish://pair?...` | the wizard that enrols this device, with the link in it |
 
 The first three act on an open account, so a link that arrives before one is open
-waits for it rather than going nowhere. A link of any other shape is refused on
+waits for it. A link of any other shape is refused on
 screen and written to the log.
 
 The association is registered where each desktop keeps it: the desktop entry

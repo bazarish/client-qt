@@ -39,15 +39,14 @@ local condition, not a property of the recipient.
 
 An outbound destination is replaced at least hourly, so no long-lived set of
 tunnels carries one correspondence, and one that has carried nothing for ten
-minutes is closed before then rather than held open for the next message. A
+minutes is closed before then. A
 contact request is the exception: its address is dropped as soon as the request
 is settled, so every request leaves from an address of its own - the recipient's
 server admits one contact request per sending address a day and refuses the next.
 
-The bound on a run is the sum of what the run may spend, not a number chosen
-beside it: an attempt is made only when the budget can pay for its wait and for
-the whole of its dial, so a bound shorter than the schedule would quietly cost
-the last attempts. It is what terminates an attempt in which the peer accepts the
+The bound on a run is the sum of what the run may spend: an attempt is made only
+when the budget can pay for its wait and for the whole of its dial. It is what
+terminates an attempt in which the peer accepts the
 stream and returns no reply - and because that one wait can consume most of the
 budget, a run against such a peer legitimately makes fewer than four attempts.
 
@@ -85,10 +84,9 @@ Two messages carry no protocol state of their own and are shown at what they
 actually are:
 
 - **A note to the saved chat** is green as soon as this account's own server holds
-  it. There is no correspondent to read it and no receipt coming, so amber would
-  be a wait for something that never arrives - on the device that wrote it and on
-  every other device of the account, which sees it arrive through the server that
-  already holds it.
+  it, on the device that wrote it and on every other device of the account, which
+  sees it arrive through the server that already holds it. It has no
+  correspondent to read it and no receipt coming.
 - **An echo of what another device sent** appears there only once that device's
   send was stored by the recipient's server, so a message that never arrives
   leaves no copy on the other devices. It arrives in the same amber state the
@@ -117,17 +115,17 @@ Every message to a contact presents the **delivery pass** that contact issued to
 this account (`docs-main/Contacts.md`). One value, whatever the message weighs: a
 line of text and the largest payload the protocol allows are admitted alike, and
 what bounds the large one is the 512 KiB message ceiling and the recipient's
-storage quota. The pass is not spent, so nothing has to be counted, drawn or
-saved up, and every device of the account presents the same one.
+storage quota. The pass is not spent, and every device of the account presents
+the same one.
 
 A contact this account holds no pass for cannot be written to at all, and that is
-an error rather than a wait: nothing runs a pass down, so an empty one means the
-dialog was never established in that direction.
+an error: a pass does not run down, so an empty one means the dialog was never
+established in that direction.
 
 ## What a refusal costs
 
-Nothing. A pass is not a payment, so a refused delivery leaves this account
-exactly as able to write as it was before:
+Nothing. A refused delivery leaves this account exactly as able to write as it
+was before:
 
 | Refusal | What it says |
 |---|---|
@@ -153,12 +151,11 @@ The Agree button on that plate is the contact's state, not the message's: it is
 there while the request is unanswered, says what it is doing while the acceptance
 is in the air, and goes only when the correspondent's server has confirmed it
 holds the batch the acceptance carries. An acceptance that never lands brings the
-button back rather than leaving a contact that looks answered on this side alone.
+button back.
 
 ## What rides inside a message
 
-A picture and a voice message travel inside the message rather than beside it:
-nothing is announced and nothing is fetched, so they arrive with the message even
+A picture and a voice message travel inside the message: nothing is announced and nothing is fetched, so they arrive with the message even
 if the sender goes offline the moment after sending it. Both are made to fit the
 protocol's 512 KiB payload.
 
@@ -167,7 +164,7 @@ protocol's 512 KiB payload.
 | Picture | Scaled to a long edge of 1600 and re-encoded - JPEG at quality 85, or PNG when the image has an alpha channel. Quality and then the long edge are stepped down, to quality 45 and an edge of 640, until the result is at most 256 KiB |
 | Voice message | Opus at the call format - 48 kHz mono, 20 ms frames, each length-prefixed - at most two minutes long, and bounded by the payload limit less an 8 KiB envelope reserve |
 
-A file is not made to fit. It is transferred directly between the two clients
+A file is transferred directly between the two clients
 (`docs-main/api/FileTransfer.md`).
 
 ## Outbound addresses

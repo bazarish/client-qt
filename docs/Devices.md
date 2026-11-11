@@ -17,9 +17,9 @@ in `docs-main/DeviceSync.md`).
 
 What this client settles, where the protocol leaves it open:
 
-- **When it tells them.** Not per message - reading a conversation advances the
-  mark once per bubble that scrolls past, and each notice is an item in the
-  account's own mailbox. It waits **4 seconds** after the reading settles, and
+- **When it tells them.** Reading a conversation advances the mark once per
+  bubble that scrolls past, and each notice is an item in the account's own
+  mailbox, so it waits **4 seconds** after the reading settles, and
   sends at once when the conversation is left, so what a reader saw is owed to
   the other devices before they are asked about anything else.
 - **What is lost if it does not.** Closing the application inside that wait drops
@@ -48,10 +48,9 @@ is empty. A router that is already running has a database and is left alone.
 
 Getting there takes minutes, so the receiving device names the stage it is in -
 starting the router, reseeding from the link, building its tunnels, reaching the
-other device - rather than showing one unchanging line through all of them. The
-address in the link is dialled on that last stage, **before** the code is asked
-for, so a link that leads nowhere is refused there and not after four digits have
-been typed.
+other device. The address in the link is dialled on that last stage, **before**
+the code is asked for, so a link that leads nowhere is refused there, before any
+digit is typed.
 
 **From a file.** Restoring is
 slow enough to be worth watching - the bundle is unsealed, a keyed database is
@@ -116,8 +115,8 @@ what it believes it published, and belief is not what mail is delivered to.
 The device list in the account window carries one line per device, and a quiet
 `Forget` beside every device that is not this one. It asks first: the server
 stops keeping mail for that device and drops the queue it holds, and anything in
-that queue no other device has collected is gone. It is not a ban - the next time
-that device connects it registers again and works as before.
+that queue no other device has collected is gone. The next time that device
+connects it registers again and works as before.
 
 Deleting the account offers the same distinction. **Delete everywhere** ends the
 account on its server: the address, the mailbox, everything in it. **This device

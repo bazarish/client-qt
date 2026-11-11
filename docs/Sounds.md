@@ -52,18 +52,17 @@ Nothing beside the executable is read in any other case, and `BAZARISH_ACCOUNTS_
 moves the root with the accounts directory it names.
 
 The three names above are the only ones looked for, and `.wav` is the only
-format: a sound is a known file rather than a directory to be searched through.
-All three are consulted every time the sound is made, so a file put there is
+format. All three are consulted every time the sound is made, so a file put there is
 used without restarting and taking it away brings the carried one back.
 
 The two call-progress tones - ringback while a call is being placed, and a
-short burst when it fails - are synthesised at 425 Hz (ITU-T E.180) rather than
-carried as files, so there is nothing to replace them with.
+short burst when it fails - are synthesised at 425 Hz (ITU-T E.180) and cannot
+be replaced.
 
 ## On Android
 
-The phone plays copies kept in `packaging/android/source/res/raw/`, not the files
-in `app/sound/`. The message sound is raised by
+The phone plays copies kept in `packaging/android/source/res/raw/`. The message
+sound is raised by
 9.0 dB and the ringtone by 8.2 dB, so both peak at **-1 dBTP**: that is how loud
 Android's own sounds are mastered (on a Pixel 8 the median of its 75
 notification sounds is -15.2 LUFS at -0.7 dBTP), and the desktop recordings sit
@@ -74,9 +73,9 @@ under it. The desktop recordings keep their level.
 
 **16-bit mono PCM, at most 8 MiB** - about 87 seconds at 48 kHz.
 
-The client reads the ringtone's samples itself rather than handing the file to a
-player, because the call window pulses with it: that needs the loudness of what
-is being heard at this instant, which a player will not tell. The loudness is
+The client reads the ringtone's samples itself, because the call window pulses
+with it: that needs the loudness of what is being heard at this instant. The
+loudness is
 measured over 20 ms frames, taken against the track's own loudest moment, and
 published about thirty times a second. The position in the track is counted in
 samples that have actually been played, so a track of any length takes the pulse
@@ -89,4 +88,4 @@ call is not left silent by a choice of track.
 
 The notification sound is handed to the media backend and is not read this way,
 so it is any WAV the backend will play. One that will not play says so in the
-log rather than passing as silence.
+log.

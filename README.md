@@ -5,9 +5,9 @@ messenger: a Qt6 Quick application, `bazarish-app`, over the client core library
 
 The core - the API transport, the typed endpoints, and the session that holds the
 identity, the contacts, the mailbox sync, calls and file transfer - is shared
-with the other implementations through the `common` submodule. Headless use is
-not this repository's job: a bot or a scripted account is `bazarish-bot`, which
-runs the same core without an interface.
+with the other implementations through the `common` submodule. Headless use - a
+bot or a scripted account - is `bazarish-bot`, which runs the same core without
+an interface.
 
 ## Documentation
 
@@ -24,9 +24,8 @@ Boost. Qt6 (Quick, QuickControls2, Qml, Gui, Multimedia, Widgets, Network) is
 what builds the application; without it only the core library and its tests are
 built. `common` is a submodule.
 
-SQLCipher 3 links and then cannot read an account: the version-4 database format
-is not the one it writes, and there is no compatibility pragma from that side
-([docs/AccountStorage.md](docs/AccountStorage.md)).
+An account is in the SQLCipher version-4 database format, which SQLCipher 3
+does not read ([docs/AccountStorage.md](docs/AccountStorage.md)).
 
 ```bash
 git clone --recurse-submodules https://github.com/bazarish/client-qt

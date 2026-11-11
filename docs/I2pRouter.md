@@ -2,8 +2,7 @@
 
 ## Scope
 
-The desktop client operates an I2P router in its own process (libi2pd; no system
-daemon). This document specifies the router settings exposed to the user, their
+The desktop client operates an I2P router in its own process (libi2pd). This document specifies the router settings exposed to the user, their
 storage, and the constraints that apply to each.
 
 ### Choosing the transport
@@ -45,7 +44,7 @@ meeting inside it) reads "gateway routing" instead of a LeaseSet count.
 
 The transport is a facade over three engines. The desktop uses the in-process one,
 for the reasons this document sets out: the network database comes from the
-user's own server rather than a public reseed host, and the clearnet side can be
+user's own server, and the clearnet side can be
 put behind a proxy. A router outside the process, reached over SAM v3 on
 loopback, is the other engine; it exists for a service running many accounts,
 where one router serves every process. An external router answers none of the
@@ -66,15 +65,13 @@ from the server descriptor - https **base** URLs, the shape every I2P reseed has
 are handed to the engine (`reseed.urls`) before it starts, and it appends
 `i2pseeds.su3`, fetches, unpacks and loads them the way it would any reseed. The
 addresses are refused unless they are `https`, and a missing trailing slash is
-put back, because the engine concatenates rather than joins. No patch to the
-engine is involved: the address has the one shape i2pd already understands.
+put back, because the engine concatenates rather than joins.
 
 Three consequences worth stating:
 
 - **The engine does the fetch**, so the request carries the user agent every I2P
-  router sends and follows redirects like every other router. A request of our
-  own shape would mark the client as Bazarish to the host and to anyone in the
-  path.
+  router sends and follows redirects like every other router, and does not mark
+  the client as Bazarish to the host or to anyone in the path.
 - **The su3 signature is not checked** (`reseed.verify` is off, which is i2pd's
   default). A reseed an operator runs privately is signed by nobody a stock
   client trusts. Nothing is lost by it: every RouterInfo inside carries its own
@@ -91,8 +88,7 @@ Three consequences worth stating:
   with 80 routers from the built-in hosts, and about a minute with 98 from a
   named su3 URL.
 
-The client keeps no netDb-seeding code of its own: there is no reseed request in
-its API, and the whole clearnet leg of that API is gone with it. An address that
+An address that
 is not `https://` is taken as an archive already on disk and handed to the engine
 as one - what an offline install or a test points at; a descriptor never carries
 such an address, because the check above refuses it.
@@ -137,14 +133,14 @@ are rebuilt by the application so that the previous profile is not retained.
 
 ## Call media paths
 
-A call's destination keeps six tunnels each way instead of three. Every 100 ms it
+A call's destination keeps six tunnels each way; other destinations keep three. Every 100 ms it
 sends a path probe (`docs-main/api/Calls.md`) on one pairing of its own outbound
 tunnel with one of the peer's inbound tunnels, every other probe on the pairing the
 audio uses, and keeps a smoothed round trip per pairing: each answer moves it a
 quarter of the way. Audio is pinned to the fastest pairing that has answered and
 moves only to one at least 30 ms faster. A probe left unanswered for 2 s counts as
 a 2 s round trip for a pairing that has answered before and as nothing for one
-that never has; until one answers, the engine picks the path as before.
+that never has; until one answers, the engine picks the path on its own.
 
 The engine does this itself, so it holds on this machine's router and on a
 gateway, which runs the same engine for its clients. Over SAM the six tunnels are
@@ -170,8 +166,6 @@ port. When set, the following router traffic is directed through the proxy:
 1. **SOCKS5 only; no authentication.** The libi2pd SOCKS client offers the "no
    authentication" method exclusively, both for transport connections and for
    reseed retrieval. A proxy requiring credentials will reject the connection.
-   The engine's HTTP-proxy path supports Basic authentication but cannot carry
-   the datagram transport, and is therefore not offered by this client.
 2. **The datagram transport (SSU2) is disabled while a proxy is configured.**
    SSU2 traffic can traverse a SOCKS5 proxy only through the UDP ASSOCIATE
    command, which many proxies do not implement and which libi2pd attempts only

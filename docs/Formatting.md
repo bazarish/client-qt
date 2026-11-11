@@ -58,8 +58,8 @@ An address ends at the first space. A full stop, comma or closing bracket that
 the address did not open is punctuation and is left out of it. Only `http` and
 `https` are recognised; every other scheme is text.
 
-There is no escape character. A marker that does not pair off is drawn as itself,
-which is what makes one unnecessary.
+A marker that does not pair off is drawn as itself, so the markup needs no
+escape character.
 
 ## What a press does
 
@@ -93,8 +93,8 @@ shows while the pointer rests on it; a phone has no such pause, so the warning i
 where it is read. Answering "Open" hands it to the desktop, and a desktop with nothing registered
 for `http` is reported rather than passed over in silence.
 
-There is no way to give an address a label that differs from where it goes: the
-markup has no such form, so what the bubble shows is what would be opened.
+An address is always shown as itself: the markup has no label form, so what the
+bubble shows is what would be opened.
 
 ## The buttons over the composer
 
@@ -104,10 +104,10 @@ per form, showing the markers it puts in and what they do (`**` bold, `*` italic
 those characters and keeps the selection, so a second form can be applied without
 reaching for the mouse again.
 
-They are a way of typing, not a second syntax: what is sent is the text with the
-markers in it, indistinguishable from the same message typed by hand. There is no
-button for an address, because an address needs no markers - it is recognised on
-the receiving side by what it is.
+They are a way of typing: what is sent is the text with the markers in it,
+indistinguishable from the same message typed by hand. An address has no button,
+because it needs no markers - it is recognised on the receiving side by what it
+is.
 
 ## Where a body is not drawn as markup
 
@@ -129,18 +129,11 @@ is the form that can be sent again.
 
 ## Why the client builds the document
 
-A bubble is a rich text document, and the document is built here from the message
-rather than handed the message. Every character a correspondent sent is escaped
-first, and the only tags in the document are the ones this client put there.
+A bubble is a rich text document, and the document is built here from the
+message. Every character a correspondent sent is escaped first, and the only tags
+in the document are the ones this client put there.
 
-A body passed through as rich text would let a correspondent name a picture in
-it, and a picture named in a document is fetched as the document draws - from
-this machine, over the ordinary internet, before anything has been pressed. That
-is the same disclosure the link warning exists to prevent, minus the warning.
-
-## Not supported
-
-Headings, lists, quotes, tables, images, links with a label of their own,
-colours, syntax highlighting inside a block, and any nesting of styles. None of
-them are planned here: the list at the top is what a message is allowed to say
-about itself.
+This keeps a correspondent from naming a picture in a body: a picture named in a
+document is fetched as the document draws - from this machine, over the ordinary
+internet, before anything has been pressed. That is the same disclosure the link
+warning exists to prevent.

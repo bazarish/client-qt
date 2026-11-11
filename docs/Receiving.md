@@ -10,11 +10,9 @@ applies where the protocol names none.
 
 ## One mechanism
 
-Mail is heard about in exactly one way: a request held open by the server. There
-is no periodic poll of the mailbox, and no second mechanism behind the first - a
+Mail is heard about in exactly one way: a request held open by the server. A
 wait that ends in an error is asked again immediately, on the same connection the
-loop already holds. Asking every few seconds as well would turn a momentary
-transport failure into permanently late mail.
+loop already holds.
 
 The same request is also what the account's connection state is drawn from: an
 answer means the server is there, an error means it is not.
@@ -24,8 +22,7 @@ to report the loss itself**. Rebuilding the I2P links - which is what moving the
 tunnel-length slider does - tears the loop down, releases the links and starts a
 new loop that cannot answer until fresh tunnels are up; the state is set to
 unreachable at the moment the links go, and the first answer from the new loop
-puts it back. Without that the status strip at the top of the window would keep
-the last answer's verdict and claim a connection that no longer exists.
+puts it back.
 
 ## Procedure
 
@@ -39,9 +36,8 @@ the last answer's verdict and claim a connection that no longer exists.
    nothing.
 4. The loop asks again once that pass has given back everything it took. A
    mailbox answers the next wait at once while it still holds what this device is
-   carrying, so asking earlier would spin the loop through its own drain - and a
-   pass that left items behind is exactly the case where answering at once is
-   what continues it.
+   carrying, and a pass that left items behind is exactly the case where
+   answering at once is what continues it.
 
 ## Parameters
 
@@ -77,11 +73,10 @@ a message from the other side never goes above what this side had written in the
 chat before it arrived (`docs-main/Messages.md`): its order key is raised to one
 millisecond after the newest own row, and the time it shows stays its `sentAt`. A
 row written on another device of the same account is not raised. The arrival
-order the mailbox lists in is what decides the order items are fetched, not where
-they end up on screen.
+order the mailbox lists in decides only the order items are fetched in.
 
 A message that arrives long after it was written therefore appears where it was
 written among the other side's messages, but under anything written here before it
 came, which can still be above the fold. The unread mark is kept over stored rows in
-the order they were received rather than over their timestamps, so such a message
-is unread whatever its own clock says.
+the order they were received, so such a message is unread whatever its own clock
+says.

@@ -31,12 +31,11 @@ this client performs before reporting failure is not.
 | [Formatting.md](Formatting.md) | Message formatting: the markers a body may carry, what a press on one does, and where a body is shown without them |
 | [Groups.md](Groups.md) | Groups and channels: what makes a chat one, the author line and letter circle, reaction counts, the admin actions and the descriptor plate |
 
-## Not documented yet
+## Not covered here
 
-Implemented and in use, with no page here: voice messages, pictures, avatars,
-reactions, bots and inline keyboards, aliases as the client services them,
+Implemented, with no page here: voice messages, pictures, avatars, reactions,
+bots and inline keyboards, aliases as the client services them,
 sign-in-with-key, invites and QR, several accounts at once, and conversation
-search with its paging. They are listed rather than left unmentioned: the gap
-is in this directory, not in the client.
+search with its paging.
 
 The repository `README.md` names the dependencies and the build.

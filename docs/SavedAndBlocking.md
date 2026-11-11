@@ -41,13 +41,12 @@ it.
 ## Blocking
 
 Blocking a correspondent does three things: the pass they hold is revoked at
-this account's server, so their mail stops being accepted rather than being read
-and dropped; their messages and contact requests are consumed as they arrive,
+this account's server, so their mail stops being accepted; their messages and contact requests are consumed as they arrive,
 before anything is shown or any contact record is touched; and the block is
 mirrored to the account's other devices.
 
 It does **not** touch the conversation. The chat and its history stay where they
-are, and deleting them is the separate action it already was. Unblocking restores
+are, and deleting them is a separate action. Unblocking restores
 nothing that was dropped in between, and the correspondent must write again -
 their pass is gone until this account gives it back.
 
@@ -96,8 +95,7 @@ Two switches in a contact's panel, above **Share contact**:
 - **Notifications** off: their messages arrive and are counted in the chat list
   as usual, and nothing is announced outside the window - no popup, no sound.
 - **Allow calls** off: their call is refused the moment it arrives, exactly as
-  the account-wide setting refuses one. They are told at once rather than left
-  ringing. Nothing is written into the chat: a call leaves no line there.
+  the account-wide setting refuses one. They are told at once. Nothing is written into the chat: a call leaves no line there.
 
 Both are exceptions to the global settings and can only take something away: with
 notifications off account-wide, a contact's switch does not bring them back.

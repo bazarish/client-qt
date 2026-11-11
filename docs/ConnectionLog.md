@@ -26,7 +26,7 @@ so the two records side by side say which refusal happened to this message.
 
 Mail to a correspondent never goes through this account's server: it is dialled
 over I2P from a destination this client holds, so the confirmation on those lines
-is the **recipient's** server signing for the delivery, not ours.
+is the **recipient's** server signing for the delivery.
 
 ## What is not in it
 
