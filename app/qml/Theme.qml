@@ -51,7 +51,7 @@ QtObject {
     readonly property color reactionMine: greenFill
     readonly property color reactionMineEdge: light ? greenFill : authorName
     readonly property color reactionMineInk: greenInk
-    readonly property color knobOn: light ? text : greenInk
+    readonly property color knobOn: greenInk
 
     readonly property int spacing: 12
     readonly property int radius: 10
