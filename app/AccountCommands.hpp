@@ -13,7 +13,7 @@ namespace bazarish::app {
 inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestConnect", "requestSendText", "requestSendFile", "requestSendFileBytes",
     "requestSendPicture", "requestSendVoice", "requestSendCallback", "requestSendCommand",
-    "requestAddByInvite", "requestAddByAlias", "requestAcceptContact", "requestInviteSig",
+    "requestAddByInvite", "requestAddByAlias", "requestAcceptContact",
     "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
     "requestPublishThisDeviceAddress", "requestPublishFreshAddress", "requestRefreshI2pStatus",
     "requestRefreshStorageUsage", "requestRefreshDevices", "requestForgetDevice",
@@ -122,7 +122,6 @@ signals:
     void requestAddByAlias(const QString& alias, const QString& intro, const QString& opId,
         const QString& requestId);
     void requestAcceptContact(const QString& peer);
-    void requestInviteSig();
     void requestSignLoginSig(const QString& challenge);
     void requestConnectionLog();
     void requestContactsFromDevices();

@@ -79,6 +79,7 @@ enum OperationState { eOpRunning = 0, eOpDone = 1, eOpFailed = 2 };
 enum LoginSendPhase { eLoginSending = 0, eLoginAccepted = 1, eLoginRefused = 2 };
 
 inline constexpr Latch kAccountLatches[] = {
+    {"inviteState"},
     {"transcriptOpened"},
     {"opened"},
     {"renamed"},
@@ -135,8 +136,7 @@ signals:
     void botKeySettled(const QString& messageId, bool delivered);
     void actionFailed(const QString& error);
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
-    void inviteReady(const QString& uri);
-    void inviteUnavailable(const QString& reason);
+    void inviteState(const QString& uri, const QString& problem);
     void loginSigned(const QString& blob);
     void loginSendState(
         const QString& challenge, int phase, const QString& status, qint64 startedAtMs);

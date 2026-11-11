@@ -401,12 +401,6 @@
       "zh": "正在询问你的其他设备",
       "ar": "جارٍ سؤال أجهزتك الأخرى"
     },
-    "Asking your server for your destination…": {
-      "ru": "Запрос назначения у сервера…",
-      "es": "Pidiendo tu destino al servidor…",
-      "zh": "正在向服务器询问你的目的地…",
-      "ar": "جارٍ سؤال الخادم عن وجهتك…"
-    },
     "Asking your server…": {
       "ru": "Запрос к серверу…",
       "es": "Preguntando a tu servidor…",
@@ -718,12 +712,6 @@
       "es": "No se puede escribir junto a la aplicación (%1). Muévela a un sitio con permiso de escritura y reinténtalo.",
       "zh": "无法在应用旁写入（%1）。请把它移到可写的位置后重试。",
       "ar": "تتعذّر الكتابة بجوار التطبيق (⁦%1⁩). انقله إلى موضع يسمح بالكتابة ثم أعد المحاولة."
-    },
-    "Card updated": {
-      "ru": "Карточка обновлена",
-      "es": "Tarjeta actualizada",
-      "zh": "名片已更新",
-      "ar": "حُدِّثت البطاقة"
     },
     "Challenge from the site": {
       "ru": "Запрос от сайта",
@@ -1462,12 +1450,6 @@
       "es": "La clave de destino está lista. Conéctate para publicarla.",
       "zh": "目的地密钥已就绪。请连接以发布它。",
       "ar": "مفتاح الوجهة جاهز. اتصل لنشره."
-    },
-    "Destination not up yet": {
-      "ru": "Назначение ещё не поднято",
-      "es": "El destino aún no está activo",
-      "zh": "目的地尚未就绪",
-      "ar": "الوجهة لم تعمل بعد"
     },
     "Device forgotten. Its unread mail is no longer held": {
       "ru": "Устройство забыто. Его непрочитанная почта больше не хранится",
@@ -2531,12 +2513,6 @@
       "zh": "正在准备通话地址",
       "ar": "جارٍ تجهيز عنوان المكالمة"
     },
-    "Preparing your invite": {
-      "ru": "Подготовка приглашения",
-      "es": "Preparando tu invitación",
-      "zh": "正在准备邀请",
-      "ar": "جارٍ تحضير دعوتك"
-    },
     "Preparing…": {
       "ru": "Подготовка…",
       "es": "Preparando…",
@@ -2740,12 +2716,6 @@
       "es": "Grabar de nuevo",
       "zh": "重新录音",
       "ar": "سجّل مجددًا"
-    },
-    "Refreshing your contact card": {
-      "ru": "Обновление карточки контакта",
-      "es": "Actualizando tu tarjeta de contacto",
-      "zh": "正在刷新你的联系人名片",
-      "ar": "جارٍ تحديث بطاقة تواصلك"
     },
     "Registered; registering this device": {
       "ru": "Аккаунт зарегистрирован. Регистрация устройства",

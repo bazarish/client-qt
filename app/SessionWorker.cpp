@@ -722,11 +722,7 @@ void SessionWorker::openAccount(
             break;
         }
     });
-    try {
-        emit inviteReady(QString::fromStdString(session_->inviteUri()));
-    } catch (const std::exception& error) {
-        bazarish::log::info("no invite yet: {}", error.what());
-    }
+    emitInvite();
     emit i2pKeyState(session_->hasI2pDestination(),
         session_->hasI2pDestination()
             ? QString::fromStdString(session_->i2pAddress())
@@ -913,6 +909,7 @@ void SessionWorker::sync()
 {
     drainMailbox();
     settleDrain();
+    emitInvite();
 }
 
 void SessionWorker::drainMailbox()
@@ -1610,24 +1607,24 @@ void SessionWorker::acceptContact(const QString& peer)
     }
 }
 
-void SessionWorker::requestInvite()
+void SessionWorker::emitInvite()
 {
-    try {
-        bazarish::client::Session& session = openSession();
-        if (!session.hasOwnRouting()) {
-            WorkerOp op(*this, QStringLiteral("refresh-card"), QStringLiteral("dest"),
-                tr("Refreshing your contact card"),
-                tr("Asking your server for your destination…"));
-            if (session.refreshOwnCard()) {
-                session.announceNewRouting();
-            }
-            op.succeed(session.hasOwnRouting() ? tr("Card updated")
-                                               : tr("Destination not up yet"));
-        }
-        emit inviteReady(QString::fromStdString(session.inviteUri()));
-    } catch (const std::exception& e) {
-        emit inviteUnavailable(QString::fromUtf8(e.what()));
+    if (!session_) {
+        return;
     }
+    QString invite;
+    QString problem;
+    try {
+        invite = QString::fromStdString(session_->inviteUri());
+    } catch (const std::exception& error) {
+        problem = QString::fromUtf8(error.what());
+    }
+    if (invite == lastInvite_ && problem == lastInviteProblem_) {
+        return;
+    }
+    lastInvite_ = invite;
+    lastInviteProblem_ = problem;
+    emit inviteState(invite, problem);
 }
 
 void SessionWorker::setAvatar(const QByteArray& bytes)
@@ -1667,6 +1664,7 @@ void SessionWorker::setDisplayName(const QString& name)
     withSession([&] {
         session_->setDisplayName(name.toStdString());
         emit renamed(QString::fromStdString(session_->displayName()));
+        emitInvite();
         emit actionOk(tr("Name updated"));
     });
 }
@@ -1898,6 +1896,7 @@ void SessionWorker::refreshI2pStatus()
     if (!session_) {
         return;
     }
+    emitInvite();
     const bool hasKey = session_->hasI2pDestination();
     const QString address
         = hasKey ? QString::fromStdString(session_->i2pAddress()) : QString();

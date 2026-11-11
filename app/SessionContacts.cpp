@@ -164,11 +164,6 @@ bool SessionController::contactAgreeing(const QString& fp) const
         || book_.state(fp).request == ContactState::eAccepting;
 }
 
-void SessionController::requestInvite()
-{
-    emit commands_.requestInviteSig();
-}
-
 void SessionController::onContactAccepted(const QString& peer, const bool ok,
     const QString& reason)
 {

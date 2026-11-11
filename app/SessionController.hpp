@@ -350,6 +350,8 @@ public:
     QStringList registrySites() const;
     Q_PROPERTY(QString ownInvite READ ownInvite NOTIFY ownInviteChanged)
     QString ownInvite() const { return ownInvite_; }
+    Q_PROPERTY(QString ownInviteProblem READ ownInviteProblem NOTIFY ownInviteChanged)
+    QString ownInviteProblem() const { return ownInviteProblem_; }
     Q_INVOKABLE void clearChat(bool forEveryone);
     // Seconds, each with its name.
     Q_INVOKABLE QVariantList chatTimerChoices() const;
@@ -383,7 +385,6 @@ public:
     Q_INVOKABLE bool contactAgreeing(const QString& fp) const;
     Q_INVOKABLE QStringList reactionsToFlash(const QString& e2eId) const;
     Q_INVOKABLE void forgetReactionFlash();
-    Q_INVOKABLE void requestInvite();
     Q_INVOKABLE void signLogin(const QString& challenge);
     Q_INVOKABLE void sendLogin(const QString& challenge);
     Q_INVOKABLE void fetchLogin(const QString& link);
@@ -490,8 +491,6 @@ signals:
     void actionOk(const QString& info);
     void botKeySettled(const QString& messageId, bool delivered);
     void actionFailed(const QString& error);
-    void inviteReady(const QString& uri);
-    void inviteUnavailable(const QString& reason);
     void loginSigned(const QString& blob);
     void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     void connectionLogUpdated(const QVariantList& lines);
@@ -620,6 +619,7 @@ private:
     QStringList recentReactions_;
     QStringList recentEmoji_;
     QString ownInvite_;
+    QString ownInviteProblem_;
     VoiceNote& voiceNote();
     std::unique_ptr<VoiceNote> voice_;
     QTimer voiceTimer_;

@@ -345,15 +345,12 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         }
         emit actionFailed(reason);
     });
-    connect(&events_, &AccountEvents::inviteReady, this, [this](const QString& uri) {
-        if (ownInvite_ != uri) {
+    connect(&events_, &AccountEvents::inviteState, this,
+        [this](const QString& uri, const QString& problem) {
             ownInvite_ = uri;
+            ownInviteProblem_ = problem;
             emit ownInviteChanged();
-        }
-        emit inviteReady(uri);
-    });
-    connect(&events_, &AccountEvents::inviteUnavailable, this,
-        &SessionController::inviteUnavailable);
+        });
     connect(&events_, &AccountEvents::loginSigned, this, &SessionController::loginSigned);
     connect(&events_, &AccountEvents::loginSendState, this,
         [this](const QString& challenge, const int phase, const QString& status,

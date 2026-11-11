@@ -65,7 +65,6 @@ const char* commandTitle(const QByteArray& signalName)
         {"requestContactsFromDevices", QT_TR_NOOP("Asking your other devices")},
         {"requestSetSync", QT_TR_NOOP("Going online")},
         {"requestRebuildI2p", QT_TR_NOOP("Rebuilding the I2P destinations")},
-        {"requestInviteSig", QT_TR_NOOP("Preparing your invite")},
         {"requestSignLoginSig", QT_TR_NOOP("Signing in")},
         {"requestSetDisplayName", QT_TR_NOOP("Changing your name")},
         {"requestRenameContact", QT_TR_NOOP("Renaming a contact")},
@@ -202,7 +201,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestAddByAlias, worker_, &SessionWorker::addByAlias);
     connect(&commands_, &AccountCommands::requestAcceptContact, worker_,
         &SessionWorker::acceptContact);
-    connect(&commands_, &AccountCommands::requestInviteSig, worker_, &SessionWorker::requestInvite);
     connect(&commands_, &AccountCommands::requestPublishThisDeviceAddress, worker_,
         &SessionWorker::publishThisDeviceAddress);
     connect(&commands_, &AccountCommands::requestPublishFreshAddress, worker_,
@@ -350,9 +348,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
             }
         });
     connect(worker_, &SessionWorker::actionFailed, &events_, &AccountEvents::actionFailed);
-    connect(worker_, &SessionWorker::inviteReady, &events_, &AccountEvents::inviteReady);
-    connect(worker_, &SessionWorker::inviteUnavailable, &events_,
-        &AccountEvents::inviteUnavailable);
+    connect(worker_, &SessionWorker::inviteState, &events_, &AccountEvents::inviteState);
     connect(worker_, &SessionWorker::loginSigned, &events_, &AccountEvents::loginSigned);
     connect(worker_, &SessionWorker::connectionLogReady, &events_,
         &AccountEvents::connectionLogReady);

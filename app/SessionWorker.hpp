@@ -105,7 +105,6 @@ public slots:
     void addByAlias(const QString& alias, const QString& intro, const QString& opId,
         const QString& requestId);
     void acceptContact(const QString& peer);
-    void requestInvite();
     void signLogin(const QString& challenge);
     void connectionLog();
     void clearConnectionLog();
@@ -204,8 +203,8 @@ signals:
     void contactAddResumed(
         const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
-    void inviteReady(const QString& uri);
-    void inviteUnavailable(const QString& reason);
+    // Exactly one of the two is empty.
+    void inviteState(const QString& uri, const QString& problem);
     void loginSigned(const QString& blob);
     void connectionLogReady(const QVariantList& lines);
     void stopped();
@@ -235,6 +234,9 @@ private:
     void startMaintenance();
     void startReceiving();
     void emitFacadeInfo();
+    void emitInvite();
+    QString lastInvite_;
+    QString lastInviteProblem_;
     void emitContacts();
     void emitCallState();
     void reconcileCallTimer();

@@ -7,8 +7,10 @@ import Bazarish
 Popup {
     id: root
     property var session: null
-    property string uri: ""
-    property string unavailable: ""
+    readonly property string uri: session ? session.ownInvite : ""
+    property string publishing: ""
+    readonly property string unavailable: root.publishing.length > 0 ? root.publishing
+        : (session && root.uri.length === 0 ? session.ownInviteProblem : "")
     readonly property bool hasInvite: uri.length > 0
     readonly property var aliasRows: session ? session.aliasHoldings : []
     readonly property string aliasNote: session ? session.aliasNote : ""
@@ -109,27 +111,11 @@ Popup {
     padding: 0
     onAboutToShow: sheetScroll.toTop()
     onOpened: {
-        uri = session ? session.ownInvite : ""
-        unavailable = ""
+        publishing = ""
         showQr = false
-        if (session && uri.length === 0) {
-            session.requestInvite()
-        }
     }
 
     background: DialogFrame { }
-
-    Connections {
-        target: root.session
-        ignoreUnknownSignals: true
-        function onInviteReady(u) { root.uri = u; root.unavailable = "" }
-        function onInviteUnavailable(reason) { root.uri = ""; root.unavailable = reason }
-        function onI2pStatusChanged() {
-            if (root.unavailable.length > 0 && root.session) {
-                root.session.requestInvite()
-            }
-        }
-    }
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -185,7 +171,7 @@ Popup {
                     focusPolicy: Theme.pressFocus
                     text: qsTr("Publish my destination")
                     Layout.fillWidth: true
-                    onClicked: if (root.session) { root.session.publishPersonalDest(); root.unavailable = qsTr("Publishing. This takes a few minutes") }
+                    onClicked: if (root.session) { root.session.publishPersonalDest(); root.publishing = qsTr("Publishing. This takes a few minutes") }
                     background: Rectangle { radius: 8; color: Theme.surface; border.color: Theme.green }
                     contentItem: IconLabel { name: "broadcast"; color: Theme.green }
                 }
