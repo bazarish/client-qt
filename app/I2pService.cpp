@@ -380,8 +380,8 @@ void I2pService::refresh()
             QVariantMap row;
             const QString what = dest.label.empty() ? QStringLiteral("Destination")
                                                     : QString::fromStdString(dest.label);
-            row[QStringLiteral("label")] = (manyAccounts && !dest.owner.empty())
-                ? (QString::fromStdString(dest.owner) + QStringLiteral(": ") + what)
+            row[QStringLiteral("label")] = (manyAccounts && !dest.accountLabel.empty())
+                ? (QString::fromStdString(dest.accountLabel) + QStringLiteral(": ") + what)
                 : what;
             row[QStringLiteral("host")] = QString::fromStdString(dest.host);
             row[QStringLiteral("state")] = dest.closing ? QStringLiteral("closing")

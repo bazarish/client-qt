@@ -806,10 +806,10 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         emit actionFailed(tr("no account is open"));
         return;
     }
-    const std::string progressOwner = session_->fingerprint();
+    const std::string progressAccount = session_->fingerprint();
     try {
         emit connectProgress(5, tr("Preparing"));
-        bazarish::client::setConnectProgressSink(progressOwner,
+        bazarish::client::setConnectProgressSink(progressAccount,
             [this](const bazarish::client::ConnectMilestone milestone) {
                 emit connectProgress(bazarish::client::connectPercent(milestone),
                     milestoneText(milestone));
@@ -844,7 +844,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         // Registering publishes this account's card, which a switched-off account must not do.
         if (session_->switchedOff()) {
             startReceiving();
-            bazarish::client::setConnectProgressSink(progressOwner, {});
+            bazarish::client::setConnectProgressSink(progressAccount, {});
             emit actionFailed(tr("this account is switched off: the server connection is saved, "
                                  "switch the account on to connect"));
             return;
@@ -859,7 +859,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         session_->registerAccount();
     } catch (const std::exception& e) {
         startReceiving();
-        bazarish::client::setConnectProgressSink(progressOwner, {});
+        bazarish::client::setConnectProgressSink(progressAccount, {});
         const auto* apiError = dynamic_cast<const bazarish::client::ApiError*>(&e);
         const bool unanswered
             = apiError != nullptr && !apiError->code.has_value() && apiError->httpStatus == 0;
@@ -874,7 +874,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         return;
     }
     emit connectProgress(100, tr("Connected"));
-    bazarish::client::setConnectProgressSink(progressOwner, {});
+    bazarish::client::setConnectProgressSink(progressAccount, {});
     emit connectionChanged(true, "active");
     if (session_->aliasServicingDue()) {
         startAliasErrand(/*byHand=*/false);

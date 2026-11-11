@@ -750,7 +750,7 @@ void CoreHost::startPairing(const QString& link, const QString& atRestPassphrase
             } else {
                 say(tr("Building your I2P tunnels"));
                 endpoint = client::openPairLink(client::sharedI2pRouter(i2pRoot()),
-                    client::tunnelPrivacy(), client::kPairingOwner);
+                    client::tunnelPrivacy(), client::kPairingAccountLabel);
                 if (!endpoint->waitReady(
                         std::chrono::seconds(client::kOwnTunnelsSeconds))) {
                     endpoint.reset();
