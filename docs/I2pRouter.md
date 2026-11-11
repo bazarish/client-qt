@@ -88,11 +88,6 @@ Three consequences worth stating:
   with 80 routers from the built-in hosts, and about a minute with 98 from a
   named su3 URL.
 
-An address that
-is not `https://` is taken as an archive already on disk and handed to the engine
-as one - what an offline install or a test points at; a descriptor never carries
-such an address, because the check above refuses it.
-
 ## Settings
 
 | Setting | Key in `settings.json` | Default |
