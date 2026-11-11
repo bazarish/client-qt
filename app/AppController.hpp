@@ -195,6 +195,8 @@ public:
     bool speakerOn() const { return speakerOn_; }
     void setSpeakerOn(bool on);
     Q_INVOKABLE void setCallScreenShown(bool shown);
+    void takeAvatarPick(const QString& uri);
+    Q_INVOKABLE void dropAvatarPick();
     Q_INVOKABLE void moveToBackground() const;
     Q_INVOKABLE void paintSystemBars(const QColor& color) const;
     Q_PROPERTY(QString dataLocation READ dataLocation NOTIFY portableChanged)
@@ -225,6 +227,7 @@ signals:
     void unlocked();
     void picturesPicked(const QStringList& uris);
     void avatarPicked(const QString& uri);
+    void avatarPickFailed(const QString& reason);
     void speakerOnChanged();
     void restartRequired(const QString& message);
     void accountListChanged();
@@ -293,6 +296,7 @@ private:
     QString ringingAccountName_;
     qreal ringLevel_ = 0.0;
     bool callLive_ = false;
+    QString avatarPickKey_;
     QPointer<SessionController> callSession_;
     void refreshCallSession();
     bool speakerOn_ = false;

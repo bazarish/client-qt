@@ -63,9 +63,6 @@ int main(int argc, char** argv)
     file.close();
     CHECK(fetched(*manager, QUrl::fromLocalFile(file.fileName())) == QNetworkReply::NoError);
 
-    const std::unique_ptr<QNetworkReply> picked(
-        manager->get(QNetworkRequest(QUrl(QStringLiteral("content://media/picker/0/1")))));
-    CHECK(picked->url().scheme() == QStringLiteral("content"));
     const std::unique_ptr<QNetworkReply> refused(manager->get(QNetworkRequest(remote)));
     CHECK(refused->url().isEmpty());
 

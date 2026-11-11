@@ -17,6 +17,8 @@ Dialog {
 
     signal cropped(var grab)
 
+    onClosed: App.dropAvatarPick()
+
     function openFor(source) {
         picture.source = source
         root.quarterTurns = 0

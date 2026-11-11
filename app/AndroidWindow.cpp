@@ -106,7 +106,7 @@ void avatarPicked(JNIEnv*, jclass, jstring uri)
 {
     const QString picked = QJniObject(uri).toString();
     inWindowThread<AppController>(gApp, [picked](AppController& app) {
-        emit app.avatarPicked(picked);
+        app.takeAvatarPick(picked);
     });
 }
 

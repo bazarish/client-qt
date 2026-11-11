@@ -842,6 +842,7 @@ Popup {
 
     Connections {
         target: App
+        function onAvatarPickFailed(reason) { window.showToast(reason) }
         function onAvatarPicked(uri) {
             if (uri.length > 0) {
                 avatarCrop.openFor(uri)

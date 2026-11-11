@@ -8,6 +8,8 @@
 #include "EmojiText.hpp"
 #include "GatewayAddress.hpp"
 #include "Markup.hpp"
+#include "Picture.hpp"
+#include "PictureStore.hpp"
 #include "PathText.hpp"
 #include "PopupStack.hpp"
 #include "SelectionHold.hpp"
@@ -335,6 +337,38 @@ void AppController::refreshCallSession()
     if (callSession_ != calling) {
         callSession_ = calling;
         emit callSessionChanged();
+    }
+}
+
+namespace {
+
+const QString kAvatarPickPrefix = QStringLiteral("avatar-pick:");
+const QString kPictureProvider = QStringLiteral("image://picture/");
+
+}  // namespace
+
+void AppController::takeAvatarPick(const QString& uri)
+{
+    dropAvatarPick();
+    if (uri.isEmpty()) {
+        emit avatarPicked({});
+        return;
+    }
+    // QML reads a content address only from the document providers; the picker's is not one.
+    const PreparedPicture picture = preparePictureFile(uri);
+    const QString key = kAvatarPickPrefix + newE2eId();
+    if (picture.isEmpty() || !PictureStore::instance().put(key, picture.bytes)) {
+        emit avatarPickFailed(tr("This picture cannot be read"));
+        return;
+    }
+    avatarPickKey_ = key;
+    emit avatarPicked(kPictureProvider + key);
+}
+
+void AppController::dropAvatarPick()
+{
+    if (!avatarPickKey_.isEmpty()) {
+        PictureStore::instance().remove(std::exchange(avatarPickKey_, {}));
     }
 }
 

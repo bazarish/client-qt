@@ -5134,6 +5134,12 @@
       "es": "Aún no hay leasesets",
       "zh": "暂无租约集",
       "ar": "لا مجموعات عقود بعد"
+    },
+    "This picture cannot be read": {
+      "ru": "Не удалось прочитать это фото",
+      "es": "No se puede leer esta imagen",
+      "zh": "无法读取这张图片",
+      "ar": "تعذّرت قراءة هذه الصورة"
     }
   }
 }
