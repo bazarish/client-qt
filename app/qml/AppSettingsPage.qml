@@ -45,85 +45,10 @@ Popup {
                 spacing: 14
 
                 ColumnLayout {
+                    visible: !App.mobile
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 10
-
-                    MenuButton {
-                        visible: !App.linksHandled
-                        primary: true
-                        text: qsTr("Open links in the app")
-                        Layout.fillWidth: true
-                        onClicked: App.openLinkSettings()
-                    }
-                    Label {
-                        visible: !App.linksHandled
-                        text: qsTr("In the settings, tap Add link and check bazari.sh")
-                        color: Theme.textDim
-                        font.pixelSize: Theme.fontSmall
-                        wrapMode: Text.Wrap
-                        Layout.fillWidth: true
-                    }
-
-                    Label {
-                        text: qsTr("Version %1").arg(App.appVersion)
-                        color: Theme.textFaint
-                        font.pixelSize: Theme.fontSmall
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label {
-                            text: qsTr("Interface language")
-                            color: Theme.text
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                        Dropdown {
-                            id: languageBox
-                            model: Tr.languages
-                            textRole: "name"
-                            valueRole: "code"
-                            Layout.preferredWidth: implicitWidth
-                            Component.onCompleted: currentIndex = indexOfValue(Tr.language)
-                            onActivated: Tr.language = currentValue
-                            Connections {
-                                target: Tr
-                                function onLanguageChanged() {
-                                    languageBox.currentIndex = languageBox.indexOfValue(Tr.language)
-                                }
-                            }
-                        }
-                    }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label {
-                            text: qsTr("Theme")
-                            color: Theme.text
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                        TabBar {
-                            currentIndex: App.lightTheme ? 1 : 0
-                            Layout.preferredWidth: implicitWidth
-                            background: Rectangle {
-                                radius: Theme.radius
-                                color: Theme.surface
-                                border.color: Theme.border
-                            }
-                            IconTab {
-                                iconName: "moon"
-                                text: qsTr("Dark")
-                                onClicked: App.lightTheme = false
-                            }
-                            IconTab {
-                                iconName: "sun"
-                                text: qsTr("Light")
-                                onClicked: App.lightTheme = true
-                            }
-                        }
-                    }
-                    Hairline { Layout.fillWidth: true; visible: !App.mobile }
 
                     RowLayout {
                         visible: !App.mobile
@@ -152,12 +77,28 @@ Popup {
                         }
                     }
                 }
-                Hairline { }
+                Hairline { visible: !App.mobile }
 
                 ColumnLayout {
                     Layout.fillWidth: true
                     Layout.margins: 16
                     spacing: 10
+
+                    MenuButton {
+                        visible: !App.linksHandled
+                        primary: true
+                        text: qsTr("Open links in the app")
+                        Layout.fillWidth: true
+                        onClicked: App.openLinkSettings()
+                    }
+                    Label {
+                        visible: !App.linksHandled
+                        text: qsTr("In the settings, tap Add link and check bazari.sh")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -527,6 +468,71 @@ Popup {
                         iconName: "info"
                         text: qsTr("I2P status")
                         onClicked: { root.close(); root.showRouterStatus() }
+                    }
+                }
+                Hairline { }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 10
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Theme")
+                            color: Theme.text
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                        TabBar {
+                            currentIndex: App.lightTheme ? 1 : 0
+                            Layout.preferredWidth: implicitWidth
+                            background: Rectangle {
+                                radius: Theme.radius
+                                color: Theme.surface
+                                border.color: Theme.border
+                            }
+                            IconTab {
+                                iconName: "moon"
+                                text: qsTr("Dark")
+                                onClicked: App.lightTheme = false
+                            }
+                            IconTab {
+                                iconName: "sun"
+                                text: qsTr("Light")
+                                onClicked: App.lightTheme = true
+                            }
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Interface language")
+                            color: Theme.text
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                        Dropdown {
+                            id: languageBox
+                            model: Tr.languages
+                            textRole: "name"
+                            valueRole: "code"
+                            Layout.preferredWidth: implicitWidth
+                            Component.onCompleted: currentIndex = indexOfValue(Tr.language)
+                            onActivated: Tr.language = currentValue
+                            Connections {
+                                target: Tr
+                                function onLanguageChanged() {
+                                    languageBox.currentIndex = languageBox.indexOfValue(Tr.language)
+                                }
+                            }
+                        }
+                    }
+                    Label {
+                        text: qsTr("Version %1").arg(App.appVersion)
+                        color: Theme.textFaint
+                        font.pixelSize: Theme.fontSmall
                     }
                 }
             }
