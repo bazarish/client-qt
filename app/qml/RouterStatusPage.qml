@@ -26,7 +26,7 @@ Popup {
                 + "network. The fastest.")
         }
         if (level === 1) {
-            return qsTr("One or two transit routers, chosen at random")
+            return qsTr("One or two transit routers, chosen at random.")
         }
         return qsTr("Three transit routers in the tunnels, the I2P default. The highest latency.")
     }
@@ -280,7 +280,7 @@ Popup {
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
                         Label {
-                            text: qsTr("Calls always use the shortest tunnel to keep latency down")
+                            text: qsTr("Calls always use the shortest tunnel to keep latency down.")
                             color: Theme.textFaint; font.pixelSize: Theme.fontSmall
                             wrapMode: Text.Wrap; Layout.fillWidth: true
                         }
@@ -309,26 +309,43 @@ Popup {
                         wrapMode: Text.Wrap
                         Layout.fillWidth: true
                     }
-                    Frame {
+                    Item {
+                        id: transportList
                         visible: I2p.transports.length > 0
                         Layout.fillWidth: true
                         Layout.preferredHeight: 180
-                        padding: 4
-                        background: Rectangle { color: Theme.surface; radius: Theme.radiusSmall; border.color: Theme.border }
-                        ListView {
+                        readonly property string listed: I2p.transports.join("\n")
+                        property bool copied: false
+                        ScrollView {
                             anchors.fill: parent
-                            clip: true
-                            model: I2p.transports
-                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
-                            delegate: Label {
-                                width: ListView.view.width
-                                padding: 6
-                                text: modelData
+                            TextArea {
+                                readOnly: true
+                                selectByMouse: true
+                                wrapMode: TextArea.NoWrap
+                                text: transportList.listed
                                 color: Theme.text
                                 font.pixelSize: Theme.fontSmall
-                                elide: Text.ElideRight
+                                rightPadding: copyTransports.width + 4
+                                background: Rectangle {
+                                    color: Theme.surface; radius: Theme.radiusSmall; border.color: Theme.border
+                                }
                             }
                         }
+                        IconButton {
+                            id: copyTransports
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.margins: 2
+                            opacity: transportList.copied ? 1 : 0.6
+                            iconName: transportList.copied ? "check" : "copy"
+                            tint: transportList.copied ? Theme.green : Theme.text
+                            onClicked: {
+                                App.copyText(transportList.listed)
+                                transportList.copied = true
+                                transportCopied.restart()
+                            }
+                        }
+                        Timer { id: transportCopied; interval: 1500; onTriggered: transportList.copied = false }
                     }
                 }
                 Hairline { visible: !I2p.samEnabled && !I2p.gatewayEnabled }

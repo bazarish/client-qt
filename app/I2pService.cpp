@@ -365,8 +365,7 @@ void I2pService::refresh()
         inboundTunnels = router->get().inboundTunnels();
         outboundTunnels = router->get().outboundTunnels();
         for (const bazarish::i2p::TransportPeer& peer : router->get().transportPeers()) {
-            QString row = QString::fromStdString(peer.transport)
-                + (peer.outbound ? " · " : " · incoming · ");
+            QString row = QString::fromStdString(peer.transport) + " · ";
             if (!peer.endpoint.empty()) {
                 row += QString::fromStdString(peer.endpoint) + " · ";
             }

@@ -689,11 +689,11 @@
       "zh": "正在呼叫…",
       "ar": "جارٍ الاتصال…"
     },
-    "Calls always use the shortest tunnel to keep latency down": {
-      "ru": "Звонки идут всегда по туннелю минимальной длины для снижения задержек",
-      "es": "Las llamadas usan siempre el túnel más corto para reducir la latencia",
-      "zh": "通话始终使用最短隧道，以降低延迟",
-      "ar": "تستخدم المكالمات دائمًا أقصر نفق لتقليل زمن التأخير"
+    "Calls always use the shortest tunnel to keep latency down.": {
+      "ru": "Звонки идут всегда по туннелю минимальной длины для снижения задержек.",
+      "es": "Las llamadas usan siempre el túnel más corto para reducir la latencia.",
+      "zh": "通话始终使用最短隧道，以降低延迟。",
+      "ar": "تستخدم المكالمات دائمًا أقصر نفق لتقليل زمن التأخير."
     },
     "Cancel": {
       "ru": "Отмена",
@@ -2279,11 +2279,11 @@
       "zh": "已断开",
       "ar": "غير متصل"
     },
-    "One or two transit routers, chosen at random": {
-      "ru": "Один или два транзитных узла, случайным образом",
-      "es": "Uno o dos routers de tránsito, elegidos al azar",
-      "zh": "一个或两个中转路由，随机选择",
-      "ar": "موجّه عابر واحد أو موجّهان، يُختاران عشوائيًا"
+    "One or two transit routers, chosen at random.": {
+      "ru": "Один или два транзитных узла, случайным образом.",
+      "es": "Uno o dos routers de tránsito, elegidos al azar.",
+      "zh": "一个或两个中转路由，随机选择。",
+      "ar": "موجّه عابر واحد أو موجّهان، يُختاران عشوائيًا."
     },
     "One transit router in the tunnel between you and the rest of the network. The fastest.": {
       "ru": "Один транзитный узел в туннеле между вами и остальной сетью. Самый быстрый вариант.",

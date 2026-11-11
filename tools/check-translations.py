@@ -67,8 +67,12 @@ NOT_SHOWN = re.compile(r'^"(?:|[^a-zA-Z]*|#[0-9a-fA-F]+|qrc:.*|image://.*|\w+://
 NOT_TEXT = ("gateway", "embedded", "sam", "hh:mm", "yyyy-MM-dd", "dd MMM hh:mm")
 # Shown, and deliberately the same in every language.
 UNTRANSLATED = ("min", "middle", "max")
-# One-sentence texts that keep their full stop by the user's choice.
-STOP_KEPT = ("A messenger where your anonymity is as natural as sending a message.",)
+# One-sentence texts that keep their full stop: the user's choice, or a paragraph of a longer text.
+STOP_KEPT = (
+    "A messenger where your anonymity is as natural as sending a message.",
+    "One or two transit routers, chosen at random.",
+    "Calls always use the shortest tunnel to keep latency down.",
+)
 
 
 def unquote(literal):
