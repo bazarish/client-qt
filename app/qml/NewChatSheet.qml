@@ -138,16 +138,16 @@ Popup {
                 TextArea {
                     id: targetText
                     wrapMode: TextArea.WrapAnywhere
+                    verticalAlignment: TextEdit.AlignVCenter
                     color: Theme.text
                     background: Rectangle { radius: 8; color: Theme.control; border.color: Theme.controlEdge }
                     Label {
                         id: targetHint
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.top: parent.top
+                        anchors.verticalCenter: parent.verticalCenter
                         anchors.leftMargin: targetText.leftPadding
                         anchors.rightMargin: targetText.rightPadding
-                        anchors.topMargin: targetText.topPadding
                         visible: targetText.length === 0 && targetText.preeditText.length === 0
                         // U+2060 keeps the sigil on the line of the word it marks.
                         text: qsTr("Invite link  or  %1alias").arg(App.aliasSigil + "\u2060")
