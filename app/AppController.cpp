@@ -201,6 +201,7 @@ void AppController::startSession(const QString& id)
     relay_.sendFrom(id, ctrl->commands());
     relay_.deliverTo(id, ctrl->events());
     connect(ctrl, &SessionController::openFailed, this, &AppController::accountOpenFailed);
+    connect(ctrl, &SessionController::callChanged, this, &AppController::refreshCallSession);
     connect(ctrl, &SessionController::historyOpened, this, [this, id]() {
         if (pendingConversation_.first == id) {
             const auto [account, peer] = std::exchange(pendingConversation_, {});
@@ -225,6 +226,7 @@ void AppController::endSession(const QString& id)
         activeId_.clear();
         emit sessionChanged();
     }
+    refreshCallSession();
     ctrl->deleteLater();
     emit accountsChanged();
 }
@@ -319,6 +321,21 @@ void AppController::setKeyboardInset(const qreal inset)
     }
     keyboardInset_ = inset;
     emit keyboardInsetChanged();
+}
+
+void AppController::refreshCallSession()
+{
+    SessionController* calling = nullptr;
+    for (SessionController* const ctrl : std::as_const(sessions_)) {
+        if (ctrl->callState() != QLatin1String("idle")) {
+            calling = ctrl;
+            break;
+        }
+    }
+    if (callSession_ != calling) {
+        callSession_ = calling;
+        emit callSessionChanged();
+    }
 }
 
 void AppController::setCallScreenShown(const bool shown)

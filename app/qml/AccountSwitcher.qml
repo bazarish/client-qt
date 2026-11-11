@@ -87,6 +87,25 @@ Popup {
                         size: 42
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
+                        Rectangle {
+                            readonly property int kBadge: 18
+                            readonly property int kGlyph: 10
+                            visible: !!App.callSession && App.callSession.accountId === model.accountId
+                            width: kBadge
+                            height: kBadge
+                            radius: kBadge / 2
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            color: Theme.green
+                            border.color: Theme.bg
+                            border.width: 2
+                            Icon {
+                                anchors.centerIn: parent
+                                name: "call"
+                                color: Theme.onGreen
+                                size: parent.kGlyph
+                            }
+                        }
                     }
                     Toggle {
                         id: rowToggle

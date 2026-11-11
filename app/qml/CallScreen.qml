@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
+import "Format.js" as Format
 
 Popup {
     id: root
@@ -26,13 +27,7 @@ Popup {
         if (!root.connected) {
             return ""
         }
-        const total = Math.max(0, Math.floor((Date.now() - root.session.callConnectedAtMs) / 1000))
-        const seconds = total % 60
-        const minutes = Math.floor(total / 60) % 60
-        const hours = Math.floor(total / 3600)
-        const mm = (hours > 0 && minutes < 10 ? "0" : "") + minutes
-        const ss = (seconds < 10 ? "0" : "") + seconds
-        return (hours > 0 ? hours + ":" : "") + mm + ":" + ss
+        return Format.callClock(root.session.callConnectedAtMs, Date.now())
     }
 
     modal: true

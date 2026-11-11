@@ -13,6 +13,7 @@
 #include <QColor>
 #include <QList>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QStringList>
 #include <QVector>
@@ -187,6 +188,8 @@ public:
     Q_INVOKABLE void forgetFocusOnClose(QQuickItem* overlay) const;
     Q_PROPERTY(bool callLive READ callLive NOTIFY callLiveChanged)
     bool callLive() const { return callLive_; }
+    Q_PROPERTY(QObject* callSession READ callSession NOTIFY callSessionChanged)
+    QObject* callSession() const { return callSession_; }
     Q_INVOKABLE void requestUnlocked();
     Q_PROPERTY(bool speakerOn READ speakerOn WRITE setSpeakerOn NOTIFY speakerOnChanged)
     bool speakerOn() const { return speakerOn_; }
@@ -218,6 +221,7 @@ signals:
     void portableChanged();
     void systemPermissionsChanged();
     void callLiveChanged();
+    void callSessionChanged();
     void unlocked();
     void picturesPicked(const QStringList& uris);
     void avatarPicked(const QString& uri);
@@ -289,6 +293,8 @@ private:
     QString ringingAccountName_;
     qreal ringLevel_ = 0.0;
     bool callLive_ = false;
+    QPointer<SessionController> callSession_;
+    void refreshCallSession();
     bool speakerOn_ = false;
     QString pairStatus_;
     double pairProgress_ = kProgressUnknown;

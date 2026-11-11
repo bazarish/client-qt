@@ -37,9 +37,26 @@ Item {
         session: root.session
         onTapped: routerStatus.open()
     }
+    CallBar {
+        id: callBar
+        anchors.top: connectionStrip.visible ? connectionStrip.bottom : parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        session: root.session
+        minimized: root.callMinimized
+        onExpandRequested: {
+            if (App.callSession === root.session) {
+                root.callMinimized = false
+                callScreen.open()
+            } else {
+                App.switchTo(App.callSession.accountId)
+            }
+        }
+    }
     Loader {
         id: pageLoader
-        anchors.top: connectionStrip.visible ? connectionStrip.bottom : parent.top
+        anchors.top: callBar.visible ? callBar.bottom
+            : (connectionStrip.visible ? connectionStrip.bottom : parent.top)
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -183,65 +200,6 @@ Item {
         function onCallChanged() { root.followCall() }
     }
 
-    Item {
-        id: callBadge
-        readonly property int kDiameter: 52
-        readonly property int kMargin: 16
-        readonly property int kIconSize: 24
-        visible: !!root.session && root.session.callState !== "idle" && root.callMinimized
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: kMargin
-        anchors.bottomMargin: Theme.barHeight + kMargin
-        width: kDiameter
-        height: kDiameter
-        z: 1000
-        readonly property string summary: {
-            if (!root.session) return ""
-            var who = root.session.callPeerName
-            switch (root.session.callState) {
-            case "outgoing": return qsTr("Calling %1…").arg(who)
-            case "incoming": return qsTr("Incoming call · %1").arg(who)
-            case "active": return qsTr("In call · %1").arg(who)
-            }
-            return ""
-        }
-        CallGlow {
-            anchors.centerIn: parent
-            avatarSize: callBadge.kDiameter
-            level: !root.session ? 0
-                : root.session.callState === "incoming" ? App.ringLevel
-                : root.session.callState === "active"
-                    ? Math.min(1, Theme.speechGain * Math.max(root.session.callOutputLevel,
-                        root.session.callMuted ? 0 : root.session.callInputLevel))
-                : 0
-        }
-        Button {
-            id: callBadgeButton
-            focusPolicy: Theme.pressFocus
-            anchors.fill: parent
-            padding: 0
-            hoverEnabled: true
-            Accessible.name: callBadge.summary
-            HoverHandler { cursorShape: Qt.PointingHandCursor }
-            background: Rectangle {
-                radius: width / 2
-                color: callBadgeButton.down ? Qt.darker(Theme.green, 1.2)
-                    : callBadgeButton.hovered ? Qt.lighter(Theme.green, 1.25) : Theme.green
-                border.color: callBadgeButton.hovered ? Theme.text : Theme.border
-                Behavior on color { ColorAnimation { duration: 90 } }
-            }
-            contentItem: Item {
-                Icon {
-                    anchors.centerIn: parent
-                    name: "call"
-                    color: Theme.onGreen
-                    size: callBadge.kIconSize
-                }
-            }
-            onClicked: { root.callMinimized = false; callScreen.open() }
-        }
-    }
     AccountSwitcher { id: accountSwitcher }
     RouterStatusPage { id: routerStatus; onBack: { routerStatus.close(); appSettings.open() } }
     StoragePage { id: storagePage; onBack: { storagePage.close(); settings.open() } }
