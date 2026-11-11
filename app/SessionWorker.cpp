@@ -806,7 +806,7 @@ void SessionWorker::connectAndRegister(const QStringList& facades, const QString
         emit actionFailed(tr("no account is open"));
         return;
     }
-    const std::string progressOwner = session_->destinationOwner();
+    const std::string progressOwner = session_->fingerprint();
     try {
         emit connectProgress(5, tr("Preparing"));
         bazarish::client::setConnectProgressSink(progressOwner,
