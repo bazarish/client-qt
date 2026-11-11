@@ -103,7 +103,7 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: delegate.chosen
-        color: Theme.green
+        color: Theme.greenFill
         opacity: delegate.kChosenTint
     }
 
@@ -308,7 +308,7 @@ Item {
     function statusColor(s) {
         if (s === DeliveryStatus.Delivering) return Theme.textDim
         if (s === DeliveryStatus.AtRecipientServer) return Theme.warn
-        if (s === DeliveryStatus.Delivered) return Theme.success
+        if (s === DeliveryStatus.Delivered) return Theme.greenFill
         if (s === DeliveryStatus.Failed) return Theme.danger
         return "transparent"
     }
@@ -584,12 +584,12 @@ Item {
                     background: Rectangle {
                         radius: 8
                         color: !agreeButton.enabled ? Theme.surfaceAlt
-                            : (agreeButton.down ? Qt.darker(Theme.green, 1.2)
-                            : (agreeButton.hovered ? Qt.darker(Theme.green, 1.1) : Theme.green))
+                            : (agreeButton.down ? Qt.darker(Theme.greenFill, 1.2)
+                            : (agreeButton.hovered ? Qt.darker(Theme.greenFill, 1.1) : Theme.greenFill))
                     }
                     contentItem: IconLabel {
                         name: "check"
-                        color: agreeButton.enabled ? Theme.bg : Theme.textDim
+                        color: agreeButton.enabled ? Theme.onGreen : Theme.textDim
                         weight: Font.Medium
                     }
                 }
@@ -1377,14 +1377,14 @@ Item {
         x: model.outgoing ? bubble.x - width - delegate.kChoiceSize / 2
             : bubble.x + bubble.width + delegate.kChoiceSize / 2
         anchors.verticalCenter: bubble.verticalCenter
-        color: delegate.chosen ? Theme.green : "transparent"
-        border.color: Theme.green
+        color: delegate.chosen ? Theme.greenFill : "transparent"
+        border.color: delegate.chosen ? Theme.greenFill : Theme.green
         border.width: 2
         Icon {
             anchors.centerIn: parent
             visible: delegate.chosen
             name: "check"
-            color: Theme.bg
+            color: Theme.onGreen
             size: delegate.kChoiceMark
         }
     }

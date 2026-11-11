@@ -357,7 +357,7 @@ Popup {
                             }
                             background: Rectangle {
                                 radius: 10
-                                color: copyBtn.copied ? Theme.success
+                                color: copyBtn.copied ? Theme.greenFill
                                     : root.hasCallback ? (copyBtn.hovered ? Theme.surfaceAlt : Theme.surface)
                                     : (copyBtn.enabled ? (copyBtn.hovered ? Theme.accentHover : Theme.accent)
                                         : Theme.surfaceAlt)
@@ -366,7 +366,7 @@ Popup {
                             }
                             contentItem: IconLabel {
                                 name: "copy"
-                                color: copyBtn.copied ? Theme.accentText
+                                color: copyBtn.copied ? Theme.onGreen
                                     : !copyBtn.enabled ? Theme.textDim
                                     : root.hasCallback ? Theme.text : Theme.accentText
                             }
@@ -391,14 +391,14 @@ Popup {
                             }
                             background: Rectangle {
                                 radius: 10
-                                color: root.sent ? Theme.success
+                                color: root.sent ? Theme.greenFill
                                     : (sendBtn.enabled ? (sendBtn.hovered ? Theme.accentHover : Theme.accent)
                                         : Theme.surfaceAlt)
                                 Behavior on color { ColorAnimation { duration: 200 } }
                             }
                             contentItem: IconLabel {
                                 name: "send"
-                                color: sendBtn.enabled || root.sent ? Theme.accentText : Theme.textDim
+                                color: root.sent ? Theme.onGreen : (sendBtn.enabled ? Theme.accentText : Theme.textDim)
                             }
                         }
                     }

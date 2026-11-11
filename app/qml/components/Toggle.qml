@@ -23,8 +23,8 @@ Switch {
         implicitWidth: root.kTrackWidth
         implicitHeight: root.kTrackHeight
         radius: height / 2
-        color: root.checked ? Theme.green : Theme.deep
-        border.color: root.checked ? Theme.green : Theme.border2
+        color: root.checked ? Theme.greenFill : Theme.deep
+        border.color: root.checked ? Theme.greenFill : Theme.border2
         border.width: 1
         opacity: root.enabled ? 1 : root.kDisabledOpacity
 

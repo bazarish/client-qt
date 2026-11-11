@@ -317,12 +317,12 @@ Popup {
                     }
                     background: Rectangle {
                         radius: 10
-                        color: copyBtn.copied ? Theme.success : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
+                        color: copyBtn.copied ? Theme.greenFill : (copyBtn.enabled ? Theme.accent : Theme.surfaceAlt)
                         Behavior on color { ColorAnimation { duration: 200 } }
                     }
                     contentItem: IconLabel {
                         name: "copy"
-                        color: copyBtn.enabled ? Theme.accentText : Theme.textDim
+                        color: copyBtn.copied ? Theme.onGreen : (copyBtn.enabled ? Theme.accentText : Theme.textDim)
                     }
                     Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
                 }

@@ -284,7 +284,7 @@ Item {
                             radius: width / 2
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
-                            color: typing ? ring : Theme.green
+                            color: typing ? ring : Theme.greenFill
                             border.width: root.kBadgeRing
                             border.color: ring
                             Icon {

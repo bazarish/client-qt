@@ -21,8 +21,8 @@ Rectangle {
 
     visible: !!root.calling && (root.elsewhere || root.minimized)
     implicitHeight: line.implicitHeight + 2 * root.kPadding
-    color: tap.pressed ? Qt.darker(Theme.green, 1.2)
-        : (hover.hovered ? Qt.lighter(Theme.green, 1.15) : Theme.green)
+    color: tap.pressed ? Qt.darker(Theme.greenFill, 1.2)
+        : (hover.hovered ? Qt.lighter(Theme.greenFill, 1.15) : Theme.greenFill)
     Accessible.role: Accessible.Button
     Accessible.name: root.peerText()
 

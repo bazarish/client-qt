@@ -91,7 +91,7 @@ Item {
                     width: parent.width * Math.max(0, Math.min(1, row.progress))
                     height: parent.height
                     radius: 2
-                    color: Theme.green
+                    color: Theme.greenFill
                     Behavior on width { NumberAnimation { duration: 120 } }
                 }
             }

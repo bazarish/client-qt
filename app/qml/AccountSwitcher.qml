@@ -31,7 +31,7 @@ Popup {
     }
     function statusColor(m) {
         if (m.open && m.online && m.connected) {
-            return Theme.success
+            return Theme.greenFill
         }
         if (m.open && m.online) {
             return Theme.warn
@@ -96,7 +96,7 @@ Popup {
                             radius: kBadge / 2
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
-                            color: Theme.green
+                            color: Theme.greenFill
                             border.color: Theme.bg
                             border.width: 2
                             Icon {

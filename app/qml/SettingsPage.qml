@@ -199,7 +199,7 @@ Popup {
                         Rectangle {
                             Layout.alignment: Qt.AlignVCenter
                             implicitWidth: 8; implicitHeight: 8; radius: 4
-                            color: (root.session && root.session.reachable) ? Theme.success : Theme.warn
+                            color: (root.session && root.session.reachable) ? Theme.greenFill : Theme.warn
                         }
                         Label {
                             Layout.fillWidth: true

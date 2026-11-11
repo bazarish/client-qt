@@ -233,7 +233,7 @@ Popup {
                 LevelMeter {
                     caption: root.session ? root.session.callPeerName : qsTr("Contact")
                     level: root.session ? root.session.callOutputLevel : 0
-                    tint: Theme.green
+                    tint: Theme.greenFill
                 }
             }
             Item { Layout.fillHeight: true }

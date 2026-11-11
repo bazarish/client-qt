@@ -23,7 +23,9 @@ QtObject {
     readonly property color textFaint: light ? "#5d665f" : "#879195"
 
     readonly property color green:     light ? "#1f7a14" : "#2aa61b"
-    readonly property color onGreen:   light ? "#f2f4f2" : accentInk
+    // A filled area: the lightest green under white ink that still holds 4.5:1.
+    readonly property color greenFill: light ? "#228716" : green
+    readonly property color onGreen:   light ? "#ffffff" : accentInk
     readonly property color neon:      light ? green : "#39ff14"
     readonly property color accentInk: light ? "#f2f4f2" : "#11151a"
     readonly property color accent:    light ? "#1b2026" : "#f2f4f2"
@@ -32,7 +34,7 @@ QtObject {
     readonly property color accentDown: light ? "#39434e" : Qt.darker(accent, 1.2)
     readonly property color selected:  light ? "#d3e9cb" : "#1a3a22"
     readonly property color selectedInk: light ? "#1a6b11" : neon
-    readonly property color selectedMark: light ? green : neon
+    readonly property color selectedMark: light ? greenFill : neon
     readonly property color hoverTint: light ? Qt.rgba(0, 0, 0, 0.04) : Qt.rgba(1, 1, 1, 0.04)
 
     readonly property color success:   green
@@ -46,8 +48,8 @@ QtObject {
     readonly property color bubbleOutHeld: light ? "#cbe5c1" : "#1c3524"
     readonly property color bubbleInHeld: surfaceAlt
     readonly property color authorName: light ? green : "#7fd36f"
-    readonly property color reactionMine: green
-    readonly property color reactionMineEdge: light ? green : authorName
+    readonly property color reactionMine: greenFill
+    readonly property color reactionMineEdge: light ? greenFill : authorName
     readonly property color reactionMineInk: onGreen
     readonly property color knobOn: light ? text : onGreen
 
