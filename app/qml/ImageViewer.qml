@@ -14,7 +14,6 @@ Popup {
     property var session: null
 
     readonly property real kMaxZoom: 4
-    readonly property real kDoubleTapZoom: 2.5
     readonly property real kWheelStep: 1.25
     // One wheel notch in angleDelta, in eighths of a degree.
     readonly property int kWheelNotch: 120
@@ -95,6 +94,11 @@ Popup {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             hoverEnabled: true
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.LeftButton) {
+                    root.close()
+                }
+            }
             onWheel: function(wheel) { wheel.accepted = true }
         }
 
@@ -142,12 +146,8 @@ Popup {
                         if (mouse.button === Qt.RightButton) {
                             pictureMenu.popup()
                         } else {
-                            closing.start()
+                            root.close()
                         }
-                    }
-                    onDoubleClicked: function(mouse) {
-                        closing.stop()
-                        view.zoomTo(view.zoomed ? 1 : root.kDoubleTapZoom, Qt.point(mouse.x, mouse.y))
                     }
                     onPressAndHold: pictureMenu.popup()
                     onWheel: function(wheel) {
@@ -260,11 +260,6 @@ Popup {
                     root.saved = true
                 }
             }
-        }
-        Timer {
-            id: closing
-            interval: Application.styleHints.mouseDoubleClickInterval
-            onTriggered: root.close()
         }
         NumberAnimation {
             id: slide
