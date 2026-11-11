@@ -48,6 +48,7 @@ I2pController::I2pController(QObject* parent)
     connect(&events_, &I2pEvents::gatewayRefused, this, &I2pController::gatewayRefused);
     connect(&events_, &I2pEvents::samSaved, this, &I2pController::samSaved);
     connect(&events_, &I2pEvents::samRefused, this, &I2pController::samRefused);
+    connect(&events_, &I2pEvents::destinationDetail, this, &I2pController::takeDetail);
 }
 
 void I2pController::attach(Relay& relay)
@@ -162,6 +163,35 @@ void I2pController::useEmbedded()
 void I2pController::refresh()
 {
     emit commands_.refresh();
+}
+
+void I2pController::inspectDestination(const QString& host)
+{
+    if (host != inspected_) {
+        inspected_ = host;
+        detail_.clear();
+        emit destinationDetailChanged();
+    }
+    emit commands_.inspectDestination(host);
+}
+
+void I2pController::refreshLeaseSet(const QString& remoteHost)
+{
+    emit commands_.refreshLeaseSet(inspected_, remoteHost);
+}
+
+void I2pController::takeDetail(const QString& host, const QVariantMap& detail)
+{
+    if (host != inspected_ || (detail == detail_ && !detail.isEmpty())) {
+        return;
+    }
+    if (detail != detail_) {
+        detail_ = detail;
+        emit destinationDetailChanged();
+    }
+    if (detail_.isEmpty()) {
+        emit destinationGone();
+    }
 }
 
 }  // namespace bazarish::app

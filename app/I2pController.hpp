@@ -7,6 +7,7 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
+#include <QVariantMap>
 
 namespace bazarish::app {
 
@@ -39,6 +40,7 @@ class I2pController : public QObject {
     Q_PROPERTY(bool gatewayChecking READ gatewayChecking NOTIFY gatewayChanged)
     Q_PROPERTY(QString gatewayHost READ gatewayHost NOTIFY gatewayChanged)
     Q_PROPERTY(QString transport READ transport NOTIFY transportChanged)
+    Q_PROPERTY(QVariantMap destinationDetail READ destinationDetail NOTIFY destinationDetailChanged)
 public:
     explicit I2pController(QObject* parent = nullptr);
 
@@ -85,6 +87,10 @@ public:
 
     Q_INVOKABLE void refresh();
 
+    QVariantMap destinationDetail() const { return detail_; }
+    Q_INVOKABLE void inspectDestination(const QString& host);
+    Q_INVOKABLE void refreshLeaseSet(const QString& remoteHost);
+
 signals:
     void loggingChanged();
     void privacyLevelChanged();
@@ -99,13 +105,18 @@ signals:
     void gatewayRefused(const QString& reason);
     void samSaved();
     void samRefused(const QString& reason);
+    void destinationDetailChanged();
+    void destinationGone();
 
 private:
     void take(const I2pState& state);
+    void takeDetail(const QString& host, const QVariantMap& detail);
 
     I2pCommands commands_;
     I2pEvents events_;
     I2pState state_;
+    QString inspected_;
+    QVariantMap detail_;
 };
 
 }  // namespace bazarish::app

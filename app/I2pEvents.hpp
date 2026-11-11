@@ -8,6 +8,7 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include <algorithm>
 
@@ -115,6 +116,8 @@ signals:
     void skipGateway();
     void useEmbedded();
     void refresh();
+    void inspectDestination(const QString& host);
+    void refreshLeaseSet(const QString& localHost, const QString& remoteHost);
 };
 
 inline constexpr Latch kI2pLatches[] = {{"state"}};
@@ -131,6 +134,8 @@ signals:
     void gatewayRefused(const QString& reason);
     void samSaved();
     void samRefused(const QString& reason);
+    // Empty once the destination is gone.
+    void destinationDetail(const QString& host, const QVariantMap& detail);
 };
 
 }  // namespace bazarish::app

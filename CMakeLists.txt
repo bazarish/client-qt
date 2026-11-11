@@ -310,6 +310,7 @@ if(Qt6_FOUND)
             app/qml/AppSettingsPage.qml
             app/qml/SettingsPage.qml
             app/qml/RouterStatusPage.qml
+            app/qml/DestinationSheet.qml
             app/qml/ConnectionLogPage.qml
         app/qml/StoragePage.qml
             app/qml/LanguageFirstRunDialog.qml

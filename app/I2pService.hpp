@@ -3,7 +3,10 @@
 
 #include "I2pEvents.hpp"
 
+#include <QHash>
 #include <QObject>
+#include <QSet>
+#include <QString>
 #include <QTimer>
 
 namespace bazarish::app {
@@ -33,6 +36,8 @@ private:
     void skipGateway();
     void useEmbedded();
     void refresh();
+    void inspectDestination(const QString& host);
+    void refreshLeaseSet(const QString& localHost, const QString& remoteHost);
     void noteChoiceInForce();
     bool applyTransport();
     QString transport() const;
@@ -43,6 +48,7 @@ private:
     I2pState state_;
     QString transportAtStart_;
     QString gatewayAtStart_;
+    QHash<QString, QSet<QString>> refreshing_;
 };
 
 }  // namespace bazarish::app

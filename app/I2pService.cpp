@@ -4,6 +4,8 @@
 
 #include "Wire.hpp"
 
+#include <QStringList>
+#include <QVariantList>
 #include <QVariantMap>
 
 #include "GatewayAddress.hpp"
@@ -20,6 +22,7 @@
 #include <bazarish/Log.hpp>
 #pragma pop_macro("emit")
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <stdexcept>
@@ -41,6 +44,87 @@ bazarish::i2p::Privacy privacyForLevel(const int level)
         default:                   return bazarish::i2p::Privacy::eMax;
     }
 }
+
+bool manyAccounts()
+{
+    return client::AccountManager(accountsRoot()).list().size() > 1;
+}
+
+QString destinationLabel(const bazarish::i2p::LocalDestination& dest, const bool manyAccounts)
+{
+    const QString what = dest.label.empty() ? QStringLiteral("Destination")
+                                            : QString::fromStdString(dest.label);
+    return (manyAccounts && !dest.accountLabel.empty())
+        ? (QString::fromStdString(dest.accountLabel) + QStringLiteral(": ") + what)
+        : what;
+}
+
+QString destinationState(const bazarish::i2p::LocalDestination& dest)
+{
+    return dest.closing ? QStringLiteral("closing")
+        : dest.ready
+        ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
+        : QStringLiteral("building");
+}
+
+QString tunnelStateName(const bazarish::i2p::TunnelState state)
+{
+    switch (state) {
+        case bazarish::i2p::TunnelState::eBuilding:    return QStringLiteral("building");
+        case bazarish::i2p::TunnelState::eEstablished: return QStringLiteral("established");
+        case bazarish::i2p::TunnelState::eExpiring:    return QStringLiteral("expiring");
+        case bazarish::i2p::TunnelState::eFailed:      return QStringLiteral("failed");
+    }
+    return QStringLiteral("failed");
+}
+
+QVariantMap tunnelRow(const bazarish::i2p::TunnelDetail& tunnel)
+{
+    QStringList hops;
+    for (const std::string& hop : tunnel.hops) {
+        hops << QString::fromStdString(hop);
+    }
+    QVariantMap row;
+    row[QStringLiteral("hops")] = hops;
+    row[QStringLiteral("state")] = tunnelStateName(tunnel.state);
+    if (tunnel.latencyMs.has_value()) {
+        row[QStringLiteral("latencyMs")] = tunnel.latencyMs.value();
+    }
+    row[QStringLiteral("bytes")] = static_cast<qint64>(tunnel.bytes);
+    return row;
+}
+
+QVariantMap detailMap(const bazarish::i2p::DestinationDetail& detail, const QSet<QString>& refreshing)
+{
+    QVariantList inbound;
+    QVariantList outbound;
+    for (const bazarish::i2p::TunnelDetail& tunnel : detail.tunnels) {
+        (tunnel.inbound ? inbound : outbound) << tunnelRow(tunnel);
+    }
+    QVariantList leaseSets;
+    for (const bazarish::i2p::RemoteLeaseSet& leaseSet : detail.leaseSets) {
+        QVariantMap row;
+        row[QStringLiteral("host")] = QString::fromStdString(leaseSet.host);
+        row[QStringLiteral("expiresIn")] = static_cast<qint64>(leaseSet.expiresIn.count());
+        row[QStringLiteral("leases")] = leaseSet.leases;
+        leaseSets << row;
+    }
+    QVariantMap map;
+    map[QStringLiteral("host")] = QString::fromStdString(detail.destination.host);
+    map[QStringLiteral("label")] = destinationLabel(detail.destination, manyAccounts());
+    map[QStringLiteral("state")] = destinationState(detail.destination);
+    map[QStringLiteral("inbound")] = inbound;
+    map[QStringLiteral("outbound")] = outbound;
+    map[QStringLiteral("leaseSets")] = leaseSets;
+    map[QStringLiteral("refreshing")] = QStringList(refreshing.cbegin(), refreshing.cend());
+    return map;
+}
+
+bool canDetail(const std::optional<std::reference_wrapper<bazarish::i2p::Router>>& router)
+{
+    return router.has_value() && router->get().capabilities().destinationDetail;
+}
+
 }  // namespace
 
 I2pService::I2pService(QObject* parent)
@@ -60,6 +144,8 @@ I2pService::I2pService(QObject* parent)
     connect(&commands_, &I2pCommands::skipGateway, this, &I2pService::skipGateway);
     connect(&commands_, &I2pCommands::useEmbedded, this, &I2pService::useEmbedded);
     connect(&commands_, &I2pCommands::refresh, this, &I2pService::refresh);
+    connect(&commands_, &I2pCommands::inspectDestination, this, &I2pService::inspectDestination);
+    connect(&commands_, &I2pCommands::refreshLeaseSet, this, &I2pService::refreshLeaseSet);
 
     state_.loggingEnabled = AppSettings::instance().i2pLogging();
     state_.privacyLevel = boundedPrivacyLevel(AppSettings::instance().i2pTunnelLength());
@@ -375,24 +461,19 @@ void I2pService::refresh()
         transports.sort();
     }
     if (running) {
-        const bool manyAccounts = client::AccountManager(accountsRoot()).list().size() > 1;
+        const bool many = manyAccounts();
+        const bool detailKnown = canDetail(router);
         for (const bazarish::i2p::LocalDestination& dest : router->get().localDestinations()) {
             QVariantMap row;
-            const QString what = dest.label.empty() ? QStringLiteral("Destination")
-                                                    : QString::fromStdString(dest.label);
-            row[QStringLiteral("label")] = (manyAccounts && !dest.accountLabel.empty())
-                ? (QString::fromStdString(dest.accountLabel) + QStringLiteral(": ") + what)
-                : what;
+            row[QStringLiteral("label")] = destinationLabel(dest, many);
             row[QStringLiteral("host")] = QString::fromStdString(dest.host);
-            row[QStringLiteral("state")] = dest.closing ? QStringLiteral("closing")
-                : dest.ready
-                ? (dest.published ? QStringLiteral("published") : QStringLiteral("ready"))
-                : QStringLiteral("building");
+            row[QStringLiteral("state")] = destinationState(dest);
             row[QStringLiteral("tunnelsIn")] = dest.inboundTunnels;
             row[QStringLiteral("tunnelsOut")] = dest.outboundTunnels;
             row[QStringLiteral("leaseSets")] = dest.remoteLeaseSets;
             row[QStringLiteral("localRoute")] = dest.localRoute;
             row[QStringLiteral("countsKnown")] = router->get().capabilities().destinationCounters;
+            row[QStringLiteral("detailKnown")] = detailKnown;
             destinations << row;
         }
     }
@@ -410,6 +491,56 @@ void I2pService::refresh()
     }
     state_ = now;
     announce();
+}
+
+void I2pService::inspectDestination(const QString& host)
+{
+    const auto router = client::sharedI2pRouterIfRunning();
+    if (!canDetail(router)) {
+        emit events_.destinationDetail(host, {});
+        return;
+    }
+    std::optional<bazarish::i2p::DestinationDetail> detail;
+    try {
+        detail = router->get().destinationDetail(host.toStdString());
+    } catch (const std::exception& error) {
+        bazarish::log::warn("i2p: no detail for {}: {}", host.toStdString(), error.what());
+        return;
+    }
+    emit events_.destinationDetail(
+        host, detail.has_value() ? detailMap(detail.value(), refreshing_.value(host)) : QVariantMap());
+}
+
+void I2pService::refreshLeaseSet(const QString& localHost, const QString& remoteHost)
+{
+    const auto router = client::sharedI2pRouterIfRunning();
+    if (!canDetail(router) || refreshing_.value(localHost).contains(remoteHost)) {
+        return;
+    }
+    refreshing_[localHost].insert(remoteHost);
+    inspectDestination(localHost);
+    bazarish::i2p::Router& running = router->get();
+    inBackground([this, &running, localHost, remoteHost]() {
+        try {
+            const bool current
+                = running.refreshLeaseSet(localHost.toStdString(), remoteHost.toStdString());
+            bazarish::log::info("i2p: lease set of {} looked up again: {}",
+                remoteHost.toStdString(), current ? "current" : "none found");
+        } catch (const std::exception& error) {
+            bazarish::log::warn(
+                "i2p: lease set of {} not looked up: {}", remoteHost.toStdString(), error.what());
+        }
+        QMetaObject::invokeMethod(
+            this,
+            [this, localHost, remoteHost]() {
+                const auto held = refreshing_.find(localHost);
+                if (held != refreshing_.end() && held->remove(remoteHost) && held->isEmpty()) {
+                    refreshing_.erase(held);
+                }
+                inspectDestination(localHost);
+            },
+            Qt::QueuedConnection);
+    });
 }
 
 }  // namespace bazarish::app

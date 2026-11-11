@@ -39,6 +39,8 @@ Popup {
         onTriggered: I2p.refresh()
     }
 
+    DestinationSheet { id: destinationSheet }
+
     component StatRow: RowLayout {
         property string label: ""
         property string value: ""
@@ -109,7 +111,7 @@ Popup {
                         Rectangle {
                             Layout.alignment: Qt.AlignVCenter
                             implicitWidth: 8; implicitHeight: 8; radius: 4
-                            color: I2p.ready ? Theme.success : Theme.warn
+                            color: I2p.ready ? Theme.greenFill : Theme.warn
                         }
                         Label {
                             text: I2p.ready ? qsTr("Running") : qsTr("Starting")
@@ -150,12 +152,28 @@ Popup {
                     Repeater {
                         model: I2p.destinations
                         delegate: Rectangle {
+                            id: destRow
                             required property var modelData
+                            readonly property bool opens: modelData.detailKnown
+                                && !modelData.localRoute && !I2p.samEnabled
                             Layout.fillWidth: true
                             radius: Theme.radiusSmall
-                            color: Theme.surface
+                            color: !opens ? Theme.surface
+                                : destTap.pressed ? Theme.pressed
+                                : destHover.hovered ? Theme.surfaceAlt
+                                : Theme.surface
                             border.color: Theme.border
                             implicitHeight: destCol.implicitHeight + 12
+                            HoverHandler {
+                                id: destHover
+                                enabled: destRow.opens
+                                cursorShape: Qt.PointingHandCursor
+                            }
+                            TapHandler {
+                                id: destTap
+                                enabled: destRow.opens
+                                onTapped: destinationSheet.show(destRow.modelData.host, destRow.modelData.label)
+                            }
                             ColumnLayout {
                                 id: destCol
                                 anchors.fill: parent
@@ -169,7 +187,7 @@ Popup {
                                         implicitWidth: 8; implicitHeight: 8; radius: 4
                                         color: modelData.state === "building" ? Theme.warn
                                             : modelData.state === "closing" ? Theme.textDim
-                                            : Theme.success
+                                            : Theme.greenFill
                                     }
                                     Label {
                                         text: modelData.label
@@ -245,7 +263,7 @@ Popup {
                                     width: privacySlider.visualPosition * parent.width
                                     height: parent.height
                                     radius: height / 2
-                                    color: Theme.green
+                                    color: Theme.greenFill
                                 }
                             }
                             handle: Rectangle {
