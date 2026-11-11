@@ -91,7 +91,7 @@ Popup {
             }
             contentItem: IconLabel {
                 name: "copy"
-                color: copyBtn.copied ? Theme.onGreen : (copyBtn.enabled ? Theme.accentText : Theme.textDim)
+                color: copyBtn.copied ? Theme.greenInk : (copyBtn.enabled ? Theme.accentText : Theme.textDim)
             }
             Timer { id: copiedTimer; interval: 1500; onTriggered: copyBtn.copied = false }
         }

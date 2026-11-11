@@ -589,7 +589,7 @@ Item {
                     }
                     contentItem: IconLabel {
                         name: "check"
-                        color: agreeButton.enabled ? Theme.onGreen : Theme.textDim
+                        color: agreeButton.enabled ? Theme.greenInk : Theme.textDim
                         weight: Font.Medium
                     }
                 }
@@ -1384,7 +1384,7 @@ Item {
             anchors.centerIn: parent
             visible: delegate.chosen
             name: "check"
-            color: Theme.onGreen
+            color: Theme.greenInk
             size: delegate.kChoiceMark
         }
     }

@@ -25,7 +25,7 @@ QtObject {
     readonly property color green:     light ? "#1f7a14" : "#2aa61b"
     // A filled area: the lightest green under white ink that still holds 4.5:1.
     readonly property color greenFill: light ? "#228716" : green
-    readonly property color onGreen:   light ? "#ffffff" : accentInk
+    readonly property color greenInk:  light ? "#ffffff" : accentInk
     readonly property color neon:      light ? green : "#39ff14"
     readonly property color accentInk: light ? "#f2f4f2" : "#11151a"
     readonly property color accent:    light ? "#1b2026" : "#f2f4f2"
@@ -41,7 +41,7 @@ QtObject {
     readonly property color warn:      light ? "#8f5200" : "#ffb454"
     readonly property color danger:    light ? "#c0261f" : "#ff5b54"
     readonly property color warnFill:  light ? "#ffbf5e" : warn
-    readonly property color onWarn:    light ? "#16191c" : accentInk
+    readonly property color warnInk:   light ? "#16191c" : accentInk
 
     readonly property color bubbleOut: light ? "#dbeed4" : "#13261a"
     readonly property color bubbleIn:  light ? "#ffffff" : "#1b2026"
@@ -50,8 +50,8 @@ QtObject {
     readonly property color authorName: light ? green : "#7fd36f"
     readonly property color reactionMine: greenFill
     readonly property color reactionMineEdge: light ? greenFill : authorName
-    readonly property color reactionMineInk: onGreen
-    readonly property color knobOn: light ? text : onGreen
+    readonly property color reactionMineInk: greenInk
+    readonly property color knobOn: light ? text : greenInk
 
     readonly property int spacing: 12
     readonly property int radius: 10

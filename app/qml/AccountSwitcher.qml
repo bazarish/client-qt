@@ -102,7 +102,7 @@ Popup {
                             Icon {
                                 anchors.centerIn: parent
                                 name: "call"
-                                color: Theme.onGreen
+                                color: Theme.greenInk
                                 size: parent.kGlyph
                             }
                         }

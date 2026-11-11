@@ -49,7 +49,7 @@ Rectangle {
         Label {
             text: root.heldForApproval ? qsTr("Waiting for approval")
                 : (root.isOffline ? qsTr("Disconnected") : qsTr("Connecting…"))
-            color: Theme.onWarn
+            color: Theme.warnInk
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold
         }
@@ -59,7 +59,7 @@ Rectangle {
                     ? root.session.approvalNote
                     : qsTr("Your server holds this account until its operator approves it — you cannot send or receive yet"))
                 : (root.isOffline ? qsTr("This account is not syncing") : root.whyNotReachable)
-            color: Theme.onWarn
+            color: Theme.warnInk
             font.pixelSize: Theme.fontSmall
             elide: Text.ElideRight
             Layout.fillWidth: true

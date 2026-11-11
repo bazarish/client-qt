@@ -68,13 +68,13 @@ Rectangle {
         Icon {
             anchors.verticalCenter: parent.verticalCenter
             name: "call"
-            color: Theme.onGreen
+            color: Theme.greenInk
             size: root.kIconSize
         }
         Label {
             anchors.verticalCenter: parent.verticalCenter
             text: root.phase()
-            color: Theme.onGreen
+            color: Theme.greenInk
             opacity: root.kPhaseOpacity
             font.pixelSize: Theme.fontSmall
             wrapMode: Text.NoWrap
@@ -88,7 +88,7 @@ Rectangle {
             root.width - 2 * (lead.anchors.leftMargin + lead.width + lead.spacing))
         horizontalAlignment: Text.AlignHCenter
         text: root.peerText()
-        color: Theme.onGreen
+        color: Theme.greenInk
         font.weight: Font.Medium
         wrapMode: Text.NoWrap
         maximumLineCount: 1

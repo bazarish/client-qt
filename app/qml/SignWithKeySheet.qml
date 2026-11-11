@@ -366,7 +366,7 @@ Popup {
                             }
                             contentItem: IconLabel {
                                 name: "copy"
-                                color: copyBtn.copied ? Theme.onGreen
+                                color: copyBtn.copied ? Theme.greenInk
                                     : !copyBtn.enabled ? Theme.textDim
                                     : root.hasCallback ? Theme.text : Theme.accentText
                             }
@@ -398,7 +398,7 @@ Popup {
                             }
                             contentItem: IconLabel {
                                 name: "send"
-                                color: root.sent ? Theme.onGreen : (sendBtn.enabled ? Theme.accentText : Theme.textDim)
+                                color: root.sent ? Theme.greenInk : (sendBtn.enabled ? Theme.accentText : Theme.textDim)
                             }
                         }
                     }
