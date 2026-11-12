@@ -638,7 +638,9 @@ void SessionWorker::openAccount(
             emit openFailed(tr("This account was created as a bot or a group and cannot be opened here"));
             return;
         }
-        session_ = Session::open(toPath(dir), passphrase.toStdString());
+        std::unique_ptr<Session> opened = Session::open(toPath(dir), passphrase.toStdString());
+        const std::lock_guard<std::mutex> lock(sessionLife_);
+        session_ = std::move(opened);
     } catch (const std::exception& e) {
         emit openFailed(QString::fromUtf8(e.what()));
         return;
@@ -1780,16 +1782,36 @@ void SessionWorker::sendChatTimer(const QString& peer, const qint64 seconds)
 
 void SessionWorker::shutdown()
 {
+    const std::int64_t startedMs = QDateTime::currentMSecsSinceEpoch();
     stopEventWaiter();
+    const std::int64_t waiterMs = QDateTime::currentMSecsSinceEpoch();
     stopErrands();
+    const std::int64_t errandsMs = QDateTime::currentMSecsSinceEpoch();
     if (maintenanceTimer_ != nullptr) {
         maintenanceTimer_->stop();
     }
     if (callTimer_ != nullptr) {
         callTimer_->stop();
     }
-    session_.reset();
+    {
+        const std::lock_guard<std::mutex> lock(sessionLife_);
+        session_.reset();
+    }
+    const std::int64_t doneMs = QDateTime::currentMSecsSinceEpoch();
+    const std::int64_t askedMs = shutdownAskedAtMs_.load();
+    bazarish::log::info("account closed: {} ms queued, waiter {} ms, errands {} ms, session {} ms",
+        askedMs > 0 ? startedMs - askedMs : 0, waiterMs - startedMs, errandsMs - waiterMs,
+        doneMs - errandsMs);
     emit stopped();
+}
+
+void SessionWorker::releaseLinksNow()
+{
+    shutdownAskedAtMs_.store(QDateTime::currentMSecsSinceEpoch());
+    const std::lock_guard<std::mutex> lock(sessionLife_);
+    if (session_) {
+        session_->releaseI2pLinks();
+    }
 }
 
 void SessionWorker::askDevicesForContacts()

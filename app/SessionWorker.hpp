@@ -38,6 +38,8 @@ public:
 
     // Any thread: a mail wait resting after a failure asks again at once.
     void networkChanged();
+    // Any thread: takes the account's I2P links down, so a call blocked on one returns at once.
+    void releaseLinksNow();
 
 private:
     // The open session: a slot that runs once it is gone fails as any refusal does.
@@ -259,6 +261,8 @@ private:
     void startAliasErrand(bool byHand);
     void drainAliasErrands();
     std::unique_ptr<bazarish::client::Session> session_;
+    std::mutex sessionLife_;
+    std::atomic<std::int64_t> shutdownAskedAtMs_{0};
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
     std::shared_ptr<AliasErrandQueue> aliasErrands_;
     bool aliasErrandRunning_ = false;

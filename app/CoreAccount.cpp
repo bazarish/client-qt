@@ -866,6 +866,7 @@ void CoreAccount::beginShutdown()
         emit events_.closed();
         return;
     }
+    worker_->releaseLinksNow();
     QMetaObject::invokeMethod(worker_, &SessionWorker::shutdown, Qt::QueuedConnection);
 }
 
