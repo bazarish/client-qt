@@ -262,7 +262,6 @@ private:
     void drainAliasErrands();
     std::unique_ptr<bazarish::client::Session> session_;
     std::mutex sessionLife_;
-    std::atomic<std::int64_t> shutdownAskedAtMs_{0};
     std::shared_ptr<ResolvedContactAddQueue> resolvedAdds_;
     std::shared_ptr<AliasErrandQueue> aliasErrands_;
     bool aliasErrandRunning_ = false;
