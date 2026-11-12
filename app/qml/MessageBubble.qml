@@ -14,6 +14,7 @@ Item {
     readonly property bool held: holdHandler.pressed || delegate.reacting
         || (contextMenu.item !== null && contextMenu.item.menu.visible)
     readonly property int heldFadeMs: 120
+    readonly property real heldBandOpacity: 0.45
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
     signal groupActionRequested(string command, string postId, string author)
     signal imageRequested(url source, string e2eId, string name)
@@ -437,6 +438,19 @@ Item {
                 App.holdFeedback()
                 delegate.reactRequested(model.e2eId, scene.x, scene.y)
             }
+        }
+    }
+
+    Rectangle {
+        visible: !delegate.isSystem
+        y: bubble.y
+        width: delegate.width
+        height: bubble.height
+        color: model.outgoing ? Theme.bubbleOutHeld : Theme.bubbleInHeld
+        opacity: delegate.held ? delegate.heldBandOpacity : 0
+        Behavior on opacity {
+            enabled: !delegate.pooled
+            NumberAnimation { duration: delegate.heldFadeMs }
         }
     }
 
