@@ -85,6 +85,8 @@ if(Qt6_FOUND)
         app/I2pService.hpp
         app/CoreHost.cpp
         app/CoreHost.hpp
+        app/NetworkWatch.cpp
+        app/NetworkWatch.hpp
         app/DataMove.cpp
         app/DataMove.hpp
         app/CoreAccount.cpp
@@ -557,6 +559,17 @@ if(Qt6_FOUND)
     target_link_libraries(TestWire PRIVATE bazarish_test_util bazarish_client Qt6::Core)
     target_compile_options(TestWire PRIVATE -Wall -Wextra -Werror)
     add_test(NAME TestWire COMMAND TestWire)
+
+    add_executable(TestNetworkWatch tests/TestNetworkWatch.cpp app/NetworkWatch.cpp)
+    target_include_directories(TestNetworkWatch PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+    target_link_libraries(TestNetworkWatch PRIVATE bazarish_test_util bazarish_client Qt6::Network)
+    target_compile_options(TestNetworkWatch PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestNetworkWatch COMMAND TestNetworkWatch)
+
+    add_executable(TestMailWaitGate tests/TestMailWaitGate.cpp)
+    target_link_libraries(TestMailWaitGate PRIVATE bazarish_test_util bazarish_client)
+    target_compile_options(TestMailWaitGate PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestMailWaitGate COMMAND TestMailWaitGate)
 
     add_executable(TestTransportChoice tests/TestTransportChoice.cpp)
     target_include_directories(TestTransportChoice PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)

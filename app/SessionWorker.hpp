@@ -5,6 +5,7 @@
 #include "Session.hpp"
 #include "AccountDb.hpp"
 #include "I2pRouter.hpp"
+#include "MailWaitGate.hpp"
 
 #include <QObject>
 #include <QString>
@@ -37,7 +38,6 @@ public:
     ~SessionWorker() override;
 
     // Any thread: a mail wait resting after a failure asks again at once.
-    void networkChanged();
     // Any thread: takes the account's I2P links down, so a call blocked on one returns at once.
     void releaseLinksNow();
 
@@ -270,6 +270,7 @@ private:
     QTimer* maintenanceTimer_ = nullptr;
     QTimer* callTimer_ = nullptr;
     std::thread eventWaiter_;
+    bazarish::client::MailWaitGate mailGate_;
     std::shared_ptr<std::atomic<bool>> eventWaiterRunning_;
     void startEventWaiter();
     void streamMailbox(bazarish::client::Client& waiter,
@@ -297,7 +298,6 @@ private:
     bool drainSettled_ = true;
     std::deque<bazarish::client::Session::MailboxItem> streamed_;
     bool streamEnded_ = true;
-    bool retryNow_ = false;
     bool catchingUp_ = false;
     bool syncShown_ = false;
     std::uint64_t streamBytes_ = 0;

@@ -12,6 +12,7 @@ readonly kBoost=1.87.0
 readonly kSqlCipher=4.19.0
 readonly kOpus=1.5.2
 readonly kQrencode=4.1.1
+readonly kBrotli=1.1.0
 
 readonly kNdk=${ANDROID_NDK_ROOT:?the NDK, as ANDROID_NDK_ROOT}
 readonly kPrefix=${1:?usage: deps.sh <prefix> <work dir>}
@@ -102,6 +103,16 @@ if step qrencode; then
     cmake --install build
     cd "$kWork" && rm -rf "libqrencode-$kQrencode"
     done_with qrencode
+fi
+
+if step brotli; then
+    fetch "https://github.com/google/brotli/archive/refs/tags/v$kBrotli.tar.gz" "brotli-$kBrotli.tar.gz"
+    unpack "brotli-$kBrotli.tar.gz" "brotli-$kBrotli"
+    cmake -S . -B build "${kCmakeAndroid[@]}" -DBROTLI_DISABLE_TESTS=ON
+    cmake --build build -j "$kJobs"
+    cmake --install build
+    cd "$kWork" && rm -rf "brotli-$kBrotli"
+    done_with brotli
 fi
 
 if step sqlcipher; then

@@ -32,7 +32,7 @@ jobs:
           apt-get install -y -qq --no-install-recommends \
             build-essential cmake ninja-build git ca-certificates pkg-config python3 \
             qt6-base-dev qt6-declarative-dev qt6-multimedia-dev \
-            libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
+            libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev libbrotli-dev \
             libboost-dev libboost-program-options-dev libgl-dev libxkbcommon-dev
       - uses: actions/checkout@v5
         with:
@@ -117,7 +117,7 @@ jobs:
           # One formula per call, and the openssl kegs before what links them: a
           # list is installed concurrently, and sqlcipher built from source reads
           # a keg that another install of the same command is still unpacking.
-          for formula in openssl@3 openssl@4 ninja qt sqlcipher opus qrencode boost; do
+          for formula in openssl@3 openssl@4 ninja qt sqlcipher opus qrencode boost brotli; do
               brew install --quiet "$formula"
           done
       - uses: actions/checkout@v5

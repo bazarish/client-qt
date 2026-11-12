@@ -38,13 +38,25 @@ puts it back.
    mailbox answers the next wait at once while it still holds what this device is
    carrying, and a pass that left items behind is exactly the case where
    answering at once is what continues it.
+5. A wait that fails is asked again on a cause, never on a period of its own:
+
+   | Cause | When |
+   |---|---|
+   | A held wait broke | At once, one time per answered wait that had a cause of its own: the stream went, a new one is the answer |
+   | The link came back | The gateway session rejoined, or the device moved to another network |
+   | Our server answered | Another request of this account reached the server, a letter to the account's own mailbox among them |
+   | This device was registered again | After a wait the server refused as unregistered |
+   | The facade published a newer lease set | Looked up past the cache once after each failed wait; the stand-off of the link is lifted with it |
+   | The lease set of the failed wait has expired | `kStaleLeaseSetBound` after the failure, when nothing above came first: a dial then can only use a fresh lease set |
+
+   A closed or locked account stops the loop; it asks nothing.
 
 ## Parameters
 
 | Parameter | Value |
 |---|---|
 | Held-open request | No time limit; answered the moment mail lands |
-| A failed wait asked again | after 30 s, or at once when the network changes |
+| A failed wait asked again | on a cause (step 5); without one, after 11 min (lease lifetime 10 min and 1 min of clock skew) |
 | Items per pass | 5 |
 | Local upkeep tick | 2 s |
 

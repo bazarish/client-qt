@@ -208,9 +208,6 @@ constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 
 constexpr int kCallWatchIntervalMs = 100;
 
-// A failed wait asks again after this, or at once when the network changes.
-constexpr std::chrono::seconds kMailWaitRetry{30};
-
 constexpr int kMaintenanceIntervalMs = 2000;
 
 QVariantList aliasHoldingRows(const std::vector<bazarish::client::Session::AliasHolding>& held)
@@ -409,6 +406,7 @@ void SessionWorker::startEventWaiter()
         return;
     }
     eventWaiterRunning_ = std::make_shared<std::atomic<bool>>(true);
+    mailGate_.restart();
     eventWaiter_ = std::thread([this, context, running = eventWaiterRunning_]() {
         std::unique_ptr<bazarish::client::Client> waiter;
         // A held wait answers late by design: until the server has answered, it is not held.
@@ -422,8 +420,7 @@ void SessionWorker::startEventWaiter()
                 drainDone_.wait(
                     lock, [this, &running]() { return drainSettled_ || !running->load(); });
             }
-            const auto askedAt = std::chrono::steady_clock::now();
-            const std::uint64_t carryAtAsk = bazarish::i2p::carryReturns();
+            mailGate_.asking();
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
@@ -439,6 +436,7 @@ void SessionWorker::startEventWaiter()
                     bazarish::log::info("the server answered the mail wait");
                 }
                 answered = true;
+                mailGate_.answered();
                 QMetaObject::invokeMethod(
                     this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
                 streamMailbox(*waiter, waiting, !caughtUp, *running);
@@ -457,14 +455,17 @@ void SessionWorker::startEventWaiter()
                 QMetaObject::invokeMethod(
                     this, [this, refusal]() { emit syncReachable(false, refusal); },
                     Qt::QueuedConnection);
-                bazarish::log::info("mail wait failed, asking again: {}", error.what());
-                std::unique_lock<std::mutex> lock(drainMutex_);
-                drainDone_.wait_until(lock, askedAt + kMailWaitRetry,
-                    [this, &running, carryAtAsk]() {
-                        return !running->load() || retryNow_
-                            || bazarish::i2p::carryReturns() != carryAtAsk;
-                    });
-                retryNow_ = false;
+                bazarish::log::info("mail wait failed: {}", error.what());
+                const bazarish::client::MailWaitCause cause = mailGate_.awaitCause(
+                    [&waiter]() { return waiter && waiter->facadePublishedAnew(); });
+                if (cause == bazarish::client::MailWaitCause::eStopped) {
+                    return;
+                }
+                bazarish::log::info("asking for mail again: {}",
+                    bazarish::client::mailWaitCauseName(cause));
+                if (waiter && cause != bazarish::client::MailWaitCause::eStaleLeaseSet) {
+                    waiter->liftStandOff();
+                }
             }
         }
     });
@@ -558,20 +559,7 @@ void SessionWorker::registerThisDevice()
         bazarish::log::warn("this device could not register again: {}", error.what());
         return;
     }
-    {
-        const std::lock_guard<std::mutex> lock(drainMutex_);
-        retryNow_ = true;
-    }
-    drainDone_.notify_all();
-}
-
-void SessionWorker::networkChanged()
-{
-    // The waiter tests the carry under this lock: taking it reaches one about to sleep.
-    {
-        const std::lock_guard<std::mutex> lock(drainMutex_);
-    }
-    drainDone_.notify_all();
+    mailGate_.registered();
 }
 
 void SessionWorker::stopEventWaiter()
@@ -581,6 +569,7 @@ void SessionWorker::stopEventWaiter()
         eventWaiterRunning_->store(false);
     }
     drainDone_.notify_all();
+    mailGate_.stop();
     // The waiter sits inside a held request; only taking its link down ends it before the hold does.
     if (session_) {
         session_->releaseI2pLinks();
@@ -594,7 +583,6 @@ void SessionWorker::stopEventWaiter()
     streamed_.clear();
     streamEnded_ = true;
     drainSettled_ = true;
-    retryNow_ = false;
 }
 
 void SessionWorker::settleDrain()
@@ -641,7 +629,10 @@ void SessionWorker::openAccount(
     session_->setAudioBackend(
         []() -> std::unique_ptr<bazarish::AudioSource> { return std::make_unique<CallSource>(); },
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<CallSink>(); });
-    session_->onServerAnswered([this]() { emit syncReachable(true, {}); });
+    session_->onServerAnswered([this]() {
+        mailGate_.serverAnswered();
+        emit syncReachable(true, {});
+    });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     emit loginSignerReady(session_->loginSigner());
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {

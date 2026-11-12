@@ -57,6 +57,43 @@ carries the tunnel length and reports the engine's live diagnostics (network
 database size, floodfills, tunnel counts, local destinations, active transport
 sessions); it sets nothing else.
 
+### The gateway link's TLS
+
+The connection to a private gateway is TLS shaped as Chrome's, so that a watcher
+of the device's link sees what a browser on that host would show. It is built on
+BoringSSL at the commit Chrome 157.0.8103.78 is built with
+(`5b83e5d1abf0ae0033ae52ab579d906b67633b2c`), compiled with the client under the
+symbol prefix `BZB` and used for this link alone; everything else in the client
+uses OpenSSL.
+
+- **ClientHello.** Chrome's settings: GREASE (ciphers, extensions, groups,
+  versions, signature algorithms), a new extension order on every connection, ECH
+  GREASE, brotli certificate compression, the groups X25519MLKEM768, X25519,
+  P-256 and P-384 with key shares for the first two, Chrome's cipher list and
+  signature algorithms, SCT and OCSP requests, and Chrome's Trust Anchor IDs.
+- **Two profiles, as Chrome has.** A WebSocket offers ALPN `http/1.1` alone; a
+  decoy connection offers `h2,http/1.1` and ALPS for `h2`. The front must answer
+  `http/1.1`: a decoy connection on which it chooses `h2` is closed as a failure.
+- **Resumption.** Sessions are kept per host and port for an hour, two TLS 1.3
+  tickets at most, each used once, as Chrome keeps them.
+- **No close_notify.** A connection ends at the TCP layer, as Chrome ends one.
+- **Requests.** The WebSocket upgrade and the decoy requests carry Chrome's
+  headers in Chrome's order, with the User-Agent and client hints of Chrome 157
+  on the platform the client runs on (Linux, Android, Windows or macOS). A decoy
+  page is asked as a navigation, a decoy resource as an image.
+- **Certificate.** Not checked, as before: the channel inside the socket proves
+  the gateway. The front's certificate has to be one Chrome's signature
+  algorithms cover (ECDSA or RSA); an Ed25519 certificate fails the handshake.
+
+Measured against Chrome 157.0.8103.78 on Linux (2026-11-12): JA4
+`t13d1516h1_8daaf6152771_5b37b36a67c0` for a fresh WebSocket,
+`t13d1517h2_8daaf6152771_cb7bf5808d99` for a page, and
+`t13d1517h1_8daaf6152771_c4a234726a38` for a WebSocket that resumes a page's
+session; the client gives the same three. `TestChromeTls` checks them.
+
+On Windows the link is built over OpenSSL (`BAZARISH_GATEWAY_TLS_OPENSSL`, README)
+and shows OpenSSL's ClientHello.
+
 ## Bootstrap
 
 A router with no netDb builds no tunnel, so the first thing it needs is a slice

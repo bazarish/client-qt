@@ -59,7 +59,6 @@ public:
     void open(const QString& file, const QString& passphrase, bool startOnline);
     void goOnline();
     void goOffline();
-    void networkChanged();
     void rebuildI2pLinks();
     void setPresenceFocused(bool focused);
     void replayOperations();

@@ -5,6 +5,7 @@
 #include "AppCommands.hpp"
 #include "AppEvents.hpp"
 #include "I2pService.hpp"
+#include "NetworkWatch.hpp"
 #include "OperationLog.hpp"
 #include "Ringtone.hpp"
 #include "CoreSocket.hpp"
@@ -165,7 +166,7 @@ private:
     std::shared_ptr<std::atomic<bool>> pairCancel_;
     std::shared_ptr<bazarish::i2p::Endpoint> pairEndpoint_;
     OperationLog log_;
-    std::unique_ptr<bazarish::i2p::CarryWatch> carryWatch_;
+    std::unique_ptr<NetworkWatch> networkWatch_;
 };
 
 class CoreListener : public QObject {

@@ -16,12 +16,18 @@ configure=(-S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release)
 if [ "$(uname)" = "Darwin" ]; then
     # Homebrew keeps these out of the default prefix, so each one is named.
     configure+=(
-        "-DCMAKE_PREFIX_PATH=$(brew --prefix qt);$(brew --prefix opus);$(brew --prefix qrencode);$(brew --prefix boost)"
+        "-DCMAKE_PREFIX_PATH=$(brew --prefix qt);$(brew --prefix opus);$(brew --prefix qrencode);$(brew --prefix boost);$(brew --prefix brotli)"
         "-DOPENSSL_ROOT_DIR=$(brew --prefix openssl@3)"
         "-DSQLCIPHER_LIBRARY=$(brew --prefix sqlcipher)/lib/libsqlcipher.dylib"
         "-DSQLCIPHER_INCLUDE_DIR=$(brew --prefix sqlcipher)/include"
     )
 fi
+case "$(uname)" in
+MINGW* | MSYS*)
+    # No BoringSSL build for Windows yet: the gateway link runs over OpenSSL there.
+    configure+=(-DBAZARISH_GATEWAY_TLS_OPENSSL=ON)
+    ;;
+esac
 
 {
     case "$stage" in

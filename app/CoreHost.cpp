@@ -239,18 +239,11 @@ void CoreHost::screenChanged(const bool on)
 
 void CoreHost::start()
 {
-#ifdef Q_OS_ANDROID
-    // A gateway answering again wakes a mail wait as a new network does.
-    carryWatch_ = std::make_unique<bazarish::i2p::CarryWatch>([this]() {
-        QMetaObject::invokeMethod(
-            this,
-            [this]() {
-                for (CoreAccount* const session : sessions_) {
-                    session->networkChanged();
-                }
-            },
-            Qt::QueuedConnection);
-    });
+#ifndef Q_OS_ANDROID
+    networkWatch_ = std::make_unique<NetworkWatch>([this]() { networkChanged(); });
+    if (!networkWatch_->follow()) {
+        bazarish::log::warn("no network information backend: a new network goes unnoticed");
+    }
 #endif
     i2p_.announce();
     notifications_ = AppSettings::instance().notifications();

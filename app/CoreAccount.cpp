@@ -579,11 +579,6 @@ void CoreAccount::shutdown()
     close();
 }
 
-void CoreAccount::networkChanged()
-{
-    worker_->networkChanged();
-}
-
 void CoreAccount::goOnline()
 {
     startOnline_ = true;

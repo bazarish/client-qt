@@ -25,7 +25,7 @@ apt-get update -qq
 # qt6-*-dev only pulls in Qt's system libraries; GStreamer 1.24 moved gstphotography to -good.
 apt-get install -y -qq --no-install-recommends \
   build-essential cmake git ca-certificates wget file rsync patchelf python3-pip tcl \
-  libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev \
+  libssl-dev zlib1g-dev libsqlcipher-dev libopus-dev libqrencode-dev libbrotli-dev \
   libboost-dev libboost-program-options-dev \
   qt6-base-dev qt6-declarative-dev qt6-multimedia-dev libgl-dev libxkbcommon-dev \
   libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 \
