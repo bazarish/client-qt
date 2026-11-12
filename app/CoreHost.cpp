@@ -6,6 +6,7 @@
 #include "AppSettings.hpp"
 #include "AudioRoute.hpp"
 #include "CoreAccount.hpp"
+#include "DataMove.hpp"
 #include "DevicePairing.hpp"
 #include "Documents.hpp"
 #include "I2pRouter.hpp"
@@ -17,6 +18,8 @@
 
 #include <bazarish/I2p.hpp>
 #include <bazarish/Links.hpp>
+#include <bazarish/PathText.hpp>
+#include <bazarish/PrivateFile.hpp>
 
 #pragma push_macro("emit")
 #undef emit
@@ -24,6 +27,7 @@
 #pragma pop_macro("emit")
 
 #include <QMetaType>
+#include <QStringList>
 
 #include <algorithm>
 #include <exception>
@@ -83,6 +87,33 @@ bool directoryIsWritable(const std::filesystem::path& directory)
     out.close();
     std::filesystem::remove(probe, error);
     return ok;
+}
+
+constexpr const char* kPortableMarkerText
+    = "bazarish keeps its data in bazarish_data beside this file\n";
+
+void writePortableMarker()
+{
+    const std::filesystem::path marker = client::AccountManager::portableMarker();
+    try {
+        writeFileAtomic(marker, kPortableMarkerText);
+    } catch (const std::exception&) {
+        // The directory sync can fail after the rename put the marker in place.
+        if (std::filesystem::remove(marker)) {
+            bazarish::log::warn("portable marker written but not synced, removed again");
+        }
+        throw;
+    }
+}
+
+QString keptAccountName(const QVector<AccountListRow>& rows, const QString& id)
+{
+    for (const AccountListRow& row : rows) {
+        if (row.id == id && !row.name.isEmpty()) {
+            return row.name;
+        }
+    }
+    return id;
 }
 
 }  // namespace
@@ -1070,46 +1101,64 @@ void CoreHost::setPortable(const bool on)
 
 void CoreHost::movePortable(const bool on)
 {
-    namespace fs = std::filesystem;
-    const fs::path from = on ? client::AccountManager::globalRoot()
-                             : client::AccountManager::portableRoot();
-    const fs::path to = on ? client::AccountManager::portableRoot()
-                           : client::AccountManager::globalRoot();
-    std::error_code error;
-    if (fs::exists(from, error) && !fs::is_empty(from, error)) {
-        if (fs::exists(to, error) && !fs::is_empty(to, error)) {
-            emit events_.createFailed(tr("There is already data at %1 - move or remove it first, so "
-                                         "nothing is overwritten")
-                    .arg(pathText(to)));
-            return;
-        }
-        // The router keeps files under the root it was started with: it stops for good first.
+    const std::filesystem::path from = on ? client::AccountManager::globalRoot()
+                                          : client::AccountManager::portableRoot();
+    const std::filesystem::path to = on ? client::AccountManager::portableRoot()
+                                        : client::AccountManager::globalRoot();
+    bool routerRetired = false;
+    DataMoveSteps steps;
+    // The router keeps files under the root it was started with: it stops for good before they move.
+    steps.beforeRouterMoves = [&routerRetired]() {
         client::retireI2pRouter();
-        fs::create_directories(to.parent_path(), error);
-        fs::rename(from, to, error);
-        if (error) {
-            error.clear();
-            fs::copy(from, to, fs::copy_options::recursive, error);
-            if (error) {
-                emit events_.createFailed(tr("Could not move the data: %1")
-                    .arg(QString::fromStdString(error.message())));
-                return;
+        routerRetired = true;
+    };
+    steps.commit = [on]() {
+        if (on) {
+            writePortableMarker();
+        } else {
+            const std::filesystem::path marker = client::AccountManager::portableMarker();
+            if (!std::filesystem::remove(marker)) {
+                bazarish::log::info("portable move: {} was already gone", utf8OfPath(marker));
             }
-            fs::remove_all(from, error);
         }
+    };
+    DataMoveResult moved;
+    try {
+        moved = moveDataRoot(from, to, steps);
+    } catch (const std::exception& error) {
+        const QString reason = QString::fromUtf8(error.what());
+        if (routerRetired) {
+            emit events_.restartRequired(tr("The data was not moved: %1. Bazarish has to be "
+                                            "started again to go online.")
+                    .arg(reason));
+        } else {
+            emit events_.createFailed(tr("Could not move the data: %1").arg(reason));
+        }
+        return;
     }
-    if (on) {
-        std::ofstream marker(client::AccountManager::portableMarker(), std::ios::trunc);
-        marker << "bazarish keeps its data in bazarish_data beside this file\n";
-    } else {
-        fs::remove(client::AccountManager::portableMarker(), error);
+    for (const std::filesystem::path& entry : moved.keptEntries) {
+        bazarish::log::info("portable move: {} is already at the destination, left in place",
+            utf8OfPath(entry));
     }
-    emit events_.portableChanged();
-    emit events_.restartRequired(on
+    for (const std::filesystem::path& entry : moved.leftBehind) {
+        bazarish::log::warn("portable move: {} was not removed after the move", utf8OfPath(entry));
+    }
+    QString message = on
             ? tr("Your data now lives beside the app. Bazarish has to be started "
                              "again to use it.")
             : tr("Your data moved back to your user folder. Bazarish has to be "
-                             "started again to use it."));
+                             "started again to use it.");
+    if (!moved.keptAccounts.empty()) {
+        QStringList names;
+        for (const std::string& id : moved.keptAccounts) {
+            names.push_back(keptAccountName(accountRows_, QString::fromStdString(id)));
+        }
+        message += QStringLiteral("\n\n")
+            + tr("Accounts already present there stay where they were: %1")
+                  .arg(names.join(QStringLiteral(", ")));
+    }
+    emit events_.portableChanged();
+    emit events_.restartRequired(message);
 }
 
 void CoreHost::rebuildI2pLinks()

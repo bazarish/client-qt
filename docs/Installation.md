@@ -26,9 +26,27 @@ takes. The account files themselves are specified in
 ```
 
 Portable mode is a marker file, `.bazarish.portable`, beside the executable. The
-switch in Global settings moves the whole layout, closes every account and needs
-the application started again. The three sound files are specified in
-[Sounds.md](Sounds.md).
+switch in Global settings closes every account, moves the layout to the other
+root and needs the application started again. The three sound files are
+specified in [Sounds.md](Sounds.md).
+
+The move adds to the other root and never changes what is already there. It goes
+unit by unit:
+
+- an account - every file in `accounts/` named after its id - moves whole; if
+  any file of that id is already there, the account stays where it was;
+- `i2p/` moves unless a non-empty `i2p/` is already there; into an empty one its
+  contents move;
+- `settings.json`, the sound files and any other entry move only if absent
+  there.
+
+A unit is renamed when both roots share a file system and copied otherwise; a
+copied unit leaves the old root only after every unit has arrived and the marker
+was written or removed. If a unit or the marker fails, everything this move put
+in the other root is taken out again, the old root keeps its data and the marker
+stays as it was. The router stops just before `i2p/` moves, so a failure after
+that point still needs the application started again. Accounts that stayed
+behind are named on screen; other entries that stayed are written to the log.
 
 ## settings.json
 

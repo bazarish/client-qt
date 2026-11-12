@@ -85,6 +85,8 @@ if(Qt6_FOUND)
         app/I2pService.hpp
         app/CoreHost.cpp
         app/CoreHost.hpp
+        app/DataMove.cpp
+        app/DataMove.hpp
         app/CoreAccount.cpp
         app/CoreAccount.hpp
         app/CoreCalls.cpp
@@ -380,6 +382,12 @@ target_include_directories(TestAppSettings PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/a
 target_link_libraries(TestAppSettings PRIVATE bazarish_test_util bazarish_client)
 target_compile_options(TestAppSettings PRIVATE -Wall -Wextra)
 add_test(NAME TestAppSettings COMMAND TestAppSettings)
+
+add_executable(TestDataMove tests/TestDataMove.cpp app/DataMove.cpp app/DataMove.hpp)
+target_include_directories(TestDataMove PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+target_link_libraries(TestDataMove PRIVATE bazarish_test_util)
+target_compile_options(TestDataMove PRIVATE -Wall -Wextra -Werror)
+add_test(NAME TestDataMove COMMAND TestDataMove)
 
 if(Qt6_FOUND)
     add_executable(TestMarkup tests/TestMarkup.cpp app/Markup.cpp)

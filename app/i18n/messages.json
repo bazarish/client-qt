@@ -83,6 +83,12 @@
       "zh": "账户设置",
       "ar": "إعدادات الحساب"
     },
+    "Accounts already present there stay where they were: %1": {
+      "ru": "Аккаунты, которые там уже есть, остались на прежнем месте: %1",
+      "es": "Las cuentas que ya estaban allí siguen en su sitio: %1",
+      "zh": "那里已有的账户保留在原处：%1",
+      "ar": "الحسابات الموجودة هناك بقيت في مكانها: ⁦%1⁩"
+    },
     "Allow bazari.sh links to open in the app": {
       "ru": "Разрешите открывать ссылки bazari.sh в приложении",
       "es": "Permite abrir los enlaces de bazari.sh en la app",
@@ -100,6 +106,12 @@
       "es": "I2P",
       "zh": "I2P",
       "ar": "I2P"
+    },
+    "The data was not moved: %1. Bazarish has to be started again to go online.": {
+      "ru": "Данные не перенесены: %1. Чтобы выйти в сеть, запустите Bazarish заново.",
+      "es": "Los datos no se han movido: %1. Para conectarte, inicia Bazarish de nuevo.",
+      "zh": "数据未迁移：%1。要联网，请重新启动 Bazarish。",
+      "ar": "لم تُنقل البيانات: ⁦%1⁩. وللاتصال بالشبكة شغّل Bazarish من جديد."
     },
     "WWW": {
       "ru": "WWW",
@@ -3496,12 +3508,6 @@
       "es": "Su servidor está ocupado. Se reintenta en %1 s (quedan %2).",
       "zh": "对方的服务器正忙。%1 秒后重试（还剩 %2 次）。",
       "ar": "خادم جهة الاتصال مشغول. إعادة المحاولة بعد ⁦%1⁩ ثانية (بقي ⁦%2⁩)."
-    },
-    "There is already data at %1 - move or remove it first, so nothing is overwritten": {
-      "ru": "По пути %1 уже есть данные. Сначала перенесите или удалите их, чтобы ничего не затереть.",
-      "es": "Ya hay datos en %1. Muévelos o bórralos antes, para no sobrescribir nada.",
-      "zh": "%1 处已有数据。请先把它移走或删除，以免覆盖。",
-      "ar": "توجد بيانات بالفعل في ⁦%1⁩. انقلها أو احذفها أولًا كي لا يُطمس شيء."
     },
     "There is no clipboard to copy to": {
       "ru": "Копировать некуда: буфера обмена нет",
