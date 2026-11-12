@@ -45,6 +45,11 @@ bazarish::i2p::Privacy privacyForLevel(const int level)
     }
 }
 
+bazarish::i2p::I2pLogLevel i2pLogLevelFor(const bool loggingEnabled)
+{
+    return loggingEnabled ? bazarish::i2p::I2pLogLevel::eWarn : bazarish::i2p::I2pLogLevel::eNone;
+}
+
 bool manyAccounts()
 {
     return client::AccountManager(accountsRoot()).list().size() > 1;
@@ -171,7 +176,7 @@ I2pService::I2pService(QObject* parent)
     if (!applyTransport()) {
         throw std::logic_error("a router ran before the I2P settings were read");
     }
-    bazarish::i2p::setI2pLogging(state_.loggingEnabled);
+    bazarish::i2p::setI2pLogLevel(i2pLogLevelFor(state_.loggingEnabled));
     client::setTunnelPrivacy(privacyForLevel(state_.privacyLevel));
     refresh();
 }
@@ -344,7 +349,7 @@ void I2pService::setLoggingEnabled(bool on)
         return;
     }
     state_.loggingEnabled = on;
-    bazarish::i2p::setI2pLogging(on);
+    bazarish::i2p::setI2pLogLevel(i2pLogLevelFor(on));
     AppSettings::instance().setI2pLogging(on);
     announce();
 }

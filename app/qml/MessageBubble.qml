@@ -403,12 +403,18 @@ Item {
     }
     function openMenu() {
         contextMenu.active = true
+        contextMenu.item.menu.popup()
+        delegate.placeMenu()
+    }
+    // Placed again as it opens: the items' width is known only once the menu lays them out.
+    function placeMenu() {
         const menu = contextMenu.item.menu
         const at = Placement.besideBubble(Placement.sceneRect(bubble),
-            Qt.size(menu.implicitWidth, menu.implicitHeight),
+            Qt.size(menu.width, menu.height),
             Placement.sceneRect(delegate.ListView.view), Theme.popupGap, model.outgoing)
         const local = bubble.mapFromItem(null, at.x, at.y)
-        menu.popup(local.x, local.y)
+        menu.x = local.x
+        menu.y = local.y
     }
     function within(item, scene) {
         return item.visible && item.contains(item.mapFromItem(null, scene.x, scene.y))
@@ -1265,6 +1271,8 @@ Item {
                 ContextMenu {
                     id: menu
                     parent: bubble
+                    onWidthChanged: if (visible) { delegate.placeMenu() }
+                    onHeightChanged: if (visible) { delegate.placeMenu() }
                     ContextMenuItem {
                         text: qsTr("React")
                         iconName: "smile"
