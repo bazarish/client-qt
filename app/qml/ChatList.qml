@@ -240,9 +240,12 @@ Item {
                 rightPadding: Theme.rowInset + Theme.spacing
                 highlighted: root.session && root.session.activePeer === model.fingerprint
                 onClicked: root.session.openConversation(model.fingerprint)
-                onPressAndHold: pinMenu.popup()
+                onPressAndHold: {
+                    App.holdFeedback()
+                    pinMenu.popup()
+                }
                 background: Rectangle {
-                    color: chatRow.highlighted ? Theme.selected
+                    color: chatRow.highlighted || pinMenu.visible ? Theme.selected
                         : chatRow.hovered ? Theme.surfaceAlt : "transparent"
                     radius: Theme.radiusSmall
                     Rectangle {

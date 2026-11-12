@@ -10,7 +10,8 @@ Item {
     id: delegate
     property var session: null
     property bool highlighted: false
-    readonly property bool held: holdHandler.pressed
+    property bool reacting: false
+    readonly property bool held: holdHandler.pressed || delegate.reacting
         || (contextMenu.item !== null && contextMenu.item.menu.visible)
     readonly property int heldFadeMs: 120
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
@@ -394,6 +395,7 @@ Item {
         acceptedButtons: Qt.LeftButton
         onLongPressed: {
             if (!delegate.systemsTouch(holdHandler.point.scenePressPosition)) {
+                App.holdFeedback()
                 delegate.openMenu(holdHandler.point.scenePosition)
             }
         }
@@ -432,6 +434,7 @@ Item {
             if (!delegate.within(bubble, scene)) {
                 delegate.openMenu(scene)
             } else if (delegate.reactable && !delegate.onTappablePart(scene)) {
+                App.holdFeedback()
                 delegate.reactRequested(model.e2eId, scene.x, scene.y)
             }
         }

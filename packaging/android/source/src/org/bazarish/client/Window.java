@@ -24,6 +24,7 @@ import android.os.ResultReceiver;
 import android.os.ext.SdkExtensions;
 import android.provider.MediaStore;
 import android.provider.Settings;
+import android.view.HapticFeedbackConstants;
 import android.view.OrientationEventListener;
 import android.view.View;
 import android.view.WindowInsets;
@@ -281,6 +282,15 @@ public final class Window {
         ClipDescription about = board.getPrimaryClipDescription();
         return about != null
             && (about.hasMimeType("text/*") || (pictures && about.hasMimeType("image/*")));
+    }
+
+    public static void holdFeedback() {
+        Activity activity = window.get();
+        if (activity == null) {
+            return;
+        }
+        activity.runOnUiThread(() -> activity.getWindow().getDecorView()
+            .performHapticFeedback(HapticFeedbackConstants.LONG_PRESS));
     }
 
     public static boolean fullScreenCallsRestricted() {

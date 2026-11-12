@@ -21,6 +21,7 @@ public:
     static void openBackgroundSettings();
     static bool fullScreenCallsRestricted();
     static bool clipboardOffers(bool pictures);
+    static void holdFeedback();
     static void openFullScreenCallsSettings();
     static bool linksHandled();
     static void openLinkSettings();

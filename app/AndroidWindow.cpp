@@ -196,6 +196,11 @@ bool AndroidWindow::clipboardOffers(const bool pictures)
         kWindow, "clipboardOffers", "(Z)Z", static_cast<jboolean>(pictures));
 }
 
+void AndroidWindow::holdFeedback()
+{
+    QJniObject::callStaticMethod<void>(kWindow, "holdFeedback", "()V");
+}
+
 bool AndroidWindow::fullScreenCallsRestricted()
 {
     return QJniObject::callStaticMethod<jboolean>(kWindow, "fullScreenCallsRestricted", "()Z");

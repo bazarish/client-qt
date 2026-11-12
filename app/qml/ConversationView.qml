@@ -563,6 +563,7 @@ Item {
                 reuseItems: !listPane.building
                 delegate: MessageBubble {
                     session: root.session
+                    reacting: reactionPicker.visible && reactionPicker.target === model.e2eId
                     highlighted: ListView.view
                         && (ListView.view.highlightId === model.msgId
                             || (ListView.view.unreadFlashFromId >= 0 && !model.outgoing

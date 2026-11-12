@@ -736,6 +736,13 @@ bool AppController::clipboardHasImage() const
     return clipboard != nullptr && !clipboard->image().isNull();
 }
 
+void AppController::holdFeedback() const
+{
+#ifdef Q_OS_ANDROID
+    AndroidWindow::holdFeedback();
+#endif
+}
+
 bool AppController::clipboardOffersPaste(const bool pictures) const
 {
 #ifdef Q_OS_ANDROID
