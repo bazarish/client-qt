@@ -580,8 +580,8 @@ Item {
                         groupActionDialog.author = author
                         groupActionDialog.open()
                     }
-                    onReactRequested: function(e2eId, sceneX, sceneY) {
-                        reactionPicker.openAt(e2eId, sceneX, sceneY)
+                    onReactRequested: function(e2eId, anchor, leftFirst) {
+                        reactionPicker.openBeside(e2eId, anchor, messages, leftFirst)
                     }
                     onForwardRequested: function(e2eId) { forwardSheet.openFor(e2eId) }
                     onQuoteRequested: function(localId) { root.showQuoted(localId) }

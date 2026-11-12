@@ -280,6 +280,7 @@ if(Qt6_FOUND)
             app/qml/Main.qml
             app/qml/Theme.qml
             app/qml/Format.js
+            app/qml/Placement.js
             app/qml/Emoji.js
             app/qml/AccountPicker.qml
             app/qml/CreateAccountWizard.qml

@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import Bazarish
 import "Format.js" as Format
+import "Placement.js" as Placement
 
 Item {
     id: delegate
@@ -18,7 +19,7 @@ Item {
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
     signal groupActionRequested(string command, string postId, string author)
     signal imageRequested(url source, string e2eId, string name)
-    signal reactRequested(string e2eId, real sceneX, real sceneY)
+    signal reactRequested(string e2eId, Item anchor, bool leftFirst)
     signal forwardRequested(string e2eId)
     signal quoteRequested(var localId)
     signal selectTextRequested(Item text)
@@ -31,7 +32,6 @@ Item {
     signal aliasRequested(string alias)
     signal linkRequested(string url)
     // Taken from the event: mapping through the delegate drops an own bubble's offset.
-    property point menuAt: Qt.point(0, 0)
     width: ListView.view ? ListView.view.width : 0
     height: isSystem ? (sysBlock.implicitHeight + 12) : (bubble.height + 4)
 
@@ -388,7 +388,7 @@ Item {
         // A touch carries no button, so a right-button handler would take every tap.
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
         acceptedButtons: Qt.RightButton
-        onTapped: function(point) { delegate.openMenu(point.scenePosition) }
+        onTapped: delegate.openMenu()
     }
     TapHandler {
         id: holdHandler
@@ -397,14 +397,18 @@ Item {
         onLongPressed: {
             if (!delegate.systemsTouch(holdHandler.point.scenePressPosition)) {
                 App.holdFeedback()
-                delegate.openMenu(holdHandler.point.scenePosition)
+                delegate.openMenu()
             }
         }
     }
-    function openMenu(scene) {
-        delegate.menuAt = Qt.point(scene.x, scene.y)
+    function openMenu() {
         contextMenu.active = true
-        contextMenu.item.menu.popup()
+        const menu = contextMenu.item.menu
+        const at = Placement.besideBubble(Placement.sceneRect(bubble),
+            Qt.size(menu.implicitWidth, menu.implicitHeight),
+            Placement.sceneRect(delegate.ListView.view), Theme.popupGap, model.outgoing)
+        const local = bubble.mapFromItem(null, at.x, at.y)
+        menu.popup(local.x, local.y)
     }
     function within(item, scene) {
         return item.visible && item.contains(item.mapFromItem(null, scene.x, scene.y))
@@ -433,10 +437,10 @@ Item {
                 }
             }
             if (!delegate.within(bubble, scene)) {
-                delegate.openMenu(scene)
+                delegate.openMenu()
             } else if (delegate.reactable && !delegate.onTappablePart(scene)) {
                 App.holdFeedback()
-                delegate.reactRequested(model.e2eId, scene.x, scene.y)
+                delegate.reactRequested(model.e2eId, bubble, model.outgoing)
             }
         }
     }
@@ -1266,8 +1270,7 @@ Item {
                         iconName: "smile"
                         visible: delegate.reactable
                         height: visible ? implicitHeight : 0
-                        onTriggered: delegate.reactRequested(model.e2eId,
-                            delegate.menuAt.x, delegate.menuAt.y)
+                        onTriggered: delegate.reactRequested(model.e2eId, bubble, model.outgoing)
                     }
                     ContextMenuItem {
                         text: qsTr("Copy picture")

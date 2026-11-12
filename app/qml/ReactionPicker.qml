@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Bazarish
+import "Placement.js" as Placement
 
 Popup {
     id: root
@@ -19,15 +20,16 @@ Popup {
     padding: 12
     background: DialogFrame { }
 
-    property real askedX: 0
-    property real askedY: 0
-    readonly property int kEdgeGap: 12
+    property Item anchor: null
+    property Item area: null
+    property bool leftFirst: false
 
-    function openAt(e2eId, sceneX, sceneY) {
+    function openBeside(e2eId, bubble, chatArea, outgoing) {
         root.target = e2eId
         customField.text = ""
-        root.askedX = sceneX
-        root.askedY = sceneY
+        root.anchor = bubble
+        root.area = chatArea
+        root.leftFirst = outgoing
         // Left set by a tap into it last time, the window would hand the field its focus again.
         customField.focus = false
         root.open()
@@ -36,12 +38,15 @@ Popup {
 
     // Placed again once open: before that the popup has no height to keep inside.
     function placeInside() {
-        const area = root.parent
-        if (!area) {
+        if (!root.anchor || !root.area || !root.parent) {
             return
         }
-        root.x = Math.max(kEdgeGap, Math.min(root.askedX, area.width - root.width - kEdgeGap))
-        root.y = Math.max(kEdgeGap, Math.min(root.askedY, area.height - root.height - kEdgeGap))
+        const at = Placement.besideBubble(Placement.sceneRect(root.anchor),
+            Qt.size(root.width, root.height), Placement.sceneRect(root.area), Theme.popupGap,
+            root.leftFirst)
+        const local = root.parent.mapFromItem(null, at.x, at.y)
+        root.x = local.x
+        root.y = local.y
     }
     onHeightChanged: if (root.opened) { root.placeInside() }
     onWidthChanged: if (root.opened) { root.placeInside() }
