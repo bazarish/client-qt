@@ -6,10 +6,12 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
@@ -68,6 +70,7 @@ public final class Shade {
 
     static native void callDeclined();
     static native void networkChanged();
+    static native void screenChanged(boolean on);
 
     private Shade() {}
 
@@ -110,6 +113,15 @@ public final class Shade {
                     networkChanged();
                 }
             });
+        IntentFilter screen = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        screen.addAction(Intent.ACTION_SCREEN_OFF);
+        app.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                screenChanged(Intent.ACTION_SCREEN_ON.equals(intent.getAction()));
+            }
+        }, screen);
+        screenChanged(app.getSystemService(PowerManager.class).isInteractive());
     }
 
     private static void run(String action) {

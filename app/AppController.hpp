@@ -11,6 +11,7 @@
 #include <bazarish/Reactions.hpp>
 
 #include <QColor>
+#include <QElapsedTimer>
 #include <QList>
 #include <QObject>
 #include <QPointer>
@@ -262,6 +263,9 @@ signals:
     void gatewayLinkOpened(const QString& link, const QString& host);
     void linkRefused(const QString& reason);
 
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private:
     SessionController* sessionFor(const QString& id) const;
     void startSession(const QString& id);
@@ -271,6 +275,7 @@ private:
     AppCommands commands_;
     AppEvents events_;
     Relay& relay_;
+    QElapsedTimer inputReported_;
     bool attached_ = false;
     bool coreClosing_ = false;
     bool answerWhenRinging_ = false;

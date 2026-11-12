@@ -62,6 +62,11 @@ void networkChanged(JNIEnv*, jclass)
     inCoreThread([](CoreHost& core) { core.networkChanged(); });
 }
 
+void screenChanged(JNIEnv*, jclass, const jboolean on)
+{
+    inCoreThread([on](CoreHost& core) { core.screenChanged(on == JNI_TRUE); });
+}
+
 }  // namespace
 
 AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& translations,
@@ -72,6 +77,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
     const JNINativeMethod natives[] = {
         {"callDeclined", "()V", reinterpret_cast<void*>(callDeclined)},
         {"networkChanged", "()V", reinterpret_cast<void*>(networkChanged)},
+        {"screenChanged", "(Z)V", reinterpret_cast<void*>(screenChanged)},
     };
     QJniEnvironment env;
     if (!env.registerNativeMethods(kShade, natives, static_cast<int>(std::size(natives)))) {

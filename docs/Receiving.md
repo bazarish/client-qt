@@ -43,7 +43,8 @@ puts it back.
 
 | Parameter | Value |
 |---|---|
-| Held-open request | 30 s asked; answered the moment mail lands |
+| Held-open request | No time limit; answered the moment mail lands |
+| A failed wait asked again | after 30 s, or at once when the network changes |
 | Items per pass | 5 |
 | Local upkeep tick | 2 s |
 

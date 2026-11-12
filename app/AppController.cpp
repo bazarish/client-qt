@@ -31,6 +31,7 @@
 #pragma pop_macro("emit")
 
 #include <QClipboard>
+#include <QEvent>
 #include <QMimeData>
 #include <QColor>
 #include <QGuiApplication>
@@ -45,6 +46,21 @@ namespace bazarish::app {
 namespace {
 
 const QString kAppScope = QStringLiteral("app");
+// The core judges input over minutes; one report in this span is all it needs.
+constexpr qint64 kInputReportEveryMs = 10 * 1000;
+
+bool isUserInput(const QEvent::Type type)
+{
+    switch (type) {
+        case QEvent::KeyPress:
+        case QEvent::MouseButtonPress:
+        case QEvent::TouchBegin:
+        case QEvent::Wheel:
+            return true;
+        default:
+            return false;
+    }
+}
 
 }  // namespace
 
@@ -74,6 +90,7 @@ AppController::AppController(Translations& translations, Relay& relay, QObject* 
         [this](const Qt::ApplicationState state) {
             emit commands_.windowActive(state == Qt::ApplicationActive);
         });
+    qApp->installEventFilter(this);
 
     connect(&events_, &AppEvents::started, this, [this]() {
         attached_ = true;
@@ -231,6 +248,16 @@ void AppController::endSession(const QString& id)
     refreshCallSession();
     ctrl->deleteLater();
     emit accountsChanged();
+}
+
+bool AppController::eventFilter(QObject* const watched, QEvent* const event)
+{
+    if (isUserInput(event->type())
+        && (!inputReported_.isValid() || inputReported_.elapsed() >= kInputReportEveryMs)) {
+        inputReported_.start();
+        emit commands_.userActed();
+    }
+    return QObject::eventFilter(watched, event);
 }
 
 SessionController* AppController::sessionFor(const QString& id) const

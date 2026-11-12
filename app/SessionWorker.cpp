@@ -208,7 +208,8 @@ constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 
 constexpr int kCallWatchIntervalMs = 100;
 
-constexpr int kEventWaitSeconds = 30;
+// A failed wait asks again after this, or at once when the network changes.
+constexpr std::chrono::seconds kMailWaitRetry{30};
 
 constexpr int kMaintenanceIntervalMs = 2000;
 
@@ -428,8 +429,9 @@ void SessionWorker::startEventWaiter()
                     waiter = bazarish::client::Session::makeEventClient(context);
                 }
                 const std::vector<bazarish::client::PendingEntry> waiting
-                    = bazarish::client::Session::waitForMail(
-                        *waiter, answered ? kEventWaitSeconds : 0);
+                    = bazarish::client::Session::waitForMail(*waiter,
+                        answered ? bazarish::client::Client::MailWait::eHeld
+                                 : bazarish::client::Client::MailWait::eAtOnce);
                 if (!running->load()) {
                     return;
                 }
@@ -457,7 +459,7 @@ void SessionWorker::startEventWaiter()
                     Qt::QueuedConnection);
                 bazarish::log::info("mail wait failed, asking again: {}", error.what());
                 std::unique_lock<std::mutex> lock(drainMutex_);
-                drainDone_.wait_until(lock, askedAt + std::chrono::seconds(kEventWaitSeconds),
+                drainDone_.wait_until(lock, askedAt + kMailWaitRetry,
                     [this, &running, carryAtAsk]() {
                         return !running->load() || retryNow_
                             || bazarish::i2p::carryReturns() != carryAtAsk;

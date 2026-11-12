@@ -55,6 +55,7 @@ public:
     void declineRinging();
     void prepareForExit();
     void networkChanged();
+    void screenChanged(bool on);
     static QString soundFolder();
 
 signals:

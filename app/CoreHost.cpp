@@ -152,6 +152,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::setPortable, this, &CoreHost::setPortable);
     connect(&commands_, &AppCommands::closeAllSessions, this, &CoreHost::closeAllSessions);
     connect(&commands_, &AppCommands::windowActive, this, &CoreHost::setWindowActive);
+    connect(&commands_, &AppCommands::userActed, this, []() { bazarish::i2p::userActed(); });
     connect(&commands_, &AppCommands::callScreenShown, this, &CoreHost::setCallScreenShown);
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
     connect(&commands_, &AppCommands::setLanguage, this, &CoreHost::setLanguage);
@@ -197,6 +198,7 @@ void CoreHost::setWindowActive(const bool active)
         return;
     }
     windowActive_ = active;
+    bazarish::i2p::windowActive(active);
     emit windowActiveChanged();
     tellPresenceFocus();
 }
@@ -228,6 +230,11 @@ void CoreHost::networkChanged()
 {
     bazarish::log::info("a network became the default: reconnecting at once");
     bazarish::i2p::networkChanged();
+}
+
+void CoreHost::screenChanged(const bool on)
+{
+    bazarish::i2p::screenOn(on);
 }
 
 void CoreHost::start()
