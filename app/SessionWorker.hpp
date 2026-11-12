@@ -66,6 +66,7 @@ public slots:
     void sync();
     void setSyncEnabled(bool on);
     void rebuildI2pLinks();
+    void watchUnsent(const QVariantList& rows);
     void sendText(const QString& peer, const QString& text, qint64 localId,
         const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void sendFile(const QString& peer, const QString& localPath, qint64 localId,
@@ -201,7 +202,6 @@ signals:
     void contactAliasUnknown(const QString& opId, const QString& status);
     void contactAddResolved(const QString& opId, const QString& fingerprint);
     void contactAlreadyKnown(const QString& opId, const QString& fingerprint);
-    void contactRequestUnconfirmed(const QString& opId);
     void contactAddResumed(
         const QString& opId, const QString& uri, const QString& intro, const QString& requestId);
     void contactAccepted(const QString& peer, bool ok, const QString& reason);
@@ -266,7 +266,6 @@ private:
     std::shared_ptr<AliasErrandQueue> aliasErrands_;
     bool aliasErrandRunning_ = false;
     bool aliasErrandByHand_ = false;
-    bool routingFanoutTried_ = false;
     std::optional<std::pair<QVector<ContactState>, QStringList>> toldContacts_;
     QTimer* maintenanceTimer_ = nullptr;
     QTimer* callTimer_ = nullptr;
@@ -284,9 +283,6 @@ private:
     std::condition_variable errandWake_;
     struct Errand {
         std::string pendingId;
-        std::string deliveryId;
-        bazarish::Bytes sealed;
-        std::string kind;
     };
     std::deque<Errand> errandQueue_;
     bool errandsRunning_ = false;

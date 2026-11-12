@@ -24,9 +24,9 @@ restore from a backup needs.
 
 For a send the status is this client's own delivery phase, because this client
 carries its outgoing mail itself: the address it leaves from, dialling the
-recipient's server, sending, and the attempt it is on
-([Sending.md](Sending.md)). The row lives until the message is handed over or
-fails, as there is no earlier handover to report.
+recipient's server, sending, or waiting for the recipient's server
+([Sending.md](Sending.md)). The row lives until the recipient's server takes the
+message or refuses it, as there is no earlier handover to report.
 
 Adding a contact also reports the contact-card resolve, which runs off the
 interface thread, before the request is sent. The same stages reach the

@@ -8,6 +8,7 @@
 #include "SessionShared.hpp"
 
 #include <QMimeDatabase>
+#include <QVariantMap>
 
 #include <array>
 
@@ -16,11 +17,6 @@ namespace bazarish::app {
 namespace {
 
 constexpr std::size_t kPictureReadBytes = 64 * 1024;
-
-bool isRetryPhase(const QString& phase)
-{
-    return phase.startsWith(QLatin1StringView(bazarish::client::kPhaseRetryPrefix));
-}
 
 QString humanDeliveryPhase(const QString& phase)
 {
@@ -33,12 +29,8 @@ QString humanDeliveryPhase(const QString& phase)
     if (phase == QLatin1StringView(bazarish::client::kPhaseSending)) {
         return CoreAccount::tr("Sending over I2P…");
     }
-    if (isRetryPhase(phase)) {
-        const QLatin1StringView prefix(bazarish::client::kPhaseRetryPrefix);
-        const QStringList parts = phase.sliced(prefix.size()).trimmed().split(QChar('/'));
-        if (parts.size() == 2) {
-            return CoreAccount::tr("Trying again (%1 of %2)…").arg(parts.at(0), parts.at(1));
-        }
+    if (phase == QLatin1StringView(bazarish::client::kPhaseWaiting)) {
+        return CoreAccount::tr("Waiting for the recipient's server…");
     }
     return phase;
 }
@@ -346,6 +338,24 @@ void CoreAccount::deleteMessage(
     }
 }
 
+void CoreAccount::watchUnsentRows()
+{
+    QVariantList rows;
+    for (const client::UnsentRow& row : unsentAtOpen_) {
+        const QString peer = QString::fromStdString(row.peer);
+        if (isSavedChat(peer)) {
+            savedSends_.insert(row.id);
+        }
+        rows.append(QVariantMap{{QStringLiteral("id"), static_cast<qint64>(row.id)},
+            {QStringLiteral("peer"), peer},
+            {QStringLiteral("e2eId"), QString::fromStdString(row.e2eId)}});
+    }
+    unsentAtOpen_.clear();
+    if (!rows.isEmpty()) {
+        emit commands_.watchUnsent(rows);
+    }
+}
+
 void CoreAccount::restartDelivery(const QString& peer, const qint64 localId)
 {
     if (!store_.updateStatus(localId, DeliveryStatus::Preparing)) {
@@ -399,9 +409,8 @@ void CoreAccount::onSendPhase(const qint64 localId, const QString& phase)
 {
     const QString human = humanDeliveryPhase(phase);
     log_.update(sendOpId(localId), human);
-    if (isRetryPhase(phase)) {
-        emit events_.messageError(localId, human);
-    }
+    emit events_.messageError(localId,
+        phase == QLatin1StringView(bazarish::client::kPhaseWaiting) ? human : QString());
 }
 
 }  // namespace bazarish::app

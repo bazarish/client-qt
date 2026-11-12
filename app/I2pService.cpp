@@ -527,10 +527,16 @@ void I2pService::refreshLeaseSet(const QString& localHost, const QString& remote
     bazarish::i2p::Router& running = router->get();
     inBackground([this, &running, localHost, remoteHost]() {
         try {
-            const bool current
+            const bazarish::i2p::LeaseSetRefresh refresh
                 = running.refreshLeaseSet(localHost.toStdString(), remoteHost.toStdString());
-            bazarish::log::info("i2p: lease set of {} looked up again: {}",
-                remoteHost.toStdString(), current ? "current" : "none found");
+            const char* found = "none found";
+            if (refresh.after.has_value()) {
+                found = bazarish::i2p::publishedLater(*refresh.after, refresh.before)
+                    ? "a newer one"
+                    : "the one held";
+            }
+            bazarish::log::info(
+                "i2p: lease set of {} looked up again: {}", remoteHost.toStdString(), found);
         } catch (const std::exception& error) {
             bazarish::log::warn(
                 "i2p: lease set of {} not looked up: {}", remoteHost.toStdString(), error.what());

@@ -166,12 +166,7 @@ CoreHost::CoreHost(QObject* const parent)
     i2p_.attach(relay_);
 }
 
-CoreHost::~CoreHost()
-{
-#ifdef Q_OS_ANDROID
-    bazarish::i2p::onCarryReturned({});
-#endif
-}
+CoreHost::~CoreHost() = default;
 
 void CoreHost::attachWindow(ChannelEnd& channel)
 {
@@ -239,7 +234,7 @@ void CoreHost::start()
 {
 #ifdef Q_OS_ANDROID
     // A gateway answering again wakes a mail wait as a new network does.
-    bazarish::i2p::onCarryReturned([this]() {
+    carryWatch_ = std::make_unique<bazarish::i2p::CarryWatch>([this]() {
         QMetaObject::invokeMethod(
             this,
             [this]() {

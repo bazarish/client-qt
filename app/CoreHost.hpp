@@ -164,6 +164,7 @@ private:
     std::shared_ptr<std::atomic<bool>> pairCancel_;
     std::shared_ptr<bazarish::i2p::Endpoint> pairEndpoint_;
     OperationLog log_;
+    std::unique_ptr<bazarish::i2p::CarryWatch> carryWatch_;
 };
 
 class CoreListener : public QObject {

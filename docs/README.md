@@ -9,8 +9,8 @@ The protocol - wire formats, delivery states, admission rules, and the
 obligations of any implementation - is specified in the `docs-main` repository
 and is common to all clients. Where the two overlap, `docs-main` defines the
 requirement and this directory records how this client meets it. For example, the
-delivery states are specified by the protocol; the number of delivery attempts
-this client performs before reporting failure is not.
+delivery states and when a delivery is attempted again are specified by the
+protocol; how this client shows a message that waits is not.
 
 ## Contents
 
@@ -18,7 +18,7 @@ this client performs before reporting failure is not.
 |---|---|
 | [Installation.md](Installation.md) | What the installation keeps outside any account: the root on each platform, portable mode, the settings document and its size limit, and the command line |
 | [I2pRouter.md](I2pRouter.md) | How I2P is carried: the three transports and how one is chosen, tunnel length, engine logging, and the SOCKS5 proxy applied to the embedded engine's clearnet traffic |
-| [Sending.md](Sending.md) | Outbound delivery: attempt schedule, reported states, failure handling, what admits a message |
+| [Sending.md](Sending.md) | Outbound delivery: the outbox, what opens the way to a recipient again, reported states, what admits a message |
 | [Receiving.md](Receiving.md) | Incoming mail: the one request that hears about it, what a pass takes, what the upkeep tick carries, the service rows a conversation holds, and what orders a conversation |
 | [ConnectionLog.md](ConnectionLog.md) | The connection log window: what it records, what it deliberately leaves out, and how much it keeps |
 | [AccountStorage.md](AccountStorage.md) | The account database: SQLCipher version and profile, the key sidecar, what a failed open reports, what a conversation weighs on this device and what trimming it removes |

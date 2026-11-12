@@ -180,11 +180,14 @@ int main(int argc, char** argv)
         onItsWay.ts = 200;
         onItsWay.orderKey = onItsWay.ts;
         onItsWay.status = 1;
-        CHECK(store.append(onItsWay) > 0);
-        CHECK(store.failUnsentOnLoad(0, 1, 4) == 4);
-        for (const StoredMessage& m : store.latestMessages("carol", kWholeChat)) {
-            CHECK(m.status == (m.outgoing ? 4 : 0));
-        }
+        onItsWay.e2eId = "on-its-way";
+        const qint64 onItsWayId = store.append(onItsWay);
+        CHECK(onItsWayId > 0);
+        const std::optional<std::vector<bazarish::client::UnsentRow>> unsent
+            = store.core().unsentOutgoing(0, 1);
+        CHECK(unsent.has_value() && unsent->size() == 4);
+        CHECK(unsent->back().id == onItsWayId && unsent->back().peer == "carol"
+            && unsent->back().e2eId == "on-its-way");
     }
 
     {

@@ -246,15 +246,10 @@ QString aliasHoldingsNote(const QVariantList& rows, const bool depositCovers)
 QString refusalText(const bazarish::client::OutboundCourier::Outcome& outcome)
 {
     if (outcome.errorCode.empty()) {
-        return outcome.errorMessage.empty()
-            ? SessionWorker::tr("the recipient's server could not be reached")
-            : QString::fromStdString(outcome.errorMessage);
+        return QString::fromStdString(outcome.errorMessage);
     }
     const std::optional<bazarish::ErrorCode> code
         = bazarish::errorCodeFromString(outcome.errorCode);
-    if (code == bazarish::ErrorCode::eRecipientServerUnreachable) {
-        return SessionWorker::tr("the recipient's server could not be reached");
-    }
     if (code == bazarish::ErrorCode::eStorageFull) {
         return SessionWorker::tr("The recipient's mailbox is full");
     }
@@ -353,7 +348,6 @@ void SessionWorker::startErrands()
         const std::unique_ptr<bazarish::client::Client> errands
             = bazarish::client::Session::makeEventClient(context);
         while (true) {
-            Errand errand;
             std::vector<std::string> acks;
             {
                 std::unique_lock<std::mutex> lock(errandMutex_);
@@ -362,25 +356,10 @@ void SessionWorker::startErrands()
                 if (!errandsRunning_ && errandQueue_.empty()) {
                     return;
                 }
-                errand = std::move(errandQueue_.front());
-                errandQueue_.pop_front();
-                if (errand.deliveryId.empty()) {
-                    acks.push_back(errand.pendingId);
-                    while (!errandQueue_.empty() && errandQueue_.front().deliveryId.empty()
-                        && acks.size() < bazarish::kMaxAckIdsPerRequest) {
-                        acks.push_back(std::move(errandQueue_.front().pendingId));
-                        errandQueue_.pop_front();
-                    }
+                while (!errandQueue_.empty() && acks.size() < bazarish::kMaxAckIdsPerRequest) {
+                    acks.push_back(std::move(errandQueue_.front().pendingId));
+                    errandQueue_.pop_front();
                 }
-            }
-            if (!errand.deliveryId.empty()) {
-                try {
-                    errands->submitSelf(errand.deliveryId, errand.sealed, errand.kind);
-                } catch (const std::exception& error) {
-                    bazarish::log::warn(
-                        "could not echo what was sent to our own devices: {}", error.what());
-                }
-                continue;
             }
             try {
                 errands->ack(acks);
@@ -662,14 +641,6 @@ void SessionWorker::openAccount(
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<CallSink>(); });
     session_->onServerAnswered([this]() { emit syncReachable(true, {}); });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
-    session_->setSelfSendSink(
-        [this](std::string deliveryId, bazarish::Bytes sealed, std::string kind) {
-            Errand errand;
-            errand.deliveryId = std::move(deliveryId);
-            errand.sealed = std::move(sealed);
-            errand.kind = std::move(kind);
-            queueErrand(std::move(errand));
-        });
     emit loginSignerReady(session_->loginSigner());
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
         emit addressMismatch(QString::fromStdString(served), QString::fromStdString(ours));
@@ -1011,12 +982,7 @@ void SessionWorker::maintain()
     session_->expireFileRequests(nowMillis());
     emitContacts();
     if (!session_->isConnected()) {
-        routingFanoutTried_ = false;
         return;
-    }
-    if (!routingFanoutTried_) {
-        routingFanoutTried_ = true;
-        session_->runRoutingFanout();
     }
     drainResolvedAdds();
     drainAliasErrands();
@@ -1169,6 +1135,22 @@ void SessionWorker::setCallMuted(const bool muted)
     }
     session_->setCallMuted(muted);
     emitCallState();
+}
+
+void SessionWorker::watchUnsent(const QVariantList& rows)
+{
+    if (!session_) {
+        return;
+    }
+    for (const QVariant& held : rows) {
+        const QVariantMap row = held.toMap();
+        const qint64 localId = row.value(QStringLiteral("id")).toLongLong();
+        if (!session_->watchDelivery(row.value(QStringLiteral("peer")).toString().toStdString(),
+                row.value(QStringLiteral("e2eId")).toString().toStdString(),
+                watchFor(*this, localId))) {
+            emit sendResult(localId, false, tr("This message did not leave this device"));
+        }
+    }
 }
 
 void SessionWorker::sendText(const QString& peer, const QString& text, qint64 localId,
@@ -1567,13 +1549,6 @@ void SessionWorker::finishContactRequest(const QString& opId, const QString& fin
     }
     const std::optional<bazarish::ErrorCode> code
         = bazarish::errorCodeFromString(outcome.errorCode);
-    if (code == bazarish::ErrorCode::eRecipientServerUnreachable) {
-        bazarish::log::warn("contact request to {} not confirmed: {}",
-            bazarish::log::redact(fingerprint.toStdString()), outcome.errorMessage);
-        emit contactRequestUnconfirmed(opId);
-        emit actionFailed(tr("The contact's server did not confirm the request"));
-        return;
-    }
     if (session_ && recordedHere) {
         session_->settleContactRequest(fingerprint.toStdString(), outcome);
         emitContacts();

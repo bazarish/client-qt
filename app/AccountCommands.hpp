@@ -7,6 +7,7 @@
 #include <QSet>
 #include <QString>
 #include <QStringList>
+#include <QVariantList>
 
 namespace bazarish::app {
 
@@ -92,6 +93,7 @@ signals:
     void requestSendVoice(const QString& peer, const QByteArray& opus, qint64 durationMs,
         qint64 localId, const QString& e2eId, const QString& replyTo, bool forwarded = false);
     void requestSendReceipt(const QString& peer, const QString& refId);
+    void watchUnsent(const QVariantList& rows);
     void requestAckPending(const QString& pendingId);
     void requestSendReaction(const QString& peer, const QString& refId, const QString& emoji);
     void requestSendCallback(const QString& opId, const QString& peer, const QString& data,

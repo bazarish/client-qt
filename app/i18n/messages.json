@@ -3353,11 +3353,11 @@
       "zh": "联系请求未完成",
       "ar": "لم يكتمل طلب التواصل"
     },
-    "The contact's server did not confirm the request": {
-      "ru": "Сервер контакта не подтвердил запрос",
-      "es": "El servidor del contacto no ha confirmado la solicitud",
-      "zh": "联系人的服务器未确认该请求",
-      "ar": "لم يؤكد خادم جهة الاتصال الطلب"
+    "This message did not leave this device": {
+      "ru": "Сообщение не ушло с этого устройства",
+      "es": "Este mensaje no salió de este dispositivo",
+      "zh": "此消息未离开本设备",
+      "ar": "لم تغادر هذه الرسالة هذا الجهاز"
     },
     "The cropped avatar could not be read": {
       "ru": "Обрезанный аватар прочитать не удалось",
@@ -3707,12 +3707,6 @@
       "zh": "重试",
       "ar": "أعد المحاولة"
     },
-    "Trying again (%1 of %2)…": {
-      "ru": "Повтор (%1 из %2)…",
-      "es": "Reintentando (%1 de %2)…",
-      "zh": "重试（%1 / %2）…",
-      "ar": "إعادة المحاولة (⁦%1⁩ من ⁦%2⁩)…"
-    },
     "Tunnel length": {
       "ru": "Длина туннелей",
       "es": "Longitud de los túneles",
@@ -3850,6 +3844,12 @@
       "es": "Esperando a su servidor…",
       "zh": "正在等待对方的服务器…",
       "ar": "في انتظار خادم جهة الاتصال…"
+    },
+    "Waiting for the recipient's server…": {
+      "ru": "Ожидание сервера получателя…",
+      "es": "Esperando al servidor del destinatario…",
+      "zh": "正在等待接收方的服务器…",
+      "ar": "في انتظار خادم المستلم…"
     },
     "Waiting for this account…": {
       "ru": "Ожидание этого аккаунта…",
@@ -4300,12 +4300,6 @@
       "es": "ese archivo no es una imagen que se pueda enviar",
       "zh": "该文件不是可发送的图片",
       "ar": "هذا الملف ليس صورة يمكن إرسالها"
-    },
-    "the recipient's server could not be reached": {
-      "ru": "сервер получателя недоступен",
-      "es": "no se ha podido alcanzar el servidor del destinatario",
-      "zh": "无法联系到收件人的服务器",
-      "ar": "تعذّر بلوغ خادم المستلم"
     },
     "there is no photograph to send": {
       "ru": "отправлять нечего: снимка нет",

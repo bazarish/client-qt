@@ -22,6 +22,7 @@
 #include <atomic>
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace bazarish::client {
 class AccountDb;
@@ -161,7 +162,6 @@ private:
     void writeContactProgress(const QString& opId, const QString& text);
     void onContactAddStage(const QString& opId, const QString& status);
     void onContactAddDone(const QString& opId, bool ok, const QString& status);
-    void onContactRequestUnconfirmed(const QString& opId);
     void settleContactAdd(const QString& opId, bool ok, const QString& note);
     void onContactAlreadyKnown(const QString& opId, const QString& fingerprint);
     void onContactAliasUnknown(const QString& opId, const QString& status);
@@ -246,6 +246,9 @@ private:
     QTimer expiryTimer_;
     OperationLog log_;
     QSet<qint64> savedSends_;
+    // Outgoing rows still on their way when the profile last closed; the outbox resumes them.
+    std::vector<client::UnsentRow> unsentAtOpen_;
+    void watchUnsentRows();
     struct ContactProgressRow {
         qint64 id = 0;
         QString peer;

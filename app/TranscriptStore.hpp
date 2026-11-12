@@ -153,8 +153,6 @@ public:
 
     [[nodiscard]] qint64 append(const StoredMessage& message);
     [[nodiscard]] bool updateStatus(qint64 id, int status);
-    [[nodiscard]] std::optional<int> failUnsentOnLoad(
-        int preparingStatus, int deliveringStatus, int failedStatus);
     [[nodiscard]] std::optional<int> settleUnfinishedNotes(const QString& type,
         int preparingStatus, int settledStatus, const QString& text);
     [[nodiscard]] bool markOutgoingReadUpTo(

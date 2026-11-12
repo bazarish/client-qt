@@ -305,12 +305,6 @@ void CoreAccount::onContactAddDone(const QString& opId, const bool ok, const QSt
         ok ? status : encodeSystemNote(QT_TR_NOOP("Could not add: %1"), {systemNoteText(status)}));
 }
 
-void CoreAccount::onContactRequestUnconfirmed(const QString& opId)
-{
-    settleContactAdd(opId, false,
-        encodeSystemNote(QT_TR_NOOP("The contact's server did not confirm the request")));
-}
-
 void CoreAccount::settleContactAdd(const QString& opId, const bool ok, const QString& note)
 {
     aliasChats_.remove(opId);

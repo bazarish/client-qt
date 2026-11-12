@@ -361,12 +361,6 @@ bool TranscriptStore::updateStatus(const qint64 id, const int status)
     return store().updateStatus(id, status);
 }
 
-std::optional<int> TranscriptStore::failUnsentOnLoad(
-    const int preparingStatus, const int deliveringStatus, const int failedStatus)
-{
-    return store().failUnsentOnLoad(preparingStatus, deliveringStatus, failedStatus);
-}
-
 std::optional<int> TranscriptStore::settleUnfinishedNotes(const QString& type,
     const int preparingStatus, const int settledStatus, const QString& text)
 {

@@ -13,7 +13,7 @@ packaged build.
 | Line | Where it comes from | What its status means |
 |---|---|---|
 | `POST /v1/messaging/self`, `GET /v1/messaging/pending`, ... | every call to this account's server | the HTTP status the server answered with, or the transport failure |
-| `text to Bob (a1b2c3), pass 3f2a91b4c0d5` | mail handed to the courier | `sending`, and a second line when the run ends: `stored` once the recipient's server signed for the envelope, or `failed: <code>`. Two lines because the attempt schedule outlives the send by up to a minute |
+| `text to Bob (a1b2c3), pass 3f2a91b4c0d5` | mail put in the outbox | `sending`, and a second line when the letter is settled: `stored` once the recipient's server signed for the envelope, or `failed: <code>`. Two lines because a letter can wait in the outbox long after it was written |
 | `POST /v1/messaging/self (device.account-name)` | a change mirrored to this account's other devices | the server's status, like any other call - the kind rides on the call itself, because from the outside every device sync is the same POST |
 | `receipt from Bob (a1b2c3)` | an item this account fetched | (none) |
 | `unreadable item` | a pending entry that could not be opened | `dropped` - it is acked so the mailbox unblocks |

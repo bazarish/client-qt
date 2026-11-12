@@ -10,7 +10,12 @@ behaviour it presents to the user.
 
 ## Procedure
 
-For each outgoing message the client:
+Every outgoing message - one the user writes, and every control message the
+client sends on its own (an acceptance, a presence schedule, a read receipt, an
+avatar, a new address, a copy for this account's other devices) - is a letter in
+the account's outbox. The outbox is kept in the profile, beside the
+conversations, and a letter leaves it only when the recipient's server has
+answered. For each letter the client:
 
 1. prepares the outbound destination held for the recipient's destination,
    building one and waiting for its tunnels if none is held;
@@ -18,24 +23,44 @@ For each outgoing message the client:
    exchange;
 3. accepts the result only if the recipient's server returned a confirmation
    signed over the delivery identifier that was sent;
-4. repeats step 2 on the schedule below while the outcome is "no answer".
+4. if no answer came, closes the way to that recipient and opens it again on one
+   of the causes below; letters to that recipient wait meanwhile, in the order
+   they were written.
 
-Step 1 is not counted as a delivery attempt and is bounded separately: it is a
-local condition, not a property of the recipient.
+A letter to this account's own mailbox goes the same way, as a request to this
+account's server.
+
+## What opens the way again
+
+| Cause | Effect |
+|---|---|
+| The recipient's lease set, looked up right after the unanswered attempt or when anything arrives from that contact, was published later than the one held at the failure | the next attempt starts at once |
+| 11 minutes since the unanswered attempt (a lease's 10 minutes and 60 seconds of clock difference) | the lease set that attempt used has expired everywhere; the next attempt starts |
+| The link came back, or the device moved to another network | every recipient is tried again |
+| The contact announced a new address | its letters go to the new address at once |
+| The account was opened or switched on | every letter is tried |
+| This account's server answered a request (own mailbox only) | its letters go |
+
+The lookup drops what the outbound destination holds of the recipient's lease
+set and asks the netDb again. It runs on the router that carries the
+destination: the embedded one, or the gateway's over `lease-set-refresh`. An
+external router over SAM offers no such lookup, so there the 11 minutes and the
+link causes open the way.
 
 ## Parameters
 
 | Parameter | Value |
 |---|---|
-| Delivery attempts | 4 |
-| Interval between attempts | 2 s, 4 s, 8 s |
 | Dial timeout per attempt | 15 s |
-| Upper bound on one delivery run | 104 s (the four dials, the three waits, and one reply grace) |
-| Grace a reply may add past that bound | 30 s |
+| Reply grace after the envelope is written | 30 s, plus one second per 8 KiB carried |
+| Next attempt after no answer, at the latest | 660 s |
 | Upper bound on preparing the outbound destination | 180 s |
 | Outbound destination, per correspondent: longest life | 3600 s |
 | Outbound destination, per correspondent: closed after no delivery for | 600 s |
 | Warm destination pool | 2 destinations, 3 tunnels each |
+| Call signal worth sending for | 60 s after it was written |
+| File request worth sending for | until the request's answer time |
+| File offer worth sending for | the 30 minutes the file is served |
 
 An outbound destination is replaced at least hourly, so no long-lived set of
 tunnels carries one correspondence, and one that has carried nothing for ten
@@ -44,41 +69,32 @@ contact request is the exception: its address is dropped as soon as the request
 is settled, so every request leaves from an address of its own - the recipient's
 server admits one contact request per sending address a day and refuses the next.
 
-The bound on a run is the sum of what the run may spend: an attempt is made only
-when the budget can pay for its wait and for the whole of its dial. It is what
-terminates an attempt in which the peer accepts the
-stream and returns no reply - and because that one wait can consume most of the
-budget, a run against such a peer legitimately makes fewer than four attempts.
-
-What the user is told then says which of the two happened and how far the run
-got: an attempt that the budget cannot pay for is not announced, and the failure
-carries the number of attempts actually made ("2 of 4 tries"). A destination that
-took the envelope and said nothing is reported as that, not as one that could not
-be reached - the message may well be stored, with only the confirmation missing.
-
 ## Classification of outcomes
 
 | Outcome | Treatment |
 |---|---|
-| No reply (dial failed, stream failed, reply unreadable) | Retried until the attempts or the run bound are exhausted; the failure names how many attempts were made |
-| The envelope was written and no reply came | Retried the same way, and reported as a far side that did not answer rather than one that could not be reached |
+| No reply (no address to send from, no lease set, the stream failed, the envelope was written and nothing came back) | The letter waits; the way to the recipient opens again on a cause above |
 | Confirmation absent or not verifiable against the delivery identifier sent | Treated as no reply |
-| Final refusal (unknown pass, message too large, contact request too large) | Ends the run on the first attempt; reported with its reason |
-| Transient refusal (storage full, contact rate limit) | Ends the run on the first attempt; reported with its reason, and a resend later may be accepted |
-| Signed confirmation | Delivery complete; the message is recorded as stored by the recipient's server |
+| Final refusal (unknown pass, message too large, contact request too large) | The letter is settled with its reason |
+| Transient refusal (storage full, contact rate limit) | The letter is settled with its reason; a resend later may be accepted |
+| Signed confirmation | The letter is settled; the message is recorded as stored by the recipient's server |
+| A call signal or file letter outlived its time | The letter is settled as out of date |
+| The contact was removed | Its letters are settled as withdrawn |
 
 ## Reported states
 
 | Protocol state | Presentation in this client |
 |---|---|
 | preparing | Hollow indicator |
-| in flight | Grey indicator; during retries the message reports the attempt in progress |
+| in flight | Grey indicator; while the way to the recipient is closed the message says it waits for the recipient's server |
 | stored | Amber indicator |
 | read | Green indicator |
 | failed | Red indicator, with the reason under the message and a Resend |
 | received | No indicator: the state an incoming message carries |
 
-A delivery run is also listed in the background-activity panel for its duration.
+Red means the recipient's server refused the message, or the message never
+reached the outbox. A message that only waits stays grey. A delivery is also
+listed in the background-activity panel while it is under way.
 
 Two messages carry no protocol state of their own and are shown at what they
 actually are:
@@ -94,15 +110,12 @@ actually are:
   receipt is delivered to the account, not to a device, so every device that
   holds the message marks it read when the receipt arrives.
 
-## Failure and resending
+## Restart and resending
 
-When the attempts are exhausted the message is marked failed, with the reason,
-and a resend control is offered. The client performs no automatic resend.
-
-No outbound queue is written to disk. This is deliberate: such a queue would
-constitute a record, held by the client, of the correspondents its user writes to.
-Consequently, a message whose delivery was in progress when the application closed
-is reported as failed at the next start, and resending it is a user decision.
+A message still grey when the application closes is grey when it opens again:
+its letter is in the outbox and goes on its own. One whose letter never reached
+the outbox - the application stopped between writing the message and handing it
+over - is marked failed, and resending it is the user's decision.
 
 Resending is safe in all cases, including one in which the message was stored by
 the recipient's server and only the confirmation was lost: the delivery identifier
@@ -131,7 +144,6 @@ was before:
 |---|---|
 | `DELIVERY_REJECTED` | the recipient's mailbox does not hold this pass - it was revoked, so this account has been cut off and the way back is a new contact request |
 | `STORAGE_FULL` | the mailbox is full |
-| `RECIPIENT_SERVER_UNREACHABLE` | nothing was presented at all |
 | `MESSAGE_TOO_LARGE` | the message is the problem |
 
 `DELIVERY_REJECTED` is not retried: with one pass per correspondent there is
@@ -149,9 +161,9 @@ dropped, because a chat that grows a second one reads as two people asking.
 
 The Agree button on that plate is the contact's state, not the message's: it is
 there while the request is unanswered, says what it is doing while the acceptance
-is in the air, and goes only when the correspondent's server has confirmed it
-holds the batch the acceptance carries. An acceptance that never lands brings the
-button back.
+waits in the outbox, and goes only when the correspondent's server has confirmed
+it holds the batch the acceptance carries. An acceptance their server refuses
+brings the button back.
 
 ## What rides inside a message
 

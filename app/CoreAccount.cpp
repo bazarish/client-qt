@@ -165,6 +165,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::requestSendPicture, worker_, &SessionWorker::sendPicture);
     connect(&commands_, &AccountCommands::requestSendVoice, worker_, &SessionWorker::sendVoice);
     connect(&commands_, &AccountCommands::requestSendReceipt, worker_, &SessionWorker::sendReceipt);
+    connect(&commands_, &AccountCommands::watchUnsent, worker_, &SessionWorker::watchUnsent);
     connect(&commands_, &AccountCommands::requestSendReaction, worker_,
         &SessionWorker::sendReaction);
     connect(&commands_, &AccountCommands::requestSendCallback, worker_,
@@ -322,8 +323,6 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(worker_, &SessionWorker::contactAliasUnknown, this,
         &CoreAccount::onContactAliasUnknown);
     connect(worker_, &SessionWorker::contactAddResolved, this, &CoreAccount::onContactAddResolved);
-    connect(worker_, &SessionWorker::contactRequestUnconfirmed, this,
-        &CoreAccount::onContactRequestUnconfirmed);
     connect(worker_, &SessionWorker::contactAddResumed, this, &CoreAccount::onContactAddResumed);
     connect(worker_, &SessionWorker::contactAddRateLimited, this,
         &CoreAccount::onContactAddRateLimited);
@@ -371,6 +370,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
             online_ = connected && startOnline_;
             announcePresence();
             setPresenceFocused(presenceFocused_);
+            watchUnsentRows();
         });
     connect(worker_, &SessionWorker::renamed, this, [this](const QString& name) {
         displayName_ = name;
@@ -664,15 +664,17 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
     accountPath_ = file;
     passphrase_ = passphrase;
     startOnline_ = startOnline;
+    std::optional<std::vector<client::UnsentRow>> unsent;
     if (!store_.open(file, passphrase)
-        || !store_.failUnsentOnLoad(
-            DeliveryStatus::Preparing, DeliveryStatus::Delivering, DeliveryStatus::Failed)
+        || !(unsent = store_.core().unsentOutgoing(
+                 DeliveryStatus::Preparing, DeliveryStatus::Delivering))
         || !store_.settleUnfinishedNotes(QStringLiteral("system"), DeliveryStatus::Preparing,
             DeliveryStatus::Received,
             encodeSystemNote(QT_TR_NOOP("The contact request did not finish")))) {
         emit events_.openFailed(tr("This profile could not be opened"));
         return;
     }
+    unsentAtOpen_ = *unsent;
     unread_ = store_.unreadTotal();
     sweepExpired();
     expiryTimer_.start();
