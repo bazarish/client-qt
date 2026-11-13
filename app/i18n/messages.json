@@ -101,17 +101,41 @@
       "zh": "短名称（别名）可以在注册处购买：",
       "ar": "يمكن شراء اسم قصير (اسم مستعار) من السجل:"
     },
+    "Could not connect to the server": {
+      "ru": "Не удалось подключиться к серверу",
+      "es": "No se pudo conectar con el servidor",
+      "zh": "无法连接到服务器",
+      "ar": "تعذّر الاتصال بالخادم"
+    },
     "I2P": {
       "ru": "I2P",
       "es": "I2P",
       "zh": "I2P",
       "ar": "I2P"
     },
+    "No connection to the I2P network": {
+      "ru": "Нет связи с сетью I2P",
+      "es": "Sin conexión con la red I2P",
+      "zh": "未连接到 I2P 网络",
+      "ar": "لا اتصال بشبكة I2P"
+    },
+    "No network": {
+      "ru": "Нет сети",
+      "es": "Sin red",
+      "zh": "无网络",
+      "ar": "لا توجد شبكة"
+    },
     "The data was not moved: %1. Bazarish has to be started again to go online.": {
       "ru": "Данные не перенесены: %1. Чтобы выйти в сеть, запустите Bazarish заново.",
       "es": "Los datos no se han movido: %1. Para conectarte, inicia Bazarish de nuevo.",
       "zh": "数据未迁移：%1。要联网，请重新启动 Bazarish。",
       "ar": "لم تُنقل البيانات: ⁦%1⁩. وللاتصال بالشبكة شغّل Bazarish من جديد."
+    },
+    "The server refused the request": {
+      "ru": "Сервер отклонил запрос",
+      "es": "El servidor rechazó la solicitud",
+      "zh": "服务器拒绝了请求",
+      "ar": "رفض الخادم الطلب"
     },
     "WWW": {
       "ru": "WWW",

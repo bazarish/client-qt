@@ -16,6 +16,7 @@ import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
@@ -70,6 +71,7 @@ public final class Shade {
 
     static native void callDeclined();
     static native void networkChanged();
+    static native void networkLost();
     static native void screenChanged(boolean on);
 
     private Shade() {}
@@ -106,13 +108,11 @@ public final class Shade {
             run(action);
         }
         heldActions.clear();
-        app.getSystemService(ConnectivityManager.class).registerDefaultNetworkCallback(
-            new ConnectivityManager.NetworkCallback() {
-                @Override
-                public void onAvailable(Network network) {
-                    networkChanged();
-                }
-            });
+        ConnectivityManager connectivity = app.getSystemService(ConnectivityManager.class);
+        if (connectivity.getActiveNetwork() == null) {
+            networkLost();
+        }
+        connectivity.registerDefaultNetworkCallback(new DefaultNetwork());
         IntentFilter screen = new IntentFilter(Intent.ACTION_SCREEN_ON);
         screen.addAction(Intent.ACTION_SCREEN_OFF);
         app.registerReceiver(new BroadcastReceiver() {
@@ -122,6 +122,46 @@ public final class Shade {
             }
         }, screen);
         screenChanged(app.getSystemService(PowerManager.class).isInteractive());
+    }
+
+    // VALIDATED is left out: a network that blocks the platform's probe can still carry I2P.
+    private static final class DefaultNetwork extends ConnectivityManager.NetworkCallback {
+        private Network current = null;
+        private boolean usable = false;
+
+        @Override
+        public void onAvailable(Network network) {
+            current = network;
+            usable = true;
+            networkChanged();
+        }
+
+        @Override
+        public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
+            if (!network.equals(current)) {
+                return;
+            }
+            boolean now = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            if (now == usable) {
+                return;
+            }
+            usable = now;
+            if (now) {
+                networkChanged();
+            } else {
+                networkLost();
+            }
+        }
+
+        @Override
+        public void onLost(Network network) {
+            if (!network.equals(current)) {
+                return;
+            }
+            current = null;
+            usable = false;
+            networkLost();
+        }
     }
 
     private static void run(String action) {

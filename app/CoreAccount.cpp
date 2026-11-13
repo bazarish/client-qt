@@ -398,7 +398,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     rebuildGrace_.setInterval(kLinkRebuildGraceMs);
     connect(&rebuildGrace_, &QTimer::timeout, this, [this]() {
         linksRebuilding_ = false;
-        onSyncReachable(false, gatewayRefusal_, serverDown_);
+        onSyncReachable(false, gatewayRefusal_, linkFailure_);
     });
     connect(worker_, &SessionWorker::accountSettings, this,
         [this](const bool, const bool sendReceipts, const bool) { sendReceipts_ = sendReceipts; });
@@ -594,7 +594,7 @@ void CoreAccount::goOffline()
     online_ = false;
     reachable_ = false;
     gatewayRefusal_.clear();
-    serverDown_ = false;
+    linkFailure_ = client::LinkFailure::eNone;
     announcePresence();
     emit commands_.requestSetSync(false);
     setPresenceFocused(presenceFocused_);
@@ -639,7 +639,7 @@ void CoreAccount::rebuildI2pLinks()
 }
 
 void CoreAccount::onSyncReachable(
-    const bool ok, const QString& gatewayRefusal, const bool serverDown)
+    const bool ok, const QString& gatewayRefusal, const client::LinkFailure failure)
 {
     if (ok) {
         linksRebuilding_ = false;
@@ -648,14 +648,40 @@ void CoreAccount::onSyncReachable(
         return;
     }
     const QString refusal = ok ? QString() : gatewayRefusal;
-    const bool down = !ok && serverDown;
-    if (reachable_ == ok && gatewayRefusal_ == refusal && serverDown_ == down) {
+    const client::LinkFailure cause = ok ? client::LinkFailure::eNone : failure;
+    if (reachable_ == ok && gatewayRefusal_ == refusal && linkFailure_ == cause) {
         return;
     }
     reachable_ = ok;
     gatewayRefusal_ = refusal;
-    serverDown_ = down;
+    linkFailure_ = cause;
     announcePresence();
+}
+
+void CoreAccount::transportChanged()
+{
+    const i2p::TransportState now = i2p::transportState();
+    if (now == transport_) {
+        return;
+    }
+    transport_ = now;
+    if (now == i2p::TransportState::eUp && linkFailure_ == client::LinkFailure::eNoNetwork) {
+        linkFailure_ = client::LinkFailure::eNone;
+    }
+    announcePresence();
+}
+
+client::LinkFailure CoreAccount::shownFailure() const
+{
+    switch (transport_) {
+    case i2p::TransportState::eNoNetwork:
+        return client::LinkFailure::eNoNetwork;
+    case i2p::TransportState::eGatewayUnreachable:
+        return client::LinkFailure::eGatewayUnreachable;
+    case i2p::TransportState::eUp:
+        break;
+    }
+    return reachable_ ? client::LinkFailure::eNone : linkFailure_;
 }
 
 void CoreAccount::recountUnread()
@@ -670,7 +696,8 @@ void CoreAccount::recountUnread()
 
 void CoreAccount::announcePresence()
 {
-    emit events_.presence(online_, reachable_, gatewayRefusal_, serverDown_);
+    emit events_.presence(
+        online_, reachable(), gatewayRefusal_, static_cast<int>(shownFailure()));
     emit changed();
 }
 

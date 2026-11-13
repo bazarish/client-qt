@@ -316,16 +316,16 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
     });
     connect(&events_, &AccountEvents::presence, this,
         [this](const bool online, const bool reachable, const QString& gatewayRefusal,
-            const bool serverDown) {
+            const int linkFailure) {
             if (online_ != online) {
                 online_ = online;
                 emit onlineChanged();
             }
             if (reachable_ != reachable || gatewayRefusal_ != gatewayRefusal
-                || serverDown_ != serverDown) {
+                || linkFailure_ != linkFailure) {
                 reachable_ = reachable;
                 gatewayRefusal_ = gatewayRefusal;
-                serverDown_ = serverDown;
+                linkFailure_ = linkFailure;
                 emit reachableChanged();
             }
         });

@@ -24,6 +24,7 @@
 
 namespace bazarish::i2p {
 class Endpoint;
+class TransportWatch;
 }
 
 namespace bazarish::app {
@@ -56,6 +57,7 @@ public:
     void declineRinging();
     void prepareForExit();
     void networkChanged();
+    void networkLost();
     void screenChanged(bool on);
     static QString soundFolder();
 
@@ -170,6 +172,7 @@ private:
     std::shared_ptr<bazarish::i2p::Endpoint> pairEndpoint_;
     OperationLog log_;
     std::unique_ptr<NetworkWatch> networkWatch_;
+    std::unique_ptr<bazarish::i2p::TransportWatch> transportWatch_;
 };
 
 class CoreListener : public QObject {

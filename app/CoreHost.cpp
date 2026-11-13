@@ -244,6 +244,12 @@ void CoreHost::networkChanged()
     bazarish::i2p::networkChanged();
 }
 
+void CoreHost::networkLost()
+{
+    bazarish::log::info("the network is gone");
+    bazarish::i2p::networkLost();
+}
+
 void CoreHost::screenChanged(const bool on)
 {
     bazarish::i2p::screenOn(on);
@@ -256,8 +262,19 @@ void CoreHost::screenChanged(const bool on)
 
 void CoreHost::start()
 {
+    transportWatch_ = std::make_unique<bazarish::i2p::TransportWatch>([this]() {
+        QMetaObject::invokeMethod(
+            this,
+            [this]() {
+                for (CoreAccount* const account : sessions_) {
+                    account->transportChanged();
+                }
+            },
+            Qt::QueuedConnection);
+    });
 #ifndef Q_OS_ANDROID
-    networkWatch_ = std::make_unique<NetworkWatch>([this]() { networkChanged(); });
+    networkWatch_ = std::make_unique<NetworkWatch>(
+        [this]() { networkLost(); }, [this]() { networkChanged(); });
     if (!networkWatch_->follow()) {
         bazarish::log::warn("no network information backend: a new network goes unnoticed");
     }

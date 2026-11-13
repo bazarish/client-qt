@@ -13,15 +13,27 @@ Rectangle {
     readonly property bool isConnecting: root.session !== null && root.session.online
         && !root.session.reachable
     readonly property bool heldForApproval: root.session !== null && root.session.awaitingApproval
-    readonly property string whyNotReachable: root.session !== null && root.session.serverDown
-        ? qsTr("No tunnel to the server")
-        : root.session !== null && root.session.gatewayRefusal.length > 0
-        ? qsTr("The gateway refused a link to the server")
-        : (I2p.gatewayEnabled && !I2p.ready)
-        ? qsTr("No connection to the external gateway")
-        : (I2p.tunnelsBuilding ? qsTr("The I2P tunnels are being built")
-                               : qsTr("No tunnel to the server"))
-    readonly property int transportPollMs: 2000
+    readonly property int failure: root.session !== null ? root.session.linkFailure : LinkStatus.None
+    readonly property bool noNetwork: root.isConnecting && root.failure === LinkStatus.NoNetwork
+    readonly property string whyNotReachable: {
+        switch (root.failure) {
+        case LinkStatus.I2pUnreachable:
+            return qsTr("No connection to the I2P network")
+        case LinkStatus.GatewayUnreachable:
+            return qsTr("No connection to the external gateway")
+        case LinkStatus.GatewayRefused:
+            return qsTr("The gateway refused a link to the server")
+        case LinkStatus.TunnelsBuilding:
+            return qsTr("The I2P tunnels are being built")
+        case LinkStatus.ServerUnreachable:
+            return qsTr("Could not connect to the server")
+        case LinkStatus.ServerDown:
+            return qsTr("No tunnel to the server")
+        case LinkStatus.ServerRefused:
+            return qsTr("The server refused the request")
+        }
+        return ""
+    }
     readonly property int kPadding: 4
     readonly property int kSideMargin: 12
 
@@ -29,15 +41,6 @@ Rectangle {
         && (root.isOffline || root.isConnecting || root.heldForApproval)
     implicitHeight: line.implicitHeight + 2 * root.kPadding
     color: Theme.warnFill
-
-    // The router reports nothing by itself: I2p holds what the last refresh read.
-    Timer {
-        interval: root.transportPollMs
-        repeat: true
-        running: root.visible && root.isConnecting
-        triggeredOnStart: true
-        onTriggered: I2p.refresh()
-    }
 
     RowLayout {
         id: line
@@ -49,7 +52,9 @@ Rectangle {
         spacing: 8
         Label {
             text: root.heldForApproval ? qsTr("Waiting for approval")
-                : (root.isOffline ? qsTr("Disconnected") : qsTr("Connecting…"))
+                : root.isOffline ? qsTr("Disconnected")
+                : root.noNetwork ? qsTr("No network")
+                : qsTr("Connecting…")
             color: Theme.warnInk
             font.pixelSize: Theme.fontSmall
             font.weight: Font.DemiBold

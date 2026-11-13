@@ -438,7 +438,11 @@ void SessionWorker::startEventWaiter()
                 answered = true;
                 mailGate_.answered();
                 QMetaObject::invokeMethod(
-                    this, [this]() { emit syncReachable(true, {}, false); }, Qt::QueuedConnection);
+                    this,
+                    [this]() {
+                        emit syncReachable(true, {}, bazarish::client::LinkFailure::eNone);
+                    },
+                    Qt::QueuedConnection);
                 streamMailbox(*waiter, waiting, !caughtUp, *running);
                 caughtUp = true;
             } catch (const std::exception& error) {
@@ -453,11 +457,14 @@ void SessionWorker::startEventWaiter()
                 const QString refusal
                     = waiter ? QString::fromStdString(waiter->gatewayRefusal()) : QString();
                 const bool serverDown = waiter && waiter->serverBehindFacadeDown();
+                const bazarish::client::LinkFailure failure
+                    = waiter ? waiter->linkFailure() : bazarish::client::LinkFailure::eNone;
                 QMetaObject::invokeMethod(
                     this,
-                    [this, refusal, serverDown]() { emit syncReachable(false, refusal, serverDown); },
+                    [this, refusal, failure]() { emit syncReachable(false, refusal, failure); },
                     Qt::QueuedConnection);
-                bazarish::log::info("mail wait failed: {}", error.what());
+                bazarish::log::info("mail wait failed ({}): {}",
+                    bazarish::client::linkFailureName(failure), error.what());
                 const bazarish::client::MailWaitCause cause = serverDown
                     ? mailGate_.awaitServer()
                     : mailGate_.awaitCause(
@@ -639,7 +646,7 @@ void SessionWorker::openAccount(
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<CallSink>(); });
     session_->onServerAnswered([this]() {
         mailGate_.serverAnswered();
-        emit syncReachable(true, {}, false);
+        emit syncReachable(true, {}, bazarish::client::LinkFailure::eNone);
     });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     emit loginSignerReady(session_->loginSigner());

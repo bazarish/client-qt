@@ -62,6 +62,11 @@ void networkChanged(JNIEnv*, jclass)
     inCoreThread([](CoreHost& core) { core.networkChanged(); });
 }
 
+void networkLost(JNIEnv*, jclass)
+{
+    inCoreThread([](CoreHost& core) { core.networkLost(); });
+}
+
 void screenChanged(JNIEnv*, jclass, const jboolean on)
 {
     inCoreThread([on](CoreHost& core) { core.screenChanged(on == JNI_TRUE); });
@@ -77,6 +82,7 @@ AndroidShade::AndroidShade(CoreHost& core, Notifier& notifier, Translations& tra
     const JNINativeMethod natives[] = {
         {"callDeclined", "()V", reinterpret_cast<void*>(callDeclined)},
         {"networkChanged", "()V", reinterpret_cast<void*>(networkChanged)},
+        {"networkLost", "()V", reinterpret_cast<void*>(networkLost)},
         {"screenChanged", "(Z)V", reinterpret_cast<void*>(screenChanged)},
     };
     QJniEnvironment env;

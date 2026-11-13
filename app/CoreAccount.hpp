@@ -7,6 +7,7 @@
 #include "ContactBook.hpp"
 #include "DeliveryStatus.hpp"
 #include "FederationFetch.hpp"
+#include "LinkFailure.hpp"
 #include "MessageIngest.hpp"
 #include "OperationLog.hpp"
 #include "Session.hpp"
@@ -18,6 +19,8 @@
 #include <QThread>
 #include <QPointer>
 #include <QTimer>
+
+#include <bazarish/I2p.hpp>
 
 #include <atomic>
 #include <memory>
@@ -48,7 +51,7 @@ public:
     QString fingerprint() const { return contacts_.ownFingerprint(); }
     QString displayName() const { return displayName_; }
     bool online() const { return online_; }
-    bool reachable() const { return reachable_; }
+    bool reachable() const { return reachable_ && transport_ == i2p::TransportState::eUp; }
     QString activeFacade() const { return activeFacade_; }
     bool hasServer() const { return hasServer_; }
     client::Session::CallState callState() const { return call_.state; }
@@ -63,6 +66,7 @@ public:
     void setPresenceFocused(bool focused);
     void setPresenceAway(bool away);
     void leavePresenceNow();
+    void transportChanged();
     void replayOperations();
     void beginShutdown();
 
@@ -80,7 +84,8 @@ private:
     void onCommandFinished();
     void showSlowCommands();
     void close();
-    void onSyncReachable(bool ok, const QString& gatewayRefusal, bool serverDown);
+    void onSyncReachable(bool ok, const QString& gatewayRefusal, client::LinkFailure failure);
+    client::LinkFailure shownFailure() const;
     void announcePresence();
     void recountUnread();
     void signLogin(const QString& challenge);
@@ -208,7 +213,8 @@ private:
     bool hasServer_ = false;
     bool reachable_ = false;
     QString gatewayRefusal_;
-    bool serverDown_ = false;
+    client::LinkFailure linkFailure_ = client::LinkFailure::eNone;
+    i2p::TransportState transport_ = i2p::transportState();
     int unread_ = 0;
     bool linksRebuilding_ = false;
     QTimer rebuildGrace_;

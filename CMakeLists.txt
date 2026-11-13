@@ -166,6 +166,7 @@ if(Qt6_FOUND)
     qt_add_executable(bazarish-app
         app/main.cpp
         app/DeliveryStatus.hpp
+        app/LinkStatus.hpp
         app/PhotoShot.cpp
         app/PhotoShot.hpp
         app/QrScanner.cpp
