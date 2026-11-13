@@ -331,6 +331,8 @@ SessionController::SessionController(const QString& accountId, QObject* parent)
         });
     connect(&events_, &AccountEvents::approvalState, this, &SessionController::onApprovalState);
     connect(&events_, &AccountEvents::devicesReady, this, &SessionController::onDevicesReady);
+    connect(&events_, &AccountEvents::deviceState, this, &SessionController::onDeviceState);
+    connect(&events_, &AccountEvents::contactDevices, this, &SessionController::onContactDevices);
     connect(&events_, &AccountEvents::devicesFailed, this, [this]() {
         devicesFailed_ = true;
         emit devicesChanged();
@@ -1439,7 +1441,7 @@ void SessionController::changePassphrase(const QString& passphrase)
     emit commands_.requestChangePassphrase(passphrase);
 }
 
-void SessionController::startPairing()
+void SessionController::startPairing(const bool primary)
 {
     pairUri_.clear();
     pairCode_.clear();
@@ -1447,7 +1449,7 @@ void SessionController::startPairing()
     pairProgress_ = kProgressUnknown;
     pairing_ = true;
     emit pairingChanged();
-    emit commands_.requestStartPairing();
+    emit commands_.requestStartPairing(primary);
 }
 
 void SessionController::stopPairing()
@@ -1492,13 +1494,14 @@ void SessionController::onPairFinished(const bool ok, const QString& status)
     emit pairingFinished(ok);
 }
 
-void SessionController::exportAccount(const QString& fileUrl, const QString& password)
+void SessionController::exportAccount(
+    const QString& fileUrl, const QString& password, const bool primary)
 {
     const QString target = dialogTarget(fileUrl);
     if (target.isEmpty()) {
         return;
     }
-    emit commands_.requestExport(target, password);
+    emit commands_.requestExport(target, password, primary);
 }
 
 QString SessionController::shortFingerprint(const QString& fp) const
@@ -1666,9 +1669,19 @@ void SessionController::refreshDevices()
     emit commands_.requestRefreshDevices();
 }
 
-void SessionController::forgetDevice(const QString& clientId)
+void SessionController::revokeDevice(const QString& deviceId)
 {
-    emit commands_.requestForgetDevice(clientId);
+    emit commands_.requestRevokeDevice(deviceId);
+}
+
+void SessionController::refreshContactDevices(const QString& peer)
+{
+    emit commands_.readContactDevices(peer);
+}
+
+QVariantList SessionController::contactDevices(const QString& peer) const
+{
+    return contactDevices_.value(peer);
 }
 
 void SessionController::forwardMessage(const QString& e2eId, const QString& toPeer)
@@ -1824,6 +1837,43 @@ void SessionController::onDevicesReady(const QVariantList& devices)
     devices_ = devices;
     devicesFailed_ = false;
     emit devicesChanged();
+}
+
+QVariantList SessionController::ownDevices() const
+{
+    QHash<QString, QVariant> queues;
+    for (const QVariant& registered : devices_) {
+        const QVariantMap entry = registered.toMap();
+        queues.insert(entry.value(QStringLiteral("deviceId")).toString(),
+            entry.value(QStringLiteral("queue")));
+    }
+    QVariantList rows;
+    for (const QVariant& own : ownDevices_) {
+        QVariantMap row = own.toMap();
+        row.insert(QStringLiteral("queue"),
+            queues.value(row.value(QStringLiteral("deviceId")).toString(), 0));
+        rows.append(row);
+    }
+    return rows;
+}
+
+void SessionController::onDeviceState(const QString& deviceId, const bool primary,
+    const QVariantList& ownDevices, const qint64 epochReserveUntil, const bool epochReserveLow)
+{
+    deviceId_ = deviceId;
+    primaryDevice_ = primary;
+    ownDevices_ = ownDevices;
+    epochReserveUntil_ = epochReserveUntil;
+    epochReserveLow_ = epochReserveLow;
+    emit deviceStateChanged();
+    emit devicesChanged();
+}
+
+void SessionController::onContactDevices(const QString& peer, const QVariantList& devices)
+{
+    contactDevices_.insert(peer, devices);
+    ++contactDevicesRevision_;
+    emit contactDevicesChanged();
 }
 
 void SessionController::onStorageUsageReady(

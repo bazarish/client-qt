@@ -245,13 +245,13 @@ Popup {
                         IconButton {
                             iconName: "key"
                             enabled: root.session !== null && root.session.connected
-                                && !root.session.aliasBusy
+                                && !root.session.aliasBusy && root.session.primaryDevice
                             onClicked: wordDialog.ask(aliasRow.modelData.alias, aliasRow.modelData.word)
                         }
                         Toggle {
                             checked: aliasRow.modelData.resolving
                             enabled: root.session !== null && root.session.connected
-                                && !root.session.aliasBusy
+                                && !root.session.aliasBusy && root.session.primaryDevice
                             onToggled: root.session.setAliasBinding(
                                 aliasRow.modelData.alias, checked)
                         }
@@ -333,6 +333,7 @@ Popup {
                         ? qsTr("Asking…")
                         : qsTr("Check my aliases")
                     enabled: root.session && root.session.connected && !root.session.aliasBusy
+                        && root.session.primaryDevice
                     onClicked: root.session.activateAliasServicing()
                 }
             }

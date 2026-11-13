@@ -119,8 +119,8 @@ public slots:
     void shutdown();
     void saveAttachment(const QString& peer, const QString& e2eId,
         const QString& announcedSha256, const QString& destPath, qint64 token);
-    void exportAccount(const QString& path, const QString& password);
-    void startPairing();
+    void exportAccount(const QString& path, const QString& password, bool primary);
+    void startPairing(bool primary);
     void stopPairing();
     void changePassphrase(const QString& passphrase);
     void activateAliasServicing();
@@ -153,7 +153,8 @@ public slots:
     void publishFreshAddress();
     void refreshStorageUsage();
     void refreshDevices();
-    void forgetDevice(const QString& clientId);
+    void revokeDevice(const QString& deviceId);
+    void readContactDevices(const QString& peer);
     void closeAccountOnServer();
     void startCall(const QString& peer);
     void acceptCall(const QString& callId);
@@ -227,6 +228,9 @@ signals:
     void i2pServedAddress(const QString& address);
     void devicesReady(const QVariantList& devices);
     void devicesFailed();
+    void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
+        qint64 epochReserveUntil, bool epochReserveLow);
+    void contactDevices(const QString& peer, const QVariantList& devices);
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
@@ -245,6 +249,8 @@ private:
     QString lastInvite_;
     QString lastInviteProblem_;
     void emitContacts();
+    void emitDeviceState();
+    QVariantList toldDeviceState_;
     void emitCallState();
     void reconcileCallTimer();
     void flushCallLog();

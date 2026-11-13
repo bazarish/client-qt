@@ -41,6 +41,12 @@ class SessionController : public QObject {
     Q_PROPERTY(bool i2pBusy READ i2pBusy NOTIFY i2pStatusChanged)
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(bool devicesFailed READ devicesFailed NOTIFY devicesChanged)
+    Q_PROPERTY(QVariantList ownDevices READ ownDevices NOTIFY devicesChanged)
+    Q_PROPERTY(QString deviceId READ deviceId NOTIFY deviceStateChanged)
+    Q_PROPERTY(bool primaryDevice READ primaryDevice NOTIFY deviceStateChanged)
+    Q_PROPERTY(qint64 epochReserveUntil READ epochReserveUntil NOTIFY deviceStateChanged)
+    Q_PROPERTY(bool epochReserveLow READ epochReserveLow NOTIFY deviceStateChanged)
+    Q_PROPERTY(int contactDevicesRevision READ contactDevicesRevision NOTIFY contactDevicesChanged)
     Q_PROPERTY(bool voiceRecording READ voiceRecording NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voiceElapsedMs READ voiceElapsedMs NOTIFY voiceChanged)
     Q_PROPERTY(qint64 voicePositionMs READ voicePositionMs NOTIFY voiceChanged)
@@ -155,6 +161,12 @@ public:
     bool i2pBusy() const { return i2pBusy_; }
     QVariantList devices() const { return devices_; }
     bool devicesFailed() const { return devicesFailed_; }
+    QVariantList ownDevices() const;
+    QString deviceId() const { return deviceId_; }
+    bool primaryDevice() const { return primaryDevice_; }
+    qint64 epochReserveUntil() const { return epochReserveUntil_; }
+    bool epochReserveLow() const { return epochReserveLow_; }
+    int contactDevicesRevision() const { return contactDevicesRevision_; }
     bool voiceRecording() const { return voiceRecording_; }
     qint64 voiceElapsedMs() const { return voiceElapsedMs_; }
     qint64 voicePositionMs() const { return voicePositionMs_; }
@@ -401,8 +413,8 @@ public:
     Q_INVOKABLE QUrl defaultSaveUrl(const QString& fileName) const;
     Q_INVOKABLE bool fileExists(const QString& path) const;
     Q_INVOKABLE void showInFolder(const QString& path) const;
-    Q_INVOKABLE void exportAccount(const QString& fileUrl, const QString& password);
-    Q_INVOKABLE void startPairing();
+    Q_INVOKABLE void exportAccount(const QString& fileUrl, const QString& password, bool primary);
+    Q_INVOKABLE void startPairing(bool primary);
     Q_INVOKABLE void stopPairing();
     QString pairUri() const { return pairUri_; }
     QString pairCode() const { return pairCode_; }
@@ -439,7 +451,9 @@ public:
     Q_INVOKABLE void trimEveryChat(int keep);
     Q_INVOKABLE void compactDatabase();
     Q_INVOKABLE void refreshDevices();
-    Q_INVOKABLE void forgetDevice(const QString& clientId);
+    Q_INVOKABLE void revokeDevice(const QString& deviceId);
+    Q_INVOKABLE void refreshContactDevices(const QString& peer);
+    Q_INVOKABLE QVariantList contactDevices(const QString& peer) const;
     Q_INVOKABLE void startCall(const QString& peer);
     Q_INVOKABLE void acceptCall();
     Q_INVOKABLE void declineCall();
@@ -484,6 +498,8 @@ signals:
     void i2pStatusChanged();
     void i2pAnswered();
     void devicesChanged();
+    void deviceStateChanged();
+    void contactDevicesChanged();
     void voiceChanged();
     void storageChanged();
     void deviceStorageChanged();
@@ -529,6 +545,9 @@ private slots:
         const QString& serverState);
     void onI2pKeyState(bool hasKey, const QString& address);
     void onDevicesReady(const QVariantList& devices);
+    void onDeviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
+        qint64 epochReserveUntil, bool epochReserveLow);
+    void onContactDevices(const QString& peer, const QVariantList& devices);
     void onVoiceLoaded(const QString& e2eId, const QByteArray& bytes);
     void requestPicturesFor(const QList<StoredMessage>& messages);
     QVector<StoredMessage> chosenMessages(const QVariantList& localIds) const;
@@ -665,6 +684,13 @@ private:
     QString i2pServedAddress_;
     QVariantList devices_;
     bool devicesFailed_ = false;
+    QVariantList ownDevices_;
+    QString deviceId_;
+    bool primaryDevice_ = false;
+    qint64 epochReserveUntil_ = 0;
+    bool epochReserveLow_ = false;
+    QHash<QString, QVariantList> contactDevices_;
+    int contactDevicesRevision_ = 0;
     QString i2pServerState_;
     QString acceptingContact_;
     struct TransferProgress {

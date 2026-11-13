@@ -17,7 +17,7 @@ inline const QSet<QByteArray> kSelfDescribingCommands = {
     "requestAddByInvite", "requestAddByAlias", "requestAcceptContact",
     "requestExport", "requestSaveAttachment", "requestActivateAliasServicing",
     "requestPublishThisDeviceAddress", "requestPublishFreshAddress", "requestRefreshI2pStatus",
-    "requestRefreshStorageUsage", "requestRefreshDevices", "requestForgetDevice",
+    "requestRefreshStorageUsage", "requestRefreshDevices", "requestRevokeDevice",
     "requestCloseAccountOnServer", "requestGeneratePersonalKey", "requestLoadPersonalKey",
     "requestReplacePersonalKey", "requestPublishPersonalDest", "requestSetAliasBinding",
     "requestSetAliasWord",
@@ -130,8 +130,8 @@ signals:
     void requestClearConnectionLog();
     void requestSaveAttachment(const QString& peer, const QString& e2eId,
         const QString& announcedSha256, const QString& destPath, qint64 token);
-    void requestExport(const QString& path, const QString& password);
-    void requestStartPairing();
+    void requestExport(const QString& path, const QString& password, bool primary);
+    void requestStartPairing(bool primary);
     void requestStopPairing();
     void requestChangePassphrase(const QString& passphrase);
     void requestActivateAliasServicing();
@@ -156,7 +156,8 @@ signals:
     void requestRefreshI2pStatus();
     void requestRefreshStorageUsage();
     void requestRefreshDevices();
-    void requestForgetDevice(const QString& clientId);
+    void requestRevokeDevice(const QString& deviceId);
+    void readContactDevices(const QString& peer);
     void requestForgetPendingAdd(const QString& opId);
     void requestCloseAccountOnServer();
     void requestStartCall(const QString& peer);

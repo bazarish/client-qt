@@ -12,6 +12,7 @@ Item {
     property bool showReject: true
     property string cancelText: qsTr("Cancel")
     property bool showCancel: false
+    property bool cancelEnabled: true
     property bool cancelOnOwnLine: false
     property bool danger: false
     property bool acceptEnabled: true
@@ -35,6 +36,7 @@ Item {
             visible: root.showCancel && root.cancelOnOwnLine
             Layout.fillWidth: true
             text: root.cancelText
+            enabled: root.cancelEnabled
             onClicked: root.cancelled()
         }
 
@@ -46,6 +48,7 @@ Item {
                 visible: root.showCancel && !root.cancelOnOwnLine
                 Layout.preferredWidth: Math.max(root.kMinButtonWidth, implicitWidth)
                 text: root.cancelText
+                enabled: root.cancelEnabled
                 onClicked: root.cancelled()
             }
             MenuButton {

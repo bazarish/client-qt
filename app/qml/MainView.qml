@@ -29,17 +29,25 @@ Item {
         function onActionOk(info) { window.showToast(info) }
     }
 
-    ConnectionStrip {
-        id: connectionStrip
+    Column {
+        id: strips
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        session: root.session
-        onTapped: routerStatus.open()
+        ConnectionStrip {
+            width: strips.width
+            session: root.session
+            onTapped: routerStatus.open()
+        }
+        EpochReserveStrip {
+            width: strips.width
+            session: root.session
+            onTapped: settings.open()
+        }
     }
     CallBar {
         id: callBar
-        anchors.top: connectionStrip.visible ? connectionStrip.bottom : parent.top
+        anchors.top: strips.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         session: root.session
@@ -55,8 +63,7 @@ Item {
     }
     Loader {
         id: pageLoader
-        anchors.top: callBar.visible ? callBar.bottom
-            : (connectionStrip.visible ? connectionStrip.bottom : parent.top)
+        anchors.top: callBar.visible ? callBar.bottom : strips.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -66,7 +73,13 @@ Item {
     Connections {
         target: App
         function onInviteLinkOpened(link) { newChat.openInvite(link) }
-        function onSignLinkOpened(link) { signWithKeySheet.openWith(link) }
+        function onSignLinkOpened(link) {
+            if (root.session && !root.session.primaryDevice) {
+                window.showToast(qsTr("Only the primary device signs in by key"))
+                return
+            }
+            signWithKeySheet.openWith(link)
+        }
         function onServerLinkOpened(link) {
             if (root.session && root.session.connected) {
                 window.showToast(qsTr("This account already has a server"))

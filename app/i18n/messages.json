@@ -1481,18 +1481,6 @@
       "zh": "目的地密钥已就绪。请连接以发布它。",
       "ar": "مفتاح الوجهة جاهز. اتصل لنشره."
     },
-    "Device forgotten. Its unread mail is no longer held": {
-      "ru": "Устройство забыто. Его непрочитанная почта больше не хранится",
-      "es": "Dispositivo olvidado. Ya no se guarda su correo sin leer",
-      "zh": "设备已被忘记。不再为它保留未读邮件",
-      "ar": "نُسي الجهاز. لم يعد بريده غير المقروء محفوظًا"
-    },
-    "Devices on this account": {
-      "ru": "Устройства этого аккаунта",
-      "es": "Dispositivos de esta cuenta",
-      "zh": "此账号的设备",
-      "ar": "أجهزة هذا الحساب"
-    },
     "Devices: %1": {
       "ru": "Устройств: %1",
       "es": "Dispositivos: %1",
@@ -1648,30 +1636,6 @@
       "es": "Nodos floodfill",
       "zh": "Floodfill 节点",
       "ar": "عُقد Floodfill"
-    },
-    "Forget": {
-      "ru": "Забыть",
-      "es": "Olvidar",
-      "zh": "忘记",
-      "ar": "نسيان"
-    },
-    "Forget this device?": {
-      "ru": "Забыть это устройство?",
-      "es": "¿Olvidar este dispositivo?",
-      "zh": "要忘记这台设备吗？",
-      "ar": "أتريد نسيان هذا الجهاز؟"
-    },
-    "Forgetting a device": {
-      "ru": "Удаление устройства",
-      "es": "Olvidando un dispositivo",
-      "zh": "正在忘记设备",
-      "ar": "جارٍ نسيان جهاز"
-    },
-    "Forgotten": {
-      "ru": "Удалено",
-      "es": "Olvidado",
-      "zh": "已忘记",
-      "ar": "نُسي"
     },
     "Forward": {
       "ru": "Переслать",
@@ -4085,12 +4049,6 @@
       "zh": "服务器现在服务该地址",
       "ar": "يخدم خادمك هذا العنوان الآن"
     },
-    "The server deletes the mail for %1. The device registers again the next time it connects.": {
-      "ru": "Сервер удалит почту для %1. Устройство зарегистрируется снова при следующем подключении.",
-      "es": "El servidor borra el correo de %1. El dispositivo se registra de nuevo la próxima vez que se conecte.",
-      "zh": "服务器将删除 %1 的邮件。该设备下次连接时会重新注册。",
-      "ar": "يحذف الخادم بريد ⁦%1⁩. يسجّل الجهاز نفسه من جديد في اتصاله التالي."
-    },
     "Your server will serve this address instead. Contacts holding the old one cannot write to you until your next message. If another device of yours is offline, wait until it is on.": {
       "ru": "Сервер станет обслуживать этот адрес. Контакты со старым адресом не смогут вам написать до вашего следующего сообщения. Если другое ваше устройство не в сети, дождитесь его включения.",
       "es": "Tu servidor pasará a servir esta dirección. Los contactos con la antigua no podrán escribirte hasta tu próximo mensaje. Si otro dispositivo tuyo está sin conexión, espera a encenderlo.",
@@ -5164,6 +5122,96 @@
       "es": "No se puede leer esta imagen",
       "zh": "无法读取这张图片",
       "ar": "تعذّرت قراءة هذه الصورة"
+    },
+    "The primary device has been offline for a long time": {
+      "ru": "Основное устройство давно не в сети",
+      "es": "El dispositivo principal lleva mucho tiempo sin conexión",
+      "zh": "主设备已长时间离线",
+      "ar": "الجهاز الأساسي غير متصل منذ وقت طويل"
+    },
+    "Only the primary device signs in by key": {
+      "ru": "Вход по ключу только с основного устройства",
+      "es": "Solo el dispositivo principal inicia sesión con la clave",
+      "zh": "只有主设备可以用密钥登录",
+      "ar": "تسجيل الدخول بالمفتاح من الجهاز الأساسي فقط"
+    },
+    "Device role": {
+      "ru": "Роль устройства",
+      "es": "Rol del dispositivo",
+      "zh": "设备角色",
+      "ar": "دور الجهاز"
+    },
+    "Primary": {
+      "ru": "Основное",
+      "es": "Principal",
+      "zh": "主设备",
+      "ar": "أساسي"
+    },
+    "Secondary": {
+      "ru": "Вторичное",
+      "es": "Secundario",
+      "zh": "副设备",
+      "ar": "ثانوي"
+    },
+    "A secondary device does not manage the account": {
+      "ru": "Вторичное устройство не управляет аккаунтом",
+      "es": "Un dispositivo secundario no administra la cuenta",
+      "zh": "副设备不能管理账号",
+      "ar": "الجهاز الثانوي لا يدير الحساب"
+    },
+    "Devices": {
+      "ru": "Устройства",
+      "es": "Dispositivos",
+      "zh": "设备",
+      "ar": "الأجهزة"
+    },
+    "Revoked": {
+      "ru": "Отозвано",
+      "es": "Revocado",
+      "zh": "已撤销",
+      "ar": "مُبطَل"
+    },
+    "Revoke": {
+      "ru": "Отозвать",
+      "es": "Revocar",
+      "zh": "撤销",
+      "ar": "إبطال"
+    },
+    "Mail keys until %1": {
+      "ru": "Ключи почты до %1",
+      "es": "Claves de correo hasta %1",
+      "zh": "邮件密钥有效至 %1",
+      "ar": "مفاتيح البريد حتى ⁦%1⁩"
+    },
+    "Revoke this device?": {
+      "ru": "Отозвать устройство?",
+      "es": "¿Revocar este dispositivo?",
+      "zh": "撤销此设备？",
+      "ar": "إبطال هذا الجهاز؟"
+    },
+    "The device loses access to the account and its new mail. This cannot be undone.": {
+      "ru": "Устройство теряет доступ к аккаунту и новой почте. Отменить нельзя.",
+      "es": "El dispositivo pierde el acceso a la cuenta y a su correo nuevo. No se puede deshacer.",
+      "zh": "该设备将失去对账号及其新邮件的访问。此操作无法撤销。",
+      "ar": "يفقد الجهاز الوصول إلى الحساب وبريده الجديد. لا يمكن التراجع عن ذلك."
+    },
+    "Contact's devices": {
+      "ru": "Устройства пользователя",
+      "es": "Dispositivos del contacto",
+      "zh": "联系人的设备",
+      "ar": "أجهزة جهة الاتصال"
+    },
+    "Revoking a device": {
+      "ru": "Отзыв устройства",
+      "es": "Revocando un dispositivo",
+      "zh": "正在撤销设备",
+      "ar": "جارٍ إبطال جهاز"
+    },
+    "Device revoked": {
+      "ru": "Устройство отозвано",
+      "es": "Dispositivo revocado",
+      "zh": "设备已撤销",
+      "ar": "أُبطل الجهاز"
     }
   }
 }

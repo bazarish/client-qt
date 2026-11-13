@@ -7,6 +7,7 @@ import Bazarish
 Popup {
     id: root
     property var session: null
+    property bool primary: true
 
     readonly property int kCodeSize: 30
     readonly property string uri: root.session ? root.session.pairUri : ""
@@ -22,7 +23,7 @@ Popup {
     readonly property int kContentInset: 18
     closePolicy: Popup.CloseOnEscape
 
-    onOpened: if (root.session) { root.session.startPairing() }
+    onOpened: if (root.session) { root.session.startPairing(root.primary) }
     onClosed: if (root.session) { root.session.stopPairing() }
 
     background: DialogFrame { }

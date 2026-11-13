@@ -49,6 +49,7 @@ Popup {
     background: DialogFrame { }
 
     property string pendingExportFile: ""
+    property bool pendingExportPrimary: true
 
     contentItem: ColumnLayout {
         spacing: 0
@@ -165,6 +166,7 @@ Popup {
                             Layout.fillWidth: true
                             iconName: "key"
                             text: qsTr("Sign with the account key")
+                            enabled: root.session !== null && root.session.primaryDevice
                             onClicked: { root.close(); root.showSignWithKey() }
                         }
                     }
@@ -292,79 +294,6 @@ Popup {
                             HoverHandler { cursorShape: Qt.PointingHandCursor }
                         }
                     }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        visible: root.session && root.session.connected
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label {
-                                text: qsTr("Devices on this account")
-                                color: Theme.textDim
-                                font.pixelSize: Theme.fontSmall
-                                Layout.fillWidth: true
-                                wrapMode: Text.Wrap
-                            }
-                            Label {
-                                text: root.session ? root.session.devices.length : 0
-                                color: Theme.textDim
-                                font.pixelSize: Theme.fontSmall
-                            }
-                        }
-
-                        Repeater {
-                            model: root.session ? root.session.devices : []
-                            delegate: RowLayout {
-                                required property var modelData
-                                Layout.fillWidth: true
-                                spacing: 8
-                                Label {
-                                    text: modelData.clientId
-                                        + (modelData.queue > 0
-                                            ? qsTr(" (queue: %1)").arg(modelData.queue) : "")
-                                    color: modelData.current ? Theme.text : Theme.textDim
-                                    font.pixelSize: Theme.fontSmall
-                                    elide: Text.ElideMiddle
-                                    Layout.fillWidth: true
-                                }
-                                Label {
-                                    text: qsTr("(this device)")
-                                    visible: modelData.current
-                                    color: Theme.textDim
-                                    font.pixelSize: Theme.fontSmall
-                                }
-                                Label {
-                                    text: qsTr("Forget")
-                                    visible: !modelData.current
-                                    color: forgetArea.containsMouse ? Theme.danger : Theme.textDim
-                                    font.pixelSize: Theme.fontSmall
-                                    font.underline: forgetArea.containsMouse
-                                    MouseArea {
-                                        id: forgetArea
-                                        anchors.fill: parent
-                                        anchors.margins: -4
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            forgetConfirm.clientId = modelData.clientId
-                                            forgetConfirm.open()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Label {
-                            visible: root.session && root.session.devices.length === 0
-                            text: root.awaitingText(root.session && root.session.devicesFailed)
-                            color: root.awaitingColor(root.session && root.session.devicesFailed)
-                            font.pixelSize: Theme.fontSmall
-                            wrapMode: Text.Wrap
-                            Layout.fillWidth: true
-                        }
-                    }
-
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -391,6 +320,72 @@ Popup {
                         text: qsTr("Ask my other devices for contacts")
                         enabled: root.session !== null
                         onClicked: root.session.askForContacts()
+                    }
+                }
+                Hairline { }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 6
+                    Label {
+                        text: qsTr("Devices")
+                        color: Theme.textDim
+                        font.pixelSize: Theme.fontSmall
+                        wrapMode: Text.Wrap
+                        Layout.fillWidth: true
+                    }
+                    Repeater {
+                        model: root.session ? root.session.ownDevices : []
+                        delegate: RowLayout {
+                            id: deviceRow
+                            required property var modelData
+                            readonly property color ink: modelData.revoked ? Theme.danger
+                                : (modelData.current ? Theme.text : Theme.textDim)
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Fingerprint {
+                                value: deviceRow.modelData.deviceId
+                                whole: true
+                                color: deviceRow.ink
+                                font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                text: deviceRow.modelData.primary ? qsTr("Primary") : qsTr("Secondary")
+                                color: deviceRow.ink
+                                font.pixelSize: Theme.fontSmall
+                            }
+                            Label {
+                                text: deviceRow.modelData.revoked ? qsTr("Revoked")
+                                    : (deviceRow.modelData.current ? qsTr("(this device)")
+                                        : (deviceRow.modelData.queue > 0
+                                            ? qsTr(" (queue: %1)").arg(deviceRow.modelData.queue)
+                                            : ""))
+                                color: deviceRow.ink
+                                font.pixelSize: Theme.fontSmall
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("Revoke")
+                                visible: root.session !== null && root.session.primaryDevice
+                                    && !deviceRow.modelData.current && !deviceRow.modelData.revoked
+                                color: revokeArea.containsMouse ? Theme.danger : Theme.textDim
+                                font.pixelSize: Theme.fontSmall
+                                font.underline: revokeArea.containsMouse
+                                MouseArea {
+                                    id: revokeArea
+                                    anchors.fill: parent
+                                    anchors.margins: -4
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        revokeConfirm.deviceId = deviceRow.modelData.deviceId
+                                        revokeConfirm.open()
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 Hairline { }
@@ -458,6 +453,25 @@ Popup {
                                 visible: root.session && root.session.i2pAddress.length > 0
                                 text: root.session ? root.session.i2pAddress : ""
                                 color: Theme.textDim; font.pixelSize: Theme.fontSmall; elide: Text.ElideMiddle; Layout.fillWidth: true
+                            }
+                            RowLayout {
+                                visible: root.session !== null && root.session.epochReserveLow
+                                Layout.fillWidth: true
+                                spacing: 6
+                                Rectangle {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    implicitWidth: 8; implicitHeight: 8; radius: 4
+                                    color: Theme.danger
+                                }
+                                Label {
+                                    text: root.session ? qsTr("Mail keys until %1").arg(Qt.formatDate(
+                                        new Date(root.session.epochReserveUntil * 1000), "yyyy-MM-dd"))
+                                        : ""
+                                    color: Theme.danger
+                                    font.pixelSize: Theme.fontSmall
+                                    wrapMode: Text.Wrap
+                                    Layout.fillWidth: true
+                                }
                             }
                             Label {
                                 visible: root.session && !root.session.i2pHasKey
@@ -548,7 +562,7 @@ Popup {
                         text: qsTr("New key")
                         danger: true
                         enabled: root.session && root.session.connected
-                            && !root.session.i2pBusy
+                            && !root.session.i2pBusy && root.session.primaryDevice
                         onClicked: newKeyDialog.open()
                     }
                     GridLayout {
@@ -739,12 +753,19 @@ Popup {
                             passwordDialog.open()
                         }
                     }
-                    MenuButton { Layout.fillWidth: true; iconName: "save"; text: qsTr("Back up this account"); onClicked: exportDialog.open() }
+                    MenuButton {
+                        Layout.fillWidth: true
+                        iconName: "save"
+                        text: qsTr("Back up this account")
+                        enabled: root.session !== null && root.session.primaryDevice
+                        onClicked: exportRole.open()
+                    }
                     MenuButton {
                         Layout.fillWidth: true
                         iconName: "devices"
                         text: qsTr("Connect a new device online")
-                        onClicked: pairDeviceSheet.open()
+                        enabled: root.session !== null && root.session.primaryDevice
+                        onClicked: pairRole.open()
                     }
                     MenuButton {
                         Layout.fillWidth: true
@@ -765,6 +786,7 @@ Popup {
                         MenuButton {
                             Layout.fillWidth: true
                             enabled: App.deletingId.length === 0
+                                && root.session !== null && root.session.primaryDevice
                             iconName: "trash"
                             text: App.deletingId.length > 0 ? qsTr("Deleting…") : qsTr("Delete account")
                             danger: true
@@ -859,40 +881,58 @@ Popup {
     }
 
     Dialog {
-        id: forgetConfirm
-        property string clientId: ""
+        id: revokeConfirm
+        property string deviceId: ""
         anchors.centerIn: Overlay.overlay
         modal: true
         focus: true
         width: Math.min(380, root.width - 24)
-        background: DialogFrame { }
+        background: DialogFrame { destructive: true }
         header: Label {
-            text: qsTr("Forget this device?")
-            color: Theme.text
+            text: qsTr("Revoke this device?")
+            color: Theme.neon
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
             padding: 14
         }
         footer: DialogButtons {
-            acceptText: qsTr("Forget")
+            acceptText: qsTr("Revoke")
             danger: true
-            onAccepted: forgetConfirm.accept()
-            onRejected: forgetConfirm.reject()
+            onAccepted: revokeConfirm.accept()
+            onRejected: revokeConfirm.reject()
         }
-        onAccepted: if (root.session && forgetConfirm.clientId.length > 0) {
-            root.session.forgetDevice(forgetConfirm.clientId)
+        onAccepted: if (root.session && revokeConfirm.deviceId.length > 0) {
+            root.session.revokeDevice(revokeConfirm.deviceId)
         }
         contentItem: ColumnLayout {
             spacing: 8
+            Fingerprint {
+                Layout.fillWidth: true
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
+                value: revokeConfirm.deviceId
+                whole: true
+                color: Theme.text
+            }
             Label {
                 Layout.fillWidth: true
-                Layout.margins: 14
+                Layout.leftMargin: 14
+                Layout.rightMargin: 14
                 wrapMode: Text.Wrap
                 color: Theme.textDim
                 font.pixelSize: Theme.fontSmall
-                text: qsTr("The server deletes the mail for %1. The device registers again the next time it connects.").arg(forgetConfirm.clientId)
+                text: qsTr("The device loses access to the account and its new mail. This cannot be undone.")
             }
         }
+    }
+
+    DeviceRoleDialog {
+        id: exportRole
+        onChosen: (primary) => { root.pendingExportPrimary = primary; exportDialog.open() }
+    }
+    DeviceRoleDialog {
+        id: pairRole
+        onChosen: (primary) => { pairDeviceSheet.primary = primary; pairDeviceSheet.open() }
     }
 
     Dialog {
@@ -995,7 +1035,8 @@ Popup {
         modal: true
         focus: true
         title: qsTr("Backup password")
-        onAccepted: root.session.exportAccount(root.pendingExportFile, exportPass.text)
+        onAccepted: root.session.exportAccount(
+            root.pendingExportFile, exportPass.text, root.pendingExportPrimary)
         background: DialogFrame { }
         header: Label { text: qsTr("Backup password"); color: Theme.green; font.pixelSize: Theme.fontTitle; font.weight: Font.DemiBold; padding: 14 }
         footer: DialogButtons { onAccepted: exportPassDialog.accept(); onRejected: exportPassDialog.reject() }

@@ -42,6 +42,8 @@ QtObject {
     readonly property color danger:    light ? "#c0261f" : "#ff5b54"
     readonly property color warnFill:  light ? "#ffbf5e" : warn
     readonly property color warnInk:   light ? "#16191c" : accentInk
+    readonly property color dangerFill: light ? "#f6d4d1" : "#4d1e1c"
+    readonly property color dangerInk: light ? "#8a1a14" : "#ffd7d4"
 
     readonly property color bubbleOut: light ? "#dbeed4" : "#13261a"
     readonly property color bubbleIn:  light ? "#ffffff" : "#1b2026"

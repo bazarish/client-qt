@@ -25,7 +25,15 @@ Popup {
 
     background: DialogFrame { }
 
-    onOpened: nameField.text = (session ? session.contactName(session.activePeer) : "")
+    readonly property var peerDevices: (session && session.contactDevicesRevision >= 0)
+        ? session.contactDevices(session.activePeer) : []
+
+    onOpened: {
+        nameField.text = (session ? session.contactName(session.activePeer) : "")
+        if (session) {
+            session.refreshContactDevices(session.activePeer)
+        }
+    }
 
     function saveName() {
         if (session) {
@@ -309,6 +317,43 @@ Popup {
                            : qsTr("This contact has not allowed you to write")
             }
             wrapMode: Text.Wrap
+        }
+
+        ColumnLayout {
+            visible: !root.saved && !root.inGroup && root.peerDevices.length > 0
+            Layout.fillWidth: true
+            spacing: 6
+            Rectangle { Layout.fillWidth: true; height: 1; color: Theme.border; Layout.topMargin: 4 }
+            Label {
+                text: qsTr("Contact's devices")
+                color: Theme.textDim
+                font.pixelSize: Theme.fontSmall
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            Repeater {
+                model: root.peerDevices
+                delegate: RowLayout {
+                    id: peerDeviceRow
+                    required property var modelData
+                    readonly property color ink: modelData.revoked ? Theme.danger : Theme.text
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Fingerprint {
+                        value: peerDeviceRow.modelData.deviceId
+                        whole: true
+                        color: peerDeviceRow.ink
+                        font.pixelSize: Theme.fontSmall
+                    }
+                    Label {
+                        visible: peerDeviceRow.modelData.revoked
+                        text: qsTr("Revoked")
+                        color: peerDeviceRow.ink
+                        font.pixelSize: Theme.fontSmall
+                        Layout.fillWidth: true
+                    }
+                }
+            }
         }
     }
 

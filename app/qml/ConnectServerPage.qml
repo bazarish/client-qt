@@ -136,6 +136,9 @@ Item {
         id: signatureButton
         focusPolicy: Theme.pressFocus
         text: qsTr("Signature")
+        readonly property real kDisabledOpacity: 0.4
+        enabled: root.session !== null && root.session.primaryDevice
+        opacity: enabled ? 1 : kDisabledOpacity
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 18

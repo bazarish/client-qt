@@ -100,6 +100,7 @@ inline constexpr Latch kAccountLatches[] = {
     {"recentReactions"},
     {"recentEmoji"},
     {"aliasHoldings"},
+    {"deviceState"},
     {"avatarReady", 1},
     {"peerPresence", 1},
     {"loginSendState"},
@@ -152,6 +153,9 @@ signals:
     void i2pServedAddress(const QString& address);
     void devicesReady(const QVariantList& devices);
     void devicesFailed();
+    void deviceState(const QString& deviceId, bool primary, const QVariantList& ownDevices,
+        qint64 epochReserveUntil, bool epochReserveLow);
+    void contactDevices(const QString& peer, const QVariantList& devices);
     void storageUsageReady(bool mailboxOk, qulonglong mailboxUsed, qulonglong mailboxQuota);
     void callStateChanged(int state, const QString& peer, const QString& callId, bool muted,
         const QString& stage, qint64 connectedAtMs, float inputLevel, float outputLevel);

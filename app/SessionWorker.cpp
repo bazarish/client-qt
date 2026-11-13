@@ -19,8 +19,10 @@
 #include "DevicePairing.hpp"
 #include "Session.hpp"
 
+#include <bazarish/Clock.hpp>
 #include <bazarish/Crypto.hpp>
 #include <bazarish/Descriptor.hpp>
+#include <bazarish/Devices.hpp>
 #include <bazarish/Errors.hpp>
 #include <bazarish/I2p.hpp>
 #include <bazarish/I2pAddress.hpp>
@@ -209,6 +211,11 @@ constexpr qint64 kTransientJitterSeconds = 6 * 3600;
 constexpr int kCallWatchIntervalMs = 100;
 
 constexpr int kMaintenanceIntervalMs = 2000;
+
+bazarish::DeviceRole roleOf(const bool primary)
+{
+    return primary ? bazarish::DeviceRole::ePrimary : bazarish::DeviceRole::eSecondary;
+}
 
 QVariantList aliasHoldingRows(const std::vector<bazarish::client::Session::AliasHolding>& held)
 {
@@ -659,6 +666,8 @@ void SessionWorker::openAccount(
     const bool connected = session_->isConnected();
     emit opened(QString::fromStdString(session_->fingerprint()),
         QString::fromStdString(session_->displayName()), connected);
+    toldDeviceState_.clear();
+    emitDeviceState();
     emit accountSettings(
         session_->acceptCalls(), session_->sendReceipts(), session_->showPresence());
     {
@@ -716,6 +725,49 @@ void SessionWorker::openAccount(
         startReceiving();
         sync();
     }
+}
+
+void SessionWorker::emitDeviceState()
+{
+    if (!session_) {
+        return;
+    }
+    QVariantList own;
+    for (const bazarish::client::OwnDevice& device : session_->ownDevices()) {
+        own.append(QVariantMap{
+            {QStringLiteral("deviceId"), QString::fromStdString(device.id)},
+            {QStringLiteral("primary"), device.role == bazarish::DeviceRole::ePrimary},
+            {QStringLiteral("current"), device.current},
+            {QStringLiteral("revoked"), device.revoked},
+        });
+    }
+    const QString deviceId = QString::fromStdString(session_->deviceId());
+    const bool primary = session_->isPrimary();
+    const qint64 reserveUntil
+        = QDateTime::currentSecsSinceEpoch() + session_->ownEpochReserveSeconds();
+    const bool reserveLow = session_->ownEpochReserveLow();
+    const QVariantList told{
+        deviceId, primary, own, reserveUntil / bazarish::kSecondsPerDay, reserveLow};
+    if (told == toldDeviceState_) {
+        return;
+    }
+    toldDeviceState_ = told;
+    emit deviceState(deviceId, primary, own, reserveUntil, reserveLow);
+}
+
+void SessionWorker::readContactDevices(const QString& peer)
+{
+    withSession([this, &peer]() {
+        QVariantList devices;
+        for (const bazarish::client::ContactDevice& device :
+            session_->contactDevices(peer.toStdString())) {
+            devices.append(QVariantMap{
+                {QStringLiteral("deviceId"), QString::fromStdString(device.id)},
+                {QStringLiteral("revoked"), device.revoked},
+            });
+        }
+        emit contactDevices(peer, devices);
+    });
 }
 
 void SessionWorker::emitContacts()
@@ -989,6 +1041,7 @@ void SessionWorker::maintain()
     }
     session_->expireFileRequests(nowMillis());
     emitContacts();
+    emitDeviceState();
     if (!session_->isConnected()) {
         return;
     }
@@ -1978,7 +2031,7 @@ void SessionWorker::refreshDevices()
         QVariantList devices;
         for (const bazarish::client::Client::DeviceEntry& device : session_->devices()) {
             devices.append(QVariantMap{
-                {QStringLiteral("clientId"), QString::fromStdString(device.device)},
+                {QStringLiteral("deviceId"), QString::fromStdString(device.device)},
                 {QStringLiteral("current"), device.current},
                 {QStringLiteral("queue"), static_cast<qulonglong>(device.queued)},
             });
@@ -1991,17 +2044,18 @@ void SessionWorker::refreshDevices()
     }
 }
 
-void SessionWorker::forgetDevice(const QString& clientId)
+void SessionWorker::revokeDevice(const QString& deviceId)
 {
     if (!session_) {
         return;
     }
-    runOp(QStringLiteral("device-forget"), QStringLiteral("status"), tr("Forgetting a device"),
-        tr("Telling your server…"), [this, &clientId]() {
-            session_->revokeDevice(clientId.toStdString());
-            emit actionOk(tr("Device forgotten. Its unread mail is no longer held"));
-            return tr("Forgotten");
+    runOp(QStringLiteral("device-revoke"), QStringLiteral("status"), tr("Revoking a device"),
+        tr("Telling your server…"), [this, &deviceId]() {
+            session_->revokeDevice(deviceId.toStdString());
+            emit actionOk(tr("Device revoked"));
+            return tr("Revoked");
         });
+    emitDeviceState();
     refreshDevices();
 }
 
@@ -2288,7 +2342,7 @@ void SessionWorker::reportPairing(const bazarish::client::Session::PairingEvent&
     }
 }
 
-void SessionWorker::startPairing()
+void SessionWorker::startPairing(const bool primary)
 {
     if (!session_) {
         return;
@@ -2297,7 +2351,8 @@ void SessionWorker::startPairing()
         const bazarish::client::Session::PairingOffer offer = session_->startPairing(
             [this](const bazarish::client::Session::PairingEvent& event) {
                 reportPairing(event);
-            });
+            },
+            roleOf(primary));
         emit pairOfferReady(
             QString::fromStdString(offer.uri), QString::fromStdString(offer.code));
     } catch (const std::exception& e) {
@@ -2313,12 +2368,14 @@ void SessionWorker::stopPairing()
     session_->stopPairing();
 }
 
-void SessionWorker::exportAccount(const QString& path, const QString& password)
+void SessionWorker::exportAccount(
+    const QString& path, const QString& password, const bool primary)
 {
     WorkerOp op(*this, QStringLiteral("export"), QStringLiteral("account"),
         tr("Exporting your backup"), tr("Sealing the account…"));
     try {
-        const bazarish::Bytes sealed = openSession().exportAccountBytes(password.toStdString());
+        const bazarish::Bytes sealed
+            = openSession().exportAccountBytes(password.toStdString(), roleOf(primary));
         const std::unique_ptr<bazarish::client::FileOutput> out = openOutput(path);
         out->write(sealed);
         out->finish();

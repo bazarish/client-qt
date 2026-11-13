@@ -28,6 +28,7 @@ Dialog {
         rejectText: qsTr("Later")
         showCancel: true
         cancelText: qsTr("New address")
+        cancelEnabled: App.session !== null && App.session.primaryDevice
         onAccepted: { root.close(); if (App.session) { App.session.keepThisDeviceAddress() } }
         onCancelled: { root.close(); if (App.session) { App.session.useFreshAddress() } }
         onRejected: root.close()

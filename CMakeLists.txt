@@ -323,11 +323,13 @@ if(Qt6_FOUND)
             app/qml/GatewayFirstRunDialog.qml
             app/qml/AccountDeleteConfirmDialog.qml
             app/qml/AddressChoiceDialog.qml
+            app/qml/DeviceRoleDialog.qml
             app/qml/AccountDeleteLockedDialog.qml
             app/qml/AccountDeleteFailedDialog.qml
             app/qml/OperationsOverlay.qml
             app/qml/OperationRow.qml
             app/qml/ConnectionStrip.qml
+            app/qml/EpochReserveStrip.qml
             app/qml/components/Avatar.qml
             app/qml/components/AvatarViewer.qml
             app/qml/components/SavedMark.qml
