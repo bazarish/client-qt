@@ -38,7 +38,8 @@ puts it back.
    mailbox answers the next wait at once while it still holds what this device is
    carrying, and a pass that left items behind is exactly the case where
    answering at once is what continues it.
-5. A wait that fails is asked again on a cause, never on a period of its own:
+5. A wait that fails, other than as in step 6, is asked again on a cause, never
+   on a period of its own:
 
    | Cause | When |
    |---|---|
@@ -49,6 +50,15 @@ puts it back.
    | The facade published a newer lease set | Looked up past the cache once after each failed wait; the stand-off of the link is lifted with it |
    | The lease set of the failed wait has expired | `kStaleLeaseSetBound` after the failure, when nothing above came first: a dial then can only use a fresh lease set |
 
+6. A wait the facade answered with 502 `UPSTREAM_UNAVAILABLE` reached the facade
+   but not the server behind it, and nothing on the client hears of the server's
+   return. It is asked again after 1 s, then 5 s, then 10 s and every 10 s after
+   that, until the facade answers anything else; any other answer starts the
+   sequence over at 1 s. The link came back, our server answered and this device
+   was registered again still end a pause early; no lease set is looked up, since
+   the facade answered. From the first such answer to the first other one the
+   account shows **No tunnel to the server**.
+
    A closed or locked account stops the loop; it asks nothing.
 
 ## Parameters
@@ -57,6 +67,7 @@ puts it back.
 |---|---|
 | Held-open request | No time limit; answered the moment mail lands |
 | A failed wait asked again | on a cause (step 5); without one, after 11 min (lease lifetime 10 min and 1 min of clock skew) |
+| A wait the facade answered with 502 asked again | after 1 s, 5 s, 10 s, then every 10 s (step 6) |
 | Items per pass | 5 |
 | Local upkeep tick | 2 s |
 

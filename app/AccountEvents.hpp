@@ -182,7 +182,7 @@ signals:
     void contactNamed(const QString& peer, const QString& name);
     void storageWorkDone();
     void transcriptOpened(const QString& path, const QByteArray& key);
-    void presence(bool online, bool reachable, const QString& gatewayRefusal);
+    void presence(bool online, bool reachable, const QString& gatewayRefusal, bool serverDown);
 };
 
 }  // namespace bazarish::app

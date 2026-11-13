@@ -210,7 +210,7 @@ signals:
     void loginSigned(const QString& blob);
     void connectionLogReady(const QVariantList& lines);
     void stopped();
-    void syncReachable(bool ok, const QString& gatewayRefusal);
+    void syncReachable(bool ok, const QString& gatewayRefusal, bool serverDown);
     // shown: the backlog is more than one pass of items.
     void syncProgress(bool syncing, bool shown, qint64 takenBytes, qint64 totalBytes);
     void approvalState(bool pending, const QString& note);

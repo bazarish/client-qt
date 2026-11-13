@@ -21,6 +21,10 @@ using Clock = std::chrono::steady_clock;
 constexpr std::chrono::milliseconds kStaleBound{400};
 constexpr std::chrono::milliseconds kEventAfter{150};
 constexpr int kFailedAsks = 5;
+constexpr ServerDownPauses kServerDown{std::chrono::milliseconds{100},
+    std::chrono::milliseconds{250}, std::chrono::milliseconds{450}};
+constexpr std::chrono::milliseconds kPauseSlack{100};
+constexpr int kSteadyServerDownAsks = 2;
 
 const std::function<bool()> kNothingNewer = []() { return false; };
 
@@ -34,8 +38,8 @@ struct Awaited {
     std::chrono::milliseconds took{0};
 };
 
-Awaited failedAsk(MailWaitGate& gate, const std::function<void()>& meanwhile,
-    const std::function<bool()>& facadeAnew = kNothingNewer)
+Awaited awaitedWhile(MailWaitGate& gate, const std::function<void()>& meanwhile,
+    const std::function<MailWaitCause()>& await)
 {
     gate.asking();
     std::thread event([&meanwhile]() {
@@ -44,10 +48,33 @@ Awaited failedAsk(MailWaitGate& gate, const std::function<void()>& meanwhile,
     });
     const Clock::time_point start = Clock::now();
     Awaited awaited;
-    awaited.cause = gate.awaitCause(facadeAnew);
+    awaited.cause = await();
     awaited.took = since(start);
     event.join();
     return awaited;
+}
+
+Awaited failedAsk(MailWaitGate& gate, const std::function<void()>& meanwhile,
+    const std::function<bool()>& facadeAnew = kNothingNewer)
+{
+    return awaitedWhile(
+        gate, meanwhile, [&gate, &facadeAnew]() { return gate.awaitCause(facadeAnew); });
+}
+
+Awaited serverDownAsk(MailWaitGate& gate, const std::function<void()>& meanwhile)
+{
+    return awaitedWhile(gate, meanwhile, [&gate]() { return gate.awaitServer(); });
+}
+
+bool pausedFor(MailWaitGate& gate, const std::chrono::milliseconds pause)
+{
+    gate.asking();
+    const Clock::time_point start = Clock::now();
+    const MailWaitCause cause = gate.awaitServer();
+    const std::chrono::milliseconds took = since(start);
+    std::printf("%s after %lld ms\n", std::string(mailWaitCauseName(cause)).c_str(),
+        static_cast<long long>(took.count()));
+    return cause == MailWaitCause::eServerPauseOver && took >= pause && took < pause + kPauseSlack;
 }
 
 bool tookTheEvent(const Awaited& awaited, const MailWaitCause cause)
@@ -129,6 +156,37 @@ int main()
             CHECK(gate.awaitCause(kNothingNewer) == MailWaitCause::eStaleLeaseSet);
         }
         CHECK(since(start) >= kStaleBound * kFailedAsks);
+    }
+
+    {
+        MailWaitGate gate(kStaleBound, kServerDown);
+        CHECK(pausedFor(gate, kServerDown.first));
+        CHECK(pausedFor(gate, kServerDown.second));
+        for (int i = 0; i < kSteadyServerDownAsks; ++i) {
+            CHECK(pausedFor(gate, kServerDown.steady));
+        }
+        gate.answered();
+        CHECK(pausedFor(gate, kServerDown.first));
+        CHECK(pausedFor(gate, kServerDown.second));
+        gate.asking();
+        CHECK(gate.awaitCause([]() { return true; }) == MailWaitCause::eNewerLeaseSet);
+        CHECK(pausedFor(gate, kServerDown.first));
+        gate.restart();
+        CHECK(pausedFor(gate, kServerDown.first));
+    }
+
+    {
+        const ServerDownPauses longPauses{kStaleBound, kStaleBound, kStaleBound};
+        MailWaitGate gate(kStaleBound, longPauses);
+        CHECK(tookTheEvent(serverDownAsk(gate, [&gate]() { gate.serverAnswered(); }),
+            MailWaitCause::eServerAnswered));
+        CHECK(tookTheEvent(serverDownAsk(gate, [&gate]() { gate.registered(); }),
+            MailWaitCause::eRegistered));
+        CHECK(tookTheEvent(serverDownAsk(gate, []() { i2p::networkChanged(); }),
+            MailWaitCause::eLinkBack));
+        CHECK(tookTheEvent(serverDownAsk(gate, [&gate]() { gate.stop(); }), MailWaitCause::eStopped));
+        gate.asking();
+        CHECK(gate.awaitServer() == MailWaitCause::eStopped);
     }
 
     std::printf("TestMailWaitGate ok\n");

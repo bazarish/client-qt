@@ -397,7 +397,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     rebuildGrace_.setInterval(kLinkRebuildGraceMs);
     connect(&rebuildGrace_, &QTimer::timeout, this, [this]() {
         linksRebuilding_ = false;
-        onSyncReachable(false, gatewayRefusal_);
+        onSyncReachable(false, gatewayRefusal_, serverDown_);
     });
     connect(worker_, &SessionWorker::accountSettings, this,
         [this](const bool, const bool sendReceipts, const bool) { sendReceipts_ = sendReceipts; });
@@ -593,6 +593,7 @@ void CoreAccount::goOffline()
     online_ = false;
     reachable_ = false;
     gatewayRefusal_.clear();
+    serverDown_ = false;
     announcePresence();
     emit commands_.requestSetSync(false);
     setPresenceFocused(presenceFocused_);
@@ -621,7 +622,8 @@ void CoreAccount::rebuildI2pLinks()
     emit commands_.requestRebuildI2p();
 }
 
-void CoreAccount::onSyncReachable(const bool ok, const QString& gatewayRefusal)
+void CoreAccount::onSyncReachable(
+    const bool ok, const QString& gatewayRefusal, const bool serverDown)
 {
     if (ok) {
         linksRebuilding_ = false;
@@ -630,11 +632,13 @@ void CoreAccount::onSyncReachable(const bool ok, const QString& gatewayRefusal)
         return;
     }
     const QString refusal = ok ? QString() : gatewayRefusal;
-    if (reachable_ == ok && gatewayRefusal_ == refusal) {
+    const bool down = !ok && serverDown;
+    if (reachable_ == ok && gatewayRefusal_ == refusal && serverDown_ == down) {
         return;
     }
     reachable_ = ok;
     gatewayRefusal_ = refusal;
+    serverDown_ = down;
     announcePresence();
 }
 
@@ -650,7 +654,7 @@ void CoreAccount::recountUnread()
 
 void CoreAccount::announcePresence()
 {
-    emit events_.presence(online_, reachable_, gatewayRefusal_);
+    emit events_.presence(online_, reachable_, gatewayRefusal_, serverDown_);
     emit changed();
 }
 

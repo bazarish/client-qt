@@ -13,8 +13,9 @@ Rectangle {
     readonly property bool isConnecting: root.session !== null && root.session.online
         && !root.session.reachable
     readonly property bool heldForApproval: root.session !== null && root.session.awaitingApproval
-    readonly property string whyNotReachable: root.session !== null
-        && root.session.gatewayRefusal.length > 0
+    readonly property string whyNotReachable: root.session !== null && root.session.serverDown
+        ? qsTr("No tunnel to the server")
+        : root.session !== null && root.session.gatewayRefusal.length > 0
         ? qsTr("The gateway refused a link to the server")
         : (I2p.gatewayEnabled && !I2p.ready)
         ? qsTr("No connection to the external gateway")

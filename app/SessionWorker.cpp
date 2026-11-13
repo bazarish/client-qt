@@ -438,7 +438,7 @@ void SessionWorker::startEventWaiter()
                 answered = true;
                 mailGate_.answered();
                 QMetaObject::invokeMethod(
-                    this, [this]() { emit syncReachable(true, {}); }, Qt::QueuedConnection);
+                    this, [this]() { emit syncReachable(true, {}, false); }, Qt::QueuedConnection);
                 streamMailbox(*waiter, waiting, !caughtUp, *running);
                 caughtUp = true;
             } catch (const std::exception& error) {
@@ -452,12 +452,16 @@ void SessionWorker::startEventWaiter()
                 }
                 const QString refusal
                     = waiter ? QString::fromStdString(waiter->gatewayRefusal()) : QString();
+                const bool serverDown = waiter && waiter->serverBehindFacadeDown();
                 QMetaObject::invokeMethod(
-                    this, [this, refusal]() { emit syncReachable(false, refusal); },
+                    this,
+                    [this, refusal, serverDown]() { emit syncReachable(false, refusal, serverDown); },
                     Qt::QueuedConnection);
                 bazarish::log::info("mail wait failed: {}", error.what());
-                const bazarish::client::MailWaitCause cause = mailGate_.awaitCause(
-                    [&waiter]() { return waiter && waiter->facadePublishedAnew(); });
+                const bazarish::client::MailWaitCause cause = serverDown
+                    ? mailGate_.awaitServer()
+                    : mailGate_.awaitCause(
+                        [&waiter]() { return waiter && waiter->facadePublishedAnew(); });
                 if (cause == bazarish::client::MailWaitCause::eStopped) {
                     return;
                 }
@@ -631,7 +635,7 @@ void SessionWorker::openAccount(
         []() -> std::unique_ptr<bazarish::AudioSink> { return std::make_unique<CallSink>(); });
     session_->onServerAnswered([this]() {
         mailGate_.serverAnswered();
-        emit syncReachable(true, {});
+        emit syncReachable(true, {}, false);
     });
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     emit loginSignerReady(session_->loginSigner());

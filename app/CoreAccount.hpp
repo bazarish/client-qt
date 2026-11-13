@@ -78,7 +78,7 @@ private:
     void onCommandFinished();
     void showSlowCommands();
     void close();
-    void onSyncReachable(bool ok, const QString& gatewayRefusal);
+    void onSyncReachable(bool ok, const QString& gatewayRefusal, bool serverDown);
     void announcePresence();
     void recountUnread();
     void signLogin(const QString& challenge);
@@ -206,6 +206,7 @@ private:
     bool hasServer_ = false;
     bool reachable_ = false;
     QString gatewayRefusal_;
+    bool serverDown_ = false;
     int unread_ = 0;
     bool linksRebuilding_ = false;
     QTimer rebuildGrace_;
