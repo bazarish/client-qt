@@ -45,6 +45,42 @@ Popup {
                 spacing: 14
 
                 ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.margins: 16
+                    spacing: 10
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: qsTr("Theme")
+                            color: Theme.text
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                        }
+                        TabBar {
+                            currentIndex: App.lightTheme ? 1 : 0
+                            Layout.preferredWidth: implicitWidth
+                            background: Rectangle {
+                                radius: Theme.radius
+                                color: Theme.surface
+                                border.color: Theme.border
+                            }
+                            IconTab {
+                                iconName: "moon"
+                                text: qsTr("Dark")
+                                onClicked: App.lightTheme = false
+                            }
+                            IconTab {
+                                iconName: "sun"
+                                text: qsTr("Light")
+                                onClicked: App.lightTheme = true
+                            }
+                        }
+                    }
+                }
+                Hairline { }
+
+                ColumnLayout {
                     visible: !App.mobile
                     Layout.fillWidth: true
                     Layout.margins: 16
@@ -477,34 +513,6 @@ Popup {
                     Layout.margins: 16
                     spacing: 10
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Label {
-                            text: qsTr("Theme")
-                            color: Theme.text
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                        TabBar {
-                            currentIndex: App.lightTheme ? 1 : 0
-                            Layout.preferredWidth: implicitWidth
-                            background: Rectangle {
-                                radius: Theme.radius
-                                color: Theme.surface
-                                border.color: Theme.border
-                            }
-                            IconTab {
-                                iconName: "moon"
-                                text: qsTr("Dark")
-                                onClicked: App.lightTheme = false
-                            }
-                            IconTab {
-                                iconName: "sun"
-                                text: qsTr("Light")
-                                onClicked: App.lightTheme = true
-                            }
-                        }
-                    }
                     RowLayout {
                         Layout.fillWidth: true
                         Label {
