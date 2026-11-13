@@ -1978,7 +1978,7 @@ void SessionWorker::refreshDevices()
         QVariantList devices;
         for (const bazarish::client::Client::DeviceEntry& device : session_->devices()) {
             devices.append(QVariantMap{
-                {QStringLiteral("clientId"), QString::fromStdString(device.clientId)},
+                {QStringLiteral("clientId"), QString::fromStdString(device.device)},
                 {QStringLiteral("current"), device.current},
                 {QStringLiteral("queue"), static_cast<qulonglong>(device.queued)},
             });
@@ -1998,7 +1998,7 @@ void SessionWorker::forgetDevice(const QString& clientId)
     }
     runOp(QStringLiteral("device-forget"), QStringLiteral("status"), tr("Forgetting a device"),
         tr("Telling your server…"), [this, &clientId]() {
-            session_->retireDevice(clientId.toStdString());
+            session_->revokeDevice(clientId.toStdString());
             emit actionOk(tr("Device forgotten. Its unread mail is no longer held"));
             return tr("Forgotten");
         });
