@@ -66,7 +66,7 @@ Item {
         if (!s) {
             return ""
         }
-        return App.markupPlain(s).replace(/\s+/g, " ").trim().substring(0, root.kPreviewChars)
+        return s.replace(/\s+/g, " ").trim().substring(0, root.kPreviewChars)
     }
 
     ColumnLayout {

@@ -61,6 +61,8 @@ if(Qt6_FOUND)
         app/SystemNotes.hpp
         app/ChatPreview.cpp
         app/ChatPreview.hpp
+        app/Markup.cpp
+        app/Markup.hpp
         app/Translations.cpp
         app/Translations.hpp
         app/TranscriptStore.cpp
@@ -132,8 +134,6 @@ if(Qt6_FOUND)
         app/SessionReactions.cpp
         app/SessionReceive.cpp
         app/SessionContacts.cpp
-        app/Markup.cpp
-        app/Markup.hpp
         app/EmojiText.cpp
         app/EmojiText.hpp
         app/AppFont.cpp
@@ -512,6 +512,14 @@ if(Qt6_FOUND)
         bazarish_client ${SQLCIPHER_LIBRARY} Qt6::Core)
     target_compile_options(TestTranscript PRIVATE -Wall -Wextra)
     add_test(NAME TestTranscript COMMAND TestTranscript)
+
+    add_executable(TestChatPreview tests/TestChatPreview.cpp app/ChatPreview.cpp app/Markup.cpp
+        app/SystemNotes.cpp)
+    target_include_directories(TestChatPreview PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/app ${SQLCIPHER_INCLUDE_DIR})
+    target_link_libraries(TestChatPreview PRIVATE bazarish_test_util bazarish_client Qt6::Core)
+    target_compile_options(TestChatPreview PRIVATE -Wall -Wextra -Werror)
+    add_test(NAME TestChatPreview COMMAND TestChatPreview)
 
     add_executable(TestDownloads tests/TestDownloads.cpp app/Documents.cpp)
     target_include_directories(TestDownloads PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)

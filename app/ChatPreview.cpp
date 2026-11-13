@@ -1,6 +1,7 @@
 // Bazarish project (c) 2026
 #include "ChatPreview.hpp"
 
+#include "Markup.hpp"
 #include "SystemNotes.hpp"
 
 #include <QObject>
@@ -25,7 +26,8 @@ QString chatPreviewOf(const TranscriptStore::LastMessage& last)
 {
     QString preview;
     if (!last.text.isEmpty()) {
-        preview = isServiceMessage(last.type) ? systemNoteText(last.text) : last.text;
+        preview = isServiceMessage(last.type) ? systemNoteText(last.text)
+                                              : markup::toPlain(last.text);
     } else if (last.type.isEmpty()) {
         return {};
     } else if (last.attachment.isEmpty()) {
