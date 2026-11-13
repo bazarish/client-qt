@@ -152,6 +152,7 @@ CoreHost::CoreHost(QObject* const parent)
     connect(&commands_, &AppCommands::setPortable, this, &CoreHost::setPortable);
     connect(&commands_, &AppCommands::closeAllSessions, this, &CoreHost::closeAllSessions);
     connect(&commands_, &AppCommands::windowActive, this, &CoreHost::setWindowActive);
+    connect(&commands_, &AppCommands::windowShown, this, &CoreHost::setWindowShown);
     connect(&commands_, &AppCommands::userActed, this, []() { bazarish::i2p::userActed(); });
     connect(&commands_, &AppCommands::callScreenShown, this, &CoreHost::setCallScreenShown);
     connect(&commands_, &AppCommands::quit, this, &CoreHost::prepareForExit);
@@ -200,12 +201,23 @@ void CoreHost::setWindowActive(const bool active)
     windowActive_ = active;
     bazarish::i2p::windowActive(active);
     emit windowActiveChanged();
-    tellPresenceFocus();
+    tellPresence();
 }
 
-void CoreHost::tellPresenceFocus()
+void CoreHost::setWindowShown(const bool shown)
 {
+    if (windowShown_ == shown) {
+        return;
+    }
+    windowShown_ = shown;
+    tellPresence();
+}
+
+void CoreHost::tellPresence()
+{
+    const bool away = !windowShown_ || !screenOn_;
     for (CoreAccount* const account : sessions_) {
+        account->setPresenceAway(away);
         account->setPresenceFocused(windowActive_ && account->accountId() == activeId_);
     }
 }
@@ -235,6 +247,11 @@ void CoreHost::networkChanged()
 void CoreHost::screenChanged(const bool on)
 {
     bazarish::i2p::screenOn(on);
+    if (screenOn_ == on) {
+        return;
+    }
+    screenOn_ = on;
+    tellPresence();
 }
 
 void CoreHost::start()
@@ -502,7 +519,7 @@ void CoreHost::setActive(const QString& id)
     AppSettings::instance().setActiveAccount(id.toStdString());
     emit events_.activeChanged(id);
     refreshAccounts();
-    tellPresenceFocus();
+    tellPresence();
 }
 
 void CoreHost::openSession(const QString& id, const QString& passphrase, const bool makeActive,
@@ -534,7 +551,7 @@ void CoreHost::openSession(const QString& id, const QString& passphrase, const b
 
     connect(&account->events(), &AccountEvents::opened, this, [this, id, makeActive]() {
         refreshAccounts();
-        tellPresenceFocus();
+        tellPresence();
         if (makeActive && id == activeId_) {
             emit events_.accountReady(id);
         }
@@ -1199,6 +1216,9 @@ void CoreHost::prepareForExit()
         return;
     }
     exiting_ = true;
+    for (CoreAccount* const account : sessions_) {
+        account->leavePresenceNow();
+    }
     emit events_.closing();
     emit readyToExit();
 }

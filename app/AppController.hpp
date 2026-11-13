@@ -196,6 +196,7 @@ public:
     bool speakerOn() const { return speakerOn_; }
     void setSpeakerOn(bool on);
     Q_INVOKABLE void setCallScreenShown(bool shown);
+    void setWindowShown(bool shown);
     void takeAvatarPick(const QString& uri);
     Q_INVOKABLE void dropAvatarPick();
     Q_INVOKABLE void moveToBackground() const;

@@ -404,6 +404,11 @@ void AppController::setCallScreenShown(const bool shown)
     emit commands_.callScreenShown(shown);
 }
 
+void AppController::setWindowShown(const bool shown)
+{
+    emit commands_.windowShown(shown);
+}
+
 void AppController::setSpeakerOn(const bool on)
 {
     if (speakerOn_ == on) {

@@ -618,9 +618,13 @@ void SessionWorker::openAccount(
         emit openFailed(QString::fromUtf8(e.what()));
         return;
     }
-    session_->startPresence([this](const std::string& peer, const bazarish::client::PresenceState& state) {
-        emit peerPresence(QString::fromStdString(peer), state.online, state.typing);
-    });
+    {
+        const std::lock_guard<std::mutex> lock(sessionLife_);
+        session_->startPresence(
+            [this](const std::string& peer, const bazarish::client::PresenceState& state) {
+                emit peerPresence(QString::fromStdString(peer), state.online, state.typing);
+            });
+    }
     session_->setFileSource(deviceFiles());
 #ifdef Q_OS_ANDROID
     // A phone speaks a call as a phone call: the voice stream and the earpiece.
@@ -1769,6 +1773,14 @@ void SessionWorker::shutdown()
     emit stopped();
 }
 
+void SessionWorker::leavePresenceNow()
+{
+    const std::lock_guard<std::mutex> lock(sessionLife_);
+    if (session_) {
+        session_->leavePresence();
+    }
+}
+
 void SessionWorker::releaseLinksNow()
 {
     const std::lock_guard<std::mutex> lock(sessionLife_);
@@ -2115,6 +2127,13 @@ void SessionWorker::setPresenceFocused(const bool focused)
 {
     if (session_) {
         session_->setPresenceFocused(focused);
+    }
+}
+
+void SessionWorker::setPresenceAway(const bool away)
+{
+    if (session_) {
+        session_->setPresenceAway(away);
     }
 }
 

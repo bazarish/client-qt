@@ -96,6 +96,7 @@ private:
     void updateRinging();
     void setSpeakerOn(bool on);
     void setWindowActive(bool active);
+    void setWindowShown(bool shown);
     void setCallScreenShown(bool shown);
     void setBackgroundTasksVisible(bool on);
     void createAccount(const QString& name, const QString& passphrase);
@@ -118,7 +119,7 @@ private:
     void setPortable(bool on);
     void closeAllSessions();
     void rebuildI2pLinks();
-    void tellPresenceFocus();
+    void tellPresence();
     void setLanguage(const QString& code);
     void setLightTheme(bool on);
     void setCamera(const QString& id);
@@ -144,6 +145,8 @@ private:
     std::optional<bool> portableWanted_;
     bool exiting_ = false;
     bool windowActive_ = false;
+    bool windowShown_ = true;
+    bool screenOn_ = true;
     bool callScreenShown_ = false;
     bool notifications_ = true;
     bool notificationText_ = true;

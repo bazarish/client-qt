@@ -61,6 +61,8 @@ public:
     void goOffline();
     void rebuildI2pLinks();
     void setPresenceFocused(bool focused);
+    void setPresenceAway(bool away);
+    void leavePresenceNow();
     void replayOperations();
     void beginShutdown();
 
@@ -243,6 +245,7 @@ private:
     QHash<QString, qint64> readElsewhereAtMs_;
     QTimer presenceOrderTimer_;
     bool presenceFocused_ = false;
+    bool presenceAway_ = false;
     QTimer expiryTimer_;
     OperationLog log_;
     QSet<qint64> savedSends_;

@@ -443,11 +443,16 @@ int main(int argc, char** argv)
 #ifndef Q_OS_ANDROID
     bazarish::app::Notifier notifier(core);
     QObject::connect(&core, &bazarish::app::CoreHost::readyToExit, &app, exitNow);
+    auto* const mainWindow = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+    if (mainWindow != nullptr) {
+        QObject::connect(mainWindow, &QWindow::visibleChanged, &controller,
+            &bazarish::app::AppController::setWindowShown);
+    }
     std::unique_ptr<bazarish::app::TrayIcon> tray;
     if (bazarish::app::TrayIcon::available()) {
         tray = std::make_unique<bazarish::app::TrayIcon>(controller);
         QApplication::setQuitOnLastWindowClosed(false);
-        tray->attachWindow(qobject_cast<QQuickWindow*>(engine.rootObjects().first()));
+        tray->attachWindow(mainWindow);
         QObject::connect(tray.get(), &bazarish::app::TrayIcon::quitRequested, &controller,
             &bazarish::app::AppController::prepareForExit);
         QObject::connect(&notifier, &bazarish::app::Notifier::announced, tray.get(),

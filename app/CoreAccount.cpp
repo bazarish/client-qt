@@ -369,6 +369,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
             displayName_ = displayName;
             online_ = connected && startOnline_;
             announcePresence();
+            setPresenceAway(presenceAway_);
             setPresenceFocused(presenceFocused_);
             watchUnsentRows();
         });
@@ -613,6 +614,21 @@ void CoreAccount::setPresenceFocused(const bool focused)
     QMetaObject::invokeMethod(
         worker_, [worker = worker_, shown]() { worker->setPresenceFocused(shown); },
         Qt::QueuedConnection);
+}
+
+void CoreAccount::setPresenceAway(const bool away)
+{
+    presenceAway_ = away;
+    QMetaObject::invokeMethod(
+        worker_, [worker = worker_, away]() { worker->setPresenceAway(away); },
+        Qt::QueuedConnection);
+}
+
+void CoreAccount::leavePresenceNow()
+{
+    if (thread_.isRunning()) {
+        worker_->leavePresenceNow();
+    }
 }
 
 void CoreAccount::rebuildI2pLinks()

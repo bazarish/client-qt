@@ -33,6 +33,7 @@ signals:
     void setPortable(bool on);
     void closeAllSessions();
     void windowActive(bool active);
+    void windowShown(bool shown);
     void userActed();
     void callScreenShown(bool shown);
     void setLanguage(const QString& code);

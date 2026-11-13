@@ -40,6 +40,8 @@ public:
     // Any thread: a mail wait resting after a failure asks again at once.
     // Any thread: takes the account's I2P links down, so a call blocked on one returns at once.
     void releaseLinksNow();
+    // Any thread: returns once the account's presence has told its watchers it is offline.
+    void leavePresenceNow();
 
 private:
     // The open session: a slot that runs once it is gone fails as any refusal does.
@@ -131,6 +133,7 @@ public slots:
     void setSendReceipts(bool on);
     void setShowPresence(bool on);
     void setPresenceFocused(bool focused);
+    void setPresenceAway(bool away);
     void setPresenceOrder(const QStringList& chatOrder);
     void watchPresence(const QStringList& peers);
     void presenceTyped(const QString& peer);
