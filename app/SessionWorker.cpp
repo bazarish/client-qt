@@ -655,6 +655,7 @@ void SessionWorker::openAccount(
         mailGate_.serverAnswered();
         emit syncReachable(true, {}, bazarish::client::LinkFailure::eNone);
     });
+    session_->openOutboxWhenAnswered(mailGate_);
     session_->setAckSink([this](const std::string& pendingId) { queueAck(pendingId); });
     emit loginSignerReady(session_->loginSigner());
     session_->onAddressDecision([this](const std::string& served, const std::string& ours) {
