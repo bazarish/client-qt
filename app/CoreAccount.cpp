@@ -720,8 +720,13 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
         emit events_.openFailed(tr("This profile could not be opened"));
         return;
     }
+    const std::optional<std::string> device = client::storedDeviceId(accountDb());
+    if (!device.has_value()) {
+        emit events_.openFailed(tr("This profile could not be opened"));
+        return;
+    }
     unsentAtOpen_ = *unsent;
-    ownDevice_ = QString::fromStdString(client::storedDeviceId(accountDb()));
+    ownDevice_ = QString::fromStdString(*device);
     unread_ = store_.unreadTotal();
     sweepExpired();
     expiryTimer_.start();
