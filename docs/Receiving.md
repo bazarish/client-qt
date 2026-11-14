@@ -58,8 +58,45 @@ puts it back.
    was registered again still end a pause early; no lease set is looked up, since
    the facade answered. From the first such answer to the first other one the
    account shows **No tunnel to the server**.
+7. A wait that fails while the device has no network waits for the network
+   alone: no lease set ages meanwhile, so the network coming back is its only
+   cause.
 
    A closed or locked account stops the loop; it asks nothing.
+
+## When the network goes
+
+The platform says when the network is gone and when it is back: on Android the
+default network being lost or losing its internet capability, on the desktop the
+system reporting no connection at all. A network that reaches only the local
+site still counts as a network, since a gateway may be on it.
+
+When it goes, the gateway's sockets are closed, every gateway call that is
+waiting fails at once and no stream is dialled until the network is back, so
+nothing piles up behind a dead socket. When it comes back, the mail wait is
+asked first. What waits in the outbox for any recipient goes once our server has
+answered - that wait or any other request - so the link is known to be up end to
+end, and not before (`Sending.md`).
+
+## What the connection strip says
+
+While an account is switched on but its mail wait is not answered, the strip at
+the top names the state and, beside it, why the server is out of reach. The
+reason is the one the last failed wait gave:
+
+| Shown | When |
+|---|---|
+| **No network** (in place of *Connecting*) | The device has no network |
+| No connection to the I2P network | The wait failed before the router had a link to I2P |
+| No connection to the external gateway | The gateway does not answer, or the session with it is not ready |
+| The gateway refused a link to the server | The gateway answered and refused the stream |
+| The I2P tunnels are being built | The router is up and the tunnels of the wait are not |
+| Could not connect to the server | The facade's address was dialled and did not answer |
+| No tunnel to the server | The facade answered 502 `UPSTREAM_UNAVAILABLE`: it has no server behind it |
+| The server refused the request | The server answered with a refusal |
+
+Before any wait has failed there is no reason, and the strip says only
+*Connecting*.
 
 ## Parameters
 

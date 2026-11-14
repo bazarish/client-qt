@@ -36,10 +36,10 @@ account's server.
 |---|---|
 | The recipient's lease set, looked up right after the unanswered attempt or when anything arrives from that contact, was published later than the one held at the failure | the next attempt starts at once |
 | 11 minutes since the unanswered attempt (a lease's 10 minutes and 60 seconds of clock difference) | the lease set that attempt used has expired everywhere; the next attempt starts |
-| The link came back, or the device moved to another network | every recipient is tried again |
+| The link came back, or the device moved to another network | every recipient that waits is held until this account's server answers a request, then tried again |
 | The contact announced a new address | its letters go to the new address at once |
 | The account was opened or switched on | every letter is tried |
-| This account's server answered a request (own mailbox only) | its letters go |
+| This account's server answered a request | its own-mailbox letters go, and so does every recipient held since the link came back |
 
 The lookup drops what the outbound destination holds of the recipient's lease
 set and asks the netDb again. It runs on the router that carries the

@@ -29,16 +29,21 @@ What this client settles, where the protocol leaves it open:
 ## Starting a second device
 
 A device starts from the same account bundle either way: a file the user carries,
-or a transfer over I2P with no file at all. The protocol side of the second route
-is in `DeviceSync.md`; the choices this client makes are here.
+or a transfer over I2P with no file at all. The protocol side of both routes is
+in `DeviceSync.md`; the choices this client makes are here.
+
+Both are offered only on a primary device; on a secondary one the two buttons
+are disabled. Either way the client first asks for the new device's role,
+**Primary** or **Secondary**, with one line under the choice: a secondary device
+does not manage the account.
 
 **Over I2P.** The account block of the settings offers it, and so does the screen
 that creates an account. The device that has the account publishes a one-shot
 blinded destination, shows the link and a four-digit code, and waits. The code is
 not in the link: it is asked for before the bundle is built, so the link can be
-copied anywhere, and ten wrong codes close the address. The bundle is held in
-memory on both sides and sealed with the code the user typed, so a correct code
-cannot then fail to open it. The new device keeps the link, its tunnels and its
+copied anywhere, and ten wrong codes close the address. The bundle is built when
+the right code arrives with the new device's keys, is held in memory on both
+sides and travels sealed under the link's key. The new device keeps the link, its tunnels and its
 connection across a wrong code - only the user cancelling ends it.
 
 The receiving device may have no network database yet, which is the one thing it
@@ -110,16 +115,42 @@ anything, and one button under it publishes this device's address instead.
 This is the only place the difference is visible: the address a device shows is
 what it believes it published, and belief is not what mail is delivered to.
 
-## Leaving
+## The devices of the account
 
-The device list in the account window carries one line per device, and a quiet
-`Forget` beside every device that is not this one. It asks first: the server
-stops keeping mail for that device and drops the queue it holds, and anything in
-that queue no other device has collected is gone. The next time that device
-connects it registers again and works as before.
+The account window lists every device of the account by its id, with its role,
+`(this device)` beside the one it runs on and the queue the server holds for
+each other one. A revoked device stays on the list in red, marked **Revoked**.
 
-Deleting the account offers the same distinction. **Delete everywhere** ends the
-account on its server: the address, the mailbox, everything in it. **This device
-only** asks the server for nothing at all, and leaves the account, its address
-and its mail standing for the user's other devices - the server works out that
-this device is gone when it stops collecting mail.
+## Revoking a device
+
+A primary device shows **Revoke** beside every other active device. It asks
+first, saying that the device loses access to the account and its new mail and
+that this cannot be undone; then it revokes it (`DeviceSync.md`, Revocation) and
+the background-activity panel lists the work while it runs. A secondary device
+shows no such control.
+
+The chat's information panel of a contact lists that contact's devices under
+**Contact's devices**, revoked ones last and in red, as this device holds the
+list.
+
+## Mail keys running low
+
+A primary device makes the account's epoch keys (`docs-main/Identity.md`, Epoch
+keys). When the keys a device holds reach less than 14 days ahead
+(`kLowEpochReserveDays`), which means no primary device has been online for a
+long time, that device shows a red strip under the connection strip,
+**The primary device has been offline for a long time**, and the account window
+shows **Mail keys until** the date they run out, beside the address. A tap on the
+strip opens the account window.
+
+## What a secondary device does not offer
+
+Backing up the account, connecting a new device, **New key**, signing with the
+account key and deleting the account are disabled on a secondary device. A sign
+link opened on it is answered with **Only the primary device signs in by key**.
+
+Deleting the account on a primary device offers two choices. **Delete
+everywhere** ends the account on its server: the address, the mailbox,
+everything in it. **This device only** asks the server for nothing at all, and
+leaves the account, its address and its mail standing for the user's other
+devices.
