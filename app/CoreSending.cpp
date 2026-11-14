@@ -40,12 +40,13 @@ QString sendOpId(const qint64 localId)
     return QStringLiteral("send:") + QString::number(localId);
 }
 
-StoredMessage outgoing(const QString& peer, const QString& type, const QString& e2eId,
-    const QString& replyTo, const int status)
+StoredMessage outgoing(const QString& device, const QString& peer, const QString& type,
+    const QString& e2eId, const QString& replyTo, const int status)
 {
     StoredMessage m;
     m.peer = peer;
     m.outgoing = true;
+    m.device = device;
     m.type = type;
     m.e2eId = e2eId;
     m.replyTo = replyTo;
@@ -66,7 +67,7 @@ void CoreAccount::sendText(
     const QString& peer, const QString& text, const QString& replyTo, const QString& e2eId)
 {
     const bool saved = isSavedChat(peer);
-    StoredMessage m = outgoing(peer, QStringLiteral("text"), e2eId, replyTo,
+    StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("text"), e2eId, replyTo,
         saved ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
     m.text = text;
     m.id = store_.append(m);
@@ -140,7 +141,7 @@ void CoreAccount::sendFile(
     const QString& peer, const QString& path, const QString& replyTo, const QString& e2eId)
 {
     const FileFacts facts = factsOf(path);
-    StoredMessage m = outgoing(peer, QStringLiteral("file"), e2eId, replyTo,
+    StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("file"), e2eId, replyTo,
         isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
     m.attName = facts.name;
     m.attSize = facts.size;
@@ -155,7 +156,7 @@ void CoreAccount::sendFile(
 void CoreAccount::sendPicture(const QString& peer, const QByteArray& bytes, const QString& name,
     const QString& mime, const QString& replyTo, const QString& e2eId)
 {
-    StoredMessage m = outgoing(peer, QStringLiteral("image"), e2eId, replyTo,
+    StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("image"), e2eId, replyTo,
         isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
     m.attName = name;
     m.attSize = bytes.size();
@@ -174,7 +175,7 @@ void CoreAccount::sendPicture(const QString& peer, const QByteArray& bytes, cons
 void CoreAccount::sendVoice(const QString& peer, const QByteArray& opus, const qint64 durationMs,
     const QString& wave, const QString& replyTo, const QString& e2eId)
 {
-    StoredMessage m = outgoing(peer, QStringLiteral("audio"), e2eId, replyTo,
+    StoredMessage m = outgoing(ownDevice_, peer, QStringLiteral("audio"), e2eId, replyTo,
         isSavedChat(peer) ? DeliveryStatus::Delivering : DeliveryStatus::Preparing);
     m.attMime = QStringLiteral("audio/opus");
     m.attSize = opus.size();
@@ -199,7 +200,7 @@ void CoreAccount::forwardMessage(
         return;
     }
     StoredMessage m
-        = outgoing(toPeer, source.type, newE2eId, QString(), DeliveryStatus::Preparing);
+        = outgoing(ownDevice_, toPeer, source.type, newE2eId, QString(), DeliveryStatus::Preparing);
     m.text = source.text;
     m.forwarded = true;
     QByteArray media;

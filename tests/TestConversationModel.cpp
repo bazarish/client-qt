@@ -36,6 +36,10 @@ int main(int argc, char** argv)
     CHECK(model.appendMessage(edited) == 2);
     CHECK(model.rowCount() == 3);
     CHECK(model.data(model.index(2), ConversationModel::TextRole).toString() == edited.text);
+    StoredMessage fromTablet = row(3);
+    fromTablet.device = QStringLiteral("tabdev2345");
+    CHECK(model.appendMessage(fromTablet) == 1);
+    CHECK(model.data(model.index(1), ConversationModel::DeviceRole).toString() == fromTablet.device);
 
     model.appendMessages({row(4), row(5)});
     CHECK(model.rowCount() == 4);

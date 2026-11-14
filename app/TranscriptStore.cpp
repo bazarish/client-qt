@@ -51,6 +51,7 @@ StoredMessage toQt(const client::StoredMessage& m)
     out.ts = m.ts;
     out.orderKey = m.orderKey;
     out.status = m.status;
+    out.device = qt(m.device);
     out.author = qt(m.author);
     out.contactable = m.contactable;
     out.fromHost = m.fromHost;
@@ -82,6 +83,7 @@ client::StoredMessage toCore(const StoredMessage& m)
     out.ts = m.ts;
     out.orderKey = m.orderKey;
     out.status = m.status;
+    out.device = utf8(m.device);
     out.author = utf8(m.author);
     out.contactable = m.contactable;
     out.fromHost = m.fromHost;

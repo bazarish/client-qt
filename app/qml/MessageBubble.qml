@@ -12,8 +12,8 @@ Item {
     property var session: null
     property bool highlighted: false
     property bool reacting: false
-    readonly property bool held: holdHandler.pressed || delegate.reacting
-        || (contextMenu.item !== null && contextMenu.item.menu.visible)
+    readonly property bool menuOpen: contextMenu.item !== null && contextMenu.item.menu.visible
+    readonly property bool held: holdHandler.pressed || delegate.reacting || delegate.menuOpen
     readonly property int heldFadeMs: 120
     readonly property real heldBandOpacity: 0.45
     signal deleteRequested(var msgId, string e2eId, bool outgoing)
@@ -474,6 +474,8 @@ Item {
         width: Math.min(Math.max(content.implicitWidth + delegate.kBubbleInset, 80),
             delegate.width * delegate.kBubbleShare)
         height: content.implicitHeight + 14
+        onWidthChanged: if (delegate.menuOpen) { delegate.placeMenu() }
+        onHeightChanged: if (delegate.menuOpen) { delegate.placeMenu() }
         radius: 12
         color: delegate.sticker ? "transparent"
             : model.outgoing ? (delegate.held ? Theme.bubbleOutHeld : Theme.bubbleOut)
@@ -1186,6 +1188,14 @@ Item {
                     color: Theme.textDim
                     font.pixelSize: 10
                     font.italic: true
+                }
+                Fingerprint {
+                    visible: delegate.menuOpen && value.length > 0
+                    value: model.device || ""
+                    whole: true
+                    wrapMode: Text.NoWrap
+                    color: Theme.textDim
+                    font.pixelSize: 10
                 }
                 Label {
                     text: model.time ? new Date(model.time).toLocaleTimeString(Qt.locale(), "hh:mm") : ""

@@ -42,6 +42,7 @@ struct StoredMessage {
     qint64 ts = 0;
     qint64 orderKey = 0;
     int status = 0;
+    QString device;
     QString author;
     bool contactable = false;
     bool fromHost = false;

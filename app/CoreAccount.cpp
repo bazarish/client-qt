@@ -721,6 +721,7 @@ void CoreAccount::open(const QString& file, const QString& passphrase, const boo
         return;
     }
     unsentAtOpen_ = *unsent;
+    ownDevice_ = QString::fromStdString(client::storedDeviceId(accountDb()));
     unread_ = store_.unreadTotal();
     sweepExpired();
     expiryTimer_.start();

@@ -385,6 +385,7 @@ void CoreAccount::onContactRequestSent(const QString& fingerprint, const QString
     StoredMessage m;
     m.peer = fingerprint;
     m.outgoing = true;
+    m.device = ownDevice_;
     m.type = "contact.request";
     m.e2eId = requestId.isEmpty() ? newE2eId() : requestId;
     m.text = body;

@@ -230,6 +230,7 @@ private:
     MessageIngest ingest_{store_, contacts_};
     QString accountPath_;
     QString passphrase_;
+    QString ownDevice_;
     std::unique_ptr<client::AccountDb> accountDb_;
     QStringList reactionsToFlash_;
     QStringList recentEmoji_;

@@ -50,7 +50,9 @@ int main(int argc, char** argv)
         m.text = "secret-hello";
         m.ts = 42;
         m.status = 1;
+        m.device = QStringLiteral("abcd2efgh3");
         CHECK(store.append(m) > 0);
+        CHECK(store.latestMessages(QStringLiteral("bob"), 1).last().device == m.device);
 
         StoredMessage withKeyboard;
         withKeyboard.peer = "botpeer";
