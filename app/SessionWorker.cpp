@@ -468,6 +468,9 @@ void SessionWorker::startEventWaiter()
                 streamMailbox(*waiter, waiting, !caughtUp, *running);
                 caughtUp = true;
             } catch (const std::exception& error) {
+                if (!running->load()) {
+                    return;
+                }
                 answered = false;
                 caughtUp = false;
                 if (const auto* apiError = dynamic_cast<const bazarish::client::ApiError*>(&error);
@@ -956,8 +959,16 @@ void SessionWorker::setSyncEnabled(bool on)
 void SessionWorker::rebuildI2pLinks()
 {
     stopEventWaiter();
-    if (maintenanceTimer_ != nullptr && maintenanceTimer_->isActive()) {
-        startEventWaiter();
+    if (maintenanceTimer_ == nullptr || !maintenanceTimer_->isActive()) {
+        return;
+    }
+    QMetaObject::invokeMethod(this, [this]() { emit linksRebuilding(); }, Qt::QueuedConnection);
+    startEventWaiter();
+    if (!eventWaiter_.joinable()) {
+        QMetaObject::invokeMethod(
+            this,
+            [this]() { emit syncReachable(false, {}, bazarish::client::LinkFailure::eNone); },
+            Qt::QueuedConnection);
     }
 }
 

@@ -221,7 +221,6 @@ private:
     i2p::TransportState transport_ = i2p::transportState();
     int unread_ = 0;
     bool linksRebuilding_ = false;
-    QTimer rebuildGrace_;
     QThread thread_;
     QPointer<SessionWorker> worker_;
     std::shared_ptr<client::LoginSigner> loginSigner_;

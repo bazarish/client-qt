@@ -1,6 +1,8 @@
 // Bazarish project (c) 2026
 #pragma once
 
+#include "AccountEvents.hpp"
+
 #include <LinkFailure.hpp>
 
 #include <QObject>
@@ -22,6 +24,7 @@ enum Value {
     ServerUnreachable = static_cast<int>(client::LinkFailure::eServerUnreachable),
     ServerDown = static_cast<int>(client::LinkFailure::eServerDown),
     ServerRefused = static_cast<int>(client::LinkFailure::eServerRefused),
+    Rebuilding = kLinkRebuilding,
 };
 Q_ENUM_NS(Value)
 

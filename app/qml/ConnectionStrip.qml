@@ -17,6 +17,8 @@ Rectangle {
     readonly property bool noNetwork: root.isConnecting && root.failure === LinkStatus.NoNetwork
     readonly property string whyNotReachable: {
         switch (root.failure) {
+        case LinkStatus.Rebuilding:
+            return qsTr("The links to the server are being rebuilt")
         case LinkStatus.I2pUnreachable:
             return qsTr("No connection to the I2P network")
         case LinkStatus.GatewayUnreachable:
