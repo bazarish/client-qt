@@ -330,6 +330,7 @@ void CoreAccount::deleteMessage(
         reportUnsaved();
         return;
     }
+    log_.drop(sendOpId(localId));
     if (!e2eId.isEmpty()) {
         emit commands_.requestUnsend(e2eId);
     }

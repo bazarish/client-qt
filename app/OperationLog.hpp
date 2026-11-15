@@ -20,6 +20,7 @@ public:
         double progress = kProgressUnknown);
     void setCancelId(const QString& id, const QString& cancelId);
     void finish(const QString& id, bool ok, const QString& finalStatus);
+    void drop(const QString& id);
     bool has(const QString& id) const { return indexOf(id) >= 0; }
     QVector<OperationRow> rows() const { return rows_; }
 

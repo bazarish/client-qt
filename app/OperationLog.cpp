@@ -90,4 +90,14 @@ void OperationLog::finish(const QString& id, const bool ok, const QString& final
     });
 }
 
+void OperationLog::drop(const QString& id)
+{
+    const int at = indexOf(id);
+    if (at < 0) {
+        return;
+    }
+    rows_.removeAt(at);
+    emit removed(id);
+}
+
 }  // namespace bazarish::app
