@@ -270,6 +270,8 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
         &SessionWorker::refreshDevices);
     connect(&commands_, &AccountCommands::requestRevokeDevice, worker_,
         &SessionWorker::revokeDevice);
+    connect(&commands_, &AccountCommands::requestReviewDevices, worker_,
+        &SessionWorker::reviewDevices);
     connect(&commands_, &AccountCommands::readContactDevices, worker_,
         &SessionWorker::readContactDevices);
     connect(&commands_, &AccountCommands::requestCloseAccountOnServer, worker_,

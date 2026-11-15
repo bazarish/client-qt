@@ -180,6 +180,13 @@ int main(int argc, char** argv)
     CHECK(saw({"added"}));
     CHECK(store.messageByE2e("u2", kBob).type == QStringLiteral("unsupported"));
 
+    CHECK(took(incoming(kBob, "unreadable", "x1")));
+    CHECK(saw({"added"}));
+    const StoredMessage unreadable = store.messageByE2e("x1", kBob);
+    CHECK(unreadable.type == QStringLiteral("system"));
+    CHECK(!unreadable.outgoing);
+    CHECK(systemNoteText(unreadable.text) == QStringLiteral("A message could not be read"));
+
     client::IncomingMessage timer = incoming(kBob, "chat.timer", "t1");
     timer.timerSeconds = bazarish::kSecondsPerDay;
     CHECK(took(timer));

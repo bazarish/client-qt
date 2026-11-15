@@ -437,6 +437,19 @@ ApplicationWindow {
 
     AddressChoiceDialog { id: addressChoiceDialog }
 
+    RestoredDevicesDialog { id: restoredDevicesDialog }
+
+    Connections {
+        target: App.session
+        ignoreUnknownSignals: true
+        function onDevicesChanged() {
+            if (App.session.primaryDevice && App.session.devicesToReview.length > 0
+                    && !restoredDevicesDialog.opened) {
+                restoredDevicesDialog.open()
+            }
+        }
+    }
+
     Connections {
         target: App.session
         ignoreUnknownSignals: true

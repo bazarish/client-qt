@@ -42,6 +42,7 @@ class SessionController : public QObject {
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(bool devicesFailed READ devicesFailed NOTIFY devicesChanged)
     Q_PROPERTY(QVariantList ownDevices READ ownDevices NOTIFY devicesChanged)
+    Q_PROPERTY(QVariantList devicesToReview READ devicesToReview NOTIFY devicesChanged)
     Q_PROPERTY(QString deviceId READ deviceId NOTIFY deviceStateChanged)
     Q_PROPERTY(bool primaryDevice READ primaryDevice NOTIFY deviceStateChanged)
     Q_PROPERTY(qint64 epochReserveUntil READ epochReserveUntil NOTIFY deviceStateChanged)
@@ -162,6 +163,7 @@ public:
     QVariantList devices() const { return devices_; }
     bool devicesFailed() const { return devicesFailed_; }
     QVariantList ownDevices() const;
+    QVariantList devicesToReview() const;
     QString deviceId() const { return deviceId_; }
     bool primaryDevice() const { return primaryDevice_; }
     qint64 epochReserveUntil() const { return epochReserveUntil_; }
@@ -452,6 +454,7 @@ public:
     Q_INVOKABLE void compactDatabase();
     Q_INVOKABLE void refreshDevices();
     Q_INVOKABLE void revokeDevice(const QString& deviceId);
+    Q_INVOKABLE void reviewDevices(const QStringList& revoke);
     Q_INVOKABLE void refreshContactDevices(const QString& peer);
     Q_INVOKABLE QVariantList contactDevices(const QString& peer) const;
     Q_INVOKABLE void startCall(const QString& peer);

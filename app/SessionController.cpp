@@ -1669,6 +1669,11 @@ void SessionController::refreshDevices()
     emit commands_.requestRefreshDevices();
 }
 
+void SessionController::reviewDevices(const QStringList& revoke)
+{
+    emit commands_.requestReviewDevices(revoke);
+}
+
 void SessionController::revokeDevice(const QString& deviceId)
 {
     emit commands_.requestRevokeDevice(deviceId);
@@ -1853,6 +1858,17 @@ QVariantList SessionController::ownDevices() const
         row.insert(QStringLiteral("queue"),
             queues.value(row.value(QStringLiteral("deviceId")).toString(), 0));
         rows.append(row);
+    }
+    return rows;
+}
+
+QVariantList SessionController::devicesToReview() const
+{
+    QVariantList rows;
+    for (const QVariant& own : ownDevices_) {
+        if (own.toMap().value(QStringLiteral("review")).toBool()) {
+            rows.append(own);
+        }
     }
     return rows;
 }

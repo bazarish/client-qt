@@ -52,6 +52,11 @@ public:
             .toStdString();
     }
 
+    std::string unreadable() const override
+    {
+        return encodeSystemNote(QT_TR_NOOP("A message could not be read")).toStdString();
+    }
+
     void rowAdded(const std::string& peer, const std::int64_t id, const bool own) override
     {
         emit owner_.rowAdded(qt(peer), id, own);

@@ -5212,6 +5212,78 @@
       "es": "Dispositivo revocado",
       "zh": "设备已撤销",
       "ar": "أُبطل الجهاز"
+    },
+    "The call was not declined: %1": {
+      "ru": "Звонок не отклонён: %1",
+      "es": "La llamada no se ha rechazado: %1",
+      "zh": "未能拒绝通话：%1",
+      "ar": "لم يُرفَض الاتصال: ⁦%1⁩"
+    },
+    "The call was not ended: %1": {
+      "ru": "Звонок не завершён: %1",
+      "es": "La llamada no se ha finalizado: %1",
+      "zh": "未能结束通话：%1",
+      "ar": "لم يُنهَ الاتصال: ⁦%1⁩"
+    },
+    "Read mark for your other devices": {
+      "ru": "Отметка о прочтении для ваших устройств",
+      "es": "Marca de lectura para tus otros dispositivos",
+      "zh": "发往你其他设备的已读标记",
+      "ar": "علامة القراءة لأجهزتك الأخرى"
+    },
+    "Chat pin for your other devices": {
+      "ru": "Закрепление чата для ваших устройств",
+      "es": "Fijación del chat para tus otros dispositivos",
+      "zh": "发往你其他设备的聊天置顶",
+      "ar": "تثبيت المحادثة لأجهزتك الأخرى"
+    },
+    "Chat clearing for your other devices": {
+      "ru": "Очистка чата для ваших устройств",
+      "es": "Vaciado del chat para tus otros dispositivos",
+      "zh": "发往你其他设备的聊天清空",
+      "ar": "إفراغ المحادثة لأجهزتك الأخرى"
+    },
+    "The links to the server are being rebuilt": {
+      "ru": "Связь с сервером перестраивается",
+      "es": "Se están reconstruyendo los enlaces con el servidor",
+      "zh": "正在重建与服务器的连接",
+      "ar": "يجري إعادة بناء الاتصال بالخادم"
+    },
+    "A message could not be read": {
+      "ru": "Сообщение не удалось прочитать",
+      "es": "No se pudo leer un mensaje",
+      "zh": "有一条消息无法读取",
+      "ar": "تعذّرت قراءة رسالة"
+    },
+    "Other devices": {
+      "ru": "Другие устройства",
+      "es": "Otros dispositivos",
+      "zh": "其他设备",
+      "ar": "أجهزة أخرى"
+    },
+    "Choose the devices to revoke after the restore": {
+      "ru": "Выберите устройства для отзыва после восстановления",
+      "es": "Elige los dispositivos que revocar tras la restauración",
+      "zh": "选择恢复后要撤销的设备",
+      "ar": "اختر الأجهزة التي تُلغى بعد الاستعادة"
+    },
+    "Revoke all others": {
+      "ru": "Отозвать все остальные",
+      "es": "Revocar todos los demás",
+      "zh": "撤销其他所有设备",
+      "ar": "إلغاء كل الأجهزة الأخرى"
+    },
+    "Keep all": {
+      "ru": "Оставить все",
+      "es": "Conservar todos",
+      "zh": "全部保留",
+      "ar": "الإبقاء على الكل"
+    },
+    "Added %1": {
+      "ru": "Добавлено %1",
+      "es": "Añadido %1",
+      "zh": "添加于 %1",
+      "ar": "أُضيف ⁦%1⁩"
     }
   }
 }

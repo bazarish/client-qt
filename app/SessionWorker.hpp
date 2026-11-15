@@ -153,6 +153,7 @@ public slots:
     void refreshStorageUsage();
     void refreshDevices();
     void revokeDevice(const QString& deviceId);
+    void reviewDevices(const QStringList& revoke);
     void readContactDevices(const QString& peer);
     void closeAccountOnServer();
     void startCall(const QString& peer);

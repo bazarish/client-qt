@@ -323,6 +323,7 @@ if(Qt6_FOUND)
             app/qml/GatewayFirstRunDialog.qml
             app/qml/AccountDeleteConfirmDialog.qml
             app/qml/AddressChoiceDialog.qml
+            app/qml/RestoredDevicesDialog.qml
             app/qml/DeviceRoleDialog.qml
             app/qml/AccountDeleteLockedDialog.qml
             app/qml/AccountDeleteFailedDialog.qml

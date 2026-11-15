@@ -36,6 +36,7 @@
 
 #include <QByteArray>
 #include <QDateTime>
+#include <QSet>
 #include <chrono>
 #include <QTimer>
 #include <cstring>
@@ -733,13 +734,20 @@ void SessionWorker::emitDeviceState()
     if (!session_) {
         return;
     }
+    QSet<QString> asked;
+    for (const bazarish::client::OwnDevice& device : session_->devicesToReview()) {
+        asked.insert(QString::fromStdString(device.id));
+    }
     QVariantList own;
     for (const bazarish::client::OwnDevice& device : session_->ownDevices()) {
+        const QString id = QString::fromStdString(device.id);
         own.append(QVariantMap{
-            {QStringLiteral("deviceId"), QString::fromStdString(device.id)},
+            {QStringLiteral("deviceId"), id},
             {QStringLiteral("primary"), device.role == bazarish::DeviceRole::ePrimary},
             {QStringLiteral("current"), device.current},
             {QStringLiteral("revoked"), device.revoked},
+            {QStringLiteral("issuedAt"), static_cast<qint64>(device.issuedAt)},
+            {QStringLiteral("review"), asked.contains(id)},
         });
     }
     const QString deviceId = QString::fromStdString(session_->deviceId());
@@ -2055,6 +2063,24 @@ void SessionWorker::revokeDevice(const QString& deviceId)
             session_->revokeDevice(deviceId.toStdString());
             emit actionOk(tr("Device revoked"));
             return tr("Revoked");
+        });
+    emitDeviceState();
+    refreshDevices();
+}
+
+void SessionWorker::reviewDevices(const QStringList& revoke)
+{
+    if (!session_) {
+        return;
+    }
+    runOp(QStringLiteral("device-review"), QStringLiteral("status"), tr("Revoking a device"),
+        tr("Telling your server…"), [this, &revoke]() {
+            std::vector<std::string> ids;
+            for (const QString& id : revoke) {
+                ids.push_back(id.toStdString());
+            }
+            session_->reviewDevices(ids);
+            return revoke.isEmpty() ? tr("Done") : tr("Revoked");
         });
     emitDeviceState();
     refreshDevices();
