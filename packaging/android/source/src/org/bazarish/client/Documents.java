@@ -35,13 +35,23 @@ public final class Documents {
             out.write(bytes);
         } catch (Exception e) {
             Log.w(TAG, "a file for Downloads was not written: " + e);
-            resolver.delete(saved, null, null);
+            dropPending(resolver, saved);
             return false;
         }
         values.clear();
         values.put(MediaStore.MediaColumns.IS_PENDING, 0);
-        resolver.update(saved, values, null, null);
+        if (resolver.update(saved, values, null, null) != 1) {
+            Log.w(TAG, "Downloads did not publish a written file");
+            dropPending(resolver, saved);
+            return false;
+        }
         return true;
+    }
+
+    private static void dropPending(ContentResolver resolver, Uri saved) {
+        if (resolver.delete(saved, null, null) != 1) {
+            Log.w(TAG, "Downloads kept an unfinished entry: " + saved);
+        }
     }
 
     // A descriptor the caller owns and closes, or -1 when the provider refuses it.

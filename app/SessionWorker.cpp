@@ -995,7 +995,9 @@ void SessionWorker::drainMailbox()
     try {
         messages = session_->takeIn(std::move(chunk), false);
     } catch (const std::exception& error) {
-        bazarish::log::warn("mailbox items not taken in: {}", error.what());
+        stopEventWaiter();
+        emit actionFailed(tr("Receiving stopped: %1").arg(QString::fromUtf8(error.what())));
+        return;
     }
     if (!addsResumed_) {
         addsResumed_ = true;
@@ -1466,7 +1468,9 @@ void SessionWorker::startContactAdd(const bool byAlias, const QString& uriOrAlia
     try {
         session_->notePendingContactAdd({opId.toStdString(), request});
     } catch (const std::exception& e) {
-        bazarish::log::warn("contact-add not recorded: {}", e.what());
+        emit contactAddDone(opId, false, QString::fromUtf8(e.what()));
+        emit actionFailed(QString::fromUtf8(e.what()));
+        return;
     }
     using Step = bazarish::client::Session::CardStep;
     emit contactAddStage(opId,
@@ -1757,7 +1761,8 @@ void SessionWorker::syncChatClear(const QString& peer)
     try {
         session_->syncChatClearToSelf(peer.toStdString());
     } catch (const std::exception& error) {
-        bazarish::log::warn("chat-clear self-sync failed: {}", error.what());
+        emit opDone(beginOp(tr("Chat clearing for your other devices"), tr("Sending…")), false,
+            tr("Not sent: %1").arg(QString::fromUtf8(error.what())));
     }
 }
 
@@ -1769,8 +1774,8 @@ void SessionWorker::syncRead(const QString& peer, const qint64 sentAtMs)
     try {
         session_->syncReadToSelf(peer.toStdString(), sentAtMs);
     } catch (const std::exception& error) {
-        bazarish::log::warn(
-            "read mark not synced to this account's other devices: {}", error.what());
+        emit opDone(beginOp(tr("Read mark for your other devices"), tr("Sending…")), false,
+            tr("Not sent: %1").arg(QString::fromUtf8(error.what())));
     }
 }
 
@@ -1782,7 +1787,8 @@ void SessionWorker::syncChatPin(const QString& peer, bool pinned)
     try {
         session_->syncChatPinToSelf(peer.toStdString(), pinned);
     } catch (const std::exception& error) {
-        bazarish::log::warn("pin not synced to this account's other devices: {}", error.what());
+        emit opDone(beginOp(tr("Chat pin for your other devices"), tr("Sending…")), false,
+            tr("Not sent: %1").arg(QString::fromUtf8(error.what())));
     }
 }
 
