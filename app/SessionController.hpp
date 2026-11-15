@@ -633,8 +633,9 @@ private:
     void refreshChatRow(const QString& peer);
     void onRowAdded(const QString& peer, qint64 id, bool own);
     void onRowChanged(const QString& peer, qint64 id);
-    void onRowRemoved(const QString& peer, qint64 id);
+    void onRowRemoved(const QString& peer, qint64 id, const QString& e2eId);
     void onPeerReset(const QString& peer);
+    void dropShownMediaOf(const QString& peer);
     void onPeerForgotten(const QString& peer);
     void onDeliveredThrough(const QString& peer, qint64 uptoId);
     void loadLatestWindow();

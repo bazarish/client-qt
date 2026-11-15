@@ -124,13 +124,14 @@ void CoreAccount::setChatTimer(const QString& peer, const qint64 seconds)
 
 void CoreAccount::sweepExpired()
 {
-    for (const auto& [peer, id] : store_.expiredBy(nowMillis())) {
-        if (!store_.removeById(id)) {
-            reportUnsaved();
-            return;
-        }
-        emit events_.rowRemoved(peer, id);
-        emit events_.chatChanged(peer);
+    const std::optional<QVector<RemovedRow>> removed = store_.removeExpired(nowMillis());
+    if (!removed.has_value()) {
+        reportUnsaved();
+        return;
+    }
+    for (const RemovedRow& row : *removed) {
+        emit events_.rowRemoved(row.peer, row.id, row.e2eId);
+        emit events_.chatChanged(row.peer);
     }
 }
 

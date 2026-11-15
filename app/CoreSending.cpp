@@ -333,7 +333,7 @@ void CoreAccount::deleteMessage(
     if (!e2eId.isEmpty()) {
         emit commands_.requestUnsend(e2eId);
     }
-    emit events_.rowRemoved(peer, localId);
+    emit events_.rowRemoved(peer, localId, e2eId);
     if (outgoing && !e2eId.isEmpty()) {
         emit commands_.requestSendDelete(peer, e2eId);
     }

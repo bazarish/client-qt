@@ -162,7 +162,7 @@ signals:
     void closed();
     void rowAdded(const QString& peer, qint64 id, bool own);
     void rowChanged(const QString& peer, qint64 id);
-    void rowRemoved(const QString& peer, qint64 id);
+    void rowRemoved(const QString& peer, qint64 id, const QString& e2eId);
     void peerReset(const QString& peer);
     void chatTimerChanged(const QString& peer, qint64 seconds);
     void botMenuChanged(const QString& peer);

@@ -48,6 +48,12 @@ struct StoredMessage {
     bool fromHost = false;
 };
 
+struct RemovedRow {
+    QString peer;
+    qint64 id = 0;
+    QString e2eId;
+};
+
 struct SearchHit {
     qint64 id = 0;
     qint64 ts = 0;
@@ -164,6 +170,8 @@ public:
     [[nodiscard]] bool editContent(qint64 id, const QString& text, const QString& keyboard);
     [[nodiscard]] bool setType(qint64 id, const QString& type);
     [[nodiscard]] bool removeById(qint64 id);
+    // As (peer, id, e2eId) in one change; nothing when the store failed.
+    [[nodiscard]] std::optional<QVector<RemovedRow>> removeExpired(qint64 nowMs);
     [[nodiscard]] bool clearPeer(const QString& peer);
     [[nodiscard]] bool forgetPeer(const QString& peer);
     [[nodiscard]] bool setLastReadId(const QString& peer, qint64 id);

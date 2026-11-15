@@ -171,7 +171,7 @@ void CoreAccount::repeatContactAdd(const QString& chat, const PendingContactRequ
             reportUnsaved();
             break;
         }
-        emit events_.rowRemoved(chat, row);
+        emit events_.rowRemoved(chat, row, {});
         removed = row;
     }
     if (hasAliasSigil(pending.uri)) {
@@ -243,7 +243,7 @@ void CoreAccount::onRoutingTold(const QString& peer, const bool delivered)
                 reportUnsaved();
                 return;
             }
-            emit events_.rowRemoved(peer, told);
+            emit events_.rowRemoved(peer, told, {});
         }
         return;
     }

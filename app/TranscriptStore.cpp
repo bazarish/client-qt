@@ -400,6 +400,19 @@ bool TranscriptStore::setType(const qint64 id, const QString& type)
     return store().setType(id, utf8(type));
 }
 
+std::optional<QVector<RemovedRow>> TranscriptStore::removeExpired(const qint64 nowMs)
+{
+    const std::optional<std::vector<client::RemovedRow>> removed = store().removeExpired(nowMs);
+    if (!removed.has_value()) {
+        return std::nullopt;
+    }
+    QVector<RemovedRow> rows;
+    for (const client::RemovedRow& row : *removed) {
+        rows.append({qt(row.peer), row.id, qt(row.e2eId)});
+    }
+    return rows;
+}
+
 bool TranscriptStore::removeById(const qint64 id)
 {
     return store().removeById(id);

@@ -786,7 +786,10 @@ int main(int argc, char** argv)
         CHECK(!later.contains(sentBefore) && !later.contains(readBefore)
             && !later.contains(plate));
 
-        CHECK(store.removeById(sentLongAgo));
+        const std::optional<QVector<RemovedRow>> swept = store.removeExpired(now);
+        CHECK(swept.has_value() && swept->size() == 1);
+        CHECK(swept->front().id == sentLongAgo && swept->front().peer == "kate"
+            && swept->front().e2eId == "o1");
         CHECK(!due(now).contains(sentLongAgo));
 
         CHECK(store.setChatTimer("kate", client::kChatTimerOff));

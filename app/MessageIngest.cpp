@@ -60,9 +60,10 @@ public:
     {
         emit owner_.rowChanged(qt(peer), id);
     }
-    void rowRemoved(const std::string& peer, const std::int64_t id, const std::string&) override
+    void rowRemoved(
+        const std::string& peer, const std::int64_t id, const std::string& e2eId) override
     {
-        emit owner_.rowRemoved(qt(peer), id);
+        emit owner_.rowRemoved(qt(peer), id, qt(e2eId));
     }
     void peerReset(const std::string& peer) override { emit owner_.peerReset(qt(peer)); }
     void peerForgotten(const std::string& peer) override { emit owner_.peerForgotten(qt(peer)); }

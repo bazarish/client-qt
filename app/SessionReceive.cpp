@@ -2,6 +2,7 @@
 #include "SessionController.hpp"
 
 #include "AvatarStore.hpp"
+#include "PictureStore.hpp"
 
 #include <QByteArray>
 
@@ -34,24 +35,41 @@ void SessionController::onRowChanged(const QString& peer, const qint64 id)
     refreshChatRow(peer);
 }
 
-void SessionController::onRowRemoved(const QString& peer, const qint64 id)
+void SessionController::onRowRemoved(const QString& peer, const qint64 id, const QString& e2eId)
 {
     if (peer == activePeer_) {
         conversation_.removeById(id);
+    }
+    if (!e2eId.isEmpty()) {
+        PictureStore::instance().remove(e2eId);
+        if (voicePlaying_ == e2eId) {
+            stopVoice();
+        }
     }
     refreshChatRow(peer);
 }
 
 void SessionController::onPeerReset(const QString& peer)
 {
+    dropShownMediaOf(peer);
     if (peer == activePeer_) {
         loadLatestWindow();
     }
     refreshChatRow(peer);
 }
 
+void SessionController::dropShownMediaOf(const QString& peer)
+{
+    // The store keeps no chat per picture, so a whole chat's going empties all of it.
+    PictureStore::instance().clear();
+    if (peer == activePeer_ && !voicePlaying_.isEmpty()) {
+        stopVoice();
+    }
+}
+
 void SessionController::onPeerForgotten(const QString& peer)
 {
+    dropShownMediaOf(peer);
     contacts_.remove(peer);
     if (peer == activePeer_) {
         openConversation({});
