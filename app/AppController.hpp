@@ -248,6 +248,7 @@ signals:
     void sessionChanged();
     void accountOpened();
     void accountOpenFailed(const QString& error);
+    void microphoneRefused();
     void createFailed(const QString& error);
     void importRefused(const QString& kind);
     void showPicker();

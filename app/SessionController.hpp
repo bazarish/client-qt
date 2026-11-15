@@ -510,6 +510,7 @@ signals:
     void actionOk(const QString& info);
     void botKeySettled(const QString& messageId, bool delivered);
     void actionFailed(const QString& error);
+    void microphoneRefused();
     void loginSigned(const QString& blob);
     void addressNeedsChoice(const QString& servedHost, const QString& ourHost);
     void connectionLogUpdated(const QVariantList& lines);

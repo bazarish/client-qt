@@ -220,6 +220,7 @@ void AppController::startSession(const QString& id)
     relay_.sendFrom(id, ctrl->commands());
     relay_.deliverTo(id, ctrl->events());
     connect(ctrl, &SessionController::openFailed, this, &AppController::accountOpenFailed);
+    connect(ctrl, &SessionController::microphoneRefused, this, &AppController::microphoneRefused);
     connect(ctrl, &SessionController::callChanged, this, &AppController::refreshCallSession);
     connect(ctrl, &SessionController::historyOpened, this, [this, id]() {
         if (pendingConversation_.first == id) {

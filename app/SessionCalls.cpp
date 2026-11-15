@@ -5,10 +5,13 @@
 #include "SystemNotes.hpp"
 
 #include <QAudioDevice>
+#include <QCoreApplication>
 #include <QLatin1StringView>
+#include <QPermissions>
 
 #include <array>
 #include <cstddef>
+#include <stdexcept>
 
 namespace bazarish::app {
 
@@ -41,7 +44,25 @@ void SessionController::acceptCall()
     if (!speakerPresent()) {
         return;
     }
-    emit commands_.acceptCall();
+    const QMicrophonePermission microphone;
+    switch (qApp->checkPermission(microphone)) {
+    case Qt::PermissionStatus::Granted:
+        emit commands_.acceptCall();
+        return;
+    case Qt::PermissionStatus::Denied:
+        emit microphoneRefused();
+        return;
+    case Qt::PermissionStatus::Undetermined:
+        qApp->requestPermission(microphone, this, [this](const QPermission& asked) {
+            if (asked.status() == Qt::PermissionStatus::Granted) {
+                emit commands_.acceptCall();
+            } else {
+                emit microphoneRefused();
+            }
+        });
+        return;
+    }
+    throw std::logic_error("unknown microphone permission status");
 }
 
 QString SessionController::callStage() const

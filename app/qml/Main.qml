@@ -109,6 +109,11 @@ ApplicationWindow {
         function onActionFailed(error) { window.showError(error) }
     }
 
+    Connections {
+        target: App
+        function onMicrophoneRefused() { window.showToast(qsTr("No access to the microphone")) }
+    }
+
     IncomingCallWindow { mainWindowActive: window.active }
 
     StackView {
