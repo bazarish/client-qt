@@ -370,7 +370,10 @@ void SessionWorker::startErrands()
             try {
                 errands->ack(acks);
             } catch (const std::exception& error) {
-                bazarish::log::warn("pending items not given back: {}", error.what());
+                bazarish::log::warn(
+                    "pending items not given back, owed to the next mail wait: {}", error.what());
+                const std::lock_guard<std::mutex> lock(drainMutex_);
+                owedAcks_.insert(owedAcks_.end(), acks.begin(), acks.end());
             }
             QMetaObject::invokeMethod(
                 this,
@@ -432,6 +435,17 @@ void SessionWorker::startEventWaiter()
             try {
                 if (!waiter) {
                     waiter = bazarish::client::Session::makeEventClient(context);
+                }
+                std::vector<std::string> owed;
+                {
+                    const std::lock_guard<std::mutex> lock(drainMutex_);
+                    owed = owedAcks_;
+                }
+                if (!owed.empty()) {
+                    waiter->ack(owed);
+                    const std::lock_guard<std::mutex> lock(drainMutex_);
+                    owedAcks_.erase(owedAcks_.begin(),
+                        owedAcks_.begin() + static_cast<std::ptrdiff_t>(owed.size()));
                 }
                 const std::vector<bazarish::client::PendingEntry> waiting
                     = bazarish::client::Session::waitForMail(*waiter,

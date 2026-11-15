@@ -309,6 +309,7 @@ private:
     std::condition_variable drainDone_;
     bool drainSettled_ = true;
     std::deque<bazarish::client::Session::MailboxItem> streamed_;
+    std::vector<std::string> owedAcks_;
     bool streamEnded_ = true;
     bool catchingUp_ = false;
     bool syncShown_ = false;
