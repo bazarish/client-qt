@@ -67,6 +67,7 @@ signals:
     void addByAlias(const QString& alias, const QString& intro);
     void retryContactAdd(const QString& peer);
     void retryContactRequest(const QString& fingerprint);
+    void acceptCall();
     void declineCall();
     void endCall();
     void sendCallback(

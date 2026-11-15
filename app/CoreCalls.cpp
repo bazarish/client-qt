@@ -95,6 +95,11 @@ void CoreAccount::onCallLogged(const QString& peer, const bool incoming, const i
     }
 }
 
+void CoreAccount::acceptCall()
+{
+    emit commands_.requestAcceptCall(call_.id);
+}
+
 void CoreAccount::declineCall()
 {
     callEndedLocally_ = true;

@@ -721,7 +721,6 @@ private:
     qreal callInputLevel_ = 0.0;
     qreal callOutputLevel_ = 0.0;
     QString callPeer_;
-    QString callId_;
     bool callMuted_ = false;
     void rebuildChatList();
     int unreadTotal_ = 0;

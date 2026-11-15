@@ -41,7 +41,7 @@ void SessionController::acceptCall()
     if (!speakerPresent()) {
         return;
     }
-    emit commands_.requestAcceptCall(callId_);
+    emit commands_.acceptCall();
 }
 
 QString SessionController::callStage() const
@@ -65,7 +65,7 @@ void SessionController::setCallMuted(const bool muted)
 }
 
 void SessionController::onCallStateChanged(const int state, const QString& peer,
-    const QString& callId, const bool muted, const QString& stage, const qint64 connectedAtMs,
+    const QString&, const bool muted, const QString& stage, const qint64 connectedAtMs,
     const float inputLevel, const float outputLevel)
 {
     if (!qFuzzyCompare(static_cast<qreal>(callInputLevel_), static_cast<qreal>(inputLevel))
@@ -80,7 +80,7 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
     const QString name = (state >= 0 && static_cast<std::size_t>(state) < kNames.size())
         ? QString(kNames[static_cast<std::size_t>(state)])
         : QStringLiteral("idle");
-    if (callState_ == name && callPeer_ == peer && callId_ == callId && callMuted_ == muted
+    if (callState_ == name && callPeer_ == peer && callMuted_ == muted
         && callStage_ == stage && callConnectedAtMs_ == connectedAtMs) {
         return;
     }
@@ -88,7 +88,6 @@ void SessionController::onCallStateChanged(const int state, const QString& peer,
     callConnectedAtMs_ = connectedAtMs;
     callState_ = name;
     callPeer_ = peer;
-    callId_ = callId;
     callMuted_ = muted;
     emit callChanged();
 }

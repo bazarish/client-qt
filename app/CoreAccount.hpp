@@ -178,6 +178,7 @@ private:
         const QString& stage, bool peerRinging, qint64 connectedAtMs, float inputLevel,
         float outputLevel);
     void onCallLogged(const QString& peer, bool incoming, int outcome);
+    void acceptCall();
     void declineCall();
     void endCall();
     void onConnectRequested();

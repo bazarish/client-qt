@@ -514,6 +514,7 @@ CoreAccount::CoreAccount(const QString& accountId, QObject* const parent)
     connect(&commands_, &AccountCommands::retryContactAdd, this, &CoreAccount::retryContactAdd);
     connect(&commands_, &AccountCommands::retryContactRequest, this,
         &CoreAccount::retryContactRequest);
+    connect(&commands_, &AccountCommands::acceptCall, this, &CoreAccount::acceptCall);
     connect(&commands_, &AccountCommands::declineCall, this, &CoreAccount::declineCall);
     connect(&commands_, &AccountCommands::endCall, this, &CoreAccount::endCall);
     connect(&commands_, &AccountCommands::sendCallback, this, &CoreAccount::sendCallback);
