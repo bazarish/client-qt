@@ -22,7 +22,25 @@ An account without a passphrase is encrypted the same way, with a random 32-byte
 key that cannot be guessed. Its sidecar seals that key under a fixed secret every
 client knows, at a low Argon2id cost: 8 MiB and one pass, against 64 MiB and
 three passes under a passphrase. The database file alone does not open; the
-database together with its `.key` file opens without any passphrase.
+database together with its `.key` file opens without any passphrase. That fixed
+secret cannot be chosen as a passphrase: the window refuses it, and so does the
+core.
+
+**Changing the passphrase** closes the account and re-encrypts the whole
+database under a new random key: `sqlcipher_export` streams it into
+`<id>.db-rekey`, the new key is sealed under the new passphrase into
+`<id>.key-rekey`, and the two are renamed over `<id>.db` and `<id>.key`, the
+database first. Renaming the database is the commit. The next open finishes an
+interrupted change: a `<id>.db-rekey` still there means the change did not
+commit, and the new files are dropped; a lone `<id>.key-rekey` means it did, and
+the key is put in place. The account then opens again. An old copy of the `.key`
+file, with the old passphrase, does not open the new database.
+
+**What is deleted leaves the file.** Every connection to the database runs with
+`secure_delete`, so a deleted row's bytes are overwritten, and the write-ahead
+log is emptied after each deletion and edit and after epoch keys are erased, so
+the old content does not stay there either. A deletion that cannot empty the log
+because another connection is reading it reports a failure.
 
 ## SQLCipher
 
@@ -118,7 +136,7 @@ is why it is the storage window's operation and not every deletion's.
 
 ## The backup bundle
 
-`export` writes one password-sealed file (CMS PWRI) holding what an account *is*,
+`export` writes one password-sealed file (Argon2id and AES-256-GCM, `docs-main/Identity.md`, Algorithms) holding what an account *is*,
 so a restore is a working device and not a shell of one:
 
 On Android the app opts out of the system's cloud backup, which would otherwise
