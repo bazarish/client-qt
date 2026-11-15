@@ -532,7 +532,7 @@ Popup {
                             text: root.session && root.session.i2pBusy ? qsTr("Publishing\u2026")
                                 : qsTr("Publish address")
                             enabled: root.session && root.session.connected
-                                && !root.session.i2pBusy
+                                && !root.session.i2pBusy && root.session.primaryDevice
                             onClicked: root.session.publishPersonalDest()
                         }
                         MenuButton {
@@ -542,6 +542,7 @@ Popup {
                             text: root.session && root.session.i2pBusy ? qsTr("Taking offline\u2026")
                                 : qsTr("Take offline")
                             enabled: root.session && !root.session.i2pBusy
+                                && root.session.primaryDevice
                             onClicked: takeOfflineDialog.open()
                         }
                     }
@@ -552,7 +553,7 @@ Popup {
                         text: root.session && root.session.i2pBusy
                             ? qsTr("Publishing…") : qsTr("Renew")
                         enabled: root.session && root.session.connected
-                            && !root.session.i2pBusy
+                            && !root.session.i2pBusy && root.session.primaryDevice
                         onClicked: root.session.publishPersonalDest()
                     }
                     MenuButton {
@@ -601,6 +602,7 @@ Popup {
                                     to: root.session ? root.session.maxDelegationDays : 30
                                     value: root.session ? root.session.delegationDays : 14
                                     editable: true
+                                    enabled: root.session !== null && root.session.primaryDevice
                                     // Fires on a step or when typing ends, so "30" never passes through 3 days.
                                     onValueModified: if (root.session) {
                                         root.session.delegationDays = value
