@@ -18,6 +18,12 @@ passphrase never reaches the database itself. The sidecar is sealed with
 Argon2id, whose cost parameters it carries, and the reader refuses a file of any
 other size or a cost beyond what it will spend.
 
+An account without a passphrase is encrypted the same way, with a random 32-byte
+key that cannot be guessed. Its sidecar seals that key under a fixed secret every
+client knows, at a low Argon2id cost: 8 MiB and one pass, against 64 MiB and
+three passes under a passphrase. The database file alone does not open; the
+database together with its `.key` file opens without any passphrase.
+
 ## SQLCipher
 
 The account database is **SQLCipher 4**. The client neither sets nor overrides
