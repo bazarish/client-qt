@@ -3929,12 +3929,6 @@
       "zh": "别人可以通过别名或完整描述符把你加为联系人",
       "ar": "يمكن إضافتك كجهة اتصال عبر اسم مستعار أو عبر الواصف الكامل"
     },
-    "You can write to this contact": {
-      "ru": "Вы можете писать этому контакту",
-      "es": "Puedes escribir a este contacto",
-      "zh": "你可以给该联系人发消息",
-      "ar": "يمكنك الكتابة إلى جهة الاتصال هذه"
-    },
     "You cleared the chat for everyone": {
       "ru": "Вы очистили переписку у всех",
       "es": "Has borrado el chat para todos",

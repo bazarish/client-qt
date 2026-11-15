@@ -308,14 +308,13 @@ Popup {
             horizontalAlignment: Text.AlignHCenter
             color: Theme.textFaint
             font.pixelSize: Theme.fontSmall
-            visible: !root.saved && root.session && root.session.activePeer.length > 0
-            text: {
+            readonly property bool mayWrite: {
                 // Read so the binding re-evaluates on contact changes: the call alone is not tracked.
                 const revision = root.session ? root.session.contactsRevision : 0
-                const may = root.session ? root.session.canWriteTo(root.session.activePeer) : false
-                return may ? qsTr("You can write to this contact")
-                           : qsTr("This contact has not allowed you to write")
+                return root.session ? root.session.canWriteTo(root.session.activePeer) : false
             }
+            visible: !root.saved && root.session && root.session.activePeer.length > 0 && !mayWrite
+            text: qsTr("This contact has not allowed you to write")
             wrapMode: Text.Wrap
         }
 
