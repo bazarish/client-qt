@@ -1200,6 +1200,7 @@ void SessionWorker::acceptCall(const QString& callId)
 void SessionWorker::declineCall(const QString& callId)
 {
     if (!session_) {
+        emit callEndFailed(true, tr("No account is open"));
         return;
     }
     try {
@@ -1214,7 +1215,7 @@ void SessionWorker::declineCall(const QString& callId)
 void SessionWorker::endCall()
 {
     if (!session_) {
-        emit callEndFailed(true, tr("No account is open"));
+        emit callEndFailed(false, tr("No account is open"));
         return;
     }
     try {
@@ -1238,7 +1239,6 @@ void SessionWorker::setCallMuted(const bool muted)
 void SessionWorker::watchUnsent(const QVariantList& rows)
 {
     if (!session_) {
-        emit callEndFailed(false, tr("No account is open"));
         return;
     }
     for (const QVariant& held : rows) {
